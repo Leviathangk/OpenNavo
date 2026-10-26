@@ -4,26 +4,6 @@
  */
 
 export interface paths {
-    "/seo/experiment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the stable template experiment assignment for a canonical page
-         * @description Render a variant only when eligible is true and arm is treatment. The web layer renders titles; this response never overrides factual page eligibility.
-         */
-        get: operations["getSeoExperimentAssignment"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/background-items": {
         parameters: {
             query?: never;
@@ -648,63 +628,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "experimentId": null,
-         *         "arm": "none",
-         *         "variant": null,
-         *         "templateVersion": "snippet-v1",
-         *         "eligible": false,
-         *         "expiresAt": null
-         *       }
-         *     }
-         */
-        SeoExperimentAssignmentResponse: {
-            /** @example 0000 */
-            code: string;
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoExperimentAssignment"];
-        };
-        /**
-         * @example {
-         *       "experimentId": null,
-         *       "arm": "none",
-         *       "variant": null,
-         *       "templateVersion": "snippet-v1",
-         *       "eligible": false,
-         *       "expiresAt": null
-         *     }
-         */
-        SeoExperimentAssignment: {
-            /**
-             * Format: int64
-             * @example null
-             */
-            experimentId: number | null;
-            /**
-             * @example none
-             * @enum {string}
-             */
-            arm: "none" | "control" | "treatment";
-            /**
-             * @example null
-             * @enum {string|null}
-             */
-            variant: "verified_free" | "current_version" | "uninstall_alternatives" | null;
-            /** @example snippet-v1 */
-            templateVersion: string;
-            /** @example false */
-            eligible: boolean;
-            /**
-             * Format: date-time
-             * @example null
-             */
-            expiresAt: string | null;
-        };
         /**
          * @example {
          *       "width": 64,
@@ -2591,6 +2514,17 @@ export interface components {
             machineTranslated?: boolean;
         };
         /**
+         * @description The overview page's search title and meta description set for the requested language; a null field keeps the template, and the site adds its brand suffix to the title. zh-Hant shows zh-CN's override converted to Traditional Chinese. Null when the language has none; other pages ignore it.
+         * @example {
+         *       "title": "Visual Studio Code for Mac: download and install",
+         *       "description": null
+         *     }
+         */
+        PackageSeoOverride: {
+            title: string | null;
+            description: string | null;
+        } | null;
+        /**
          * @example {
          *       "kind": "cask",
          *       "token": "visual-studio-code",
@@ -2789,6 +2723,7 @@ export interface components {
          *     }
          */
         PackageDetail: components["schemas"]["PackageSummary"] & {
+            seoOverride?: components["schemas"]["PackageSeoOverride"];
             collections?: components["schemas"]["PackageCollectionRef"][];
             names: string[];
             /** @example Open-source code editor with debugging and extensions */
@@ -8535,29 +8470,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    getSeoExperimentAssignment: {
-        parameters: {
-            query: {
-                url: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoExperimentAssignmentResponse"];
-                };
-            };
-            default: components["responses"]["Error"];
-        };
-    };
     listBackgroundItems: {
         parameters: {
             query?: {

@@ -119,7 +119,7 @@ func TestSEOSettingsCrawlerLocksAndDefaults(t *testing.T) {
 	locked := []string{
 		"Googlebot", "Googlebot-Image", "Googlebot-News", "Googlebot-Video", "Storebot-Google",
 		"Google-InspectionTool", "AdsBot-Google", "Bingbot", "BingPreview", "msnbot",
-		"OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "PerplexityBot",
+		"OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "Amzn-SearchBot", "Amzn-User", "PerplexityBot",
 		"Perplexity-User", "DuckDuckBot", "DuckAssistBot", "Applebot", "YandexBot", "Baiduspider",
 		"Meta-WebIndexer", "Meta-ExternalFetcher", "MistralAI-Index", "MistralAI-User", "Yeti", "*",
 	}
@@ -141,9 +141,14 @@ func TestSEOSettingsCrawlerLocksAndDefaults(t *testing.T) {
 		}
 	}
 	defaults := store.DefaultSEOSettings()
-	require.Equal(t, store.SEOCrawlerRule{Mode: store.CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot"}}, defaults.Crawlers.Training)
+	require.Equal(t, store.SEOCrawlerRule{Mode: store.CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot", "GPTBot", "Amazonbot", "Bytespider", "CCBot", "Meta-ExternalAgent", "anthropic-ai", "MistralAI-Training"}}, defaults.Crawlers.Training)
+	require.True(t, validCrawlerRule(&defaults.Crawlers.Training), "the defaults pass the bot name, lock and size checks of a save")
+	// Migration 00112 adds the same names to stored lists; none of them is locked.
+	for _, bot := range defaults.Crawlers.Training.Bots {
+		require.NotContains(t, lockedCrawlers, strings.ToLower(bot))
+	}
+	// Training and use tokens stay tunable, including the default ones.
 	for _, bot := range []string{"GPTBot", "Google-Extended", "Applebot-Extended", "Meta-ExternalAgent", "MistralAI-Training"} {
-		require.NotContains(t, defaults.Crawlers.Training.Bots, bot)
 		require.NotContains(t, defaults.Crawlers.SEOTools.Bots, bot)
 		_, err := decodeSEOUpdate(seoBody(t, func(s *store.SEOSettings) {
 			s.Crawlers.Training = store.SEOCrawlerRule{Mode: store.CrawlerModeBlock, DelaySeconds: 10, Bots: []string{bot}}

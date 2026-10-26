@@ -13,7 +13,8 @@ import (
 )
 
 func TestTraditionalMigrationCanUpgradeAfterDown(t *testing.T) {
-	st := testutil.NewSEOStore(t) // Fresh Up has already run.
+	// 00102 retires queued zh-Hant work in seo_tasks; 00110 later archives that table.
+	st := testutil.NewSEOStoreAtVersion(t, 109)
 	require.NoError(t, st.DB.Exec(`INSERT INTO derived_traditional(entity,object_key,simplified_hash,converter,before_data,after_data)
  VALUES('category','migration-fixture','hash','fixture','{"name":"original"}','{"name":"derived"}')`).Error)
 	raw, err := migrations.Files.ReadFile("00102_derived_traditional.sql")

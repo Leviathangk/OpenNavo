@@ -165,12 +165,12 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 	return out, nil
 }
 
-// ScheduleContentTranslation records a source snapshot and hands work to Hermes.
+// ScheduleContentTranslation records a source snapshot for translators.
 // Callers must already be inside the business transaction. Nonempty source updates keep published target rows until a validated replacement
 // arrives. An empty source removes translations immediately.
 func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref) error {
 	if !ref.Valid() {
-		return domain.Validation()
+		return domain.Rejected("content_ref_invalid")
 	}
 	if err := s.DB.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "content:"+ref.Entity+":"+ref.Key()).Error; err != nil {
 		return err
@@ -195,38 +195,15 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO content_translation_sources(entity,object_key,ref,source_locale,source_hash,fields) VALUES(?,?,?::jsonb,?,?,?::jsonb) ON CONFLICT(entity,object_key) DO UPDATE SET ref=EXCLUDED.ref,source_locale=EXCLUDED.source_locale,source_hash=EXCLUDED.source_hash,fields=EXCLUDED.fields,updated_at=clock_timestamp() WHERE content_translation_sources.source_hash IS DISTINCT FROM EXCLUDED.source_hash`, ref.Entity, ref.Key(), string(encodedRef), source.SourceLocale, source.Hash, string(fields)).Error; err != nil {
 		return err
 	}
-	entity := ref.Entity + ":" + ref.Key()
-	if err := s.DB.WithContext(ctx).Exec(`UPDATE seo_tasks SET state='expired',lease_owner=NULL,lease_until=NULL,updated_at=now() WHERE kind='translate' AND entity_key=? AND state IN ('open','leased','deferred') AND evidence_hash<>?`, entity, source.Hash).Error; err != nil {
-		return err
-	}
 	if len(content.Flatten(source.Fields)) == 0 {
 		return s.DB.WithContext(ctx).Table(spec.Table).Where(where+" AND locale<>?", append(args, source.SourceLocale)...).Delete(map[string]any{}).Error
-	}
-	// Translation follows supported content languages, independently of search indexing.
-	for _, code := range i18n.SiteLocales {
-		locale := string(code)
-		if locale == "zh-Hant" || locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
-			continue
-		}
-		var fresh bool
-		if err := s.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM "+spec.Table+" WHERE "+where+" AND locale=? AND status IN ('manual','machine') AND source_hash=?)", append(args, locale, source.Hash)...).Scan(&fresh).Error; err != nil {
-			return err
-		}
-		if fresh {
-			continue
-		}
-		evidence, _ := json.Marshal(map[string]any{"ref": ref, "sourceLocale": source.SourceLocale, "sourceHash": source.Hash})
-		key := "translate:" + entity + ":" + locale + ":" + source.Hash
-		if err := s.DB.WithContext(ctx).Exec(`INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,priority,evidence,evidence_hash,rule_version) VALUES('translate',?,?,?,?,?::jsonb,?,'translation-v1') ON CONFLICT(dedupe_key) DO UPDATE SET state='open',priority=greatest(seo_tasks.priority,EXCLUDED.priority),fencing=seo_tasks.fencing+1,lease_owner=NULL,lease_until=NULL,next_retry_at=NULL,updated_at=now() WHERE seo_tasks.state IN ('done','expired','skipped')`, entity, locale, key, translationPriority[ref.Entity], string(evidence), source.Hash).Error; err != nil {
-			return err
-		}
 	}
 	if _, err = s.DeriveTraditional(ctx, ref); err != nil {
 		return err
 	}
 	// Restored collection snapshots may predate derived setup criteria.
 	if ref.Entity == "collection" {
-		_, err = s.deriveAuxiliaryTraditional(ctx, "collection_setup", ref.Key())
+		err = s.deriveAuxiliaryTraditional(ctx, "collection_setup", ref.Key())
 	}
 	return err
 }
@@ -234,15 +211,12 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 // Cancel outstanding work when the source object disappears.
 func (s *Store) ForgetContentTranslation(ctx context.Context, ref content.Ref) error {
 	if !ref.Valid() {
-		return domain.Validation()
+		return domain.Rejected("content_ref_invalid")
 	}
 	if err := s.DB.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "content:"+ref.Entity+":"+ref.Key()).Error; err != nil {
 		return err
 	}
-	if err := s.DB.WithContext(ctx).Exec("DELETE FROM content_translation_sources WHERE entity=? AND object_key=?", ref.Entity, ref.Key()).Error; err != nil {
-		return err
-	}
-	return s.DB.WithContext(ctx).Exec("UPDATE seo_tasks SET state='expired',lease_owner=NULL,lease_until=NULL,updated_at=now() WHERE kind='translate' AND entity_key=? AND state IN ('open','leased','deferred')", ref.Entity+":"+ref.Key()).Error
+	return s.DB.WithContext(ctx).Exec("DELETE FROM content_translation_sources WHERE entity=? AND object_key=?", ref.Entity, ref.Key()).Error
 }
 
 // Current content uses the translation engine's source hash; historical records without source rows retain compatible metadata.

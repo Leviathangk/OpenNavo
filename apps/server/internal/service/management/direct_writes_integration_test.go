@@ -5,7 +5,6 @@ package management
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/config"
@@ -18,7 +17,6 @@ import (
 func TestDirectAgentBusinessWrites(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(1,'direct-agent','isolated-test');
-UPDATE seo_settings SET automation=jsonb_set(automation,'{actions}',(SELECT jsonb_object_agg(key,'{"enabled":false,"mode":"proposal"}'::jsonb) FROM jsonb_each(automation->'actions')));
 INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUES(900,'icon','icon','https://cdn.example.test/icon.png',256,256,1,'icon','image/png')`).Error)
 	svc := &Service{Store: st, Config: config.Config{WebBaseURL: "https://site.example.test"}}
 	actor := int64(1)
@@ -67,25 +65,7 @@ INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUE
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, "published", a.Status)
-	// Candidate publication is equally direct, and subsequent edits must not hit
-	// the old database identity/download trigger.
-	candidate := run("UpsertSeoListingCandidate", Input{Key: "candidate-app", Body: map[string]any{"action": "publish", "link": map[string]any{"token": "candidate-app", "name": "Candidate App", "homepage": "https://vendor.example.test", "downloadUrl": "https://downloads.example.test/installer.pkg", "githubRepo": "example/candidate"}}}, false).(map[string]any)
-	candidateID := *candidate["packageId"].(*int64)
-	candidateInput := Input{Key: "candidate-app", Body: map[string]any{"action": "save", "link": map[string]any{"token": "candidate-app", "name": "Candidate App", "homepage": "https://vendor.example.test"}}}
-	saved := run("UpsertSeoListingCandidate", candidateInput, false).(map[string]any)
-	require.Equal(t, candidateID, *saved["packageId"].(*int64))
-	candidateInput.Body["action"] = "publish"
-	republished := run("UpsertSeoListingCandidate", candidateInput, false).(map[string]any)
-	require.Equal(t, candidateID, *republished["packageId"].(*int64))
-	run("UpdateLinkPackage", Input{ID: candidateID, Body: map[string]any{"name": "Renamed App", "downloadUrl": "https://downloads.example.test/new.pkg", "sparkleFeed": "https://vendor.example.test/feed.xml"}}, false)
-	records := []any{}
-	for _, query := range []string{"platform tools", "platform-tools", "platform_tools"} {
-		records = append(records, map[string]any{"keyword": query, "source": "homebrew", "engine": "homebrew", "country": "US", "language": "en-US", "device": "all", "period": "2026-10", "volumeState": "unknown", "observedAt": time.Now().UTC().Format(time.RFC3339)})
-	}
-	run("UpsertSeoKeywords", Input{Body: map[string]any{"records": records}}, false)
-	require.EqualValues(t, 3, count("seo_keywords"))
-	require.Zero(t, count("seo_daily_entities"), "business writes never reserve an SEO quota")
-	require.Zero(t, count("seo_actions"), "business writes do not fabricate task actions")
+	require.Positive(t, count("agent_write_events"))
 	require.Positive(t, count("content_revisions"))
 	require.Positive(t, count("audit_logs"))
 	var download string

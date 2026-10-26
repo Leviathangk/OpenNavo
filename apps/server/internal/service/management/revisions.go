@@ -115,18 +115,21 @@ func restorePermission(ctx context.Context, entity string, permissions []string,
 		return nil
 	}
 	if !op.Allowed("content:revision:restore") {
-		return fail(domain.CodeForbidden)
+		return forbidden("permission_required:content:revision:restore")
 	}
 	// Revisions from generic endpoints such as translation record endpoint permissions only; restoration must also check the Agent's current object permissions.
 	if err := assertContentAccess(ctx, content.Ref{Entity: entity}); err != nil {
 		return err
 	}
-	if op.AgentClientID > 0 && (entity == "mirror" || actorID == nil || op.ActorID == nil || *actorID != *op.ActorID) {
-		return fail(domain.CodeForbidden)
+	if op.AgentClientID > 0 && entity == "mirror" {
+		return forbidden("operation_not_exposed")
+	}
+	if op.AgentClientID > 0 && (actorID == nil || op.ActorID == nil || *actorID != *op.ActorID) {
+		return forbidden("revision_actor_mismatch")
 	}
 	for _, p := range permissions {
 		if !op.Allowed(p) {
-			return fail(domain.CodeForbidden)
+			return forbidden("permission_required:" + p)
 		}
 	}
 	return nil
@@ -227,7 +230,7 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				if i, exists := indices[key]; exists {
 					var a, b []string
 					if json.Unmarshal(merged[i].RequiredPermissions, &a) != nil || json.Unmarshal(row.RequiredPermissions, &b) != nil {
-						return domain.Validation()
+						return domain.Rejected("revision_permissions_invalid")
 					}
 					for _, p := range b {
 						if !slices.Contains(a, p) {
@@ -251,7 +254,7 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 		for _, r := range rows {
 			var permissions []string
 			if json.Unmarshal(r.RequiredPermissions, &permissions) != nil {
-				return domain.Validation()
+				return domain.Rejected("revision_permissions_invalid")
 			}
 			if err := restorePermission(ctx, r.Entity, permissions, r.ActorID); err != nil {
 				return err
@@ -298,7 +301,7 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				target = store.HistoryPatch(current, originalBefore, originalAfter, target)
 			}
 			if restoresDeletedContent(r.Entity, current, target) && op != nil && !op.AllowDelete {
-				return fail(domain.CodeForbidden)
+				return forbidden("delete_not_allowed")
 			}
 			if r.Entity == "category" && target == nil {
 				var children int64

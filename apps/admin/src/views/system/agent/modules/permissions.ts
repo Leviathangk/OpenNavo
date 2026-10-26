@@ -41,7 +41,8 @@ export const PERMISSION_GROUPS: { key: string; codes: AgentPermission[] }[] = [
       'content:revision:restore'
     ]
   },
-  { key: 'release', codes: ['release:desktop:notes'] }
+  { key: 'release', codes: ['release:desktop:notes'] },
+  { key: 'site', codes: ['site:index:view'] }
 ];
 
 /**

@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, mkdirSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +44,25 @@ try {
           if (error.code !== 'ENOENT') throw error;
         }
       }
+    }
+  }
+  // The i18n lock may only hold SHA-256 source hashes. Gitleaks exempts lowercase hex there even
+  // when a chunk boundary hides the line, so any other value must fail before that exemption.
+  const lock = join(target, 'tooling/i18n/i18n.lock.json');
+  if (existsSync(lock)) {
+    const walk = (value, path) => {
+      if (typeof value === 'string' && !/^[a-f0-9]{64}$/.test(value)) {
+        console.error(`tooling/i18n/i18n.lock.json: ${path} is not a SHA-256 source hash`);
+        failed = true;
+      } else if (value && typeof value === 'object') {
+        for (const [key, item] of Object.entries(value)) walk(item, `${path}/${key}`);
+      }
+    };
+    try {
+      walk(JSON.parse(readFileSync(lock, 'utf8')), '');
+    } catch {
+      console.error('tooling/i18n/i18n.lock.json: not valid JSON');
+      failed = true;
     }
   }
   const report = join(temp, 'report.json');

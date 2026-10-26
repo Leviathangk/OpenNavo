@@ -70,8 +70,10 @@ func MapAdminError(err error) error {
 			return &domain.AppError{Code: domain.CodeConflict, HTTPStatus: 409}
 		case "23503":
 			return &domain.AppError{Code: domain.CodeInvalidState, HTTPStatus: 409}
-		case "23514", "22P02":
-			return domain.Validation()
+		case "23514":
+			return domain.RejectedDetail("check_violation", pg.ConstraintName)
+		case "22P02":
+			return domain.Rejected("value_invalid")
 		}
 	}
 	return fmt.Errorf("admin data operation: %w", err)

@@ -14,6 +14,16 @@ paths = ['''^(tooling/i18n/)?i18n\.lock\.json$''']
 regexTarget = "line"
 regexes = ['''^\s*"[^"\r\n]+": "[a-f0-9]{64}",?\s*$''']
 
+# Gitleaks reads files in chunks. A finding cut at a chunk boundary has no line
+# context and may hold only part of a hash, so the line rule above cannot see it.
+# Accept lowercase hex of at most a hash's length there; other values still fail.
+[[rules.allowlists]]
+description = "SHA-256 translation source hashes cut at a scan chunk boundary"
+condition = "AND"
+paths = ['''^(tooling/i18n/)?i18n\.lock\.json$''']
+regexTarget = "secret"
+regexes = ['''^[a-f0-9]{1,64}$''']
+
 [[rules.allowlists]]
 description = "Generated OpenAPI compressed schema chunks"
 condition = "AND"

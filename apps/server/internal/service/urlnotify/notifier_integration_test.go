@@ -268,17 +268,27 @@ func TestPendingPurgesSurviveFailuresAndRestart(t *testing.T) {
 			f.cloudflare.status = status
 			_, err = f.run(context.Background())
 			if status == 429 {
+				// Waiting for purge capacity defers the rows, without spending their attempts.
 				require.NoError(t, err)
+				require.EqualValues(t, 10, outboxRemaining(t, f.st))
+				require.Empty(t, f.indexNow.requests)
 			} else {
+				// A failed purge waits in the durable queue; the rows go on to their probe and IndexNow.
 				require.Error(t, err)
+				require.Zero(t, outboxRemaining(t, f.st))
+				require.NotEmpty(t, f.indexNow.requests)
+				require.Len(t, queuedPurges(t, f.st), 10)
 			}
-			require.EqualValues(t, 10, outboxRemaining(t, f.st))
-			require.Empty(t, f.indexNow.requests)
 			restarted := *f.notifier
 			f.notifier = &restarted
 			f.cloudflare.status = 200
 			finishFeed(t, f)
+			if status != 429 {
+				_, err = f.run(context.Background())
+				require.NoError(t, err)
+			}
 			require.NotEmpty(t, f.indexNow.requests)
+			require.Empty(t, queuedPurges(t, f.st))
 		})
 	}
 }

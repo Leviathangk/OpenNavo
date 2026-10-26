@@ -12,10 +12,12 @@ import (
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/llm"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
+
+// errTranslationRevision: the source or the translation changed since the caller read it.
+var errTranslationRevision = errors.New("translation revision conflict")
 
 type translationItem struct {
 	Locale           string         `json:"locale"`
@@ -27,18 +29,16 @@ type translationItem struct {
 type translationBatch struct {
 	Ref          content.Ref       `json:"ref"`
 	Model        string            `json:"model"`
-	TaskID       int64             `json:"taskId"`
-	Fencing      int64             `json:"fencing"`
 	Translations []translationItem `json:"translations"`
 }
 
 func (s *Service) translationsSource(ctx context.Context, in Input) (any, error) {
-	if err := requireSEOAccess(ctx, "translation:review"); err != nil {
+	if err := requirePermission(ctx, "translation:review"); err != nil {
 		return nil, err
 	}
 	ref := content.Ref{Entity: text(in.Params, "entity"), ID: int64(number(in.Params, "id", 0)), SecondaryID: int64(number(in.Params, "secondaryid", 0))}
 	if !ref.Valid() {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("content_ref_invalid")
 	}
 	if err := assertContentAccess(ctx, ref); err != nil {
 		return nil, err
@@ -62,13 +62,22 @@ func (s *Service) translationsSource(ctx context.Context, in Input) (any, error)
 	return map[string]any{"ref": ref, "sourceLocale": source.SourceLocale, "sourceHash": source.Hash, "sourceVersion": source.Hash, "fields": store.ContentAPIFields(source.Fields), "translations": values}, nil
 }
 func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) {
-	if err := requireSEOAccess(ctx, "translation:review"); err != nil {
+	if err := requirePermission(ctx, "translation:review"); err != nil {
 		return nil, err
 	}
 	var request translationBatch
 	raw, _ := json.Marshal(in.Body)
-	if json.Unmarshal(raw, &request) != nil || !request.Ref.Valid() || len(request.Translations) < 1 || len(request.Translations) > 10 {
-		return nil, domain.Validation()
+	if json.Unmarshal(raw, &request) != nil {
+		return nil, domain.Rejected("body_invalid")
+	}
+	if !request.Ref.Valid() {
+		return nil, domain.Rejected("content_ref_invalid")
+	}
+	if len(request.Translations) < 1 {
+		return nil, domain.Rejected("field_required:translations")
+	}
+	if len(request.Translations) > 10 {
+		return nil, domain.Rejected("translations_too_many:10")
 	}
 	if err := assertContentAccess(ctx, request.Ref); err != nil {
 		return nil, err
@@ -76,7 +85,7 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 	seen := map[string]bool{}
 	for _, item := range request.Translations {
 		if seen[item.Locale] {
-			return nil, domain.Validation()
+			return nil, domain.RejectedDetail("locale_duplicate", item.Locale)
 		}
 		seen[item.Locale] = true
 	}
@@ -93,17 +102,17 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 				}
 			}
 			switch {
-			case errors.Is(err, seotasks.ErrLease):
-				reason = "lease_lost"
-			case errors.Is(err, seotasks.ErrConflict):
-				reason = "revision_or_idempotency_conflict"
+			case errors.Is(err, errTranslationRevision):
+				reason = "revision_conflict"
+			case errors.Is(err, agentgate.ErrIdempotencyKeyReused):
+				reason = "idempotency_key_reused"
 			}
 			var violation *agentgate.Violation
 			if errors.As(err, &violation) {
 				reason = violation.Reason
 			}
 			logctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			logerr := agentgate.Log(logctx, s.Store.DB, domain.CurrentOperation(ctx).RequestID, seoOwner(ctx), "WriteTranslations", "rejected", item.Locale+":"+reason, request.TaskID, nil)
+			logerr := agentgate.Log(logctx, s.Store.DB, domain.CurrentOperation(ctx).RequestID, writeOwner(ctx), "WriteTranslations", "rejected", item.Locale+":"+reason)
 			cancel()
 			if logerr != nil {
 				return nil, logerr
@@ -122,18 +131,18 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 		}
 		results = append(results, result)
 	}
-	return map[string]any{"results": results, "taskId": request.TaskID, "leaseRetained": false}, nil
+	return map[string]any{"results": results}, nil
 }
 func (s *Service) writeTranslationLocale(ctx context.Context, request translationBatch, item translationItem) (any, error) {
 	key := item.IdempotencyKey
 	if key == "" {
 		key = uuid.NewString()
 	}
-	return (&seotasks.Service{DB: s.Store.DB}).Control(ctx, seoOwner(ctx), "WriteTranslations", key,
+	return agentgate.Control(ctx, s.Store.DB, writeOwner(ctx), "WriteTranslations", key,
 		map[string]any{"ref": request.Ref, "model": request.Model, "translation": item}, domain.CurrentOperation(ctx).DryRun,
-		func(control *seotasks.Service) (any, error) {
+		func(tx *gorm.DB) (any, error) {
 			local := *s
-			local.Store = &store.Store{DB: control.DB, Redis: s.Store.Redis}
+			local.Store = &store.Store{DB: tx, Redis: s.Store.Redis}
 			return local.writeTranslationLocaleOnce(ctx, request, item)
 		})
 }
@@ -144,8 +153,14 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 	}
 	var result any
 	err := s.Store.WithTx(ctx, func(tx *gorm.DB) error {
-		if !i18n.Valid(item.Locale) || item.SourceHash != "" && len(item.SourceHash) != 64 || item.ExpectedRevision != "" && len(item.ExpectedRevision) != 64 {
-			return domain.Validation()
+		if !i18n.Valid(item.Locale) {
+			return domain.RejectedDetail("locale_invalid", item.Locale)
+		}
+		if item.SourceHash != "" && len(item.SourceHash) != 64 {
+			return domain.Rejected("field_invalid:sourceHash")
+		}
+		if item.ExpectedRevision != "" && len(item.ExpectedRevision) != 64 {
+			return domain.Rejected("field_invalid:expectedRevision")
 		}
 		if err := store.LockCatalogWrites(ctx, tx); err != nil {
 			return err
@@ -164,12 +179,11 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 			return err
 		}
 		if item.SourceHash != "" && src.Hash != item.SourceHash || item.ExpectedRevision != "" && current.Revision != item.ExpectedRevision {
-			return seotasks.ErrConflict
+			return errTranslationRevision
 		}
 		if item.Locale == src.SourceLocale {
-			return domain.Validation()
+			return domain.Rejected("translation_locale_is_source")
 		}
-		entity := request.Ref.Entity + ":" + request.Ref.Key()
 		before, err := st.HistorySnapshot(ctx, request.Ref)
 		if err != nil {
 			return err
@@ -207,18 +221,13 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 		if op.DryRun {
 			return nil
 		}
-		// Retire matching queued work after the direct edit; active leases remain
-		// available to their owner, who can explicitly complete them.
-		if err := tx.Exec(`UPDATE seo_tasks SET state='done',result=jsonb_build_object('reason','batch_translation'),updated_at=clock_timestamp() WHERE entity_key=? AND kind='translate' AND locale=? AND evidence_hash=? AND state IN ('open','deferred')`, entity, item.Locale, src.Hash).Error; err != nil {
-			return err
-		}
 		if err := st.QueueTranslationInvalidation(ctx, request.Ref); err != nil {
 			return err
 		}
 		if !hasContentChanges(before, after) {
 			return nil
 		}
-		return agentgate.Log(ctx, tx, op.RequestID, seoOwner(ctx), "WriteTranslations", "live", "validated", 0, nil)
+		return agentgate.Log(ctx, tx, op.RequestID, writeOwner(ctx), "WriteTranslations", "live", "validated")
 	})
 	return result, err
 }

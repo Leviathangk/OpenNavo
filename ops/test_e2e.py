@@ -78,6 +78,8 @@ class IsolationTests(unittest.TestCase):
         calls = [c.args for c in compose.call_args_list]
         ddl = next(c for c in calls if 'DROP SCHEMA' in str(c))
         self.assertEqual(ddl[ddl.index('-d') + 1], 'opennavo_e2e')
+        # A rerun of migration 00110 creates seo_archive again, so the reset removes it too.
+        self.assertIn('DROP SCHEMA IF EXISTS seo_archive CASCADE', ddl[ddl.index('-c') + 1])
         flushes = [c for c in calls if 'FLUSHDB' in c]
         self.assertEqual([c[c.index('-n') + 1] for c in flushes], ['9', '10'])
 

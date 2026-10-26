@@ -2,38 +2,72 @@ package management
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
 
 // executeCatalogEdit provides atomic writes, optional idempotency and previews
-// for every allowlisted business operation. It does not consume a task lease.
+// for every allowlisted business operation.
 func (s *Service) executeCatalogEdit(ctx context.Context, name string, in Input) (any, error) {
 	op := domain.CurrentOperation(ctx)
 	e := op.Execution
 	if e.IdempotencyKey == "" {
 		e.IdempotencyKey = uuid.NewString()
 	}
-	payload := map[string]any{"id": in.ID, "key": in.Key, "locale": in.Locale, "version": in.Version, "screenshotId": in.ScreenshotID, "requestId": in.RequestID, "jobType": in.JobType, "body": in.Body, "expectedRevision": e.ExpectedRevision, "expectedRevisionSet": e.ExpectedRevisionSet, "evidenceIds": e.EvidenceIDs}
-	result, err := (&seotasks.Service{DB: s.Store.DB}).Control(ctx, seoOwner(ctx), name, e.IdempotencyKey, payload, op.DryRun, func(t *seotasks.Service) (any, error) {
+	// evidenceIds stays null so keys recorded before the write-layer rename still replay.
+	payload := map[string]any{"id": in.ID, "key": in.Key, "locale": in.Locale, "version": in.Version, "screenshotId": in.ScreenshotID, "requestId": in.RequestID, "jobType": in.JobType, "body": in.Body, "expectedRevision": e.ExpectedRevision, "expectedRevisionSet": e.ExpectedRevisionSet, "evidenceIds": nil}
+	result, err := agentgate.Control(ctx, s.Store.DB, writeOwner(ctx), name, e.IdempotencyKey, payload, op.DryRun, func(tx *gorm.DB) (any, error) {
 		local := *s
-		local.Store = &store.Store{DB: t.DB, Redis: s.Store.Redis}
+		local.Store = &store.Store{DB: tx, Redis: s.Store.Redis}
 		return local.catalogEdit(ctx, name, in)
 	})
-	var violation *agentgate.Violation
-	if errors.As(err, &violation) {
-		return nil, &domain.AppError{Code: domain.CodeValidation, HTTPStatus: http.StatusUnprocessableEntity, Msg: "rejected: " + violation.Reason}
+	return result, mapWriteError(err)
+}
+
+// CurrentRevision reads, without locking, the revision a write of operation
+// would check. Reads return it so a caller can pass it back as the expected
+// revision of the next write.
+func (s *Service) CurrentRevision(ctx context.Context, operation string, in Input) (int64, error) {
+	rule, ok := agentgate.RuleFor(operation)
+	if !ok {
+		return 0, forbidden("operation_not_exposed")
 	}
-	return result, mapTaskError(err)
+	current, _, err := writeRevision(ctx, s.Store, operation, rule, in, false)
+	return current, err
+}
+
+// writeRevision resolves the revision that guards a write and the history
+// objects it edits. Writers call it under the catalog lock with lock set, which
+// also locks an edited article row.
+func writeRevision(ctx context.Context, st *store.Store, name string, rule agentgate.Rule, in Input, lock bool) (int64, []content.Ref, error) {
+	refs, err := directWriteRefs(ctx, st, name, rule.Object, in)
+	if err != nil {
+		return 0, nil, err
+	}
+	current, err := actionRevision(ctx, st, refs)
+	if err != nil {
+		return 0, nil, err
+	}
+	db := st.DB.WithContext(ctx)
+	switch {
+	case name == "UpdateLinkPackage" || name == "RemoveLinkPackage":
+		err = db.Raw("SELECT coalesce((SELECT revision FROM link_apps WHERE package_id=?),0)", in.ID).Scan(&current).Error
+	case nonHistoryObject(rule.Object):
+		err = db.Raw("SELECT coalesce((SELECT revision FROM entity_revisions WHERE entity_key=?),0)", entityRevisionKey(rule.Object, in)).Scan(&current).Error
+	case rule.Object == "article" && in.ID > 0:
+		query := "SELECT revision FROM articles WHERE id=?"
+		if lock {
+			query += " FOR UPDATE"
+		}
+		err = db.Raw(query, in.ID).Scan(&current).Error
+	}
+	return current, refs, err
 }
 
 func (s *Service) catalogEdit(ctx context.Context, name string, in Input) (any, error) {
@@ -45,36 +79,12 @@ func (s *Service) catalogEdit(ctx context.Context, name string, in Input) (any, 
 		}
 		st := &store.Store{DB: tx, Redis: s.Store.Redis}
 		rule, _ := agentgate.RuleFor(name)
-		refs, err := directWriteRefs(ctx, st, name, rule.Object, in)
-		if err != nil {
-			return err
-		}
-		current, err := actionRevision(ctx, st, refs)
-		if err != nil {
-			return err
-		}
-		switch {
-		case name == "UpdateLinkPackage" || name == "RemoveLinkPackage":
-			err = tx.Raw("SELECT coalesce((SELECT revision FROM link_apps WHERE package_id=?),0)", in.ID).Scan(&current).Error
-		case nonHistorySEOObject(rule.Object):
-			entity := "site:keywords"
-			switch rule.Object {
-			case "background":
-				entity = "background:" + in.Key
-			case "update_feed":
-				entity = "update_feed:" + text(in.Body, "source") + ":" + text(in.Body, "bundleId")
-			}
-			err = tx.Raw("SELECT coalesce((SELECT revision FROM seo_entity_revisions WHERE entity_key=?),0)", entity).Scan(&current).Error
-		case rule.Object == "listing":
-			current, err = ListingAgentRevision(ctx, st, in.Key)
-		case rule.Object == "article" && in.ID > 0:
-			err = tx.Raw("SELECT revision FROM articles WHERE id=? FOR UPDATE", in.ID).Scan(&current).Error
-		}
+		current, refs, err := writeRevision(ctx, st, name, rule, in, true)
 		if err != nil {
 			return err
 		}
 		if op.Execution.ExpectedRevisionSet && op.Execution.ExpectedRevision != current {
-			return fail(domain.CodeConflict)
+			return agentgate.RevisionConflict(current)
 		}
 		local := *s
 		local.Store = st
@@ -126,7 +136,7 @@ func (s *Service) catalogEdit(ctx context.Context, name string, in Input) (any, 
 		if !hasContentChanges(before, after) {
 			return nil
 		}
-		if err := agentgate.Log(ctx, tx, op.RequestID, seoOwner(ctx), name, "live", "validated", 0, op.Execution.EvidenceIDs); err != nil {
+		if err := agentgate.Log(ctx, tx, op.RequestID, writeOwner(ctx), name, "live", "validated"); err != nil {
 			return err
 		}
 		return store.QueueCacheInvalidation(ctx, tx, "agent-write:"+op.RequestID, "c:*")
@@ -148,14 +158,6 @@ func hasContentChanges(before, after any) bool {
 func directWriteRefs(ctx context.Context, st *store.Store, name, object string, in Input) ([]content.Ref, error) {
 	if object != "history" {
 		return historyRefs(ctx, st, name, object, in, nil)
-	}
-	if name == "CompensateSeoAction" {
-		row, err := loadCompensation(ctx, st, in.ID)
-		if err != nil {
-			return nil, err
-		}
-		_, refs, err := compensationStates(row.AfterData)
-		return refs, err
 	}
 	table, where, arg := "content_revisions", "id=?", any(in.ID)
 	if name == "RestoreTrash" {

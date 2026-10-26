@@ -188,16 +188,16 @@ func (h *Handler) RevokeAgentToken(ctx context.Context, request adminapi.RevokeA
 func (h *Handler) IntrospectAgentToken(ctx context.Context, request adminapi.IntrospectAgentTokenRequestObject) (adminapi.IntrospectAgentTokenResponseObject, error) {
 	c, ok := ctx.(*gin.Context)
 	if !ok {
-		return nil, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}
+		return nil, domain.Forbidden(403, "operation_not_exposed")
 	}
 	value, exists := c.Get("agentIdentity")
 	svc := h.agentService()
 	if !exists || svc == nil {
-		return nil, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}
+		return nil, domain.Forbidden(403, "operation_not_exposed")
 	}
 	id, ok := value.(agent.Identity)
 	if !ok {
-		return nil, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}
+		return nil, domain.Forbidden(403, "operation_not_exposed")
 	}
 	data, err := svc.Introspect(requestContext(ctx), id)
 	return response[adminapi.IntrospectAgentToken200JSONResponse](data, err)

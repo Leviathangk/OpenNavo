@@ -15,7 +15,7 @@ import (
 func (s *Service) DownloadURL(ctx context.Context, target string) ([]byte, error) {
 	u, err := url.Parse(target)
 	if err != nil || u.Scheme != "https" || fetch.ValidateURL(u) != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("download_url_invalid")
 	}
 	client := fetch.NewClient(20 * time.Second)
 	if s.URLClient != nil {
@@ -25,7 +25,7 @@ func (s *Service) DownloadURL(ctx context.Context, target string) ([]byte, error
 	redirect := client.CheckRedirect
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if req.URL.Scheme != "https" || fetch.ValidateURL(req.URL) != nil || len(via) > 5 {
-			return domain.Validation()
+			return domain.Rejected("download_redirect_invalid")
 		}
 		if redirect != nil {
 			return redirect(req, via)
@@ -34,7 +34,7 @@ func (s *Service) DownloadURL(ctx context.Context, target string) ([]byte, error
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("download_url_invalid")
 	}
 	response, err := client.Do(req)
 	if err != nil {

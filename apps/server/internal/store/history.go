@@ -220,19 +220,19 @@ func HistoryRef(entity, key string) (content.Ref, error) {
 	var err error
 	r.ID, err = strconv.ParseInt(parts[0], 10, 64)
 	if err != nil || r.ID < 1 {
-		return r, domain.Validation()
+		return r, domain.Rejected("object_key_invalid")
 	}
 	if entity == "collection_item" {
 		if len(parts) != 2 {
-			return r, domain.Validation()
+			return r, domain.Rejected("object_key_invalid")
 		}
 		r.SecondaryID, err = strconv.ParseInt(parts[1], 10, 64)
 		if err != nil || r.SecondaryID < 1 {
-			return r, domain.Validation()
+			return r, domain.Rejected("object_key_invalid")
 		}
 	}
 	if len(historyTables(r)) == 0 {
-		return r, domain.Validation()
+		return r, domain.RejectedDetail("history_entity_invalid", entity)
 	}
 	return r, nil
 }
@@ -241,7 +241,7 @@ func HistoryRef(entity, key string) (content.Ref, error) {
 func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state HistoryState) error {
 	tables := historyTables(ref)
 	if len(tables) == 0 {
-		return domain.Validation()
+		return domain.RejectedDetail("history_entity_invalid", ref.Entity)
 	}
 	current, err := s.HistorySnapshot(ctx, ref)
 	if err != nil {
@@ -260,7 +260,7 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 	for i, t := range tables {
 		rows := state[t.Name]
 		if i == 0 && len(rows) != 1 {
-			return domain.Validation()
+			return domain.Rejected("history_snapshot_invalid")
 		}
 		for _, row := range rows {
 			if ref.Entity == "announcement" && t.Name == "app_config" {

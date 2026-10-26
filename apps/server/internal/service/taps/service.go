@@ -70,12 +70,38 @@ type Candidate struct {
 	HistorySHA             string
 }
 
-func invalid(format string, args ...any) error {
-	return &domain.AppError{Code: domain.CodeValidation, HTTPStatus: http.StatusBadRequest, Msg: fmt.Sprintf(format, args...)}
+// Tap errors answer with a machine reason, "rejected: tap_<reason>[:<detail>]", which agents receive
+// unchanged; the editor's explanation stays as the cause and is what the tap sync records as the cask's
+// last error. A detail holds only validated names (tap, token, repository), a line or an HTTP status:
+// letters, digits and _.-@+/, never spaces, colons or "//".
+func invalid(reason, format string, args ...any) error {
+	return tapError(domain.CodeValidation, http.StatusBadRequest, reason, format, args...)
 }
 
-func upstream(format string, args ...any) error {
-	return &domain.AppError{Code: domain.CodeUpstreamUnavailable, HTTPStatus: http.StatusBadGateway, Msg: fmt.Sprintf(format, args...)}
+func upstream(reason, format string, args ...any) error {
+	return tapError(domain.CodeUpstreamUnavailable, http.StatusBadGateway, reason, format, args...)
+}
+
+func conflict(reason, format string, args ...any) error {
+	return tapError(domain.CodeConflict, http.StatusConflict, reason, format, args...)
+}
+
+func tapError(code string, status int, reason, format string, args ...any) error {
+	return &domain.AppError{Code: code, HTTPStatus: status, Msg: "rejected: tap_" + reason, Cause: fmt.Errorf(format, args...)}
+}
+
+// Explanation is the editor's message of a tap error: its cause, otherwise the error itself.
+func Explanation(err error) string {
+	var appErr *domain.AppError
+	if errors.As(err, &appErr) {
+		if appErr.Cause != nil {
+			return appErr.Cause.Error()
+		}
+		if appErr.Msg != "" {
+			return appErr.Msg
+		}
+	}
+	return err.Error()
 }
 
 type commit struct {
@@ -100,18 +126,18 @@ func (s *Service) commits(ctx context.Context, tap, path, etag string, limit int
 	}
 	body, status, responseHeaders, err := s.GitHub.Get(ctx, target, 8<<20, headers)
 	if err != nil {
-		return nil, "", false, upstream("GitHub request failed: %v", err)
+		return nil, "", false, upstream("github_unavailable", "GitHub request failed: %v", err)
 	}
 	switch status {
 	case http.StatusOK:
 	case http.StatusNotModified:
 		return nil, etag, true, nil
 	case http.StatusNotFound:
-		return nil, "", false, invalid("GitHub repository %s was not found", homebrew.TapRepository(tap))
+		return nil, "", false, invalid("repository_not_found:"+homebrew.TapRepository(tap), "GitHub repository %s was not found", homebrew.TapRepository(tap))
 	case http.StatusForbidden, http.StatusTooManyRequests:
-		return nil, "", false, upstream("GitHub rate limit reached; try again later")
+		return nil, "", false, upstream("github_rate_limited", "GitHub rate limit reached; try again later")
 	default:
-		return nil, "", false, upstream("GitHub returned HTTP %d", status)
+		return nil, "", false, upstream("github_http_error:"+strconv.Itoa(status), "GitHub returned HTTP %d", status)
 	}
 	var entries []struct {
 		SHA    string `json:"sha"`
@@ -122,12 +148,12 @@ func (s *Service) commits(ctx context.Context, tap, path, etag string, limit int
 		} `json:"commit"`
 	}
 	if err := json.Unmarshal(body, &entries); err != nil {
-		return nil, "", false, upstream("GitHub returned an unexpected commit list")
+		return nil, "", false, upstream("github_response_invalid", "GitHub returned an unexpected commit list")
 	}
 	out := make([]commit, 0, len(entries))
 	for _, entry := range entries {
 		if len(entry.SHA) != 40 {
-			return nil, "", false, upstream("GitHub returned an unexpected commit list")
+			return nil, "", false, upstream("github_response_invalid", "GitHub returned an unexpected commit list")
 		}
 		out = append(out, commit{SHA: entry.SHA, Date: entry.Commit.Committer.Date})
 	}
@@ -202,7 +228,7 @@ var errDeleted = errors.New("the cask file was deleted from the tap")
 func (s *Service) readFile(ctx context.Context, tap, sha, path string) (string, error) {
 	body, status, _, err := s.GitHub.Get(ctx, s.rawBase()+"/"+homebrew.TapRepository(tap)+"/"+sha+"/"+path, caskFileLimit, nil)
 	if err != nil {
-		return "", upstream("reading %s failed: %v", path, err)
+		return "", upstream("github_unavailable", "reading %s failed: %v", path, err)
 	}
 	switch status {
 	case http.StatusOK:
@@ -210,7 +236,7 @@ func (s *Service) readFile(ctx context.Context, tap, sha, path string) (string, 
 	case http.StatusNotFound:
 		return "", errDeleted
 	}
-	return "", upstream("reading %s returned HTTP %d", path, status)
+	return "", upstream("github_http_error:"+strconv.Itoa(status), "reading %s returned HTTP %d", path, status)
 }
 
 // Read locates a cask in its tap, reads it at the newest commit and evaluates it. Errors carry
@@ -218,7 +244,11 @@ func (s *Service) readFile(ctx context.Context, tap, sha, path string) (string, 
 func (s *Service) Read(ctx context.Context, fullToken string) (*Candidate, error) {
 	tap, token, err := homebrew.ParseTapCask(fullToken)
 	if err != nil {
-		return nil, invalid("%s: %v", fullToken, err)
+		reason := "cask_name_invalid:cask"
+		if parts := strings.Split(strings.ToLower(strings.TrimSpace(fullToken)), "/"); len(parts) == 3 && parts[0] == "homebrew" {
+			reason = "official_tap:cask"
+		}
+		return nil, invalid(reason, "%s: %v", fullToken, err)
 	}
 	for _, path := range homebrew.TapCaskPaths(token) {
 		head, _, err := s.lastCommit(ctx, tap, path, "")
@@ -241,7 +271,7 @@ func (s *Service) Read(ctx context.Context, fullToken string) (*Candidate, error
 		}
 		return candidate, nil
 	}
-	return nil, invalid("%s has no cask file %s in %s", fullToken, strings.Join(homebrew.TapCaskPaths(token), " or "), homebrew.TapRepository(tap))
+	return nil, invalid("cask_not_found:"+tap+"/"+token, "%s has no cask file %s in %s", fullToken, strings.Join(homebrew.TapCaskPaths(token), " or "), homebrew.TapRepository(tap))
 }
 
 func (s *Service) evaluate(ctx context.Context, tap, token, path string, head commit) (*Candidate, error) {
@@ -253,28 +283,32 @@ func (s *Service) evaluate(ctx context.Context, tap, token, path string, head co
 	if err != nil {
 		var unsupported *homebrew.UnsupportedCaskError
 		if errors.As(err, &unsupported) {
-			return nil, invalid("%s/%s: %s", tap, token, unsupported.Error())
+			reason := "cask_unsupported"
+			if unsupported.Line > 0 {
+				reason += ":line_" + strconv.Itoa(unsupported.Line)
+			}
+			return nil, invalid(reason, "%s/%s: %s", tap, token, unsupported.Error())
 		}
-		return nil, err
+		return nil, invalid("cask_invalid", "%s/%s: %v", tap, token, err)
 	}
 	item, err := homebrew.Normalize("cask", raw)
 	if err != nil {
-		return nil, invalid("%s/%s: %v", tap, token, err)
+		return nil, invalid("cask_invalid", "%s/%s: %v", tap, token, err)
 	}
 	return &Candidate{Tap: tap, Token: token, SourcePath: path, ETag: head.ETag, HeadSHA: head.SHA, CommittedAt: head.Date, Package: item}, nil
 }
 
-// Conflict explains why a token cannot be added for tap, or returns nil when it can.
-func Conflict(owner *store.CaskOwner, tap string) error {
+// Conflict explains why token cannot be added for tap, or returns nil when it can.
+func Conflict(owner *store.CaskOwner, tap, token string) error {
 	switch {
 	case owner == nil:
 		return nil
 	case owner.Tracked && owner.Tap == tap:
-		return &domain.AppError{Code: domain.CodeConflict, HTTPStatus: http.StatusConflict, Msg: "this cask was already added; package_refresh reads it again"}
+		return conflict("cask_already_added:"+tap+"/"+token, "this cask was already added; package_refresh reads it again")
 	case owner.Tracked:
-		return &domain.AppError{Code: domain.CodeConflict, HTTPStatus: http.StatusConflict, Msg: "the token is already used by a cask from " + owner.Tap}
+		return conflict("token_taken:"+token, "the token is already used by a cask from %s", owner.Tap)
 	case homebrew.IsOfficialTap(owner.Tap) && owner.RemovedAt == nil:
-		return &domain.AppError{Code: domain.CodeConflict, HTTPStatus: http.StatusConflict, Msg: "an official Homebrew cask already uses this token"}
+		return conflict("token_official:"+token, "an official Homebrew cask already uses this token")
 	}
 	// A removed official cask, or a tap cask that was removed earlier, is revived with the tap's data.
 	return nil
@@ -325,12 +359,7 @@ func (s *Service) Run(ctx context.Context, packageID int64) (map[string]any, err
 			stats["versions"] = stats["versions"].(int) + versions
 			if err != nil {
 				count("failed")
-				message := err.Error()
-				var appErr *domain.AppError
-				if errors.As(err, &appErr) && appErr.Msg != "" {
-					message = appErr.Msg
-				}
-				if recordErr := s.recordFailure(ctx, cask, message); recordErr != nil {
+				if recordErr := s.recordFailure(ctx, cask, Explanation(err)); recordErr != nil {
 					return recordErr
 				}
 				continue
@@ -345,7 +374,7 @@ func (s *Service) Run(ctx context.Context, packageID int64) (map[string]any, err
 func (s *Service) refresh(ctx context.Context, cask store.TapCask) (string, int, error) {
 	if cask.PackageTap != cask.Tap {
 		// Homebrew adopted the token in homebrew/cask; the official sync owns the package now.
-		return "", 0, fmt.Errorf("the catalog now lists this token from %s; remove the tap cask", cask.PackageTap)
+		return "", 0, conflict("token_adopted:"+cask.Token, "the catalog now lists this token from %s; remove the tap cask", cask.PackageTap)
 	}
 	current := cask.NormalizationVersion == fmt.Sprint(homebrew.CaskNormalizationVersion)
 	etag := cask.ETag

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -87,7 +88,7 @@ func CORS(publicOrigins []string, adminOrigins ...string) gin.HandlerFunc {
 		}
 		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept-Language, X-Request-Id, X-Client-Platform, X-Client-Version, If-None-Match, X-OpenNavo-Caps")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept-Language, X-Request-Id, X-Client-Platform, X-Client-Version, If-None-Match, X-OpenNavo-Caps, X-Expected-Revision, Idempotency-Key")
 		c.Header("Access-Control-Expose-Headers", "X-Request-Id, ETag, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Usage-Day")
 		if c.Request.Method == http.MethodOptions {
 			// Browsers reuse an allowed preflight up to their own cap: a day in Firefox, 2 hours in Chromium,
@@ -141,9 +142,62 @@ func Validate(spec *openapi3.T, basePath string, admin bool) (gin.HandlerFunc, e
 				respond.Error(c, domain.Rejected("parameter_invalid:"+field), admin)
 				return
 			}
-			respond.Error(c, domain.Validation(), admin)
+			if !admin {
+				respond.Error(c, domain.Validation(), admin)
+				return
+			}
+			respond.Error(c, requestReason(err), admin)
 			return
 		}
 		c.Next()
 	}, nil
+}
+
+// requestReason names what the contract refused for admin and Agent callers:
+// the parameter, or the body field as a dotted path of contract names and array
+// indices, with the failed rule. Property names are echoed only when safe.
+func requestReason(err error) error {
+	var requestErr *openapi3filter.RequestError
+	if errors.As(err, &requestErr) && requestErr.Parameter != nil {
+		return domain.RejectedDetail("parameter_invalid", requestErr.Parameter.Name)
+	}
+	var schemaErr *openapi3.SchemaError
+	if !errors.As(err, &schemaErr) {
+		if requestErr != nil && requestErr.RequestBody != nil {
+			return domain.Rejected("body_invalid")
+		}
+		return domain.Rejected("request_invalid")
+	}
+	path := schemaErr.JSONPointer()
+	// A missing property's pointer already ends with it; an unsupported one's does not.
+	field := func(name string) string {
+		if len(path) > 0 && path[len(path)-1] == name {
+			return strings.Join(path, ".")
+		}
+		return strings.Join(append(append([]string{}, path...), name), ".")
+	}
+	if name, ok := quotedProperty(schemaErr.Reason, " is missing"); ok {
+		return domain.RejectedDetail("field_required", field(name))
+	}
+	if name, ok := quotedProperty(schemaErr.Reason, " is unsupported"); ok {
+		return domain.RejectedDetail("unknown_field", field(name))
+	}
+	if len(path) == 0 {
+		return domain.Rejected("body_invalid")
+	}
+	return domain.RejectedDetail("field_invalid", strings.Join(path, "."), schemaErr.SchemaField)
+}
+
+// quotedProperty reads name from a kin-openapi reason such as `property "name" is missing`.
+func quotedProperty(reason, suffix string) (string, bool) {
+	quoted, ok := strings.CutPrefix(reason, "property ")
+	if !ok {
+		return "", false
+	}
+	quoted, ok = strings.CutSuffix(quoted, suffix)
+	if !ok {
+		return "", false
+	}
+	name, err := strconv.Unquote(quoted)
+	return name, err == nil
 }

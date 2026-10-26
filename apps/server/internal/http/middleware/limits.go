@@ -22,7 +22,7 @@ func RequestBounds(admin bool) gin.HandlerFunc {
 			pairs = strings.Count(c.Request.URL.RawQuery, "&") + 1
 		}
 		if len(target) > RequestTargetLimit || pairs > QueryPairLimit || c.Request.ContentLength > JSONBodyLimit {
-			respond.Error(c, domain.Validation(), admin)
+			respond.Error(c, boundsError(admin, len(target) > RequestTargetLimit, pairs > QueryPairLimit), admin)
 			return
 		}
 		if c.Request.Body != nil {
@@ -31,4 +31,17 @@ func RequestBounds(admin bool) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// boundsError names the exceeded bound for admin and Agent callers.
+func boundsError(admin, longTarget, manyPairs bool) error {
+	switch {
+	case !admin:
+		return domain.Validation()
+	case longTarget:
+		return domain.Rejected("request_target_too_long:16384")
+	case manyPairs:
+		return domain.Rejected("query_too_many_parameters:64")
+	}
+	return domain.Rejected("body_too_large:1048576")
 }

@@ -19,29 +19,7 @@ def tool(
 
 
 TOOLS = (
-    tool("seo_task_claim", "seo:task:handle", "claimSeoTasks", write=True),
-    tool("seo_task_get", "seo:task:handle", "getSeoTask"),
-    tool("seo_task_complete", "seo:task:handle", "completeSeoTask", write=True),
-    tool("seo_task_defer", "seo:task:handle", "deferSeoTask", write=True),
-    tool("seo_task_reopen", "seo:task:handle", "reopenSeoTask", write=True),
-    tool("seo_evidence_capture", "seo:task:handle", "createSeoEvidence", write=True),
-    tool("seo_actions_list", "seo:insight:view", "listSeoActions"),
-    tool(
-        "seo_snippet_template_propose", "seo:snippet:propose", "proposeSnippetTemplate", write=True
-    ),
-    tool("seo_action_compensate", "seo:task:handle", "compensateSeoAction", write=True),
-    tool("seo_listing_get", "catalog:package:edit", "getSeoListingCandidate"),
-    tool("seo_listing_upsert", "catalog:package:edit", "upsertSeoListingCandidate", write=True),
-    tool("seo_listing_nominate", "catalog:package:edit", "nominateSeoListing", write=True),
-    tool("seo_topic_nominate", "content:article:edit", "nominateSeoTopic", write=True),
     tool("article_test_artifacts_list", "content:article:edit", "listArticleTestArtifacts"),
-    tool(
-        "seo_automation_set",
-        "seo:automation:tune",
-        "updateSeoAutomation getSeoAutomation",
-        write=True,
-    ),
-    tool("seo_tasks_import", "seo:task:handle", "importSeoTasks", write=True),
     tool(
         "translations_write",
         "translation:review",
@@ -52,13 +30,19 @@ TOOLS = (
     tool(
         "package_fact_records_upsert", "catalog:package:edit", "setPackageFactRecords", write=True
     ),
-    tool("seo_geo_record", "seo:task:handle", "recordSeoGeo", write=True),
-    tool("seo_geo_list", "seo:insight:view", "listSeoGeo"),
-    tool("seo_geo_get", "seo:insight:view", "getSeoGeo"),
-    tool("seo_overview", "seo:insight:view", "getSeoOverview"),
-    tool("seo_page_get", "seo:insight:view", "getSeoPage"),
-    tool("seo_keywords_list", "seo:insight:view", "listSeoKeywords"),
-    tool("seo_keywords_upsert", "seo:keyword:edit", "upsertSeoKeywords", write=True),
+    tool("fact_records_due", "catalog:package:view", "listDueFactRecords"),
+    tool("page_index_get", "site:index:view", "getPageDecision"),
+    tool("site_settings_get", "site:index:view", "getSiteIndexSettings"),
+    tool("intent_pages_get", "catalog:package:view", "getPackageIntentPages listAdminPackages"),
+    tool("intent_pages_list", "catalog:package:view", "listIntentPages"),
+    tool(
+        "intent_page_set",
+        "catalog:package:edit",
+        "setPackageIntentPages listAdminPackages",
+        write=True,
+    ),
+    tool("package_seo_get", "catalog:package:view", "getPackageSeo listAdminPackages"),
+    tool("package_seo_set", "catalog:package:edit", "setPackageSeo listAdminPackages", write=True),
     tool("whoami", "", "introspectAgentToken"),
     tool(
         "logs_search",
@@ -75,6 +59,12 @@ TOOLS = (
     tool("packages_search", "catalog:package:view", "listAdminPackages"),
     tool(
         "package_get",
+        "catalog:package:view",
+        "getAdminPackage listAdminPackages listPackageScreenshots getTranslationStatus "
+        "getPackageFacts",
+    ),
+    tool(
+        "package_text_get",
         "catalog:package:view",
         "getAdminPackage listAdminPackages listPackageScreenshots getTranslationStatus "
         "getPackageFacts",
@@ -272,7 +262,6 @@ TOOLS = (
 BY_NAME = {item.name: item for item in TOOLS}
 
 RESOURCE_PERMISSIONS = {
-    "opennavo://guide/geo-routine": "",
     "opennavo://guide/seo-routine": "",
     "opennavo://guide/daily-routine": "",
     "opennavo://guide/content-style": "",

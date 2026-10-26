@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHermesTuningImportBatchContracts(t *testing.T) {
+func TestHermesBatchContracts(t *testing.T) {
 	doc, err := openapi3.NewLoader().LoadFromFile("admin.openapi.yaml")
 	require.NoError(t, err)
-	for _, name := range []string{"SeoAutomation", "SeoAutomationView", "SeoAutomationUpdate", "BatchTranslationValue", "TranslationsSource", "BatchTranslationInput", "TranslationsBatchWrite", "BatchTranslationResult", "TranslationsBatchResult", "SeoImportEntry", "SeoTasksImport", "SeoImportResult", "SeoTasksImportResult"} {
+	for _, name := range []string{"BatchTranslationValue", "TranslationsSource", "BatchTranslationInput", "TranslationsBatchWrite", "BatchTranslationResult", "TranslationsBatchResult"} {
 		schema := doc.Components.Schemas[name].Value
 		require.NoError(t, schema.Validate(context.Background()), name)
 		require.NoError(t, schema.VisitJSON(schema.Example), name)
@@ -20,7 +20,7 @@ func TestHermesTuningImportBatchContracts(t *testing.T) {
 	require.NoError(t, doc.Components.Schemas["TranslationReadFields"].Value.VisitJSON(map[string]any{}))
 	result := doc.Components.Schemas["BatchTranslationResult"].Value
 	require.NoError(t, result.VisitJSON(map[string]any{"locale": "unsupported", "status": "failed", "reason": "validation_failed", "value": nil}))
-	for _, path := range []string{"/seo/automation", "/seo/tasks/import", "/translations/source", "/translations/batch"} {
+	for _, path := range []string{"/translations/source", "/translations/batch"} {
 		for method, op := range doc.Paths.Value(path).Operations() {
 			examples := op.Responses.Status(200).Value.Content["application/json"].Examples
 			count := len(i18n.SiteLocales)

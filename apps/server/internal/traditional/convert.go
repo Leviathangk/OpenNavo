@@ -13,7 +13,9 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-const Version = "opencc-data-1.1.9-s2twp-v4"
+// Version names the dictionaries and wording rules. Stored derived text records it, so a new
+// Version re-derives stored content once (BackfillTraditional, rate limited).
+const Version = "opencc-data-1.1.9-s2twp-v5"
 const Locale = "zh-Hant"
 const Source = "zh-CN"
 
@@ -23,10 +25,20 @@ var converter = sync.OnceValues(loadDictionaries)
 // Other protected literals are excluded globally across text-node boundaries.
 const literalPattern = `\{[^{}]*\}|[A-Za-z][A-Za-z0-9+.-]*://[^\s<>]+|<[^>]+>|@:[A-Za-z0-9_.]+`
 
+// Text converts the prose of input with OpenCC s2twp, then applies OpenNavo's Taiwan wording to the
+// converted prose. Protected terms, placeholders, URLs, tags, code and Markdown syntax stay as given.
 func Text(input string, protected []string) (string, error) {
-	c, err := converter()
+	dictionaries, err := converter()
 	if err != nil {
 		return "", err
+	}
+	rules, err := wording()
+	if err != nil {
+		return "", err
+	}
+	convert := func(prose string) (string, error) {
+		converted, err := dictionaries.Convert(prose)
+		return applyTerms(converted, rules), err
 	}
 	terms := append([]string{}, protected...)
 	sort.Slice(terms, func(i, j int) bool { return len(terms[i]) > len(terms[j]) })
@@ -50,7 +62,7 @@ func Text(input string, protected []string) (string, error) {
 				break
 			}
 			left, right := max(start, literal[0]), min(span[1], literal[1])
-			part, err := c.Convert(input[start:left])
+			part, err := convert(input[start:left])
 			if err != nil {
 				return "", err
 			}
@@ -58,7 +70,7 @@ func Text(input string, protected []string) (string, error) {
 			out.WriteString(input[left:right])
 			start = right
 		}
-		part, err := c.Convert(input[start:span[1]])
+		part, err := convert(input[start:span[1]])
 		if err != nil {
 			return "", err
 		}

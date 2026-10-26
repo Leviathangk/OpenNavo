@@ -4,6 +4,8 @@ package urlnotify
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -71,4 +73,85 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT attempts FROM url_notify_outbox ORDER BY id").Scan(&attempts).Error)
 	require.Equal(t, []int{1, 0}, attempts)
 
+}
+
+func TestProbeComparesIndexingIntentAndWaitsOutLoadShedding(t *testing.T) {
+	st := testutil.NewFactsStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	var server *httptest.Server
+	shed := 0
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Pages render fixed paths, never the request's own, so the fixture echoes no input.
+		page := func(path, robots string) {
+			_, _ = fmt.Fprintf(w, `<html><head><link rel="canonical" href="%s%s"><meta name="robots" content="%s"></head></html>`, server.URL, path, robots)
+		}
+		switch r.URL.Path {
+		case "/articles/preview":
+			// The @nuxtjs/robots default on indexable article pages.
+			page("/articles/preview", "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1")
+		case "/articles/header-noindex":
+			w.Header().Set("X-Robots-Tag", "noindex")
+			page("/articles/header-noindex", "index, follow")
+		case "/articles/shed":
+			shed++
+			w.Header().Set("X-OpenNavo-Load-Shed", "mild")
+			w.Header().Set("Retry-After", "120")
+			w.WriteHeader(http.StatusServiceUnavailable)
+		case "/articles/limited":
+			w.Header().Set("Retry-After", "30")
+			w.WriteHeader(http.StatusTooManyRequests)
+		case "/articles/broken":
+			w.Header().Set("Retry-After", "120")
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}))
+	defer server.Close()
+	n := &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
+	resetCooldown := func() {
+		require.NoError(t, st.DB.Exec("UPDATE url_notify_state SET probe_ready_at=NULL,probe_failures=0").Error)
+	}
+	probe := func(path string) error {
+		resetCooldown()
+		row := store.URLNotificationRow{}
+		row.URL, row.Announce, row.Robots = server.URL+path, true, "index, follow"
+		return n.probeNotification(ctx, row)
+	}
+	require.NoError(t, probe("/articles/preview"))
+	require.ErrorContains(t, probe("/articles/header-noindex"), `robots "noindex, follow", want "index, follow"`)
+	var wait *probeWait
+	require.ErrorAs(t, probe("/articles/shed"), &wait)
+	require.False(t, wait.until.Before(now.Add(120*time.Second)))
+	require.ErrorAs(t, probe("/articles/limited"), &wait)
+	require.False(t, wait.until.Before(now.Add(30*time.Second)))
+	// Without the shedding mark a 503 is the page's own failure.
+	err := probe("/articles/broken")
+	require.EqualError(t, err, "public page probe returned 503")
+	require.False(t, errors.As(err, &wait))
+
+	// Shedding is no delivery failure: the receipt keeps its retry budget and waits for the cooldown.
+	resetCooldown()
+	require.NoError(t, store.QueueURLNotification(ctx, st.DB, store.URLNotification{URL: server.URL + "/articles/shed", Path: "/articles/shed", Locale: "en-US", Announce: true, Robots: "index, follow"}))
+	require.NoError(t, st.DB.Exec("UPDATE url_notify_outbox SET state='invalidated',next_attempt_at=?", now.Add(-time.Second)).Error)
+	n.defaults()
+	before := shed
+	_, _, err = n.drainOutbox(ctx, "fixture-owner")
+	require.NoError(t, err)
+	require.Equal(t, before+1, shed)
+	var receipt struct {
+		Attempts      int
+		LastError     string
+		NextAttemptAt time.Time
+	}
+	require.NoError(t, st.DB.Raw("SELECT attempts,last_error,next_attempt_at FROM url_notify_outbox").Scan(&receipt).Error)
+	require.Zero(t, receipt.Attempts)
+	require.Empty(t, receipt.LastError)
+	require.False(t, receipt.NextAttemptAt.Before(now.Add(120*time.Second)))
+	queue, err := st.URLNotifyQueue(ctx, now)
+	require.NoError(t, err)
+	require.Equal(t, 1, queue.PendingAnnouncements)
+	require.NotNil(t, queue.OldestPendingAt)
+	require.Zero(t, queue.DeadAnnouncements)
+	require.Equal(t, 1, queue.OverloadedProbes)
+	require.NotNil(t, queue.ProbeCooldownUntil)
 }

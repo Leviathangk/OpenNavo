@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import type { Schemas } from '@/typings/api/opennavo';
+import { $t } from '@/locales';
 
 /** Remove null/undefined/empty query parameters: axios serializes null as empty, which backend typed parsing rejects. */
 export function compactParams<T extends object>(params: T): Partial<T> {
@@ -42,4 +43,20 @@ export const PUBLISH_STATUS_TAG = {
  */
 export function isDryRun(data: unknown): data is Schemas['AgentDryRun'] {
   return typeof data === 'object' && data !== null && (data as { dryRun?: unknown }).dryRun === true;
+}
+
+/**
+ * A write that carried X-Expected-Revision and lost to a newer change, often an agent's (code 1003). The
+ * admin API localizes the message, so only the code is reliable. Pages reload instead of retrying blindly.
+ */
+export function isRevisionConflict(response: { data?: unknown } | undefined): boolean {
+  return String((response?.data as { code?: unknown } | undefined)?.code) === '1003';
+}
+
+/** A server write owner (`admin:<id>`, `agent:<clientId>:<tokenId>` or `system`) as editors read it. */
+export function writeOwnerLabel(owner: string): string {
+  const [kind, id] = owner.split(':');
+  if (kind === 'admin' && id) return $t('page.shared.owner.admin', { id });
+  if (kind === 'agent' && id) return $t('page.shared.owner.agent', { id });
+  return owner === 'system' ? $t('page.shared.owner.system') : owner;
 }

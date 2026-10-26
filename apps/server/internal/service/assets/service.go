@@ -92,7 +92,7 @@ func (s *Service) save(ctx context.Context, kind, prefix string, variants []imag
 }
 func (s *Service) Upload(ctx context.Context, kind string, data []byte, sourceURL *string, actor store.AuditActor) (adminapi.Asset, error) {
 	if kind != "icon" && kind != "screenshot" && kind != "cover" && kind != "og" {
-		return adminapi.Asset{}, domain.Validation()
+		return adminapi.Asset{}, domain.RejectedDetail("asset_kind_invalid", kind)
 	}
 	variants, _, err := processImage(ctx, data, kind)
 	if ctx.Err() != nil {
@@ -117,7 +117,7 @@ func (s *Service) Upload(ctx context.Context, kind string, data []byte, sourceUR
 // Preview validates and computes image metadata without accessing object storage or the database.
 func (s *Service) Preview(ctx context.Context, kind string, data []byte) (map[string]any, error) {
 	if kind != "icon" && kind != "screenshot" && kind != "cover" && kind != "og" {
-		return nil, domain.Validation()
+		return nil, domain.RejectedDetail("asset_kind_invalid", kind)
 	}
 	variants, _, err := processImage(ctx, data, kind)
 	if ctx.Err() != nil {
@@ -143,7 +143,7 @@ func (s *Service) IconAccent(ctx context.Context, id int64) (*string, error) {
 		return nil, err
 	}
 	if asset.Kind != "icon" {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("asset_kind_mismatch:icon")
 	}
 	reader, ok := s.Objects.(interface {
 		Read(context.Context, string) ([]byte, error)

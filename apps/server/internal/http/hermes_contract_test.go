@@ -72,7 +72,7 @@ func TestHermesContractExamplesAndAgentBoundary(t *testing.T) {
 		}
 	}
 	require.Equal(t, len(newOperations), covered)
-	require.Len(t, spec.Components.Schemas["AgentPermission"].Value.Enum, 28)
+	require.Len(t, spec.Components.Schemas["AgentPermission"].Value.Enum, 24)
 	// Reject invalid permissions, mixed clear payloads and oversized batches at the contract layer.
 	for _, tc := range []struct {
 		name  string

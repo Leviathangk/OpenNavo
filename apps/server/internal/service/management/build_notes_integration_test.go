@@ -57,13 +57,12 @@ func TestBuildReleaseNotesLeaveOlderBuildsUntouched(t *testing.T) {
 		t.Helper()
 		page, err := call(op, in)
 		require.NoError(t, err)
-		out := []map[string]any{}
-		for _, raw := range page.(store.AdminPage).Records {
-			var row map[string]any
-			require.NoError(t, json.Unmarshal(raw, &row))
-			out = append(out, row)
-		}
-		return out
+		// Pages are read as their JSON: catalog activity adds nextSeq to the common page shape.
+		encoded, err := json.Marshal(page)
+		require.NoError(t, err)
+		var decoded struct{ Records []map[string]any }
+		require.NoError(t, json.Unmarshal(encoded, &decoded))
+		return decoded.Records
 	}
 	describe := func(row map[string]any) string {
 		note := "-"

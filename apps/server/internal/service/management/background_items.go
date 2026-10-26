@@ -10,8 +10,14 @@ import (
 
 func (s *Service) saveBackgroundItem(ctx context.Context, op string, in Input) (any, error) {
 	var body facts.BackgroundContent
-	if !facts.ValidBackgroundLabel(in.Key) || facts.Decode(in.Body, &body) != nil || body.Validate(s.now()) != nil {
-		return nil, domain.Validation()
+	if !facts.ValidBackgroundLabel(in.Key) {
+		return nil, domain.Rejected("background_label_invalid")
+	}
+	if err := facts.Decode(in.Body, &body); err != nil {
+		return nil, rejectedOr(err, "body_invalid")
+	}
+	if err := body.Validate(s.now()); err != nil {
+		return nil, rejectedOr(err, "background_content_invalid")
 	}
 	body.Evidence = body.Evidence.WithDefaultValidity()
 	return s.write(ctx, in, op, "background_item", func(st *store.Store) (any, error) {

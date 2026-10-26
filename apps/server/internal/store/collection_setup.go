@@ -41,8 +41,7 @@ func (s *Store) SaveCollectionCriteria(ctx context.Context, id int64, v Collecti
 		return err
 	}
 	if v.Locale == "zh-CN" {
-		_, err := s.deriveAuxiliaryTraditional(ctx, "collection_setup", strconv.FormatInt(id, 10))
-		return err
+		return s.deriveAuxiliaryTraditional(ctx, "collection_setup", strconv.FormatInt(id, 10))
 	}
 	return nil
 }

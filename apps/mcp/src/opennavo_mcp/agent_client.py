@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import httpx2
 from fastmcp.exceptions import ToolError
+from fastmcp.tools.base import ToolResult
 from pydantic import ValidationError
 
 from opennavo_mcp.config import Settings
@@ -33,19 +34,67 @@ MESSAGES = {
 }
 
 
-# Forward only short, structured rejection reasons; never arbitrary backend text.
-REJECTION = re.compile(r"rejected: [a-z][a-z0-9_]{0,63}(:[A-Za-z0-9_.\[\]-]{1,96})?")
+CODE = re.compile(r"[0-9]{4}")
+# Known codes forward only short, structured rejection reasons, never arbitrary backend text.
+# Details name fields, locales, limits, revisions or cask tokens (owner/tap/token), not URLs;
+# several parts join with colons (derived_locale_read_only:zh-Hant:zh-CN).
+PART = r"[A-Za-z0-9_.@+/\[\]-]+"
+REJECTION = re.compile(
+    rf"rejected: ([a-z][a-z0-9_]{{0,63}})(?::(?!.*//)(?=.{{1,96}}$)({PART}(?::{PART})*))?"
+)
+URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S*")
+
+
+def clean(message: str) -> str:
+    """One printable line without URLs, at most 300 characters."""
+    text = "".join(char if char.isprintable() else " " for char in URL.sub("<url>", message))
+    return " ".join(text.split())[:300]
 
 
 class AgentError(ToolError):
     def __init__(self, code: str, detail: object = None, *, validation: str = ""):
-        self.code = code if code in MESSAGES else "5000"
-        message = f"{self.code}: {MESSAGES[self.code]}"
-        if self.code != "5000" and isinstance(detail, str) and REJECTION.fullmatch(detail):
-            message += f" ({detail})"
-        if self.code == "1001" and validation:
+        text = detail if isinstance(detail, str) else ""
+        if code not in MESSAGES and not CODE.fullmatch(code):
+            code = "5000"
+        rejection = REJECTION.fullmatch(text) if code != "5000" else None
+        self.code = code
+        self.reason = rejection[1] if rejection else None
+        self.detail = rejection[2] if rejection else None
+        if code in MESSAGES:
+            message = MESSAGES[code] + (f" ({text})" if rejection else "")
+        else:
+            # Unrecognized backend codes keep their number and a cleaned, bounded message.
+            message = clean(text) or "Unrecognized backend error"
+            if not rejection:
+                self.detail = clean(text) or None
+        if code == "1001" and validation:
+            self.detail = validation
             message += f" ({validation})"
-        super().__init__(message)
+        super().__init__(f"{code}: {message}")
+
+    @property
+    def current_revision(self) -> int | None:
+        if self.reason == "revision_conflict" and self.detail and self.detail.isdigit():
+            return int(self.detail)
+        return None
+
+    def result(self) -> ToolResult:
+        """An error result whose structured content agents can branch on."""
+        error: dict[str, Any] = {
+            "code": self.code,
+            "message": str(self),
+            "reason": self.reason,
+            "detail": self.detail,
+        }
+        if self.current_revision is not None:
+            error["currentRevision"] = self.current_revision
+        return ToolResult(str(self), {"error": error}, is_error=True)
+
+
+def denied(reason: str) -> AgentError:
+    """A local 1004 with the server's reasons: permission_required:<permission>,
+    delete_not_allowed or operation_not_exposed."""
+    return AgentError("1004", "rejected: " + reason)
 
 
 def field_detail(loc: Sequence[str | int], kind: str, schema: dict[str, Any]) -> str:
@@ -104,19 +153,18 @@ class AgentClient:
         self, operation: str, token: str, ip: str, tool: str, values: dict[str, Any] | None = None
     ) -> Any:
         if operation not in OPERATIONS:
-            raise AgentError("1004")
+            raise denied("operation_not_exposed")
         spec = OPERATIONS[operation]
-        # Optional query values have no clearing semantics. Keep body nulls intact.
+        # Optional query and header values have no clearing semantics: null or empty means
+        # absent (never a "None" header). Keep body nulls intact.
         supplied = dict(values or {})
         model_type = input_model(operation)
-        optional_query = {
+        optional = {
             field.alias or name
             for name, field in model_type.model_fields.items()
             if not field.is_required()
-        } & set(spec["parameters"]["query"])
-        omitted = sorted(
-            key for key in optional_query if key in supplied and supplied[key] in (None, "")
-        )
+        } & {*spec["parameters"]["query"], *spec["parameters"].get("header", [])}
+        omitted = sorted(key for key in optional if key in supplied and supplied[key] in (None, ""))
         for key in omitted:
             supplied.pop(key)
         try:
@@ -181,7 +229,7 @@ class AgentClient:
             response = await self.http.request(
                 spec["method"], self.settings.agent_api_base + path, **kwargs
             )
-            if response.status_code != 200 or len(response.content) > 8 * 1024 * 1024:
+            if len(response.content) > 8 * 1024 * 1024:
                 raise AgentError("5000")
             payload = response.json()
             if not isinstance(payload, dict):
@@ -189,8 +237,11 @@ class AgentClient:
             payload = cast(dict[str, Any], payload)
             if not isinstance(payload.get("code"), str):
                 raise AgentError("5000")
+            # Rejections keep their envelope even if a status such as 409 accompanies them.
             if payload["code"] != "0000":
                 raise AgentError(payload["code"], payload.get("msg"))
+            if response.status_code != 200:
+                raise AgentError("5000")
             return payload.get("data")
         except (httpx2.HTTPError, ValueError, TypeError):
             # Raw exceptions may contain URLs or request headers; never forward or print them.

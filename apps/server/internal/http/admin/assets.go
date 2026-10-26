@@ -47,7 +47,7 @@ func (h *Handler) UploadAsset(ctx context.Context, request adminapi.UploadAssetR
 		return nil, err
 	}
 	if request.Body == nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("body_required")
 	}
 	form, err := readAssetForm(request.Body)
 	if err != nil {
@@ -55,7 +55,7 @@ func (h *Handler) UploadAsset(ctx context.Context, request adminapi.UploadAssetR
 	}
 	kind, data, source := form.kind, form.data, form.source
 	if (data == nil) == (form.downloadURL == "") {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("upload_source_invalid")
 	}
 	if op := domain.CurrentOperation(requestContext(ctx)); op != nil && op.AgentClientID > 0 {
 		if err := h.Assets.ValidateUploadTicket(requestContext(ctx)); err != nil {
@@ -116,16 +116,16 @@ func readAssetForm(body *multipart.Reader) (assetForm, error) {
 			return form, nil
 		}
 		if err != nil {
-			return form, domain.Validation()
+			return form, domain.Rejected("multipart_invalid")
 		}
 		if seen[part.FormName()] {
 			_ = part.Close()
-			return form, domain.Validation()
+			return form, domain.RejectedDetail("multipart_field_duplicate", part.FormName())
 		}
 		seen[part.FormName()] = true
 		parts++
 		if parts > 10 {
-			return form, domain.Validation()
+			return form, domain.Rejected("multipart_too_many_parts:10")
 		}
 		limit := int64(2048)
 		if part.FormName() == "file" {
@@ -134,7 +134,7 @@ func readAssetForm(body *multipart.Reader) (assetForm, error) {
 		value, err := io.ReadAll(io.LimitReader(part, limit+1))
 		_ = part.Close()
 		if err != nil {
-			return form, domain.Validation()
+			return form, domain.Rejected("multipart_invalid")
 		}
 		if int64(len(value)) > limit {
 			return form, &domain.AppError{Code: domain.CodeInvalidUpload, HTTPStatus: http.StatusBadRequest}
@@ -162,15 +162,15 @@ func (h *Handler) CreateAssetUploadTicket(ctx context.Context, request adminapi.
 	svc := h.agentService()
 	op := domain.CurrentOperation(requestContext(ctx))
 	if !ok || svc == nil || op == nil {
-		return nil, agent.Error(domain.CodeForbidden)
+		return nil, domain.Forbidden(http.StatusForbidden, "operation_not_exposed")
 	}
 	value, _ := c.Get("agentIdentity")
 	id, ok := value.(agent.Identity)
 	if !ok {
-		return nil, agent.Error(domain.CodeForbidden)
+		return nil, domain.Forbidden(http.StatusForbidden, "operation_not_exposed")
 	}
 	if request.Body == nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("body_required")
 	}
 	if h.Assets == nil {
 		return nil, domain.Internal(nil)
@@ -212,14 +212,14 @@ func (h *Handler) UploadAssetWithTicket(ctx context.Context, request adminapi.Up
 		return nil, err
 	}
 	if request.Body == nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("body_required")
 	}
 	form, err := readAssetForm(request.Body)
 	if err != nil {
 		return nil, err
 	}
 	if form.data == nil || form.kind != "" || form.downloadURL != "" || form.source != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("upload_ticket_form_invalid")
 	}
 	var source *string
 	if grant.SourceURL != "" {

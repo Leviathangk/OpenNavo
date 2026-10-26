@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRejectedPreservesAgentReasonAndAdminLocalization(t *testing.T) {
+func TestRejectedPreservesAgentReasonAndShowsItInAdmin(t *testing.T) {
 	for _, locale := range []string{"en-US", "zh-CN", "de-DE"} {
 		for _, prefix := range []string{"/admin-api", "/agent-api", "/api"} {
 			t.Run(prefix+"/"+locale, func(t *testing.T) {
@@ -26,7 +26,7 @@ func TestRejectedPreservesAgentReasonAndAdminLocalization(t *testing.T) {
 				require.Equal(t, domain.CodeValidation, envelope.Code)
 				require.Nil(t, envelope.Data)
 				if prefix == "/admin-api" {
-					require.Equal(t, domain.Message(domain.CodeValidation, locale), envelope.Msg)
+					require.Equal(t, domain.Message(domain.CodeValidation, locale)+" (field_too_long:package.summary)", envelope.Msg)
 				} else {
 					require.Equal(t, "rejected: field_too_long:package.summary", envelope.Msg)
 				}

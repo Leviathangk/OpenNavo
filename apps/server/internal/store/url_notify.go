@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // URLChange is one catalog_changes row the URL change feed (WP4) turns into page refreshes.
@@ -28,6 +30,30 @@ type URLNotifyState struct {
 	// IndexBackfill names the completed backfill, or "<name>:purging" once its purge queue is durable.
 	IndexBackfill        string
 	PendingPurgePrefixes []string `gorm:"-"`
+}
+
+// URLNotifyQueue summarizes undelivered announcements, so a stalled feed shows up on the
+// settings page and to agents instead of waiting silently.
+type URLNotifyQueue struct {
+	PendingAnnouncements int
+	OldestPendingAt      *time.Time
+	DeadAnnouncements    int
+	ProbeCooldownUntil   *time.Time
+	OverloadedProbes     int
+}
+
+func (s *Store) URLNotifyQueue(ctx context.Context, now time.Time) (URLNotifyQueue, error) {
+	var q URLNotifyQueue
+	// Dead receipts count until a newer receipt for the URL exists, for at most 30 days.
+	err := s.DB.WithContext(ctx).Raw(`SELECT live.pending_announcements,live.oldest_pending_at,
+ (SELECT count(*) FROM url_notify_outbox d WHERE d.state='dead' AND d.announce AND d.updated_at>=?::timestamptz-interval '30 days'
+  AND NOT EXISTS (SELECT 1 FROM url_notify_outbox newer WHERE newer.url=d.url AND newer.id>d.id)) AS dead_announcements,
+ CASE WHEN st.probe_ready_at>? THEN st.probe_ready_at END AS probe_cooldown_until,
+ coalesce(st.probe_failures,0) AS overloaded_probes
+ FROM (SELECT count(*) AS pending_announcements,min(created_at) AS oldest_pending_at FROM url_notify_outbox
+  WHERE announce AND state IN ('pending','invalidated','probed')) live
+ LEFT JOIN url_notify_state st ON st.id=true`, now, now).Scan(&q).Error
+	return q, err
 }
 
 func (s *Store) URLNotifyState(ctx context.Context) (URLNotifyState, error) {
@@ -94,6 +120,40 @@ func (s *Store) IndexRowsByID(ctx context.Context, ids []int64) ([]IndexRow, err
 		return []IndexRow{}, nil
 	}
 	return s.indexRows(ctx, "p.id IN ?", "", ids)
+}
+
+// QueueURLPurges adds edge purge prefixes to the durable queue the feed retries every run without a deadline,
+// each prefix once and in order. A queue longer than limit becomes fallback, the long-cached sections, which one
+// purge clears instead of that many pages.
+func (s *Store) QueueURLPurges(ctx context.Context, prefixes []string, limit int, fallback []string) error {
+	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var raw string
+		if err := tx.Raw("SELECT pending_purges::text FROM url_notify_state WHERE id=true FOR UPDATE").Scan(&raw).Error; err != nil {
+			return err
+		}
+		var queue []string
+		if err := json.Unmarshal([]byte(raw), &queue); err != nil {
+			return err
+		}
+		seen := map[string]bool{}
+		for _, prefix := range queue {
+			seen[prefix] = true
+		}
+		for _, prefix := range prefixes {
+			if prefix != "" && !seen[prefix] {
+				seen[prefix] = true
+				queue = append(queue, prefix)
+			}
+		}
+		if len(queue) > limit {
+			queue = fallback
+		}
+		next, err := json.Marshal(queue)
+		if err != nil {
+			return err
+		}
+		return tx.Exec("UPDATE url_notify_state SET pending_purges=?::jsonb WHERE id=true", string(next)).Error
+	})
 }
 
 func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) error {

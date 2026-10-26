@@ -37,6 +37,7 @@ const pages: PageMessages = {
     saved: 'Saved',
     viewOnSite: 'View on site',
     updatedBy: '{name} · {time}',
+    owner: { admin: 'Admin user #{id}', agent: 'Agent #{id}', system: 'System' },
     empty: '—',
     locale: { 'zh-CN': 'Chinese', 'en-US': 'English' },
     markdown: { edit: 'Edit', preview: 'Preview' },
@@ -67,70 +68,6 @@ const pages: PageMessages = {
       newHint:
         'New means first observed with this ID. Clearing local data or returning after 90 days without activity may count as new.'
     },
-    seo: {
-      geo: {
-        title: 'GEO visibility',
-        notImported: 'Not yet imported',
-        unknown: 'Unknown',
-        planned: 'Planned cells',
-        answered: 'Answered / planned cells',
-        searchTriggered: 'Search triggered / known cells',
-        mentioned: 'Mentioned / known cells',
-        candidate: 'Candidate / known cells',
-        cited: 'Cited / known complete-citation cells',
-        citationComplete: 'Complete citation extraction / answered',
-        reported: 'Reported values · completeness unverified',
-        noComparison: 'Do not compare trends with full samples',
-        missingFields: 'Missing fields',
-        details: 'View details',
-        dataTime: 'Data period',
-        engines: 'Sampling status by engine',
-        observations: 'Observation links',
-        noObservations: 'No observation links',
-        loadFailed: 'Failed to load GEO details. Please retry.',
-        retry: 'Retry',
-        status: {
-          answered: 'Answered',
-          not_triggered: 'Not triggered',
-          error: 'Error',
-          unsupported: 'Unsupported',
-          missing: 'Missing'
-        }
-      },
-      title: 'SEO automation (Hermes)',
-      ready: 'Automation ready',
-      notReady: 'Automation not ready',
-      keywords: 'Keywords',
-      targets: 'Target pages',
-      breakers: 'Open circuit breakers',
-      healthy: 'All healthy',
-      technical: 'Technical',
-      business: 'Business',
-      budget: 'Budget',
-      openedAt: 'Opened at',
-      budgets: 'Budget usage (UTC)',
-      day: 'Daily',
-      month: 'Monthly',
-      modes: 'Action modes',
-      disabled: 'Disabled',
-      watermarks: 'Data complete through',
-      yesterday: 'Yesterday (UTC)',
-      count: 'Actions',
-      compensated: 'Compensated',
-      action: 'Action',
-      operation: 'Operation',
-      mode: 'Mode',
-      usage: 'Usage',
-      alerts: 'Latest 5 unresolved alerts',
-      noAlerts: 'No unresolved alerts',
-      origin: 'Origin',
-      edge: 'Edge',
-      lastSeen: 'Last seen',
-      noData: 'No data',
-      noActivity: 'No actions yesterday',
-      loadFailed: 'Failed to load SEO summary. Please retry.',
-      retry: 'Retry'
-    },
     scale: 'Catalog',
     total: 'Apps',
     fonts: 'Fonts',
@@ -156,14 +93,16 @@ const pages: PageMessages = {
     snapshotInfo: 'Cursor {cursor} · {count} package | Cursor {cursor} · {count} packages',
     feedbackOpen: 'Open feedback',
     viewFeedback: 'Feedback',
-    hermes: {
-      title: 'Hermes today',
+    agent: {
+      title: 'Agent changes today',
       view: 'View logs',
       writes: 'Writes',
       translations: 'AI translations',
       failures: 'Failures',
       date: 'Counted by UTC date · {date}'
     },
+    loadFailed: 'Failed to load the dashboard. Please retry.',
+    retry: 'Retry',
     refreshedAt: 'Refreshes every 60 s · updated {time}'
   },
   catalog: {
@@ -227,7 +166,56 @@ const pages: PageMessages = {
         overrideHint: 'Overrides take effect while index eligibility is set to Enforce; hidden apps are never indexed.',
         save: 'Save',
         overriddenAt: 'Overridden {time}',
-        saveFailed: 'Not saved. Try again later.'
+        saveFailed: 'Not saved. Try again later.',
+        sections: {
+          status: 'Index status',
+          intent: 'Intent pages',
+          snippet: 'Search title and description'
+        },
+        intent: {
+          hint: 'Alternatives and uninstall pages are switched on per language. A page is indexed only when it is on, its content is ready and the master switch under Site & indexing is on.',
+          thresholds:
+            'Content is ready when an alternatives page has at least 3 sourced alternatives, and when an uninstall page has Homebrew uninstall data.',
+          globalOff:
+            'The intent page master switch under Site & indexing is off, so no intent page is indexed right now.',
+          kinds: {
+            alternatives: 'Alternatives page',
+            uninstall: 'Uninstall page'
+          },
+          locale: 'Language',
+          enabled: 'On',
+          content: 'Content ready',
+          indexable: 'Indexed',
+          eligible: 'Ready',
+          ineligible: 'Not enough',
+          indexed: 'Indexed',
+          notIndexed: 'Not indexed',
+          empty: 'This app has no intent pages to set',
+          save: 'Save intent pages',
+          loadFailed: 'Could not load the intent pages. Try again later.',
+          saveFailed: 'The intent pages were not saved. Try again later.',
+          reloaded:
+            'Someone else changed these intent pages before you saved. The latest state is loaded: switches they changed show the new value and are marked, and the others keep your changes. Check them and save again.',
+          changedRow: 'Changed by someone else; latest value loaded'
+        },
+        snippet: {
+          hint: 'Used only on this app’s overview page; empty fields keep the template. Titles end with “ · OpenNavo” automatically.',
+          overridden: 'Custom',
+          title: 'Title',
+          description: 'Description',
+          titlePlaceholder: 'Leave empty to use the template title',
+          descriptionPlaceholder: 'Leave empty to use the template description',
+          markup: 'No HTML: remove any < and >.',
+          save: 'Save',
+          clear: 'Clear override',
+          clearConfirm: 'Clear the {locale} title and description? The overview page goes back to the template.',
+          loadFailed: 'Could not load the title and description overrides. Try again later.',
+          saveFailed: 'Not saved. Check the text or try again later.',
+          reloaded:
+            'Someone else changed the overrides before you saved. The latest version is loaded and your changes to this language are kept; save again.',
+          changed: 'Someone else changed this language; the latest text is loaded.',
+          changedList: 'Someone else changed these languages; the latest text is loaded: {locales}'
+        }
       },
       facts: {
         loadFailed: 'Could not load the facts. Try again later.',
@@ -804,6 +792,7 @@ const pages: PageMessages = {
         changelog: 'Release notes',
         ops: 'Operations',
         release: 'Desktop app',
+        site: 'Site & indexing',
         other: 'Other'
       },
       permissionLabels: {
@@ -827,7 +816,8 @@ const pages: PageMessages = {
         ops_feedback_handle: 'Handle feedback',
         agent_log_view: 'View agent and AI logs',
         content_revision_restore: 'Restore revisions, revert calls and restore from the trash',
-        release_desktop_notes: 'Write desktop release notes'
+        release_desktop_notes: 'Write desktop release notes',
+        site_index_view: 'View page index decisions and site settings'
       }
     },
     github: {
@@ -852,7 +842,7 @@ const pages: PageMessages = {
       invalidToken: 'The PAT must contain no whitespace or non-ASCII characters and must not exceed 4096 characters.'
     },
     seo: {
-      title: 'SEO & analytics',
+      title: 'Site & indexing',
       scope:
         'SEO and analytics parameters that operators adjust and can roll back right away. Changes reach the website within about a minute; cached pages refresh within 15 minutes.',
       sections: {
@@ -934,8 +924,7 @@ const pages: PageMessages = {
       detailsRedirectHint:
         'When on, a details page redirects (301) to the overview once the overview carries everything the details page had and is indexable in that language. Link apps have no details page.',
       intentPages: 'Alternatives and uninstall pages',
-      intentPagesHint:
-        'When on, only pages with confirmed search demand and complete evidence are indexed; the others use the overview as their canonical.',
+      intentPagesHint: 'Site-wide master switch; each app’s own intent page switches decide the rest.',
       temporaryTitle: 'Temporary switches',
       temporaryHint:
         'The switches below exist only for the rollout. They will be removed with the old templates and logic once everything has been stable for a month or two.',
@@ -970,7 +959,15 @@ const pages: PageMessages = {
         never: 'No runs yet',
         indexNow: 'IndexNow: {status}',
         purge: 'Cloudflare: {status}',
-        error: 'Error: {error}'
+        error: 'Error: {error}',
+        pending: 'Pending announcements: {count}',
+        pendingSince: 'Pending announcements: {count}, the oldest from {time}',
+        dead: 'Failed announcements still unresolved (last 30 days): {count}',
+        cooldown: 'Page probes paused until {time}',
+        overloaded: 'Probes refused in a row because the site was busy: {count}',
+        alertTitle: 'The change feed needs attention',
+        staleAlert: 'The oldest pending change dates from {time} and has waited more than 24 hours.',
+        deadAlert: 'Failed announcements from the last 30 days are still unresolved: {count}.'
       },
       save: 'Save settings',
       effect: 'Takes effect within about a minute; no redeploy needed',
@@ -1010,99 +1007,6 @@ const pages: PageMessages = {
         now: 'Now',
         enforced: 'When enforced',
         empty: 'No app would leave the index'
-      },
-      providers: {
-        title: 'Data connections',
-        hint: 'The server uses these credentials to pull Search Console, Bing and site audit data on a schedule. SEO opportunity tasks, page diagnostics and before/after comparisons use that data. Credentials are stored encrypted and never shown again.',
-        replaceHint:
-          'Credentials are replaced as a whole: changing any field of a source means filling in all of its fields again. Each source below saves separately.',
-        loadFailed: "Couldn't read this source's status. Click Refresh to try again.",
-        saveFailed: 'Not saved. Check the credentials or try again later.',
-        save: 'Save',
-        enabled: 'Pull automatically',
-        enabledHint: 'Pulls data on a schedule once enabled; turning it off keeps the data already pulled.',
-        clearCredentials: 'Clear stored credentials',
-        clearHint: 'Clearing also stops automatic pulls.',
-        noProgress: 'No data progress recorded yet',
-        progress: '{label}: complete through {complete}, latest {fresh}',
-        progressNone: '{label}: no data yet',
-        none: 'none',
-        state: {
-          enabled: 'Enabled',
-          disabled: 'Not enabled',
-          configured: 'Credentials stored',
-          notConfigured: 'No credentials'
-        },
-        credentialTypes: {
-          oauth: 'OAuth refresh token',
-          service_account: 'Service account',
-          api_key: 'API key',
-          origin: 'Origin URL'
-        },
-        watermarks: {
-          gsc_page: 'Page data',
-          gsc_query: 'Query data',
-          inspection: 'Index checks',
-          bing: 'Bing query data',
-          audit: 'Site audit',
-          edge_probe: 'CDN comparison'
-        },
-        sources: {
-          gsc: {
-            title: 'Google Search Console',
-            hint: 'Pulls page and query data every 6 hours and checks the index status of a sample of URLs every day.',
-            mode: 'Sign-in method',
-            modes: {
-              service_account: 'Service account (recommended)',
-              oauth: 'OAuth refresh token'
-            },
-            property: 'Property',
-            propertyHint:
-              'Use sc-domain:opennavo.com for a domain property, or the full URL for a URL-prefix property.',
-            serviceAccountJson: 'Service account JSON key',
-            chooseFile: 'Choose JSON file',
-            pasteJson: 'Paste instead',
-            pastePlaceholder: 'Paste the full contents of the service account JSON key',
-            keyLoaded: 'Key for {email} loaded',
-            keyInvalid: "This file isn't a valid service account key",
-            forgetKey: 'Remove',
-            serviceAccountHint:
-              'Create a service account in Google Cloud and download its JSON key, then add the service account email as a user in Search Console (restricted access is enough). The key is only sent when you save and is never shown on this page.',
-            clientId: 'Client ID',
-            clientSecret: 'Client secret',
-            refreshToken: 'Refresh token'
-          },
-          bing: {
-            title: 'Bing Webmaster Tools',
-            hint: 'Pulls Bing search query data every day.',
-            property: 'Site URL',
-            apiKey: 'API key',
-            apiKeyHint: 'Generate it in Bing Webmaster Tools under Settings › API access.'
-          },
-          audit: {
-            title: 'Site audit',
-            hint: 'Compares the pages served by the CDN and the origin every hour to find technical problems that affect indexing.',
-            originUrl: 'Origin URL',
-            originHint: 'An https address that reaches the origin directly. Host only, and not the public domain.'
-          }
-        },
-        errors: {
-          gscProperty:
-            'Invalid property: domain properties start with sc-domain:, URL-prefix properties with https://.',
-          serviceAccount: {
-            missing:
-              'Choose the service account JSON key file or paste its contents. Changing only the property also needs the key again.',
-            invalidJson: "This isn't valid JSON.",
-            notServiceAccount: "This isn't a service account key (type is not service_account).",
-            missingFields: 'The key is missing client_email or private_key.',
-            tooLong: 'The key file is too large. Make sure you chose the service account JSON key.'
-          },
-          oauth: 'Fill in Client ID, Client secret and Refresh token, without spaces.',
-          bingProperty: 'The site URL must start with https://.',
-          apiKey: 'Enter the API key, without spaces.',
-          origin: 'The origin must be an https host with no path or query, and must differ from the public domain.',
-          credentialsRequired: 'Add credentials before enabling.'
-        }
       },
       errors: {
         invalidName: 'The site name must be 1–60 characters with no control characters.',
@@ -1217,7 +1121,6 @@ const pages: PageMessages = {
     deny: 'Deny',
     error: 'Unable to complete authorization. Retry or restart the connection from your application.',
     retry: 'Retry',
-    incompatible: 'Automation tuning cannot be combined with content or task write permissions.',
     grants: 'Connected applications',
     empty: 'No authorized applications.',
     revoke: 'Revoke access',

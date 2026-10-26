@@ -36,6 +36,8 @@ from opennavo_mcp.tools.runtime import InputValidator, tool_schema
         ),
         ({"from": "", "to": ""}, {}),
         ({"has_editorial": False, "size": 1}, {"hasEditorial": "false", "size": "1"}),
+        ({"after_seq": 1200, "size": 100}, {"afterSeq": "1200", "size": "100"}),
+        ({"after_seq": 0}, {"afterSeq": "0"}),
         (
             {"from": "2026-10-25T00:00:00Z", "to": "2026-10-25T01:00:00Z"},
             {"from": "2026-10-25T00:00:00Z", "to": "2026-10-25T01:00:00Z"},

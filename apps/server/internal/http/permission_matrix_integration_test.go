@@ -32,11 +32,7 @@ import (
 // Expectations are independent of runtime Permissions and database roles, so incorrect configuration cannot also define test expectations.
 func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups := map[string]string{
-		"seo:insight:view":           "getSeoOverview getSeoPage listSeoKeywords listSeoAlerts listSeoGeo getSeoGeo listSeoActions",
-		"seo:keyword:edit":           "upsertSeoKeywords",
-		"seo:task:handle":            "recordSeoGeo claimSeoTasks getSeoTask completeSeoTask deferSeoTask reopenSeoTask createSeoEvidence compensateSeoAction importSeoTasks",
-		"seo:snippet:propose":        "proposeSnippetTemplate",
-		"seo:automation:tune":        "getSeoAutomation updateSeoAutomation",
+		"site:index:view":            "getPageDecision getSiteIndexSettings",
 		"":                           "getUserInfo logout getProfile updateProfile changePassword",
 		"dashboard:view":             "getDashboardOverview",
 		"catalog:package:view":       "listAdminPackages getAdminPackage listPackageScreenshots listPackageVersions listChangelogSources listAdminReleases getAdminRelease getCategoryTree",
@@ -68,9 +64,11 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["catalog:package:edit"] += " updatePackageText updatePackageChangelogSettings setPackagePrice setPackageMacosSupport setPackageAlternatives addTapPackage removeTapPackage"
 	groups["catalog:package:edit"] += " listLinkPackages addLinkPackage updateLinkPackage removeLinkPackage upsertUpdateFeed disableUpdateFeed"
 	groups["catalog:package:view"] += " getPackageFactRecords"
-	groups["catalog:package:edit"] += " setPackageFactRecords setBackgroundItem getSeoListingCandidate upsertSeoListingCandidate lockSeoListingBaseline nominateSeoListing"
+	groups["catalog:package:edit"] += " setPackageFactRecords setBackgroundItem"
 	groups["content:collection:edit"] += " setCollectionSetupCriteria"
-	groups["system:seo:edit"] += " getSeoProvider updateSeoProvider"
+	// Editorial intent switches, app search titles and due facts replace the SEO engine's routes.
+	groups["catalog:package:view"] += " getPackageIntentPages listIntentPages getPackageSeo listDueFactRecords"
+	groups["catalog:package:edit"] += " setPackageIntentPages setPackageSeo"
 	groups["changelog:release:edit"] += " upsertReleaseNotes"
 	groups["translation:review"] += " listTranslations getTranslationStatus fixTranslation getTranslationsSource writeTranslations"
 	groups["content:glossary:edit"] = "listGlossary upsertGlossaryTerm deleteGlossaryTerm"
@@ -84,7 +82,6 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["content:article:edit"] += " listArticleTestArtifacts"
 	groups["content:article:publish"] += " createArticleTestArtifact"
 	groups["content:article:edit"] += " captureArticleEvidence"
-	groups["content:article:edit"] += " nominateSeoTopic"
 	// Upload tickets are issued only to Agents and redeemed only with the ticket itself.
 	groups["catalog:asset:upload"] += " createAssetUploadTicket uploadAssetWithTicket"
 	operations := map[string]string{}
@@ -98,12 +95,8 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	ops := []string{"R_ADMIN", "R_OPS"}
 	editorialOps := []string{"R_ADMIN", "R_EDITOR", "R_OPS"}
 	roles := map[string][]string{
-		"seo:insight:view":    {"R_ADMIN"},
-		"seo:task:handle":     {"R_ADMIN"},
-		"seo:keyword:edit":    {"R_ADMIN"},
-		"seo:snippet:propose": {"R_ADMIN"},
-		"seo:automation:tune": {"R_ADMIN"},
-		"":                    all, "dashboard:view": all, "catalog:package:view": all,
+		"site:index:view": {"R_ADMIN"},
+		"":                all, "dashboard:view": all, "catalog:package:view": all,
 		"catalog:package:edit": edit, "catalog:asset:upload": edit, "catalog:category:edit": edit,
 		"catalog:package:resync": editorialOps, "content:collection:edit": edit,
 		"content:collection:publish": {"R_ADMIN"}, "content:feature:edit": edit,

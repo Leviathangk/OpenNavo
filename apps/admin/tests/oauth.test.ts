@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { authorizationParams, compatibleScopes, oauthRequest } from '../src/service/api/oauth';
+import { authorizationParams, oauthRequest } from '../src/service/api/oauth';
 
 const refresh = vi.hoisted(() => vi.fn());
 vi.mock('@/service/request', () => ({ request: { state: {} } }));
@@ -18,10 +18,6 @@ describe('MCP OAuth client', () => {
       { state: 'a+b', client_id: 'client', resource: 'https://example.test/mcp' }
     );
     expect(() => authorizationParams('client_id=a&client_id=b')).toThrow('invalid_request');
-  });
-  it('prevents mixed tuning and writing grants', () => {
-    expect(compatibleScopes(['seo:automation:tune', 'catalog:package:view'])).toBe(true);
-    expect(compatibleScopes(['seo:automation:tune', 'content:article:edit'])).toBe(false);
   });
   it('refreshes an expired admin session once without leaking credentials into URLs', async () => {
     const fetcher = vi

@@ -55,7 +55,7 @@ func (e *Enqueuer) Enqueue(ctx context.Context, taskType string, payload Payload
 
 func (e *Enqueuer) Trigger(ctx context.Context, externalType string, userID int64) (string, error) {
 	if userID <= 0 {
-		return "", domain.Validation()
+		return "", domain.Rejected("actor_required")
 	}
 	for _, definition := range Definitions {
 		if definition.Cron == "" {
@@ -72,5 +72,5 @@ func (e *Enqueuer) Trigger(ctx context.Context, externalType string, userID int6
 			return e.Enqueue(ctx, definition.Type, Payload{}, Metadata{Trigger: "manual", TriggeredBy: &userID})
 		}
 	}
-	return "", domain.Validation()
+	return "", domain.RejectedDetail("job_type_invalid", externalType)
 }

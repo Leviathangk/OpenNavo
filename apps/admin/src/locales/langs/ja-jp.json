@@ -255,7 +255,7 @@
     "system_user": "管理者",
     "system_role": "ロールと権限",
     "system_github": "GitHub の設定",
-    "system_seo": "SEO と分析",
+    "system_seo": "サイトとインデックス",
     "system_agent": "Agentアクセス",
     "system_audit": "監査ログ",
     "user-center": "ユーザーセンター"
@@ -303,6 +303,11 @@
       "saved": "保存しました",
       "viewOnSite": "サイトで表示",
       "updatedBy": "更新者: {name} · {time}",
+      "owner": {
+        "admin": "管理ユーザー #{id}",
+        "agent": "Agent #{id}",
+        "system": "システム"
+      },
       "empty": "—",
       "locale": {
         "zh-CN": "中国語",
@@ -351,79 +356,17 @@
       "snapshotInfo": "カーソル {cursor} · {count} パッケージ",
       "feedbackOpen": "未対応のフィードバック",
       "viewFeedback": "フィードバック",
-      "hermes": {
-        "title": "今日のHermes",
+      "agent": {
+        "title": "今日の Agent による変更",
         "view": "ログを表示",
         "writes": "書き込み",
         "translations": "AI翻訳",
         "failures": "失敗",
         "date": "UTC日付で集計 · {date}"
       },
+      "loadFailed": "ダッシュボードを読み込めませんでした。再試行してください。",
+      "retry": "再試行",
       "refreshedAt": "60 秒ごとに自動更新 · 更新日時 {time}",
-      "seo": {
-        "title": "SEO 自動化（Hermes）",
-        "ready": "自動化の準備完了",
-        "notReady": "自動化の準備未完了",
-        "keywords": "キーワード",
-        "targets": "対象ページ",
-        "breakers": "作動中のサーキットブレーカー",
-        "healthy": "すべて正常",
-        "technical": "技術",
-        "business": "ビジネス",
-        "budget": "予算",
-        "openedAt": "開始日時",
-        "budgets": "予算使用量（UTC）",
-        "day": "日次",
-        "month": "月次",
-        "modes": "アクションモード",
-        "disabled": "無効",
-        "watermarks": "データの完全取得日",
-        "yesterday": "昨日（UTC）",
-        "count": "実行数",
-        "compensated": "補償数",
-        "action": "アクション",
-        "operation": "操作",
-        "mode": "モード",
-        "usage": "使用量",
-        "alerts": "未解決の最新アラート 5 件",
-        "noAlerts": "未解決のアラートはありません",
-        "origin": "オリジン",
-        "edge": "エッジ",
-        "lastSeen": "最終検出",
-        "noData": "データなし",
-        "noActivity": "昨日のアクションはありません",
-        "loadFailed": "SEO 概要を読み込めませんでした。再試行してください。",
-        "retry": "再試行",
-        "geo": {
-          "title": "GEO 可視性",
-          "notImported": "未インポート",
-          "unknown": "不明",
-          "planned": "計画セル",
-          "answered": "回答あり / 計画セル",
-          "searchTriggered": "検索実行 / 既知セル",
-          "mentioned": "言及 / 既知セル",
-          "candidate": "候補 / 既知セル",
-          "cited": "引用 / 引用抽出が完全な既知セル",
-          "citationComplete": "引用抽出完了 / 回答あり",
-          "reported": "報告値 · 完全性は未確認",
-          "noComparison": "完全なサンプルとの増減比較は行いません",
-          "missingFields": "欠落フィールド",
-          "details": "詳細を見る",
-          "dataTime": "データ期間",
-          "engines": "エンジン別のサンプリング状態",
-          "observations": "観測リンク",
-          "noObservations": "観測リンクはありません",
-          "loadFailed": "GEO の詳細を読み込めませんでした。再試行してください。",
-          "retry": "再試行",
-          "status": {
-            "answered": "回答あり",
-            "not_triggered": "未実行",
-            "error": "エラー",
-            "unsupported": "非対応",
-            "missing": "欠落"
-          }
-        }
-      },
       "usage": {
         "title": "利用状況",
         "hint": "匿名のインストールとブラウザーを集計し、人数ではありません。クライアントはバックグラウンド動作を含み、ウェブは表示中の訪問を集計します。プラットフォーム間の重複は除きません。国は接続元で判定し、VPNやプロキシの影響を受けます。",
@@ -517,7 +460,52 @@
           "overrideHint": "上書きはインデックスの対象判定が「適用」のときに有効です。非表示の App はインデックスされません。",
           "save": "保存する",
           "overriddenAt": "最後に上書きした日時：{time}",
-          "saveFailed": "保存できませんでした。しばらくしてから再試行してください。"
+          "saveFailed": "保存できませんでした。しばらくしてから再試行してください。",
+          "sections": {
+            "status": "インデックスの状況",
+            "intent": "意図ページ",
+            "snippet": "検索結果のタイトルと説明"
+          },
+          "intent": {
+            "hint": "代替アプリのページとアンインストールのページは、言語ごとにオンにします。ページがオンで、内容が基準を満たし、「サイトとインデックス」のマスタースイッチもオンのときだけインデックスされます。",
+            "thresholds": "内容の基準：代替アプリのページは根拠のある代替アプリが 3 件以上、アンインストールのページは Homebrew のアンインストールデータがあること。",
+            "globalOff": "「サイトとインデックス」の意図ページのマスタースイッチがオフのため、現在どの意図ページもインデックスされません。",
+            "kinds": {
+              "alternatives": "代替アプリのページ",
+              "uninstall": "アンインストールのページ"
+            },
+            "locale": "言語",
+            "enabled": "スイッチ",
+            "content": "内容の基準",
+            "indexable": "最終的なインデックス",
+            "eligible": "満たしている",
+            "ineligible": "不足",
+            "indexed": "インデックスされる",
+            "notIndexed": "インデックスされない",
+            "empty": "この App には設定できる意図ページがありません",
+            "save": "意図ページを保存",
+            "loadFailed": "意図ページを読み込めませんでした。しばらくしてから再試行してください。",
+            "saveFailed": "意図ページを保存できませんでした。しばらくしてから再試行してください。",
+            "reloaded": "保存する前に意図ページが他のユーザーによって変更されたため、最新の状態を読み込みました。変更されたスイッチは最新の値に置き換えて印を付け、それ以外のスイッチにはあなたの変更を残しています。確認してからもう一度保存してください。",
+            "changedRow": "他のユーザーが変更したため、最新の値を読み込みました"
+          },
+          "snippet": {
+            "hint": "この App の概要ページだけに使われます。空欄の項目はテンプレートのままです。タイトルの末尾には「 · OpenNavo」が自動で付きます。",
+            "overridden": "カスタム",
+            "title": "タイトル",
+            "description": "説明",
+            "titlePlaceholder": "空欄にするとテンプレートのタイトルを使います",
+            "descriptionPlaceholder": "空欄にするとテンプレートの説明を使います",
+            "markup": "HTML は使えません。< と > を削除してください。",
+            "save": "保存",
+            "clear": "カスタム設定を消去",
+            "clearConfirm": "{locale} のタイトルと説明のカスタム設定を消去しますか？概要ページはテンプレートに戻ります。",
+            "loadFailed": "タイトルと説明のカスタム設定を読み込めませんでした。しばらくしてから再試行してください。",
+            "saveFailed": "保存できませんでした。入力内容を確認するか、しばらくしてから再試行してください。",
+            "reloaded": "保存する前に内容が他のユーザーによって変更されたため、最新の版を読み込みました。この言語の変更は残してあります。もう一度保存してください。",
+            "changed": "この言語は他のユーザーによって変更されたため、最新の内容を読み込みました。",
+            "changedList": "次の言語は他のユーザーによって変更されたため、最新の内容を読み込みました：{locales}"
+          }
         },
         "facts": {
           "loadFailed": "情報を読み込めませんでした。しばらくしてから再試行してください。",
@@ -1162,6 +1150,7 @@
           "changelog": "リリースノート",
           "ops": "運用",
           "release": "デスクトップアプリ",
+          "site": "サイトとインデックス",
           "other": "その他"
         },
         "permissionLabels": {
@@ -1185,7 +1174,8 @@
           "ops_feedback_handle": "ユーザーフィードバックを処理",
           "agent_log_view": "Agent と AI のログを表示",
           "content_revision_restore": "リビジョンの復元、呼び出しの取り消し、ゴミ箱からの復元",
-          "release_desktop_notes": "デスクトップ版のリリースノートを作成"
+          "release_desktop_notes": "デスクトップ版のリリースノートを作成",
+          "site_index_view": "ページのインデックス判定とサイト設定を表示"
         }
       },
       "github": {
@@ -1209,7 +1199,7 @@
         "invalidToken": "PAT に空白文字や非 ASCII 文字を含めることはできません。また、4096 文字を超えることもできません。"
       },
       "seo": {
-        "title": "SEO と分析",
+        "title": "サイトとインデックス",
         "scope": "運用担当者が調整し、間違えてもすぐに戻せる SEO と分析の設定です。保存後およそ 1 分でサイトに反映され、キャッシュ済みのページは最長 15 分で更新されます。",
         "sections": {
           "identity": "サイト情報",
@@ -1280,7 +1270,7 @@
         "detailsRedirect": "details ページを概要へリダイレクト",
         "detailsRedirectHint": "オンにすると、概要に元の details ページの情報がすべて含まれ、その言語の概要がインデックス可能な場合に、details ページを概要へ 301 リダイレクトします。link App には details ページがありません。",
         "intentPages": "代替アプリとアンインストールのページ",
-        "intentPagesHint": "オンにすると、検索需要が確認され、根拠がそろったページだけがインデックスされます。それ以外のページは概要を canonical にします。",
+        "intentPagesHint": "サイト全体のマスタースイッチです。個々のページは、各 App の意図ページのスイッチで決まります。",
         "temporaryTitle": "一時的なスイッチ",
         "temporaryHint": "次のスイッチは段階的な公開の間だけ使い、全体が 1〜2 か月安定したら古いテンプレートやロジックと一緒に削除します。",
         "titleTemplate": "タイトルのテンプレート",
@@ -1312,7 +1302,15 @@
           "never": "まだ実行されていません",
           "indexNow": "IndexNow の結果：{status}",
           "purge": "Cloudflare の結果：{status}",
-          "error": "エラーが発生しました：{error}"
+          "error": "エラーが発生しました：{error}",
+          "pending": "通知待ち：{count} 件",
+          "pendingSince": "通知待ち：{count} 件、最も古いものは {time}",
+          "dead": "過去 30 日間に失敗して未解決の通知：{count} 件",
+          "cooldown": "{time} までページの確認を一時停止しています",
+          "overloaded": "サイトの負荷で連続して拒否された確認：{count} 回",
+          "alertTitle": "変更の通知に対応が必要です",
+          "staleAlert": "最も古い通知待ちの変更は {time} に発生し、24 時間以上待っています。",
+          "deadAlert": "過去 30 日間に失敗して未解決の通知が {count} 件あります。"
         },
         "save": "設定を保存",
         "effect": "保存後およそ 1 分で反映され、再デプロイは不要です",
@@ -1352,94 +1350,6 @@
           "now": "現在",
           "enforced": "適用後",
           "empty": "適用後にインデックスから外れる App はありません"
-        },
-        "providers": {
-          "title": "データ連携",
-          "hint": "サーバーはここの認証情報を使い、Search Console、Bing、サイト診断のデータを定期的に取得します。取得したデータは SEO の改善タスク、ページ診断、変更前後の比較に使われます。認証情報は暗号化して保存され、保存後は表示されません。",
-          "replaceHint": "認証情報はまとめて置き換わります。取得元のいずれかの項目を変更する場合は、その取得元のすべての項目を入力し直してください。下の取得元はそれぞれ個別に保存します。",
-          "loadFailed": "この取得元の状態を読み込めません。更新して再試行してください。",
-          "saveFailed": "保存されませんでした。認証情報を確認するか、しばらくしてから再試行してください。",
-          "save": "保存",
-          "enabled": "自動取得を有効にする",
-          "enabledHint": "有効にすると定期的に取得します。無効にしても取得済みのデータは削除されません。",
-          "clearCredentials": "保存済みの認証情報を削除",
-          "clearHint": "削除すると自動取得も停止します。",
-          "noProgress": "データの進捗はまだ記録されていません",
-          "progress": "{label}：{complete} まで完全、最新は {fresh}",
-          "progressNone": "{label}：データはまだありません",
-          "none": "なし",
-          "state": {
-            "enabled": "有効",
-            "disabled": "無効",
-            "configured": "認証情報あり",
-            "notConfigured": "認証情報なし"
-          },
-          "credentialTypes": {
-            "oauth": "OAuth リフレッシュトークン",
-            "service_account": "サービスアカウント",
-            "api_key": "API キー",
-            "origin": "オリジンの URL"
-          },
-          "watermarks": {
-            "gsc_page": "ページデータ",
-            "gsc_query": "検索クエリデータ",
-            "inspection": "インデックス確認",
-            "bing": "Bing の検索クエリデータ",
-            "audit": "サイト診断",
-            "edge_probe": "CDN との比較"
-          },
-          "sources": {
-            "gsc": {
-              "title": "Google Search Console との連携",
-              "hint": "6 時間ごとにページと検索クエリのデータを取得し、毎日一部の URL のインデックス状況を確認します。",
-              "mode": "ログイン方法",
-              "modes": {
-                "service_account": "サービスアカウント（推奨）",
-                "oauth": "OAuth リフレッシュトークン"
-              },
-              "property": "プロパティ",
-              "propertyHint": "ドメインプロパティは sc-domain:opennavo.com、URL プレフィックスプロパティは完全な URL を入力します。",
-              "serviceAccountJson": "サービスアカウントの JSON キー",
-              "chooseFile": "JSON ファイルを選択",
-              "pasteJson": "貼り付けに切り替え",
-              "pastePlaceholder": "サービスアカウントの JSON キーの内容をすべて貼り付けます",
-              "keyLoaded": "{email} のキーを読み込みました",
-              "keyInvalid": "このファイルは有効なサービスアカウントキーではありません",
-              "forgetKey": "削除",
-              "serviceAccountHint": "Google Cloud でサービスアカウントを作成して JSON キーをダウンロードし、Search Console でサービスアカウントのメールアドレスをユーザーに追加します（制限付きの権限で十分です）。キーは保存時にだけ送信され、このページには表示されません。",
-              "clientId": "クライアント ID",
-              "clientSecret": "クライアントシークレット",
-              "refreshToken": "リフレッシュトークン"
-            },
-            "bing": {
-              "title": "Bing ウェブマスターツール",
-              "hint": "Bing の検索クエリデータを毎日取得します。",
-              "property": "サイトの URL",
-              "apiKey": "API キー",
-              "apiKeyHint": "Bing ウェブマスターツールの「設定 › API アクセス」で生成します。"
-            },
-            "audit": {
-              "title": "サイト診断",
-              "hint": "毎時、CDN とオリジンが返すページを比較し、インデックスに影響する技術的な問題を見つけます。",
-              "originUrl": "オリジンの URL",
-              "originHint": "オリジンに直接つながる https のアドレスです。ホストのみを入力し、公開ドメインとは別にしてください。"
-            }
-          },
-          "errors": {
-            "gscProperty": "プロパティの形式が正しくありません。ドメインプロパティは sc-domain: で、URL プレフィックスプロパティは https:// で始まります。",
-            "serviceAccount": {
-              "missing": "サービスアカウントの JSON キーファイルを選択するか、内容を貼り付けてください。プロパティだけを変更する場合もキーが必要です。",
-              "invalidJson": "有効な JSON ではありません。",
-              "notServiceAccount": "サービスアカウントキーではありません（type が service_account ではありません）。",
-              "missingFields": "キーに client_email または private_key がありません。",
-              "tooLong": "キーファイルが大きすぎます。サービスアカウントの JSON キーを選んだか確認してください。"
-            },
-            "oauth": "クライアント ID、クライアントシークレット、リフレッシュトークンをすべて空白なしで入力してください。",
-            "bingProperty": "サイトの URL は https:// で始めてください。",
-            "apiKey": "API キーを空白なしで入力してください。",
-            "origin": "オリジンは https のホストのみ（パスやパラメーターなし）で、公開ドメインとは別にしてください。",
-            "credentialsRequired": "有効にする前に認証情報を入力してください。"
-          }
         },
         "errors": {
           "invalidName": "サイト名は制御文字を含まない 1〜60 文字にしてください。",
@@ -1556,7 +1466,6 @@
       "deny": "拒否",
       "error": "認可を完了できません。再試行するか、アプリから接続をやり直してください。",
       "retry": "再試行",
-      "incompatible": "自動化調整とコンテンツ・タスクの書き込み権限は同時に許可できません。",
       "grants": "接続済みアプリ",
       "empty": "認可済みアプリはありません。",
       "revoke": "アクセスを取り消す",

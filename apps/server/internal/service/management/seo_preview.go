@@ -54,14 +54,14 @@ func (s *Service) agentAffectedURLs(ctx context.Context, object string, in Input
 			for _, path := range paths {
 				add([]string{base + path})
 			}
-		case "experiment":
-			var values []string
-			if err := s.Store.DB.WithContext(ctx).Raw("SELECT u.url FROM seo_experiment_pages p JOIN seo_urls u ON u.id=p.url_id WHERE p.experiment_id=? ORDER BY u.url", in.ID).Scan(&values).Error; err != nil {
+		case "category":
+			add([]string{base + "/"})
+		case "intent_pages", "package_seo":
+			values, err := s.packagePageURLs(ctx, object, in)
+			if err != nil {
 				return nil, err
 			}
 			add(values)
-		case "category":
-			add([]string{base + "/"})
 		}
 	}
 	return urls, nil

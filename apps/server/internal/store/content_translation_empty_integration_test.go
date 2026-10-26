@@ -29,11 +29,13 @@ func TestEmptySourceRemovesPublishedTranslations(t *testing.T) {
 	var count int64
 	require.NoError(t, st.DB.Table("article_author_i18n").Where("author_id=991 AND locale<>'en-US'").Count(&count).Error)
 	require.Zero(t, count)
-	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='article_author:991' AND state IN ('open','leased','deferred')").Count(&count).Error)
-	require.Zero(t, count)
 	schedule()
 	require.NoError(t, st.DB.Exec(`UPDATE article_author_i18n SET bio='New biography' WHERE author_id=991 AND locale='en-US'`).Error)
 	schedule()
-	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='article_author:991' AND state='open'").Count(&count).Error)
-	require.Positive(t, count)
+	source, err := st.ReadContentSource(ctx, content.Ref{Entity: "article_author", ID: 991})
+	require.NoError(t, err)
+	require.Contains(t, source.Targets, "zh-CN", "a new source needs its translations again")
+	var recorded string
+	require.NoError(t, st.DB.Raw("SELECT source_hash FROM content_translation_sources WHERE entity='article_author' AND object_key='991'").Scan(&recorded).Error)
+	require.Equal(t, source.Hash, recorded)
 }

@@ -1,6 +1,6 @@
 # OpenNavo MCP
 
-Python 3.13 + uv, using FastMCP 4.0.x. The 115 tools and 10 resources adapt only the internal `/agent-api`.
+Python 3.13 + uv, using FastMCP 4.0.x. The 102 tools and 9 resources adapt only the internal `/agent-api`.
 
 Run `uv sync --locked` in this directory. From the repository root, run `make gen-mcp lint-mcp test-mcp build-mcp` to generate and check artifacts. `make gen` and `make lint test` also include MCP. The authoritative tool manifest is `src/opennavo_mcp/tools/manifest.py`.
 
@@ -15,11 +15,39 @@ Production Compose/Caddy integration is provided. Exercise deployment boundaries
 Article management covers all 16 exposed article and author operations. Grant `content:article:edit` for drafts, optional review submission, draft revision reversion and author lookup; grant `content:article:publish` separately for publication, withdrawal/restoration, reverting to a published revision, slug and language visibility changes, and author creation/updates. Article mutations accept optional `expected_revision` checks and support `dry_run`. Existing token permissions remain unchanged and must be explicitly updated to grant publication access.
 
 
-Business writes apply directly after token authorization. Tasks, fencing, evidence, SEO
-proposal/action switches, shared entity quotas and breakers are not prerequisites. Previews
-(`dry_run`), retry keys (`idempotency_key`) and revision checks (`expected_revision`) are optional.
-The same applies to translations of all entities, keyword writes and asset uploads. Explicit
-translation edits may replace manual text; provenance and revision history are retained.
+Business writes apply directly after token authorization. Previews (`dry_run`) are optional.
+Agents should send a retry key (`idempotency_key`, forwarded as `Idempotency-Key`; reuse it only
+for the identical request) and the revision they read (`expected_revision`, forwarded as
+`X-Expected-Revision`) with each write; no other execution metadata exists. Batch translations
+carry the same checks per language in the body. Explicit translation edits may replace manual
+text; provenance and revision history are retained.
+
+Failed calls return an MCP error result whose `structuredContent.error` holds `code`, `message`,
+`reason` and `detail`, plus `currentRevision` for revision conflicts. Known codes forward only
+rule-shaped reasons (`rejected: <reason>[:<detail>]`, such as `revision_conflict:<n>`,
+`idempotency_key_reused`, `batch_too_large:<n>` or `tap_*`; a detail may join several parts with
+colons, as in `derived_locale_read_only:zh-Hant:zh-CN`) and drop other backend text.
+Unrecognized four-digit codes keep their code with a cleaned one-line message of at most 300
+characters. MCP's own permission checks answer 1004 with the server's reasons:
+`permission_required:<permission>`, `delete_not_allowed` or `operation_not_exposed`.
+
+`package_get` takes `locale` (language of summaries and related names such as categories),
+`fields` (top-level keys; `id`, `token` and `revision` always come back when the detail is read)
+and `locales` (languages kept in `i18n`, localized maps and screenshot captions). Requesting only
+`facts`, `translations` or `screenshots` skips the detail read. A reply over 32 KB leaves whole
+values out, largest first, and lists each in `omitted` with its path, character count, sha256 (of
+the UTF-8 text, or of a non-string value's compact JSON) and the `read` call that returns it whole:
+`package_text_get` for an i18n text or `raw`, or `field=json` with the supplied `path` for
+other values. It never carries half a value. `package_text_get` reads in parts (`offset`,
+`limit` up to 16000 characters and about 30 KB per part). Add each returned `length` to
+`offset` until reaching `total`, join the values and verify the whole text's sha256.
+For `field=json`, parse the joined JSON to recover the value. Even a single language of
+hundreds of screenshot captions can be read this way. If the digest changes between parts,
+restart the read; parts from different versions must not be joined.
+
+SEO work runs outside the server: OpenSEO finds problems and measures results, an agent plans,
+and these tools change site content (`opennavo://guide/seo-routine`). Template and technical
+problems go to people, not through MCP.
 
 For arbitrary apps, search first, then call `link_app_add` with `token`, `name` and at least one
 of `homepage`, `download_url`, or `github_repo`. Complete metadata with `package_set_text`,
@@ -31,13 +59,8 @@ Listing a link app does not guarantee a one-click installer or a usable update f
 
 For an optional concurrency check on `link_app_update` or `link_app_remove`, send the
 Link app's `revision` from `link_apps_list` as `expected_revision`. This counter also tracks
-admin and candidate publication edits; it is separate from package content revisions.
-Task traces expose it under `revisions["link:<package ID>"]`.
+admin edits; it is separate from package content revisions.
 
-`seo_listing_upsert` remains an optional candidate workspace and can publish without evidence,
-identity baselines or complete editorial metadata. Apply migration **00098** with the backend:
-it adds Link edit revisions, removes candidate download/identity triggers and preserves exact keyword variants as separate
-observations. Previously collapsed keyword variants must be reimported from their source.
 Deploy the API and MCP generated contract together; source changes do not update a running service.
 
 ## OAuth connections
@@ -72,8 +95,7 @@ response includes `iss`. Duplicate parameters are rejected.
 Users log into the existing admin UI and explicitly select permissions on
 `/oauth-consent`. Only read permissions start selected; deletion is separately opt-in.
 The user's current permissions, requested scopes, grant scopes and existing Agent role
-permissions all constrain access. The existing automation-tuning/write separation also
-applies. OAuth clients and Agent identities have separate IDs; each consent creates a
+permissions all constrain access. OAuth clients and Agent identities have separate IDs; each consent creates a
 separate Agent identity for attribution, quotas and administrative disabling.
 
 Authorization codes expire after 5 minutes and are single-use. Access tokens expire

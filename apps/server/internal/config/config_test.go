@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 )
 
 func validConfig() Config {
-	return Config{AppEnv: "dev", PublicBaseURL: "http://localhost:8080", WebBaseURL: "http://localhost:3000", AdminOrigin: "http://localhost:9527", DatabaseURL: "postgres://localhost:55432/opennavo", RedisURL: "redis://localhost:56379", CDNBaseURL: "http://localhost:9000/opennavo", HomebrewAPIBase: "https://formulae.brew.sh/api", JWTSecret: strings.Repeat("x", 32), DBMaxOpenConns: 30, JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 168 * time.Hour, TZSchedule: "Asia/Shanghai", LogLevel: "info"}
+	return Config{AppEnv: "dev", PublicBaseURL: "http://localhost:8080", WebBaseURL: "http://localhost:3000", AdminOrigin: "http://localhost:9527", DatabaseURL: "postgres://localhost:55432/opennavo", RedisURL: "redis://localhost:56379", CDNBaseURL: "http://localhost:9000/opennavo", HomebrewAPIBase: "https://formulae.brew.sh/api", JWTSecret: strings.Repeat("x", 32), DBMaxOpenConns: 30, JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 168 * time.Hour, TZSchedule: "Asia/Shanghai", LogLevel: "info", TraditionalObjectsPerSecond: 20, TraditionalWritesPerMinute: 30}
 }
 func TestConfigurationValidation(t *testing.T) {
 	cases := []struct {
@@ -27,6 +28,8 @@ func TestConfigurationValidation(t *testing.T) {
 		{"prod", func(c *Config) { c.AppEnv = "prod" }},
 		{"duration", func(c *Config) { c.JWTAccessTTL = 0 }}, {"url", func(c *Config) { c.CDNBaseURL = "file:///tmp" }},
 		{"timezone", func(c *Config) { c.TZSchedule = "bad-zone" }}, {"log", func(c *Config) { c.LogLevel = "verbose" }},
+		{"traditional objects", func(c *Config) { c.TraditionalObjectsPerSecond = 0 }},
+		{"traditional writes", func(c *Config) { c.TraditionalWritesPerMinute = math.NaN() }},
 	}
 	cfg := validConfig()
 	if err := cfg.Validate(); err != nil {

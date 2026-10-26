@@ -1,0 +1,53 @@
+{
+  "about": "Single Traditional Chinese strings whose wording depends on context the converter cannot see. Each entry keeps the Simplified source it was written for; when that source changes the check fails until the entry is updated or removed.",
+  "apps/desktop/src/i18n/zh-Hant.json": [
+    {
+      "key": [
+        "firewall",
+        "activity",
+        "ruled",
+        "allowDestination"
+      ],
+      "source": "已允许「{name}」连接 {destination}",
+      "text": "已允許「{name}」連線到 {destination}",
+      "why": "連線 needs 到 before a destination"
+    },
+    {
+      "key": [
+        "firewall",
+        "activity",
+        "ruled",
+        "blockDestination"
+      ],
+      "source": "已阻止「{name}」连接 {destination}",
+      "text": "已阻止「{name}」連線到 {destination}",
+      "why": "連線 needs 到 before a destination"
+    },
+    {
+      "key": [
+        "package",
+        "release",
+        "sourceInfo",
+        "github_release",
+        "body"
+      ],
+      "source": "项目在 GitHub 发布的版本说明与发布时间",
+      "text": "專案在 GitHub 釋出的版本說明與釋出時間",
+      "why": "项目 is the project here; the English source does not say so"
+    }
+  ],
+  "apps/web/i18n/locales/zh-Hant.json": [
+    {
+      "key": [
+        "package",
+        "release",
+        "sourceInfo",
+        "github_release",
+        "body"
+      ],
+      "source": "项目在 GitHub 发布的版本说明与发布时间",
+      "text": "專案在 GitHub 釋出的版本說明與釋出時間",
+      "why": "项目 is the project here; the English source does not say so"
+    }
+  ]
+}

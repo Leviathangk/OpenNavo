@@ -2,6 +2,8 @@ package domain
 
 import (
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/i18n"
 )
@@ -28,6 +30,28 @@ func Validation() *AppError {
 // "._-[]" only). Never put user-supplied values in either part.
 func Rejected(reason string) *AppError {
 	return &AppError{Code: CodeValidation, HTTPStatus: http.StatusBadRequest, Msg: "rejected: " + reason}
+}
+
+var detailPattern = regexp.MustCompile(`^[A-Za-z0-9_.@+/-]{1,64}$`)
+
+// RejectedDetail is Rejected with details taken from the request, such as an
+// unknown field name. Details are joined with ":"; the first one outside the
+// safe alphabet ends the list, so caller input is never echoed raw.
+func RejectedDetail(reason string, details ...string) *AppError {
+	for _, detail := range details {
+		if !detailPattern.MatchString(detail) || strings.Contains(detail, "//") {
+			break
+		}
+		reason += ":" + detail
+	}
+	return Rejected(reason)
+}
+
+// Forbidden keeps the forbidden code and the caller's HTTP status and names the
+// refusal: permission_required:<permission>, delete_not_allowed or
+// operation_not_exposed.
+func Forbidden(status int, reason string) *AppError {
+	return &AppError{Code: CodeForbidden, HTTPStatus: status, Msg: "rejected: " + reason}
 }
 
 func Message(code, locale string) string {

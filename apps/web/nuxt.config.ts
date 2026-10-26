@@ -89,7 +89,10 @@ export default defineNuxtConfig({
       extremeInFlight: 64,
       lowLagMs: 50,
       mediumLagMs: 200,
-      extremeLagMs: 1000
+      extremeLagMs: 1000,
+      // Per AI training crawler (gptbot, claudebot, amazonbot…): requests a minute and burst, then 429.
+      crawlerPerMinute: 6,
+      crawlerBurst: 12
     },
     public: {
       apiBase: 'http://localhost:8080/api/v1',
@@ -239,8 +242,10 @@ export default defineNuxtConfig({
       '/browse/**': { swr: 900 },
       '/background-items': { swr: 900 },
       '/background-items/**': { swr: 900 },
-      // Also the per-app release feeds (F6) at /apps/{token}/feed.xml.
-      '/apps/**': { swr: 600 },
+      // Also the per-app release feeds (F6) at /apps/{token}/feed.xml. An app's changes drop its pages
+      // by prefix (internal-server /cache/invalidate), and every web build caches under its own Redis
+      // namespace (cache-storage.ts), so six hours never serves the previous build's HTML.
+      '/apps/**': { swr: 21600 },
       // X5: collections are cached like other lists; editing one purges its pages by prefix (S6 outbox,
       // BE-1), and error responses are never cached (route-cache-errors.ts, error-cache-control.ts).
       '/collections': { swr: 300 },

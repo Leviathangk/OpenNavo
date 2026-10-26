@@ -1,12 +1,10 @@
 // Page titles and descriptions (WP1), pure for testing. Titles keep the full software name and state
 // the intent the page serves; they never add "best" or years, and only claim a download
 // when Homebrew can still install the package. Descriptions say what the page answers instead of
-// stacking summary, command, version and install counts. H3 alone may add "free", with verified evidence.
-import type { PublicComponents } from '@opennavo/api';
+// stacking summary, command, version and install counts.
 import { disabledByHomebrew, formatVersion, type HomebrewLifecycle } from '@opennavo/shared';
 import {
   capabilities,
-  currentVersion,
   shownRequirements,
   uninstallFacts,
   verifiedAlternatives,
@@ -250,51 +248,43 @@ export interface OverviewFacts {
   token?: string;
 }
 
-export type SeoExperimentAssignment = PublicComponents['schemas']['SeoExperimentAssignment'];
-
-/** Optional experiment labels yield to the full name and the original title when space is tight. */
-export const TITLE_WIDTH = 60;
-
 function hasUninstallFacts(pkg: OverviewFacts): boolean {
   return [...uninstallFacts(pkg, 'uninstall'), ...uninstallFacts(pkg, 'zap')].some(item => item.value.trim());
 }
 
-/** The server assigns pages, and the renderer verifies that this page can still support the wording. */
-function overviewVariant(pkg: OverviewFacts, assignment?: SeoExperimentAssignment | null) {
-  if (assignment?.arm !== 'treatment' || !assignment.eligible) return null;
-  switch (assignment.variant) {
-    case 'verified_free':
-      return verifiedPrices(pkg).some(price => price.usage === 'free') ? assignment.variant : null;
-    case 'current_version':
-      return reliableVersion(currentVersion(pkg)) ? assignment.variant : null;
-    case 'uninstall_alternatives':
-      return capabilities(pkg).uninstall && hasUninstallFacts(pkg) && verifiedAlternatives(pkg).length
-        ? assignment.variant
-        : null;
-    default:
-      return null;
-  }
-}
-
-export function overviewTitle(pkg: OverviewFacts, t: Translate, assignment?: SeoExperimentAssignment | null): string {
-  const name = titleName(pkg.displayName);
+export function overviewTitle(pkg: OverviewFacts, t: Translate): string {
   // Names such as "FiraCode Nerd Font" already say they are fonts.
   const key = disabledByHomebrew(pkg)
     ? 'package.seo.titleUnavailable'
     : pkg.isFont && !/\bfonts?\b|字体/iu.test(pkg.displayName)
       ? 'package.seo.titleFont'
       : 'package.seo.titleApp';
-  const control = withName(t, key, name);
-  const variant = overviewVariant(pkg, assignment);
-  const label =
-    variant === 'verified_free'
-      ? t('package.link.pricing.free')
-      : variant === 'current_version'
-        ? reliableVersion(currentVersion(pkg))
-        : '';
-  if (!label) return control;
-  const treatment = withName(t, key, `${name} ${label}`);
-  return textWidth(treatment) <= TITLE_WIDTH ? treatment : control;
+  return withName(t, key, titleName(pkg.displayName));
+}
+
+/** An overview's own search title and description in the page's language, set by editors or agents. */
+export interface SeoOverride {
+  title?: string | null;
+  description?: string | null;
+}
+
+type OverrideFacts = Parameters<typeof disabledByHomebrew>[0] & { seoOverride?: SeoOverride | null };
+
+/**
+ * The overview title from the override, branded once like an article's search title; undefined leaves
+ * the template in charge. An override may promise a download, so an app Homebrew has disabled always keeps
+ * the template's wording. Only the overview reads overrides: its other tabs keep their templates.
+ */
+export function overrideTitle(pkg: OverrideFacts): string | undefined {
+  const title = pkg.seoOverride?.title?.trim();
+  if (!title || disabledByHomebrew(pkg)) return undefined;
+  return title.endsWith(TITLE_SUFFIX) ? title : `${title}${TITLE_SUFFIX}`;
+}
+
+/** The overview description from the override; undefined leaves the template in charge, as for the title. */
+export function overrideDescription(pkg: OverrideFacts): string | undefined {
+  if (disabledByHomebrew(pkg)) return undefined;
+  return pkg.seoOverride?.description?.trim() || undefined;
 }
 
 /**
@@ -325,32 +315,20 @@ function overviewSentence(
  * Give an app summary the full description budget: it is never shortened for the generic
  * section sentence, which follows only when it fits completely after the whole summary.
  * Without a useful summary, name only sections the overview renders and drop whole list
- * items when needed. H3 puts uninstall and alternatives first and keeps both together.
- * A variant cask often has its main app's summary as well, so its description keeps the
- * sentence with its name and shortens the summary instead.
+ * items when needed. A variant cask often has its main app's summary as well, so its
+ * description keeps the sentence with its name and shortens the summary instead.
  */
-export function overviewDescription(
-  pkg: OverviewFacts,
-  t: Translate,
-  list: ListFormat,
-  assignment?: SeoExperimentAssignment | null
-): string {
+export function overviewDescription(pkg: OverviewFacts, t: Translate, list: ListFormat): string {
   // Preserve the existing distribution/lifecycle branches.
   if (disabledByHomebrew(pkg)) return overviewSentence(pkg, t, 'package.seo.descriptionUnavailable');
-  if (!usableSummary(pkg.summary, pkg.displayName)) return sectionDescription(pkg, t, list, assignment);
-  const whole = sectionDescription(pkg, t, list, assignment, true);
+  if (!usableSummary(pkg.summary, pkg.displayName)) return sectionDescription(pkg, t, list);
+  const whole = sectionDescription(pkg, t, list, true);
   if (whole) return whole;
-  if (variantLabel(pkg.token ?? '')) return sectionDescription(pkg, t, list, assignment);
+  if (variantLabel(pkg.token ?? '')) return sectionDescription(pkg, t, list);
   return fitSummary(pkg.summary!.trim(), DESCRIPTION_WIDTH);
 }
 
-function sectionDescription(
-  pkg: OverviewFacts,
-  t: Translate,
-  list: ListFormat,
-  assignment: SeoExperimentAssignment | null | undefined,
-  whole = false
-): string {
+function sectionDescription(pkg: OverviewFacts, t: Translate, list: ListFormat, whole = false): string {
   if (pkg.kind === 'link') return overviewSentence(pkg, t, 'package.seo.descriptionLink', {}, whole);
   const can = capabilities(pkg);
   const available = {
@@ -362,13 +340,10 @@ function sectionDescription(
     versions: Boolean(pkg.latestRelease)
   };
   type Part = keyof typeof available;
-  const treatment = overviewVariant(pkg, assignment) === 'uninstall_alternatives';
-  const priority: Part[] = treatment
-    ? ['uninstall', 'alternatives', 'installation', 'price', 'requirements', 'versions']
-    : ['installation', 'price', 'requirements', 'uninstall', 'alternatives', 'versions'];
+  const priority: Part[] = ['installation', 'price', 'requirements', 'uninstall', 'alternatives', 'versions'];
   const parts = priority.filter(part => available[part]).map(part => t(`package.seo.overviewParts.${part}`));
   if (!parts.length) return overviewSentence(pkg, t, 'package.seo.descriptionOverview', {}, whole);
-  while (parts.length > (treatment ? 2 : 1)) {
+  while (parts.length > 1) {
     const closing = withName(t, 'package.seo.descriptionFactsNoSummary', pkg.displayName, { parts: list(parts) });
     if (textWidth(closing) <= DESCRIPTION_WIDTH) break;
     parts.pop();

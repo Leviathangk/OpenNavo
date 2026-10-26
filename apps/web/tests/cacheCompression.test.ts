@@ -74,12 +74,12 @@ describe('compressed bounded page cache', () => {
     const cache = boundedCache(inner);
     const cases = [
       [60.9, 60],
-      [0, 3600],
-      [-1, 3600],
-      [NaN, 3600],
-      [Infinity, 3600],
-      [undefined, 3600],
-      [86400, 3600]
+      [0, 86400],
+      [-1, 86400],
+      [NaN, 86400],
+      [Infinity, 86400],
+      [undefined, 86400],
+      [172800, 86400]
     ];
     for (const [ttl, expected] of cases) {
       await cache.setItem!('nitro:routes:page', page, { ttl, marker: 'kept' });

@@ -13,6 +13,10 @@ import {
   countResponse
 } from '../server/utils/crawlerMetrics';
 
+/** A made-up user agent in the format Amazon documents for its crawlers. */
+const AMAZON = (product: string, link: string) =>
+  `Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ${product}; +${link}) Chrome/120.0.0.0 Safari/537.36`;
+
 describe('crawler request counters', () => {
   it('Separates search, user-requested and training crawlers', () => {
     const cases: [string | undefined, string][] = [
@@ -35,6 +39,10 @@ describe('crawler request counters', () => {
       ['MistralAI-Index/1.0', 'mistral_index'],
       ['MistralAI-User/1.0', 'mistral_user'],
       ['MistralAI-Training/1.0', 'mistral_training'],
+      // Amazon's documented format: the search and user-triggered fetchers link a page under /amazonbot.
+      [AMAZON('Amzn-SearchBot/0.1', 'https://developer.amazon.com/amazonbot'), 'amzn_searchbot'],
+      [AMAZON('Amzn-User/0.1', 'https://developer.amazon.com/amazonbot'), 'amzn_user'],
+      [AMAZON('Amazonbot/0.1', 'https://developer.amazon.com/support/amazonbot'), 'amazonbot'],
       ['BingPreview/1.0', 'bing_preview'],
       ['msnbot/1.0', 'bingbot'],
       ['Google-InspectionTool/1.0', 'google_other'],

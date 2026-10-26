@@ -15,7 +15,8 @@ import (
 )
 
 func TestPublicationRollbackPreservesEvidence(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	// 00110 archives the listing tables; check their rollback guard where they still live.
+	st := testutil.NewSEOStoreAtVersion(t, 109)
 	refuse := func(name, message string) {
 		raw, err := migrations.Files.ReadFile(name)
 		require.NoError(t, err)

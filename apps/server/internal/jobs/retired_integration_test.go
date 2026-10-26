@@ -19,7 +19,7 @@ func TestRetiredBacklogAcknowledgedWithoutLedgerOrLLM(t *testing.T) {
 	client := asynq.NewClientFromRedisClient(st.Redis)
 	inspector := asynq.NewInspectorFromRedisClient(st.Redis)
 	var taskIDs []string
-	for _, kind := range []string{"enrich:package", "enrich:schedule", "enrich:old-subtype", "translate:release", "translate:schedule", "assets:icons"} {
+	for _, kind := range []string{"enrich:package", "enrich:schedule", "enrich:old-subtype", "translate:release", "translate:schedule", "assets:icons", "seo:gsc", "seo:inspect", "seo:bing", "seo:audit", "seo:opportunities", "seo:evaluate", "seo:experiments"} {
 		info, err := client.EnqueueContext(ctx, asynq.NewTask(kind, []byte("legacy invalid payload")), asynq.Queue("llm"), asynq.Retention(time.Hour))
 		require.NoError(t, err)
 		taskIDs = append(taskIDs, info.ID)

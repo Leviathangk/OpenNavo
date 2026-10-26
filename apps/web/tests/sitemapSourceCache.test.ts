@@ -407,4 +407,27 @@ describe('sitemap source snapshot cache', () => {
     const versionUrls = (await Promise.all(versions.map(({ _sitemapName: name }) => bucket(name)))).flat();
     expect(versionUrls.map(entry => entry.loc)).toEqual(['/apps/dated-app/versions']);
   });
+
+  it('lists indexable background item labels without the date their description was last checked', async () => {
+    const { bucket, fetch } = await setup([]);
+    const label = (indexable: boolean) => ({
+      label: 'com.example.helper',
+      indexable,
+      content: { evidence: { checkedAt: '2026-10-20T08:00:00Z', status: 'verified' } }
+    });
+    const base = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (url, options) => {
+      if (!url.endsWith('/background-items')) return base(url, options);
+      const { locale } = (options as unknown as { query: { locale: string } }).query;
+      const records = ['en-US', 'zh-CN'].includes(locale) ? [label(true)] : [label(false)];
+      return { data: { total: records.length, records } };
+    });
+    const urls = (await bucket('background-items')) as { loc: string; lastmod?: string }[];
+    expect(urls.map(url => url.loc)).toEqual([
+      '/background-items/com.example.helper',
+      '/zh/background-items/com.example.helper'
+    ]);
+    // A re-check would move checkedAt without any change to the page, so the group carries no lastmod.
+    expect(urls.some(url => 'lastmod' in url)).toBe(false);
+  });
 });

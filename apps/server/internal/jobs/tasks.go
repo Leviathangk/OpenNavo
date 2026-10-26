@@ -33,13 +33,6 @@ var Definitions = []Definition{
 	{Type: "update-feeds:verify", Queue: "default", Cron: "15 2 * * *", Retries: 1},
 	{Type: "links:sync", Queue: "default", Cron: "40 * * * *", Retries: 1, Ref: "package"},
 	{Type: "taps:sync", Queue: "default", Cron: "20,50 * * * *", Retries: 1, Ref: "package"},
-	{Type: "seo:gsc", Queue: "default", Cron: "10 */6 * * *", Retries: 3},
-	{Type: "seo:inspect", Queue: "default", Cron: "30 3 * * *", Retries: 1},
-	{Type: "seo:bing", Queue: "default", Cron: "40 4 * * *", Retries: 2},
-	{Type: "seo:audit", Queue: "default", Cron: "15 * * * *", Retries: 1},
-	{Type: "seo:opportunities", Queue: "default", Cron: "*/5 * * * *", Retries: 1},
-	{Type: "seo:evaluate", Queue: "default", Cron: "*/15 * * * *", Retries: 1},
-	{Type: "seo:experiments", Queue: "default", Cron: "30 9 * * *", Retries: 1},
 }
 
 type Payload struct {

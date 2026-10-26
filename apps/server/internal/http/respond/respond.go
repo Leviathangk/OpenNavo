@@ -42,9 +42,10 @@ func Error(c *gin.Context, err error, admin bool) {
 	}
 	msg := appErr.Msg
 	// Both Agent API and admin JWT handlers use admin=true (HTTP 200 envelopes).
-	// Preserve machine-readable reasons for MCP, while keeping the admin UI localized.
-	if admin && !strings.HasPrefix(c.Request.URL.Path, "/agent-api/") && strings.HasPrefix(msg, "rejected: ") {
-		msg = domain.Message(appErr.Code, Locale(c))
+	// Preserve machine-readable reasons for MCP. The admin UI gets the localized
+	// message with the reason appended, so editors still see what was rejected.
+	if reason, ok := strings.CutPrefix(msg, "rejected: "); ok && admin && !strings.HasPrefix(c.Request.URL.Path, "/agent-api/") {
+		msg = domain.Message(appErr.Code, Locale(c)) + " (" + reason + ")"
 	}
 	if msg == "" {
 		msg = domain.Message(appErr.Code, Locale(c))

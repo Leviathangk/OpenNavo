@@ -76,7 +76,7 @@ func TestHermesAgentSeedExactlyMatchesGrantableContract(t *testing.T) {
 			}
 		}
 	}
-	require.Len(t, granted, 28)
+	require.Len(t, granted, 24)
 	require.ElementsMatch(t, spec.Components.Schemas["AgentPermission"].Value.Enum, granted)
 	require.ElementsMatch(t, granted, agent.Grantable, "runtime grants must match the contract and seed")
 }
@@ -105,8 +105,12 @@ func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, policies, 136)
+	// 113 routes plus BE-B's page decision, site index settings, intent page and app SEO routes.
+	require.Len(t, policies, 121)
 	require.Contains(t, policies, "POST /introspect")
+	for _, retired := range []string{"POST /seo/tasks/claim", "GET /seo/tasks/:id", "POST /seo/evidence", "GET /seo/automation", "POST /seo/tasks/import", "POST /seo/geo", "GET /seo/keywords", "GET /seo/overview", "PUT /seo/listings/:token"} {
+		require.NotContains(t, policies, retired)
+	}
 	require.NotContains(t, policies, "GET /dashboard/llm-usage")
 	require.NotContains(t, policies, "POST /translations/retranslate")
 	require.Equal(t, []string{"catalog:asset:upload"}, policies["POST /assets/upload-tickets"].Permissions)

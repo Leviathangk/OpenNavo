@@ -33,14 +33,13 @@ import {
 } from '../src/views/system/seo/modules/validate';
 
 const api = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
-// The data-provider card (system:seo:edit) has its own tests in seo-providers.test.ts.
-vi.mock('@/hooks/business/auth', () => ({ useAuth: () => ({ hasAuth: () => false }) }));
 vi.mock('@/service/api', () => ({
   fetchSeoSettings: api.load,
   updateSeoSettings: api.save,
   fetchIndexReport: vi.fn()
 }));
 vi.mock('@/locales', () => ({ $t: (key: string) => key }));
+vi.mock('@/store/modules/app', () => ({ useAppStore: () => ({ locale: 'en-US' }) }));
 
 function settings() {
   return {
@@ -68,6 +67,22 @@ function settings() {
   };
 }
 
+function changeFeed(overrides: Record<string, unknown> = {}) {
+  return {
+    lastRunAt: null,
+    lastUrls: 0,
+    lastIndexnowStatus: '',
+    lastPurgeStatus: '',
+    lastError: '',
+    pendingAnnouncements: 0,
+    oldestPendingAt: null,
+    deadAnnouncements: 0,
+    probeCooldownUntil: null,
+    overloadedProbes: 0,
+    ...overrides
+  };
+}
+
 function response(overrides: Record<string, unknown> = {}, value = settings()) {
   return {
     data: {
@@ -77,7 +92,7 @@ function response(overrides: Record<string, unknown> = {}, value = settings()) {
       updatedAt: '2026-10-13T08:00:00Z',
       revision: 3,
       siteUrl: 'https://opennavo.example',
-      changeFeed: { lastRunAt: null, lastUrls: 0, lastIndexnowStatus: '', lastPurgeStatus: '', lastError: '' },
+      changeFeed: changeFeed(),
       ...overrides
     },
     error: undefined
@@ -154,6 +169,15 @@ describe('SEO settings page', () => {
     expect(preview).toContain('User-agent: ClaudeBot\nCrawl-delay: 10');
     expect(preview).toContain('Sitemap: https://opennavo.example/sitemap_index.xml');
     expect(button(wrapper, 'page.system.seo.save').attributes('disabled')).toBeDefined();
+    // Rate-limited crawlers skip the languages closed for indexing, as the web server's robots.txt does.
+    expect(preview).toContain('Disallow: /de/\nDisallow: /fr/\nDisallow: /it/\nDisallow: /zh-hant/');
+    expect(preview).not.toMatch(/^Disallow: \/pt\/$/m);
+    // Opening a language in the form updates the preview before anything is saved.
+    await wrapper
+      .findAll('.n-checkbox')
+      .find(node => node.text() === 'Deutsch')!
+      .trigger('click');
+    expect(wrapper.find('[data-testid="robots-preview"]').text()).not.toMatch(/^Disallow: \/de\/$/m);
     wrapper.unmount();
   });
 
@@ -186,6 +210,19 @@ describe('SEO settings page', () => {
     expect(api.save).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('page.system.seo.errors.lockedBot');
     wrapper.unmount();
+
+    // Neither can the blocked class take one.
+    const blocked = settings();
+    blocked.crawlers.seoTools.bots = ['MJ12bot', 'Amzn-User'];
+    api.load.mockResolvedValueOnce(response({}, blocked));
+    const amazon = page();
+    await flushPromises();
+    await keyInput(amazon).setValue('fixture-indexnow-key-0001');
+    await button(amazon, 'page.system.seo.save').trigger('click');
+    await flushPromises();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(amazon.text()).toContain('page.system.seo.errors.lockedBot');
+    amazon.unmount();
 
     const enabled = settings();
     enabled.indexNow.enabled = true;
@@ -230,6 +267,48 @@ describe('SEO settings page', () => {
     second.unmount();
   });
 
+  it('Shows the change feed backlog quietly while it moves', async () => {
+    const recent = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    api.load.mockResolvedValueOnce(
+      response({ changeFeed: changeFeed({ pendingAnnouncements: 3, oldestPendingAt: recent }) })
+    );
+    const wrapper = page();
+    await flushPromises();
+    const feed = wrapper.get('[data-testid="change-feed"]');
+    expect(feed.get('[data-testid="change-feed-pending"]').text()).toBe('page.system.seo.changeFeed.pendingSince');
+    expect(feed.text()).toContain('page.system.seo.changeFeed.dead');
+    expect(feed.text()).toContain('page.system.seo.changeFeed.overloaded');
+    expect(feed.find('[data-testid="change-feed-cooldown"]').exists()).toBe(false);
+    expect(feed.find('[data-testid="change-feed-alert"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('Warns when a change has waited over a day or announcements died, and shows a probe cooldown', async () => {
+    const stale = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    for (const [overrides, alerts] of [
+      [{ pendingAnnouncements: 1, oldestPendingAt: stale }, ['staleAlert']],
+      [{ deadAnnouncements: 2 }, ['deadAlert']],
+      [{ pendingAnnouncements: 4, oldestPendingAt: stale, deadAnnouncements: 1 }, ['staleAlert', 'deadAlert']]
+    ] as const) {
+      api.load.mockResolvedValueOnce(
+        response({ changeFeed: changeFeed({ ...overrides, probeCooldownUntil: '2026-10-26T09:00:00Z' }) })
+      );
+      const wrapper = page();
+      await flushPromises();
+      const alert = wrapper.get('[data-testid="change-feed-alert"]');
+      expect(alert.text()).toContain('page.system.seo.changeFeed.alertTitle');
+      for (const key of ['staleAlert', 'deadAlert'])
+        expect(alert.text().includes(`page.system.seo.changeFeed.${key}`), key).toBe(
+          (alerts as readonly string[]).includes(key)
+        );
+      expect(wrapper.find('[data-testid="change-feed-cooldown"]').text()).toBe('page.system.seo.changeFeed.cooldown');
+      expect(wrapper.get('[data-testid="change-feed-pending"]').text()).toBe(
+        overrides.oldestPendingAt ? 'page.system.seo.changeFeed.pendingSince' : 'page.system.seo.changeFeed.pending'
+      );
+      wrapper.unmount();
+    }
+  });
+
   it('Hides the form on load failure until refresh succeeds', async () => {
     api.load.mockResolvedValueOnce({ data: null, error: new Error('offline') });
     const wrapper = page();
@@ -248,6 +327,9 @@ describe('SEO settings validation helpers', () => {
   it('Keeps search crawlers out and rejects duplicates across classes', () => {
     expect(botProblem(['GPTBot', 'CCBot'], ['MJ12bot'])).toBeNull();
     expect(botProblem(['bingbot'], [])).toEqual({ key: 'lockedBot', bot: 'bingbot' });
+    // Amazon's search and user-triggered fetchers stay on the default group like OpenAI's.
+    expect(botProblem(['Amzn-SearchBot'], [])).toEqual({ key: 'lockedBot', bot: 'Amzn-SearchBot' });
+    expect(botProblem(['GPTBot', 'amzn-user'], [])).toEqual({ key: 'lockedBot', bot: 'amzn-user' });
     expect(botProblem(['*'], [])).toEqual({ key: 'lockedBot', bot: '*' });
     expect(botProblem(['GPTBot', 'gptbot'], [])).toEqual({ key: 'invalidBot', bot: 'gptbot' });
     expect(botProblem(['Bad Bot'], [])).toEqual({ key: 'invalidBot', bot: 'Bad Bot' });

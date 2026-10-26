@@ -58,7 +58,7 @@ func (s *Store) ValidateUpdateFeedPackage(ctx context.Context, input domain.Upda
 		return err
 	}
 	if count != 1 {
-		return domain.Validation()
+		return domain.Rejected("package_not_found")
 	}
 	return nil
 }
@@ -70,7 +70,7 @@ func (s *Store) WriteUpdateFeed(ctx context.Context, input domain.UpdateFeedInpu
 		return err
 	}
 	if origin != "manual" && origin != "homebrew" && origin != "link" && origin != "seed" {
-		return domain.Validation()
+		return domain.RejectedDetail("origin_invalid", origin)
 	}
 	resolver, err := json.Marshal(input.Resolver)
 	if err != nil {

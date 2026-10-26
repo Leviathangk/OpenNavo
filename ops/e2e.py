@@ -160,8 +160,10 @@ def database(ci, *, reset=False):
         compose(ci, 'exec', '-T', 'postgres', 'createdb', '-U', 'opennavo', DB_NAME)
     if reset:
         # Database name and Redis database index are constants; never accept user-supplied development connections.
+        # Migrations also create seo_archive (00110), so a reset drops it with public.
         compose(ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', DB_NAME, '-v', 'ON_ERROR_STOP=1',
-                '-c', 'DROP SCHEMA public CASCADE; CREATE SCHEMA public AUTHORIZATION opennavo;')
+                '-c', 'DROP SCHEMA IF EXISTS seo_archive CASCADE; DROP SCHEMA public CASCADE; '
+                'CREATE SCHEMA public AUTHORIZATION opennavo;')
         for number in (REDIS_DB, WEB_REDIS_DB):
             compose(ci, 'exec', '-T', 'redis', 'redis-cli', '-n', str(number), 'FLUSHDB')
 

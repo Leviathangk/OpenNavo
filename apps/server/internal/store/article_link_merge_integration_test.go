@@ -67,7 +67,7 @@ func (f articleMergeFixture) article() {
 
 func (f articleMergeFixture) evidence(id, packageID int64) {
 	f.t.Helper()
-	f.exec(`INSERT INTO seo_evidence_snapshots(id,entity_key,source_url,final_url,body_text,excerpt,body_hash,fetched_at,valid_until,authority,fetch_status,created_by,capture_key,request_hash)
+	f.exec(`INSERT INTO evidence_snapshots(id,entity_key,source_url,final_url,body_text,excerpt,body_hash,fetched_at,valid_until,authority,fetch_status,created_by,capture_key,request_hash)
  VALUES(?,?,'https://example.org/docs','https://example.org/docs','fixture','fixture',repeat('a',64),'2026-01-01','2027-01-01','official',200,'fixture',?,repeat('b',64))`, id, fmt.Sprintf("pkg:%d", packageID), fmt.Sprintf("merge-capture-%d", id))
 }
 
@@ -90,13 +90,12 @@ func TestArticleLinkMergePreservesReportsReferencesAuditAndRollback(t *testing.T
 	f.exec("UPDATE article_revisions SET seo_target=jsonb_build_object('entityKey',?::text,'intent','price') WHERE id=903", fmt.Sprintf("pkg:%d", f.from))
 	f.exec("UPDATE article_revisions SET claims=jsonb_build_array(jsonb_build_object('nested',jsonb_build_object('packageId',?::bigint))),seo_target=jsonb_build_object('entityKey',?::text) WHERE id=904", f.from, fmt.Sprintf("pkg:%d", f.from*10))
 	f.exec("INSERT INTO article_revision_packages VALUES(901,?,0),(901,?,1)", f.to, f.from)
-	f.exec("INSERT INTO seo_targets VALUES(?,'price','en-US','https://example.org/old','2026-01-01'),(?,'price','en-US','https://example.org/new','2026-02-01')", fmt.Sprintf("pkg:%d", f.to), fmt.Sprintf("pkg:%d", f.from))
 	reportsBefore := f.scalar("SELECT jsonb_agg(to_jsonb(a) ORDER BY id)::text FROM article_test_artifacts a")
 	reportIdentity := f.scalar("SELECT jsonb_agg(to_jsonb(a)-'package_id' ORDER BY id)::text FROM article_test_artifacts a")
 	revisionsBefore := f.scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY id)::text FROM article_revisions r")
 	trackedRevisionsBefore := f.scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY id)::text FROM article_revisions r WHERE id<904")
 	unrelatedBefore := f.scalar("SELECT to_jsonb(r)::text FROM article_revisions r WHERE id=904")
-	evidenceBefore := f.scalar("SELECT (to_jsonb(e)-'entity_key')::text FROM seo_evidence_snapshots e WHERE id=901")
+	evidenceBefore := f.scalar("SELECT (to_jsonb(e)-'entity_key')::text FROM evidence_snapshots e WHERE id=901")
 
 	f.exec(`CREATE FUNCTION reject_article_merge() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.token='article-new' AND NEW.kind='cask' THEN RAISE EXCEPTION 'article rollback fixture'; END IF; RETURN NEW; END $$`)
 	f.exec("CREATE TRIGGER reject_article_merge BEFORE UPDATE ON packages FOR EACH ROW EXECUTE FUNCTION reject_article_merge()")
@@ -104,8 +103,7 @@ func TestArticleLinkMergePreservesReportsReferencesAuditAndRollback(t *testing.T
 	require.JSONEq(t, reportsBefore, f.scalar("SELECT jsonb_agg(to_jsonb(a) ORDER BY id)::text FROM article_test_artifacts a"))
 	require.JSONEq(t, revisionsBefore, f.scalar("SELECT jsonb_agg(to_jsonb(r) ORDER BY id)::text FROM article_revisions r"))
 	require.Equal(t, "0", f.scalar("SELECT count(*) FROM audit_logs WHERE action='link.adopt.rename'"))
-	require.Equal(t, "2", f.scalar("SELECT count(*) FROM seo_targets"))
-	require.Equal(t, fmt.Sprintf("pkg:%d", f.from), f.scalar("SELECT entity_key FROM seo_evidence_snapshots WHERE id=901"))
+	require.Equal(t, fmt.Sprintf("pkg:%d", f.from), f.scalar("SELECT entity_key FROM evidence_snapshots WHERE id=901"))
 	f.exec("DROP TRIGGER reject_article_merge ON packages")
 	require.NoError(t, f.merge())
 
@@ -137,9 +135,8 @@ func TestArticleLinkMergePreservesReportsReferencesAuditAndRollback(t *testing.T
 	require.JSONEq(t, unrelatedBefore, f.scalar("SELECT to_jsonb(r)::text FROM article_revisions r WHERE id=904"))
 	require.Equal(t, "original-hash", f.scalar("SELECT content_hash FROM article_revisions WHERE id=901"))
 	require.Equal(t, "1", f.scalar("SELECT count(*) FROM article_revision_packages WHERE revision_id=901 AND package_id=?", f.to))
-	require.Equal(t, "https://example.org/new", f.scalar("SELECT target_url FROM seo_targets"))
-	require.JSONEq(t, evidenceBefore, f.scalar("SELECT (to_jsonb(e)-'entity_key')::text FROM seo_evidence_snapshots e WHERE id=901"))
-	require.Equal(t, fmt.Sprintf("pkg:%d", f.to), f.scalar("SELECT entity_key FROM seo_evidence_snapshots WHERE id=901"))
+	require.JSONEq(t, evidenceBefore, f.scalar("SELECT (to_jsonb(e)-'entity_key')::text FROM evidence_snapshots e WHERE id=901"))
+	require.Equal(t, fmt.Sprintf("pkg:%d", f.to), f.scalar("SELECT entity_key FROM evidence_snapshots WHERE id=901"))
 	require.JSONEq(t, reportsBefore, f.scalar("SELECT before->'article_test_artifacts' FROM audit_logs WHERE action='link.adopt.rename'"))
 	require.JSONEq(t, trackedRevisionsBefore, f.scalar("SELECT before->'article_revisions' FROM audit_logs WHERE action='link.adopt.rename'"))
 	require.Equal(t, "3", f.scalar("SELECT jsonb_array_length(before->'article_revisions') FROM audit_logs WHERE action='link.adopt.rename'"))
@@ -156,7 +153,7 @@ func TestArticleLinkMergeRejectsDeletingReferencedEvidence(t *testing.T) {
 		t.Run(field, func(t *testing.T) {
 			f.exec("UPDATE article_revisions SET " + field + "='[{\"evidenceId\":901}]' WHERE id=901")
 			require.ErrorContains(t, f.merge(), "article evidence snapshot 901 cannot be deduplicated")
-			require.Equal(t, "2", f.scalar("SELECT count(*) FROM seo_evidence_snapshots"))
+			require.Equal(t, "2", f.scalar("SELECT count(*) FROM evidence_snapshots"))
 			require.Equal(t, "2", f.scalar("SELECT count(*) FROM packages WHERE id IN (?,?)", f.from, f.to))
 			require.Equal(t, "0", f.scalar("SELECT count(*) FROM audit_logs WHERE action='link.adopt.rename'"))
 			require.Equal(t, "901", f.scalar("SELECT "+field+"->0->>'evidenceId' FROM article_revisions WHERE id=901"))
@@ -166,56 +163,6 @@ func TestArticleLinkMergeRejectsDeletingReferencedEvidence(t *testing.T) {
 	// Referencing the retained newer snapshot is safe; its ID remains untouched.
 	f.exec("UPDATE article_revisions SET claim_evidence='[{\"evidenceId\":902}]' WHERE id=901")
 	require.NoError(t, f.merge())
-	require.Equal(t, "902", f.scalar("SELECT id FROM seo_evidence_snapshots"))
+	require.Equal(t, "902", f.scalar("SELECT id FROM evidence_snapshots"))
 	require.Equal(t, "902", f.scalar("SELECT claim_evidence->0->>'evidenceId' FROM article_revisions WHERE id=901"))
-}
-
-func TestListingLinkMergeIdentityConflictsAndOriginalCandidate(t *testing.T) {
-	for _, tc := range []struct {
-		name, domain, developer, team, verified string
-		conflict, sourceWins                    bool
-	}{
-		{"domain-conflict", "other.example", "Fixture", "ABCDEFGHIJ", "2026-02-01", true, false},
-		{"developer-conflict", "example.org", "Other", "ABCDEFGHIJ", "2025-01-01", true, false},
-		{"team-conflict", "example.org", "Fixture", "KLMNOPQRST", "2026-02-01", true, false},
-		{"same-identity-newer", "example.org", "Fixture", "ABCDEFGHIJ", "2026-02-01", false, true},
-		{"same-identity-equal", "example.org", "Fixture", "ABCDEFGHIJ", "2026-01-01", false, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			f := newArticleMergeFixture(t)
-			f.exec(`INSERT INTO seo_listing_baselines(package_id,domain,developer,team_id,fact_id,evidence_id,evidence_hash,verified_by,verified_at,valid_until)
- VALUES(?,'example.org','Fixture','ABCDEFGHIJ',101,201,repeat('a',64),901,'2026-01-01','2027-01-01'),(?,?,?,?,102,202,repeat('b',64),901,?,'2027-02-01')`, f.to, f.from, tc.domain, tc.developer, tc.team, tc.verified)
-			f.exec("INSERT INTO seo_listing_candidates(token,payload,baseline_package_id,updated_at) VALUES('fixture-candidate',jsonb_build_object('baselinePackageId',?::bigint,'evidenceId',202),?,'2026-01-01')", f.from, f.from)
-			baselineBefore := f.scalar("SELECT jsonb_agg(to_jsonb(b) ORDER BY package_id)::text FROM seo_listing_baselines b")
-			candidateBefore := f.scalar("SELECT to_jsonb(c)::text FROM seo_listing_candidates c")
-			winner := f.to
-			if tc.sourceWins {
-				winner = f.from
-			}
-			winnerBefore := f.scalar("SELECT (to_jsonb(b)-'package_id'-'suspicious')::text FROM seo_listing_baselines b WHERE package_id=?", winner)
-			if tc.conflict {
-				require.ErrorContains(t, f.merge(), "conflicting listing baseline identities")
-				require.JSONEq(t, baselineBefore, f.scalar("SELECT jsonb_agg(to_jsonb(b) ORDER BY package_id)::text FROM seo_listing_baselines b"))
-				require.JSONEq(t, candidateBefore, f.scalar("SELECT to_jsonb(c)::text FROM seo_listing_candidates c"))
-				require.Equal(t, "2", f.scalar("SELECT count(*) FROM packages WHERE id IN (?,?)", f.from, f.to))
-				require.Equal(t, "0", f.scalar("SELECT count(*) FROM audit_logs WHERE action='link.adopt.rename'"))
-				return
-			}
-			require.NoError(t, f.merge())
-			require.Equal(t, "1", f.scalar("SELECT count(*) FROM seo_listing_baselines"))
-			require.JSONEq(t, winnerBefore, f.scalar("SELECT (to_jsonb(b)-'package_id'-'suspicious')::text FROM seo_listing_baselines b WHERE package_id=?", f.to))
-			require.Equal(t, "true", f.scalar("SELECT suspicious FROM seo_listing_baselines WHERE package_id=?", f.to))
-			candidate, err := f.st.ListingCandidate(f.ctx, "fixture-candidate")
-			require.NoError(t, err)
-			require.NotNil(t, candidate)
-			require.NotNil(t, candidate.BaselinePackageID)
-			require.Equal(t, f.to, *candidate.BaselinePackageID)
-			require.EqualValues(t, 2, candidate.Revision)
-			var submitted store.ListingInput
-			require.NoError(t, json.Unmarshal(candidate.Payload, &submitted))
-			require.Equal(t, f.from, submitted.BaselinePackageID)
-			require.JSONEq(t, baselineBefore, f.scalar("SELECT before->'seo_listing_baselines' FROM audit_logs WHERE action='link.adopt.rename'"))
-			require.JSONEq(t, candidateBefore, f.scalar("SELECT before->'seo_listing_candidates'->0 FROM audit_logs WHERE action='link.adopt.rename'"))
-		})
-	}
 }

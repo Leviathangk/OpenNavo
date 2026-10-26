@@ -20,7 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestIntentTargetsEvidenceAndCollectionInvalidation(t *testing.T) {
+func TestIntentSwitchEvidenceAndCollectionInvalidation(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	ctx := context.Background()
 	home := "https://vendor.example/download"
@@ -48,10 +48,8 @@ func TestIntentTargetsEvidenceAndCollectionInvalidation(t *testing.T) {
 		raw, _ := json.Marshal(proof)
 		require.NoError(t, st.DB.Exec(`INSERT INTO package_fact_records(package_id,kind,key,value,evidence) VALUES(?,'attribute','open-source','{"name":"open_source","booleanValue":true}',?::jsonb)`, target, string(raw)).Error)
 	}
-	var keyword int64
-	require.NoError(t, st.DB.Raw(`INSERT INTO seo_keywords(keyword,normalized,source,engine,country,language,device,period,search_volume,volume_state,observed_at) VALUES('example alternative','example alternative','site_search','site','US','en-US','all','2026-10',10,'known',now()) RETURNING id`).Scan(&keyword).Error)
-	require.NoError(t, st.DB.Exec(`INSERT INTO seo_keyword_links(keyword_id,package_id,intent,confidence,state) VALUES(?,?,'alternative',1,'confirmed')`, keyword, id).Error)
-	require.NoError(t, st.DB.Exec(`INSERT INTO seo_targets(entity_key,intent,locale,target_url) VALUES(?,'alternative','en-US','https://site.example/apps/example/alternatives')`, fmt.Sprint("pkg:", id)).Error)
+	// The editorial switch opens the page; the content gate still applies.
+	require.NoError(t, st.DB.Exec(`INSERT INTO package_intent_pages(package_id,page_kind,locale,created_by) VALUES(?,'alternatives','en-US','admin:1')`, id).Error)
 	p := seo.Policy{Mode: "shadow", IntentPagesEnabled: true}
 	decide := func() seo.PageDecision {
 		row, ok, err := st.IndexRowByID(ctx, id)
@@ -65,7 +63,8 @@ func TestIntentTargetsEvidenceAndCollectionInvalidation(t *testing.T) {
 	require.NoError(t, st.DB.Exec(`UPDATE package_fact_records SET evidence=jsonb_set(evidence,'{status}','"needs_review"') WHERE package_id=(SELECT alternative_id FROM package_alternatives WHERE package_id=? ORDER BY sort LIMIT 1)`, id).Error)
 	require.False(t, decide().InSitemap)
 	require.NoError(t, st.DB.Exec(`UPDATE package_fact_records SET evidence=jsonb_set(evidence,'{status}','"verified"')`).Error)
-	require.NoError(t, st.DB.Exec(`UPDATE seo_targets SET target_url='https://site.example/articles/other'`).Error)
+	require.True(t, decide().InSitemap)
+	require.NoError(t, st.DB.Exec(`DELETE FROM package_intent_pages WHERE package_id=?`, id).Error)
 	require.False(t, decide().InSitemap)
 	var cid int64
 	require.NoError(t, st.DB.Raw(`INSERT INTO collections(slug,status) VALUES('old','published') RETURNING id`).Scan(&cid).Error)

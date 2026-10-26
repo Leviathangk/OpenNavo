@@ -15,7 +15,7 @@ func (s *Service) updateFeedOperation(ctx context.Context, op string, in Input) 
 		return nil, err
 	}
 	if json.Unmarshal(raw, &input) != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("body_invalid")
 	}
 	if op == "DisableUpdateFeed" {
 		err = input.UpdateFeedKey.Validate()

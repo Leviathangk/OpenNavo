@@ -55,13 +55,5 @@ export const fetchSeoSettings = () => request<DataOf<'getSeoSettings'>>({ url: '
 export const updateSeoSettings = (data: BodyOf<'updateSeoSettings'>) =>
   request<DataOf<'updateSeoSettings'>>({ url: '/system/seo-settings', method: 'put', data });
 
-export type SeoProviderKey = 'gsc' | 'bing' | 'audit';
-
-export const fetchSeoProvider = (key: SeoProviderKey) =>
-  request<DataOf<'getSeoProvider'>>({ url: `/system/seo-providers/${key}` });
-
-export const updateSeoProvider = (key: SeoProviderKey, data: BodyOf<'updateSeoProvider'>) =>
-  request<DataOf<'updateSeoProvider'>>({ url: `/system/seo-providers/${key}`, method: 'put', data });
-
 export const fetchIndexReport = (params: QueryOf<'listIndexReport'>) =>
   request<DataOf<'listIndexReport'>>({ url: '/seo/index-report', params });

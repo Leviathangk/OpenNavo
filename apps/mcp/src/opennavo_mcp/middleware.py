@@ -6,7 +6,7 @@ from typing import Any
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from mcp.shared.exceptions import MCPError
 
-from opennavo_mcp.agent_client import AgentError
+from opennavo_mcp.agent_client import AgentError, denied
 from opennavo_mcp.auth import CURRENT, Authenticator, Credential
 from opennavo_mcp.tools.manifest import BY_NAME, RESOURCE_PERMISSIONS
 
@@ -47,12 +47,12 @@ class PermissionMiddleware(Middleware):
     ) -> Any:
         _, identity = CURRENT.get()
         spec = BY_NAME.get(context.message.name)
-        if (
-            spec is None
-            or not identity.allows(spec.permission)
-            or (spec.delete and not identity.allow_delete)
-        ):
-            raise AgentError("1004")
+        if spec is None:
+            return denied("operation_not_exposed").result()
+        if not identity.allows(spec.permission):
+            return denied("permission_required:" + spec.permission).result()
+        if spec.delete and not identity.allow_delete:
+            return denied("delete_not_allowed").result()
         return await call_next(context)
 
     async def on_list_resources(
@@ -72,6 +72,8 @@ class PermissionMiddleware(Middleware):
     ) -> Any:
         _, identity = CURRENT.get()
         permission = RESOURCE_PERMISSIONS.get(str(context.message.uri))
-        if permission is None or not identity.allows(permission):
-            raise AgentError("1004")
+        if permission is None:
+            raise denied("operation_not_exposed")
+        if not identity.allows(permission):
+            raise denied("permission_required:" + permission)
         return await call_next(context)

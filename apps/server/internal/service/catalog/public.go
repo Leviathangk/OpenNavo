@@ -320,6 +320,9 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 				return d, err
 			}
 			d.Collections = &collections
+			if d.SeoOverride, err = s.seoOverride(ctx, p.ID, locale); err != nil {
+				return d, err
+			}
 		}
 		shots, err := s.Store.PublicScreenshots(ctx, p.ID, locale)
 		if err != nil {

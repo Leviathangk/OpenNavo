@@ -40,6 +40,10 @@ const AGENTS = [
   ['mistral_training', /MistralAI-Training/i],
   // These are robots policy tokens, not documented independent HTTP fetchers.
   ['unknown', /Google-Extended|Applebot-Extended/i],
+  // Amazon's search and user-triggered fetchers come before Amazonbot: their user agents may link a page
+  // whose address contains "amazonbot", which must not make them training traffic.
+  ['amzn_searchbot', /Amzn-SearchBot/i],
+  ['amzn_user', /Amzn-User/i],
   ['amazonbot', /Amazonbot/i],
   ['seo_tool', /AhrefsBot|SemrushBot|MJ12bot|SerpstatBot|DotBot|BLEXBot|DataForSeoBot/i],
   ['other_bot', /bot\b|crawler|spider|slurp/i]

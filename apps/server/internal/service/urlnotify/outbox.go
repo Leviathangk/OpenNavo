@@ -139,15 +139,32 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 		if len(pending) > 0 {
 			err = n.invalidate(ctx, paths)
 			if err == nil && purgeEnabled(settings) && len(prefixes) > 0 {
-				token, e := n.Store.SEOSecret(ctx, n.Config, "cloudflare")
-				err = e
-				if err == nil && token == "" {
-					err = errors.New("cloudflare credential unavailable")
+				// A failed edge purge is not these rows' to retry: the prefixes left join the durable purge queue,
+				// which every run retries first and without a deadline (drainPurges). The rows spend no attempt,
+				// so a long Cloudflare outage cannot kill their probe or IndexNow submission. While the queue
+				// holds work, new prefixes join it at once rather than wait behind it for the shared interval.
+				state, e := n.Store.URLNotifyState(ctx)
+				if e != nil {
+					return purged, announced, e
 				}
-				if err == nil {
-					count, _, purgeErr := n.purgePrefixes(ctx, settings, token, prefixes)
+				left, purgeErr := prefixes, error(nil)
+				if len(state.PendingPurgePrefixes) == 0 {
+					var count int
+					count, purgeErr = n.purgeNow(ctx, settings, prefixes)
 					purged += count
+					left = prefixes[count:]
+				}
+				var wait *purgeWait
+				if errors.As(purgeErr, &wait) {
+					// Waiting for purge capacity (the shared interval or Cloudflare's 429) defers the rows.
 					err = purgeErr
+				} else if len(left) > 0 {
+					if e := n.Store.QueueURLPurges(ctx, left, maxPurgePrefixes, sectionPrefixes(n.Config.WebBaseURL)); e != nil {
+						return purged, announced, e
+					}
+					if purgeErr != nil {
+						resultErr = purgeErr
+					}
 				}
 			}
 			for _, row := range pending {
@@ -285,6 +302,20 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 	return purged, announced, resultErr
 }
 
+// purgeNow purges prefixes with the Cloudflare token and returns how many it purged. A missing or unreadable
+// token is a failure like any other.
+func (n *Notifier) purgeNow(ctx context.Context, settings store.SEOSettingsRow, prefixes []string) (int, error) {
+	token, err := n.Store.SEOSecret(ctx, n.Config, "cloudflare")
+	if err == nil && token == "" {
+		err = errors.New("cloudflare credential unavailable")
+	}
+	if err != nil {
+		return 0, err
+	}
+	count, _, err := n.purgePrefixes(ctx, settings, token, prefixes)
+	return count, err
+}
+
 // A persistent job may outlive the issue evidence, even after its public probe, and its language may
 // have closed for indexing since it was queued. Read the same decision again immediately before
 // delivery; expiry never announces. Retired app and article URLs (queued without robots) still
@@ -386,6 +417,19 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	if err := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, overloaded); err != nil {
 		return err
 	}
+	// The web sheds low-priority probes under load and the edge may rate limit them. Both ask the
+	// worker to come back later and say nothing about this page, so the row waits without spending
+	// its retry budget. Unmarked server errors remain failures, so a broken page still surfaces.
+	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable && response.Header.Get(loadShedHeader) != "" {
+		due, err := n.Store.URLProbeReadyAt(ctx)
+		if err != nil {
+			return err
+		}
+		if due.Before(retryAt) {
+			due = retryAt
+		}
+		return &probeWait{until: due}
+	}
 	if row.Robots == "" && (response.StatusCode >= 300 && response.StatusCode < 400 || response.StatusCode == 404 || response.StatusCode == 410) {
 		return nil
 	}
@@ -395,7 +439,11 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	if row.Robots == "" {
 		return nil
 	}
-	canonical, robots := "", "index, follow"
+	canonical := ""
+	var robots seo.Robots
+	for _, value := range response.Header.Values("X-Robots-Tag") {
+		robots.Header(value)
+	}
 	tokenizer := html.NewTokenizer(io.LimitReader(response.Body, 2<<20))
 	for {
 		kind := tokenizer.Next()
@@ -413,16 +461,43 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 		if token.Data == "link" && attrs["rel"] == "canonical" {
 			canonical = attrs["href"]
 		}
-		if token.Data == "meta" && strings.EqualFold(attrs["name"], "robots") {
-			robots = attrs["content"]
+		if token.Data == "meta" {
+			robots.Meta(attrs["name"], attrs["content"])
 		}
 	}
 	want := row.URL
 	if row.CanonicalPath != "" {
 		want = strings.TrimRight(n.Config.WebBaseURL, "/") + row.CanonicalPath
 	}
-	if canonical != want || strings.ReplaceAll(strings.ToLower(robots), " ", "") != strings.ReplaceAll(row.Robots, " ", "") {
-		return errors.New("public canonical or robots differs from page decision")
+	// Compare what indexers act on: extra preview controls (max-image-preview on articles) are fine,
+	// a noindex in the markup or the X-Robots-Tag header is not.
+	got, decided := robots.Intent(), seo.DecisionRobots(row.Robots)
+	if !sameURL(canonical, want) || got != decided {
+		return fmt.Errorf("public canonical or robots differs from page decision: canonical %q, want %q; robots %q, want %q", clip(canonical, 300), want, got, decided)
 	}
 	return nil
+}
+
+// The web marks load-shed responses with the shedding level; see apps/web/server/utils/loadShed.ts.
+const loadShedHeader = "X-OpenNavo-Load-Shed"
+
+// sameURL compares canonical URLs as URLs: scheme and host case-insensitively, the path decoded.
+func sameURL(got, want string) bool {
+	a, err := url.Parse(got)
+	if err != nil {
+		return false
+	}
+	b, err := url.Parse(want)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(a.Scheme, b.Scheme) && strings.EqualFold(a.Host, b.Host) && a.Path == b.Path && a.RawQuery == b.RawQuery && a.Fragment == b.Fragment
+}
+
+// clip bounds untrusted page text kept in last_error without splitting a UTF-8 sequence.
+func clip(value string, limit int) string {
+	if len(value) <= limit {
+		return value
+	}
+	return strings.ToValidUTF8(value[:limit], "")
 }

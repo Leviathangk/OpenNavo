@@ -71,7 +71,7 @@ func (s *Service) translationQueue(ctx context.Context, in Input, current, size 
 		from = "FROM release_i18n i JOIN releases r ON r.id=i.release_id JOIN packages p ON p.id=r.package_id"
 		where += " AND NOT r.hidden"
 	default:
-		return nil, domain.Validation()
+		return nil, domain.Rejected("parameter_invalid:type")
 	}
 	order := "p.popularity DESC,i.updated_at,p.id"
 	if typ == "release" {
@@ -148,7 +148,7 @@ func (s *Service) approve(ctx context.Context, in Input) (any, error) {
 		return nil, err
 	}
 	if len(list) == 0 {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("field_required:ids")
 	}
 	typ := text(in.Body, "type")
 	return s.write(ctx, in, "ApproveTranslations", "translation", func(st *store.Store) (any, error) {
@@ -172,7 +172,7 @@ func (s *Service) approve(ctx context.Context, in Input) (any, error) {
 					return nil, fail(domain.CodeInvalidState)
 				}
 			default:
-				return nil, domain.Validation()
+				return nil, domain.Rejected("field_invalid:type")
 			}
 			if err := st.AppendContentChange(ctx, pid); err != nil {
 				return nil, err

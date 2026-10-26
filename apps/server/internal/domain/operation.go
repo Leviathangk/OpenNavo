@@ -13,16 +13,13 @@ type Operation struct {
 	Execution                                            *AgentExecution
 }
 
-// AgentExecution is transport-neutral. Lease ownership always comes from the
-// authenticated token in Operation, never from this request envelope. TaskID is
-// zero for an unleased catalog edit, whose preview may omit ExpectedRevision.
+// AgentExecution is transport-neutral write metadata. Ownership always comes
+// from the authenticated token in Operation, never from this envelope. A
+// write without ExpectedRevisionSet skips the optimistic concurrency check.
 type AgentExecution struct {
-	TaskID              int64   `json:"taskId"`
-	Fencing             int64   `json:"fencing"`
-	IdempotencyKey      string  `json:"idempotencyKey"`
-	ExpectedRevision    int64   `json:"expectedRevision"`
-	ExpectedRevisionSet bool    `json:"-"`
-	EvidenceIDs         []int64 `json:"evidenceIds"`
+	IdempotencyKey      string `json:"idempotencyKey"`
+	ExpectedRevision    int64  `json:"expectedRevision"`
+	ExpectedRevisionSet bool   `json:"-"`
 }
 type operationKey struct{}
 

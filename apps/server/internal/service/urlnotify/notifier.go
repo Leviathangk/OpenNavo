@@ -118,7 +118,9 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 	if err != nil {
 		return result, err
 	}
-	// Drain obligations persisted by the previous worker implementation during rolling upgrades.
+	// Retry the durable purge queue: edge purges that failed for outbox rows, and obligations older
+	// workers persisted. It has no deadline, so a Cloudflare outage longer than the edge lifetime ends
+	// with every changed page purged.
 	if len(state.PendingPurgePrefixes) > 0 {
 		status, count := n.drainPurges(ctx, &state)
 		state.LastPurgeStatus = status

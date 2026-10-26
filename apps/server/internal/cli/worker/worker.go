@@ -24,10 +24,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/changelog"
 	"github.com/opennavo/opennavo/server/internal/service/links"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
-	"github.com/opennavo/opennavo/server/internal/service/management"
-	"github.com/opennavo/opennavo/server/internal/service/seoexperiments"
-	"github.com/opennavo/opennavo/server/internal/service/seoingest"
-	"github.com/opennavo/opennavo/server/internal/service/seoopportunities"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
@@ -77,20 +73,6 @@ func run(ctx context.Context) error {
 		notes, err := st.BackfillPageNotes(ctx, 200)
 		return map[string]any{"packages": count, "notesBackfilled": notes}, err
 	}
-	seoData := seoingest.New(st, cfg)
-	handlers["seo:gsc"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.GSC(ctx) }
-	handlers["seo:inspect"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.Inspect(ctx) }
-	handlers["seo:bing"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.BingStats(ctx) }
-	handlers["seo:audit"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.AuditPages(ctx) }
-	handlers["seo:opportunities"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
-		return (&seoopportunities.Service{DB: st.DB}).Run(ctx)
-	}
-	handlers["seo:evaluate"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
-		return (&management.Service{Store: st, Config: cfg}).EvaluateSEO(ctx)
-	}
-	handlers["seo:experiments"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
-		return (&seoexperiments.Service{DB: st.DB, WebURL: cfg.WebBaseURL}).Checkpoints(ctx)
-	}
 	objects, err := storage.New(cfg)
 	if err != nil {
 		return err
@@ -137,13 +119,29 @@ func run(ctx context.Context) error {
 	// Independent delivery polling keeps the 30-second source-save debounce independent of catalog sync intervals.
 	dispatchCtx, cancelDispatch := context.WithCancel(ctx)
 	defer cancelDispatch()
-	// Content written before a site language existed never queued that language.
+	// Content written before a site language existed never queued that language, and a new converter
+	// Version derives stored content again: paced, and resumed after a restart by the receipts.
 	go func() {
 		for {
-			derived, err := st.BackfillTraditional(dispatchCtx, false)
+			var last store.TraditionalProgress
+			derived, err := st.RunTraditionalBackfill(dispatchCtx, store.TraditionalBackfill{
+				ObjectsPerSecond: cfg.TraditionalObjectsPerSecond,
+				WritesPerMinute:  cfg.TraditionalWritesPerMinute,
+				Progress: func(p store.TraditionalProgress) {
+					last = p
+					if !p.Done {
+						logger.Info("Traditional Chinese backfill progress", "processed", p.Processed, "stamped", p.Stamped, "written", p.Written, "failed", p.Failed,
+							"pending", p.Pending, "remaining", p.Remaining, "eta", p.ETA.Round(time.Second).String())
+					}
+				},
+			})
 			if err == nil {
-				logger.Info("Traditional Chinese backfill complete", "counts", derived)
+				logger.Info("Traditional Chinese backfill complete", "processed", last.Processed, "stamped", last.Stamped, "written", last.Written, "failed", last.Failed,
+					"elapsed", last.Elapsed.Round(time.Second).String(), "counts", derived)
 				break
+			}
+			if dispatchCtx.Err() != nil {
+				return
 			}
 			logger.Warn("Traditional Chinese backfill failed; retrying in one minute")
 			timer := time.NewTimer(time.Minute)
@@ -153,15 +151,6 @@ func run(ctx context.Context) error {
 				return
 			case <-timer.C:
 			}
-		}
-	}()
-	// Ordinary translation scheduling must not wait for derived-content retries.
-	go func() {
-		queued, ran, err := st.BackfillTranslationTasksForLocales(dispatchCtx)
-		if err != nil {
-			logger.Warn("translation backfill failed")
-		} else if ran {
-			logger.Info("translation backfill queued", "tasks", queued)
 		}
 	}()
 	done := make(chan struct{})

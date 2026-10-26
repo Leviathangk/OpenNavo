@@ -36,9 +36,9 @@ func TestTraditionalDerivationAndBackfill(t *testing.T) {
 	counts, err := st.BackfillTraditional(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, counts)
-	var n int64
-	require.NoError(t, st.DB.Table("seo_tasks").Where("locale='zh-Hant'").Count(&n).Error)
-	require.Zero(t, n)
+	source, err := st.ReadContentSource(ctx, ref)
+	require.NoError(t, err)
+	require.NotContains(t, source.Targets, "zh-Hant", "Traditional Chinese is derived, never translated")
 	// Existing manually edited Traditional rows are backed up; preview never persists.
 	require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(902,'existing-fixture','lucide:box','zh-CN'); INSERT INTO category_i18n(category_id,locale,name,source_locale,status) VALUES(902,'zh-CN','软件','zh-CN','source'),(902,'zh-Hant','原有文字','zh-CN','manual')").Error)
 	counts, err = st.BackfillTraditional(ctx, true)

@@ -2,8 +2,6 @@ package store
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -25,56 +23,15 @@ type PageState struct {
 	NotesEntries *int
 }
 
-// pageHashVersion names the shape of the hashed page input. Bump it whenever that shape changes without the page
-// changing (a column added to a table pageStateInputs hashes whole, a key added or stripped here).
-// Baseline-only refreshes preserve dates; pending content changes retain their recorded change time.
-const pageHashVersion = 2
+// pageHashVersion names the shape of the hashed page input: pageFields and what stableContent strips. Bump it
+// only when that shape changes, that is when pages start showing a field. Pages hashed under another version keep
+// their dates unless pageChanges finds a real change after them, so a bump never moves dates by itself.
+// Version 4 includes effective overview SEO overrides, including derived Traditional Chinese.
+const pageHashVersion = 4
 
-// stableContent strips persistence metadata and the times of checks (when a CVE, store or feed lookup last ran
-// and how long it holds) together with the category and collection page metadata: sitemap dates follow changes
-// in what a page says, not a re-check that confirmed it. Check results, evidence and version dates stay.
-func stableContent(value any) any {
-	switch v := value.(type) {
-	case map[string]any:
-		for _, key := range []string{"updated_at", "created_at", "updated_by", "created_by", "reviewed_by", "reviewed_at", "translated_at", "fetched_at", "synced_at", "etag", "last_error", "fail_reason", "source_hash", "body_hash", "revision", "revision_id", "next_check_at", "fail_count", "checked_at", "valid_until", "seo_title", "seo_description"} {
-			delete(v, key)
-		}
-		for key, child := range v {
-			if key == "evidence" {
-				raw, _ := json.Marshal(child)
-				var proof facts.Proof
-				if json.Unmarshal(raw, &proof) == nil {
-					child = proof.At(time.Now())
-				}
-			}
-			v[key] = stableContent(child)
-		}
-	case []any:
-		for i, child := range v {
-			v[i] = stableContent(child)
-		}
-	}
-	return value
-}
-func pageContentHash(value any) (string, error) {
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return "", err
-	}
-	var decoded any
-	if err = json.Unmarshal(raw, &decoded); err != nil {
-		return "", err
-	}
-	raw, err = json.Marshal(stableContent(decoded))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
-}
-
-// PageStateInputs contains only page-visible values. Localized text follows the public fallback
-// order, so editing French cannot advance an already translated German page's timestamp.
+// pageStateInputs reads what an app's pages are made of; the overview's rows are read whole and pageOverview
+// keeps the fields pages show (pageFields). Localized text follows the public fallback order, so editing
+// French cannot advance an already translated German page's timestamp.
 func (s *Store) pageStateInputs(ctx context.Context, id int64, locale string) (json.RawMessage, json.RawMessage, error) {
 	var row struct{ Overview, Dependencies string }
 	err := s.DB.WithContext(ctx).Raw(`SELECT jsonb_build_object(
@@ -146,6 +103,11 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 			if found {
 				compatibilities := map[string]*publicapi.VersionCompatibility{}
 				now := time.Now()
+				// Change evidence is read only for states hashed under another version, the only ones that use it.
+				var upgrading bool
+				if err := tx.Raw("SELECT EXISTS(SELECT 1 FROM package_page_state WHERE package_id=? AND content_hash_version<>?)", row.ID, pageHashVersion).Scan(&upgrading).Error; err != nil {
+					return err
+				}
 				for _, locale := range seo.Locales {
 					overview, deps, err := st.pageStateInputs(ctx, row.ID, locale)
 					if err != nil {
@@ -184,8 +146,29 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						value := row.FirstSeenAt
 						baseline = &value
 					}
-					save := func(kind string, page int, input any, facts *seo.NotesFacts) error {
-						hash, err := pageContentHash(input)
+					shown, err := pageOverview(overview, now)
+					if err != nil {
+						return err
+					}
+					seoOverride, err := st.PackageSEOOverride(ctx, row.ID, locale)
+					if err != nil {
+						return err
+					}
+					var seoContent any
+					if seoOverride != nil {
+						seoContent = map[string]any{"title": seoOverride.Title, "description": seoOverride.Description}
+					}
+					changes := pageChanges{}
+					if upgrading {
+						if changes, err = st.pageChanges(ctx, row.ID, locale); err != nil {
+							return err
+						}
+					}
+					if seoOverride != nil {
+						changes.seo = seoOverride.UpdatedAt
+					}
+					save := func(kind string, page int, input any, facts *seo.NotesFacts, shows []publicapi.ReleaseEntry) error {
+						hash, err := pageContentHash(input, now)
 						if err != nil {
 							return err
 						}
@@ -193,31 +176,40 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						if facts != nil {
 							chars, entries = &facts.Chars, &facts.Entries
 						}
-						// Hash versions are incomparable. Preserve the baseline date unless a real dirty job exists.
+						// A newly created overview includes overrides saved before its first refresh.
+						// Other page kinds and languages keep their own content baseline.
+						initialModifiedAt := baseline
+						if kind == "overview" && seoOverride != nil && seoOverride.UpdatedAt.After(*baseline) {
+							initialModifiedAt = &seoOverride.UpdatedAt
+						}
+						// Hashes of different versions cannot be compared: keep the date unless the page shows a real
+						// change after it, and then take that change's time (never the dirty job's, which a sync or a
+						// migration can set for every app at once).
 						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_hash_version,content_modified_at,notes_chars,notes_entries)
        VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(package_id,locale,page_kind,page_number) DO UPDATE SET
        content_hash=EXCLUDED.content_hash,content_hash_version=EXCLUDED.content_hash_version,content_checked_at=now(),
        notes_chars=EXCLUDED.notes_chars,notes_entries=EXCLUDED.notes_entries,
        content_modified_at=CASE WHEN package_page_state.content_hash_version<>EXCLUDED.content_hash_version
-       THEN GREATEST(package_page_state.content_modified_at,?)
+       THEN GREATEST(package_page_state.content_modified_at,?::timestamptz)
        WHEN package_page_state.content_hash<>EXCLUDED.content_hash
        THEN GREATEST(package_page_state.content_modified_at+interval '1 microsecond',?)
-       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, pageHashVersion, baseline, chars, entries, job.ChangedAt, job.ChangedAt).Error
+       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, pageHashVersion, initialModifiedAt, chars, entries, changes.at(kind, shows), job.ChangedAt).Error
 					}
 					latest := entries[:min(1, len(entries))]
-					if err := save("overview", 1, []any{overview, shots, latest}, nil); err != nil {
+					if err := save("overview", 1, []any{shown, shots, latest, seoContent}, nil, latest); err != nil {
 						return err
 					}
-					if err := save("details", 1, overview, nil); err != nil {
+					if err := save("details", 1, shown, nil, nil); err != nil {
 						return err
 					}
-					if err := save("dependencies", 1, deps, nil); err != nil {
+					if err := save("dependencies", 1, deps, nil, nil); err != nil {
 						return err
 					}
 					pages := len(notes)
 					for page := 1; page <= pages; page++ {
 						start := min(len(entries), (page-1)*seo.VersionsPageSize)
-						if err := save("versions", page, entries[start:min(len(entries), start+seo.VersionsPageSize)], &notes[page-1]); err != nil {
+						shows := entries[start:min(len(entries), start+seo.VersionsPageSize)]
+						if err := save("versions", page, shows, &notes[page-1], shows); err != nil {
 							return err
 						}
 					}
@@ -226,7 +218,7 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						return err
 					}
 					for page := pages + 1; page <= previousPages; page++ {
-						if err := save("versions", page, []any{}, &seo.NotesFacts{}); err != nil {
+						if err := save("versions", page, []any{}, &seo.NotesFacts{}, nil); err != nil {
 							return err
 						}
 					}

@@ -73,6 +73,11 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Intent switches and overview overrides have no foreign key this release; rows of deleted apps go here.
+	orphans, err := s.Store.PruneOrphanPackagePageSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
 	assets, err := s.Store.PruneAssets(ctx, now.AddDate(0, 0, -30), func(ctx context.Context, a store.Asset) error {
 		for _, key := range VariantKeys(a) {
 			if err := s.Objects.Delete(ctx, key); err != nil {
@@ -81,5 +86,6 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		}
 		return nil
 	})
-	return map[string]any{"catalogChanges": changes, "searchQueries": logs["search_queries"], "syncRuns": logs["sync_runs"], "assets": assets}, err
+	return map[string]any{"catalogChanges": changes, "searchQueries": logs["search_queries"], "syncRuns": logs["sync_runs"], "agentWriteControls": logs["agent_write_controls"],
+		"intentPageOrphans": orphans["package_intent_pages"], "seoOverrideOrphans": orphans["package_seo_overrides"], "assets": assets}, err
 }

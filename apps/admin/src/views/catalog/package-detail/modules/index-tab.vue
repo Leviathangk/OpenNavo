@@ -5,12 +5,22 @@ import { fetchPackageIndexStatus, updatePackageIndexStatus } from '@/service/api
 import type { DataOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 import { formatDateTime } from '@/utils/opennavo';
+import { useAuth } from '@/hooks/business/auth';
+import IntentPages from './intent-pages.vue';
+import SeoOverride from './seo-override.vue';
 
 defineOptions({ name: 'IndexTab' });
 
 // Index eligibility for one app (WP11): the rule's verdict, what pages do now, and the manual
-// override with its reason (shown in the SEO impact report).
+// override with its reason (shown in the SEO impact report). Below it, the per-language intent page
+// switches and search snippet overrides, which agents can set through MCP as well.
 const props = defineProps<{ packageId: number }>();
+
+const { hasAuth } = useAuth();
+// Index status is a site setting (system:seo:edit); the two blocks below are catalog data.
+const canIndex = computed(() => hasAuth('system:seo:edit'));
+const canView = computed(() => hasAuth('catalog:package:view'));
+const canEdit = computed(() => hasAuth('catalog:package:edit'));
 
 type Status = DataOf<'getPackageIndexStatus'>;
 type Override = Status['override'];
@@ -79,60 +89,75 @@ async function save() {
   }
 }
 
-watch(() => props.packageId, load, { immediate: true });
+watch(
+  () => props.packageId,
+  () => {
+    if (canIndex.value) void load();
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <div class="max-w-720px">
-    <NAlert v-if="loadFailed" type="error" class="mb-16px">{{ text('loadFailed') }}</NAlert>
-    <NSkeleton v-if="loading && !status" text :repeat="4" />
-    <template v-if="status">
-      <NDescriptions :column="1" label-placement="left" bordered size="small" class="mb-20px">
-        <NDescriptionsItem :label="text('verdict')">
-          <NTag size="small" :type="status.eligible ? 'success' : 'warning'">
-            {{ status.eligible ? text('eligible') : text('ineligible', { reason: reasonLabel(status.reason) }) }}
-          </NTag>
-        </NDescriptionsItem>
-        <NDescriptionsItem :label="text('effect')">
-          <span data-testid="index-effect">
-            {{ status.enforced ? (status.indexable ? text('indexed') : text('noindexed')) : text('notEnforced') }}
-          </span>
-        </NDescriptionsItem>
-        <NDescriptionsItem :label="text('locales')">{{ languages || text('none') }}</NDescriptionsItem>
-      </NDescriptions>
-      <NForm label-placement="top" :disabled="saving">
-        <NFormItem :label="text('override')">
-          <NRadioGroup v-model:value="override" :aria-label="text('override')">
-            <NRadioButton v-for="value in overrides" :key="value" :value="value">
-              {{ text(`overrides.${value}`) }}
-            </NRadioButton>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem
-          v-if="override !== 'auto'"
-          :label="text('reason')"
-          :validation-status="reasonError ? 'error' : undefined"
-          :feedback="reasonError ? text('reasonRequired') : undefined"
-        >
-          <NInput
-            v-model:value="reason"
-            type="textarea"
-            :maxlength="500"
-            show-count
-            :autosize="{ minRows: 2, maxRows: 5 }"
-            :placeholder="text('reasonPlaceholder')"
-            :input-props="{ 'aria-label': text('reason') }"
-          />
-        </NFormItem>
-        <NText depth="3" class="mb-16px block">{{ text('overrideHint') }}</NText>
-        <NAlert v-if="saveFailed" type="error" class="mb-16px">{{ text('saveFailed') }}</NAlert>
-        <div class="flex flex-wrap items-center gap-12px">
-          <NButton type="primary" :loading="saving" :disabled="!dirty" @click="save">{{ text('save') }}</NButton>
-          <NText v-if="status.overrideAt" depth="3">
-            {{ text('overriddenAt', { time: formatDateTime(status.overrideAt) }) }}
-          </NText>
-        </div>
-      </NForm>
+    <template v-if="canIndex">
+      <NDivider title-placement="left" class="!mt-0">{{ text('sections.status') }}</NDivider>
+      <NAlert v-if="loadFailed" type="error" class="mb-16px">{{ text('loadFailed') }}</NAlert>
+      <NSkeleton v-if="loading && !status" text :repeat="4" />
+      <template v-if="status">
+        <NDescriptions :column="1" label-placement="left" bordered size="small" class="mb-20px">
+          <NDescriptionsItem :label="text('verdict')">
+            <NTag size="small" :type="status.eligible ? 'success' : 'warning'">
+              {{ status.eligible ? text('eligible') : text('ineligible', { reason: reasonLabel(status.reason) }) }}
+            </NTag>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="text('effect')">
+            <span data-testid="index-effect">
+              {{ status.enforced ? (status.indexable ? text('indexed') : text('noindexed')) : text('notEnforced') }}
+            </span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="text('locales')">{{ languages || text('none') }}</NDescriptionsItem>
+        </NDescriptions>
+        <NForm label-placement="top" :disabled="saving">
+          <NFormItem :label="text('override')">
+            <NRadioGroup v-model:value="override" :aria-label="text('override')">
+              <NRadioButton v-for="value in overrides" :key="value" :value="value">
+                {{ text(`overrides.${value}`) }}
+              </NRadioButton>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem
+            v-if="override !== 'auto'"
+            :label="text('reason')"
+            :validation-status="reasonError ? 'error' : undefined"
+            :feedback="reasonError ? text('reasonRequired') : undefined"
+          >
+            <NInput
+              v-model:value="reason"
+              type="textarea"
+              :maxlength="500"
+              show-count
+              :autosize="{ minRows: 2, maxRows: 5 }"
+              :placeholder="text('reasonPlaceholder')"
+              :input-props="{ 'aria-label': text('reason') }"
+            />
+          </NFormItem>
+          <NText depth="3" class="mb-16px block">{{ text('overrideHint') }}</NText>
+          <NAlert v-if="saveFailed" type="error" class="mb-16px">{{ text('saveFailed') }}</NAlert>
+          <div class="flex flex-wrap items-center gap-12px">
+            <NButton type="primary" :loading="saving" :disabled="!dirty" @click="save">{{ text('save') }}</NButton>
+            <NText v-if="status.overrideAt" depth="3">
+              {{ text('overriddenAt', { time: formatDateTime(status.overrideAt) }) }}
+            </NText>
+          </div>
+        </NForm>
+      </template>
+    </template>
+    <template v-if="canView">
+      <NDivider title-placement="left" :class="{ '!mt-0': !canIndex }">{{ text('sections.intent') }}</NDivider>
+      <IntentPages :package-id="packageId" :editable="canEdit" />
+      <NDivider title-placement="left">{{ text('sections.snippet') }}</NDivider>
+      <SeoOverride :package-id="packageId" :editable="canEdit" />
     </template>
   </div>
 </template>

@@ -24,7 +24,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -51,7 +50,6 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	require.NoError(t, err)
 	token := ""
 	fixture := httpExecutionFixture{t: t, st: st}
-	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(jsonb_set(automation,'{actions,content,mode}','"live"'),'{actions,article,mode}','"live"')`).Error)
 	call := func(method, path, body, expected string, agent bool) json.RawMessage {
 		t.Helper()
 		base, bearer := "/admin-api", pair.Token
@@ -97,7 +95,6 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(raw, &credential))
 	token = credential.Plaintext
-	fixture.owner = seotasks.Owner(client.ID, credential.Token.ID)
 	require.NotEmpty(t, token)
 	call("POST", "/introspect", "", "0000", true)
 	call("POST", "/introspect", "", "1004", false)
@@ -139,7 +136,7 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			Revision int64
 			Status   string
 		}
-		_, proof := fixture.evidence(ctx, "article:new:agent-guide")
+		proof := fixture.evidence("article:new:agent-guide")
 		articleBody, err := json.Marshal(map[string]any{"slug": "agent-guide", "sourceLocale": "en-US", "type": "tutorial", "title": "Mac application guide.", "summary": "Mac application guide.", "bodyMarkdown": "Follow these steps on your Mac.", "sources": []any{map[string]any{"title": "Vendor guide", "url": executionFixtureURL}}, "target": map[string]any{"entityKey": "topic:agent-guide", "intent": "topic"}, "claims": []any{map[string]any{"text": "Mac application guide.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}, map[string]any{"text": "Follow these steps on your Mac.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}}})
 		require.NoError(t, err)
 		raw := call("POST", "/articles", string(articleBody), "0000", true)

@@ -30,6 +30,47 @@ async def test_single_permission_discovery(backend: Backend, permission: str) ->
     assert {op for op, _ in backend.calls} == {"introspectAgentToken"}
 
 
+@pytest.mark.parametrize(
+    ("permissions", "allow_delete", "tool", "args", "reason"),
+    [
+        (
+            ["catalog:package:view"],
+            True,
+            "category_delete",
+            {"id": 1},
+            "permission_required:catalog:category:edit",
+        ),
+        (["catalog:category:edit"], False, "category_delete", {"id": 1}, "delete_not_allowed"),
+        # The tool is allowed; removing the icon is a delete that MCP refuses before Go does.
+        (
+            ["catalog:asset:upload", "catalog:package:view"],
+            False,
+            "package_set_icon",
+            {"package": 1, "remove": True},
+            "delete_not_allowed",
+        ),
+    ],
+)
+async def test_denied_call_names_its_reason(
+    backend: Backend,
+    permissions: list[str],
+    allow_delete: bool,
+    tool: str,
+    args: dict[str, Any],
+    reason: str,
+) -> None:
+    backend.permissions["test-only-full"], backend.allow_delete = permissions, allow_delete
+    async with Client(backend.server) as client:
+        result = await client.call_tool(tool, args, raise_on_error=False)
+    message = f"1004: Permission or deletion policy denies this operation (rejected: {reason})"
+    name, _, detail = reason.partition(":")
+    assert result.is_error and message in str(result.content)
+    assert result.structured_content == {
+        "error": {"code": "1004", "message": message, "reason": name, "detail": detail or None}
+    }
+    assert {op for op, _ in backend.calls} == {"introspectAgentToken"}
+
+
 async def test_delete_switch_and_clear(backend: Backend) -> None:
     backend.allow_delete = False
     async with Client(backend.server) as client:
@@ -72,7 +113,7 @@ async def test_cache_isolation_and_expiry(backend: Backend) -> None:
             CURRENT_TOKEN.reset(marker)
 
     full, readonly = await asyncio.gather(listed("test-only-full"), listed("test-only-read"))
-    assert len(full) == 115 and "package_set_text" not in readonly
+    assert len(full) == len(TOOLS) == 102 and "package_set_text" not in readonly
     assert len(backend.auth.cache) == 2
     assert all("test-only" not in key[0] for key in backend.auth.cache)
     backend.client.http = httpx2.AsyncClient(transport=httpx2.MockTransport(backend.handle))
@@ -210,11 +251,8 @@ async def test_upload_ticket_keeps_image_bytes_out_of_mcp(backend: Backend) -> N
             "kind",
             "source_url",
             "dry_run",
-            "task_id",
-            "fencing",
             "expected_revision",
             "idempotency_key",
-            "evidence_ids",
         }
         assert "curl -sS -F file=@icon.png '<uploadUrl>'" in (tool.description or "")
         result = await client.call_tool(

@@ -1,0 +1,37 @@
+{
+  "about": "Context wording for repository interface text and release notes, applied after the converter. The converter (apps/server/internal/traditional) already applies OpenNavo's unconditional Taiwan wording from data/opennavo-terms.json, for repository text and server-side content alike; add an unconditional replacement there, with a new converter Version. Rules here need the English source or interface keys, so server-side content derivation does not use them. They run in order: `keys` limits a rule to interface keys matching the pattern, `whenEnglish` and `keepWhenEnglish` test the English source, and `applyWithoutEnglish` also applies the rule to text without one (release notes).",
+  "context": [
+    {
+      "from": "專案",
+      "to": "項目",
+      "keepWhenEnglish": "project",
+      "why": "s2twp renders every 项目 as 專案 (project); items, entries and purchases are 項目. The English source decides; text without English stays as converted."
+    },
+    {
+      "from": "通用",
+      "to": "一般",
+      "whenEnglish": "^\\s*general\\s*$",
+      "why": "A General settings label; 通用 elsewhere can mean Universal (architecture)"
+    },
+    {
+      "from": "後臺",
+      "to": "背景",
+      "keepWhenEnglish": "\\b(admin|console|dashboard|back-?end)\\b",
+      "applyWithoutEnglish": true,
+      "why": "macOS: 背景項目, 允許在背景執行; an admin console keeps 後臺"
+    },
+    {
+      "from": "地址",
+      "to": "位址",
+      "keys": "^(firewall\\.|errors\\.E_FW_|securityTopics\\.firewall\\.)",
+      "why": "Network addresses in the firewall are 位址"
+    },
+    {
+      "from": "地址",
+      "to": "網址",
+      "keepWhenEnglish": "e-?mail|postal|street|mailing",
+      "applyWithoutEnglish": true,
+      "why": "Download, update, mirror and page addresses are web addresses (網址); e-mail and postal addresses keep 地址"
+    }
+  ]
+}

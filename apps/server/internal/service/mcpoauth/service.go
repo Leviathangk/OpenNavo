@@ -59,17 +59,44 @@ func validRedirect(raw string) bool {
 	}
 	return u.Scheme == "https" || (u.Scheme == "http" && slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, u.Hostname()))
 }
-func scopes(raw string, allowed []string) ([]string, error) {
-	out := strings.Fields(raw)
-	if len(out) == 0 || len(out) > len(agent.Grantable) {
-		return nil, Error("invalid_scope")
+
+// retiredScopes maps the scopes of the retired SEO engine, which clients registered
+// before its removal still request, to their replacement; "" drops the scope. Remove
+// in the release after (docs/design/seo-removal/be-a.md, 「下一版清理」).
+var retiredScopes = map[string]string{"seo:insight:view": "site:index:view", "seo:task:handle": "site:index:view", "seo:snippet:propose": "", "seo:automation:tune": "", "seo:keyword:edit": ""}
+
+func current(scope string) string {
+	if next, retired := retiredScopes[scope]; retired {
+		return next
 	}
+	return scope
+}
+
+// scopes validates a requested scope list against allowed, both possibly naming
+// retired scopes. The limit applies to the list after mapping and merging.
+func scopes(raw string, allowed []string) ([]string, error) {
+	permitted := map[string]bool{}
+	for _, p := range allowed {
+		permitted[current(p)] = true
+	}
+	out := []string{}
 	seen := map[string]bool{}
-	for _, p := range out {
-		if !slices.Contains(allowed, p) || seen[p] {
+	for _, p := range strings.Fields(raw) {
+		if seen[p] {
 			return nil, Error("invalid_scope")
 		}
 		seen[p] = true
+		p = current(p)
+		if p == "" || slices.Contains(out, p) {
+			continue
+		}
+		if !permitted[p] {
+			return nil, Error("invalid_scope")
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 || len(out) > len(agent.Grantable) {
+		return nil, Error("invalid_scope")
 	}
 	return out, nil
 }
@@ -194,9 +221,6 @@ func (s *Service) Consent(ctx context.Context, id auth.Identity, in Authorizatio
 	selected, err = scopes(strings.Join(selected, " "), requested)
 	if err != nil {
 		return "", err
-	}
-	if !agent.ValidPermissionSet(selected) {
-		return "", Error("invalid_scope")
 	}
 	for _, p := range selected {
 		if !slices.Contains(allowed, p) {
@@ -370,7 +394,8 @@ func (s *Service) Exchange(ctx context.Context, in TokenRequest) (TokenResponse,
 		if err := tx.Exec("UPDATE "+table+" SET consumed_at=? WHERE token_hash=?", now, agent.Hash(plain)).Error; err != nil {
 			return err
 		}
-		out = TokenResponse{access, "Bearer", int(expiry.Sub(now).Seconds()), refresh, g.Scopes}
+		// The issued scope, which differs from the stored one when that names retired scopes.
+		out = TokenResponse{access, "Bearer", int(expiry.Sub(now).Seconds()), refresh, strings.Join(list, " ")}
 		return nil
 	})
 	if err != nil {

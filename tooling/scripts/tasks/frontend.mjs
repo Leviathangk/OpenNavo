@@ -69,6 +69,7 @@ export function runTask(task) {
       run('node', [
         '--test',
         'tooling/scripts/check-hardcoded-i18n.test.mjs',
+        'tooling/scripts/derive-traditional.test.mjs',
         'tooling/scripts/sync-brand-readme.test.mjs',
         'apps/web/scripts/og-font.test.mjs'
       ]);

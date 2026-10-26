@@ -262,7 +262,7 @@ const local: App.I18n.Schema = {
     system_user: 'Admins',
     system_role: 'Roles & Permissions',
     system_github: 'GitHub settings',
-    system_seo: 'SEO & analytics',
+    system_seo: 'Site & indexing',
     system_agent: 'Agent access',
     system_audit: 'Audit Log',
     'user-center': 'User Center'

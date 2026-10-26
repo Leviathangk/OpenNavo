@@ -26,6 +26,7 @@ const pages = {
     saved: '已保存',
     viewOnSite: '在前台查看',
     updatedBy: '{name} · {time}',
+    owner: { admin: '后台用户 #{id}', agent: 'Agent #{id}', system: '系统' },
     empty: '—',
     locale: { 'zh-CN': '中文', 'en-US': '英文' },
     markdown: { edit: '编辑', preview: '预览' },
@@ -55,70 +56,6 @@ const pages = {
       details: '每日明细',
       newHint: '新增指首次观察到此标识。清除本地数据，或超过 90 天未活跃后回访，可能计为新增。'
     },
-    seo: {
-      geo: {
-        title: 'GEO 可见度',
-        notImported: '尚未导入',
-        unknown: '未知',
-        planned: '计划单元',
-        answered: '有回答 / 计划单元',
-        searchTriggered: '触发搜索 / 已知单元',
-        mentioned: '提及 / 已知单元',
-        candidate: '候选 / 已知单元',
-        cited: '引用 / 已知完整引用单元',
-        citationComplete: '引用提取完整 / 有回答',
-        reported: '报告值 · 完整性待核对',
-        noComparison: '不与完整采样比较涨跌',
-        missingFields: '缺失字段',
-        details: '查看详情',
-        dataTime: '数据时间',
-        engines: '各引擎采样状态',
-        observations: '观测链接',
-        noObservations: '暂无观测链接',
-        loadFailed: 'GEO 详情加载失败，请重试',
-        retry: '重试',
-        status: {
-          answered: '有回答',
-          not_triggered: '未触发',
-          error: '错误',
-          unsupported: '不支持',
-          missing: '缺失'
-        }
-      },
-      title: 'SEO 自动化（Hermes）',
-      ready: '自动化已就绪',
-      notReady: '自动化未就绪',
-      keywords: '关键词',
-      targets: '目标页',
-      breakers: '已打开的熔断器',
-      healthy: '全部正常',
-      technical: '技术',
-      business: '业务',
-      budget: '预算',
-      openedAt: '开始时间',
-      budgets: '预算用量（UTC）',
-      day: '每日',
-      month: '每月',
-      modes: '动作模式',
-      disabled: '已停用',
-      watermarks: '数据完整截至',
-      yesterday: '昨日（UTC）',
-      count: '执行数',
-      compensated: '补偿数',
-      action: '动作',
-      operation: '操作',
-      mode: '模式',
-      usage: '用量',
-      alerts: '最近 5 条未解决告警',
-      noAlerts: '暂无未解决告警',
-      origin: '源站',
-      edge: '边缘',
-      lastSeen: '最近发现',
-      noData: '暂无数据',
-      noActivity: '昨日无动作',
-      loadFailed: 'SEO 摘要加载失败，请重试',
-      retry: '重试'
-    },
     scale: '规模',
     total: 'App 总数',
     fonts: '字体',
@@ -144,14 +81,16 @@ const pages = {
     snapshotInfo: '游标 {cursor} · {count} 个包',
     feedbackOpen: '未处理反馈',
     viewFeedback: '用户反馈',
-    hermes: {
-      title: '今天的 Hermes',
+    agent: {
+      title: '今日 Agent 改动',
       view: '查看日志',
       writes: '写入',
       translations: 'AI 翻译',
       failures: '失败',
       date: '按 UTC 日期统计 · {date}'
     },
+    loadFailed: '仪表盘加载失败，请重试',
+    retry: '重试',
     refreshedAt: '每 60 秒自动刷新 · 更新于 {time}'
   },
   catalog: {
@@ -215,7 +154,53 @@ const pages = {
         overrideHint: '覆盖只在「收录资格」设为「启用」时生效；隐藏的 App 始终不收录。',
         save: '保存',
         overriddenAt: '最近覆盖：{time}',
-        saveFailed: '未保存，请稍后重试。'
+        saveFailed: '未保存，请稍后重试。',
+        sections: {
+          status: '收录状态',
+          intent: '意图页',
+          snippet: '搜索结果标题和描述'
+        },
+        intent: {
+          hint: '替代品页和卸载页按语言分别打开。页面打开、内容达标，并且「站点与索引」里的总开关开启时，才会被收录。',
+          thresholds: '内容达标：替代品页至少有 3 个有依据的替代品；卸载页有 Homebrew 的卸载数据。',
+          globalOff: '「站点与索引」里的意图页总开关已关闭，目前所有意图页都不收录。',
+          kinds: {
+            alternatives: '替代品页',
+            uninstall: '卸载页'
+          },
+          locale: '语言',
+          enabled: '开关',
+          content: '内容是否达标',
+          indexable: '最终是否收录',
+          eligible: '达标',
+          ineligible: '不足',
+          indexed: '收录',
+          notIndexed: '不收录',
+          empty: '这个 App 没有可设置的意图页',
+          save: '保存意图页',
+          loadFailed: '无法加载意图页，请稍后重试。',
+          saveFailed: '意图页未保存，请稍后重试。',
+          reloaded:
+            '保存前意图页已被他人修改，已载入最新状态。别人改过的开关已换成最新值并标出，其余开关保留了你的修改，请确认后再保存。',
+          changedRow: '已被他人修改，已载入最新值'
+        },
+        snippet: {
+          hint: '只用于这个 App 的概览页，留空的项继续使用模板。标题末尾会自动加上「 · OpenNavo」。',
+          overridden: '已覆盖',
+          title: '标题',
+          description: '描述',
+          titlePlaceholder: '留空则使用模板标题',
+          descriptionPlaceholder: '留空则使用模板描述',
+          markup: '不能包含 HTML，也不能使用 < 和 >。',
+          save: '保存',
+          clear: '清除覆盖',
+          clearConfirm: '清除 {locale} 的标题和描述覆盖？概览页会恢复使用模板。',
+          loadFailed: '无法加载标题和描述覆盖，请稍后重试。',
+          saveFailed: '未保存，请检查输入或稍后重试。',
+          reloaded: '保存前内容已被他人修改，已载入最新版本。这个语言的修改已保留，请再保存一次。',
+          changed: '该语言已被他人修改，已载入最新内容。',
+          changedList: '以下语言已被他人修改，已载入最新内容：{locales}'
+        }
       },
       facts: {
         loadFailed: '无法读取资料，请稍后重试。',
@@ -768,6 +753,7 @@ const pages = {
         changelog: '版本记录',
         ops: '运维',
         release: '客户端',
+        site: '站点与索引',
         other: '其他'
       },
       permissionLabels: {
@@ -791,7 +777,8 @@ const pages = {
         ops_feedback_handle: '处理用户反馈',
         agent_log_view: '查看 Agent 与 AI 日志',
         content_revision_restore: '恢复修订、撤回调用、从回收站恢复',
-        release_desktop_notes: '写客户端更新说明'
+        release_desktop_notes: '写客户端更新说明',
+        site_index_view: '查看页面索引判定与站点设置'
       }
     },
     github: {
@@ -815,7 +802,7 @@ const pages = {
       invalidToken: 'PAT 不能包含空白或非 ASCII 字符，长度不能超过 4096 个字符。'
     },
     seo: {
-      title: 'SEO 与统计',
+      title: '站点与索引',
       scope: '运营会调整、改错能马上改回的 SEO 与统计参数。保存后约 1 分钟内网站生效，已缓存的页面最长 15 分钟后更新。',
       sections: {
         identity: '站点身份',
@@ -890,7 +877,7 @@ const pages = {
       detailsRedirectHint:
         '开启后，如果概览已包含原 details 页的全部信息，且该语言的概览可收录，details 页会 301 跳转到概览。link App 没有 details 页。',
       intentPages: '替代品页和卸载页',
-      intentPagesHint: '开启后，只有搜索需求已确认、证据齐全的页面才会被收录，其余页面的 canonical 指向概览。',
+      intentPagesHint: '全局总开关；具体由每个应用的意图页开关决定。',
       temporaryTitle: '临时开关',
       temporaryHint: '以下开关只在灰度期使用，全量稳定一两个月后连同旧模板、旧逻辑一起删除。',
       titleTemplate: '标题模板',
@@ -923,7 +910,15 @@ const pages = {
         never: '还没有推送记录',
         indexNow: 'IndexNow：{status}',
         purge: 'Cloudflare：{status}',
-        error: '错误：{error}'
+        error: '错误：{error}',
+        pending: '待推送：{count} 条',
+        pendingSince: '待推送：{count} 条，最早一条产生于 {time}',
+        dead: '近 30 天未解决的推送失败：{count} 条',
+        cooldown: '页面探测暂停到 {time}',
+        overloaded: '连续因网站负载被拒的探测：{count} 次',
+        alertTitle: '变更推送需要处理',
+        staleAlert: '最早一条待推送的变更产生于 {time}，已等待超过 24 小时。',
+        deadAlert: '近 30 天有 {count} 条推送失败，尚未解决。'
       },
       save: '保存设置',
       effect: '保存后约 1 分钟内生效，无需重新部署',
@@ -963,95 +958,6 @@ const pages = {
         now: '当前',
         enforced: '启用后',
         empty: '启用后没有 App 会失去收录'
-      },
-      providers: {
-        title: '数据接入',
-        hint: '服务端用这里的凭据自动拉取 Search Console、Bing 和站点体检数据，供 SEO 机会任务、页面诊断和效果对比使用。凭据加密保存，保存后不再显示。',
-        replaceHint: '凭据只能整体替换：修改某个来源的任一字段时，要重新填写该来源的全部字段。下面每个来源单独保存。',
-        loadFailed: '无法读取该来源的状态，请点击刷新重试。',
-        saveFailed: '未保存，请检查凭据或稍后重试。',
-        save: '保存',
-        enabled: '启用自动拉取',
-        enabledHint: '启用后按计划自动拉取；关闭不会删除已拉取的数据。',
-        clearCredentials: '清除已保存的凭据',
-        clearHint: '清除后会同时停止自动拉取。',
-        noProgress: '还没有数据进度记录',
-        progress: '{label}：完整到 {complete}，最新到 {fresh}',
-        progressNone: '{label}：还没有数据',
-        none: '暂无',
-        state: {
-          enabled: '已启用',
-          disabled: '未启用',
-          configured: '已配置凭据',
-          notConfigured: '未配置凭据'
-        },
-        credentialTypes: {
-          oauth: 'OAuth 刷新令牌',
-          service_account: '服务账号',
-          api_key: 'API Key',
-          origin: '源站地址'
-        },
-        watermarks: {
-          gsc_page: '页面数据',
-          gsc_query: '查询数据',
-          inspection: '收录检查',
-          bing: 'Bing 查询数据',
-          audit: '站点体检',
-          edge_probe: 'CDN 对比'
-        },
-        sources: {
-          gsc: {
-            title: 'Google Search Console',
-            hint: '每 6 小时拉取页面和查询数据，每天抽查一批网址的收录状态。',
-            mode: '登录方式',
-            modes: {
-              service_account: '服务账号（推荐）',
-              oauth: 'OAuth 刷新令牌'
-            },
-            property: '资源',
-            propertyHint: '域名资源填 sc-domain:opennavo.com，网址前缀资源填完整网址。',
-            serviceAccountJson: '服务账号 JSON 密钥',
-            chooseFile: '选择 JSON 文件',
-            pasteJson: '改为粘贴',
-            pastePlaceholder: '粘贴服务账号 JSON 密钥的完整内容',
-            keyLoaded: '已读取 {email} 的密钥',
-            keyInvalid: '这个文件不是有效的服务账号密钥',
-            forgetKey: '移除',
-            serviceAccountHint:
-              '在 Google Cloud 创建服务账号并下载 JSON 密钥，再在 Search Console 里把服务账号邮箱加为用户（受限权限即可）。密钥只在保存时发送，页面不会显示它。',
-            clientId: 'Client ID',
-            clientSecret: 'Client Secret',
-            refreshToken: 'Refresh Token'
-          },
-          bing: {
-            title: 'Bing 网站管理员工具',
-            hint: '每天拉取 Bing 的搜索查询数据。',
-            property: '网站地址',
-            apiKey: 'API Key',
-            apiKeyHint: '在 Bing 网站管理员工具的「设置 › API 访问」中生成。'
-          },
-          audit: {
-            title: '站点体检',
-            hint: '每小时对比 CDN 和源站返回的页面，找出影响收录的技术问题。',
-            originUrl: '源站地址',
-            originHint: '直连源站的 https 地址，只填主机，不能和公开域名相同。'
-          }
-        },
-        errors: {
-          gscProperty: '资源格式不对：域名资源以 sc-domain: 开头，网址前缀资源以 https:// 开头。',
-          serviceAccount: {
-            missing: '请选择服务账号的 JSON 密钥文件，或粘贴密钥内容。只改属性也要重新提供密钥。',
-            invalidJson: '不是有效的 JSON。',
-            notServiceAccount: '这不是服务账号密钥（type 不是 service_account）。',
-            missingFields: '密钥缺少 client_email 或 private_key。',
-            tooLong: '密钥文件太大，请确认选的是服务账号 JSON 密钥。'
-          },
-          oauth: 'Client ID、Client Secret 和 Refresh Token 都要填写，且不能包含空格。',
-          bingProperty: '网站地址需以 https:// 开头。',
-          apiKey: '请填写 API Key，且不能包含空格。',
-          origin: '源站地址需为 https，只填主机（不带路径和参数），且不能与公开域名相同。',
-          credentialsRequired: '启用前需要先填写凭据。'
-        }
       },
       errors: {
         invalidName: '站点名称为 1–60 个字符，不能包含控制字符。',
@@ -1164,7 +1070,6 @@ const pages = {
     deny: '拒绝',
     error: '无法完成授权。请重试，或返回应用重新发起连接。',
     retry: '重试',
-    incompatible: '自动化调优权限不能与内容或任务写入权限同时授予。',
     grants: '已授权应用',
     empty: '暂无已授权应用。',
     revoke: '撤销授权',

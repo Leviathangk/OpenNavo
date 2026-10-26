@@ -112,7 +112,8 @@ func TestFactTriggersSkipUnchangedDerivedRows(t *testing.T) {
 }
 
 func TestFactDownRefusesStoredEvidence(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	// The Down guards run where every table they protect still lives; 00110 archives the SEO ones.
+	st := testutil.NewSEOStoreAtVersion(t, 109)
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(1,'cask','down-fixture','down-fixture','homebrew/cask','Fixture','1','1','{}','fixture'); INSERT INTO collections(id,slug) VALUES(1,'fixture')`).Error)
 	cases := []struct{ file, seed string }{
 		{"00033_fact_records.sql", `INSERT INTO package_fact_records(package_id,kind,key,value,evidence) VALUES(1,'security','fixture','{}','{"sourceUrl":"https://example.com","status":"verified","checkedAt":"2026-01-01","validUntil":"2027-01-01"}')`},

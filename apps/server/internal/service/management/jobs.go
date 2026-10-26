@@ -69,7 +69,7 @@ func (s *Service) trigger(ctx context.Context, op string, in Input) (any, error)
 		}
 	}
 	if taskType == "" {
-		return nil, domain.Validation()
+		return nil, domain.RejectedDetail("job_type_invalid", in.JobType)
 	}
 	meta := jobs.Metadata{Trigger: "manual", TriggeredBy: in.Actor.ID}
 	encoded, err := json.Marshal(jobs.OutboxPayload{Payload: payload, Metadata: &meta})

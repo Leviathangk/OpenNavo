@@ -18,37 +18,56 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// traditionalOutcome is what deriving one object did.
+type traditionalOutcome int
+
+const (
+	traditionalUnchanged traditionalOutcome = iota
+	// traditionalStamped renewed only the receipt: the stored text already is this converter's output.
+	traditionalStamped
+	// traditionalWritten wrote or withdrew the derived text.
+	traditionalWritten
+	// traditionalHeld stopped before a write, so a paced backfill can wait for it outside the transaction.
+	traditionalHeld
+)
+
 // DeriveTraditional runs inside the caller's content transaction. It bypasses
 // external authoring validation, but never bypasses source freshness or limits.
 func (s *Store) DeriveTraditional(ctx context.Context, ref content.Ref) (bool, error) {
+	outcome, err := s.deriveTraditional(ctx, ref, false)
+	return outcome == traditionalWritten, err
+}
+
+// deriveTraditional derives one object; with hold it stops before writing (traditionalHeld).
+func (s *Store) deriveTraditional(ctx context.Context, ref content.Ref, hold bool) (traditionalOutcome, error) {
 	if err := s.DB.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "content:"+ref.Entity+":"+ref.Key()).Error; err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	source, err := s.ReadContentSource(ctx, ref)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil
+		return traditionalUnchanged, nil
 	}
 	if err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if source.SourceLocale == traditional.Locale {
-		return false, nil
+		return traditionalUnchanged, nil
 	}
 	spec := content.Registry[ref.Entity]
 	where, args := textWhere(ref)
 	var raw json.RawMessage
 	if err = s.contentJSON(ctx, &raw, "SELECT to_jsonb(i) FROM "+spec.Table+" i WHERE "+where+" AND locale='zh-CN'", args...); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if len(raw) == 0 {
-		return s.removeTraditional(ctx, ref)
+		return s.removeTraditional(ctx, ref, hold)
 	}
 	var cn map[string]any
 	if err = json.Unmarshal(raw, &cn); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if (cn["status"] != "source" && cn["status"] != "manual" && cn["status"] != "machine") || (source.SourceLocale != traditional.Source && cn["source_hash"] != source.Hash) {
-		return s.removeTraditional(ctx, ref)
+		return s.removeTraditional(ctx, ref, hold)
 	}
 	fields := map[string]any{}
 	for key := range spec.Fields {
@@ -56,7 +75,7 @@ func (s *Store) DeriveTraditional(ctx context.Context, ref content.Ref) (bool, e
 	}
 	_, protected, err := s.ContentGlossary(ctx)
 	if err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	protected = append(protected, source.Protected...)
 	slices.Sort(protected)
@@ -70,42 +89,52 @@ func (s *Store) DeriveTraditional(ctx context.Context, ref content.Ref) (bool, e
 		AfterData                 json.RawMessage
 	}
 	if err = s.DB.WithContext(ctx).Table("derived_traditional").Where("entity=? AND object_key=?", ref.Entity, ref.Key()).Scan(&prior).Error; err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	var before json.RawMessage
 	if err = s.contentJSON(ctx, &before, "SELECT to_jsonb(i) FROM "+spec.Table+" i WHERE "+where+" AND locale='zh-Hant'", args...); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
-	if prior.RestoredAt == nil && prior.SimplifiedHash == hash && prior.Converter == traditional.Version && len(before) > 0 && content.JSONHash(before) == content.JSONHash(prior.AfterData) {
-		var old map[string]any
-		_ = json.Unmarshal(before, &old)
-		if old["source_hash"] == source.Hash {
-			return false, nil
+	var existing map[string]any
+	if len(before) > 0 {
+		if err = json.Unmarshal(before, &existing); err != nil {
+			return traditionalUnchanged, err
 		}
+	}
+	// The receipt still describes the stored row: derived from this Simplified input and untouched since.
+	intact := prior.RestoredAt == nil && prior.SimplifiedHash == hash && len(before) > 0 && content.JSONHash(before) == content.JSONHash(prior.AfterData)
+	if intact && prior.Converter == traditional.Version && existing["source_hash"] == source.Hash {
+		return traditionalUnchanged, nil
 	}
 
 	converted, err := traditional.Fields(fields, protected)
 	if err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if err = ValidateContentFields(ref.Entity, converted); err != nil {
-		return false, fmt.Errorf("%w: %w", errTraditionalInvalid, err)
+		return traditionalUnchanged, fmt.Errorf("%w: %w", errTraditionalInvalid, err)
 	}
-	// Restoring an earlier content revision may already restore exactly the
-	// right derived text. Refresh its receipt without changing provenance/times.
 	if len(before) > 0 {
-		var existing map[string]any
-		if err = json.Unmarshal(before, &existing); err != nil {
-			return false, err
-		}
 		oldFields := map[string]any{}
 		for key := range spec.Fields {
 			oldFields[key] = existing[key]
 		}
-		if prior.RestoredAt == nil && existing["source_hash"] == source.Hash && existing["model"] == traditional.Version && existing["status"] == "machine" && existing["withheld"] == cn["withheld"] && content.Hash(traditional.Locale, oldFields) == content.Hash(traditional.Locale, converted) {
+		same := existing["source_hash"] == source.Hash && content.Hash(traditional.Locale, oldFields) == content.Hash(traditional.Locale, converted)
+		// Restoring an earlier content revision may already restore exactly the
+		// right derived text. Refresh its receipt without changing provenance/times.
+		if same && prior.RestoredAt == nil && existing["model"] == traditional.Version && existing["status"] == "machine" && existing["withheld"] == cn["withheld"] {
 			err = s.DB.WithContext(ctx).Exec("UPDATE derived_traditional SET simplified_hash=?,converter=?,after_data=?::jsonb,restored_at=NULL,updated_at=clock_timestamp() WHERE entity=? AND object_key=?", hash, traditional.Version, string(before), ref.Entity, ref.Key()).Error
-			return false, err
+			return traditionalStamped, err
 		}
+		// A new converter that derives the same text renews only the receipt. The row stays as it is,
+		// so no revision, page state, cache or URL notification changes.
+		if same && intact {
+			err = s.DB.WithContext(ctx).Exec("UPDATE derived_traditional SET converter=?,updated_at=clock_timestamp() WHERE entity=? AND object_key=?", traditional.Version, ref.Entity, ref.Key()).Error
+			return traditionalStamped, err
+		}
+	}
+	if hold {
+		return traditionalHeld, nil
 	}
 	now := time.Now().UTC()
 	row := map[string]any{spec.Key: ref.ID, "locale": traditional.Locale, "source_locale": source.SourceLocale, "source_hash": source.Hash, "status": "machine", "model": traditional.Version, "translated_at": now, "updated_at": now, "fail_reason": nil}
@@ -134,92 +163,23 @@ func (s *Store) DeriveTraditional(ctx context.Context, ref content.Ref) (bool, e
 		}
 	}
 	if err = s.DB.WithContext(ctx).Table(spec.Table).Clauses(clause.OnConflict{Columns: keys, DoUpdates: clause.Assignments(row)}).Create(row).Error; err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	var after json.RawMessage
 	if err = s.contentJSON(ctx, &after, "SELECT to_jsonb(i) FROM "+spec.Table+" i WHERE "+where+" AND locale='zh-Hant'", args...); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	var backup any
 	if len(before) > 0 {
 		backup = string(before)
 	}
 	if err = s.DB.WithContext(ctx).Exec(`INSERT INTO derived_traditional(entity,object_key,simplified_hash,converter,before_data,after_data) VALUES(?,?,?,?,?::jsonb,?::jsonb) ON CONFLICT(entity,object_key) DO UPDATE SET before_data=CASE WHEN derived_traditional.restored_at IS NOT NULL THEN EXCLUDED.before_data ELSE derived_traditional.before_data END,simplified_hash=EXCLUDED.simplified_hash,converter=EXCLUDED.converter,after_data=EXCLUDED.after_data,updated_at=clock_timestamp(),restored_at=NULL`, ref.Entity, ref.Key(), hash, traditional.Version, backup, string(after)).Error; err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if err = s.ContentChanged(ctx, ref); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
-	return true, s.QueueTranslationInvalidation(ctx, ref)
-}
-
-// BackfillTraditional is restartable and bounded to 128 candidates per page and
-// one object per transaction. It uses the same locks and cache outbox as live edits.
-func (s *Store) BackfillTraditional(ctx context.Context, dryRun bool) (map[string]int, error) {
-	counts := map[string]int{}
-	for _, entity := range traditionalEntities() {
-		spec := traditionalSpec(entity)
-		cursor := ""
-		for {
-			var rows []struct {
-				ObjectKey       string
-				ID, SecondaryID int64
-			}
-			key := "i." + spec.Key + "::text"
-			id := "i." + spec.Key
-			secondary := "0"
-			if entity == "collection_item" {
-				key += "||':'||i.package_id::text"
-				secondary = "i.package_id"
-			}
-			if entity == "announcement" || entity == "background_item" {
-				id = "0"
-			}
-			query := "SELECT DISTINCT " + key + " object_key," + id + " id," + secondary + " secondary_id FROM " + spec.Table + " i WHERE locale IN ('zh-CN','zh-Hant') AND " + key + ">? ORDER BY " + key + " LIMIT 128"
-			if err := s.DB.WithContext(ctx).Raw(query, cursor).Scan(&rows).Error; err != nil {
-				return counts, err
-			}
-			for _, r := range rows {
-				ref := content.Ref{Entity: entity, ID: r.ID, SecondaryID: r.SecondaryID}
-				changed := false
-				err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-					if err := LockCatalogWrites(ctx, tx); err != nil {
-						return err
-					}
-					st := &Store{DB: tx, Redis: s.Redis}
-					var err error
-					if _, auxiliary := traditionalAuxiliary[entity]; auxiliary {
-						changed, err = st.deriveAuxiliaryTraditional(ctx, entity, r.ObjectKey)
-					} else {
-						changed, err = st.DeriveTraditional(ctx, ref)
-					}
-					if err != nil {
-						return err
-					}
-					if dryRun {
-						return errTraditionalPreview
-					}
-					return nil
-				})
-				if errors.Is(err, errTraditionalInvalid) {
-					counts[entity+":failed"]++
-					cursor = r.ObjectKey
-					continue
-				}
-				if err != nil && !errors.Is(err, errTraditionalPreview) {
-					return counts, err
-				}
-				if changed {
-					counts[entity]++
-				}
-				cursor = r.ObjectKey
-			}
-			if len(rows) < 128 {
-				break
-			}
-		}
-	}
-	return counts, nil
+	return traditionalWritten, s.QueueTranslationInvalidation(ctx, ref)
 }
 
 var errTraditionalInvalid = errors.New("invalid derived Traditional content")
@@ -364,24 +324,27 @@ func (s *Store) RollbackTraditional(ctx context.Context, dryRun bool) (map[strin
 
 // Withdraw a derived row when its Simplified dependency disappears or becomes
 // stale. Retain a receipt so a migration rollback can restore the prior row.
-func (s *Store) removeTraditional(ctx context.Context, ref content.Ref) (bool, error) {
+func (s *Store) removeTraditional(ctx context.Context, ref content.Ref, hold bool) (traditionalOutcome, error) {
 	spec := content.Registry[ref.Entity]
 	where, args := textWhere(ref)
 	var before json.RawMessage
 	if err := s.contentJSON(ctx, &before, "SELECT to_jsonb(i) FROM "+spec.Table+" i WHERE "+where+" AND locale='zh-Hant'", args...); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if len(before) == 0 {
-		return false, nil
+		return traditionalUnchanged, nil
+	}
+	if hold {
+		return traditionalHeld, nil
 	}
 	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO derived_traditional(entity,object_key,simplified_hash,converter,before_data,after_data) VALUES(?,?,'',?,?::jsonb,'null'::jsonb) ON CONFLICT(entity,object_key) DO UPDATE SET before_data=CASE WHEN derived_traditional.restored_at IS NOT NULL THEN EXCLUDED.before_data ELSE derived_traditional.before_data END,simplified_hash='',after_data='null'::jsonb,restored_at=NULL,updated_at=clock_timestamp()`, ref.Entity, ref.Key(), traditional.Version, string(before)).Error; err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if err := s.DB.WithContext(ctx).Exec("DELETE FROM "+spec.Table+" WHERE "+where+" AND locale='zh-Hant'", args...).Error; err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
 	if err := s.ContentChanged(ctx, ref); err != nil {
-		return false, err
+		return traditionalUnchanged, err
 	}
-	return true, s.QueueTranslationInvalidation(ctx, ref)
+	return traditionalWritten, s.QueueTranslationInvalidation(ctx, ref)
 }

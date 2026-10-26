@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -54,6 +55,10 @@ type Config struct {
 	LogLevel                    string        `env:"LOG_LEVEL" envDefault:"info"`
 	OTELExporterOTLPEndpoint    string        `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	TZSchedule                  string        `env:"TZ_SCHEDULE" envDefault:"Asia/Shanghai"`
+	// The worker's Traditional Chinese backfill after a converter upgrade: objects derived again per
+	// second, and derived rows written per minute.
+	TraditionalObjectsPerSecond float64 `env:"TRADITIONAL_BACKFILL_OBJECTS_PER_SECOND" envDefault:"20"`
+	TraditionalWritesPerMinute  float64 `env:"TRADITIONAL_BACKFILL_WRITES_PER_MINUTE" envDefault:"30"`
 }
 
 // Load reads local secrets internally; existing environment variables take precedence and errors contain no values.
@@ -184,6 +189,11 @@ func (c Config) Validate() error {
 	}
 	if _, err := time.LoadLocation(c.TZSchedule); err != nil {
 		return errors.New("invalid TZ_SCHEDULE")
+	}
+	for _, rate := range []float64{c.TraditionalObjectsPerSecond, c.TraditionalWritesPerMinute} {
+		if !(rate > 0) || math.IsInf(rate, 1) {
+			return errors.New("TRADITIONAL_BACKFILL limits must be positive numbers")
+		}
 	}
 	switch c.LogLevel {
 	case "debug", "info", "warn", "error":

@@ -61,20 +61,3 @@ export function authorizationParams(query: string): Record<string, string> {
   }
   return result;
 }
-
-export function compatibleScopes(scopes: string[]): boolean {
-  return (
-    !scopes.includes('seo:automation:tune') ||
-    scopes.every(scope =>
-      [
-        'seo:automation:tune',
-        'seo:insight:view',
-        'agent:log:view',
-        'dashboard:view',
-        'catalog:package:view',
-        'ops:job:view',
-        'ops:search:view'
-      ].includes(scope)
-    )
-  );
-}

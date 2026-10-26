@@ -2,7 +2,9 @@ import { promisify } from 'node:util';
 import { gzip, gunzip } from 'node:zlib';
 import type { Driver } from 'unstorage';
 
-export const PAGE_CACHE_TTL_SECONDS = 3600;
+// Long enough for the six-hour app page rule to serve stale while it refreshes. Releases need no flush:
+// each build caches under its own namespace (cache-storage.ts), and allkeys-lru evicts the old one.
+export const PAGE_CACHE_TTL_SECONDS = 86400;
 export const IMAGE_CACHE_TTL_SECONDS = 6 * 3600;
 export const MAX_CACHE_ENTRY_BYTES = 512 * 1024;
 

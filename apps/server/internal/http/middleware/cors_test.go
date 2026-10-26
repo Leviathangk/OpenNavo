@@ -65,7 +65,8 @@ func TestCORSOriginsPreflightVaryAndAdminIsolation(t *testing.T) {
 				require.Equal(t, origin, preflight.Header().Get("Access-Control-Allow-Origin"))
 				// Allowed preflights are cached by the browser, sparing most API calls a round trip.
 				require.Equal(t, "86400", preflight.Header().Get("Access-Control-Max-Age"))
-				for _, name := range []string{"Accept-Language", "X-Client-Platform", "X-Client-Version", "X-Request-Id", "If-None-Match"} {
+				// An admin console on its own origin sends the write guards of package SEO and intent page saves.
+				for _, name := range []string{"Accept-Language", "X-Client-Platform", "X-Client-Version", "X-Request-Id", "If-None-Match", "X-Expected-Revision", "Idempotency-Key"} {
 					require.True(t, headerHas(preflight.Header(), "Access-Control-Allow-Headers", name), name)
 				}
 				for _, name := range []string{"X-Request-Id", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "ETag", "X-Usage-Day"} {

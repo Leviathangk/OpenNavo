@@ -1,8 +1,8 @@
 import { LOCALE_METADATA, webRouteType } from '@opennavo/shared';
 
-// HTML edge caching (WP5) is controlled per response with Cloudflare-CDN-Cache-Control, which only
-// Cloudflare reads: browsers keep the normal Cache-Control. The admin switch turns it off at once
-// (no-store), even while a Cloudflare cache rule makes HTML eligible.
+// HTML and RSS edge caching (WP5) is controlled per response with Cloudflare-CDN-Cache-Control, which
+// only Cloudflare reads: browsers keep the normal Cache-Control. The admin switch turns it off at once
+// (no-store), even while a Cloudflare cache rule makes every path eligible.
 
 /**
  * Recently Updated in every language. It is a list like /apps, but webRouteType reports it as
@@ -49,9 +49,19 @@ export const LONG_EDGE_CACHE_ROUTES = new Set([
   'article',
   'author'
 ]);
-export const LONG_EDGE_CACHE_VALUE = 'max-age=21600, stale-while-revalidate=86400';
+// stale-if-error lets Cloudflare answer from its copy while the origin sheds load: the shed 503 itself is
+// no-store (loadShed.ts), so it never replaces the cached page.
+export const LONG_EDGE_CACHE_VALUE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
 /** Home and lists change with every catalog sync and are never purged, so they expire quickly. */
-export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=3600';
+export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=3600, stale-if-error=86400';
+
+/** An app's release feed sits under /apps/{token}, which the change feed purges with the app. */
+const APP_FEED_PATH = /^(?:\/[a-z-]+)?\/apps\/[^/]+\/feed\.xml$/;
+
+/** Responses the edge may cache: HTML pages and RSS feeds. */
+export function edgeCacheable(contentType: string): boolean {
+  return contentType.includes('text/html') || contentType.includes('application/rss+xml');
+}
 
 export interface EdgeCacheInput {
   enabled: boolean;
@@ -64,9 +74,14 @@ export interface EdgeCacheInput {
   authorization: boolean;
 }
 
-/** The Cloudflare-CDN-Cache-Control value for an HTML response, or undefined for other responses. */
+/**
+ * The Cloudflare-CDN-Cache-Control value for an HTML or RSS response, or undefined for other responses.
+ * App release feeds stay as long as app pages; the article and collection feeds expire like lists.
+ */
 export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
-  if (!input.contentType.includes('text/html')) return undefined;
+  if (!edgeCacheable(input.contentType)) return undefined;
+  const feed = input.contentType.includes('application/rss+xml');
+  const type = edgeRouteType(input.path);
   const shareable =
     input.enabled &&
     (input.method === 'GET' || input.method === 'HEAD') &&
@@ -77,7 +92,8 @@ export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
     // no-store and stays uncached.
     /\bs-maxage=\d+/.test(input.cacheControl) &&
     !/\b(no-store|private|no-cache)\b/.test(input.cacheControl) &&
-    EDGE_CACHE_ROUTES.has(edgeRouteType(input.path));
+    (feed ? type === 'feed' : EDGE_CACHE_ROUTES.has(type));
   if (!shareable) return 'no-store';
-  return LONG_EDGE_CACHE_ROUTES.has(edgeRouteType(input.path)) ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
+  const long = feed ? APP_FEED_PATH.test(input.path.split('?', 1)[0] ?? '') : LONG_EDGE_CACHE_ROUTES.has(type);
+  return long ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
 }

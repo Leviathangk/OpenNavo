@@ -1,21 +1,7 @@
 import json
-from collections.abc import Iterator
-from typing import Any, Protocol, cast
-
-from jsonschema import Draft202012Validator, ValidationError
 
 from opennavo_mcp.tools.manifest import TOOLS
 from opennavo_mcp.tools.runtime import tool_schema
-
-
-class SchemaValidator(Protocol):
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
-
-    def validate(self, instance: Any) -> None: ...
-
-
-def validator_for(schema: dict[str, Any]) -> SchemaValidator:
-    return cast(SchemaValidator, Draft202012Validator(schema))
 
 
 def test_traditional_is_readable_but_not_a_write_target():
@@ -25,42 +11,8 @@ def test_traditional_is_readable_but_not_a_write_target():
     assert '"zh-Hant"' in json.dumps(tool_schema(tools["translation_list"]))
 
 
-def test_seo_metadata_still_accepts_traditional():
-    tools = {tool.name: tool for tool in TOOLS}
-    schema = tool_schema(tools["seo_keywords_upsert"])
-    validator = validator_for(schema)
-    errors = list(
-        validator.iter_errors(
-            {
-                "records": [
-                    {
-                        "keyword": "編輯器",
-                        "source": "gsc",
-                        "engine": "google",
-                        "country": "TW",
-                        "language": "zh-Hant",
-                        "device": "desktop",
-                        "period": "2026-10",
-                        "volumeState": "unknown",
-                        "observedAt": "2026-10-24T00:00:00Z",
-                    }
-                ],
-                "targets": [
-                    {
-                        "entityKey": "pkg:701",
-                        "intent": "download",
-                        "locale": "zh-Hant",
-                        "targetUrl": "https://example.test/zh-hant/apps/example-editor",
-                    }
-                ],
-            }
-        )
-    )
-    assert not errors, [error.message for error in errors]
-
-
-def test_topic_nomination_accepts_traditional_target():
-    tools = {tool.name: tool for tool in TOOLS}
-    schema = tool_schema(tools["seo_topic_nominate"])
-    locale = schema["properties"]["locale"]
-    validator_for({**locale, "$defs": schema["$defs"]}).validate("zh-Hant")
+def test_no_write_tool_targets_traditional():
+    # zh-Hant derives from zh-CN; no write schema may offer it as a target.
+    for tool in TOOLS:
+        if tool.write:
+            assert '"zh-Hant"' not in json.dumps(tool_schema(tool)), tool.name

@@ -3,18 +3,16 @@
 package httpserver_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -22,45 +20,26 @@ import (
 const executionFixtureText = "Mac application guide. Follow these steps on your Mac. Original introduction."
 const executionFixtureURL = "https://vendor.example.test/guide"
 
-type executionFixtureTransport struct{}
-
-func (executionFixtureTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/plain"}}, Body: io.NopCloser(strings.NewReader(executionFixtureText)), Request: r}, nil
-}
-
 type httpExecutionFixture struct {
-	t     *testing.T
-	st    *store.Store
-	owner string
+	t  *testing.T
+	st *store.Store
 }
 
-func (f httpExecutionFixture) evidence(ctx context.Context, entity string) (seotasks.Task, agentgate.Evidence) {
+// evidence stores a captured source excerpt for the entity, as an editor's capture would.
+func (f httpExecutionFixture) evidence(entity string) agentgate.Evidence {
 	f.t.Helper()
-	tasks := &seotasks.Service{DB: f.st.DB}
-	var task seotasks.Task
-	require.NoError(f.t, f.st.DB.Where("entity_key=? AND state='leased' AND lease_owner=? AND lease_until>now()", entity, f.owner).FirstOrInit(&task).Error)
-	if task.ID == 0 {
-		_, err := tasks.Enqueue(ctx, seotasks.NewTask{Kind: "fixture", EntityKey: entity, DedupeKey: uuid.NewString(), RuleVersion: "http-fixture-v1", Evidence: map[string]any{}})
-		require.NoError(f.t, err)
-		claimed, err := tasks.Claim(ctx, f.owner, 1, []string{"fixture"})
-		require.NoError(f.t, err)
-		require.Len(f.t, claimed, 1)
-		require.Equal(f.t, entity, claimed[0].EntityKey)
-		task = claimed[0]
-	}
 	var proof agentgate.Evidence
-	require.NoError(f.t, f.st.DB.Where("entity_key=? AND created_by=? AND valid_until>now() AND revoked_at IS NULL", entity, f.owner).Order("id DESC").FirstOrInit(&proof).Error)
+	require.NoError(f.t, f.st.DB.Where("entity_key=? AND valid_until>now() AND revoked_at IS NULL", entity).Order("id DESC").FirstOrInit(&proof).Error)
 	if proof.ID == 0 {
-		svc := &agentgate.EvidenceService{DB: f.st.DB, HTTP: &http.Client{Transport: executionFixtureTransport{}}}
-		var err error
-		proof, err = svc.Capture(ctx, agentgate.Capture{TaskID: task.ID, Fencing: task.Fencing, Owner: f.owner, IdempotencyKey: uuid.NewString(), EntityKey: entity, URL: executionFixtureURL, Excerpt: executionFixtureText})
-		require.NoError(f.t, err)
+		proof = agentgate.Evidence{EntityKey: entity, SourceURL: executionFixtureURL, FinalURL: executionFixtureURL, BodyText: executionFixtureText, Excerpt: executionFixtureText, BodyHash: agentgate.Hash([]byte(executionFixtureText)), FetchedAt: time.Now().UTC(), ValidUntil: time.Now().Add(time.Hour), Authority: "reference", FetchStatus: 200, CreatedBy: "fixture", CaptureKey: uuid.NewString(), RequestHash: agentgate.Hash([]byte(entity))}
+		require.NoError(f.t, f.st.DB.Create(&proof).Error)
 	}
-	return task, proof
+	return proof
 }
+
+// attach sends the current revision of the edited entity and a fresh retry key.
 func (f httpExecutionFixture) attach(r *http.Request, entity string) {
 	f.t.Helper()
-	task, proof := f.evidence(r.Context(), entity)
 	kind, key, _ := strings.Cut(entity, ":")
 	var revision int64
 	if kind == "article" && !strings.HasPrefix(key, "new:") {
@@ -71,10 +50,7 @@ func (f httpExecutionFixture) attach(r *http.Request, entity string) {
 		}
 		require.NoError(f.t, f.st.DB.Raw("SELECT coalesce(max(id),0) FROM content_revisions WHERE entity=? AND object_key=?", kind, key).Scan(&revision).Error)
 	}
-	r.Header.Set("X-SEO-Task-ID", strconv.FormatInt(task.ID, 10))
-	r.Header.Set("X-SEO-Fencing", strconv.FormatInt(task.Fencing, 10))
-	r.Header.Set("X-SEO-Expected-Revision", strconv.FormatInt(revision, 10))
-	r.Header.Set("X-SEO-Evidence-IDs", strconv.FormatInt(proof.ID, 10))
+	r.Header.Set("X-Expected-Revision", strconv.FormatInt(revision, 10))
 	r.Header.Set("Idempotency-Key", uuid.NewString())
 }
 

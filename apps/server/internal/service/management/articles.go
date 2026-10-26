@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/url"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/opennavo/opennavo/server/internal/articles"
 	"github.com/opennavo/opennavo/server/internal/cache"
@@ -28,20 +30,50 @@ import (
 func articleFields(body map[string]any) (map[string]json.RawMessage, error) {
 	data, err := json.Marshal(body)
 	if err != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("body_invalid")
 	}
 	var out map[string]json.RawMessage
 	if json.Unmarshal(data, &out) != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("body_invalid")
 	}
 	return out, nil
+}
+
+// textError names why articles.Text refused a field.
+func textError(field string, value *string, limit int) error {
+	if value != nil && utf8.RuneCountInString(strings.TrimSpace(*value)) > limit {
+		return domain.Rejected("field_too_long:" + field)
+	}
+	return domain.Rejected("field_invalid:" + field)
+}
+
+func titleError(title *string) error {
+	if out, err := articles.Text(title, 200); err == nil && out == nil {
+		return domain.Rejected("field_required:title")
+	}
+	return textError("title", title, 200)
+}
+
+// unexpectedFields rejects request fields the operation does not take.
+func unexpectedFields(fields map[string]json.RawMessage) error {
+	return domain.RejectedDetail("unknown_field", slices.Sorted(maps.Keys(fields))[0])
+}
+
+func withheldError(fields map[string]json.RawMessage, locale string) error {
+	if !i18n.Valid(locale) {
+		return domain.RejectedDetail("locale_invalid", locale)
+	}
+	if _, ok := fields["withheld"]; !ok {
+		return domain.Rejected("field_required:withheld")
+	}
+	return domain.Rejected("field_type_invalid:withheld")
 }
 
 // patchArticleDraft applies present fields to the draft; null clears optional fields.
 func patchArticleDraft(d store.ArticleDraft, fields map[string]json.RawMessage, allowed ...string) (store.ArticleDraft, error) {
 	for key := range fields {
 		if !slices.Contains(allowed, key) {
-			return d, domain.Validation()
+			return d, domain.RejectedDetail("unknown_field", key)
 		}
 	}
 	text := func(key string, limit int, target **string) error {
@@ -51,11 +83,11 @@ func patchArticleDraft(d store.ArticleDraft, fields map[string]json.RawMessage, 
 		}
 		var value *string
 		if json.Unmarshal(raw, &value) != nil {
-			return domain.Validation()
+			return domain.Rejected("field_type_invalid:" + key)
 		}
 		out, err := articles.Text(value, limit)
 		if err != nil {
-			return domain.Validation()
+			return textError(key, value, limit)
 		}
 		*target = out
 		return nil
@@ -67,43 +99,43 @@ func patchArticleDraft(d store.ArticleDraft, fields map[string]json.RawMessage, 
 		}
 		var value *int64
 		if json.Unmarshal(raw, &value) != nil || value != nil && *value < 1 {
-			return domain.Validation()
+			return domain.Rejected("field_invalid:" + key)
 		}
 		*target = value
 		return nil
 	}
 	if raw, ok := fields["claims"]; ok {
 		if json.Unmarshal(raw, &d.Claims) != nil || !articles.ValidClaims(d.Claims) {
-			return d, domain.Validation()
+			return d, domain.Rejected("claims_invalid")
 		}
 	}
 	if raw, ok := fields["target"]; ok {
 		if json.Unmarshal(raw, &d.Target) != nil || d.Target != nil && !d.Target.Valid() {
-			return d, domain.Validation()
+			return d, domain.Rejected("target_invalid")
 		}
 	}
 	if raw, ok := fields["sourceLocale"]; ok {
 		var locale string
 		if json.Unmarshal(raw, &locale) != nil || !i18n.Valid(locale) {
-			return d, domain.Validation()
+			return d, domain.Rejected("locale_invalid:sourceLocale")
 		}
 		d.SourceLocale = locale
 	}
 	if raw, ok := fields["type"]; ok {
 		var kind string
 		if json.Unmarshal(raw, &kind) != nil || !articles.ValidType(kind) {
-			return d, domain.Validation()
+			return d, domain.Rejected("type_invalid")
 		}
 		d.Type = kind
 	}
 	if raw, ok := fields["title"]; ok {
 		var title *string
 		if json.Unmarshal(raw, &title) != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("field_type_invalid:title")
 		}
 		out, err := articles.Text(title, 200)
 		if err != nil || out == nil {
-			return d, domain.Validation()
+			return d, titleError(title)
 		}
 		d.Title = *out
 	}
@@ -116,33 +148,33 @@ func patchArticleDraft(d store.ArticleDraft, fields map[string]json.RawMessage, 
 	if raw, ok := fields["bodyMarkdown"]; ok {
 		var body *string
 		if json.Unmarshal(raw, &body) != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("field_type_invalid:bodyMarkdown")
 		}
 		out, err := articles.Body(body)
 		if err != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("body_markdown_invalid")
 		}
 		d.BodyMarkdown = out
 	}
 	if raw, ok := fields["sources"]; ok {
 		var sources []articles.Source
 		if json.Unmarshal(raw, &sources) != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("field_type_invalid:sources")
 		}
 		out, err := articles.Sources(sources)
 		if err != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("sources_invalid")
 		}
 		d.Sources = out
 	}
 	if raw, ok := fields["packageIds"]; ok {
 		var ids []int64
 		if json.Unmarshal(raw, &ids) != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("field_type_invalid:packageIds")
 		}
 		out, err := articles.Packages(ids)
 		if err != nil {
-			return d, domain.Validation()
+			return d, domain.Rejected("package_ids_invalid")
 		}
 		d.Packages = out
 	}
@@ -160,7 +192,7 @@ func checkArticleReferences(ctx context.Context, st *store.Store, d store.Articl
 			return err
 		}
 		if !found {
-			return domain.Validation()
+			return domain.Rejected("author_not_found")
 		}
 	}
 	if d.CoverAssetID != nil {
@@ -169,7 +201,7 @@ func checkArticleReferences(ctx context.Context, st *store.Store, d store.Articl
 			return err
 		}
 		if !found {
-			return domain.Validation()
+			return domain.Rejected("cover_asset_not_found")
 		}
 	}
 	if len(d.Packages) > 0 {
@@ -178,7 +210,7 @@ func checkArticleReferences(ctx context.Context, st *store.Store, d store.Articl
 			return err
 		}
 		if int(count) != len(d.Packages) {
-			return domain.Validation()
+			return domain.Rejected("package_not_found")
 		}
 	}
 	return nil
@@ -233,7 +265,7 @@ func expectedRevision(fields map[string]json.RawMessage) (int64, error) {
 		return 0, nil
 	}
 	if json.Unmarshal(raw, &value) != nil || value < 1 {
-		return 0, domain.Validation()
+		return 0, domain.Rejected("expected_revision_invalid")
 	}
 	delete(fields, "expectedRevision")
 	return value, nil
@@ -342,7 +374,7 @@ func (s *Service) lockArticle(ctx context.Context, st *store.Store, id int64, fi
 		return article, fail(domain.CodeNotFound)
 	}
 	if expected > 0 && article.Revision != expected {
-		return article, fail(domain.CodeConflict)
+		return article, &domain.AppError{Code: domain.CodeConflict, HTTPStatus: 409, Msg: "rejected: revision_conflict:" + strconv.FormatInt(article.Revision, 10)}
 	}
 	return article, nil
 }
@@ -412,19 +444,19 @@ func (s *Service) createArticle(ctx context.Context, in Input) (any, error) {
 	}
 	var slug string
 	if raw, ok := fields["slug"]; !ok || json.Unmarshal(raw, &slug) != nil || !articles.ValidSlug(slug, 100) {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("slug_invalid")
 	}
 	var key *string
 	if raw, ok := fields["idempotencyKey"]; ok {
 		if json.Unmarshal(raw, &key) != nil || key != nil && (len(*key) < 1 || len(*key) > 128) {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("idempotency_key_invalid")
 		}
 	}
 	delete(fields, "slug")
 	delete(fields, "idempotencyKey")
 	for _, required := range []string{"sourceLocale", "type", "title"} {
 		if _, ok := fields[required]; !ok {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("field_required:" + required)
 		}
 	}
 	draft, err := patchArticleDraft(store.ArticleDraft{Sources: []articles.Source{}, Packages: []int64{}}, fields,
@@ -470,7 +502,7 @@ func (s *Service) updateArticle(ctx context.Context, op string, in Input) (any, 
 	if op == "SetArticlePackages" {
 		allowed = []string{"packageIds"}
 		if _, ok := fields["packageIds"]; !ok {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("field_required:packageIds")
 		}
 	}
 	return s.articleWrite(ctx, in, op, func(st *store.Store) (int64, string, error) {
@@ -498,7 +530,7 @@ func (s *Service) revertArticle(ctx context.Context, in Input) (any, error) {
 	}
 	var number int
 	if raw, ok := fields["revisionNumber"]; !ok || json.Unmarshal(raw, &number) != nil || number < 1 {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("revision_number_invalid")
 	}
 	delete(fields, "revisionNumber")
 	return s.articleWrite(ctx, in, "RevertArticle", func(st *store.Store) (int64, string, error) {
@@ -507,7 +539,7 @@ func (s *Service) revertArticle(ctx context.Context, in Input) (any, error) {
 			return 0, "", err
 		}
 		if len(fields) > 0 {
-			return 0, "", domain.Validation()
+			return 0, "", unexpectedFields(fields)
 		}
 		var revisionID int64
 		if err := st.DB.WithContext(ctx).Raw("SELECT id FROM article_revisions WHERE article_id=? AND number=?", article.ID, number).Scan(&revisionID).Error; err != nil {
@@ -526,7 +558,7 @@ func (s *Service) revertArticle(ctx context.Context, in Input) (any, error) {
 		}
 		if meta.PublishedAt != nil {
 			if !domain.CurrentOperation(ctx).Allowed("content:article:publish") {
-				return 0, "", fail(domain.CodeForbidden)
+				return 0, "", forbidden("permission_required:content:article:publish")
 			}
 			if err := s.validateArticlePublication(ctx, st, article, revisionID, old); err != nil {
 				return 0, "", err
@@ -579,7 +611,7 @@ func (s *Service) submitArticle(ctx context.Context, in Input) (any, error) {
 			return 0, "", err
 		}
 		if len(fields) > 0 {
-			return 0, "", domain.Validation()
+			return 0, "", unexpectedFields(fields)
 		}
 		working, err := st.ArticleRevisionMeta(ctx, article.WorkingRevisionID)
 		if err != nil {
@@ -627,7 +659,7 @@ func (s *Service) publishArticle(ctx context.Context, in Input) (any, error) {
 			return 0, "", err
 		}
 		if len(fields) > 0 {
-			return 0, "", domain.Validation()
+			return 0, "", unexpectedFields(fields)
 		}
 		working, err := st.ArticleRevisionMeta(ctx, article.WorkingRevisionID)
 		if err != nil {
@@ -683,10 +715,10 @@ func (s *Service) withdrawArticle(ctx context.Context, op string, in Input) (any
 	var reason *string
 	if raw, ok := fields["reason"]; ok {
 		if json.Unmarshal(raw, &reason) != nil {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("field_type_invalid:reason")
 		}
 		if reason, err = articles.Text(reason, 500); err != nil {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("field_invalid:reason")
 		}
 		delete(fields, "reason")
 	}
@@ -696,7 +728,7 @@ func (s *Service) withdrawArticle(ctx context.Context, op string, in Input) (any
 			return 0, "", err
 		}
 		if len(fields) > 0 {
-			return 0, "", domain.Validation()
+			return 0, "", unexpectedFields(fields)
 		}
 		action, from, to, archivedAt := "withdraw", "published", "archived", any(time.Now().UTC())
 		if op == "RestoreArticle" {
@@ -751,7 +783,7 @@ func (s *Service) setArticleSlug(ctx context.Context, in Input) (any, error) {
 	}
 	var slug string
 	if raw, ok := fields["slug"]; !ok || json.Unmarshal(raw, &slug) != nil || !articles.ValidSlug(slug, 100) {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("slug_invalid")
 	}
 	delete(fields, "slug")
 	return s.articleWrite(ctx, in, "SetArticleSlug", func(st *store.Store) (int64, string, error) {
@@ -760,7 +792,7 @@ func (s *Service) setArticleSlug(ctx context.Context, in Input) (any, error) {
 			return 0, "", err
 		}
 		if len(fields) > 0 {
-			return 0, "", domain.Validation()
+			return 0, "", unexpectedFields(fields)
 		}
 		if slug == article.Slug {
 			return article.ID, "update", nil
@@ -779,26 +811,6 @@ func (s *Service) setArticleSlug(ctx context.Context, in Input) (any, error) {
 		if err := st.DB.WithContext(ctx).Exec("DELETE FROM article_slug_aliases WHERE slug=? AND article_id=?", slug, article.ID).Error; err != nil {
 			return 0, "", err
 		}
-		for _, rid := range []int64{article.WorkingRevisionID, func() int64 {
-			if article.PublishedRevisionID != nil {
-				return *article.PublishedRevisionID
-			}
-			return 0
-		}()} {
-			if rid == 0 {
-				continue
-			}
-			d, err := st.LoadArticleDraft(ctx, rid)
-			if err != nil {
-				return 0, "", err
-			}
-			if d.Target == nil {
-				continue
-			}
-			if err := st.DB.WithContext(ctx).Exec("UPDATE seo_targets SET target_url=? WHERE entity_key=? AND intent=? AND locale=? AND target_url=?", articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, slug), d.Target.EntityKey, d.Target.Intent, d.SourceLocale, articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, article.Slug)).Error; err != nil {
-				return 0, "", err
-			}
-		}
 		if err := st.TouchArticle(ctx, article.ID, map[string]any{"slug": slug}); err != nil {
 			return 0, "", err
 		}
@@ -814,7 +826,7 @@ func (s *Service) setArticleLocale(ctx context.Context, in Input) (any, error) {
 	}
 	var withheld bool
 	if raw, ok := fields["withheld"]; !ok || json.Unmarshal(raw, &withheld) != nil || !i18n.Valid(in.Locale) {
-		return nil, domain.Validation()
+		return nil, withheldError(fields, in.Locale)
 	}
 	delete(fields, "withheld")
 	return s.articleWrite(ctx, in, "SetArticleLocale", func(st *store.Store) (int64, string, error) {
@@ -823,7 +835,7 @@ func (s *Service) setArticleLocale(ctx context.Context, in Input) (any, error) {
 			return 0, "", err
 		}
 		if len(fields) > 0 {
-			return 0, "", domain.Validation()
+			return 0, "", unexpectedFields(fields)
 		}
 		if article.PublishedRevisionID == nil {
 			return 0, "", fail(domain.CodeInvalidState)
@@ -994,14 +1006,14 @@ func (s *Service) articleRead(ctx context.Context, op string, in Input) (any, er
 	where, args := "TRUE", []any{}
 	if v := text(in.Params, "status"); v != "" {
 		if !slices.Contains(articles.Status, v) {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("parameter_invalid:status")
 		}
 		where += " AND a.status=?"
 		args = append(args, v)
 	}
 	if v := text(in.Params, "type"); v != "" {
 		if !articles.ValidType(v) {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("parameter_invalid:type")
 		}
 		where += " AND w.type=?"
 		args = append(args, v)
@@ -1046,24 +1058,33 @@ func (s *Service) articleAuthors(ctx context.Context, op string, in Input) (any,
 	data, _ := json.Marshal(in.Body)
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&body) != nil || !articles.ValidSlug(body.Slug, 80) || !i18n.Valid(body.SourceLocale) {
-		return nil, domain.Validation()
+	if decoder.Decode(&body) != nil {
+		return nil, domain.Rejected("body_invalid")
+	}
+	if !articles.ValidSlug(body.Slug, 80) {
+		return nil, domain.Rejected("slug_invalid")
+	}
+	if !i18n.Valid(body.SourceLocale) {
+		return nil, domain.Rejected("locale_invalid:sourceLocale")
 	}
 	name, err := articles.Text(&body.Name, 80)
-	if err != nil || name == nil {
-		return nil, domain.Validation()
+	if err != nil {
+		return nil, textError("name", &body.Name, 80)
+	}
+	if name == nil {
+		return nil, domain.Rejected("field_required:name")
 	}
 	role, err := articles.Text(body.Role, 80)
 	if err != nil {
-		return nil, domain.Validation()
+		return nil, textError("role", body.Role, 80)
 	}
 	bio, err := articles.Text(body.Bio, 1000)
 	if err != nil {
-		return nil, domain.Validation()
+		return nil, textError("bio", body.Bio, 1000)
 	}
 	links, err := articles.Sources(body.Links)
 	if err != nil || len(links) > 8 {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("links_invalid")
 	}
 	linksJSON, _ := json.Marshal(links)
 	return s.write(ctx, in, op, "article_author", func(st *store.Store) (any, error) {
@@ -1073,7 +1094,7 @@ func (s *Service) articleAuthors(ctx context.Context, op string, in Input) (any,
 				return nil, err
 			}
 			if !ok {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("avatar_asset_not_found")
 			}
 		}
 		id := in.ID

@@ -22,12 +22,15 @@ type TranslationValue struct {
 // update time, so intervening edits (including edit-and-revert) invalidate a CAS.
 func (s *Store) TranslationValue(ctx context.Context, ref content.Ref, locale string) (TranslationValue, error) {
 	out := TranslationValue{Locale: locale, Revision: content.JSONHash([]byte("null")), Status: "missing", Fields: map[string]any{}}
-	if !ref.Valid() || !i18n.Valid(locale) {
-		return out, domain.Validation()
+	if !ref.Valid() {
+		return out, domain.Rejected("content_ref_invalid")
+	}
+	if !i18n.Valid(locale) {
+		return out, domain.RejectedDetail("locale_invalid", locale)
 	}
 	spec, ok := content.Registry[ref.Entity]
 	if !ok {
-		return out, domain.Validation()
+		return out, domain.Rejected("content_ref_invalid")
 	}
 	where, args := textWhere(ref)
 	var raw json.RawMessage

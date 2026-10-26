@@ -21,7 +21,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var Grantable = []string{"seo:snippet:propose", "seo:automation:tune", "seo:task:handle", "seo:insight:view", "seo:keyword:edit", "dashboard:view", "catalog:package:view", "catalog:package:edit", "catalog:package:resync", "catalog:asset:upload", "catalog:category:edit", "content:collection:edit", "content:collection:publish", "content:article:edit", "content:article:publish", "content:feature:edit", "content:glossary:edit", "changelog:release:edit", "translation:review", "ops:job:view", "ops:job:trigger", "ops:search:view", "ops:search:edit", "ops:feedback:handle", "agent:log:view", "content:revision:restore", "content:announcement:edit", "release:desktop:notes"}
+var Grantable = []string{"site:index:view", "dashboard:view", "catalog:package:view", "catalog:package:edit", "catalog:package:resync", "catalog:asset:upload", "catalog:category:edit", "content:collection:edit", "content:collection:publish", "content:article:edit", "content:article:publish", "content:feature:edit", "content:glossary:edit", "changelog:release:edit", "translation:review", "ops:job:view", "ops:job:trigger", "ops:search:view", "ops:search:edit", "ops:feedback:handle", "agent:log:view", "content:revision:restore", "content:announcement:edit", "release:desktop:notes"}
 
 type Limits struct {
 	CallsPerMinute int `json:"callsPerMinute"`
@@ -65,7 +65,7 @@ func Hash(plain string) string {
 }
 func (s *Service) Authenticate(ctx context.Context, gateway, token, ip string) (Identity, error) {
 	if len(s.GatewaySecret) < 32 || subtle.ConstantTimeCompare([]byte(gateway), []byte(s.GatewaySecret)) != 1 {
-		return Identity{}, Error(domain.CodeForbidden)
+		return Identity{}, domain.Forbidden(403, "gateway_key_invalid")
 	}
 	if !strings.HasPrefix(token, "onv_") || len(token) != 47 {
 		return Identity{}, Error(domain.CodeUnauthenticated)
@@ -107,15 +107,12 @@ func (s *Service) identity(ctx context.Context, column string, key any, ip strin
 	if err := json.Unmarshal(row.Permissions, &permissions); err != nil {
 		return out, err
 	}
-	if !ValidPermissionSet(permissions) {
-		return out, Error(domain.CodeForbidden)
-	}
 	if err := json.Unmarshal(row.IPAllowlist, &allowedIPs); err != nil {
 		return out, err
 	}
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		return out, Error(domain.CodeForbidden)
+		return out, domain.Forbidden(403, "ip_not_allowed")
 	}
 	if len(allowedIPs) > 0 {
 		accepted := false
@@ -126,7 +123,7 @@ func (s *Service) identity(ctx context.Context, column string, key any, ip strin
 			}
 		}
 		if !accepted {
-			return out, Error(domain.CodeForbidden)
+			return out, domain.Forbidden(403, "ip_not_allowed")
 		}
 	}
 	// OAuth credentials remain bound to a live grant and its human owner's current permissions.
@@ -222,7 +219,7 @@ func (s *Service) IssueUploadTicket(ctx context.Context, id Identity, grant Uplo
 func (s *Service) RedeemUploadTicket(ctx context.Context, ticket, ip string) (UploadGrant, Identity, error) {
 	var grant UploadGrant
 	if len(s.GatewaySecret) < 32 {
-		return grant, Identity{}, Error(domain.CodeForbidden)
+		return grant, Identity{}, domain.Forbidden(403, "operation_not_exposed")
 	}
 	if !strings.HasPrefix(ticket, uploadTicketPrefix) || len(ticket) != 48 {
 		return grant, Identity{}, Error(domain.CodeUnauthenticated)
@@ -275,7 +272,7 @@ func (s *Service) Reserve(ctx context.Context, id Identity, write, llm int) erro
 		return err
 	}
 	if n != 1 {
-		return Error(domain.CodeRateLimited)
+		return &domain.AppError{Code: domain.CodeRateLimited, HTTPStatus: 403, Msg: "rejected: quota_exceeded"}
 	}
 	return nil
 }

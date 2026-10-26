@@ -30,7 +30,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -141,8 +140,8 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 		}
 		body := strings.Join(sentences, " ")
 		evidence := agentgate.Evidence{EntityKey: "article:new:" + slug, SourceURL: sourceURL, FinalURL: sourceURL,
-			BodyText: body, Excerpt: body, BodyHash: seotasks.Hash([]byte(body)), FetchedAt: time.Now().UTC(), ValidUntil: time.Now().Add(time.Hour),
-			Authority: "official", FetchStatus: 200, CreatedBy: "fixture", CaptureKey: "article-workflow-" + slug, RequestHash: seotasks.Hash([]byte(slug))}
+			BodyText: body, Excerpt: body, BodyHash: agentgate.Hash([]byte(body)), FetchedAt: time.Now().UTC(), ValidUntil: time.Now().Add(time.Hour),
+			Authority: "official", FetchStatus: 200, CreatedBy: "fixture", CaptureKey: "article-workflow-" + slug, RequestHash: agentgate.Hash([]byte(slug))}
 		require.NoError(t, st.DB.Create(&evidence).Error)
 		claims := make([]articles.Claim, len(assertions))
 		for i, assertion := range assertions {

@@ -423,34 +423,27 @@ function flatten(nodes: CategoryNode[]): CategoryNode[] {
 }
 
 /**
- * F1: the label pages the API marks indexable in each open language, dated by their checked content. The index
- * also reads this list to leave the group out while it is empty, so it is kept like the package snapshot:
- * fresh for SNAPSHOT_FRESH_MS, then served stale while one refresh runs.
+ * F1: the label pages the API marks indexable in each open language. The index also reads this list to leave the
+ * group out while it is empty, so it is kept like the package snapshot: fresh for SNAPSHOT_FRESH_MS, then served
+ * stale while one refresh runs.
  */
 const backgroundItemEntries = createStaleCache(
   async (): Promise<ReturnType<typeof localizedEntries>> => {
-    const labels = new Map<string, { locales: Locale[]; lastmod: Map<Locale, string | undefined> }>();
+    const labels = new Map<string, Locale[]>();
     for (const locale of await openLocales())
       for (let current = 1; ; current += 1) {
         const page = await $fetch<{ data: { total: number; records: BackgroundItem[] } }>(
           `${apiBase()}/background-items`,
           { query: { locale, current, size: 100 } }
         );
-        for (const item of page.data.records.filter(record => record.indexable)) {
-          const entry = labels.get(item.label) ?? {
-            locales: [] as Locale[],
-            lastmod: new Map<Locale, string | undefined>()
-          };
-          entry.locales.push(locale);
-          entry.lastmod.set(locale, item.content?.evidence.checkedAt ?? undefined);
-          labels.set(item.label, entry);
-        }
+        for (const item of page.data.records.filter(record => record.indexable))
+          labels.set(item.label, [...(labels.get(item.label) ?? []), locale]);
         if (page.data.records.length < 100 || current * 100 >= page.data.total) break;
       }
-    return [...labels].flatMap(([label, entry]) =>
-      localizedEntries(`/background-items/${encodeURIComponent(label)}`, 'background-items', entry.locales, locale =>
-        entry.lastmod.get(locale)
-      )
+    // No lastmod, like categories and browse: the content's checkedAt dates a verification, not a change,
+    // so every re-check would move it.
+    return [...labels].flatMap(([label, locales]) =>
+      localizedEntries(`/background-items/${encodeURIComponent(label)}`, 'background-items', locales)
     );
   },
   {

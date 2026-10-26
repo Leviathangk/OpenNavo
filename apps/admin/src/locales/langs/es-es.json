@@ -255,7 +255,7 @@
     "system_user": "Administradores",
     "system_role": "Roles y permisos",
     "system_github": "Configuración de GitHub",
-    "system_seo": "SEO y analítica",
+    "system_seo": "Sitio e indexación",
     "system_agent": "Acceso de Agent",
     "system_audit": "Registro de auditoría",
     "user-center": "Centro de usuario"
@@ -303,6 +303,11 @@
       "saved": "Guardado",
       "viewOnSite": "Ver en el sitio",
       "updatedBy": "{name} · {time}",
+      "owner": {
+        "admin": "Usuario de administración #{id}",
+        "agent": "Agent #{id}",
+        "system": "Sistema"
+      },
       "empty": "—",
       "locale": {
         "zh-CN": "Chino",
@@ -351,79 +356,17 @@
       "snapshotInfo": "Cursor {cursor} · {count} paquete | Cursor {cursor} · {count} paquetes",
       "feedbackOpen": "Comentarios pendientes",
       "viewFeedback": "Comentarios",
-      "hermes": {
-        "title": "Hermes de hoy",
+      "agent": {
+        "title": "Cambios de Agent hoy",
         "view": "Ver registros",
         "writes": "Escrituras",
         "translations": "Traducciones con IA",
         "failures": "Errores",
         "date": "Recuento por fecha UTC · {date}"
       },
+      "loadFailed": "No se pudo cargar el panel. Inténtalo de nuevo.",
+      "retry": "Reintentar",
       "refreshedAt": "Se actualiza cada 60 s · actualizado {time}",
-      "seo": {
-        "title": "Automatización SEO (Hermes)",
-        "ready": "Automatización lista",
-        "notReady": "Automatización no lista",
-        "keywords": "Palabras clave",
-        "targets": "Páginas objetivo",
-        "breakers": "Disyuntores abiertos",
-        "healthy": "Todo funciona correctamente",
-        "technical": "Técnico",
-        "business": "Negocio",
-        "budget": "Presupuesto",
-        "openedAt": "Inicio",
-        "budgets": "Uso del presupuesto (UTC)",
-        "day": "Diario",
-        "month": "Mensual",
-        "modes": "Modos de acción",
-        "disabled": "Desactivado",
-        "watermarks": "Datos completos hasta",
-        "yesterday": "Ayer (UTC)",
-        "count": "Acciones",
-        "compensated": "Compensadas",
-        "action": "Acción",
-        "operation": "Operación",
-        "mode": "Modo",
-        "usage": "Uso",
-        "alerts": "Últimas 5 alertas sin resolver",
-        "noAlerts": "No hay alertas sin resolver",
-        "origin": "Origen",
-        "edge": "Borde",
-        "lastSeen": "Última detección",
-        "noData": "Sin datos",
-        "noActivity": "Sin acciones ayer",
-        "loadFailed": "No se pudo cargar el resumen SEO. Inténtalo de nuevo.",
-        "retry": "Reintentar",
-        "geo": {
-          "title": "Visibilidad GEO",
-          "notImported": "Aún no importado",
-          "unknown": "Desconocido",
-          "planned": "Unidades planificadas",
-          "answered": "Con respuesta / planificadas",
-          "searchTriggered": "Búsqueda activada / conocidas",
-          "mentioned": "Menciones / conocidas",
-          "candidate": "Candidatas / conocidas",
-          "cited": "Citas / unidades conocidas con extracción completa",
-          "citationComplete": "Extracción de citas completa / con respuesta",
-          "reported": "Valores reportados · integridad sin verificar",
-          "noComparison": "No comparar tendencias con muestras completas",
-          "missingFields": "Campos ausentes",
-          "details": "Ver detalles",
-          "dataTime": "Periodo de datos",
-          "engines": "Estado del muestreo por motor",
-          "observations": "Enlaces de observaciones",
-          "noObservations": "Sin enlaces de observaciones",
-          "loadFailed": "No se pudieron cargar los detalles GEO. Inténtalo de nuevo.",
-          "retry": "Reintentar",
-          "status": {
-            "answered": "Con respuesta",
-            "not_triggered": "No activado",
-            "error": "Error",
-            "unsupported": "No compatible",
-            "missing": "Ausente"
-          }
-        }
-      },
       "usage": {
         "title": "Actividad de usuarios",
         "hint": "Se cuentan instalaciones y navegadores anónimos, no personas. El cliente incluye actividad en segundo plano; la web requiere una visita visible. No se deduplican plataformas. El país corresponde a la conexión y puede reflejar una VPN o un proxy.",
@@ -517,7 +460,52 @@
           "overrideHint": "Los ajustes se aplican cuando los criterios de indexación están en Aplicar; las Apps ocultas nunca se indexan.",
           "save": "Guardar",
           "overriddenAt": "Ajustado el {time}",
-          "saveFailed": "No se guardó. Inténtalo más tarde."
+          "saveFailed": "No se guardó. Inténtalo más tarde.",
+          "sections": {
+            "status": "Estado de indexación",
+            "intent": "Páginas de intención",
+            "snippet": "Título y descripción en los resultados de búsqueda"
+          },
+          "intent": {
+            "hint": "Las páginas de alternativas y de desinstalación se activan por idioma. Una página solo se indexa si está activada, su contenido está listo y el interruptor general de «Sitio e indexación» está activado.",
+            "thresholds": "El contenido está listo cuando una página de alternativas tiene al menos 3 alternativas con fuentes y cuando una página de desinstalación tiene datos de desinstalación de Homebrew.",
+            "globalOff": "El interruptor general de páginas de intención en «Sitio e indexación» está desactivado, así que ahora no se indexa ninguna página de intención.",
+            "kinds": {
+              "alternatives": "Página de alternativas",
+              "uninstall": "Página de desinstalación"
+            },
+            "locale": "Idioma",
+            "enabled": "Activada",
+            "content": "Contenido listo",
+            "indexable": "Indexada",
+            "eligible": "Listo",
+            "ineligible": "Insuficiente",
+            "indexed": "Indexada",
+            "notIndexed": "No indexada",
+            "empty": "Esta App no tiene páginas de intención que configurar",
+            "save": "Guardar páginas de intención",
+            "loadFailed": "No se pudieron cargar las páginas de intención. Inténtalo más tarde.",
+            "saveFailed": "No se guardaron las páginas de intención. Inténtalo más tarde.",
+            "reloaded": "Otra persona cambió estas páginas de intención antes de que guardaras. Se cargó el estado más reciente: los interruptores que cambió muestran el valor nuevo y están marcados, y los demás conservan tus cambios. Revísalos y vuelve a guardar.",
+            "changedRow": "Otra persona lo cambió; se cargó el valor más reciente"
+          },
+          "snippet": {
+            "hint": "Solo se usa en la página de vista general de esta App; los campos vacíos mantienen la plantilla. Los títulos terminan automáticamente en « · OpenNavo».",
+            "overridden": "Personalizado",
+            "title": "Título",
+            "description": "Descripción",
+            "titlePlaceholder": "Déjalo vacío para usar el título de la plantilla",
+            "descriptionPlaceholder": "Déjalo vacío para usar la descripción de la plantilla",
+            "markup": "Sin HTML: quita cualquier < y >.",
+            "save": "Guardar",
+            "clear": "Quitar la personalización",
+            "clearConfirm": "¿Quitar el título y la descripción personalizados en {locale}? La página de vista general volverá a la plantilla.",
+            "loadFailed": "No se pudieron cargar el título y la descripción personalizados. Inténtalo más tarde.",
+            "saveFailed": "No se guardó. Revisa el texto o inténtalo más tarde.",
+            "reloaded": "Otra persona cambió el contenido antes de que guardaras. Se cargó la versión más reciente y se conservaron tus cambios en este idioma; vuelve a guardar.",
+            "changed": "Otra persona cambió este idioma; se cargó el texto más reciente.",
+            "changedList": "Otra persona cambió estos idiomas; se cargó el texto más reciente: {locales}"
+          }
         },
         "facts": {
           "loadFailed": "No se pudieron cargar los datos. Inténtalo de nuevo más tarde.",
@@ -1162,6 +1150,7 @@
           "changelog": "Notas de la versión",
           "ops": "Operaciones",
           "release": "Aplicación de escritorio",
+          "site": "Sitio e indexación",
           "other": "Otros"
         },
         "permissionLabels": {
@@ -1185,7 +1174,8 @@
           "ops_feedback_handle": "Gestionar comentarios",
           "agent_log_view": "Ver registros de Agent e IA",
           "content_revision_restore": "Restaurar revisiones, revertir llamadas y restaurar desde la papelera",
-          "release_desktop_notes": "Redactar notas de lanzamiento para escritorio"
+          "release_desktop_notes": "Redactar notas de lanzamiento para escritorio",
+          "site_index_view": "Ver las decisiones de indexación de páginas y los ajustes del sitio"
         }
       },
       "github": {
@@ -1209,7 +1199,7 @@
         "invalidToken": "El PAT no debe contener espacios en blanco ni caracteres no ASCII y no debe superar los 4096 caracteres."
       },
       "seo": {
-        "title": "SEO y analítica",
+        "title": "Sitio e indexación",
         "scope": "Parámetros de SEO y analítica que el equipo de operaciones ajusta y puede revertir de inmediato. Los cambios llegan al sitio en aproximadamente un minuto; las páginas en caché se actualizan en un máximo de 15 minutos.",
         "sections": {
           "identity": "Identidad del sitio",
@@ -1280,7 +1270,7 @@
         "detailsRedirect": "Redirigir las páginas details a la vista general",
         "detailsRedirectHint": "Si se activa, la página details redirige (301) a la vista general cuando esta ya incluye toda la información de la página details y se puede indexar en ese idioma. Las apps de tipo link no tienen página details.",
         "intentPages": "Páginas de alternativas y de desinstalación",
-        "intentPagesHint": "Si se activa, solo se indexan las páginas con demanda de búsqueda confirmada y pruebas completas; las demás usan la vista general como canonical.",
+        "intentPagesHint": "Interruptor general de todo el sitio; los interruptores de páginas de intención de cada App deciden el resto.",
         "temporaryTitle": "Interruptores temporales",
         "temporaryHint": "Los ajustes siguientes solo sirven durante el despliegue gradual y se eliminarán junto con las plantillas y la lógica antiguas cuando todo lleve uno o dos meses estable.",
         "titleTemplate": "Plantilla de títulos",
@@ -1312,7 +1302,15 @@
           "never": "Todavía no hay ejecuciones",
           "indexNow": "IndexNow: {status}",
           "purge": "Cloudflare: {status}",
-          "error": "Error: {error}"
+          "error": "Error: {error}",
+          "pending": "Avisos pendientes: {count}",
+          "pendingSince": "Avisos pendientes: {count}; el más antiguo, de {time}",
+          "dead": "Avisos fallidos sin resolver en los últimos 30 días: {count}",
+          "cooldown": "Comprobación de páginas en pausa hasta {time}",
+          "overloaded": "Comprobaciones rechazadas seguidas por la carga del sitio: {count}",
+          "alertTitle": "Los avisos de cambios necesitan atención",
+          "staleAlert": "El cambio pendiente más antiguo es de {time} y lleva más de 24 horas esperando.",
+          "deadAlert": "Avisos fallidos de los últimos 30 días que siguen sin resolver: {count}."
         },
         "save": "Guardar ajustes",
         "effect": "Se aplica en aproximadamente un minuto, sin volver a desplegar",
@@ -1352,94 +1350,6 @@
           "now": "Ahora",
           "enforced": "Al aplicarlo",
           "empty": "Ninguna app saldría del índice"
-        },
-        "providers": {
-          "title": "Conexiones de datos",
-          "hint": "El servidor usa estas credenciales para obtener de forma programada los datos de Search Console, Bing y la auditoría del sitio. Las tareas de oportunidades SEO, el diagnóstico de páginas y las comparaciones de antes y después usan esos datos. Las credenciales se guardan cifradas y no se vuelven a mostrar.",
-          "replaceHint": "Las credenciales se sustituyen completas: si cambias cualquier campo de una fuente, vuelve a rellenar todos sus campos. Cada fuente de abajo se guarda por separado.",
-          "loadFailed": "No se pudo leer el estado de esta fuente. Pulsa Actualizar para volver a intentarlo.",
-          "saveFailed": "No se guardó. Revisa las credenciales o inténtalo más tarde.",
-          "save": "Guardar",
-          "enabled": "Obtener automáticamente",
-          "enabledHint": "Una vez activado, obtiene los datos según la programación; al desactivarlo se conservan los datos ya obtenidos.",
-          "clearCredentials": "Borrar las credenciales guardadas",
-          "clearHint": "Al borrarlas también se detiene la obtención automática.",
-          "noProgress": "Todavía no hay progreso de datos registrado",
-          "progress": "{label}: completo hasta {complete}, lo más reciente del {fresh}",
-          "progressNone": "{label}: todavía no hay datos",
-          "none": "sin datos",
-          "state": {
-            "enabled": "Activado",
-            "disabled": "Desactivado",
-            "configured": "Credenciales guardadas",
-            "notConfigured": "Sin credenciales"
-          },
-          "credentialTypes": {
-            "oauth": "Token de actualización de OAuth",
-            "service_account": "Cuenta de servicio",
-            "api_key": "Clave de API",
-            "origin": "URL del origen"
-          },
-          "watermarks": {
-            "gsc_page": "Datos de páginas",
-            "gsc_query": "Datos de consultas",
-            "inspection": "Comprobación de indexación",
-            "bing": "Datos de consultas de Bing",
-            "audit": "Auditoría del sitio",
-            "edge_probe": "Comparación con la CDN"
-          },
-          "sources": {
-            "gsc": {
-              "title": "Conexión con Google Search Console",
-              "hint": "Obtiene datos de páginas y consultas cada 6 horas y comprueba cada día el estado de indexación de una muestra de URL.",
-              "mode": "Método de acceso",
-              "modes": {
-                "service_account": "Cuenta de servicio (recomendado)",
-                "oauth": "Token de actualización de OAuth"
-              },
-              "property": "Propiedad",
-              "propertyHint": "Para una propiedad de dominio usa sc-domain:opennavo.com; para una propiedad de prefijo de URL, la URL completa.",
-              "serviceAccountJson": "Clave JSON de la cuenta de servicio",
-              "chooseFile": "Elegir archivo JSON",
-              "pasteJson": "Pegar en su lugar",
-              "pastePlaceholder": "Pega el contenido completo de la clave JSON de la cuenta de servicio",
-              "keyLoaded": "Se cargó la clave de {email}",
-              "keyInvalid": "Este archivo no es una clave de cuenta de servicio válida",
-              "forgetKey": "Quitar",
-              "serviceAccountHint": "Crea una cuenta de servicio en Google Cloud y descarga su clave JSON; después añade el correo de la cuenta de servicio como usuario en Search Console (basta con acceso restringido). La clave solo se envía al guardar y nunca se muestra en esta página.",
-              "clientId": "ID de cliente",
-              "clientSecret": "Secreto de cliente",
-              "refreshToken": "Token de actualización"
-            },
-            "bing": {
-              "title": "Herramientas para webmasters de Bing",
-              "hint": "Obtiene cada día los datos de consultas de búsqueda de Bing.",
-              "property": "URL del sitio",
-              "apiKey": "Clave de API",
-              "apiKeyHint": "Genérala en las Herramientas para webmasters de Bing, en Configuración › Acceso a la API."
-            },
-            "audit": {
-              "title": "Auditoría del sitio",
-              "hint": "Compara cada hora las páginas que sirven la CDN y el origen para encontrar problemas técnicos que afectan a la indexación.",
-              "originUrl": "URL del origen",
-              "originHint": "Una dirección https que llega directamente al origen. Solo el host, y distinto del dominio público."
-            }
-          },
-          "errors": {
-            "gscProperty": "Propiedad no válida: las de dominio empiezan por sc-domain: y las de prefijo de URL por https://.",
-            "serviceAccount": {
-              "missing": "Elige el archivo de clave JSON de la cuenta de servicio o pega su contenido. Aunque solo cambies la propiedad, vuelve a añadir la clave.",
-              "invalidJson": "No es un JSON válido.",
-              "notServiceAccount": "No es una clave de cuenta de servicio (type no es service_account).",
-              "missingFields": "A la clave le falta client_email o private_key.",
-              "tooLong": "El archivo de clave es demasiado grande. Comprueba que elegiste la clave JSON de la cuenta de servicio."
-            },
-            "oauth": "Rellena el ID de cliente, el secreto de cliente y el token de actualización, sin espacios.",
-            "bingProperty": "La URL del sitio debe empezar por https://.",
-            "apiKey": "Introduce la clave de API, sin espacios.",
-            "origin": "El origen debe ser un host https sin ruta ni parámetros y distinto del dominio público.",
-            "credentialsRequired": "Añade las credenciales antes de activarlo."
-          }
         },
         "errors": {
           "invalidName": "El nombre del sitio debe tener entre 1 y 60 caracteres, sin caracteres de control.",
@@ -1556,7 +1466,6 @@
       "deny": "Rechazar",
       "error": "No se pudo completar la autorización. Reintenta o reinicia la conexión desde la aplicación.",
       "retry": "Reintentar",
-      "incompatible": "El ajuste de automatización no se puede combinar con permisos de escritura de contenido o tareas.",
       "grants": "Aplicaciones conectadas",
       "empty": "No hay aplicaciones autorizadas.",
       "revoke": "Revocar acceso",

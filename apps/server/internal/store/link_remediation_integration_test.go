@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -115,14 +117,10 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error { return (&store.Store{DB: tx}).ScheduleContentTranslation(ctx, ref) }))
 	source, err = st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
-	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Count(&n).Error)
 	// Translation targets all writable content languages, independently of indexing and legacy i18n settings.
-	// Traditional Chinese is derived from Simplified Chinese, never queued.
+	// Traditional Chinese is derived from Simplified Chinese, never a target.
 	expectedLocales := []string{"zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT"}
-	require.EqualValues(t, len(expectedLocales), n)
-	var locales []string
-	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Pluck("locale", &locales).Error)
-	require.ElementsMatch(t, expectedLocales, locales)
+	require.ElementsMatch(t, expectedLocales, slices.Collect(maps.Keys(source.Targets)))
 	applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
 	require.NoError(t, err)
 	require.True(t, applied)
@@ -242,15 +240,11 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 	exec("INSERT INTO background_items VALUES('org.fixture.agent')")
 	exec("INSERT INTO background_item_packages VALUES('org.fixture.agent',?,'launchctl','uninstall','https://example.org/docs',now())", from)
 	exec("INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at) VALUES(?,'en-US','overview',1,repeat('a',64),now())", from)
-	exec("INSERT INTO seo_urls(url,page_kind,locale,package_id) VALUES('https://example.org/new','overview','en-US',?)", from)
-	exec("INSERT INTO seo_keywords(id,keyword,normalized,source,engine,country,language,device,period,volume_state,observed_at) VALUES(901,'editor','editor','gsc','google','US','en-US','desktop','2026-10','unknown',now())")
-	exec("INSERT INTO seo_keyword_links VALUES(901,?,'price',0.9,'confirmed')", from)
+	exec("INSERT INTO package_intent_pages(package_id,page_kind,locale) VALUES(?,'alternatives','en-US')", from)
+	exec("INSERT INTO package_seo_overrides(package_id,locale,title) VALUES(?,'en-US','Fixture title')", from)
 	exec("INSERT INTO admin_users(id,user_name,password_hash) VALUES(901,'merge-reviewer','fixture-not-a-password-hash')")
 	exec("INSERT INTO article_test_artifacts(article_id,package_id,payload,sha256,registered_by) VALUES(1001,?,jsonb_build_object('packageId',?::bigint,'appVersion','1'),repeat('c',64),901)", from, from)
 	exec("UPDATE article_revisions SET claims=jsonb_build_array(jsonb_build_object('packageId',?::bigint)),seo_target=jsonb_build_object('entityKey',?::text,'intent','price') WHERE id=1001", from, fmt.Sprintf("pkg:%d", from))
-	exec("INSERT INTO seo_listing_baselines(package_id,domain,developer,team_id,fact_id,evidence_id,evidence_hash,verified_by,valid_until) VALUES(?,'example.org','Fixture','ABCDEFGHIJ',1,1,repeat('a',64),901,now()+interval '1 day')", from)
-	exec("INSERT INTO seo_listing_candidates(token,state,payload,baseline_package_id,package_id) VALUES('new','published',jsonb_build_object('baselinePackageId',?::bigint),?,?)", from, from, from)
-	exec("UPDATE seo_listing_candidates c SET payload=payload||jsonb_build_object('link',jsonb_build_object('homepage',l.homepage,'downloadUrl',l.download_url,'teamId',l.team_id)) FROM link_apps l WHERE c.package_id=l.package_id")
 	var tables []string
 	require.NoError(t, st.DB.Raw("SELECT DISTINCT conrelid::regclass::text FROM pg_constraint WHERE contype='f' AND confrelid='packages'::regclass").Scan(&tables).Error)
 	for _, table := range tables {
@@ -294,8 +288,9 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 	require.Contains(t, audit, "Source human")
 	require.Contains(t, audit, "Archived summary")
 	require.Contains(t, audit, "source notes")
-	require.Contains(t, audit, "translate:collection_item:")
-	require.Contains(t, audit, "translate:release:1002")
+	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM audit_logs a CROSS JOIN LATERAL jsonb_array_elements(a.before->'content_translation_sources_content') r
+ WHERE a.action='link.adopt.rename' AND (r->>'entity'='collection_item' OR r->>'object_key'='1002')`).Scan(&n).Error)
+	require.EqualValues(t, 2, n, "the audit keeps the translation sources of merged items and releases")
 	require.NoError(t, st.DB.Table("audit_logs").Where("action='link.adopt.rename'").Count(&n).Error)
 	require.EqualValues(t, 1, n)
 	var summary string
@@ -312,6 +307,10 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 	require.Zero(t, n)
 	require.NoError(t, st.DB.Table("job_outbox").Where("unique_key=?", fmt.Sprintf("translate:content:package:%d", from)).Count(&n).Error)
 	require.Zero(t, n)
+	require.NoError(t, st.DB.Table("package_intent_pages").Where("package_id=? AND page_kind='alternatives' AND locale='en-US'", to).Count(&n).Error)
+	require.EqualValues(t, 1, n)
+	require.NoError(t, st.DB.Table("package_seo_overrides").Where("package_id=? AND title='Fixture title'", to).Count(&n).Error)
+	require.EqualValues(t, 1, n)
 	var selected string
 	require.NoError(t, st.DB.Raw("SELECT config->>'url' FROM changelog_sources WHERE package_id=? AND type='sparkle'", to).Scan(&selected).Error)
 	require.Equal(t, "https://example.org/manual", selected)

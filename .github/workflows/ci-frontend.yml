@@ -54,13 +54,30 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/server/go.mod
+          cache: false
+      - uses: ./.github/actions/go-cache
+        with:
+          name: frontend-static
       - run: pnpm install --frozen-lockfile
       # Generated tokens, API types, and icon subsets must match committed output; IPC bindings require Rust and are checked in Desktop CI (ci-desktop.yml).
       - run: pnpm --filter "./packages/*" run gen
       - run: git diff --exit-code
       - run: pnpm run format:check
+      # Repository-wide i18n gates of `make lint-web`: interface locks, hard-coded copy, the README
+      # brand block, and Traditional Chinese derived with the Go converter (hence setup-go).
+      - run: node tooling/scripts/check-interface-i18n.mjs
+      - run: node tooling/scripts/check-hardcoded-i18n.mjs
+      - run: node tooling/scripts/sync-brand-readme.mjs --check
+      - run: node tooling/scripts/derive-traditional.mjs --check
+      - run: node --test tooling/scripts/traditional-markdown.test.mjs
       - run: pnpm --filter "@opennavo/*" --if-present run lint
       - run: pnpm --filter "@opennavo/*" --if-present run typecheck
+      - uses: ./.github/actions/go-cache-save
+        with:
+          name: frontend-static
 
   frontend-test:
     needs: changes
@@ -77,6 +94,9 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: >-
+          node --test tooling/scripts/check-hardcoded-i18n.test.mjs tooling/scripts/derive-traditional.test.mjs
+          tooling/scripts/sync-brand-readme.test.mjs apps/web/scripts/og-font.test.mjs
       - run: pnpm --filter "@opennavo/*" --if-present run test
 
   frontend-build:

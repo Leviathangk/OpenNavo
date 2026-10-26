@@ -5,9 +5,8 @@ import dayjs from 'dayjs';
 import { fetchDashboardOverview } from '@/service/api';
 import type { DataOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
+import AgentCard from './modules/agent-card.vue';
 import CoverageCard from './modules/coverage-card.vue';
-import HermesCard from './modules/hermes-card.vue';
-import SeoCard from './modules/seo-card.vue';
 import StatCard from './modules/stat-card.vue';
 import SyncCard from './modules/sync-card.vue';
 import TodoCard from './modules/todo-card.vue';
@@ -15,7 +14,7 @@ import UsageCard from './modules/usage-card.vue';
 
 defineOptions({ name: 'Dashboard' });
 
-// Dashboard (07 §7.1): scale, coverage, sync health, Hermes and open feedback; refresh every 60 seconds.
+// Dashboard (07 §7.1): scale, coverage, sync health, Agent changes and open feedback; refresh every 60 seconds.
 const overview = ref<DataOf<'getDashboardOverview'> | null>(null);
 const loading = ref(false);
 const failed = ref(false);
@@ -63,21 +62,20 @@ const stats = computed(() => {
 <template>
   <NSpin :show="loading && !overview">
     <div class="flex-col gap-16px">
-      <!-- Five headline cards: 3 + 2 rows on medium screens (Hermes spans two), one row on wide screens. -->
+      <!-- Five headline cards: 3 + 2 rows on medium screens (Agent changes spans two), one row on wide screens. -->
       <div v-if="overview" class="grid grid-cols-1 gap-16px sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <StatCard v-for="item in stats" :key="item.key" :label="item.label" :value="item.value" :hint="item.hint" />
         <TodoCard :feedback-open="overview.feedbackOpen" />
-        <HermesCard v-if="overview.hermes" :hermes="overview.hermes" class="sm:col-span-2 2xl:col-span-1" />
+        <AgentCard v-if="overview.hermes" :hermes="overview.hermes" class="sm:col-span-2 2xl:col-span-1" />
       </div>
-      <NAlert v-if="failed" type="error" role="alert" :title="$t('page.dashboard.seo.loadFailed')">
-        <NButton :loading="loading" @click="load">{{ $t('page.dashboard.seo.retry') }}</NButton>
+      <NAlert v-if="failed" type="error" role="alert" :title="$t('page.dashboard.loadFailed')">
+        <NButton :loading="loading" @click="load">{{ $t('page.dashboard.retry') }}</NButton>
       </NAlert>
       <UsageCard v-if="overview?.usage" :usage="overview.usage" />
       <div v-if="overview" class="grid grid-cols-1 gap-16px lg:grid-cols-3">
         <CoverageCard :coverage="overview.coverage" class="lg:col-span-2" />
         <SyncCard :jobs="overview.jobs" :snapshot="overview.snapshot" />
       </div>
-      <SeoCard />
       <NText v-if="overview && refreshedAt" depth="3" tag="p" class="m-0 text-right text-12px">
         {{ $t('page.dashboard.refreshedAt', { time: dayjs(refreshedAt).format('HH:mm:ss') }) }}
       </NText>

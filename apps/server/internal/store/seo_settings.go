@@ -77,9 +77,10 @@ type SEOSettings struct {
 // analytics cookies wait for consent.
 var ConsentRegionsDefault = []string{"AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "GB", "CH"}
 
-// DefaultSEOSettings reproduces the behaviour that existed before the settings page:
-// ClaudeBot limited (10 s crawl delay, no payloads or dependency tabs), SEO-tool
-// crawlers blocked, new title templates, index policy observed but not enforced.
+// DefaultSEOSettings reproduces the behaviour that existed before the settings page, with the
+// training crawlers that fetch at scale limited (10 s crawl delay, no payloads or dependency tabs;
+// the same list as packages/shared), SEO-tool crawlers blocked, new title templates, index policy
+// observed but not enforced. Migration 00112 added these bots to stored lists.
 func DefaultSEOSettings() SEOSettings {
 	var s SEOSettings
 	s.Identity.Name = "OpenNavo"
@@ -87,7 +88,7 @@ func DefaultSEOSettings() SEOSettings {
 	s.Identity.SameAs = []string{"https://github.com/opennavo/OpenNavo", "https://x.com/opennavo"}
 	s.Analytics.UsageEnabled = true
 	s.Analytics.ConsentRegions = append([]string{}, ConsentRegionsDefault...)
-	s.Crawlers.Training = SEOCrawlerRule{Mode: CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot"}}
+	s.Crawlers.Training = SEOCrawlerRule{Mode: CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot", "GPTBot", "Amazonbot", "Bytespider", "CCBot", "Meta-ExternalAgent", "anthropic-ai", "MistralAI-Training"}}
 	s.Crawlers.SEOTools = SEOCrawlerRule{Mode: CrawlerModeBlock, DelaySeconds: 10, Bots: []string{"MJ12bot", "SerpstatBot"}}
 	for _, locale := range i18n.Locales {
 		s.Pages.OpenLocales = append(s.Pages.OpenLocales, string(locale))

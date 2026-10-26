@@ -4,224 +4,6 @@
  */
 
 export interface paths {
-    "/system/seo-providers/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read provider readiness */
-        get: operations["getSeoProvider"];
-        /** Store encrypted SEO provider credentials */
-        put: operations["updateSeoProvider"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/tasks/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** claimSeoTasks */
-        post: operations["claimSeoTasks"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/tasks/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** getSeoTask */
-        get: operations["getSeoTask"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/tasks/{id}/complete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** completeSeoTask */
-        post: operations["completeSeoTask"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/tasks/{id}/defer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** deferSeoTask */
-        post: operations["deferSeoTask"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/tasks/{id}/reopen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * reopenSeoTask
-         * @description Return any existing task to the queue without cooldown, expiry or source-version prerequisites. Clears its current lease and retry delay and advances fencing so previous workers cannot complete it.
-         */
-        post: operations["reopenSeoTask"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/evidence": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** createSeoEvidence */
-        post: operations["createSeoEvidence"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/actions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** listSeoActions */
-        get: operations["listSeoActions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/snippet-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** proposeSnippetTemplate */
-        post: operations["proposeSnippetTemplate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/actions/{id}/compensate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** compensateSeoAction */
-        post: operations["compensateSeoAction"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/automation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * getSeoAutomation
-         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
-         */
-        get: operations["getSeoAutomation"];
-        /**
-         * updateSeoAutomation
-         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
-         */
-        put: operations["updateSeoAutomation"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/tasks/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * importSeoTasks
-         * @description Server-owned Hermes control/import/translation operation. Requires seo:task:handle. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
-         */
-        post: operations["importSeoTasks"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/translations/source": {
         parameters: {
             query?: never;
@@ -231,7 +13,7 @@ export interface paths {
         };
         /**
          * getTranslationsSource
-         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
+         * @description Batch translation endpoint. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Each language validates permissions and input independently.
          */
         get: operations["getTranslationsSource"];
         put?: never;
@@ -253,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * writeTranslations
-         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
+         * @description Batch translation endpoint. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Each language validates permissions and input independently.
          */
         post: operations["writeTranslations"];
         delete?: never;
@@ -296,134 +78,6 @@ export interface paths {
          */
         put: operations["setBackgroundItem"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/geo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * listSeoGeo
-         * @description Structured GEO ledger. Requires seo:insight:view. Imports existing observations only; no paid calls or scheduling. Unknown values remain null.
-         */
-        get: operations["listSeoGeo"];
-        put?: never;
-        /**
-         * recordSeoGeo
-         * @description Structured GEO ledger. Requires seo:task:handle. Imports existing observations only; no paid calls or scheduling. Unknown values remain null.
-         */
-        post: operations["recordSeoGeo"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/geo/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * getSeoGeo
-         * @description Structured GEO ledger. Requires seo:insight:view. Imports existing observations only; no paid calls or scheduling. Unknown values remain null.
-         */
-        get: operations["getSeoGeo"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/alerts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List SEO audit alerts
-         * @description Read-only dashboard list of audit issues that generate tech_alert tasks. Open issues sort first, followed by lastSeen DESC and ID DESC. Resolution comes from a later successful audit, never from task completion. This list includes audit issues before task generation and excludes non-audit traffic-degradation tasks. Requires seo:insight:view.
-         */
-        get: operations["listSeoAlerts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/overview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * get Seo Overview
-         * @description Server-owned SEO ledger and measurements. Requires seo:insight:view. Agent access uses the internal gateway and Agent token.
-         */
-        get: operations["getSeoOverview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/page": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * get Seo Page
-         * @description Server-owned SEO ledger and measurements. Requires seo:insight:view. Agent access uses the internal gateway and Agent token.
-         */
-        get: operations["getSeoPage"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/keywords": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * list Seo Keywords
-         * @description Server-owned SEO ledger and measurements. Requires seo:insight:view. Agent access uses the internal gateway and Agent token.
-         */
-        get: operations["listSeoKeywords"];
-        put?: never;
-        /**
-         * upsert Seo Keywords
-         * @description Server-owned SEO ledger and measurements. Requires seo:keyword:edit. Agent access uses the internal gateway and Agent token.
-         */
-        post: operations["upsertSeoKeywords"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1322,7 +976,7 @@ export interface paths {
         put?: never;
         /**
          * Restore an earlier article revision
-         * @description Restores a previously published revision directly online, including its published pointer and language state; this requires content:article:publish. An unpublished revision is copied into a working draft and requires content:article:edit. expectedRevision is optional. Agent writes require no task lease or evidence envelope.
+         * @description Restores a previously published revision directly online, including its published pointer and language state; this requires content:article:publish. An unpublished revision is copied into a working draft and requires content:article:edit. expectedRevision is optional.
          */
         post: operations["revertArticle"];
         delete?: never;
@@ -2519,7 +2173,7 @@ export interface paths {
         };
         /**
          * Query catalog activity changes
-         * @description Requires catalog:package:view. Omit from/to for a current query; date examples illustrate format only and must be replaced with recent timestamps. Defaults to the last 24 hours, inclusive from/exclusive to; at most the retained last 14 days, otherwise 1001. Catalog events only, excluding content/analytics changes; initial sync records created only, later new versions record updated. renamed requires a trusted former token in the definition and is never guessed. No synthetic events for rows predating the migration. All sorting uses seq as a stable secondary key. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Requires catalog:package:view. Events of casks from Homebrew and third-party taps and of link apps (source says which). Omit from/to for a current query; date examples illustrate format only and must be replaced with recent timestamps. Defaults to the last 24 hours, inclusive from/exclusive to; at most the retained last 14 days, otherwise 1001. Catalog events only, excluding content/analytics changes; initial sync records created only, later new versions record updated. renamed requires a trusted former token in the definition and is never guessed. No synthetic events for rows predating the migration. All sorting uses seq as a stable secondary key. afterSeq reads incrementally instead: events with a larger seq in seq order, up to size per call, then pass the returned nextSeq; it takes no from, to, sort=popular or current>1 (1001 rejected: parameter_conflict:<name>). afterSeq=0 starts at the oldest retained event; a cursor older than the 14-day retention returns 1001 rejected: cursor_before_retention:afterSeq. Every page returns nextSeq. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["listAdminCatalogChanges"];
         put?: never;
@@ -2966,90 +2620,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/seo/listings/{token}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * getSeoListingCandidate
-         * @description Optional candidate workspace. Publishing directly creates or updates a link app; tasks, evidence, identity baselines and complete editorial metadata are not required.
-         */
-        get: operations["getSeoListingCandidate"];
-        /**
-         * upsertSeoListingCandidate
-         * @description Optional candidate workspace. Publishing directly creates or updates a link app; tasks, evidence, identity baselines and complete editorial metadata are not required.
-         */
-        put: operations["upsertSeoListingCandidate"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/listings/{token}/nominate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * nominateSeoListing
-         * @description Turn an app a person asked for into a listing task (entity listing:<token>, priority 1000) so an agent can prepare its listing candidate. Nominating publishes nothing; publishing keeps the listing rules. Nominating the same token again returns the open task, or reopens a finished one. A published automatic listing can be nominated again to correct it: claim the task and publish the candidate again. Rejections carry `rejected: <rule>` (already_listed for other catalog packages, candidate_rejected).
-         */
-        post: operations["nominateSeoListing"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/topics/{key}/nominate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * nominateSeoTopic
-         * @description Propose an article topic. Creates a topic task (entity article:new:<key>, priority 100) that the article workflow claims like a keyword topic; a topic already queued or in progress is returned as is, and a finished nomination is reopened. Nominating publishes nothing; the daily and weekly article limits apply when the article is written. Rejections carry `rejected: <rule>` (article_exists).
-         */
-        post: operations["nominateSeoTopic"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/seo/listing-baselines/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * lockSeoListingBaseline
-         * @description Administrator attestation after independent developer/domain verification. Identity is locked; Agent credentials are forbidden.
-         */
-        put: operations["lockSeoListingBaseline"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/articles/{id}/evidence": {
         parameters: {
             query?: never;
@@ -3061,7 +2631,7 @@ export interface paths {
         put?: never;
         /**
          * Capture an article source
-         * @description Human editors only. Fetch and store a verified source excerpt for this article or a linked app. Does not require an Agent task lease.
+         * @description Human editors only. Fetch and store a verified source excerpt for this article or a linked app.
          */
         post: operations["captureArticleEvidence"];
         delete?: never;
@@ -3094,93 +2664,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/page-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Index decision for one page of the site
+         * @description Requires site:index:view. Looks up how the site treats a URL from the same facts the page renders, never from measurement data: robots, canonical, hreflang, sitemap listing and IndexNow announcement for app pages (overview, versions with page/notes/original, details, dependencies, troubleshooting, alternatives, uninstall), articles and background items. Other pages (home, lists, categories, collections, authors, security topics, static pages) are decided by the web app: decidedBy is web, the decision fields are null and localeOpen tells whether the language is open for indexing (a closed language is noindex on every page). The URL must be on the site origin (an absolute URL or a path); otherwise 1001 rejected: url_not_on_site:url. Reads bypass the public caches. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["getPageDecision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site-index/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read-only site settings for indexing
+         * @description Requires site:index:view. The page policy (pages.*), crawler rules, the edge cache switch and lifetimes, whether IndexNow announces, the public analytics ID, the URL change feed status and the settings revision. Never returns credentials or their ciphertexts or CDN identifiers. Agents cannot change site settings; people use the admin settings page. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["getSiteIndexSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/intent-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An app's intent page switches
+         * @description Requires catalog:package:view. Both intent pages (alternatives, uninstall) in every site language: the editorial switch, whether the app has the content, and the final decision. zh-Hant follows zh-CN (derived, read-only). revision is the value setPackageIntentPages checks. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["getPackageIntentPages"];
+        /**
+         * Open or close an app's intent pages
+         * @description Requires catalog:package:edit. Opens or closes the listed switches; others keep their state. A page is indexed only when its switch is open, the app has the content (three alternatives with a verified reason; uninstall steps from a cask), pages.intentPagesEnabled is on and the language is open for indexing with the overview indexed. zh-Hant follows zh-CN and is rejected; uninstall pages of link apps are rejected with rejected: intent_page_unsupported:uninstall. Admin sessions and Agents may send X-Expected-Revision. A change refreshes the app pages through the URL change feed. Returns the state after the write, as getPackageIntentPages; dry-run returns the preview. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["setPackageIntentPages"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open intent page switches of the site
+         * @description Requires catalog:package:view. Pages the open switches of live apps, newest first, each with its content gate and final decision. locale=zh-Hant lists the zh-CN switches the zh-Hant pages follow. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["listIntentPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/seo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An app's overview title and description overrides
+         * @description Requires catalog:package:view. Overrides of the overview search title and meta description by language; languages without one use the templates. zh-Hant shows zh-CN converted to Traditional Chinese (derived, read-only). Only the overview uses them. revision is the value setPackageSeo checks. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["getPackageSeo"];
+        /**
+         * Set an app's overview title and description
+         * @description Requires catalog:package:edit. Sets or clears the overview title (up to 70 characters, without the brand suffix the site adds) and description (up to 200) of one language. An omitted field keeps its value; null or an empty string clears it; clearing both removes the override. Values are trimmed and must be plain single-line text: < or > or control characters return 1001 rejected: seo_text_invalid:<field>, too long rejected: field_too_long:<field>. zh-Hant is derived from zh-CN and rejected. Admin sessions and Agents may send X-Expected-Revision. A change refreshes the overview through the URL change feed. Returns the state after the write, as getPackageSeo; dry-run returns the preview. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["setPackageSeo"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verified fact records due for a recheck
+         * @description Requires catalog:package:view. Fact records stored as verified whose evidence has expired or expires within withinDays (default 14, at most 90), the most popular apps first and then the earliest validUntil. Expired ones (expired true) already show as unverified on the site. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["listDueFactRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * @example {
-         *       "source": "gsc",
-         *       "enabled": false,
-         *       "configured": false,
-         *       "credentialType": null,
-         *       "watermarks": [
-         *         {
-         *           "source": "gsc_page",
-         *           "completeThrough": null,
-         *           "freshThrough": null,
-         *           "updatedAt": "2026-10-24T00:00:00Z"
-         *         },
-         *         {
-         *           "source": "gsc_query",
-         *           "completeThrough": null,
-         *           "freshThrough": null,
-         *           "updatedAt": "2026-10-24T00:00:00Z"
-         *         },
-         *         {
-         *           "source": "inspection",
-         *           "completeThrough": null,
-         *           "freshThrough": null,
-         *           "updatedAt": "2026-10-24T00:00:00Z"
-         *         }
-         *       ]
-         *     }
-         */
-        SeoProviderView: {
-            /** @enum {string} */
-            source: "gsc" | "bing" | "audit";
-            /** @description Whether scheduled ingestion is enabled; does not imply a successful connection or fresh data. */
-            enabled: boolean;
-            /** @description Whether encrypted credentials are stored; does not imply that the provider has accepted them. */
-            configured: boolean;
-            /**
-             * @description Stored credential kind only; gsc uses oauth or service_account, bing uses api_key, and audit uses origin. Null when unconfigured or the kind cannot be determined. Credential contents are never returned.
-             * @enum {string|null}
-             */
-            credentialType: "oauth" | "service_account" | "api_key" | "origin" | null;
-            /** @description Data progress for this provider, ordered as gsc_page/gsc_query/inspection for gsc, bing for bing, and audit/edge_probe for audit. Missing rows are omitted. Null dates mean no recorded progress; updatedAt is the watermark row update time, not proof of a successful ingestion. Clearing credentials or disabling ingestion does not erase historical progress. */
-            watermarks: components["schemas"]["SeoWatermark"][];
-        };
-        /**
-         * @example {
-         *       "enabled": false,
-         *       "clearCredentials": true
-         *     }
-         */
-        SeoProviderUpdate: {
-            enabled?: boolean;
-            /** @description Clear stored credentials. Mutually exclusive with credentials; also set enabled to false when clearing an enabled provider. */
-            clearCredentials?: boolean;
-            /** @description Replaces the entire stored credential document; omit to retain it. For gsc, send property with either serviceAccountJson or all three OAuth fields (clientId, clientSecret, refreshToken), never both. For bing, send property and apiKey. For audit, send originUrl only. Credential values are never returned. */
-            credentials?: {
-                property?: string;
-                clientId?: string;
-                clientSecret?: string;
-                refreshToken?: string;
-                /** @description GSC service account JSON document serialized as a string, not a nested object. Must contain type=service_account, client_email and a valid RSA private_key of at least 2048 bits. token_uri defaults to https://oauth2.googleapis.com/token; if supplied, only that URL or https://accounts.google.com/o/oauth2/token is accepted. Send together with property and omit the OAuth fields. */
-                serviceAccountJson?: string;
-                apiKey?: string;
-                originUrl?: string;
-            };
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "source": "gsc",
-         *         "enabled": false,
-         *         "configured": false,
-         *         "credentialType": null,
-         *         "watermarks": []
-         *       }
-         *     }
-         */
-        SeoProviderResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoProviderView"];
-        };
         /**
          * @description Only fields belonging to the entity are accepted. Limits follow internal/content.Registry: package.summary 200, announcement.title 200/body 2000, collection/feature.title 200, mirror.name 128. fixTranslation cannot rewrite source fields. sections allows at most 8 groups with 6 items each and at most 2400 serialized characters.
          * @example {}
@@ -3232,264 +2847,6 @@ export interface components {
         };
         /**
          * @example {
-         *       "idempotencyKey": "claim-001",
-         *       "limit": 1,
-         *       "kinds": [
-         *         "fill_fact"
-         *       ]
-         *     }
-         */
-        SeoTaskClaim: {
-            idempotencyKey: string;
-            /** @default 1 */
-            limit: number;
-            kinds?: string[];
-            /** @description Claim only these tasks (a nomination or a task the caller reopened); they must still be claimable. */
-            taskIds?: number[];
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "fixture-complete-001",
-         *       "fencing": 1,
-         *       "outcome": "done"
-         *     }
-         */
-        SeoTaskComplete: {
-            idempotencyKey: string;
-            /** Format: int64 */
-            fencing: number;
-            /** @enum {string} */
-            outcome: "done" | "skipped" | "quarantined";
-            reason?: string;
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "fixture-reopen-001",
-         *       "reason": "Corrected the version literal in the description"
-         *     }
-         */
-        SeoTaskReopen: {
-            idempotencyKey?: string;
-            reason: string;
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "nominate-001",
-         *       "name": "Example App",
-         *       "homepage": "https://vendor.example.test",
-         *       "reason": "Requested by the site owner"
-         *     }
-         */
-        SeoListingNomination: {
-            idempotencyKey: string;
-            name: string;
-            /** @description Official https page of the app, where the agent starts its research. */
-            homepage?: string;
-            /** @description Who asked for the app and why. */
-            reason: string;
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "example-00000001",
-         *       "keyword": "batch rename files mac",
-         *       "locale": "en-US",
-         *       "reason": "Recurring question with no guide on the site"
-         *     }
-         */
-        SeoTopicNomination: {
-            idempotencyKey: string;
-            /** @description The search phrase the article answers. */
-            keyword: string;
-            locale?: components["schemas"]["Locale"];
-            /** @description Why the topic is worth an article. The article's source language is locale, en-US by default. */
-            reason: string;
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "fixture-defer-001",
-         *       "fencing": 1,
-         *       "reason": "Official source unavailable",
-         *       "retryAt": "2026-10-20T00:00:00Z"
-         *     }
-         */
-        SeoTaskDefer: {
-            idempotencyKey: string;
-            /** Format: int64 */
-            fencing: number;
-            reason: string;
-            /** Format: date-time */
-            retryAt: string;
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "evidence-001",
-         *       "taskId": 1,
-         *       "fencing": 1,
-         *       "entityKey": "pkg:1",
-         *       "url": "https://example.com/product",
-         *       "excerpt": "Requires macOS 14."
-         *     }
-         */
-        SeoEvidenceCapture: {
-            idempotencyKey: string;
-            /** Format: int64 */
-            taskId: number;
-            /** Format: int64 */
-            fencing: number;
-            entityKey: string;
-            /** Format: uri */
-            url: string;
-            excerpt: string;
-        };
-        /**
-         * @example {
-         *       "pageKind": "overview",
-         *       "locale": "en-US",
-         *       "variant": "current_version",
-         *       "slots": [
-         *         "name",
-         *         "version"
-         *       ],
-         *       "targetCtr": 0.015
-         *     }
-         */
-        SeoSnippetProposal: {
-            /** @enum {string} */
-            pageKind: "overview";
-            locale: components["schemas"]["Locale"];
-            /** @enum {string} */
-            variant: "verified_free" | "current_version" | "uninstall_alternatives";
-            slots: ("name" | "version" | "free" | "uninstall" | "alternatives")[];
-            /**
-             * @deprecated
-             * @description Ignored for compatibility; the server computes the baseline from the eligible GSC cohort.
-             */
-            baselineCtr?: number;
-            targetCtr: number;
-        };
-        /**
-         * @example {
-         *       "reason": "implementation_error"
-         *     }
-         */
-        SeoCompensation: {
-            /** @enum {string} */
-            reason: "implementation_error" | "previous_still_valid";
-            fieldPaths?: string[];
-        };
-        /**
-         * @example {
-         *       "id": 1,
-         *       "kind": "fill_fact",
-         *       "entityKey": "pkg:1",
-         *       "locale": "en-US",
-         *       "dedupeKey": "fixture-opportunity",
-         *       "priority": 100,
-         *       "evidence": {},
-         *       "evidenceHash": "fixture",
-         *       "ruleVersion": "opportunities-v1",
-         *       "state": "leased",
-         *       "fencing": 1,
-         *       "attempts": 1,
-         *       "createdAt": "2026-10-19T00:00:00Z",
-         *       "updatedAt": "2026-10-19T00:00:00Z"
-         *     }
-         */
-        SeoTask: {
-            /** Format: int64 */
-            id: number;
-            kind: string;
-            entityKey: string;
-            locale: string | null;
-            dedupeKey: string;
-            priority: number;
-            evidence: unknown;
-            evidenceHash: string;
-            ruleVersion: string;
-            /** @enum {string} */
-            state: "open" | "leased" | "done" | "deferred" | "skipped" | "quarantined" | "expired";
-            /** Format: int64 */
-            fencing: number;
-            /** Format: int64 */
-            attempts: number;
-            createdAt: string;
-            updatedAt: string;
-            result?: unknown;
-            /** Format: date-time */
-            leaseUntil?: string | null;
-            /** Format: date-time */
-            nextRetryAt?: string | null;
-            /** Format: date-time */
-            lastAttemptAt?: string | null;
-            /** Format: date-time */
-            expiresAt?: string | null;
-            leaseOwner?: string | null;
-            /** @description Evidence that changed while the task was leased; it replaces evidence when the lease ends and then reopens the task. */
-            pendingEvidence?: unknown;
-            reopenCount?: number;
-            /** Format: date-time */
-            reopenedAt?: string | null;
-        };
-        /**
-         * @example {
-         *       "records": [
-         *         {
-         *           "id": 1,
-         *           "kind": "fill_fact",
-         *           "entityKey": "pkg:1",
-         *           "locale": "en-US",
-         *           "dedupeKey": "fixture-opportunity",
-         *           "priority": 100,
-         *           "evidence": {},
-         *           "evidenceHash": "fixture",
-         *           "ruleVersion": "opportunities-v1",
-         *           "state": "leased",
-         *           "fencing": 1,
-         *           "attempts": 1,
-         *           "createdAt": "2026-10-19T00:00:00Z",
-         *           "updatedAt": "2026-10-19T00:00:00Z"
-         *         }
-         *       ]
-         *     }
-         */
-        SeoTaskList: {
-            records: components["schemas"]["SeoTask"][];
-        };
-        /**
-         * @example {
-         *       "task": {
-         *         "id": 1
-         *       },
-         *       "actions": [],
-         *       "evidence": [],
-         *       "experiments": [],
-         *       "gateEvents": []
-         *     }
-         */
-        SeoTaskTrace: {
-            /** Format: int64 */
-            currentRevision?: number;
-            revisions?: {
-                [key: string]: number;
-            };
-            task: {
-                [key: string]: unknown;
-            };
-            actions: {
-                [key: string]: unknown;
-            }[];
-            evidence: {
-                [key: string]: unknown;
-            }[];
-            experiments: {
-                [key: string]: unknown;
-            }[];
-            gateEvents: {
-                [key: string]: unknown;
-            }[];
-        };
-        /**
-         * @example {
          *       "id": 1,
          *       "entityKey": "pkg:1",
          *       "sourceUrl": "https://example.com/product",
@@ -3523,138 +2880,6 @@ export interface components {
         };
         /**
          * @example {
-         *       "records": [],
-         *       "current": 1,
-         *       "size": 20,
-         *       "total": 0,
-         *       "metrics": []
-         *     }
-         */
-        SeoActionPage: {
-            records: {
-                [key: string]: unknown;
-            }[];
-            /** Format: int64 */
-            current: number;
-            /** Format: int64 */
-            size: number;
-            /** Format: int64 */
-            total: number;
-            metrics: {
-                [key: string]: unknown;
-            }[];
-        };
-        /**
-         * @example {
-         *       "id": 1,
-         *       "state": "running",
-         *       "requiredImpressions": 10000,
-         *       "variant": "current_version",
-         *       "templateVersion": "snippet-v1"
-         *     }
-         */
-        SeoSnippetResult: {
-            /** Format: int64 */
-            id: number;
-            state: string;
-            /** Format: int64 */
-            requiredImpressions: number;
-            variant: string;
-            templateVersion: string;
-        };
-        /**
-         * @example {
-         *       "actionId": 1,
-         *       "compensated": true,
-         *       "affectedUrls": []
-         *     }
-         */
-        SeoCompensationResult: {
-            /** Format: int64 */
-            actionId: number;
-            compensated: boolean;
-            affectedUrls: string[];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "records": [
-         *           {
-         *             "id": 1,
-         *             "kind": "fill_fact",
-         *             "entityKey": "pkg:1",
-         *             "locale": "en-US",
-         *             "dedupeKey": "fixture-opportunity",
-         *             "priority": 100,
-         *             "evidence": {},
-         *             "evidenceHash": "fixture",
-         *             "ruleVersion": "opportunities-v1",
-         *             "state": "leased",
-         *             "fencing": 1,
-         *             "attempts": 1,
-         *             "createdAt": "2026-10-19T00:00:00Z",
-         *             "updatedAt": "2026-10-19T00:00:00Z"
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoTaskListResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoTaskList"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "task": {
-         *           "id": 1
-         *         },
-         *         "actions": [],
-         *         "evidence": [],
-         *         "experiments": [],
-         *         "gateEvents": []
-         *       }
-         *     }
-         */
-        SeoTaskTraceResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoTaskTrace"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "kind": "fill_fact",
-         *         "entityKey": "pkg:1",
-         *         "locale": "en-US",
-         *         "dedupeKey": "fixture-opportunity",
-         *         "priority": 100,
-         *         "evidence": {},
-         *         "evidenceHash": "fixture",
-         *         "ruleVersion": "opportunities-v1",
-         *         "state": "leased",
-         *         "fencing": 1,
-         *         "attempts": 1,
-         *         "createdAt": "2026-10-19T00:00:00Z",
-         *         "updatedAt": "2026-10-19T00:00:00Z"
-         *       }
-         *     }
-         */
-        SeoTaskResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoTask"];
-        };
-        /**
-         * @example {
          *       "code": "0000",
          *       "msg": "ok",
          *       "data": {
@@ -3676,391 +2901,6 @@ export interface components {
             code: components["schemas"]["Code"];
             msg: string;
             data: components["schemas"]["SeoEvidence"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "records": [],
-         *         "current": 1,
-         *         "size": 20,
-         *         "total": 0,
-         *         "metrics": []
-         *       }
-         *     }
-         */
-        SeoActionPageResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoActionPage"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "state": "running",
-         *         "requiredImpressions": 10000,
-         *         "variant": "current_version",
-         *         "templateVersion": "snippet-v1"
-         *       }
-         *     }
-         */
-        SeoSnippetResultResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoSnippetResult"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "actionId": 1,
-         *         "compensated": true,
-         *         "affectedUrls": []
-         *       }
-         *     }
-         */
-        SeoCompensationResultResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["SeoCompensationResult"];
-        };
-        /**
-         * @example {
-         *       "version": 1,
-         *       "actions": {
-         *         "maintenance": {
-         *           "enabled": true,
-         *           "mode": "live"
-         *         },
-         *         "translation": {
-         *           "enabled": true,
-         *           "mode": "live"
-         *         },
-         *         "fact_fix": {
-         *           "enabled": true,
-         *           "mode": "live"
-         *         },
-         *         "withdraw": {
-         *           "enabled": true,
-         *           "mode": "live"
-         *         },
-         *         "compensate": {
-         *           "enabled": true,
-         *           "mode": "live"
-         *         },
-         *         "fact_fill": {
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         },
-         *         "content": {
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         },
-         *         "listing": {
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         },
-         *         "article": {
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         },
-         *         "snippet": {
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         },
-         *         "operations": {
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         },
-         *         "research": {
-         *           "enabled": true,
-         *           "mode": "live"
-         *         }
-         *       },
-         *       "dailyEntities": {
-         *         "maintenance": 100,
-         *         "translation": 100,
-         *         "fact_fix": 100,
-         *         "withdraw": 100,
-         *         "compensate": 100,
-         *         "fact_fill": 100,
-         *         "content": 100,
-         *         "listing": 100,
-         *         "article": 100,
-         *         "snippet": 100,
-         *         "operations": 100,
-         *         "research": 100
-         *       },
-         *       "researchDailyMicros": 15000000,
-         *       "researchMonthlyMicros": 100000000,
-         *       "businessDropRatio": 0.5
-         *     }
-         */
-        SeoAutomation: {
-            /** @enum {integer} */
-            version: 1;
-            actions: {
-                maintenance: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                translation: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                fact_fix: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                withdraw: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                compensate: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                fact_fill: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                content: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                listing: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                article: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                snippet: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                operations: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-                research: {
-                    enabled: boolean;
-                    /** @enum {string} */
-                    mode: "proposal" | "live";
-                };
-            };
-            dailyEntities: {
-                /** Format: int64 */
-                maintenance: number;
-                /** Format: int64 */
-                translation: number;
-                /** Format: int64 */
-                fact_fix: number;
-                /** Format: int64 */
-                withdraw: number;
-                /** Format: int64 */
-                compensate: number;
-                /** Format: int64 */
-                fact_fill: number;
-                /** Format: int64 */
-                content: number;
-                /** Format: int64 */
-                listing: number;
-                /** Format: int64 */
-                article: number;
-                /** Format: int64 */
-                snippet: number;
-                /** Format: int64 */
-                operations: number;
-                /** Format: int64 */
-                research: number;
-            };
-            /** Format: int64 */
-            researchDailyMicros: number;
-            /** Format: int64 */
-            researchMonthlyMicros: number;
-            businessDropRatio: number;
-        };
-        /**
-         * @example {
-         *       "automation": {
-         *         "version": 1,
-         *         "actions": {
-         *           "maintenance": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "translation": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "fact_fix": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "withdraw": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "compensate": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "fact_fill": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "content": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "listing": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "article": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "snippet": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "operations": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "research": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           }
-         *         },
-         *         "dailyEntities": {
-         *           "maintenance": 100,
-         *           "translation": 100,
-         *           "fact_fix": 100,
-         *           "withdraw": 100,
-         *           "compensate": 100,
-         *           "fact_fill": 100,
-         *           "content": 100,
-         *           "listing": 100,
-         *           "article": 100,
-         *           "snippet": 100,
-         *           "operations": 100,
-         *           "research": 100
-         *         },
-         *         "researchDailyMicros": 15000000,
-         *         "researchMonthlyMicros": 100000000,
-         *         "businessDropRatio": 0.5
-         *       },
-         *       "revision": 1
-         *     }
-         */
-        SeoAutomationView: {
-            automation: components["schemas"]["SeoAutomation"];
-            /** Format: int64 */
-            revision: number;
-        };
-        /**
-         * @example {
-         *       "automation": {
-         *         "version": 1,
-         *         "actions": {
-         *           "maintenance": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "translation": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "fact_fix": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "withdraw": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "compensate": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           },
-         *           "fact_fill": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "content": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "listing": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "article": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "snippet": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "operations": {
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           },
-         *           "research": {
-         *             "enabled": true,
-         *             "mode": "live"
-         *           }
-         *         },
-         *         "dailyEntities": {
-         *           "maintenance": 100,
-         *           "translation": 100,
-         *           "fact_fix": 100,
-         *           "withdraw": 100,
-         *           "compensate": 100,
-         *           "fact_fill": 100,
-         *           "content": 100,
-         *           "listing": 100,
-         *           "article": 100,
-         *           "snippet": 100,
-         *           "operations": 100,
-         *           "research": 100
-         *         },
-         *         "researchDailyMicros": 15000000,
-         *         "researchMonthlyMicros": 100000000,
-         *         "businessDropRatio": 0.5
-         *       },
-         *       "expectedRevision": 1,
-         *       "idempotencyKey": "fixture-tune-001",
-         *       "reason": "Fixture evaluation"
-         *     }
-         */
-        SeoAutomationUpdate: {
-            automation: components["schemas"]["SeoAutomation"];
-            /** Format: int64 */
-            expectedRevision: number;
-            idempotencyKey: string;
-            reason: string;
         };
         /**
          * @example {
@@ -4142,8 +2982,6 @@ export interface components {
          *         "id": 702
          *       },
          *       "model": "fixture",
-         *       "taskId": 1,
-         *       "fencing": 1,
          *       "translations": [
          *         {
          *           "locale": "zh-CN",
@@ -4160,9 +2998,17 @@ export interface components {
         TranslationsBatchWrite: {
             ref: components["schemas"]["ContentRef"];
             model?: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @deprecated
+             * @description Ignored. Accepted for one release while clients stop sending it.
+             */
             taskId?: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @deprecated
+             * @description Ignored. Accepted for one release while clients stop sending it.
+             */
             fencing?: number;
             translations: components["schemas"]["BatchTranslationInput"][];
         };
@@ -4236,243 +3082,11 @@ export interface components {
          *             }
          *           }
          *         }
-         *       ],
-         *       "taskId": 1,
-         *       "leaseRetained": true
+         *       ]
          *     }
          */
         TranslationsBatchResult: {
             results: components["schemas"]["BatchTranslationResult"][];
-            /**
-             * Format: int64
-             * @description Zero when catalog translations are written without a task.
-             */
-            taskId: number;
-            leaseRetained: boolean;
-        };
-        /**
-         * @example {
-         *       "ref": {
-         *         "entity": "category",
-         *         "id": 702
-         *       },
-         *       "field": "name",
-         *       "locale": "zh-CN",
-         *       "sourceVersion": "1.0",
-         *       "state": "deferred",
-         *       "reason": "Await official source",
-         *       "evidence": {
-         *         "sourceUrl": "https://example.com"
-         *       },
-         *       "lastAttemptAt": "2026-10-18T10:00:00Z",
-         *       "valueHash": "0000000000000000000000000000000000000000000000000000000000000000"
-         *     }
-         */
-        SeoImportEntry: {
-            ref: components["schemas"]["ContentRef"];
-            field: string;
-            locale: components["schemas"]["Locale"];
-            sourceVersion: string;
-            /** @enum {string} */
-            state: "processed" | "deferred";
-            reason: string;
-            evidence: {
-                [key: string]: unknown;
-            };
-            /** Format: date-time */
-            lastAttemptAt: string;
-            valueHash: string;
-        };
-        /**
-         * @example {
-         *       "idempotencyKey": "fixture-import-001",
-         *       "profile": "fixture",
-         *       "cursor": {
-         *         "sequence": 1
-         *       },
-         *       "entries": [
-         *         {
-         *           "ref": {
-         *             "entity": "category",
-         *             "id": 702
-         *           },
-         *           "field": "name",
-         *           "locale": "zh-CN",
-         *           "sourceVersion": "1.0",
-         *           "state": "deferred",
-         *           "reason": "Await official source",
-         *           "evidence": {
-         *             "sourceUrl": "https://example.com"
-         *           },
-         *           "lastAttemptAt": "2026-10-18T10:00:00Z",
-         *           "valueHash": "0000000000000000000000000000000000000000000000000000000000000000"
-         *         }
-         *       ]
-         *     }
-         */
-        SeoTasksImport: {
-            idempotencyKey: string;
-            profile: string;
-            cursor: {
-                [key: string]: unknown;
-            };
-            entries: components["schemas"]["SeoImportEntry"][];
-        };
-        /**
-         * @example {
-         *       "taskId": 1,
-         *       "state": "deferred",
-         *       "reconciliation": "imported_deferred",
-         *       "currentHash": "0000000000000000000000000000000000000000000000000000000000000000",
-         *       "currentVersion": "1.0"
-         *     }
-         */
-        SeoImportResult: {
-            /** Format: int64 */
-            taskId: number;
-            state: string;
-            reconciliation: string;
-            currentHash: string;
-            currentVersion: string;
-        };
-        /**
-         * @example {
-         *       "results": [
-         *         {
-         *           "taskId": 1,
-         *           "state": "deferred",
-         *           "reconciliation": "imported_deferred",
-         *           "currentHash": "0000000000000000000000000000000000000000000000000000000000000000",
-         *           "currentVersion": "1.0"
-         *         }
-         *       ],
-         *       "processed": 0,
-         *       "deferred": 1,
-         *       "cursor": {
-         *         "sequence": 1
-         *       }
-         *     }
-         */
-        SeoTasksImportResult: {
-            results: components["schemas"]["SeoImportResult"][];
-            /** Format: int64 */
-            processed: number;
-            /** Format: int64 */
-            deferred: number;
-            cursor: {
-                [key: string]: unknown;
-            };
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "automation": {
-         *           "version": 1,
-         *           "actions": {
-         *             "maintenance": {
-         *               "enabled": true,
-         *               "mode": "live"
-         *             },
-         *             "translation": {
-         *               "enabled": true,
-         *               "mode": "live"
-         *             },
-         *             "fact_fix": {
-         *               "enabled": true,
-         *               "mode": "live"
-         *             },
-         *             "withdraw": {
-         *               "enabled": true,
-         *               "mode": "live"
-         *             },
-         *             "compensate": {
-         *               "enabled": true,
-         *               "mode": "live"
-         *             },
-         *             "fact_fill": {
-         *               "enabled": true,
-         *               "mode": "proposal"
-         *             },
-         *             "content": {
-         *               "enabled": true,
-         *               "mode": "proposal"
-         *             },
-         *             "listing": {
-         *               "enabled": true,
-         *               "mode": "proposal"
-         *             },
-         *             "article": {
-         *               "enabled": true,
-         *               "mode": "proposal"
-         *             },
-         *             "snippet": {
-         *               "enabled": true,
-         *               "mode": "proposal"
-         *             },
-         *             "operations": {
-         *               "enabled": true,
-         *               "mode": "proposal"
-         *             },
-         *             "research": {
-         *               "enabled": true,
-         *               "mode": "live"
-         *             }
-         *           },
-         *           "dailyEntities": {
-         *             "maintenance": 100,
-         *             "translation": 100,
-         *             "fact_fix": 100,
-         *             "withdraw": 100,
-         *             "compensate": 100,
-         *             "fact_fill": 100,
-         *             "content": 100,
-         *             "listing": 100,
-         *             "article": 100,
-         *             "snippet": 100,
-         *             "operations": 100,
-         *             "research": 100
-         *           },
-         *           "researchDailyMicros": 15000000,
-         *           "researchMonthlyMicros": 100000000,
-         *           "businessDropRatio": 0.5
-         *         },
-         *         "revision": 1
-         *       }
-         *     }
-         */
-        SeoAutomationViewResponse: {
-            code: string;
-            msg: string;
-            data: components["schemas"]["SeoAutomationView"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "results": [
-         *           {
-         *             "taskId": 1,
-         *             "state": "deferred",
-         *             "reconciliation": "imported_deferred",
-         *             "currentHash": "0000000000000000000000000000000000000000000000000000000000000000",
-         *             "currentVersion": "1.0"
-         *           }
-         *         ],
-         *         "processed": 0,
-         *         "deferred": 1,
-         *         "cursor": {
-         *           "sequence": 1
-         *         }
-         *       }
-         *     }
-         */
-        SeoTasksImportResultResponse: {
-            code: string;
-            msg: string;
-            data: components["schemas"]["SeoTasksImportResult"];
         };
         /**
          * @example {
@@ -4530,9 +3144,7 @@ export interface components {
          *               }
          *             }
          *           }
-         *         ],
-         *         "taskId": 1,
-         *         "leaseRetained": true
+         *         ]
          *       }
          *     }
          */
@@ -4896,298 +3508,6 @@ export interface components {
         };
         /**
          * @example {
-         *       "expectedRevision": 0,
-         *       "action": "save",
-         *       "link": {
-         *         "token": "example-app",
-         *         "name": "Example App",
-         *         "pricing": "unknown",
-         *         "sourceLocale": "en-US",
-         *         "homepage": "https://vendor.example.test",
-         *         "downloadUrl": "https://vendor.example.test/download",
-         *         "teamId": "EXAMPL1234",
-         *         "bundleIds": []
-         *       },
-         *       "summary": "An editor for macOS.",
-         *       "description": "",
-         *       "categoryId": 1,
-         *       "iconAssetId": 1,
-         *       "baselinePackageId": 1,
-         *       "downloadMode": "official_page",
-         *       "evidenceId": 1
-         *     }
-         */
-        SeoListingWrite: {
-            /**
-             * Format: int64
-             * @example 0
-             */
-            expectedRevision?: number;
-            /**
-             * @example save
-             * @enum {string}
-             */
-            action: "save" | "publish" | "reject";
-            link: components["schemas"]["LinkPackageAdd"];
-            /** @example An editor for macOS. */
-            summary?: string;
-            /** @example  */
-            description?: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            categoryId?: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            iconAssetId?: number;
-            /**
-             * Format: int64
-             * @description Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.
-             * @example 1
-             */
-            baselinePackageId?: number;
-            /**
-             * @example official_page
-             * @enum {string}
-             */
-            downloadMode?: "official_page" | "not_applicable" | "direct";
-            /**
-             * Format: int64
-             * @example 1
-             */
-            evidenceId?: number;
-        };
-        /**
-         * @example {
-         *       "id": 1,
-         *       "token": "example-app",
-         *       "state": "candidate",
-         *       "revision": 1,
-         *       "packageId": null,
-         *       "identityVerified": false,
-         *       "canDirectDownload": false,
-         *       "indexing": null,
-         *       "input": {
-         *         "expectedRevision": 0,
-         *         "action": "save",
-         *         "link": {
-         *           "token": "example-app",
-         *           "name": "Example App",
-         *           "pricing": "unknown",
-         *           "sourceLocale": "en-US",
-         *           "homepage": "https://vendor.example.test",
-         *           "downloadUrl": "https://vendor.example.test/download",
-         *           "teamId": "EXAMPL1234",
-         *           "bundleIds": []
-         *         },
-         *         "summary": "An editor for macOS.",
-         *         "description": "",
-         *         "categoryId": 1,
-         *         "iconAssetId": 1,
-         *         "baselinePackageId": 1,
-         *         "downloadMode": "official_page",
-         *         "evidenceId": 1
-         *       }
-         *     }
-         */
-        SeoListingCandidate: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id: number;
-            /** @example example-app */
-            token: string;
-            /**
-             * @example candidate
-             * @enum {string}
-             */
-            state: "candidate" | "published" | "rejected";
-            /**
-             * Format: int64
-             * @example 1
-             */
-            revision: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            packageId: number | null;
-            /** @example false */
-            identityVerified: boolean;
-            /**
-             * @example false
-             * @enum {boolean}
-             */
-            canDirectDownload: false;
-            indexing: components["schemas"]["SeoPageDecision"] | null;
-            input: components["schemas"]["SeoListingWrite"];
-        };
-        /**
-         * @example {
-         *       "factId": 1,
-         *       "evidenceId": 1,
-         *       "domainOwnershipConfirmed": true,
-         *       "suspicious": false
-         *     }
-         */
-        SeoListingBaselineWrite: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            factId: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            evidenceId: number;
-            /**
-             * @example true
-             * @enum {boolean}
-             */
-            domainOwnershipConfirmed: true;
-            /** @example false */
-            suspicious: boolean;
-        };
-        /**
-         * @example {
-         *       "packageId": 1,
-         *       "domain": "vendor.example.test",
-         *       "developer": "Example Software",
-         *       "teamId": "EXAMPL1234",
-         *       "factId": 1,
-         *       "evidenceId": 1,
-         *       "evidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *       "verifiedBy": 1,
-         *       "verifiedAt": "2026-10-19T00:00:00Z",
-         *       "validUntil": "2026-11-19T00:00:00Z",
-         *       "suspicious": false
-         *     }
-         */
-        SeoListingBaseline: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            packageId: number;
-            /** @example vendor.example.test */
-            domain: string;
-            /** @example Example Software */
-            developer: string;
-            /** @example EXAMPL1234 */
-            teamId: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            factId: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            evidenceId: number;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            evidenceHash: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            verifiedBy: number;
-            /**
-             * Format: date-time
-             * @example 2026-10-19T00:00:00Z
-             */
-            verifiedAt: string;
-            /**
-             * Format: date-time
-             * @example 2026-11-19T00:00:00Z
-             */
-            validUntil: string;
-            /** @example false */
-            suspicious: boolean;
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "token": "example-app",
-         *         "state": "candidate",
-         *         "revision": 1,
-         *         "packageId": null,
-         *         "identityVerified": false,
-         *         "canDirectDownload": false,
-         *         "indexing": null,
-         *         "input": {
-         *           "expectedRevision": 0,
-         *           "action": "save",
-         *           "link": {
-         *             "token": "example-app",
-         *             "name": "Example App",
-         *             "pricing": "unknown",
-         *             "sourceLocale": "en-US",
-         *             "homepage": "https://vendor.example.test",
-         *             "downloadUrl": "https://vendor.example.test/download",
-         *             "teamId": "EXAMPL1234",
-         *             "bundleIds": []
-         *           },
-         *           "summary": "An editor for macOS.",
-         *           "description": "",
-         *           "categoryId": 1,
-         *           "iconAssetId": 1,
-         *           "baselinePackageId": 1,
-         *           "downloadMode": "official_page",
-         *           "evidenceId": 1
-         *         }
-         *       }
-         *     }
-         */
-        SeoListingCandidateResponse: {
-            /**
-             * @example 0000
-             * @enum {string}
-             */
-            code: "0000";
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoListingCandidate"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "packageId": 1,
-         *         "domain": "vendor.example.test",
-         *         "developer": "Example Software",
-         *         "teamId": "EXAMPL1234",
-         *         "factId": 1,
-         *         "evidenceId": 1,
-         *         "evidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *         "verifiedBy": 1,
-         *         "verifiedAt": "2026-10-19T00:00:00Z",
-         *         "validUntil": "2026-11-19T00:00:00Z",
-         *         "suspicious": false
-         *       }
-         *     }
-         */
-        SeoListingBaselineResponse: {
-            /**
-             * @example 0000
-             * @enum {string}
-             */
-            code: "0000";
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoListingBaseline"];
-        };
-        /**
-         * @example {
          *       "robots": "noindex, follow",
          *       "canonicalPath": "",
          *       "hreflang": [],
@@ -5432,2572 +3752,6 @@ export interface components {
             commonPaths: string[];
             evidence: components["schemas"]["FactRecordEvidence"];
         };
-        /**
-         * @description OpenSEO DataForSEO observations may omit both vendorTaskId and costUsd; no cost receipt is recorded in that case. When either is supplied with a non-null value, both must be supplied and pass receipt validation.
-         * @example {
-         *       "keyword": "Example Editor mac",
-         *       "source": "gsc",
-         *       "engine": "google",
-         *       "country": "US",
-         *       "language": "en-US",
-         *       "device": "desktop",
-         *       "period": "2026-10",
-         *       "searchVolume": 100,
-         *       "volumeState": "known",
-         *       "observedAt": "2026-10-18T10:00:00Z"
-         *     }
-         */
-        SeoKeywordObservation: {
-            /** @example Example Editor mac */
-            keyword: string;
-            /**
-             * @example gsc
-             * @enum {string}
-             */
-            source: "openseo:dataforseo" | "gsc" | "bing" | "site_search" | "homebrew";
-            /**
-             * @example google
-             * @enum {string}
-             */
-            engine: "google" | "bing" | "site" | "homebrew";
-            /** @example US */
-            country: string;
-            language: components["schemas"]["Locale"];
-            /**
-             * @example desktop
-             * @enum {string}
-             */
-            device: "all" | "desktop" | "mobile" | "tablet";
-            /** @example 2026-10 */
-            period: string;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            searchVolume?: number | null;
-            /**
-             * @example known
-             * @enum {string}
-             */
-            volumeState: "known" | "unsupported" | "unknown";
-            /** @example 10 */
-            difficulty?: number | null;
-            /** @example 4 */
-            ourPosition?: number | null;
-            serpFeatures?: string[];
-            /** @example fixture-task-1 */
-            vendorTaskId?: string | null;
-            /** @example 0.0000 */
-            costUsd?: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            observedAt: string;
-        };
-        /**
-         * @example {
-         *       "entityKey": "pkg:1",
-         *       "intent": "download",
-         *       "locale": "en-US",
-         *       "targetUrl": "https://example.test/apps/example-editor"
-         *     }
-         */
-        SeoTarget: {
-            /** @example pkg:1 */
-            entityKey: string;
-            /**
-             * @example download
-             * @enum {string}
-             */
-            intent: "download" | "install" | "brew" | "uninstall" | "alternative" | "price" | "version" | "requirements" | "compare" | "topic";
-            locale: components["schemas"]["Locale"];
-            /**
-             * Format: uri
-             * @example https://example.test/apps/example-editor
-             */
-            targetUrl: string;
-        };
-        /**
-         * @example {
-         *       "id": 1,
-         *       "keyword": "Example Editor mac",
-         *       "normalized": "example editor mac",
-         *       "source": "openseo:dataforseo",
-         *       "engine": "google",
-         *       "country": "US",
-         *       "language": "en-US",
-         *       "device": "desktop",
-         *       "period": "2026-10",
-         *       "searchVolume": 100,
-         *       "volumeState": "known",
-         *       "difficulty": 10,
-         *       "ourPosition": 4,
-         *       "serpFeatures": [],
-         *       "vendorTaskId": "fixture-task-1",
-         *       "costUsd": "0.0000",
-         *       "observedAt": "2026-10-18T10:00:00Z",
-         *       "anomaly": null,
-         *       "links": []
-         *     }
-         */
-        SeoKeywordRecord: {
-            /** @example Example Editor mac */
-            keyword: string;
-            /**
-             * @example gsc
-             * @enum {string}
-             */
-            source: "openseo:dataforseo" | "gsc" | "bing" | "site_search" | "homebrew";
-            /**
-             * @example google
-             * @enum {string}
-             */
-            engine: "google" | "bing" | "site" | "homebrew";
-            /** @example US */
-            country: string;
-            language: components["schemas"]["Locale"];
-            /**
-             * @example desktop
-             * @enum {string}
-             */
-            device: "all" | "desktop" | "mobile" | "tablet";
-            /** @example 2026-10 */
-            period: string;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            searchVolume: number | null;
-            /**
-             * @example known
-             * @enum {string}
-             */
-            volumeState: "known" | "unsupported" | "unknown";
-            /** @example 10 */
-            difficulty: number | null;
-            /** @example 4 */
-            ourPosition: number | null;
-            serpFeatures: string[];
-            /** @example fixture-task-1 */
-            vendorTaskId: string | null;
-            /** @example 0.0000 */
-            costUsd: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            observedAt: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id: number;
-            /** @example example editor mac */
-            normalized: string;
-            /** @example piracy */
-            anomaly: string | null;
-            links: {
-                /**
-                 * Format: int64
-                 * @example 1
-                 */
-                packageId: number;
-                /** @example download */
-                intent: string;
-                /** @example 1 */
-                confidence: number;
-                /**
-                 * @example confirmed
-                 * @enum {string}
-                 */
-                state: "candidate" | "confirmed" | "rejected";
-            }[];
-        };
-        /**
-         * @example {
-         *       "records": [
-         *         {
-         *           "keyword": "Example Editor mac",
-         *           "source": "gsc",
-         *           "engine": "google",
-         *           "country": "US",
-         *           "language": "en-US",
-         *           "device": "desktop",
-         *           "period": "2026-10",
-         *           "searchVolume": 100,
-         *           "volumeState": "known",
-         *           "observedAt": "2026-10-18T10:00:00Z"
-         *         }
-         *       ],
-         *       "targets": []
-         *     }
-         */
-        SeoKeywordsWrite: {
-            records: components["schemas"]["SeoKeywordObservation"][];
-            targets?: components["schemas"]["SeoTarget"][];
-        };
-        /**
-         * @example {
-         *       "records": [
-         *         {
-         *           "keyword": "Example Editor mac",
-         *           "source": "gsc",
-         *           "engine": "google",
-         *           "country": "US",
-         *           "language": "en-US",
-         *           "device": "desktop",
-         *           "period": "2026-10",
-         *           "searchVolume": 100,
-         *           "volumeState": "known",
-         *           "observedAt": "2026-10-18T10:00:00Z",
-         *           "id": 1,
-         *           "normalized": "example editor mac",
-         *           "difficulty": null,
-         *           "ourPosition": null,
-         *           "serpFeatures": [],
-         *           "vendorTaskId": null,
-         *           "costUsd": null,
-         *           "anomaly": null,
-         *           "links": []
-         *         }
-         *       ],
-         *       "targets": []
-         *     }
-         */
-        SeoKeywordsResult: {
-            records: components["schemas"]["SeoKeywordRecord"][];
-            targets: components["schemas"]["SeoTarget"][];
-        };
-        /**
-         * @example {
-         *       "current": 1,
-         *       "size": 10,
-         *       "total": 1,
-         *       "records": [
-         *         {
-         *           "keyword": "Example Editor mac",
-         *           "source": "gsc",
-         *           "engine": "google",
-         *           "country": "US",
-         *           "language": "en-US",
-         *           "device": "desktop",
-         *           "period": "2026-10",
-         *           "searchVolume": 100,
-         *           "volumeState": "known",
-         *           "observedAt": "2026-10-18T10:00:00Z",
-         *           "id": 1,
-         *           "normalized": "example editor mac",
-         *           "difficulty": null,
-         *           "ourPosition": null,
-         *           "serpFeatures": [],
-         *           "vendorTaskId": null,
-         *           "costUsd": null,
-         *           "anomaly": null,
-         *           "links": []
-         *         }
-         *       ]
-         *     }
-         */
-        SeoKeywordPage: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            current: number;
-            /**
-             * Format: int64
-             * @example 10
-             */
-            size: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            total: number;
-            records: components["schemas"]["SeoKeywordRecord"][];
-        };
-        /**
-         * @example {
-         *       "source": "gsc_page",
-         *       "completeThrough": "2026-10-16",
-         *       "freshThrough": "2026-10-18",
-         *       "updatedAt": "2026-10-18T10:00:00Z"
-         *     }
-         */
-        SeoWatermark: {
-            /**
-             * @example gsc_page
-             * @enum {string}
-             */
-            source: "gsc_page" | "gsc_query" | "inspection" | "bing" | "audit" | "edge_probe";
-            /**
-             * Format: date
-             * @example 2026-10-16
-             */
-            completeThrough: string | null;
-            /**
-             * Format: date
-             * @example 2026-10-18
-             */
-            freshThrough: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            updatedAt: string;
-        };
-        /**
-         * @description Server evidence fields depend on the breaker reason. Daily/Monthly are micro-USD receipt totals; Days and Old/New metrics describe complete GSC windows. Existing capitalized field names are preserved.
-         * @example {
-         *       "unresolved": 2,
-         *       "layers": [
-         *         "origin",
-         *         "edge"
-         *       ]
-         *     }
-         */
-        SeoOverviewBreakerEvidence: {
-            /**
-             * Format: int64
-             * @example 2
-             */
-            unresolved?: number;
-            layers?: ("origin" | "edge")[];
-            /** @example fixture-reservation-001 */
-            receiptId?: string;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            Daily?: number;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            Monthly?: number;
-            /**
-             * Format: int64
-             * @example 56
-             */
-            Days?: number;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            OldClicks?: number;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            NewClicks?: number;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            OldImpressions?: number;
-            /**
-             * Format: int64
-             * @example 100
-             */
-            NewImpressions?: number;
-        } | null;
-        /**
-         * @description Only currently active breakers are returned: closed breakers and elapsed retry windows are excluded. There is no separate state field.
-         * @example {
-         *       "kind": "technical",
-         *       "scope": "*",
-         *       "reason": "audit_p0",
-         *       "openedAt": "2026-10-18T10:00:00Z",
-         *       "retryAt": null,
-         *       "evidence": {
-         *         "unresolved": 2,
-         *         "layers": [
-         *           "origin",
-         *           "edge"
-         *         ]
-         *       }
-         *     }
-         */
-        SeoOverviewBreaker: {
-            /**
-             * @example technical
-             * @enum {string}
-             */
-            kind: "technical" | "business" | "budget";
-            /** @example * */
-            scope: string;
-            /** @example audit_p0 */
-            reason: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            openedAt: string;
-            /**
-             * Format: date-time
-             * @example null
-             */
-            retryAt: string | null;
-            evidence: components["schemas"]["SeoOverviewBreakerEvidence"];
-        };
-        /**
-         * @description Unique entities per action during the current UTC day, shared by all execution tokens. Remaining is clamped at zero.
-         * @example {
-         *       "action": "listing",
-         *       "period": "day",
-         *       "limit": 20,
-         *       "used": 3,
-         *       "remaining": 17
-         *     }
-         */
-        SeoEntityBudget: {
-            /** @example listing */
-            action: string;
-            /**
-             * @example day
-             * @enum {string}
-             */
-            period: "day";
-            /**
-             * Format: int64
-             * @example 20
-             */
-            limit: number;
-            /**
-             * Format: int64
-             * @example 3
-             */
-            used: number;
-            /**
-             * Format: int64
-             * @example 17
-             */
-            remaining: number;
-        };
-        /**
-         * @description Reconciled paid research receipts in the current UTC day or month. All amounts are integer micro-USD (1 USD = 1000000 micros). This is not a provider billing proxy.
-         * @example {
-         *       "action": "paid_research",
-         *       "period": "day",
-         *       "limitMicros": 15000000,
-         *       "usedMicros": 250000,
-         *       "remainingMicros": 14750000
-         *     }
-         */
-        SeoResearchBudget: {
-            /**
-             * @example paid_research
-             * @enum {string}
-             */
-            action: "paid_research";
-            /**
-             * @example day
-             * @enum {string}
-             */
-            period: "day" | "month";
-            /**
-             * Format: int64
-             * @example 15000000
-             */
-            limitMicros: number;
-            /**
-             * Format: int64
-             * @example 250000
-             */
-            usedMicros: number;
-            /**
-             * Format: int64
-             * @example 14750000
-             */
-            remainingMicros: number;
-        };
-        /**
-         * @description Entity quotas and paid research costs retain their distinct existing fields. Narrow by presence of limitMicros for research costs.
-         * @example {
-         *       "action": "listing",
-         *       "period": "day",
-         *       "limit": 20,
-         *       "used": 3,
-         *       "remaining": 17
-         *     }
-         */
-        SeoOverviewBudget: components["schemas"]["SeoEntityBudget"] | components["schemas"]["SeoResearchBudget"];
-        /**
-         * @example {
-         *       "action": "listing",
-         *       "enabled": true,
-         *       "mode": "proposal"
-         *     }
-         */
-        SeoOverviewActionMode: {
-            /** @description Operations that execute live independently of this action's default policy. Parentheses restrict the entity scope. */
-            liveOperations?: string[];
-            /** @example listing */
-            action: string;
-            /** @example true */
-            enabled: boolean;
-            /**
-             * @example proposal
-             * @enum {string}
-             */
-            mode: "proposal" | "live";
-        };
-        /**
-         * @description Actions created during the previous UTC calendar day, grouped by operation and mode. Compensated counts those actions with a compensation timestamp at read time.
-         * @example {
-         *       "operation": "UpdatePackageMeta",
-         *       "mode": "live",
-         *       "count": 12,
-         *       "compensated": 1
-         *     }
-         */
-        SeoYesterdayAction: {
-            /** @example UpdatePackageMeta */
-            operation: string;
-            /**
-             * @example live
-             * @enum {string}
-             */
-            mode: "proposal" | "live";
-            /**
-             * Format: int64
-             * @example 12
-             */
-            count: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            compensated: number;
-        };
-        /**
-         * @description Previous UTC calendar day. No activity returns an empty actions array; no synthetic zero rows or additional counters are returned.
-         * @example {
-         *       "actions": [
-         *         {
-         *           "operation": "UpdatePackageMeta",
-         *           "mode": "live",
-         *           "count": 12,
-         *           "compensated": 1
-         *         }
-         *       ]
-         *     }
-         */
-        SeoYesterday: {
-            actions: components["schemas"]["SeoYesterdayAction"][];
-        };
-        /**
-         * @description An audit issue that generates tech_alert work. ID is the stable audit issue ID. Status reflects audit resolution, not whether an Agent has completed its task.
-         * @example {
-         *       "id": 1,
-         *       "kind": "tech_alert",
-         *       "rule": "canonical",
-         *       "url": "https://fixture.example/apps/example-editor",
-         *       "layer": "edge",
-         *       "severity": "p0",
-         *       "detail": "Canonical URL differs from the page decision.",
-         *       "firstSeen": "2026-10-17T10:00:00Z",
-         *       "lastSeen": "2026-10-18T10:00:00Z",
-         *       "resolvedAt": null,
-         *       "status": "open"
-         *     }
-         */
-        SeoAlert: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id: number;
-            /**
-             * @example tech_alert
-             * @enum {string}
-             */
-            kind: "tech_alert";
-            /** @example canonical */
-            rule: string;
-            /**
-             * Format: uri
-             * @example https://fixture.example/apps/example-editor
-             */
-            url: string;
-            /**
-             * @example edge
-             * @enum {string}
-             */
-            layer: "origin" | "edge";
-            /**
-             * @example p0
-             * @enum {string}
-             */
-            severity: "p0" | "p1" | "p2";
-            /** @example Canonical URL differs from the page decision. */
-            detail: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-17T10:00:00Z
-             */
-            firstSeen: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            lastSeen: string;
-            /**
-             * Format: date-time
-             * @example null
-             */
-            resolvedAt: string | null;
-            /**
-             * @example open
-             * @enum {string}
-             */
-            status: "open" | "resolved";
-        };
-        /**
-         * @example {
-         *       "records": [
-         *         {
-         *           "id": 1,
-         *           "kind": "tech_alert",
-         *           "rule": "canonical",
-         *           "url": "https://fixture.example/apps/example-editor",
-         *           "layer": "edge",
-         *           "severity": "p0",
-         *           "detail": "Canonical URL differs from the page decision.",
-         *           "firstSeen": "2026-10-17T10:00:00Z",
-         *           "lastSeen": "2026-10-18T10:00:00Z",
-         *           "resolvedAt": null,
-         *           "status": "open"
-         *         }
-         *       ],
-         *       "current": 1,
-         *       "size": 20,
-         *       "total": 1
-         *     }
-         */
-        SeoAlertPage: {
-            records: components["schemas"]["SeoAlert"][];
-            /** @example 1 */
-            current: number;
-            /** @example 20 */
-            size: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            total: number;
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "records": [
-         *           {
-         *             "id": 1,
-         *             "kind": "tech_alert",
-         *             "rule": "canonical",
-         *             "url": "https://fixture.example/apps/example-editor",
-         *             "layer": "edge",
-         *             "severity": "p0",
-         *             "detail": "Canonical URL differs from the page decision.",
-         *             "firstSeen": "2026-10-17T10:00:00Z",
-         *             "lastSeen": "2026-10-18T10:00:00Z",
-         *             "resolvedAt": null,
-         *             "status": "open"
-         *           }
-         *         ],
-         *         "current": 1,
-         *         "size": 20,
-         *         "total": 1
-         *       }
-         *     }
-         */
-        SeoAlertPageResponse: {
-            code: components["schemas"]["Code"];
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoAlertPage"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "records": [
-         *           {
-         *             "id": 1,
-         *             "kind": "tech_alert",
-         *             "rule": "canonical",
-         *             "url": "https://fixture.example/apps/example-editor",
-         *             "layer": "edge",
-         *             "severity": "p0",
-         *             "detail": "Canonical URL differs from the page decision.",
-         *             "firstSeen": "2026-10-17T10:00:00Z",
-         *             "lastSeen": "2026-10-18T10:00:00Z",
-         *             "resolvedAt": null,
-         *             "status": "open"
-         *           }
-         *         ],
-         *         "current": 1,
-         *         "size": 20,
-         *         "total": 1
-         *       }
-         *     }
-         */
-        SeoAlertPageResponseResult: components["schemas"]["SeoAlertPageResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "id": "p1",
-         *       "text": "best free mac apps",
-         *       "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *       "classification": "neutral"
-         *     }
-         */
-        SeoGeoPrompt: {
-            /** @example fixture-001 */
-            id: string;
-            /** @example best free mac apps */
-            text: string;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            hash: string;
-            /**
-             * @example neutral
-             * @enum {string}
-             */
-            classification: "neutral" | "brand" | "exploration";
-        };
-        /**
-         * @example {
-         *       "key": "chatgpt",
-         *       "name": "ChatGPT",
-         *       "surface": "provider_api",
-         *       "modelVersion": "unknown",
-         *       "toolVersion": "unknown"
-         *     }
-         */
-        SeoGeoEngine: {
-            /** @example fixture-001 */
-            key: string;
-            /** @example unknown */
-            name: string;
-            /** @example unknown */
-            surface: string;
-            /** @example unknown */
-            modelVersion: string;
-            /** @example unknown */
-            toolVersion: string;
-        };
-        /**
-         * @example {
-         *       "market": "unknown",
-         *       "promptLanguage": "en",
-         *       "answerLanguage": "unknown",
-         *       "searchMode": "unknown",
-         *       "windowDays": 7
-         *     }
-         */
-        SeoGeoContext: {
-            /** @example unknown */
-            market: string;
-            /** @example unknown */
-            promptLanguage: string;
-            /** @example unknown */
-            answerLanguage: string;
-            /** @example unknown */
-            searchMode: string;
-            /** @example 7 */
-            windowDays: number;
-        };
-        /**
-         * @example {
-         *       "id": "p1-chatgpt",
-         *       "promptId": "p1",
-         *       "engineKey": "chatgpt",
-         *       "status": "answered",
-         *       "observationId": "observation-fixture-001",
-         *       "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-         *       "searchTriggered": null,
-         *       "citationExtraction": "unknown",
-         *       "evidenceAvailability": "unknown",
-         *       "mentioned": null,
-         *       "candidate": null,
-         *       "cited": null,
-         *       "ownUrls": [],
-         *       "thirdPartyDomains": [],
-         *       "domainsTruncated": false
-         *     }
-         */
-        SeoGeoCell: {
-            /** @example fixture-001 */
-            id: string;
-            /** @example fixture-001 */
-            promptId: string;
-            /** @example fixture-001 */
-            engineKey: string;
-            /**
-             * @example answered
-             * @enum {string}
-             */
-            status: "answered" | "not_triggered" | "error" | "unsupported" | "missing";
-            /** @example fixture-001 */
-            observationId: string | null;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            answerHash: string | null;
-            /** @example null */
-            searchTriggered: boolean | null;
-            /**
-             * @example complete
-             * @enum {string}
-             */
-            citationExtraction: "complete" | "incomplete" | "unknown";
-            /**
-             * @example available
-             * @enum {string}
-             */
-            evidenceAvailability: "available" | "unknown" | "evidence_unavailable";
-            /** @example null */
-            mentioned: boolean | null;
-            /** @example null */
-            candidate: boolean | null;
-            /** @example null */
-            cited: boolean | null;
-            /** @example [] */
-            ownUrls: string[];
-            /** @example [] */
-            thirdPartyDomains: string[];
-            /** @example false */
-            domainsTruncated: boolean;
-        };
-        /**
-         * @example {
-         *       "answered": 49,
-         *       "mentioned": 0,
-         *       "candidate": null,
-         *       "cited": 0,
-         *       "missingFields": [
-         *         "observations",
-         *         "citationExtraction"
-         *       ]
-         *     }
-         */
-        SeoGeoReported: {
-            /** @example 49 */
-            answered: number | null;
-            /** @example 0 */
-            mentioned: number | null;
-            /** @example null */
-            candidate: number | null;
-            /** @example 0 */
-            cited: number | null;
-            /**
-             * @example [
-             *       "observations",
-             *       "citationExtraction"
-             *     ]
-             */
-            missingFields: string[];
-        } | null;
-        /**
-         * @example {
-         *       "vendorTaskId": "fixture-charge-001",
-         *       "costUsd": null,
-         *       "credits": null,
-         *       "incurredAt": "2026-10-18T10:00:00Z"
-         *     }
-         */
-        SeoGeoCharge: {
-            /** @example fixture-001 */
-            vendorTaskId: string;
-            /** @example 0.1 */
-            costUsd: string | null;
-            /** @example 1 */
-            credits: number | null;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            incurredAt: string;
-        };
-        /**
-         * @example {
-         *       "schemaVersion": 1,
-         *       "provider": "openseo",
-         *       "sourceProject": "fixture-project",
-         *       "providerRunKey": "fixture-run-001",
-         *       "mode": "imported_observation",
-         *       "panelId": "neutral-core",
-         *       "panelVersion": "v1",
-         *       "periodStart": "2026-10-18T09:00:00Z",
-         *       "periodEnd": "2026-10-18T10:00:00Z",
-         *       "context": {
-         *         "market": "unknown",
-         *         "promptLanguage": "en",
-         *         "answerLanguage": "unknown",
-         *         "searchMode": "unknown",
-         *         "windowDays": 7
-         *       },
-         *       "prompts": [
-         *         {
-         *           "id": "p1",
-         *           "text": "best free mac apps",
-         *           "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *           "classification": "neutral"
-         *         }
-         *       ],
-         *       "engines": [
-         *         {
-         *           "key": "chatgpt",
-         *           "name": "ChatGPT",
-         *           "surface": "provider_api",
-         *           "modelVersion": "unknown",
-         *           "toolVersion": "unknown"
-         *         }
-         *       ],
-         *       "plannedCount": 1,
-         *       "cells": [
-         *         {
-         *           "id": "p1-chatgpt",
-         *           "promptId": "p1",
-         *           "engineKey": "chatgpt",
-         *           "status": "answered",
-         *           "observationId": "observation-fixture-001",
-         *           "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-         *           "searchTriggered": null,
-         *           "citationExtraction": "unknown",
-         *           "evidenceAvailability": "unknown",
-         *           "mentioned": null,
-         *           "candidate": null,
-         *           "cited": null,
-         *           "ownUrls": [],
-         *           "thirdPartyDomains": [],
-         *           "domainsTruncated": false
-         *         }
-         *       ],
-         *       "reported": null,
-         *       "artifactCompleteness": "unknown",
-         *       "hashAlgorithm": "sha256",
-         *       "hashNormalization": "provider-v1",
-         *       "charges": [
-         *         {
-         *           "vendorTaskId": "fixture-charge-001",
-         *           "costUsd": null,
-         *           "credits": null,
-         *           "incurredAt": "2026-10-18T10:00:00Z"
-         *         }
-         *       ],
-         *       "approvedBatchRef": "fixture-approval-001"
-         *     }
-         */
-        SeoGeoSnapshot: {
-            /**
-             * @example 1
-             * @enum {integer}
-             */
-            schemaVersion: 1;
-            /**
-             * @example openseo
-             * @enum {string}
-             */
-            provider: "openseo";
-            /** @example fixture-001 */
-            sourceProject: string;
-            /** @example fixture-001 */
-            providerRunKey: string;
-            /** @example fixture-001 */
-            panelId: string;
-            /** @example fixture-001 */
-            panelVersion: string;
-            /** @example fixture-001 */
-            approvedBatchRef: string;
-            /** @example fixture-001 */
-            hashNormalization: string;
-            /**
-             * @example imported_observation
-             * @enum {string}
-             */
-            mode: "imported_observation" | "summary_only";
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            periodStart: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            periodEnd: string;
-            context: components["schemas"]["SeoGeoContext"];
-            /**
-             * @example [
-             *       {
-             *         "id": "p1",
-             *         "text": "best free mac apps",
-             *         "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-             *         "classification": "neutral"
-             *       }
-             *     ]
-             */
-            prompts: components["schemas"]["SeoGeoPrompt"][];
-            /**
-             * @example [
-             *       {
-             *         "key": "chatgpt",
-             *         "name": "ChatGPT",
-             *         "surface": "provider_api",
-             *         "modelVersion": "unknown",
-             *         "toolVersion": "unknown"
-             *       }
-             *     ]
-             */
-            engines: components["schemas"]["SeoGeoEngine"][];
-            /** @example 1 */
-            plannedCount: number;
-            /**
-             * @example [
-             *       {
-             *         "id": "p1-chatgpt",
-             *         "promptId": "p1",
-             *         "engineKey": "chatgpt",
-             *         "status": "answered",
-             *         "observationId": "observation-fixture-001",
-             *         "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-             *         "searchTriggered": null,
-             *         "citationExtraction": "unknown",
-             *         "evidenceAvailability": "unknown",
-             *         "mentioned": null,
-             *         "candidate": null,
-             *         "cited": null,
-             *         "ownUrls": [],
-             *         "thirdPartyDomains": [],
-             *         "domainsTruncated": false
-             *       }
-             *     ]
-             */
-            cells: components["schemas"]["SeoGeoCell"][];
-            reported: components["schemas"]["SeoGeoReported"];
-            /**
-             * @example complete
-             * @enum {string}
-             */
-            artifactCompleteness: "complete" | "incomplete" | "unknown";
-            /**
-             * @example sha256
-             * @enum {string}
-             */
-            hashAlgorithm: "sha256";
-            /**
-             * @example [
-             *       {
-             *         "vendorTaskId": "fixture-charge-001",
-             *         "costUsd": null,
-             *         "credits": null,
-             *         "incurredAt": "2026-10-18T10:00:00Z"
-             *       }
-             *     ]
-             */
-            charges: components["schemas"]["SeoGeoCharge"][];
-        };
-        /**
-         * @description Import existing structured observations only; no answer text, excerpts, HTML or raw provider responses. Maximum serialized request 512 KiB. Unknown amounts are null, never estimated charges. Corrections append with supersedes and the same provider run identity; identical retries replay the receipt. No external or paid calls.
-         * @example {
-         *       "idempotencyKey": "fixture-geo-import-001",
-         *       "supersedes": null,
-         *       "snapshot": {
-         *         "schemaVersion": 1,
-         *         "provider": "openseo",
-         *         "sourceProject": "fixture-project",
-         *         "providerRunKey": "fixture-run-001",
-         *         "mode": "imported_observation",
-         *         "panelId": "neutral-core",
-         *         "panelVersion": "v1",
-         *         "periodStart": "2026-10-18T09:00:00Z",
-         *         "periodEnd": "2026-10-18T10:00:00Z",
-         *         "context": {
-         *           "market": "unknown",
-         *           "promptLanguage": "en",
-         *           "answerLanguage": "unknown",
-         *           "searchMode": "unknown",
-         *           "windowDays": 7
-         *         },
-         *         "prompts": [
-         *           {
-         *             "id": "p1",
-         *             "text": "best free mac apps",
-         *             "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *             "classification": "neutral"
-         *           }
-         *         ],
-         *         "engines": [
-         *           {
-         *             "key": "chatgpt",
-         *             "name": "ChatGPT",
-         *             "surface": "provider_api",
-         *             "modelVersion": "unknown",
-         *             "toolVersion": "unknown"
-         *           }
-         *         ],
-         *         "plannedCount": 1,
-         *         "cells": [
-         *           {
-         *             "id": "p1-chatgpt",
-         *             "promptId": "p1",
-         *             "engineKey": "chatgpt",
-         *             "status": "answered",
-         *             "observationId": "observation-fixture-001",
-         *             "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-         *             "searchTriggered": null,
-         *             "citationExtraction": "unknown",
-         *             "evidenceAvailability": "unknown",
-         *             "mentioned": null,
-         *             "candidate": null,
-         *             "cited": null,
-         *             "ownUrls": [],
-         *             "thirdPartyDomains": [],
-         *             "domainsTruncated": false
-         *           }
-         *         ],
-         *         "reported": null,
-         *         "artifactCompleteness": "unknown",
-         *         "hashAlgorithm": "sha256",
-         *         "hashNormalization": "provider-v1",
-         *         "charges": [
-         *           {
-         *             "vendorTaskId": "fixture-charge-001",
-         *             "costUsd": null,
-         *             "credits": null,
-         *             "incurredAt": "2026-10-18T10:00:00Z"
-         *           }
-         *         ],
-         *         "approvedBatchRef": "fixture-approval-001"
-         *       }
-         *     }
-         */
-        SeoGeoImport: {
-            /** @example fixture-001 */
-            idempotencyKey: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            supersedes?: number | null;
-            snapshot: components["schemas"]["SeoGeoSnapshot"];
-        };
-        /**
-         * @description n/N among known observations, not a score. known=0 means unavailable. Citation counts use complete extraction only.
-         * @example {
-         *       "positive": 0,
-         *       "known": 0
-         *     }
-         */
-        SeoGeoMetric: {
-            /** @example 0 */
-            positive: number;
-            /** @example 0 */
-            known: number;
-        };
-        /**
-         * @description summary_only keeps measured answered null and measured known counts zero; show reported counts with an unverified completeness label. Never use summary-only data in trends.
-         * @example {
-         *       "planned": 1,
-         *       "answered": 1,
-         *       "searchTriggered": {
-         *         "positive": 0,
-         *         "known": 0
-         *       },
-         *       "mentioned": {
-         *         "positive": 0,
-         *         "known": 0
-         *       },
-         *       "candidate": {
-         *         "positive": 0,
-         *         "known": 0
-         *       },
-         *       "cited": {
-         *         "positive": 0,
-         *         "known": 0
-         *       },
-         *       "citationComplete": 0,
-         *       "reported": null
-         *     }
-         */
-        SeoGeoCounts: {
-            /** @example 1 */
-            planned: number;
-            /** @example 1 */
-            answered: number | null;
-            searchTriggered: components["schemas"]["SeoGeoMetric"];
-            mentioned: components["schemas"]["SeoGeoMetric"];
-            candidate: components["schemas"]["SeoGeoMetric"];
-            cited: components["schemas"]["SeoGeoMetric"];
-            /** @example 0 */
-            citationComplete: number;
-            reported: components["schemas"]["SeoGeoReported"];
-        };
-        /**
-         * @description Only comparable non-overlapping complete samples with all planned answers and known citation outcomes. Observational, never causal or an experiment verdict; otherwise null.
-         * @example {
-         *       "previousId": 1,
-         *       "citedRateDelta": 0.1
-         *     }
-         */
-        SeoGeoTrend: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            previousId: number;
-            /** @example 0.1 */
-            citedRateDelta: number;
-        } | null;
-        /**
-         * @description Latest imported structured observation. Null in overview means no data imported; importedAt is server time. Counts retain unknown denominators.
-         * @example {
-         *       "id": 1,
-         *       "site": "fixture.example",
-         *       "mode": "imported_observation",
-         *       "panelId": "neutral-core",
-         *       "panelVersion": "v1",
-         *       "periodStart": "2026-10-18T09:00:00Z",
-         *       "periodEnd": "2026-10-18T10:00:00Z",
-         *       "importedAt": "2026-10-18T11:00:00Z",
-         *       "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *       "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *       "supersedes": null,
-         *       "counts": {
-         *         "planned": 1,
-         *         "answered": 1,
-         *         "searchTriggered": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "mentioned": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "candidate": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "cited": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "citationComplete": 0,
-         *         "reported": null
-         *       },
-         *       "trend": null
-         *     }
-         */
-        SeoGeoSummary: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id: number;
-            /** @example fixture.example */
-            site: string;
-            /**
-             * @example imported_observation
-             * @enum {string}
-             */
-            mode: "imported_observation" | "summary_only";
-            /** @example fixture-001 */
-            panelId: string;
-            /** @example fixture-001 */
-            panelVersion: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            periodStart: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            periodEnd: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            importedAt: string;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            payloadHash: string;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            comparisonKey: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            supersedes: number | null;
-            counts: components["schemas"]["SeoGeoCounts"];
-            trend: components["schemas"]["SeoGeoTrend"];
-        } | null;
-        /**
-         * @description URL is assembled only from a trusted HTTPS deployment base; null when unconfigured. No caller-supplied evidence URLs, credentials or response previews.
-         * @example {
-         *       "observationId": "observation-fixture-001",
-         *       "url": null
-         *     }
-         */
-        SeoGeoObservationLink: {
-            /** @example fixture-001 */
-            observationId: string;
-            /**
-             * Format: uri
-             * @example https://evidence.example/observations/fixture-001
-             */
-            url: string | null;
-        };
-        /**
-         * @example {
-         *       "id": 1,
-         *       "site": "fixture.example",
-         *       "mode": "imported_observation",
-         *       "panelId": "neutral-core",
-         *       "panelVersion": "v1",
-         *       "periodStart": "2026-10-18T09:00:00Z",
-         *       "periodEnd": "2026-10-18T10:00:00Z",
-         *       "importedAt": "2026-10-18T11:00:00Z",
-         *       "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *       "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *       "supersedes": null,
-         *       "counts": {
-         *         "planned": 1,
-         *         "answered": 1,
-         *         "searchTriggered": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "mentioned": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "candidate": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "cited": {
-         *           "positive": 0,
-         *           "known": 0
-         *         },
-         *         "citationComplete": 0,
-         *         "reported": null
-         *       },
-         *       "trend": null,
-         *       "importedBy": "agent:1:1",
-         *       "snapshot": {
-         *         "schemaVersion": 1,
-         *         "provider": "openseo",
-         *         "sourceProject": "fixture-project",
-         *         "providerRunKey": "fixture-run-001",
-         *         "mode": "imported_observation",
-         *         "panelId": "neutral-core",
-         *         "panelVersion": "v1",
-         *         "periodStart": "2026-10-18T09:00:00Z",
-         *         "periodEnd": "2026-10-18T10:00:00Z",
-         *         "context": {
-         *           "market": "unknown",
-         *           "promptLanguage": "en",
-         *           "answerLanguage": "unknown",
-         *           "searchMode": "unknown",
-         *           "windowDays": 7
-         *         },
-         *         "prompts": [
-         *           {
-         *             "id": "p1",
-         *             "text": "best free mac apps",
-         *             "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *             "classification": "neutral"
-         *           }
-         *         ],
-         *         "engines": [
-         *           {
-         *             "key": "chatgpt",
-         *             "name": "ChatGPT",
-         *             "surface": "provider_api",
-         *             "modelVersion": "unknown",
-         *             "toolVersion": "unknown"
-         *           }
-         *         ],
-         *         "plannedCount": 1,
-         *         "cells": [
-         *           {
-         *             "id": "p1-chatgpt",
-         *             "promptId": "p1",
-         *             "engineKey": "chatgpt",
-         *             "status": "answered",
-         *             "observationId": "observation-fixture-001",
-         *             "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-         *             "searchTriggered": null,
-         *             "citationExtraction": "unknown",
-         *             "evidenceAvailability": "unknown",
-         *             "mentioned": null,
-         *             "candidate": null,
-         *             "cited": null,
-         *             "ownUrls": [],
-         *             "thirdPartyDomains": [],
-         *             "domainsTruncated": false
-         *           }
-         *         ],
-         *         "reported": null,
-         *         "artifactCompleteness": "unknown",
-         *         "hashAlgorithm": "sha256",
-         *         "hashNormalization": "provider-v1",
-         *         "charges": [
-         *           {
-         *             "vendorTaskId": "fixture-charge-001",
-         *             "costUsd": null,
-         *             "credits": null,
-         *             "incurredAt": "2026-10-18T10:00:00Z"
-         *           }
-         *         ],
-         *         "approvedBatchRef": "fixture-approval-001"
-         *       },
-         *       "observationLinks": [
-         *         {
-         *           "observationId": "observation-fixture-001",
-         *           "url": null
-         *         }
-         *       ]
-         *     }
-         */
-        SeoGeoRecord: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id: number;
-            /** @example fixture.example */
-            site: string;
-            /**
-             * @example imported_observation
-             * @enum {string}
-             */
-            mode: "imported_observation" | "summary_only";
-            /** @example fixture-001 */
-            panelId: string;
-            /** @example fixture-001 */
-            panelVersion: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            periodStart: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            periodEnd: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-18T10:00:00Z
-             */
-            importedAt: string;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            payloadHash: string;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            comparisonKey: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            supersedes: number | null;
-            counts: components["schemas"]["SeoGeoCounts"];
-            trend: components["schemas"]["SeoGeoTrend"];
-            /** @example agent:1:1 */
-            importedBy: string;
-            snapshot: components["schemas"]["SeoGeoSnapshot"];
-            /**
-             * @example [
-             *       {
-             *         "observationId": "observation-fixture-001",
-             *         "url": null
-             *       }
-             *     ]
-             */
-            observationLinks: components["schemas"]["SeoGeoObservationLink"][];
-        };
-        /**
-         * @example {
-         *       "current": 1,
-         *       "size": 20,
-         *       "total": 1,
-         *       "records": [
-         *         {
-         *           "id": 1,
-         *           "site": "fixture.example",
-         *           "mode": "imported_observation",
-         *           "panelId": "neutral-core",
-         *           "panelVersion": "v1",
-         *           "periodStart": "2026-10-18T09:00:00Z",
-         *           "periodEnd": "2026-10-18T10:00:00Z",
-         *           "importedAt": "2026-10-18T11:00:00Z",
-         *           "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *           "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *           "supersedes": null,
-         *           "counts": {
-         *             "planned": 1,
-         *             "answered": 1,
-         *             "searchTriggered": {
-         *               "positive": 0,
-         *               "known": 0
-         *             },
-         *             "mentioned": {
-         *               "positive": 0,
-         *               "known": 0
-         *             },
-         *             "candidate": {
-         *               "positive": 0,
-         *               "known": 0
-         *             },
-         *             "cited": {
-         *               "positive": 0,
-         *               "known": 0
-         *             },
-         *             "citationComplete": 0,
-         *             "reported": null
-         *           },
-         *           "trend": null
-         *         }
-         *       ]
-         *     }
-         */
-        SeoGeoPage: {
-            /** @example 1 */
-            current: number;
-            /** @example 20 */
-            size: number;
-            /** @example 1 */
-            total: number;
-            /**
-             * @example [
-             *       {
-             *         "id": 1,
-             *         "site": "fixture.example",
-             *         "mode": "imported_observation",
-             *         "panelId": "neutral-core",
-             *         "panelVersion": "v1",
-             *         "periodStart": "2026-10-18T09:00:00Z",
-             *         "periodEnd": "2026-10-18T10:00:00Z",
-             *         "importedAt": "2026-10-18T11:00:00Z",
-             *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-             *         "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-             *         "supersedes": null,
-             *         "counts": {
-             *           "planned": 1,
-             *           "answered": 1,
-             *           "searchTriggered": {
-             *             "positive": 0,
-             *             "known": 0
-             *           },
-             *           "mentioned": {
-             *             "positive": 0,
-             *             "known": 0
-             *           },
-             *           "candidate": {
-             *             "positive": 0,
-             *             "known": 0
-             *           },
-             *           "cited": {
-             *             "positive": 0,
-             *             "known": 0
-             *           },
-             *           "citationComplete": 0,
-             *           "reported": null
-             *         },
-             *         "trend": null
-             *       }
-             *     ]
-             */
-            records: components["schemas"]["SeoGeoSummary"][];
-        };
-        /**
-         * @example {
-         *       "id": 1,
-         *       "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-         *     }
-         */
-        SeoGeoImportResult: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id: number;
-            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
-            payloadHash: string;
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "current": 1,
-         *         "size": 20,
-         *         "total": 1,
-         *         "records": [
-         *           {
-         *             "id": 1,
-         *             "site": "fixture.example",
-         *             "mode": "imported_observation",
-         *             "panelId": "neutral-core",
-         *             "panelVersion": "v1",
-         *             "periodStart": "2026-10-18T09:00:00Z",
-         *             "periodEnd": "2026-10-18T10:00:00Z",
-         *             "importedAt": "2026-10-18T11:00:00Z",
-         *             "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *             "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *             "supersedes": null,
-         *             "counts": {
-         *               "planned": 1,
-         *               "answered": 1,
-         *               "searchTriggered": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "mentioned": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "candidate": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "cited": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "citationComplete": 0,
-         *               "reported": null
-         *             },
-         *             "trend": null
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoGeoPageResponse: {
-            /** @example 0000 */
-            code: string;
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoGeoPage"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "site": "fixture.example",
-         *         "mode": "imported_observation",
-         *         "panelId": "neutral-core",
-         *         "panelVersion": "v1",
-         *         "periodStart": "2026-10-18T09:00:00Z",
-         *         "periodEnd": "2026-10-18T10:00:00Z",
-         *         "importedAt": "2026-10-18T11:00:00Z",
-         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *         "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *         "supersedes": null,
-         *         "counts": {
-         *           "planned": 1,
-         *           "answered": 1,
-         *           "searchTriggered": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "mentioned": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "candidate": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "cited": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "citationComplete": 0,
-         *           "reported": null
-         *         },
-         *         "trend": null,
-         *         "importedBy": "agent:1:1",
-         *         "snapshot": {
-         *           "schemaVersion": 1,
-         *           "provider": "openseo",
-         *           "sourceProject": "fixture-project",
-         *           "providerRunKey": "fixture-run-001",
-         *           "mode": "imported_observation",
-         *           "panelId": "neutral-core",
-         *           "panelVersion": "v1",
-         *           "periodStart": "2026-10-18T09:00:00Z",
-         *           "periodEnd": "2026-10-18T10:00:00Z",
-         *           "context": {
-         *             "market": "unknown",
-         *             "promptLanguage": "en",
-         *             "answerLanguage": "unknown",
-         *             "searchMode": "unknown",
-         *             "windowDays": 7
-         *           },
-         *           "prompts": [
-         *             {
-         *               "id": "p1",
-         *               "text": "best free mac apps",
-         *               "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *               "classification": "neutral"
-         *             }
-         *           ],
-         *           "engines": [
-         *             {
-         *               "key": "chatgpt",
-         *               "name": "ChatGPT",
-         *               "surface": "provider_api",
-         *               "modelVersion": "unknown",
-         *               "toolVersion": "unknown"
-         *             }
-         *           ],
-         *           "plannedCount": 1,
-         *           "cells": [
-         *             {
-         *               "id": "p1-chatgpt",
-         *               "promptId": "p1",
-         *               "engineKey": "chatgpt",
-         *               "status": "answered",
-         *               "observationId": "observation-fixture-001",
-         *               "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-         *               "searchTriggered": null,
-         *               "citationExtraction": "unknown",
-         *               "evidenceAvailability": "unknown",
-         *               "mentioned": null,
-         *               "candidate": null,
-         *               "cited": null,
-         *               "ownUrls": [],
-         *               "thirdPartyDomains": [],
-         *               "domainsTruncated": false
-         *             }
-         *           ],
-         *           "reported": null,
-         *           "artifactCompleteness": "unknown",
-         *           "hashAlgorithm": "sha256",
-         *           "hashNormalization": "provider-v1",
-         *           "charges": [
-         *             {
-         *               "vendorTaskId": "fixture-charge-001",
-         *               "costUsd": null,
-         *               "credits": null,
-         *               "incurredAt": "2026-10-18T10:00:00Z"
-         *             }
-         *           ],
-         *           "approvedBatchRef": "fixture-approval-001"
-         *         },
-         *         "observationLinks": [
-         *           {
-         *             "observationId": "observation-fixture-001",
-         *             "url": null
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoGeoRecordResponse: {
-            /** @example 0000 */
-            code: string;
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoGeoRecord"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-         *       }
-         *     }
-         */
-        SeoGeoImportResultResponse: {
-            /** @example 0000 */
-            code: string;
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoGeoImportResult"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-         *       }
-         *     }
-         */
-        SeoGeoImportResultResponseResult: components["schemas"]["SeoGeoImportResultResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "current": 1,
-         *         "size": 20,
-         *         "total": 1,
-         *         "records": [
-         *           {
-         *             "id": 1,
-         *             "site": "fixture.example",
-         *             "mode": "imported_observation",
-         *             "panelId": "neutral-core",
-         *             "panelVersion": "v1",
-         *             "periodStart": "2026-10-18T09:00:00Z",
-         *             "periodEnd": "2026-10-18T10:00:00Z",
-         *             "importedAt": "2026-10-18T11:00:00Z",
-         *             "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *             "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *             "supersedes": null,
-         *             "counts": {
-         *               "planned": 1,
-         *               "answered": 1,
-         *               "searchTriggered": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "mentioned": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "candidate": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "cited": {
-         *                 "positive": 0,
-         *                 "known": 0
-         *               },
-         *               "citationComplete": 0,
-         *               "reported": null
-         *             },
-         *             "trend": null
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoGeoPageResponseResult: components["schemas"]["SeoGeoPageResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "id": 1,
-         *         "site": "fixture.example",
-         *         "mode": "imported_observation",
-         *         "panelId": "neutral-core",
-         *         "panelVersion": "v1",
-         *         "periodStart": "2026-10-18T09:00:00Z",
-         *         "periodEnd": "2026-10-18T10:00:00Z",
-         *         "importedAt": "2026-10-18T11:00:00Z",
-         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-         *         "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-         *         "supersedes": null,
-         *         "counts": {
-         *           "planned": 1,
-         *           "answered": 1,
-         *           "searchTriggered": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "mentioned": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "candidate": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "cited": {
-         *             "positive": 0,
-         *             "known": 0
-         *           },
-         *           "citationComplete": 0,
-         *           "reported": null
-         *         },
-         *         "trend": null,
-         *         "importedBy": "agent:1:1",
-         *         "snapshot": {
-         *           "schemaVersion": 1,
-         *           "provider": "openseo",
-         *           "sourceProject": "fixture-project",
-         *           "providerRunKey": "fixture-run-001",
-         *           "mode": "imported_observation",
-         *           "panelId": "neutral-core",
-         *           "panelVersion": "v1",
-         *           "periodStart": "2026-10-18T09:00:00Z",
-         *           "periodEnd": "2026-10-18T10:00:00Z",
-         *           "context": {
-         *             "market": "unknown",
-         *             "promptLanguage": "en",
-         *             "answerLanguage": "unknown",
-         *             "searchMode": "unknown",
-         *             "windowDays": 7
-         *           },
-         *           "prompts": [
-         *             {
-         *               "id": "p1",
-         *               "text": "best free mac apps",
-         *               "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-         *               "classification": "neutral"
-         *             }
-         *           ],
-         *           "engines": [
-         *             {
-         *               "key": "chatgpt",
-         *               "name": "ChatGPT",
-         *               "surface": "provider_api",
-         *               "modelVersion": "unknown",
-         *               "toolVersion": "unknown"
-         *             }
-         *           ],
-         *           "plannedCount": 1,
-         *           "cells": [
-         *             {
-         *               "id": "p1-chatgpt",
-         *               "promptId": "p1",
-         *               "engineKey": "chatgpt",
-         *               "status": "answered",
-         *               "observationId": "observation-fixture-001",
-         *               "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-         *               "searchTriggered": null,
-         *               "citationExtraction": "unknown",
-         *               "evidenceAvailability": "unknown",
-         *               "mentioned": null,
-         *               "candidate": null,
-         *               "cited": null,
-         *               "ownUrls": [],
-         *               "thirdPartyDomains": [],
-         *               "domainsTruncated": false
-         *             }
-         *           ],
-         *           "reported": null,
-         *           "artifactCompleteness": "unknown",
-         *           "hashAlgorithm": "sha256",
-         *           "hashNormalization": "provider-v1",
-         *           "charges": [
-         *             {
-         *               "vendorTaskId": "fixture-charge-001",
-         *               "costUsd": null,
-         *               "credits": null,
-         *               "incurredAt": "2026-10-18T10:00:00Z"
-         *             }
-         *           ],
-         *           "approvedBatchRef": "fixture-approval-001"
-         *         },
-         *         "observationLinks": [
-         *           {
-         *             "observationId": "observation-fixture-001",
-         *             "url": null
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoGeoRecordResponseResult: components["schemas"]["SeoGeoRecordResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "geo": null,
-         *       "watermarks": [],
-         *       "keywordCount": 1,
-         *       "targetCount": 0,
-         *       "automationReady": true,
-         *       "breakers": [
-         *         {
-         *           "kind": "technical",
-         *           "scope": "*",
-         *           "reason": "audit_p0",
-         *           "openedAt": "2026-10-18T10:00:00Z",
-         *           "retryAt": null,
-         *           "evidence": {
-         *             "unresolved": 2,
-         *             "layers": [
-         *               "origin",
-         *               "edge"
-         *             ]
-         *           }
-         *         }
-         *       ],
-         *       "budgets": [
-         *         {
-         *           "action": "listing",
-         *           "period": "day",
-         *           "limit": 20,
-         *           "used": 3,
-         *           "remaining": 17
-         *         },
-         *         {
-         *           "action": "paid_research",
-         *           "period": "day",
-         *           "limitMicros": 15000000,
-         *           "usedMicros": 250000,
-         *           "remainingMicros": 14750000
-         *         }
-         *       ],
-         *       "actionModes": [
-         *         {
-         *           "action": "listing",
-         *           "enabled": true,
-         *           "mode": "proposal"
-         *         }
-         *       ],
-         *       "yesterday": {
-         *         "actions": [
-         *           {
-         *             "operation": "UpdatePackageMeta",
-         *             "mode": "live",
-         *             "count": 12,
-         *             "compensated": 1
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoOverview: {
-            geo: components["schemas"]["SeoGeoSummary"];
-            watermarks: components["schemas"]["SeoWatermark"][];
-            /**
-             * Format: int64
-             * @example 1
-             */
-            keywordCount: number;
-            /**
-             * Format: int64
-             * @example 0
-             */
-            targetCount: number;
-            /**
-             * @description At least one search-data source has completeness and freshness dates within the last seven UTC days and was updated within seven days. Does not gate catalog editing.
-             * @example true
-             */
-            automationReady: boolean;
-            breakers: components["schemas"]["SeoOverviewBreaker"][];
-            budgets: components["schemas"]["SeoOverviewBudget"][];
-            actionModes: components["schemas"]["SeoOverviewActionMode"][];
-            yesterday: components["schemas"]["SeoYesterday"];
-        };
-        /**
-         * @example {
-         *       "robots": "index, follow",
-         *       "canonicalPath": "/apps/example-editor",
-         *       "hreflang": [
-         *         "en-US"
-         *       ],
-         *       "inSitemap": true,
-         *       "announce": true,
-         *       "reason": "ready"
-         *     }
-         */
-        SeoInsightDecision: {
-            /** @example index, follow */
-            robots: string;
-            /** @example  */
-            canonicalPath: string;
-            hreflang: components["schemas"]["Locale"][];
-            /** @example true */
-            inSitemap: boolean;
-            /** @example true */
-            announce: boolean;
-            /** @example  */
-            reason: string;
-        };
-        /**
-         * @example {
-         *       "url": "https://example.test/apps/example-editor",
-         *       "urlId": 1,
-         *       "entityKey": "pkg:1",
-         *       "locale": "en-US",
-         *       "indexing": {
-         *         "robots": "index, follow",
-         *         "canonicalPath": "",
-         *         "hreflang": [
-         *           "en-US"
-         *         ],
-         *         "inSitemap": true,
-         *         "announce": true,
-         *         "reason": ""
-         *       },
-         *       "languages": [
-         *         {
-         *           "locale": "en-US",
-         *           "ready": true
-         *         }
-         *       ],
-         *       "missingFacts": [
-         *         "price"
-         *       ],
-         *       "inboundLinks": null,
-         *       "outboundLinks": null,
-         *       "auditIssues": [],
-         *       "gsc": {
-         *         "completeThrough": "2026-10-16",
-         *         "clicks": 10,
-         *         "impressions": 100,
-         *         "averagePosition": 3
-         *       }
-         *     }
-         */
-        SeoPageInsight: {
-            /**
-             * Format: uri
-             * @example https://example.test/apps/example-editor
-             */
-            url: string;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            urlId: number;
-            /** @example pkg:1 */
-            entityKey: string;
-            locale: components["schemas"]["Locale"];
-            indexing: components["schemas"]["SeoInsightDecision"];
-            languages: {
-                locale: components["schemas"]["Locale"];
-                /** @example true */
-                ready: boolean;
-            }[];
-            missingFacts: string[];
-            /**
-             * Format: int64
-             * @example 0
-             */
-            inboundLinks: number | null;
-            /**
-             * Format: int64
-             * @example 0
-             */
-            outboundLinks: number | null;
-            /**
-             * @description Counts cover recently observed internal HTML links, not a complete crawl of the site.
-             * @example sampled_html
-             * @enum {string}
-             */
-            linkCoverage?: "unknown" | "sampled_html";
-            /**
-             * Format: date-time
-             * @example null
-             */
-            linksCheckedAt?: string | null;
-            auditIssues: {
-                /** @example seo.canonical */
-                rule: string;
-                /**
-                 * @example origin
-                 * @enum {string}
-                 */
-                layer: "origin" | "edge";
-                /**
-                 * @example p0
-                 * @enum {string}
-                 */
-                severity: "p0" | "p1" | "p2";
-                /** @example Canonical mismatch */
-                detail: string;
-                /**
-                 * Format: date-time
-                 * @example 2026-10-18T10:00:00Z
-                 */
-                firstSeen: string;
-                /**
-                 * Format: date-time
-                 * @example 2026-10-18T10:00:00Z
-                 */
-                lastSeen: string;
-            }[];
-            gsc: {
-                /**
-                 * Format: date
-                 * @example 2026-10-16
-                 */
-                completeThrough: string | null;
-                /**
-                 * Format: int64
-                 * @example 10
-                 */
-                clicks: number;
-                /**
-                 * Format: int64
-                 * @example 100
-                 */
-                impressions: number;
-                /** @example 3 */
-                averagePosition: number | null;
-            } | null;
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "records": [
-         *           {
-         *             "keyword": "Example Editor mac",
-         *             "source": "gsc",
-         *             "engine": "google",
-         *             "country": "US",
-         *             "language": "en-US",
-         *             "device": "desktop",
-         *             "period": "2026-10",
-         *             "searchVolume": 100,
-         *             "volumeState": "known",
-         *             "observedAt": "2026-10-18T10:00:00Z",
-         *             "id": 1,
-         *             "normalized": "example editor mac",
-         *             "difficulty": null,
-         *             "ourPosition": null,
-         *             "serpFeatures": [],
-         *             "vendorTaskId": null,
-         *             "costUsd": null,
-         *             "anomaly": null,
-         *             "links": []
-         *           }
-         *         ],
-         *         "targets": []
-         *       }
-         *     }
-         */
-        SeoKeywordsResultResponse: {
-            code: components["schemas"]["Code"];
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoKeywordsResult"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "records": [
-         *           {
-         *             "keyword": "Example Editor mac",
-         *             "source": "gsc",
-         *             "engine": "google",
-         *             "country": "US",
-         *             "language": "en-US",
-         *             "device": "desktop",
-         *             "period": "2026-10",
-         *             "searchVolume": 100,
-         *             "volumeState": "known",
-         *             "observedAt": "2026-10-18T10:00:00Z",
-         *             "id": 1,
-         *             "normalized": "example editor mac",
-         *             "difficulty": null,
-         *             "ourPosition": null,
-         *             "serpFeatures": [],
-         *             "vendorTaskId": null,
-         *             "costUsd": null,
-         *             "anomaly": null,
-         *             "links": []
-         *           }
-         *         ],
-         *         "targets": []
-         *       }
-         *     }
-         */
-        SeoKeywordsResultResponseResult: components["schemas"]["SeoKeywordsResultResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "current": 1,
-         *         "size": 10,
-         *         "total": 1,
-         *         "records": [
-         *           {
-         *             "keyword": "Example Editor mac",
-         *             "source": "gsc",
-         *             "engine": "google",
-         *             "country": "US",
-         *             "language": "en-US",
-         *             "device": "desktop",
-         *             "period": "2026-10",
-         *             "searchVolume": 100,
-         *             "volumeState": "known",
-         *             "observedAt": "2026-10-18T10:00:00Z",
-         *             "id": 1,
-         *             "normalized": "example editor mac",
-         *             "difficulty": null,
-         *             "ourPosition": null,
-         *             "serpFeatures": [],
-         *             "vendorTaskId": null,
-         *             "costUsd": null,
-         *             "anomaly": null,
-         *             "links": []
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoKeywordPageResponse: {
-            code: components["schemas"]["Code"];
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoKeywordPage"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "current": 1,
-         *         "size": 10,
-         *         "total": 1,
-         *         "records": [
-         *           {
-         *             "keyword": "Example Editor mac",
-         *             "source": "gsc",
-         *             "engine": "google",
-         *             "country": "US",
-         *             "language": "en-US",
-         *             "device": "desktop",
-         *             "period": "2026-10",
-         *             "searchVolume": 100,
-         *             "volumeState": "known",
-         *             "observedAt": "2026-10-18T10:00:00Z",
-         *             "id": 1,
-         *             "normalized": "example editor mac",
-         *             "difficulty": null,
-         *             "ourPosition": null,
-         *             "serpFeatures": [],
-         *             "vendorTaskId": null,
-         *             "costUsd": null,
-         *             "anomaly": null,
-         *             "links": []
-         *           }
-         *         ]
-         *       }
-         *     }
-         */
-        SeoKeywordPageResponseResult: components["schemas"]["SeoKeywordPageResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "watermarks": [],
-         *         "keywordCount": 1,
-         *         "targetCount": 0,
-         *         "automationReady": true,
-         *         "breakers": [
-         *           {
-         *             "kind": "technical",
-         *             "scope": "*",
-         *             "reason": "audit_p0",
-         *             "openedAt": "2026-10-18T10:00:00Z",
-         *             "retryAt": null,
-         *             "evidence": {
-         *               "unresolved": 2,
-         *               "layers": [
-         *                 "origin",
-         *                 "edge"
-         *               ]
-         *             }
-         *           }
-         *         ],
-         *         "budgets": [
-         *           {
-         *             "action": "listing",
-         *             "period": "day",
-         *             "limit": 20,
-         *             "used": 3,
-         *             "remaining": 17
-         *           },
-         *           {
-         *             "action": "paid_research",
-         *             "period": "day",
-         *             "limitMicros": 15000000,
-         *             "usedMicros": 250000,
-         *             "remainingMicros": 14750000
-         *           }
-         *         ],
-         *         "actionModes": [
-         *           {
-         *             "action": "listing",
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           }
-         *         ],
-         *         "yesterday": {
-         *           "actions": [
-         *             {
-         *               "operation": "UpdatePackageMeta",
-         *               "mode": "live",
-         *               "count": 12,
-         *               "compensated": 1
-         *             }
-         *           ]
-         *         },
-         *         "geo": null
-         *       }
-         *     }
-         */
-        SeoOverviewResponse: {
-            code: components["schemas"]["Code"];
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoOverview"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "geo": null,
-         *         "watermarks": [],
-         *         "keywordCount": 1,
-         *         "targetCount": 0,
-         *         "automationReady": true,
-         *         "breakers": [
-         *           {
-         *             "kind": "technical",
-         *             "scope": "*",
-         *             "reason": "audit_p0",
-         *             "openedAt": "2026-10-18T10:00:00Z",
-         *             "retryAt": null,
-         *             "evidence": {
-         *               "unresolved": 2,
-         *               "layers": [
-         *                 "origin",
-         *                 "edge"
-         *               ]
-         *             }
-         *           }
-         *         ],
-         *         "budgets": [
-         *           {
-         *             "action": "listing",
-         *             "period": "day",
-         *             "limit": 20,
-         *             "used": 3,
-         *             "remaining": 17
-         *           },
-         *           {
-         *             "action": "paid_research",
-         *             "period": "day",
-         *             "limitMicros": 15000000,
-         *             "usedMicros": 250000,
-         *             "remainingMicros": 14750000
-         *           }
-         *         ],
-         *         "actionModes": [
-         *           {
-         *             "action": "listing",
-         *             "enabled": true,
-         *             "mode": "proposal"
-         *           }
-         *         ],
-         *         "yesterday": {
-         *           "actions": [
-         *             {
-         *               "operation": "UpdatePackageMeta",
-         *               "mode": "live",
-         *               "count": 12,
-         *               "compensated": 1
-         *             }
-         *           ]
-         *         }
-         *       }
-         *     }
-         */
-        SeoOverviewResponseResult: components["schemas"]["SeoOverviewResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "url": "https://example.test/apps/example-editor",
-         *         "urlId": 1,
-         *         "entityKey": "pkg:1",
-         *         "locale": "en-US",
-         *         "indexing": {
-         *           "robots": "index, follow",
-         *           "canonicalPath": "",
-         *           "hreflang": [
-         *             "en-US"
-         *           ],
-         *           "inSitemap": true,
-         *           "announce": true,
-         *           "reason": ""
-         *         },
-         *         "languages": [
-         *           {
-         *             "locale": "en-US",
-         *             "ready": true
-         *           }
-         *         ],
-         *         "missingFacts": [
-         *           "price"
-         *         ],
-         *         "inboundLinks": null,
-         *         "outboundLinks": null,
-         *         "auditIssues": [],
-         *         "gsc": {
-         *           "completeThrough": "2026-10-16",
-         *           "clicks": 10,
-         *           "impressions": 100,
-         *           "averagePosition": 3
-         *         }
-         *       }
-         *     }
-         */
-        SeoPageInsightResponse: {
-            code: components["schemas"]["Code"];
-            /** @example ok */
-            msg: string;
-            data: components["schemas"]["SeoPageInsight"];
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "url": "https://example.test/apps/example-editor",
-         *         "urlId": 1,
-         *         "entityKey": "pkg:1",
-         *         "locale": "en-US",
-         *         "indexing": {
-         *           "robots": "index, follow",
-         *           "canonicalPath": "",
-         *           "hreflang": [
-         *             "en-US"
-         *           ],
-         *           "inSitemap": true,
-         *           "announce": true,
-         *           "reason": ""
-         *         },
-         *         "languages": [
-         *           {
-         *             "locale": "en-US",
-         *             "ready": true
-         *           }
-         *         ],
-         *         "missingFacts": [
-         *           "price"
-         *         ],
-         *         "inboundLinks": null,
-         *         "outboundLinks": null,
-         *         "auditIssues": [],
-         *         "gsc": {
-         *           "completeThrough": "2026-10-16",
-         *           "clicks": 10,
-         *           "impressions": 100,
-         *           "averagePosition": 3
-         *         }
-         *       }
-         *     }
-         */
-        SeoPageInsightResponseResult: components["schemas"]["SeoPageInsightResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
          * @example {
          *       "name": "open_source"
@@ -9174,7 +4928,12 @@ export interface components {
          *       "lastUrls": 6,
          *       "lastIndexnowStatus": "ok: 6 URLs",
          *       "lastPurgeStatus": "",
-         *       "lastError": ""
+         *       "lastError": "",
+         *       "pendingAnnouncements": 3,
+         *       "oldestPendingAt": "2026-10-26T08:00:00Z",
+         *       "deadAnnouncements": 0,
+         *       "probeCooldownUntil": null,
+         *       "overloadedProbes": 0
          *     }
          */
         ChangeFeedStatus: {
@@ -9186,9 +4945,25 @@ export interface components {
             lastIndexnowStatus: string;
             lastPurgeStatus: string;
             lastError: string;
+            /** @description Live announcement receipts not yet delivered (pending, invalidated or probed). */
+            pendingAnnouncements: number;
+            /**
+             * Format: date-time
+             * @description Creation time of the oldest undelivered announcement; null when none.
+             */
+            oldestPendingAt: string | null;
+            /** @description Announcements dead in the last 30 days with no newer receipt for the same URL. */
+            deadAnnouncements: number;
+            /**
+             * Format: date-time
+             * @description Shared public-probe cooldown end while it lies in the future.
+             */
+            probeCooldownUntil: string | null;
+            /** @description Consecutive probe responses that reported load shedding or rate limiting; 0 after a normal probe. */
+            overloadedProbes: number;
         };
         /**
-         * @description Rule for one tunable crawler class. limit adds Crawl-delay and keeps the bots off payloads and dependency tabs; block disallows the whole site.
+         * @description Rule for one tunable crawler class. limit adds Crawl-delay and keeps the bots off payloads, the details and dependencies tabs, share images (/_og/), feeds (/*\/feed.xml), URLs with a query (/*?) and the prefixes of languages outside pages.openLocales; block disallows the whole site. The web origin also holds AI training crawlers to a request budget (6 a minute by default), answering 429 beyond it.
          * @example {
          *       "mode": "limit",
          *       "delaySeconds": 10,
@@ -9332,57 +5107,7 @@ export interface components {
                 training: components["schemas"]["SeoCrawlerRule"];
                 seoTools: components["schemas"]["SeoCrawlerRule"];
             };
-            pages: {
-                /**
-                 * @description Temporary rollout switch; removed together with the legacy templates.
-                 * @enum {string}
-                 */
-                titleTemplate: "new" | "legacy";
-                indexPolicy: {
-                    /**
-                     * @description Temporary rollout switch for the index eligibility policy.
-                     * @enum {string}
-                     */
-                    mode: "off" | "shadow" | "enforce";
-                    /** @enum {string} */
-                    scope: "new" | "all";
-                    /** @description Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept. */
-                    since: string;
-                };
-                /**
-                 * @description Published translation quality rollout; new site-only languages are always enforced.
-                 * @default shadow
-                 * @enum {string}
-                 */
-                translationMode: "shadow" | "enforce";
-                /** @description Locales to enforce; empty means all locales. */
-                translationLocales?: components["schemas"]["Locale"][];
-                /** @default 300 */
-                versionsMinNotesChars: number;
-                /**
-                 * @description Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.
-                 * @default [
-                 *       "en-US",
-                 *       "zh-CN",
-                 *       "ja-JP",
-                 *       "es-ES",
-                 *       "pt-BR",
-                 *       "ru-RU"
-                 *     ]
-                 */
-                openLocales: components["schemas"]["Locale"][];
-                /**
-                 * @description Enable qualified intent pages backed by confirmed search demand and unique targets.
-                 * @default false
-                 */
-                intentPagesEnabled: boolean;
-                /**
-                 * @description Enable details redirects after migrated overview content has been verified.
-                 * @default false
-                 */
-                detailsRedirect: boolean;
-                versionsSitemap: boolean;
-            };
+            pages: components["schemas"]["SeoPageSettings"];
         };
         /**
          * @example {
@@ -9593,7 +5318,12 @@ export interface components {
          *         "lastUrls": 6,
          *         "lastIndexnowStatus": "ok: 6 URLs",
          *         "lastPurgeStatus": "",
-         *         "lastError": ""
+         *         "lastError": "",
+         *         "pendingAnnouncements": 3,
+         *         "oldestPendingAt": "2026-10-26T08:00:00Z",
+         *         "deadAnnouncements": 0,
+         *         "probeCooldownUntil": null,
+         *         "overloadedProbes": 0
          *       }
          *     }
          */
@@ -9721,7 +5451,12 @@ export interface components {
          *           "lastUrls": 6,
          *           "lastIndexnowStatus": "ok: 6 URLs",
          *           "lastPurgeStatus": "",
-         *           "lastError": ""
+         *           "lastError": "",
+         *           "pendingAnnouncements": 3,
+         *           "oldestPendingAt": "2026-10-26T08:00:00Z",
+         *           "deadAnnouncements": 0,
+         *           "probeCooldownUntil": null,
+         *           "overloadedProbes": 0
          *         }
          *       }
          *     }
@@ -9837,7 +5572,12 @@ export interface components {
          *           "lastUrls": 6,
          *           "lastIndexnowStatus": "ok: 6 URLs",
          *           "lastPurgeStatus": "",
-         *           "lastError": ""
+         *           "lastError": "",
+         *           "pendingAnnouncements": 3,
+         *           "oldestPendingAt": "2026-10-26T08:00:00Z",
+         *           "deadAnnouncements": 0,
+         *           "probeCooldownUntil": null,
+         *           "overloadedProbes": 0
          *         }
          *       }
          *     }
@@ -11950,11 +7690,7 @@ export interface components {
          *           "R_SUPER"
          *         ],
          *         "buttons": [
-         *           "seo:automation:tune",
-         *           "seo:snippet:propose",
-         *           "seo:task:handle",
-         *           "seo:insight:view",
-         *           "seo:keyword:edit",
+         *           "site:index:view",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -12253,11 +7989,7 @@ export interface components {
          *         "R_SUPER"
          *       ],
          *       "buttons": [
-         *         "seo:automation:tune",
-         *         "seo:snippet:propose",
-         *         "seo:task:handle",
-         *         "seo:insight:view",
-         *         "seo:keyword:edit",
+         *         "site:index:view",
          *         "dashboard:view",
          *         "catalog:package:view",
          *         "catalog:package:edit",
@@ -12307,11 +8039,7 @@ export interface components {
             /**
              * @description Permission code
              * @example [
-             *       "seo:automation:tune",
-             *       "seo:snippet:propose",
-             *       "seo:task:handle",
-             *       "seo:insight:view",
-             *       "seo:keyword:edit",
+             *       "site:index:view",
              *       "dashboard:view",
              *       "catalog:package:view",
              *       "catalog:package:edit",
@@ -13057,6 +8785,12 @@ export interface components {
          */
         AdminPackageDetail: components["schemas"]["AdminPackage"] & {
             /**
+             * Format: int64
+             * @description Revision the UpdatePackageMeta and the other package writes (text, i18n, categories, facts, icon); link app definitions use their own revision check: pass it as X-Expected-Revision. Returned by the single-object reads.
+             * @example 1
+             */
+            revision?: number;
+            /**
              * Format: uri
              * @description /apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.
              * @example https://opennavo.example/apps/visual-studio-code
@@ -13379,6 +9113,12 @@ export interface components {
          *     }
          */
         AdminCategoryNode: {
+            /**
+             * Format: int64
+             * @description Revision the category writes check: pass it as X-Expected-Revision. Returned by the single-object reads.
+             * @example 1
+             */
+            revision?: number;
             /**
              * Format: int64
              * @example 1
@@ -13729,6 +9469,12 @@ export interface components {
          */
         AdminCollection: components["schemas"]["AuditFields"] & {
             /**
+             * Format: int64
+             * @description Revision the collection writes check: pass it as X-Expected-Revision. Returned by the single-object reads.
+             * @example 1
+             */
+            revision?: number;
+            /**
              * Format: uri
              * @description /collections/{slug} under WEB_BASE_URL; available when published or scheduled, null when draft or archived
              * @example https://opennavo.example/collections/new-mac
@@ -13962,6 +9708,12 @@ export interface components {
          *     }
          */
         AdminFeature: components["schemas"]["AuditFields"] & {
+            /**
+             * Format: int64
+             * @description Revision the feature writes check: pass it as X-Expected-Revision. Returned by the single-object reads.
+             * @example 1
+             */
+            revision?: number;
             /**
              * Format: int64
              * @example 1
@@ -14238,6 +9990,12 @@ export interface components {
          *     }
          */
         AdminRelease: {
+            /**
+             * Format: int64
+             * @description Revision the release writes check: pass it as X-Expected-Revision. Returned by the single-object reads.
+             * @example 1
+             */
+            revision?: number;
             /**
              * Format: int64
              * @example 1
@@ -15811,11 +11569,7 @@ export interface components {
          *           "R_SUPER"
          *         ],
          *         "buttons": [
-         *           "seo:automation:tune",
-         *           "seo:snippet:propose",
-         *           "seo:task:handle",
-         *           "seo:insight:view",
-         *           "seo:keyword:edit",
+         *           "site:index:view",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -19407,7 +15161,7 @@ export interface components {
             sourceGaps?: components["schemas"]["FactGap"][];
             /**
              * Format: int64
-             * @description Unleased catalog edits only: the current revision of the edited objects. Commit with it as X-SEO-Expected-Revision; a newer revision rejects the commit with a conflict.
+             * @description The current revision of the edited objects. Commit with it as X-Expected-Revision; a newer revision rejects the commit with a conflict.
              */
             expectedRevision?: number;
         };
@@ -22491,6 +18245,8 @@ export interface components {
          *       "type": "updated",
          *       "packageId": 1,
          *       "token": "visual-studio-code",
+         *       "kind": "cask",
+         *       "source": "homebrew",
          *       "previousToken": null,
          *       "version": "1.140.0",
          *       "versionBase": "1.140.0",
@@ -22522,6 +18278,17 @@ export interface components {
             packageId: number;
             /** @example visual-studio-code */
             token: string;
+            /**
+             * @example cask
+             * @enum {string}
+             */
+            kind: "cask" | "link";
+            /**
+             * @description Where the app comes from: an official Homebrew cask, a cask of a third-party tap, or a link app
+             * @example homebrew
+             * @enum {string}
+             */
+            source: "homebrew" | "tap" | "link";
             /** @example null */
             previousToken: string | null;
             /**
@@ -22576,6 +18343,8 @@ export interface components {
          *             "type": "updated",
          *             "packageId": 1,
          *             "token": "visual-studio-code",
+         *             "kind": "cask",
+         *             "source": "homebrew",
          *             "previousToken": null,
          *             "version": "1.140.0",
          *             "versionBase": "1.140.0",
@@ -22591,7 +18360,8 @@ export interface components {
          *         ],
          *         "current": 1,
          *         "size": 20,
-         *         "total": 1
+         *         "total": 1,
+         *         "nextSeq": 1
          *       }
          *     }
          */
@@ -22607,6 +18377,8 @@ export interface components {
                  *         "type": "updated",
                  *         "packageId": 1,
                  *         "token": "visual-studio-code",
+                 *         "kind": "cask",
+                 *         "source": "homebrew",
                  *         "previousToken": null,
                  *         "version": "1.140.0",
                  *         "versionBase": "1.140.0",
@@ -22634,6 +18406,12 @@ export interface components {
                 size: number;
                 /**
                  * Format: int64
+                 * @description Cursor to pass as afterSeq to continue after this page: the last event returned while more remain, otherwise the newest event so far
+                 * @example 1
+                 */
+                nextSeq: number;
+                /**
+                 * Format: int64
                  * @example 1
                  */
                 total: number;
@@ -22650,6 +18428,8 @@ export interface components {
          *             "type": "updated",
          *             "packageId": 1,
          *             "token": "visual-studio-code",
+         *             "kind": "cask",
+         *             "source": "homebrew",
          *             "previousToken": null,
          *             "version": "1.140.0",
          *             "versionBase": "1.140.0",
@@ -22665,7 +18445,8 @@ export interface components {
          *         ],
          *         "current": 1,
          *         "size": 20,
-         *         "total": 1
+         *         "total": 1,
+         *         "nextSeq": 1
          *       }
          *     }
          */
@@ -22674,7 +18455,7 @@ export interface components {
          * @example dashboard:view
          * @enum {string}
          */
-        AgentPermission: "seo:automation:tune" | "seo:snippet:propose" | "seo:task:handle" | "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:article:publish" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes" | "seo:insight:view" | "seo:keyword:edit";
+        AgentPermission: "site:index:view" | "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:article:publish" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes";
         /**
          * @example {
          *       "callsPerMinute": 120,
@@ -22733,9 +18514,7 @@ export interface components {
          *       },
          *       "mcpUrl": "https://admin.opennavo.example/mcp",
          *       "grantablePermissions": [
-         *         "seo:automation:tune",
-         *         "seo:snippet:propose",
-         *         "seo:task:handle",
+         *         "site:index:view",
          *         "dashboard:view",
          *         "catalog:package:view",
          *         "catalog:package:edit",
@@ -22758,9 +18537,7 @@ export interface components {
          *         "agent:log:view",
          *         "content:revision:restore",
          *         "content:announcement:edit",
-         *         "release:desktop:notes",
-         *         "seo:insight:view",
-         *         "seo:keyword:edit"
+         *         "release:desktop:notes"
          *       ],
          *       "updatedAt": "2026-10-07T08:00:00Z"
          *     }
@@ -22822,9 +18599,7 @@ export interface components {
          *         },
          *         "mcpUrl": "https://admin.opennavo.example/mcp",
          *         "grantablePermissions": [
-         *           "seo:automation:tune",
-         *           "seo:snippet:propose",
-         *           "seo:task:handle",
+         *           "site:index:view",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -22847,9 +18622,7 @@ export interface components {
          *           "agent:log:view",
          *           "content:revision:restore",
          *           "content:announcement:edit",
-         *           "release:desktop:notes",
-         *           "seo:insight:view",
-         *           "seo:keyword:edit"
+         *           "release:desktop:notes"
          *         ],
          *         "updatedAt": "2026-10-07T08:00:00Z"
          *       }
@@ -22875,9 +18648,7 @@ export interface components {
          *         },
          *         "mcpUrl": "https://admin.opennavo.example/mcp",
          *         "grantablePermissions": [
-         *           "seo:automation:tune",
-         *           "seo:snippet:propose",
-         *           "seo:task:handle",
+         *           "site:index:view",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -22900,9 +18671,7 @@ export interface components {
          *           "agent:log:view",
          *           "content:revision:restore",
          *           "content:announcement:edit",
-         *           "release:desktop:notes",
-         *           "seo:insight:view",
-         *           "seo:keyword:edit"
+         *           "release:desktop:notes"
          *         ],
          *         "updatedAt": "2026-10-07T08:00:00Z"
          *       }
@@ -23124,14 +18893,11 @@ export interface components {
          */
         AgentClientsResponseResult: components["schemas"]["AgentClientsResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
-         * @description Omitted permissions defaults to all 27 execution permissions, excluding seo:automation:tune; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only.
+         * @description Omitted permissions defaults to all 24 grantable permissions; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only.
          * @example {
          *       "name": "日常运营",
          *       "permissions": [
-         *         "seo:insight:view",
-         *         "seo:keyword:edit",
-         *         "seo:task:handle",
-         *         "seo:snippet:propose",
+         *         "site:index:view",
          *         "dashboard:view",
          *         "catalog:package:view",
          *         "catalog:package:edit",
@@ -23165,10 +18931,7 @@ export interface components {
             name: string;
             /**
              * @example [
-             *       "seo:insight:view",
-             *       "seo:keyword:edit",
-             *       "seo:task:handle",
-             *       "seo:snippet:propose",
+             *       "site:index:view",
              *       "dashboard:view",
              *       "catalog:package:view",
              *       "catalog:package:edit",
@@ -26312,6 +22075,839 @@ export interface components {
                 size: number;
             };
         };
+        /**
+         * @description Page indexing policy (pages in the site settings).
+         * @example {
+         *       "titleTemplate": "new",
+         *       "indexPolicy": {
+         *         "mode": "shadow",
+         *         "scope": "new",
+         *         "since": ""
+         *       },
+         *       "translationMode": "shadow",
+         *       "translationLocales": [],
+         *       "versionsMinNotesChars": 300,
+         *       "openLocales": [
+         *         "en-US",
+         *         "zh-CN",
+         *         "ja-JP",
+         *         "es-ES",
+         *         "ru-RU"
+         *       ],
+         *       "intentPagesEnabled": true,
+         *       "detailsRedirect": false,
+         *       "versionsSitemap": false
+         *     }
+         */
+        SeoPageSettings: {
+            /**
+             * @description Temporary rollout switch; removed together with the legacy templates.
+             * @enum {string}
+             */
+            titleTemplate: "new" | "legacy";
+            indexPolicy: {
+                /**
+                 * @description Temporary rollout switch for the index eligibility policy.
+                 * @enum {string}
+                 */
+                mode: "off" | "shadow" | "enforce";
+                /** @enum {string} */
+                scope: "new" | "all";
+                /** @description Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept. */
+                since: string;
+            };
+            /**
+             * @description Published translation quality rollout; new site-only languages are always enforced.
+             * @default shadow
+             * @enum {string}
+             */
+            translationMode: "shadow" | "enforce";
+            /** @description Locales to enforce; empty means all locales. */
+            translationLocales?: components["schemas"]["Locale"][];
+            /** @default 300 */
+            versionsMinNotesChars: number;
+            /**
+             * @description Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.
+             * @default [
+             *       "en-US",
+             *       "zh-CN",
+             *       "ja-JP",
+             *       "es-ES",
+             *       "pt-BR",
+             *       "ru-RU"
+             *     ]
+             */
+            openLocales: components["schemas"]["Locale"][];
+            /**
+             * @description Enable qualified intent pages backed by confirmed search demand and unique targets.
+             * @default false
+             */
+            intentPagesEnabled: boolean;
+            /**
+             * @description Enable details redirects after migrated overview content has been verified.
+             * @default false
+             */
+            detailsRedirect: boolean;
+            versionsSitemap: boolean;
+        };
+        /**
+         * @description One language version a page lists in hreflang.
+         * @example {
+         *       "locale": "zh-CN",
+         *       "url": "https://opennavo.example/zh/apps/visual-studio-code"
+         *     }
+         */
+        PageAlternate: {
+            locale: components["schemas"]["Locale"];
+            /** Format: uri */
+            url: string;
+        };
+        /**
+         * @description What a page is about. id is set for entities the server looked up (apps, articles); web-decided pages only name the slug.
+         * @example {
+         *       "type": "package",
+         *       "id": 1,
+         *       "key": "visual-studio-code",
+         *       "packageKind": "cask"
+         *     }
+         */
+        PageEntity: {
+            /** @enum {string} */
+            type: "package" | "article" | "author" | "category" | "collection" | "background_item" | "security_topic" | "static";
+            /** Format: int64 */
+            id: number | null;
+            /** @description App token, slug, background item label or static page name. */
+            key: string;
+            /**
+             * @description Apps only.
+             * @enum {string}
+             */
+            packageKind?: "cask" | "link";
+        } | null;
+        /**
+         * @description How the site treats one of its URLs, from the facts the page renders (never measurements). App pages, articles and background items are decided by the server (decidedBy server): robots, the canonical, hreflang, sitemap listing and IndexNow announcement. Other pages are decided by the web app (decidedBy web): the decision fields are null, except that a language closed for indexing (localeOpen false) is noindex on every page (reason locale_closed). Reasons include locale_closed, locale_not_ready, thin_notes_page, filtered_view, consolidated, duplicate_of_overview, supporting_page, intent_disabled, intent_not_eligible, insufficient_verified_issues, unsupported_page, brand_redirect, invalid_page, redirect, removed, withdrawn, not_found, background_item_not_ready and the app index rule's hidden, forced_noindex, unavailable, missing_summary and thin.
+         * @example {
+         *       "url": "https://opennavo.example/apps/visual-studio-code",
+         *       "path": "/apps/visual-studio-code",
+         *       "locale": "en-US",
+         *       "localeOpen": true,
+         *       "kind": "app",
+         *       "entity": {
+         *         "type": "package",
+         *         "id": 1,
+         *         "key": "visual-studio-code",
+         *         "packageKind": "cask"
+         *       },
+         *       "decidedBy": "server",
+         *       "indexable": true,
+         *       "robots": "index, follow",
+         *       "reason": null,
+         *       "canonical": "https://opennavo.example/apps/visual-studio-code",
+         *       "hreflang": [
+         *         {
+         *           "locale": "en-US",
+         *           "url": "https://opennavo.example/apps/visual-studio-code"
+         *         },
+         *         {
+         *           "locale": "zh-CN",
+         *           "url": "https://opennavo.example/zh/apps/visual-studio-code"
+         *         }
+         *       ],
+         *       "inSitemap": true,
+         *       "announce": true
+         *     }
+         */
+        PageDecisionLookup: {
+            /**
+             * Format: uri
+             * @description The URL on the site origin, as looked up.
+             */
+            url: string;
+            path: string;
+            locale: components["schemas"]["Locale"];
+            /** @description The language is open for indexing (pages.openLocales). */
+            localeOpen: boolean;
+            /**
+             * @description Page type: app pages, articles, authors, categories, collections, background items, security topics, lists (browse, rankings, recent and the other indexes), static pages (download, security, about, feedback, brewfile, search) or other.
+             * @enum {string}
+             */
+            kind: "home" | "app" | "app_versions" | "app_details" | "app_dependencies" | "app_troubleshooting" | "app_alternatives" | "app_uninstall" | "article" | "article_list" | "author" | "category" | "collection" | "background_item" | "security_topic" | "list" | "static" | "other";
+            entity: components["schemas"]["PageEntity"];
+            /** @enum {string} */
+            decidedBy: "server" | "web";
+            indexable: boolean | null;
+            /** @description index, follow or noindex, follow; null when the web app decides. */
+            robots: string | null;
+            /** @description Why the page is not indexed; null when it is or when the web app decides. */
+            reason: string | null;
+            /**
+             * Format: uri
+             * @description Absolute canonical URL; the page itself unless it names another page (install details name the overview).
+             */
+            canonical: string | null;
+            hreflang: components["schemas"]["PageAlternate"][];
+            inSitemap: boolean | null;
+            /** @description The URL change feed announces the page to IndexNow when it changes. */
+            announce: boolean | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "url": "https://opennavo.example/apps/visual-studio-code",
+         *         "path": "/apps/visual-studio-code",
+         *         "locale": "en-US",
+         *         "localeOpen": true,
+         *         "kind": "app",
+         *         "entity": {
+         *           "type": "package",
+         *           "id": 1,
+         *           "key": "visual-studio-code",
+         *           "packageKind": "cask"
+         *         },
+         *         "decidedBy": "server",
+         *         "indexable": true,
+         *         "robots": "index, follow",
+         *         "reason": null,
+         *         "canonical": "https://opennavo.example/apps/visual-studio-code",
+         *         "hreflang": [
+         *           {
+         *             "locale": "en-US",
+         *             "url": "https://opennavo.example/apps/visual-studio-code"
+         *           }
+         *         ],
+         *         "inSitemap": true,
+         *         "announce": true
+         *       }
+         *     }
+         */
+        PageDecisionLookupResult: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["PageDecisionLookup"];
+        };
+        /**
+         * @description Read-only view of the site settings that decide indexing. It never contains credentials, their ciphertexts or CDN identifiers; Agents cannot change site settings.
+         * @example {
+         *       "siteUrl": "https://opennavo.example",
+         *       "revision": 3,
+         *       "updatedAt": "2026-10-26T08:00:00Z",
+         *       "pages": {
+         *         "titleTemplate": "new",
+         *         "indexPolicy": {
+         *           "mode": "shadow",
+         *           "scope": "new",
+         *           "since": ""
+         *         },
+         *         "translationMode": "shadow",
+         *         "translationLocales": [],
+         *         "versionsMinNotesChars": 300,
+         *         "openLocales": [
+         *           "en-US",
+         *           "zh-CN",
+         *           "ja-JP",
+         *           "es-ES",
+         *           "ru-RU"
+         *         ],
+         *         "intentPagesEnabled": true,
+         *         "detailsRedirect": false,
+         *         "versionsSitemap": false
+         *       },
+         *       "crawlers": {
+         *         "training": {
+         *           "mode": "limit",
+         *           "delaySeconds": 10,
+         *           "bots": [
+         *             "ClaudeBot"
+         *           ]
+         *         },
+         *         "seoTools": {
+         *           "mode": "block",
+         *           "delaySeconds": 10,
+         *           "bots": [
+         *             "MJ12bot",
+         *             "SerpstatBot"
+         *           ]
+         *         }
+         *       },
+         *       "edgeCache": {
+         *         "enabled": true,
+         *         "longTtlSeconds": 172800,
+         *         "shortTtlSeconds": 600
+         *       },
+         *       "indexNow": {
+         *         "enabled": true
+         *       },
+         *       "analytics": {
+         *         "usageEnabled": true,
+         *         "ga4Enabled": true,
+         *         "ga4MeasurementId": "G-EXAMPLE123"
+         *       },
+         *       "changeFeed": {
+         *         "lastRunAt": "2026-10-26T08:00:00Z",
+         *         "lastUrls": 6,
+         *         "lastIndexnowStatus": "ok: 6 URLs",
+         *         "lastPurgeStatus": "",
+         *         "lastError": "",
+         *         "pendingAnnouncements": 3,
+         *         "oldestPendingAt": "2026-10-26T08:00:00Z",
+         *         "deadAnnouncements": 0,
+         *         "probeCooldownUntil": null,
+         *         "overloadedProbes": 0
+         *       }
+         *     }
+         */
+        SiteIndexSettings: {
+            /** Format: uri */
+            siteUrl: string;
+            /**
+             * Format: int64
+             * @description Revision of the site settings.
+             */
+            revision: number;
+            /** Format: date-time */
+            updatedAt: string;
+            pages: components["schemas"]["SeoPageSettings"];
+            crawlers: {
+                training: components["schemas"]["SeoCrawlerRule"];
+                seoTools: components["schemas"]["SeoCrawlerRule"];
+            };
+            edgeCache: {
+                /** @description HTML pages are cached at the edge. */
+                enabled: boolean;
+                /** @description Edge lifetime of app, article and author pages, which the URL change feed purges when they change. */
+                longTtlSeconds: number;
+                /** @description Edge lifetime of the home page, lists and the other cached pages, which expire instead. */
+                shortTtlSeconds: number;
+            };
+            indexNow: {
+                enabled: boolean;
+            };
+            analytics: {
+                usageEnabled: boolean;
+                ga4Enabled: boolean;
+                /** @description Public GA4 measurement ID; empty when not set. */
+                ga4MeasurementId: string;
+            };
+            changeFeed: components["schemas"]["ChangeFeedStatus"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "siteUrl": "https://opennavo.example",
+         *         "revision": 3,
+         *         "updatedAt": "2026-10-26T08:00:00Z",
+         *         "pages": {
+         *           "titleTemplate": "new",
+         *           "indexPolicy": {
+         *             "mode": "shadow",
+         *             "scope": "new",
+         *             "since": ""
+         *           },
+         *           "versionsSitemap": false
+         *         },
+         *         "crawlers": {
+         *           "training": {
+         *             "mode": "limit",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "ClaudeBot"
+         *             ]
+         *           },
+         *           "seoTools": {
+         *             "mode": "block",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "MJ12bot",
+         *               "SerpstatBot"
+         *             ]
+         *           }
+         *         },
+         *         "edgeCache": {
+         *           "enabled": true,
+         *           "longTtlSeconds": 172800,
+         *           "shortTtlSeconds": 600
+         *         },
+         *         "indexNow": {
+         *           "enabled": true
+         *         },
+         *         "analytics": {
+         *           "usageEnabled": true,
+         *           "ga4Enabled": true,
+         *           "ga4MeasurementId": "G-EXAMPLE123"
+         *         },
+         *         "changeFeed": {
+         *           "lastRunAt": "2026-10-26T08:00:00Z",
+         *           "lastUrls": 6,
+         *           "lastIndexnowStatus": "ok: 6 URLs",
+         *           "lastPurgeStatus": "",
+         *           "lastError": "",
+         *           "pendingAnnouncements": 3,
+         *           "oldestPendingAt": "2026-10-26T08:00:00Z",
+         *           "deadAnnouncements": 0,
+         *           "probeCooldownUntil": null,
+         *           "overloadedProbes": 0
+         *         }
+         *       }
+         *     }
+         */
+        SiteIndexSettingsResult: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["SiteIndexSettings"];
+        };
+        /**
+         * @example alternatives
+         * @enum {string}
+         */
+        IntentPageKind: "alternatives" | "uninstall";
+        /**
+         * @description Who wrote: admin:<admin user id>, agent:<agent client id>:<token id>, or system (migrations and jobs).
+         * @example agent:3:7
+         */
+        WriteOwner: string;
+        /**
+         * @example {
+         *       "pageKind": "alternatives",
+         *       "locale": "en-US",
+         *       "enabled": true,
+         *       "derived": false,
+         *       "contentEligible": true,
+         *       "indexable": true,
+         *       "reason": null,
+         *       "url": "https://opennavo.example/apps/visual-studio-code/alternatives",
+         *       "enabledAt": "2026-10-26T08:00:00Z",
+         *       "enabledBy": "agent:3:7"
+         *     }
+         */
+        PackageIntentPage: {
+            pageKind: components["schemas"]["IntentPageKind"];
+            locale: components["schemas"]["Locale"];
+            /** @description The editorial switch is open. zh-Hant shows zh-CN's switch. */
+            enabled: boolean;
+            /** @description zh-Hant follows the zh-CN switch and cannot be written. */
+            derived: boolean;
+            /** @description The app has the content: three alternatives with a verified reason; uninstall steps from a cask (link apps have no uninstall page). */
+            contentEligible: boolean;
+            /** @description Final decision: switch open, content eligible, pages.intentPagesEnabled on and the language open for indexing with the overview indexed. */
+            indexable: boolean;
+            /** @description Why the page is not indexed: intent_disabled, intent_not_eligible, unsupported_page, locale_closed and the overview reasons; null when indexed. */
+            reason: string | null;
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            enabledAt: string | null;
+            /** @description Write owner of the open switch (see WriteOwner); null while closed. */
+            enabledBy: string | null;
+        };
+        /**
+         * @description Every intent page of an app: both kinds in every site language (20 items, kinds then site language order).
+         * @example {
+         *       "packageId": 1,
+         *       "token": "visual-studio-code",
+         *       "revision": 2,
+         *       "globalEnabled": true,
+         *       "items": [
+         *         {
+         *           "pageKind": "alternatives",
+         *           "locale": "en-US",
+         *           "enabled": true,
+         *           "derived": false,
+         *           "contentEligible": true,
+         *           "indexable": true,
+         *           "reason": null,
+         *           "url": "https://opennavo.example/apps/visual-studio-code/alternatives",
+         *           "enabledAt": "2026-10-26T08:00:00Z",
+         *           "enabledBy": "agent:3:7"
+         *         },
+         *         {
+         *           "pageKind": "alternatives",
+         *           "locale": "zh-Hant",
+         *           "enabled": true,
+         *           "derived": true,
+         *           "contentEligible": true,
+         *           "indexable": false,
+         *           "reason": "locale_closed",
+         *           "url": "https://opennavo.example/zh-hant/apps/visual-studio-code/alternatives",
+         *           "enabledAt": "2026-10-26T08:00:00Z",
+         *           "enabledBy": "admin:1"
+         *         },
+         *         {
+         *           "pageKind": "uninstall",
+         *           "locale": "en-US",
+         *           "enabled": false,
+         *           "derived": false,
+         *           "contentEligible": true,
+         *           "indexable": false,
+         *           "reason": "intent_not_eligible",
+         *           "url": "https://opennavo.example/apps/visual-studio-code/uninstall",
+         *           "enabledAt": null,
+         *           "enabledBy": null
+         *         }
+         *       ]
+         *     }
+         */
+        PackageIntentPages: {
+            /** Format: int64 */
+            packageId: number;
+            token: string;
+            /**
+             * Format: int64
+             * @description Revision setPackageIntentPages checks: pass it as X-Expected-Revision.
+             */
+            revision: number;
+            /** @description pages.intentPagesEnabled; off keeps every intent page out of the index. */
+            globalEnabled: boolean;
+            items: components["schemas"]["PackageIntentPage"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 1,
+         *         "token": "visual-studio-code",
+         *         "revision": 2,
+         *         "globalEnabled": true,
+         *         "items": [
+         *           {
+         *             "pageKind": "alternatives",
+         *             "locale": "en-US",
+         *             "enabled": true,
+         *             "derived": false,
+         *             "contentEligible": true,
+         *             "indexable": true,
+         *             "reason": null,
+         *             "url": "https://opennavo.example/apps/visual-studio-code/alternatives",
+         *             "enabledAt": "2026-10-26T08:00:00Z",
+         *             "enabledBy": "agent:3:7"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        PackageIntentPagesResult: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["PackageIntentPages"];
+        };
+        /**
+         * @description Switches to open or close; others keep their state. zh-Hant follows zh-CN and is rejected (derived_locale_read_only:zh-Hant:zh-CN); uninstall pages exist for casks only (intent_page_unsupported:uninstall).
+         * @example {
+         *       "items": [
+         *         {
+         *           "pageKind": "alternatives",
+         *           "locale": "en-US",
+         *           "enabled": true
+         *         }
+         *       ]
+         *     }
+         */
+        PackageIntentPagesUpdate: {
+            items: {
+                pageKind: components["schemas"]["IntentPageKind"];
+                locale: components["schemas"]["Locale"];
+                enabled: boolean;
+            }[];
+        };
+        /**
+         * @example {
+         *       "packageId": 1,
+         *       "token": "visual-studio-code",
+         *       "name": "Visual Studio Code",
+         *       "kind": "cask",
+         *       "pageKind": "alternatives",
+         *       "locale": "en-US",
+         *       "derived": false,
+         *       "contentEligible": true,
+         *       "indexable": true,
+         *       "reason": null,
+         *       "url": "https://opennavo.example/apps/visual-studio-code/alternatives",
+         *       "enabledAt": "2026-10-26T08:00:00Z",
+         *       "enabledBy": "agent:3:7"
+         *     }
+         */
+        IntentPageListItem: {
+            /** Format: int64 */
+            packageId: number;
+            token: string;
+            name: string;
+            /** @enum {string} */
+            kind: "cask" | "link";
+            pageKind: components["schemas"]["IntentPageKind"];
+            locale: components["schemas"]["Locale"];
+            /** @description Listed for locale=zh-Hant: the zh-CN switch the zh-Hant page follows. */
+            derived: boolean;
+            contentEligible: boolean;
+            indexable: boolean;
+            reason: string | null;
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            enabledAt: string;
+            enabledBy: components["schemas"]["WriteOwner"];
+        };
+        /**
+         * @example {
+         *       "current": 1,
+         *       "size": 20,
+         *       "total": 1,
+         *       "globalEnabled": true,
+         *       "records": [
+         *         {
+         *           "packageId": 1,
+         *           "token": "visual-studio-code",
+         *           "name": "Visual Studio Code",
+         *           "kind": "cask",
+         *           "pageKind": "alternatives",
+         *           "locale": "en-US",
+         *           "derived": false,
+         *           "contentEligible": true,
+         *           "indexable": true,
+         *           "reason": null,
+         *           "url": "https://opennavo.example/apps/visual-studio-code/alternatives",
+         *           "enabledAt": "2026-10-26T08:00:00Z",
+         *           "enabledBy": "agent:3:7"
+         *         }
+         *       ]
+         *     }
+         */
+        IntentPageList: {
+            /** Format: int64 */
+            current: number;
+            /** Format: int64 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+            globalEnabled: boolean;
+            records: components["schemas"]["IntentPageListItem"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 0,
+         *         "globalEnabled": true,
+         *         "records": []
+         *       }
+         *     }
+         */
+        IntentPageListResult: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["IntentPageList"];
+        };
+        /**
+         * @example {
+         *       "locale": "zh-CN",
+         *       "title": "Visual Studio Code 下载与安装",
+         *       "description": "微软出品的免费代码编辑器，支持扩展、调试和 Git。",
+         *       "derived": false,
+         *       "updatedAt": "2026-10-26T08:00:00Z",
+         *       "updatedBy": "agent:3:7"
+         *     }
+         */
+        PackageSeoItem: {
+            locale: components["schemas"]["Locale"];
+            /** @description Overview search title (up to 70 characters) without the brand suffix the site adds; null keeps the template. */
+            title: string | null;
+            /** @description Overview meta description (up to 200 characters); null keeps the template. */
+            description: string | null;
+            /** @description zh-Hant: zh-CN's override converted to Traditional Chinese; read-only. */
+            derived: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedBy: components["schemas"]["WriteOwner"];
+        };
+        /**
+         * @description An app's overview title and description overrides, in site language order; languages without one keep the templates.
+         * @example {
+         *       "packageId": 1,
+         *       "token": "visual-studio-code",
+         *       "revision": 1,
+         *       "items": [
+         *         {
+         *           "locale": "zh-CN",
+         *           "title": "Visual Studio Code 下载与安装",
+         *           "description": "微软出品的免费代码编辑器，支持扩展、调试和 Git。",
+         *           "derived": false,
+         *           "updatedAt": "2026-10-26T08:00:00Z",
+         *           "updatedBy": "agent:3:7"
+         *         },
+         *         {
+         *           "locale": "zh-Hant",
+         *           "title": "Visual Studio Code 下載與安裝",
+         *           "description": "微軟出品的免費代碼編輯器，支援擴充、偵錯和 Git。",
+         *           "derived": true,
+         *           "updatedAt": "2026-10-26T08:00:00Z",
+         *           "updatedBy": "agent:3:7"
+         *         }
+         *       ]
+         *     }
+         */
+        PackageSeo: {
+            /** Format: int64 */
+            packageId: number;
+            token: string;
+            /**
+             * Format: int64
+             * @description Revision setPackageSeo checks: pass it as X-Expected-Revision.
+             */
+            revision: number;
+            items: components["schemas"]["PackageSeoItem"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 1,
+         *         "token": "visual-studio-code",
+         *         "revision": 0,
+         *         "items": []
+         *       }
+         *     }
+         */
+        PackageSeoResult: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["PackageSeo"];
+        };
+        /**
+         * @description One language's overview title and description. An omitted field keeps its value; null or an empty string clears it, and clearing both removes the override. Values are trimmed; < or > or control characters (line breaks included) are rejected with 1001 rejected: seo_text_invalid:<title|description>; over 70 (title) or 200 (description) characters with rejected: field_too_long:<title|description>. zh-Hant is derived from zh-CN and rejected (derived_locale_read_only:zh-Hant:zh-CN).
+         * @example {
+         *       "locale": "en-US",
+         *       "title": "Visual Studio Code for Mac: download and install"
+         *     }
+         */
+        PackageSeoUpdate: {
+            locale: components["schemas"]["Locale"];
+            /** @description Search title without the brand suffix, up to 70 characters after trimming. */
+            title?: string | null;
+            /** @description Meta description, up to 200 characters after trimming. */
+            description?: string | null;
+        };
+        /**
+         * @example {
+         *       "id": 7,
+         *       "packageId": 1,
+         *       "token": "visual-studio-code",
+         *       "name": "Visual Studio Code",
+         *       "packageKind": "cask",
+         *       "kind": "attribute",
+         *       "key": "open-source",
+         *       "value": {
+         *         "name": "open_source",
+         *         "booleanValue": true
+         *       },
+         *       "expired": false,
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": "2026-09-28T00:00:00Z",
+         *         "validUntil": "2026-10-28T00:00:00Z",
+         *         "status": "verified"
+         *       },
+         *       "popularity": 99.5,
+         *       "rank30d": 1,
+         *       "installs30d": 1200,
+         *       "webUrl": "https://opennavo.example/apps/visual-studio-code"
+         *     }
+         */
+        DueFactRecord: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            packageId: number;
+            token: string;
+            name: string;
+            /** @enum {string} */
+            packageKind: "cask" | "link";
+            /** @enum {string} */
+            kind: "integration" | "issue" | "compatibility" | "attribute" | "migration" | "security" | "price";
+            key: string;
+            /** @description The record value, typed by kind as in FactRecord. */
+            value: {
+                [key: string]: unknown;
+            };
+            /** @description validUntil has passed; pages already show the fact as unverified. */
+            expired: boolean;
+            evidence: components["schemas"]["FactRecordEvidence"];
+            popularity: number;
+            /** Format: int64 */
+            rank30d: number | null;
+            /** Format: int64 */
+            installs30d: number;
+            /** Format: uri */
+            webUrl: string;
+        };
+        /**
+         * @example {
+         *       "current": 1,
+         *       "size": 20,
+         *       "total": 1,
+         *       "withinDays": 14,
+         *       "records": [
+         *         {
+         *           "id": 7,
+         *           "packageId": 1,
+         *           "token": "visual-studio-code",
+         *           "name": "Visual Studio Code",
+         *           "packageKind": "cask",
+         *           "kind": "attribute",
+         *           "key": "open-source",
+         *           "value": {
+         *             "name": "open_source",
+         *             "booleanValue": true
+         *           },
+         *           "expired": false,
+         *           "evidence": {
+         *             "sourceUrl": "https://vendor.example/docs",
+         *             "checkedAt": "2026-09-28T00:00:00Z",
+         *             "validUntil": "2026-10-28T00:00:00Z",
+         *             "status": "verified"
+         *           },
+         *           "popularity": 99.5,
+         *           "rank30d": 1,
+         *           "installs30d": 1200,
+         *           "webUrl": "https://opennavo.example/apps/visual-studio-code"
+         *         }
+         *       ]
+         *     }
+         */
+        DueFactRecordList: {
+            /** Format: int64 */
+            current: number;
+            /** Format: int64 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+            withinDays: number;
+            records: components["schemas"]["DueFactRecord"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 0,
+         *         "withinDays": 14,
+         *         "records": []
+         *       }
+         *     }
+         */
+        DueFactRecordListResult: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["DueFactRecordList"];
+        };
     };
     responses: {
         /** @description On success data is null; see code for failures */
@@ -26344,16 +22940,10 @@ export interface components {
         };
     };
     parameters: {
-        /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-        SeoTaskID: number;
-        /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-        SeoFencing: number;
-        /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-        SeoExpectedRevision: number;
-        /** @description Optional retry key. An identical retry with this key returns the first result. */
-        SeoIdempotencyKey: string;
-        /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-        SeoEvidenceIDs: number[];
+        /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+        ExpectedRevision: number;
+        /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+        IdempotencyKey: string;
         IdPath: number;
         LocalePath: components["schemas"]["Locale"];
         Current: number;
@@ -26376,642 +22966,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    getSeoProvider: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: "gsc" | "bing" | "audit";
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Provider readiness; credentials never returned */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoProviderResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    updateSeoProvider: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: "gsc" | "bing" | "audit";
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "enabled": false,
-                 *       "clearCredentials": true
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoProviderUpdate"];
-            };
-        };
-        responses: {
-            /** @description Provider readiness; credentials never returned */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoProviderResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    claimSeoTasks: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "claim-001",
-                 *       "limit": 1,
-                 *       "kinds": [
-                 *         "fill_fact"
-                 *       ]
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoTaskClaim"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskListResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    getSeoTask: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskTraceResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    completeSeoTask: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "fixture-complete-001",
-                 *       "fencing": 1,
-                 *       "outcome": "done"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoTaskComplete"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    deferSeoTask: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "fixture-defer-001",
-                 *       "fencing": 1,
-                 *       "reason": "Official source unavailable",
-                 *       "retryAt": "2026-10-20T00:00:00Z"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoTaskDefer"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    reopenSeoTask: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "fixture-reopen-001",
-                 *       "reason": "Corrected the version literal in the description"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoTaskReopen"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    createSeoEvidence: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "evidence-001",
-                 *       "taskId": 1,
-                 *       "fencing": 1,
-                 *       "entityKey": "pkg:1",
-                 *       "url": "https://example.com/product",
-                 *       "excerpt": "Requires macOS 14."
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoEvidenceCapture"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoEvidenceResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    listSeoActions: {
-        parameters: {
-            query?: {
-                current?: components["parameters"]["Current"];
-                size?: components["parameters"]["Size"];
-                operation?: string;
-                mode?: "live" | "proposal";
-                result?: "retained" | "compensated";
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoActionPageResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    proposeSnippetTemplate: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "pageKind": "overview",
-                 *       "locale": "en-US",
-                 *       "variant": "current_version",
-                 *       "slots": [
-                 *         "name",
-                 *         "version"
-                 *       ],
-                 *       "targetCtr": 0.015
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoSnippetProposal"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoSnippetResultResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    compensateSeoAction: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
-            };
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "reason": "implementation_error"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoCompensation"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoCompensationResultResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    getSeoAutomation: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoAutomationViewResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    updateSeoAutomation: {
-        parameters: {
-            query?: {
-                dryRun?: boolean;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "automation": {
-                 *         "version": 1,
-                 *         "actions": {
-                 *           "maintenance": {
-                 *             "enabled": true,
-                 *             "mode": "live"
-                 *           },
-                 *           "translation": {
-                 *             "enabled": true,
-                 *             "mode": "live"
-                 *           },
-                 *           "fact_fix": {
-                 *             "enabled": true,
-                 *             "mode": "live"
-                 *           },
-                 *           "withdraw": {
-                 *             "enabled": true,
-                 *             "mode": "live"
-                 *           },
-                 *           "compensate": {
-                 *             "enabled": true,
-                 *             "mode": "live"
-                 *           },
-                 *           "fact_fill": {
-                 *             "enabled": true,
-                 *             "mode": "proposal"
-                 *           },
-                 *           "content": {
-                 *             "enabled": true,
-                 *             "mode": "proposal"
-                 *           },
-                 *           "listing": {
-                 *             "enabled": true,
-                 *             "mode": "proposal"
-                 *           },
-                 *           "article": {
-                 *             "enabled": true,
-                 *             "mode": "proposal"
-                 *           },
-                 *           "snippet": {
-                 *             "enabled": true,
-                 *             "mode": "proposal"
-                 *           },
-                 *           "operations": {
-                 *             "enabled": true,
-                 *             "mode": "proposal"
-                 *           },
-                 *           "research": {
-                 *             "enabled": true,
-                 *             "mode": "live"
-                 *           }
-                 *         },
-                 *         "dailyEntities": {
-                 *           "maintenance": 100,
-                 *           "translation": 100,
-                 *           "fact_fix": 100,
-                 *           "withdraw": 100,
-                 *           "compensate": 100,
-                 *           "fact_fill": 100,
-                 *           "content": 100,
-                 *           "listing": 100,
-                 *           "article": 100,
-                 *           "snippet": 100,
-                 *           "operations": 100,
-                 *           "research": 100
-                 *         },
-                 *         "researchDailyMicros": 15000000,
-                 *         "researchMonthlyMicros": 100000000,
-                 *         "businessDropRatio": 0.5
-                 *       },
-                 *       "expectedRevision": 1,
-                 *       "idempotencyKey": "fixture-tune-001",
-                 *       "reason": "Fixture evaluation"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoAutomationUpdate"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoAutomationViewResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    importSeoTasks: {
-        parameters: {
-            query?: {
-                dryRun?: boolean;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "fixture-import-001",
-                 *       "profile": "fixture",
-                 *       "cursor": {
-                 *         "sequence": 1
-                 *       },
-                 *       "entries": [
-                 *         {
-                 *           "ref": {
-                 *             "entity": "category",
-                 *             "id": 702
-                 *           },
-                 *           "field": "name",
-                 *           "locale": "zh-CN",
-                 *           "sourceVersion": "1.0",
-                 *           "state": "deferred",
-                 *           "reason": "Await official source",
-                 *           "evidence": {
-                 *             "sourceUrl": "https://example.com"
-                 *           },
-                 *           "lastAttemptAt": "2026-10-18T10:00:00Z",
-                 *           "valueHash": "0000000000000000000000000000000000000000000000000000000000000000"
-                 *         }
-                 *       ]
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoTasksImport"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTasksImportResultResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
     getTranslationsSource: {
         parameters: {
             query: {
@@ -27068,8 +23022,6 @@ export interface operations {
                  *         "id": 702
                  *       },
                  *       "model": "fixture",
-                 *       "taskId": 1,
-                 *       "fencing": 1,
                  *       "translations": [
                  *         {
                  *           "locale": "zh-CN",
@@ -27105,16 +23057,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -27151,16 +23097,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -27186,348 +23126,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackgroundContentResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    listSeoGeo: {
-        parameters: {
-            query?: {
-                current?: components["parameters"]["Current"];
-                size?: number;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoGeoPageResponseResult"];
-                };
-            };
-        };
-    };
-    recordSeoGeo: {
-        parameters: {
-            query?: {
-                dryRun?: boolean;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "fixture-geo-import-001",
-                 *       "supersedes": null,
-                 *       "snapshot": {
-                 *         "schemaVersion": 1,
-                 *         "provider": "openseo",
-                 *         "sourceProject": "fixture-project",
-                 *         "providerRunKey": "fixture-run-001",
-                 *         "mode": "imported_observation",
-                 *         "panelId": "neutral-core",
-                 *         "panelVersion": "v1",
-                 *         "periodStart": "2026-10-18T09:00:00Z",
-                 *         "periodEnd": "2026-10-18T10:00:00Z",
-                 *         "context": {
-                 *           "market": "unknown",
-                 *           "promptLanguage": "en",
-                 *           "answerLanguage": "unknown",
-                 *           "searchMode": "unknown",
-                 *           "windowDays": 7
-                 *         },
-                 *         "prompts": [
-                 *           {
-                 *             "id": "p1",
-                 *             "text": "best free mac apps",
-                 *             "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                 *             "classification": "neutral"
-                 *           }
-                 *         ],
-                 *         "engines": [
-                 *           {
-                 *             "key": "chatgpt",
-                 *             "name": "ChatGPT",
-                 *             "surface": "provider_api",
-                 *             "modelVersion": "unknown",
-                 *             "toolVersion": "unknown"
-                 *           }
-                 *         ],
-                 *         "plannedCount": 1,
-                 *         "cells": [
-                 *           {
-                 *             "id": "p1-chatgpt",
-                 *             "promptId": "p1",
-                 *             "engineKey": "chatgpt",
-                 *             "status": "answered",
-                 *             "observationId": "observation-fixture-001",
-                 *             "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                 *             "searchTriggered": null,
-                 *             "citationExtraction": "unknown",
-                 *             "evidenceAvailability": "unknown",
-                 *             "mentioned": null,
-                 *             "candidate": null,
-                 *             "cited": null,
-                 *             "ownUrls": [],
-                 *             "thirdPartyDomains": [],
-                 *             "domainsTruncated": false
-                 *           }
-                 *         ],
-                 *         "reported": null,
-                 *         "artifactCompleteness": "unknown",
-                 *         "hashAlgorithm": "sha256",
-                 *         "hashNormalization": "provider-v1",
-                 *         "charges": [
-                 *           {
-                 *             "vendorTaskId": "fixture-charge-001",
-                 *             "costUsd": null,
-                 *             "credits": null,
-                 *             "incurredAt": "2026-10-18T10:00:00Z"
-                 *           }
-                 *         ],
-                 *         "approvedBatchRef": "fixture-approval-001"
-                 *       }
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoGeoImport"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoGeoImportResultResponseResult"];
-                };
-            };
-        };
-    };
-    getSeoGeo: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoGeoRecordResponseResult"];
-                };
-            };
-        };
-    };
-    listSeoAlerts: {
-        parameters: {
-            query?: {
-                current?: components["parameters"]["Current"];
-                size?: number;
-                /** @description Omit to include both open and resolved issues. */
-                status?: "open" | "resolved";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoAlertPageResponseResult"];
-                };
-            };
-        };
-    };
-    getSeoOverview: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoOverviewResponseResult"];
-                };
-            };
-        };
-    };
-    getSeoPage: {
-        parameters: {
-            query: {
-                url: string;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoPageInsightResponseResult"];
-                };
-            };
-        };
-    };
-    listSeoKeywords: {
-        parameters: {
-            query?: {
-                current?: components["parameters"]["Current"];
-                size?: components["parameters"]["Size"];
-                language?: components["schemas"]["Locale"];
-                q?: string;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoKeywordPageResponseResult"];
-                };
-            };
-        };
-    };
-    upsertSeoKeywords: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "records": [
-                 *         {
-                 *           "keyword": "Example Editor mac",
-                 *           "source": "gsc",
-                 *           "engine": "google",
-                 *           "country": "US",
-                 *           "language": "en-US",
-                 *           "device": "desktop",
-                 *           "period": "2026-10",
-                 *           "searchVolume": 100,
-                 *           "volumeState": "known",
-                 *           "observedAt": "2026-10-18T10:00:00Z"
-                 *         }
-                 *       ],
-                 *       "targets": []
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoKeywordsWrite"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoKeywordsResultResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
@@ -27568,16 +23166,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28023,16 +23615,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28123,16 +23709,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28188,16 +23768,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28260,16 +23834,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28355,16 +23923,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28416,16 +23978,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28472,16 +24028,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28553,16 +24103,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28616,16 +24160,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28674,16 +24212,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28737,16 +24269,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28870,16 +24396,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -28953,16 +24473,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29018,16 +24532,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29065,16 +24573,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29153,16 +24655,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29207,16 +24703,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29286,16 +24776,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29352,16 +24836,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29412,16 +24890,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29480,16 +24952,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29566,16 +25032,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29669,16 +25129,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29726,16 +25180,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29786,16 +25234,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29842,16 +25284,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29893,16 +25329,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29944,16 +25374,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -29995,16 +25419,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30046,16 +25464,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30097,16 +25509,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30181,16 +25587,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30230,16 +25630,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30320,16 +25714,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30422,16 +25810,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30489,16 +25871,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30536,16 +25912,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30602,16 +25972,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30658,16 +26022,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30744,16 +26102,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30855,16 +26207,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -30931,16 +26277,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31139,16 +26479,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31388,16 +26722,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31543,16 +26871,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31602,16 +26924,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31663,16 +26979,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31781,16 +27091,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31874,16 +27178,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -31933,16 +27231,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -32679,16 +27971,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -32733,16 +28019,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -32862,16 +28142,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -32951,16 +28225,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33009,16 +28277,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33083,16 +28345,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33135,16 +28391,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33188,6 +28438,8 @@ export interface operations {
                 from?: string;
                 to?: string;
                 type?: "created" | "updated" | "removed" | "renamed";
+                /** @description Read events after this cursor (a previous nextSeq) in seq order; 0 starts at the oldest retained event. */
+                afterSeq?: number;
                 hasEditorial?: boolean;
                 sort?: "changed" | "popular";
             };
@@ -33618,16 +28870,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33734,16 +28980,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33776,16 +29016,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -33987,16 +29221,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -34046,16 +29274,10 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -34090,245 +29312,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateFeedResponseResult"] | components["schemas"]["UpdateFeedPreviewResponse"];
-                };
-            };
-        };
-    };
-    getSeoListingCandidate: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    /**
-                     * @description Origin and language
-                     * @example Origin, Accept-Language
-                     */
-                    Vary?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoListingCandidateResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    upsertSeoListingCandidate: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
-                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
-                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Optional retry key. An identical retry with this key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
-                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
-            };
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "expectedRevision": 0,
-                 *       "action": "save",
-                 *       "link": {
-                 *         "token": "example-app",
-                 *         "name": "Example App",
-                 *         "pricing": "unknown",
-                 *         "sourceLocale": "en-US",
-                 *         "homepage": "https://vendor.example.test",
-                 *         "downloadUrl": "https://vendor.example.test/download",
-                 *         "teamId": "EXAMPL1234",
-                 *         "bundleIds": []
-                 *       },
-                 *       "summary": "An editor for macOS.",
-                 *       "description": "",
-                 *       "categoryId": 1,
-                 *       "iconAssetId": 1,
-                 *       "baselinePackageId": 1,
-                 *       "downloadMode": "official_page",
-                 *       "evidenceId": 1
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoListingWrite"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    /**
-                     * @description Origin and language
-                     * @example Origin, Accept-Language
-                     */
-                    Vary?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoListingCandidateResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
-                };
-            };
-        };
-    };
-    nominateSeoListing: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "nominate-001",
-                 *       "name": "Example App",
-                 *       "homepage": "https://vendor.example.test",
-                 *       "reason": "Requested by the site owner"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoListingNomination"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    nominateSeoTopic: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path: {
-                /** @description Slug the article will be published under. */
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "idempotencyKey": "example-00000001",
-                 *       "keyword": "batch rename files mac",
-                 *       "locale": "en-US",
-                 *       "reason": "Recurring question with no guide on the site"
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoTopicNomination"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
-                };
-            };
-        };
-    };
-    lockSeoListingBaseline: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "factId": 1,
-                 *       "evidenceId": 1,
-                 *       "domainOwnershipConfirmed": true,
-                 *       "suspicious": false
-                 *     }
-                 */
-                "application/json": components["schemas"]["SeoListingBaselineWrite"];
-            };
-        };
-        responses: {
-            /** @description Business result */
-            200: {
-                headers: {
-                    /**
-                     * @description Origin and language
-                     * @example Origin, Accept-Language
-                     */
-                    Vary?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeoListingBaselineResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
@@ -34443,6 +29426,265 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArticleTestArtifactResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getPageDecision: {
+        parameters: {
+            query: {
+                /** @description Absolute URL on the site origin or a path, for example https://opennavo.example/zh/apps/visual-studio-code/versions?page=2. */
+                url: string;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageDecisionLookupResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getSiteIndexSettings: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteIndexSettingsResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getPackageIntentPages: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageIntentPagesResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    setPackageIntentPages: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageIntentPagesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageIntentPagesResult"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    listIntentPages: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: components["parameters"]["Size"];
+                pageKind?: components["schemas"]["IntentPageKind"];
+                locale?: components["schemas"]["Locale"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentPageListResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getPackageSeo: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageSeoResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    setPackageSeo: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Optional optimistic concurrency check. Omit to write directly; a stale revision rejects the write with code 1003 and msg "rejected: revision_conflict:<current revision>". The legacy header name X-SEO-Expected-Revision is still accepted for one release. */
+                "X-Expected-Revision"?: components["parameters"]["ExpectedRevision"];
+                /** @description Optional retry key. An identical retry with this key returns the first result; reusing it for a different request fails with code 1003 and msg "rejected: idempotency_key_reused". */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageSeoUpdate"];
+            };
+        };
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageSeoResult"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    listDueFactRecords: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: components["parameters"]["Size"];
+                withinDays?: number;
+                kind?: "integration" | "issue" | "compatibility" | "attribute" | "migration" | "security" | "price";
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueFactRecordListResult"] | components["schemas"]["BusinessErrorResponse"];
                 };
             };
         };

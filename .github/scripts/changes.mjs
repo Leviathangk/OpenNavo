@@ -31,6 +31,8 @@ export const AREAS = {
   ],
   frontend: [
     /^apps\/(web|admin|desktop)\//,
+    // The Go converter derives the committed Traditional Chinese interface files.
+    /^apps\/server\/(internal\/traditional|cmd\/derive-traditional)\//,
     /^packages\//,
     /^tooling\/(config|i18n|scripts)\//,
     /^docs\/design\/logo\/source\//,

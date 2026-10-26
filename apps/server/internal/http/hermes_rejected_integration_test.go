@@ -113,5 +113,5 @@ func TestHermesRejectionsAndOptionalReleaseSections(t *testing.T) {
 	result := call("PUT", notesPath, invalidDate, true, "1001")
 	require.Equal(t, "rejected: date_invalid:publishedAt", result["msg"])
 	result = call("PUT", notesPath, invalidDate, false, "1001")
-	require.Equal(t, domain.Message(domain.CodeValidation, "zh-CN"), result["msg"])
+	require.Equal(t, domain.Message(domain.CodeValidation, "zh-CN")+" (date_invalid:publishedAt)", result["msg"])
 }

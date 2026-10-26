@@ -72,12 +72,17 @@ func TestCleanupReferencesVariantsRetentionAndMetrics(t *testing.T) {
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE sync_runs SET started_at=? WHERE id=?", now.AddDate(0, 0, -91), active).Error)
 	require.NoError(t, st.DB.Exec("INSERT INTO translation_metrics(entity,status,requests,tokens) VALUES('package','succeeded',1,150),('package','failed',1,0)").Error)
 	st.ObserveGitHubQuota(ctx, 321)
+	require.NoError(t, st.DB.Exec("INSERT INTO agent_write_controls(owner,idempotency_key,operation,request_hash,result,created_at) VALUES('agent:1:1','expired-key','UpdatePackageMeta',repeat('a',64),'{}',?),('agent:1:1','recent-key','UpdatePackageMeta',repeat('b',64),'{}',?)", now.AddDate(0, 0, -31), now.AddDate(0, 0, -29)).Error)
 	d := &deletions{}
 	svc := &maintenance.Service{Store: st, Objects: d, Now: func() time.Time { return now }}
 	stats, err := svc.Run(ctx)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), stats["assets"])
 	require.Equal(t, int64(1), stats["syncRuns"])
+	require.Equal(t, int64(1), stats["agentWriteControls"])
+	var keys []string
+	require.NoError(t, st.DB.Raw("SELECT idempotency_key FROM agent_write_controls").Scan(&keys).Error)
+	require.Equal(t, []string{"recent-key"}, keys)
 	require.ElementsMatch(t, []string{"icons/unused-256.png", "icons/unused-512.png"}, d.keys)
 	var count int64
 	require.NoError(t, st.DB.WithContext(ctx).Table("assets").Count(&count).Error)

@@ -256,7 +256,7 @@ func (s *Store) ContentChanged(ctx context.Context, ref content.Ref) error {
 }
 func (s *Store) ContentView(ctx context.Context, ref content.Ref) (map[string]any, error) {
 	if !ref.Valid() {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("content_ref_invalid")
 	}
 	if err := s.CheckContentApp(ctx, ref); err != nil {
 		return nil, err

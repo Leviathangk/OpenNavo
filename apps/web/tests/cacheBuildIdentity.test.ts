@@ -5,7 +5,7 @@ import redisDriver from 'unstorage/drivers/redis';
 vi.mock('unstorage/drivers/redis', () => ({ default: vi.fn(() => ({ name: 'redis' })) }));
 vi.mock('../server/utils/boundedCache', () => ({
   boundedCache: (driver: unknown) => driver,
-  PAGE_CACHE_TTL_SECONDS: 3600,
+  PAGE_CACHE_TTL_SECONDS: 86400,
   IMAGE_CACHE_TTL_SECONDS: 21600
 }));
 vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin);
@@ -56,7 +56,7 @@ it('mounts Redis under the same key identity and preserves bounded-cache setting
     expect.objectContaining({
       base: cacheBuildIdentity(runtime).namespace,
       url: runtime.redisUrl,
-      ttl: 3600,
+      ttl: 86400,
       maxRetriesPerRequest: 1,
       connectTimeout: 1000,
       commandTimeout: 1000

@@ -73,7 +73,7 @@
     "settings": "設定",
     "updatesBadge": "{count} 個可用更新",
     "cleanup": "清理電腦",
-    "cleanupBadge": "{count} 個失效的後臺專案仍在載入",
+    "cleanupBadge": "{count} 個失效的背景項目仍在載入",
     "monitor": "電腦監控",
     "security": "掃描病毒",
     "securityBadge": "{count} 項需要處理",
@@ -232,14 +232,14 @@
     "notInRegionHint": "它可能已經下架，或者只在其他地區的商店上架。",
     "settings": {
       "region": "商店地區",
-      "regionHint": "決定搜尋結果、價格和能否獲取。自動時讀取 App Store 賬戶的地區，讀不到就用系統地區",
+      "regionHint": "決定搜尋結果、價格和能否獲取。自動時讀取 App Store 帳號的地區，讀不到就用系統地區",
       "auto": "自動",
       "autoDetected": "自動（{region}）",
       "search": "在搜尋中顯示 App Store 結果",
       "searchHint": "停止輸入後才向 Apple 搜尋，每分鐘最多 15 次",
       "updates": "檢查 App Store 更新",
       "updatesHint": "把 App Store 應用的新版本列在「更新」裡",
-      "privacy": "搜尋、詳情和更新檢查都由這臺 Mac 直接連線 Apple 完成，不經過 OpenNavo 的伺服器。"
+      "privacy": "搜尋、詳情和更新檢查都由這台 Mac 直接連線 Apple 完成，不經過 OpenNavo 的伺服器。"
     }
   },
   "collections": {
@@ -260,7 +260,7 @@
     "link": {
       "chip": "官網下載",
       "chipGithub": "GitHub",
-      "meta": "下載地址來自 {source} · OpenNavo 不託管安裝包",
+      "meta": "下載網址來自 {source} · OpenNavo 不託管安裝包",
       "notHosted": "OpenNavo 不託管安裝包，下載直接來自開發者。",
       "homepage": "主頁",
       "downloadTitle": "下載",
@@ -269,7 +269,7 @@
       "recommended": "推薦",
       "download": "下載",
       "allFiles": "在 GitHub 檢視全部檔案",
-      "filtered": "已按這臺 Mac（{chip}）篩選",
+      "filtered": "已按這台 Mac（{chip}）篩選",
       "others": "其他安裝包（{count}）",
       "githubReleases": "前往 GitHub 下載",
       "teamId": "開發者簽名",
@@ -426,7 +426,7 @@
       "localUpgrade": "你在 {time} 透過 OpenNavo 從 {from} 更新到此版本 · 用時 {duration}",
       "localInstall": "你在 {time} 透過 OpenNavo 安裝了此版本 · 用時 {duration}",
       "notify": "有新版本時通知我",
-      "notifyHint": "所有 App 共用 · 系統通知 + 選單欄角標",
+      "notifyHint": "所有 App 共用 · 系統通知 + 選單列角標",
       "pin": "固定在當前版本",
       "pinHint": "等同 brew pin，「全部更新」時跳過",
       "pinHintSelfUpdate": "等同 brew pin；但 {name} 自帶的更新器仍可能自行升級"
@@ -484,7 +484,7 @@
       "pkgs": "安裝包",
       "kegOnly": "keg-only",
       "kegOnlyValue": "不連結到 /opt/homebrew，需要手動加入 PATH",
-      "download": "下載地址",
+      "download": "下載網址",
       "source": "Homebrew 定義檔案",
       "repo": "原始碼"
     },
@@ -528,7 +528,7 @@
     "recalculate": "重新統計佔用",
     "refresh": "重新整理",
     "empty": "沒有找到可以解除安裝的 App",
-    "emptyFiltered": "沒有符合條件的專案",
+    "emptyFiltered": "沒有符合條件的項目",
     "columns": {
       "name": "名稱",
       "version": "版本",
@@ -681,14 +681,14 @@
     "notes": {
       "title": "{name} {version} 更新內容"
     },
-    "masSignedOut": "上次 App Store 更新未能確認賬戶狀態。請重試，或在 App Store 中完成更新。",
+    "masSignedOut": "上次 App Store 更新未能確認帳戶狀態。請重試，或在 App Store 中完成更新。",
     "failedSources": "這次未能完成 {sources} 的部分檢查，已取得的結果仍正常顯示。",
     "checkFailures": {
       "summary": "部分 App 或更新來源未能完成檢查，已取得的結果仍正常顯示。",
       "details": "檢視檢查詳情",
       "rulesUnavailable": "更新規則暫時無法重新整理。已儘可能使用快取規則；缺少規則的檢查未能完成。",
       "rateLimited": "更新伺服器請求過多，請稍後重試。",
-      "invalidUrl": "更新地址無效，需要應用開發者修正更新配置。",
+      "invalidUrl": "更新網址無效，需要應用開發者修正更新配置。",
       "network": "無法連線更新伺服器，請稍後重試。",
       "failed": "未能完成更新檢查。"
     },
@@ -758,7 +758,7 @@
     },
     "auto": {
       "title": "自動更新",
-      "subtitle": "由後臺助手按計劃執行",
+      "subtitle": "由背景助手按計劃執行",
       "check": "每天 {time} 檢查",
       "checkHint": "brew update + outdated",
       "casks": "自動安裝 App 更新",
@@ -806,7 +806,7 @@
   "settings": {
     "title": "設定",
     "sections": {
-      "general": "通用",
+      "general": "一般",
       "mirrors": "下載源",
       "homebrew": "Homebrew",
       "appstore": "App Store",
@@ -825,9 +825,9 @@
       "appearanceLight": "淺色",
       "appearanceDark": "深色",
       "launchAtLogin": "登入時啟動",
-      "launchAtLoginHint": "啟動後只顯示選單欄圖示",
-      "keepInMenuBar": "關閉視窗後留在選單欄",
-      "trayShowCount": "選單欄顯示可更新數量",
+      "launchAtLoginHint": "啟動後只顯示選單列圖示",
+      "keepInMenuBar": "關閉視窗後留在選單列",
+      "trayShowCount": "選單列顯示可更新數量",
       "notifyUpdates": "有可用更新時發通知",
       "zapByDefault": "解除安裝時預設清理相關檔案",
       "zapByDefaultHint": "應用資料、快取和偏好設定等會逐項列出，確認後再刪",
@@ -838,7 +838,7 @@
       "runBrewUpdateHint": "brew update",
       "uninstall": "解除安裝",
       "deleteMode": "刪除方式",
-      "deleteModeHint": "移到廢紙簍可以撤銷；直接刪除會立即釋放空間"
+      "deleteModeHint": "移到垃圾桶可以撤銷；直接刪除會立即釋放空間"
     },
     "customMirrors": {
       "add": "新增自定義源",
@@ -846,29 +846,29 @@
       "delete": "刪除自定義源",
       "actions": "管理「{name}」",
       "local": "僅本機",
-      "localHint": "自定義源僅儲存在這臺 Mac，不上傳或同步。",
-      "fallback": "留空的地址使用官方源。",
+      "localHint": "自定義源僅儲存在這台 Mac，不上傳或同步。",
+      "fallback": "留空的網址使用官方源。",
       "officialFallback": "使用官方源",
       "name": "名稱",
-      "apiDomain": "API 地址",
-      "bottleDomain": "Bottle 地址",
-      "brewGitRemote": "brew Git 倉庫地址",
-      "coreGitRemote": "core Git 倉庫地址",
+      "apiDomain": "API 網址",
+      "bottleDomain": "Bottle 網址",
+      "brewGitRemote": "brew Git 倉庫網址",
+      "coreGitRemote": "core Git 倉庫網址",
       "advanced": "高階設定 · Git 倉庫",
       "check": "檢查連線",
-      "probeHint": "僅檢查各地址是否可訪問，不代表一定能完成下載。",
+      "probeHint": "僅檢查各網址是否可訪問，不代表一定能完成下載。",
       "untested": "尚未檢查",
-      "success": "地址可連線",
+      "success": "網址可連線",
       "failure": "連線失敗",
       "checkFailed": "無法連線：{fields}",
       "save": "儲存修改",
       "saveAndUse": "儲存並使用",
       "nameRequired": "請填寫名稱。",
       "nameInvalid": "名稱最多 120 個字元，不能包含控制字元。",
-      "urlInvalid": "請填寫 HTTP 或 HTTPS 地址，不能包含登入憑據或片段。",
-      "apiQueryInvalid": "API 地址不能包含查詢引數，請填寫不帶 ? 的基址。",
-      "addressRequired": "請至少填寫一個自定義地址。",
-      "deleteConfirm": "從這臺 Mac 刪除「{name}」？",
+      "urlInvalid": "請填寫 HTTP 或 HTTPS 網址，不能包含登入憑據或片段。",
+      "apiQueryInvalid": "API 網址不能包含查詢引數，請填寫不帶 ? 的基址。",
+      "addressRequired": "請至少填寫一個自定義網址。",
+      "deleteConfirm": "從這台 Mac 刪除「{name}」？",
       "deleteActive": "該源正在使用，刪除後將切回官方源。",
       "limit": "最多可儲存 {count} 個自定義源。"
     },
@@ -895,8 +895,8 @@
       "crashReportsHint": "預設關閉；開啟後只上傳崩潰時的呼叫棧",
       "appManagement": "App 管理",
       "appManagementHint": "更新和解除安裝 App 時需要",
-      "fullDiskAccess": "完全磁碟訪問許可權",
-      "fullDiskAccessHint": "檢視佔用空間、解除安裝 App 和從廢紙簍撤銷時需要",
+      "fullDiskAccess": "完整磁碟取用權限",
+      "fullDiskAccessHint": "檢視佔用空間、解除安裝 App 和從垃圾桶撤銷時需要",
       "enable": "開啟",
       "waiting": "等待開啟…",
       "granted": "已開啟",
@@ -932,7 +932,7 @@
   },
   "welcome": {
     "title": "歡迎使用 OpenNavo",
-    "subtitle": "開始前先檢查一下這臺 Mac，只需幾秒。",
+    "subtitle": "開始前先檢查一下這台 Mac，只需幾秒。",
     "checks": "環境檢測",
     "checking": "正在檢測…",
     "detectFailed": "檢測沒有完成。",
@@ -965,23 +965,23 @@
       "logTitle": "安裝 Homebrew 的日誌"
     },
     "permissions": {
-      "title": "許可權",
+      "title": "權限",
       "required": "必需",
       "optional": "可選",
       "enable": "開啟",
       "waiting": "等待開啟…",
       "granted": "已開啟",
       "confirm": "我已開啟",
-      "startHint": "開啟「App 管理」和「完全磁碟訪問許可權」後即可開始使用。",
+      "startHint": "開啟「App 管理」和「完整磁碟取用權限」後即可開始使用。",
       "appManagement": {
         "title": "允許 OpenNavo 管理 App",
         "body": "更新和解除安裝 App 時需要。",
         "enable": "開啟 App 管理"
       },
       "fullDiskAccess": {
-        "title": "完全磁碟訪問許可權",
-        "body": "檢視佔用空間、解除安裝 App 和從廢紙簍撤銷時需要。",
-        "enable": "開啟完全磁碟訪問許可權"
+        "title": "完整磁碟取用權限",
+        "body": "檢視佔用空間、解除安裝 App 和從垃圾桶撤銷時需要。",
+        "enable": "開啟完整磁碟取用權限"
       }
     },
     "done": "開始使用",
@@ -999,7 +999,7 @@
     },
     "guide": {
       "appManagement": "App 管理",
-      "fullDiskAccess": "完全磁碟訪問許可權",
+      "fullDiskAccess": "完整磁碟取用權限",
       "dragTitle": "把 OpenNavo 拖到上方的列表",
       "plusTitle": "點按列表下方的「+」，選擇 OpenNavo",
       "toggleHint": "列表裡已有 OpenNavo 時，開啟它旁邊的開關即可。",
@@ -1007,7 +1007,7 @@
       "close": "關閉",
       "done": {
         "appManagement": "已允許 OpenNavo 管理 App",
-        "fullDiskAccess": "已開啟完全磁碟訪問許可權"
+        "fullDiskAccess": "已開啟完整磁碟取用權限"
       },
       "doneHint": "如果系統提示「退出並重新開啟」，點它即可。"
     },
@@ -1017,8 +1017,8 @@
         "body": "macOS 阻止了 OpenNavo 修改下面的 App。開啟「App 管理」後重試。"
       },
       "fullDiskAccess": {
-        "title": "需要完全磁碟訪問許可權",
-        "body": "下面的 App 已經移除，但應用資料還沒刪：刪除這些資料需要「完全磁碟訪問許可權」。開啟後重試即可完成解除安裝。"
+        "title": "需要完整磁碟取用權限",
+        "body": "下面的 App 已經移除，但應用資料還沒刪：刪除這些資料需要「完整磁碟取用權限」。開啟後重試即可完成解除安裝。"
       },
       "enable": "開啟",
       "waiting": "等待開啟…",
@@ -1028,49 +1028,49 @@
     }
   },
   "fullDiskGate": {
-    "title": "先開啟「完全磁碟訪問許可權」",
-    "body": "「已安裝」要讀取各個 App 在資源庫裡的資料，才能算準佔用空間、找全解除安裝後留下的檔案，並能從廢紙簍撤銷解除安裝。",
+    "title": "先開啟「完整磁碟取用權限」",
+    "body": "「已安裝」要讀取各個 App 在資源庫裡的資料，才能算準佔用空間、找全解除安裝後留下的檔案，並能從垃圾桶撤銷解除安裝。",
     "points": {
       "footprint": "算準每個 App 的佔用空間，包括應用資料和快取",
       "leftovers": "解除安裝時找全容器、群組容器等相關檔案",
-      "undo": "解除安裝後可以從廢紙簍撤銷"
+      "undo": "解除安裝後可以從垃圾桶撤銷"
     },
     "row": "在系統設定中允許 OpenNavo 後，這裡會自動繼續。",
-    "unknown": "macOS 沒能告知許可權狀態。如果已經開啟：",
-    "privacy": "只在這臺 Mac 上讀取，不會上傳任何檔案或路徑。"
+    "unknown": "macOS 沒能告知權限狀態。如果已經開啟：",
+    "privacy": "只在這台 Mac 上讀取，不會上傳任何檔案或路徑。"
   },
   "deeplink": {
     "installTitle": "安裝 {name}？",
-    "installDescription": "網頁請求在這臺 Mac 上安裝它。確認後將執行下面的命令；取消則不做任何操作。",
+    "installDescription": "網頁請求在這台 Mac 上安裝它。確認後將執行下面的命令；取消則不做任何操作。",
     "installConfirm": "安裝",
     "formulaUnsupported": "OpenNavo 只收錄 App（Homebrew Cask），這個連結指向的是命令列工具。",
     "preview": {
       "invalid": "這個連結打不開",
       "invalidBody": "連結裡的引數不完整或不符合要求，OpenNavo 沒有做任何操作。",
       "startup": {
-        "looking": "正在這臺 Mac 上查詢 {label}…",
+        "looking": "正在這台 Mac 上查詢 {label}…",
         "found": "找到 {count} 個標籤為 {label} 的啟動項",
         "foundBody": "這是從網頁開啟的預覽，還沒有做任何改動。同一個標籤可能被多個程式共用，也可能被冒用，請先核對簽名、檔案位置和所屬 App，再決定是否停用或移除。",
         "view": "檢視 {name}",
-        "notFound": "這臺 Mac 上沒有標籤為 {label} 的啟動項",
+        "notFound": "這台 Mac 上沒有標籤為 {label} 的啟動項",
         "notFoundBody": "它可能沒有安裝，或者 macOS 沒有讓 OpenNavo 讀取它所在的位置。沒有做任何改動。"
       },
       "scan": {
-        "looking": "正在這臺 Mac 上查詢 {token}…",
+        "looking": "正在這台 Mac 上查詢 {token}…",
         "title": "掃描 {name}",
-        "body": "這是從網頁開啟的預覽：OpenNavo 在這臺 Mac 上找到了這個 App。點「掃描這個 App」之後才會開始掃描。",
+        "body": "這是從網頁開啟的預覽：OpenNavo 在這台 Mac 上找到了這個 App。點「掃描這個 App」之後才會開始掃描。",
         "action": "掃描這個 App",
-        "notFound": "這臺 Mac 上沒有找到 {token}",
-        "notFoundBody": "OpenNavo 只能掃描已經裝在這臺 Mac 上的 App。沒有做任何操作。"
+        "notFound": "這台 Mac 上沒有找到 {token}",
+        "notFoundBody": "OpenNavo 只能掃描已經裝在這台 Mac 上的 App。沒有做任何操作。"
       },
       "uninstall": {
         "title": "預覽解除安裝 {name}",
         "body": "這是從網頁開啟的預覽，還沒有刪除任何東西。點「解除安裝」後會先列出要移除的內容，你確認之後才會執行。",
-        "several": "這臺 Mac 上有 {count} 個 App 對應 {token}，選一個檢視：",
+        "several": "這台 Mac 上有 {count} 個 App 對應 {token}，選一個檢視：",
         "view": "檢視 {name}",
-        "notFound": "這臺 Mac 上沒有找到 {token}",
+        "notFound": "這台 Mac 上沒有找到 {token}",
         "notFoundBody": "它可能已經解除安裝了，或者安裝方式讓 OpenNavo 認不出來。沒有做任何操作。",
-        "permission": "開啟「完全磁碟訪問許可權」之後，才能預覽解除安裝 {token}。"
+        "permission": "開啟「完整磁碟取用權限」之後，才能預覽解除安裝 {token}。"
       }
     }
   },
@@ -1207,7 +1207,7 @@
     "failed": "{name} {action}失敗"
   },
   "errors": {
-    "E_STARTUP_PROTECTED": "這是 macOS 自帶的專案，不能在這裡更改",
+    "E_STARTUP_PROTECTED": "這是 macOS 自帶的項目，不能在這裡更改",
     "E_AV_CONSENT": "需要先同意下載病毒庫",
     "E_AV_NOT_READY": "病毒庫還沒有下載，請先在「病毒掃描」裡下載",
     "E_AV_ENGINE": "病毒掃描引擎沒有正常啟動，請稍後重試",
@@ -1215,16 +1215,16 @@
     "E_AV_DB_RATE_LIMITED": "病毒庫更新太頻繁，被官方伺服器暫時限制了，稍後會自動重試",
     "E_AV_DB_UPDATE": "病毒庫更新失敗，請檢查網路後重試",
     "E_RESTORE_CONFLICT": "原來的位置已經有同名檔案，沒有恢復",
-    "E_MAS_NOT_SIGNED_IN": "無法確認 App Store 賬戶狀態。請重試，或在 App Store 中完成操作",
-    "E_MAS_NOT_OWNED": "這個賬戶還沒有獲取過這款 App，請在 App Store 裡點「獲取」",
+    "E_MAS_NOT_SIGNED_IN": "無法確認 App Store 帳號狀態。請重試，或在 App Store 中完成操作",
+    "E_MAS_NOT_OWNED": "這個帳戶還沒有獲取過這款 App，請在 App Store 裡點「獲取」",
     "E_MAS_PAID": "付費 App 請在 App Store 裡購買",
-    "E_MAS_OTHER_ACCOUNT": "這款 App 由其他 Apple 賬戶購買，請在 App Store 裡更新",
+    "E_MAS_OTHER_ACCOUNT": "這款 App 由其他 Apple 帳號購買，請在 App Store 裡更新",
     "E_MAS_REGION": "這款 App 在當前商店地區不可用",
     "E_MAS_RATE_LIMITED": "App Store 請求太頻繁了，請過一分鐘再試",
     "E_UPDATE_INTEGRITY": "下載的更新沒有透過完整性校驗，沒有安裝",
     "E_UPDATE_TEAM_MISMATCH": "新版本的開發者簽名和已安裝的不一致，沒有安裝",
     "E_UPDATE_NOT_NOTARIZED": "新版本沒有經過 Apple 公證，沒有安裝",
-    "E_UPDATE_ARCH": "新版本不支援這臺 Mac 的晶片",
+    "E_UPDATE_ARCH": "新版本不支援這台 Mac 的晶片",
     "E_UPDATE_MIN_OS": "新版本需要更新的 macOS",
     "E_UPDATE_FEED": "讀取更新源失敗，請稍後再試",
     "E_UPDATE_DMG_LICENSE": "這個安裝包要求先同意許可協議，請手動安裝這個版本",
@@ -1235,7 +1235,7 @@
     "E_MAS_ENGINE": "App Store 下載元件出錯，請改用 App Store 完成",
     "E_MAS_HELPER_MISSING": "當前應用缺少 App Store 下載元件。請重新安裝完整的 OpenNavo 應用，或在 App Store 中完成操作",
     "E_NOT_INSTALLABLE": "這款 App 只能從官網下載，不能用 Homebrew 安裝",
-    "E_LINK_URL": "這個下載地址不在登記範圍內，沒有開啟",
+    "E_LINK_URL": "這個下載網址不在登記範圍內，沒有開啟",
     "E_APP_RUNNING": "應用正在執行，已暫緩更新；退出後可再次更新",
     "E_APP_QUIT_FAILED": "應用未退出，已暫緩更新；請儲存工作並退出後重試",
     "E_APP_CHECK_FAILED": "無法檢查應用執行狀態，已暫緩更新；請重新整理已安裝列表後重試",
@@ -1248,8 +1248,8 @@
     "E_NOT_FOUND": "在 Homebrew 中找不到這個包",
     "E_DISABLED": "Homebrew 已停用此包",
     "E_LOCKED": "另一個 Homebrew 程序正在執行，稍後自動重試",
-    "E_PERMISSION": "沒有許可權修改該 App，需要在系統設定中允許",
-    "E_FULL_DISK_ACCESS": "刪除應用資料需要「完全磁碟訪問許可權」",
+    "E_PERMISSION": "沒有權限修改該 App，需要在系統設定中允許",
+    "E_FULL_DISK_ACCESS": "刪除應用資料需要「完整磁碟取用權限」",
     "E_SUDO": "需要管理員密碼",
     "E_MACOS_VERSION": "系統版本不滿足要求",
     "E_REQUIRED_BY": "有其他包依賴它，不能解除安裝",
@@ -1263,10 +1263,10 @@
     "E_UNINSTALL_INCOMPLETE": "應用仍然存在，解除安裝未完成；請檢視日誌後重試",
     "E_PLAN_EXPIRED": "檔案有變化，請重新掃描",
     "E_SCAN_CANCELED": "已取消掃描",
-    "E_RESTORE_UNAVAILABLE": "有些檔案已經不在廢紙簍裡，沒能放回",
-    "E_TRASH_FAILED": "沒能移到廢紙簍",
-    "E_MONITOR_UNAVAILABLE": "讀不到這臺 Mac 的系統資訊",
-    "E_FAN_UNSUPPORTED": "這臺 Mac 的晶片暫不支援風扇控制",
+    "E_RESTORE_UNAVAILABLE": "有些檔案已經不在垃圾桶裡，沒能放回",
+    "E_TRASH_FAILED": "沒能移到垃圾桶",
+    "E_MONITOR_UNAVAILABLE": "讀不到這台 Mac 的系統資訊",
+    "E_FAN_UNSUPPORTED": "這台 Mac 的晶片暫不支援風扇控制",
     "E_FAN_HELPER_NOT_ENABLED": "風扇輔助程式還沒有安裝或允許",
     "E_FAN_HELPER_UNSIGNED": "這份 OpenNavo 沒有正式簽名（比如開發版），裝不了風扇輔助程式。請用正式安裝包",
     "E_FAN_HELPER_UNAVAILABLE": "連不上風扇輔助程式，請稍後再試",
@@ -1277,28 +1277,28 @@
     "E_INSTALL_THREAT": "安裝包裡發現威脅，已停止安裝",
     "E_INSTALL_SCAN": "安裝前掃描沒能完成，沒有安裝。可以稍後重試，或在「設定 → 安全防護」裡關閉安裝前掃描",
     "E_PASTE_EXPIRED": "這次貼上已經過期，已自動丟棄",
-    "E_ACCESSIBILITY_DENIED": "需要在系統設定裡允許 OpenNavo 使用輔助功能",
+    "E_ACCESSIBILITY_DENIED": "需要在系統設定裡允許 OpenNavo 使用輔助使用功能",
     "E_VT_DISABLED": "VirusTotal 查詢沒有開啟",
     "E_VT_KEY_REQUIRED": "請先在設定裡填寫 VirusTotal API key",
     "E_VT_KEY_INVALID": "VirusTotal API key 無效，請檢查後重新填寫",
     "E_VT_RATE_LIMITED": "VirusTotal 查詢太頻繁了，公共 API 每分鐘最多 4 次，請稍後再試",
     "E_VT_UNAVAILABLE": "暫時連不上 VirusTotal，請稍後再試",
     "E_KEYCHAIN": "沒能讀寫鑰匙串",
-    "E_AUTOMATION_DENIED": "需要在「系統設定 → 隱私與安全性 → 自動化」裡允許 OpenNavo 控制 System Events",
+    "E_AUTOMATION_DENIED": "需要在「系統設定 → 隱私權與安全性 → 自動化」裡允許 OpenNavo 控制 System Events",
     "E_STARTUP_CHANGED": "這個啟動項剛剛被其他程式改過，請重新整理後再試",
     "E_LOGIN_ITEM_EXISTS": "這個 App 已經會在登入時開啟",
     "E_ROLLBACK_UNAVAILABLE": "保留的舊版本已不可用，或這個 App 之後又有變化，不能回滾",
     "E_ROLLBACK_INTEGRITY": "保留的舊版本沒有透過簽名校驗，沒有回滾",
     "E_FW_NOT_BUNDLED": "這個版本沒有包含防火牆元件，請使用 OpenNavo 正式版",
     "E_FW_NOT_IN_APPLICATIONS": "請先把 OpenNavo 移到「應用程式」資料夾，再重新開啟",
-    "E_FW_ACTIVATION": "macOS 沒有完成系統擴充套件的安裝，請重試",
+    "E_FW_ACTIVATION": "macOS 沒有完成系統延伸功能的安裝，請重試",
     "E_FW_REMOVAL": "沒能移除應用防火牆，請重試",
     "E_FW_FILTER": "macOS 沒能更新網路過濾設定，請重試",
     "E_FW_CONSENT_DENIED": "沒有允許過濾網路內容，防火牆沒有開啟",
     "E_FW_DISCONNECTED": "防火牆元件沒有響應，請稍後重試",
-    "E_FW_RULE_INVALID": "規則不正確：請檢查程式、地址和埠",
+    "E_FW_RULE_INVALID": "規則不正確：請檢查程式、位址和埠",
     "E_FW_UNKNOWN_ALERT": "這個連線已經處理過了",
-    "E_FW_BLOCKLIST_URL": "只支援 https 網址或這臺 Mac 上的檔案",
+    "E_FW_BLOCKLIST_URL": "只支援 https 網址或這台 Mac 上的檔案",
     "E_FW_BLOCKLIST_FETCH": "沒能下載遮蔽列表，請檢查網址和網路",
     "E_FW_BLOCKLIST_FORMAT": "沒有在檔案裡找到可用的域名或 IP",
     "E_FW_BLOCKLIST_TOO_LARGE": "遮蔽列表太大了，最多 50 MB、100 萬條",
@@ -1349,7 +1349,7 @@
     "appBytes": "App 本體",
     "dataBytes": "應用資料",
     "cacheBytes": "快取",
-    "footprintIncomplete": "沒有完全磁碟訪問許可權，部分資料沒有算進去。",
+    "footprintIncomplete": "沒有完整磁碟取用權限，部分資料沒有算進去。",
     "footprintPartial": "有些檔案讀不到，實際佔用可能更大。",
     "fields": {
       "path": "位置",
@@ -1369,7 +1369,7 @@
       "universal": "通用"
     },
     "protected": {
-      "self": "OpenNavo 不能解除安裝自己，可以在訪達裡把它移到廢紙簍。",
+      "self": "OpenNavo 不能解除安裝自己，可以在訪達裡把它移到垃圾桶。",
       "system": "這是 macOS 的一部分，不能解除安裝。",
       "managed": "這個 App 由管理員管理，不能在這裡解除安裝。"
     },
@@ -1398,9 +1398,9 @@
       "caches": "快取",
       "preferences": "偏好設定與視窗狀態",
       "logs": "日誌與崩潰報告",
-      "background": "後臺專案",
+      "background": "背景項目",
       "cli": "命令列工具連結",
-      "plugins": "外掛、驅動與擴充套件",
+      "plugins": "外掛、驅動與延伸功能",
       "receipts": "安裝記錄",
       "maybe": "可能相關 · 請確認"
     },
@@ -1430,7 +1430,7 @@
       "zap_rule": "Homebrew 規則",
       "bundle_id": "Bundle ID",
       "app_group": "App Group",
-      "launchd": "後臺服務",
+      "launchd": "背景服務",
       "symlink": "指向 App",
       "pkg_receipt": "安裝回執",
       "team_id": "同一開發者",
@@ -1459,7 +1459,7 @@
     "notices": {
       "rescanned": "檔案有變化，已經重新掃描。",
       "appManagement": "需要先允許 OpenNavo 管理 App，才能刪除不是用 Homebrew 安裝的 App。",
-      "incomplete": "沒有「完全磁碟訪問許可權」，{count} 個位置沒能檢查：{paths}。開啟後能清理得更乾淨。",
+      "incomplete": "沒有「完整磁碟取用權限」，{count} 個位置沒能檢查：{paths}。開啟後能清理得更乾淨。",
       "running": "{names} 正在執行，解除安裝前會先退出。",
       "siblings": "同一個 Homebrew 包（{cask}）裡的 {names} 也會一起解除安裝。",
       "brewSudo": "Homebrew 的解除安裝步驟可能會單獨請求一次管理員密碼。",
@@ -1467,7 +1467,7 @@
         "chat_history": "{name} 的應用資料裡有聊天記錄、圖片和檔案（約 {size}）。需要保留的話，請先在 App 裡備份。",
         "documents": "{name} 的應用資料裡有你的文稿和專案檔案（約 {size}）。需要保留的話，請先另存或匯出。",
         "media": "{name} 的應用資料裡有照片或音影片資源（約 {size}）。需要保留的話，請先匯出。",
-        "browser_profile": "{name} 的應用資料裡有書籤、歷史記錄和擴充套件（約 {size}）。登入了賬號的話，重灌後可以同步回來。",
+        "browser_profile": "{name} 的應用資料裡有書籤、歷史記錄和延伸功能（約 {size}）。登入了帳號的話，重灌後可以同步回來。",
         "vm_disk": "{name} 的應用資料裡有虛擬機器磁碟、映象和資料卷（約 {size}），刪除後需要重新下載。",
         "other": "{name} 的應用資料裡可能有你的個人內容（約 {size}）。需要保留的話，請先備份。"
       },
@@ -1475,7 +1475,7 @@
     },
     "mode": {
       "label": "刪除方式",
-      "trash": "移到廢紙簍",
+      "trash": "移到垃圾桶",
       "delete": "直接刪除",
       "deleteWarning": "直接刪除無法撤銷"
     },
@@ -1486,7 +1486,7 @@
     "cancel": "取消",
     "retry": "重新掃描",
     "scanFailed": "掃描沒有完成：{reason}",
-    "background": "在後臺繼續",
+    "background": "在背景繼續",
     "backgroundHint": "關閉視窗不會中斷，完成後會通知你。",
     "log": "顯示日誌",
     "hideLog": "收起日誌",
@@ -1501,19 +1501,19 @@
     "result": {
       "titleOne": "{name} 已解除安裝",
       "titleMany": "已解除安裝 {count} 個 App",
-      "heroTrash": "檔案在廢紙簍裡，清倒之前隨時可以撤銷。",
+      "heroTrash": "檔案在垃圾桶裡，清倒之前隨時可以撤銷。",
       "heroDelete": "檔案已經永久刪除。",
       "freed": "可釋放空間",
       "freedNow": "已釋放空間",
-      "freedHint": "清倒廢紙簍後生效",
+      "freedHint": "清倒垃圾桶後生效",
       "freedNowHint": "已生效",
-      "moved": "已移到廢紙簍",
+      "moved": "已移到垃圾桶",
       "deleted": "已刪除",
       "countHint": "包含 App 本體",
       "skipped": "跳過",
       "skippedNone": "沒有問題",
       "skippedSee": "原因見下方",
-      "skippedTitle": "這些專案沒能處理",
+      "skippedTitle": "這些項目沒能處理",
       "skippedHint": "稍後可以在「清理電腦」裡再清理一次。",
       "failed": "{name} 沒有解除安裝：{reason}",
       "quitFailed": "它沒有退出，可能在等你儲存修改。切換過去儲存或關閉後再試。",
@@ -1527,7 +1527,7 @@
     },
     "skipReasons": {
       "in_use": "檔案正在被使用",
-      "permission": "沒有許可權",
+      "permission": "沒有權限",
       "admin_canceled": "沒有提供管理員密碼",
       "missing": "檔案已經不在了",
       "changed": "掃描後檔案有變化，為了安全跳過",
@@ -1538,14 +1538,14 @@
     "toasts": {
       "done": "已解除安裝 {name}",
       "doneMany": "已解除安裝 {count} 個 App",
-      "doneBody": "{count} 項已移到廢紙簍 · 可釋放 {size}",
+      "doneBody": "{count} 項已移到垃圾桶 · 可釋放 {size}",
       "deletedBody": "已刪除 {count} 項 · 釋放 {size}",
       "undo": "撤銷",
       "undone": "已撤銷解除安裝",
       "undoneBody": "{count} 項已放回原處",
       "undoMissing": "{count} 個檔案沒能放回",
       "purged": "已徹底刪除，釋放 {size}",
-      "needsFullDisk": "讀取廢紙簍需要「完全磁碟訪問許可權」。"
+      "needsFullDisk": "讀取垃圾桶需要「完整磁碟取用權限」。"
     }
   },
   "cleanup": {
@@ -1560,7 +1560,7 @@
       "failed": "掃描沒有完成"
     },
     "overview": {
-      "title": "看看這臺 Mac 能騰出多少空間",
+      "title": "看看這台 Mac 能騰出多少空間",
       "titleAgain": "過段時間再掃一遍",
       "body": "掃描只讀，大約 30 秒。找到的內容按風險分三檔，預設只勾可再生的和足夠舊的。",
       "scan": "開始掃描",
@@ -1576,7 +1576,7 @@
     "riskHints": {
       "rebuildable": "直接刪除，空間立刻釋放；刪了會自動重建",
       "review": "只預選夠舊的；清理前請看一眼",
-      "personal": "只列出來，預設不選；選了會移到廢紙簍"
+      "personal": "只列出來，預設不選；選了會移到垃圾桶"
     },
     "categories": {
       "app_caches": "應用快取",
@@ -1588,7 +1588,7 @@
       "leftovers": "已刪除 App 的殘留",
       "installers": "舊安裝包",
       "project_artifacts": "專案構建產物",
-      "trash": "廢紙簍",
+      "trash": "垃圾桶",
       "device_backups": "iPhone / iPad 備份與 Xcode 歸檔",
       "large_files": "大檔案與舊下載",
       "docker": "Docker 可回收空間"
@@ -1596,15 +1596,15 @@
     "categoryHints": {
       "app_caches": "App 自己生成的快取，刪掉後會自動重建",
       "logs": "7 天前的 App 日誌和崩潰報告",
-      "browser_caches": "只清快取，不碰歷史記錄、Cookie、密碼和擴充套件",
+      "browser_caches": "只清快取，不碰歷史記錄、Cookie、密碼和延伸功能",
       "dev_caches": "下次構建或安裝時會重新生成、重新下載",
       "homebrew": "等同 brew cleanup：舊版本和下載快取",
       "temp": "3 天沒動、沒被開啟的臨時檔案",
-      "leftovers": "App 已經不在這臺 Mac 上，這些檔案還留著",
+      "leftovers": "App 已經不在這台 Mac 上，這些檔案還留著",
       "installers": "下載和桌面裡的 dmg、pkg 安裝包；對應 App 已經裝好的先選上",
       "project_artifacts": "30 天沒改動的專案裡的 node_modules、target、build 等；重新安裝依賴或重新構建即可恢復",
       "trash": "勾選即清空，無法恢復",
-      "device_backups": "清倒廢紙簍後，備份不能再用來恢復裝置，歸檔不能再用來解析崩潰日誌",
+      "device_backups": "清倒垃圾桶後，備份不能再用來恢復裝置，歸檔不能再用來解析崩潰日誌",
       "large_files": "超過 1 GB、90 天沒開啟的檔案",
       "docker": "由 Docker 自己的清理命令刪除，預設不選；資料卷只顯示、不清理"
     },
@@ -1619,15 +1619,15 @@
       "reclaimable": "可釋放",
       "excludesPersonal": "不含個人檔案",
       "selected": "已選 {count} 項",
-      "breakdown": "直接刪除 {delete} · 移到廢紙簍 {trash}",
+      "breakdown": "直接刪除 {delete} · 移到垃圾桶 {trash}",
       "onlyRebuildable": "只選可再生",
       "recommended": "恢復建議",
       "inUse": "另有 {size} 正在使用"
     },
     "notices": {
       "rescanned": "結果已更新，請再確認一次。",
-      "services": "已刪除的 App（{names}）還有 {count} 個後臺專案在開機時載入，只會報錯、耗電，建議清理。",
-      "incomplete": "沒有「完全磁碟訪問許可權」，這些位置沒檢查：{paths}。開啟後能找到更多。"
+      "services": "已刪除的 App（{names}）還有 {count} 個背景項目在開機時載入，只會報錯、耗電，建議清理。",
+      "incomplete": "沒有「完整磁碟取用權限」，這些位置沒檢查：{paths}。開啟後能找到更多。"
     },
     "category": {
       "atLeast": "至少 {size}",
@@ -1636,7 +1636,7 @@
       "allSkipped": "全部跳過",
       "skipped": "已跳過 {count} 項，只展示、不可選",
       "lastModified": "最後修改：{time}",
-      "servicesLoading": "{count} 個後臺專案仍在開機時載入",
+      "servicesLoading": "{count} 個背景項目仍在開機時載入",
       "inUse": "{size} 正在使用"
     },
     "skipReasons": {
@@ -1646,15 +1646,15 @@
       "recent": "最近有改動",
       "git_tracked": "裡面有 Git 跟蹤的檔案",
       "protected": "受保護",
-      "permission": "沒有許可權",
+      "permission": "沒有權限",
       "tool_stopped": "沒有執行，開啟後重新掃描就能看到可回收空間",
       "volumes": "資料卷可能存著資料庫等資料，只顯示、不清理"
     },
     "reasons": {
-      "orphan_service": "後臺服務",
+      "orphan_service": "背景服務",
       "installer_installed": "已安裝",
       "device_support_latest": "最新版本",
-      "device_support_latestHint": "預設保留。清理後，下次連線這臺裝置時 Xcode 會重新準備，需要幾分鐘。",
+      "device_support_latestHint": "預設保留。清理後，下次連線這台裝置時 Xcode 會重新準備，需要幾分鐘。",
       "tool_download_cache": "要重新下載",
       "tool_download_cacheHint": "可以重建，但下次構建或測試時要重新下載，可能要等較久、用掉不少流量，所以預設不勾。",
       "docker_images": "未使用的映象",
@@ -1673,9 +1673,9 @@
     },
     "footer": {
       "selected": "已選 {count} 項 · {size}",
-      "both": "{delete} 直接刪除，無法撤銷；{trash} 移到廢紙簍，可以撤銷",
+      "both": "{delete} 直接刪除，無法撤銷；{trash} 移到垃圾桶，可以撤銷",
       "deleteOnly": "{size} 直接刪除，無法撤銷",
-      "trashOnly": "全部移到廢紙簍，可以撤銷",
+      "trashOnly": "全部移到垃圾桶，可以撤銷",
       "nothing": "還沒有選擇",
       "clean": "清理 {size}"
     },
@@ -1683,27 +1683,27 @@
       "title": "清理 {size}？",
       "count": "共 {count} 項",
       "delete": "{size} 直接刪除：快取、日誌、開發工具快取等，刪了會自動重建，無法撤銷。",
-      "trash": "{size} 移到廢紙簍：已刪除 App 的殘留等，完成後可以撤銷。",
-      "emptyTrash": "你勾選了「廢紙簍」：裡面現有的東西會被清空，無法恢復。",
-      "admin": "其中 {count} 項是系統級的後臺專案，會請求一次管理員密碼。",
+      "trash": "{size} 移到垃圾桶：已刪除 App 的殘留等，完成後可以撤銷。",
+      "emptyTrash": "你勾選了「垃圾桶」：裡面現有的東西會被清空，無法恢復。",
+      "admin": "其中 {count} 項是系統級的背景項目，會請求一次管理員密碼。",
       "cancel": "取消",
       "clean": "清理"
     },
     "run": {
       "title": "正在清理",
       "delete": "直接刪除",
-      "trash": "移到廢紙簍",
+      "trash": "移到垃圾桶",
       "command": "執行 {command}",
       "hint": "清理是任務佇列裡的一個任務，離開這個頁面不會中斷，完成後會通知你。"
     },
     "result": {
       "title": "已釋放 {size}",
       "failedTitle": "清理沒有完成",
-      "trashPending": "另有 {size} 在廢紙簍裡，清倒後釋放；清倒前隨時可以撤銷。",
+      "trashPending": "另有 {size} 在垃圾桶裡，清倒後釋放；清倒前隨時可以撤銷。",
       "rebuilds": "可再生的檔案會在需要時自動重建。",
       "freed": "已釋放",
       "freedHint": "立即生效",
-      "trashed": "移到廢紙簍",
+      "trashed": "移到垃圾桶",
       "trashedHint": "{count} 項 · 清倒後釋放",
       "trashedNone": "這次沒有",
       "restored": "已撤銷，放回原處",
@@ -1713,7 +1713,7 @@
       "skippedNone": "沒有問題",
       "skippedTitle": "這些沒有清理",
       "free": "可用空間",
-      "undo": "撤銷移到廢紙簍的專案",
+      "undo": "撤銷移到垃圾桶的項目",
       "purge": "徹底刪除這些檔案",
       "done": "完成"
     },
@@ -1753,7 +1753,7 @@
       "title": "清理電腦",
       "description": "找出快取、日誌和已刪除 App 的殘留，確認後再清理。",
       "found": "可釋放 {size} · {time}掃描。",
-      "active": "{count} 個已刪除 App 的後臺專案仍在開機時載入",
+      "active": "{count} 個已刪除 App 的背景項目仍在開機時載入",
       "scan": "開始掃描",
       "open": "去清理"
     },
@@ -1762,7 +1762,7 @@
       "rebuildableHint": "快取、日誌、開發工具快取：直接刪除，空間立刻釋放",
       "fixed": "固定",
       "deleteMode": "需要確認的檔案",
-      "deleteModeHint": "已刪除 App 的殘留等：移到廢紙簍可以撤銷；直接刪除立即釋放空間",
+      "deleteModeHint": "已刪除 App 的殘留等：移到垃圾桶可以撤銷；直接刪除立即釋放空間",
       "protected": "保護名單",
       "added": "{date} 新增",
       "remove": "移除",
@@ -1773,7 +1773,7 @@
     "groups": {
       "deviceSupport": "Xcode 裝置支援檔案 · {platform}",
       "temp": "系統臨時資料夾",
-      "trash": "廢紙簍裡的專案",
+      "trash": "垃圾桶裡的項目",
       "installers": "下載和桌面",
       "xcodeArchive": "Xcode 歸檔",
       "deviceBackup": "裝置備份",
@@ -1788,8 +1788,8 @@
   "monitor": {
     "title": "電腦監控",
     "subtitle": "{model} · {chip} · {memory} 記憶體 · macOS {os} · 已執行 {uptime}",
-    "subtitleLoading": "正在讀取這臺 Mac 的資訊",
-    "menuBarButton": "選單欄 · {count} 項",
+    "subtitleLoading": "正在讀取這台 Mac 的資訊",
+    "menuBarButton": "選單列 · {count} 項",
     "waiting": "正在讀取…",
     "modules": {
       "cpu": "CPU",
@@ -1811,8 +1811,8 @@
       "sensors": "最熱的感測器"
     },
     "intro": {
-      "title": "電腦監控已經放到選單欄",
-      "body": "CPU 和記憶體各是一個選單欄項，點它們看詳情；想放別的指標就在電腦監控裡開啟，數量不限。不需要可以在設定裡關掉。",
+      "title": "電腦監控已經放到選單列",
+      "body": "CPU 和記憶體各是一個選單列項，點它們看詳情；想放別的指標就在電腦監控裡開啟，數量不限。不需要可以在設定裡關掉。",
       "view": "檢視"
     },
     "health": {
@@ -1906,7 +1906,7 @@
         "vpn": "VPN",
         "other": "其他"
       },
-      "privacy": "不顯示公網 IP 和 Wi-Fi 名稱：前者要請求外部伺服器，後者要定位許可權。"
+      "privacy": "不顯示公網 IP 和 Wi-Fi 名稱：前者要請求外部伺服器，後者要定位權限。"
     },
     "battery": {
       "charging": "正在充電",
@@ -1958,15 +1958,15 @@
       "restoreLast": "恢復上次的手動轉速",
       "autoNote": "系統根據溫度自動調節。切到「手動」可以自己設定轉速。",
       "helperTitle": "手動控制風扇要先裝一個輔助程式",
-      "helperBody": "它只做風扇控制，以系統身份在後臺執行，只接受 OpenNavo 的指令。安裝後按系統提示在「登入項與擴充套件」裡允許，可能要輸一次管理員密碼。",
+      "helperBody": "它只做風扇控制，以系統身份在背景執行，只接受 OpenNavo 的指令。安裝後按系統提示在「登入項目與延伸功能」裡允許，可能要輸一次管理員密碼。",
       "install": "安裝輔助程式",
       "approvalTitle": "還差一步",
-      "approvalBody": "在「系統設定 → 通用 → 登入項與擴充套件」裡允許 OpenNavo 在後臺執行，然後點「我已允許」。",
+      "approvalBody": "在「系統設定 → 一般 → 登入項目與延伸功能」裡允許 OpenNavo 在背景執行，然後點「我已允許」。",
       "recheck": "我已允許",
       "brokenTitle": "風扇輔助程式沒有響應",
       "brokenBody": "它已經裝好，但 OpenNavo 連不上它。重新安裝一般就能恢復。",
       "reinstall": "重新安裝輔助程式",
-      "unsupported": "這臺 Mac 的晶片暫不支援風扇控制，目前只顯示轉速。",
+      "unsupported": "這台 Mac 的晶片暫不支援風扇控制，目前只顯示轉速。",
       "safety": "退出 OpenNavo、崩潰或無響應 15 秒、睡眠、寫入失敗時，風扇自動交還系統控制；溫度持續 10 秒達到 95 °C 時，手動風扇會拉到全速。沒有「關閉風扇」，最低是系統最小轉速。",
       "reasons": {
         "user": "你調整了風扇",
@@ -1996,7 +1996,7 @@
       "byMemory": "記憶體",
       "sortBy": "排序方式",
       "system": "系統",
-      "background": "後臺",
+      "background": "背景",
       "quit": "退出",
       "quitTitle": "退出 {name}？",
       "quitBody": "和在 {name} 裡按 ⌘Q 一樣，未儲存的內容由 App 自己提示。",
@@ -2034,55 +2034,55 @@
       "hourAgo": "1 小時前"
     },
     "menuBar": {
-      "title": "選單欄",
-      "show": "在選單欄顯示",
+      "title": "選單列",
+      "show": "在選單列顯示",
       "showHint": "單獨一項，點它在下方彈出這一項的詳情",
       "style": "樣式",
-      "styleHint": "選單欄裡的樣子",
+      "styleHint": "選單列裡的樣子",
       "styles": {
         "text": "兩行文字",
         "value": "只顯示數值",
         "line": "迷你折線",
         "bars": "柱狀"
       },
-      "on": "選單欄",
-      "onHint": "已在選單欄顯示",
-      "added": "已把「{name}」放到選單欄",
+      "on": "選單列",
+      "onHint": "已在選單列顯示",
+      "added": "已把「{name}」放到選單列",
       "addedBody": "點它就能在下方看到這一項的詳情",
-      "removed": "已從選單欄移除「{name}」",
-      "keepTitle": "關閉視窗時選單欄項會一起消失",
-      "keepBody": "現在關閉主視窗會退出 OpenNavo。開啟「關閉視窗後留在選單欄」，監控項就會一直顯示。",
+      "removed": "已從選單列移除「{name}」",
+      "keepTitle": "關閉視窗時選單列項會一起消失",
+      "keepBody": "現在關閉主視窗會退出 OpenNavo。開啟「關閉視窗後留在選單列」，監控項就會一直顯示。",
       "keepAction": "一起開啟"
     },
     "popover": {
       "open": "在 OpenNavo 中檢視",
-      "settings": "選單欄設定"
+      "settings": "選單列設定"
     },
     "rail": {
-      "menuBar": "選單欄",
+      "menuBar": "選單列",
       "menuBarSub": "每項單獨顯示，點它看詳情 · 數量不限",
-      "empty": "選單欄裡還沒有監控項",
-      "crowded": "專案多時，放不下的會被劉海擋住；可以把樣式改成「只顯示數值」。",
+      "empty": "選單列裡還沒有監控項",
+      "crowded": "項目多時，放不下的會被劉海擋住；可以把樣式改成「只顯示數值」。",
       "refresh": "每 {count} 秒重新整理 · 按住 ⌘ 拖動調整順序",
       "adjustFans": "調整風扇",
-      "privacy": "資料只在這臺 Mac 上",
+      "privacy": "資料只在這台 Mac 上",
       "privacyBody": "不聯網、不上傳、不儲存歷史；曲線只留在記憶體裡。"
     },
     "settings": {
-      "menuBar": "選單欄",
+      "menuBar": "選單列",
       "interval": "重新整理頻率",
       "intervalHint": "越快越耗電；螢幕關閉和睡眠時自動暫停",
       "seconds": "{count} 秒",
       "notVisible": "開啟後沒看到？",
-      "notVisibleHint": "macOS 26 起要在「系統設定 → 選單欄」裡允許 OpenNavo；專案太多時，放不下的會被劉海擋住",
+      "notVisibleHint": "macOS 26 起要在「系統設定 → 選單列」裡允許 OpenNavo；項目太多時，放不下的會被劉海擋住",
       "openSettings": "開啟系統設定",
-      "menuBarNote": "每個指標都是獨立的選單欄項，數量不限；預設開啟 CPU 和記憶體。點任意一項，就在它下面彈出這一項的詳情。",
+      "menuBarNote": "每個指標都是獨立的選單列項，數量不限；預設開啟 CPU 和記憶體。點任意一項，就在它下面彈出這一項的詳情。",
       "helper": "輔助程式",
       "helperHint": "{status}。只用來控制風扇；沒安裝時照常顯示溫度和轉速",
       "helperStatus": {
-        "unsupported": "這臺 Mac 沒有風扇",
+        "unsupported": "這台 Mac 沒有風扇",
         "not_installed": "未安裝",
-        "requires_approval": "等待在「登入項與擴充套件」裡允許",
+        "requires_approval": "等待在「登入項目與延伸功能」裡允許",
         "enabled": "已啟用",
         "error": "輔助程式出錯，可以重新安裝"
       },
@@ -2094,14 +2094,14 @@
       "always": "始終開啟",
       "relaunch": "重新開啟 OpenNavo 時",
       "relaunchHint": "風扇從自動開始；感測器詳情裡可以一鍵恢復上次的手動轉速",
-      "privacy": "所有指標只在這臺 Mac 上計算和顯示：不聯網、不上傳、不儲存歷史；不顯示公網 IP 和 Wi-Fi 名稱。",
+      "privacy": "所有指標只在這台 Mac 上計算和顯示：不聯網、不上傳、不儲存歷史；不顯示公網 IP 和 Wi-Fi 名稱。",
       "alerts": "提醒",
-      "alertsHint": "出現需要注意的問題時發通知，同一問題 1 小時內只提醒一次。開啟後，即使選單欄沒有監控項也會在後臺低頻檢查"
+      "alertsHint": "出現需要注意的問題時發通知，同一問題 1 小時內只提醒一次。開啟後，即使選單列沒有監控項也會在背景低頻檢查"
     }
   },
   "security": {
     "title": "安全防護",
-    "subtitle": "體檢、病毒掃描、啟動項和即時防護，結果只儲存在這臺 Mac 上",
+    "subtitle": "體檢、病毒掃描、啟動項和即時防護，結果只儲存在這台 Mac 上",
     "tabs": {
       "label": "安全防護",
       "overview": "概覽",
@@ -2230,7 +2230,7 @@
       "forceHint": "不復用之前的乾淨結果；此模式下全盤掃描允許每個檔案最多檢查 5 分鐘。",
       "performanceHint": "全盤掃描最多使用兩個掃描程序，會佔用更多記憶體。預設每個檔案的掃描預算為 60 秒，超時會標為未完成檢查。",
       "cacheSummary": "已有 {count} 個檔案在核對內容和病毒庫版本後複用了乾淨結果。",
-      "denied": "沒有許可權讀取：{folders}，這些位置沒有掃描。可以在「系統設定 → 隱私與安全性 → 檔案與資料夾」裡允許 OpenNavo",
+      "denied": "沒有權限讀取：{folders}，這些位置沒有掃描。可以在「系統設定 → 隱私權與安全性 → 檔案與資料夾」裡允許 OpenNavo",
       "folders": {
         "downloads": "下載",
         "desktop": "桌面",
@@ -2245,7 +2245,7 @@
       "full": {
         "title": "全盤掃描",
         "duration": "可能要 1 小時以上",
-        "body": "整臺 Mac；不掃描系統卷、iCloud 未下載的檔案、Time Machine 和網路卷",
+        "body": "整台 Mac；不掃描系統卷、iCloud 未下載的檔案、Time Machine 和網路卷",
         "action": "開始全盤掃描"
       },
       "custom": {
@@ -2265,7 +2265,7 @@
       "skipped": {
         "dataless": "跳過 {count} 個 iCloud 未下載的檔案",
         "tooLarge": "{count} 個檔案超出掃描上限，沒有完整掃描",
-        "unreadable": "{count} 個檔案無法讀取（沒有許可權、已加密或格式不支援）",
+        "unreadable": "{count} 個檔案無法讀取（沒有權限、已加密或格式不支援）",
         "excluded": "{count} 個檔案在排除列表裡"
       }
     },
@@ -2291,20 +2291,20 @@
       "notRead": "還沒有讀取過啟動項",
       "untrusted": "其中 {count} 個未簽名或未公證",
       "missing": "未能完整檢查：{categories}。部分內容無法讀取或解析。",
-      "grant": "開啟許可權",
-      "btmUnknown": "這臺 Mac 的後臺專案資料庫格式沒有識別出來，部分登入項可能沒有列出",
+      "grant": "開啟權限",
+      "btmUnknown": "這台 Mac 的背景項目資料庫格式沒有識別出來，部分登入項目可能沒有列出",
       "new": "新",
       "toggle": "啟用 {name}",
       "openSettings": "在系統設定中管理",
       "none": "沒有啟動項",
-      "noneHint": "macOS 自帶的專案不在這裡顯示",
+      "noneHint": "macOS 自帶的項目不在這裡顯示",
       "noApps": "沒有 App 會自動啟動",
       "others": "其他 {count} 項",
-      "othersHint": "命令列工具、指令碼、擴充套件和外掛",
+      "othersHint": "命令列工具、指令碼、延伸功能和外掛",
       "items": "{count} 項",
       "stateMixed": "{count} 項已啟用",
       "add": "新增開機啟動項",
-      "addHint": "選中的 App 會在你登入這臺 Mac 時自動開啟",
+      "addHint": "選中的 App 會在你登入這台 Mac 時自動開啟",
       "addSearch": "搜尋 App",
       "addEmpty": "沒有可以新增的 App",
       "adding": "正在新增…",
@@ -2313,26 +2313,26 @@
       "removed": "已移除 {name}，可以在隔離區恢復",
       "removeTitle": "移除「{name}」？",
       "removeBody": "會先停用它，再把配置檔案移到隔離區，之後可以恢復。",
-      "removeBodyAdmin": "會先停用它，再把配置檔案移到隔離區，之後可以恢復。這是系統級專案，需要輸入一次管理員密碼。",
+      "removeBodyAdmin": "會先停用它，再把配置檔案移到隔離區，之後可以恢復。這是系統級項目，需要輸入一次管理員密碼。",
       "remove": "移除",
       "enable": "啟用",
       "disable": "停用",
       "keep": "保留",
       "scan": "用病毒庫掃描",
-      "adminHint": "這是系統級專案，停用或移除時需要輸入一次管理員密碼。",
+      "adminHint": "這是系統級項目，停用或移除時需要輸入一次管理員密碼。",
       "riskHigh": "高風險",
       "avClean": "沒有發現威脅",
       "avThreat": "識別為 {name}",
       "avNotScanned": "還沒有掃描",
       "category": {
-        "launch_items": "後臺服務",
-        "btm": "後臺專案",
-        "login_items": "登入項",
+        "launch_items": "背景服務",
+        "btm": "背景項目",
+        "login_items": "登入項目",
         "cron": "定時任務",
-        "browser_extensions": "瀏覽器擴充套件",
-        "kexts": "核心擴充套件",
-        "system_extensions": "系統擴充套件",
-        "app_extensions": "App 擴充套件",
+        "browser_extensions": "瀏覽器延伸功能",
+        "kexts": "核心延伸功能",
+        "system_extensions": "系統延伸功能",
+        "app_extensions": "App 延伸功能",
         "auth_plugins": "授權外掛",
         "dir_services_plugins": "目錄服務外掛",
         "spotlight": "聚焦外掛",
@@ -2348,7 +2348,7 @@
       },
       "scope": {
         "user": "當前使用者",
-        "system": "整臺電腦"
+        "system": "整台電腦"
       },
       "state": {
         "running": "執行中",
@@ -2420,7 +2420,7 @@
       "title": "即時防護",
       "startupAlerts": {
         "title": "啟動項變化提醒",
-        "body": "出現新的開機啟動項、登入項或後臺服務時立即提醒你，並顯示簽名和所屬 App。它是事後提醒，不能阻止第一次執行。"
+        "body": "出現新的開機啟動項、登入項目或背景服務時立即提醒你，並顯示簽名和所屬 App。它是事後提醒，不能阻止第一次執行。"
       },
       "watchDownloads": {
         "title": "下載檔案自動掃描",
@@ -2489,7 +2489,7 @@
       "no_consent": "還沒有同意下載病毒庫",
       "excluded": "所在資料夾在排除列表裡",
       "too_large": "超出掃描上限",
-      "unreadable": "無法讀取（沒有許可權、已加密或格式不支援）"
+      "unreadable": "無法讀取（沒有權限、已加密或格式不支援）"
     },
     "installScan": {
       "clean": "安裝前掃描：檢查了 {count} 個檔案，沒有發現威脅",
@@ -2538,16 +2538,16 @@
       "paste": {
         "title": "貼上命令保護",
         "hint": "在終端裡用 ⌘V 貼上「下載並執行」這類可疑命令時，先暫停並請你確認。支援終端、iTerm2、Warp、kitty、Alacritty、Ghostty、WezTerm、Hyper 和 Tabby；用選單或右鍵貼上不會檢查。只在本機檢查，不儲存貼上的內容",
-        "needsAccess": "需要輔助功能許可權",
+        "needsAccess": "需要輔助使用權限",
         "needsAccessHint": "允許後，OpenNavo 才能在終端貼上前檢查命令",
-        "grant": "開啟許可權"
+        "grant": "開啟權限"
       },
       "virusTotal": {
         "title": "VirusTotal 查詢",
         "hint": "用你自己的 API key，按檔案的 SHA-256 查詢 VirusTotal 的檢測結果；只在你點選查詢時傳送雜湊，不上傳檔案",
         "key": "API key",
         "keySaved": "已儲存在鑰匙串裡",
-        "keyHint": "在 virustotal.com 註冊賬戶後，可以在個人資料裡找到 API key",
+        "keyHint": "在 virustotal.com 註冊帳戶後，可以在個人資料裡找到 API key",
         "removeKey": "移除 key",
         "placeholder": "貼上 API key",
         "saveKey": "儲存",
@@ -2622,7 +2622,7 @@
   },
   "firewall": {
     "title": "應用防火牆",
-    "subtitle": "App 聯網前先問你，按你的規則允許或阻止，判斷都在這臺 Mac 上完成",
+    "subtitle": "App 聯網前先問你，按你的規則允許或阻止，判斷都在這台 Mac 上完成",
     "tabs": {
       "label": "應用防火牆",
       "rules": "規則",
@@ -2633,14 +2633,14 @@
     "unavailable": {
       "not_bundled": {
         "title": "這個版本沒有包含防火牆元件",
-        "body": "應用防火牆需要隨正式版一起簽名釋出的網路系統擴充套件，開發版和未簽名的版本沒有這個元件。請使用 OpenNavo 正式版。"
+        "body": "應用防火牆需要隨正式版一起簽名釋出的網路系統延伸功能，開發版和未簽名的版本沒有這個元件。請使用 OpenNavo 正式版。"
       },
       "not_in_applications": {
         "title": "請先把 OpenNavo 移到「應用程式」資料夾",
-        "body": "macOS 只允許「應用程式」資料夾裡的 App 安裝系統擴充套件。移動後重新開啟 OpenNavo，再回到這裡開啟。"
+        "body": "macOS 只允許「應用程式」資料夾裡的 App 安裝系統延伸功能。移動後重新開啟 OpenNavo，再回到這裡開啟。"
       },
       "unsupported_os": {
-        "title": "這臺 Mac 的系統版本不支援",
+        "title": "這台 Mac 的系統版本不支援",
         "body": "應用防火牆需要 macOS 13 或更新的版本。"
       }
     },
@@ -2663,8 +2663,8 @@
       },
       "enable": "開啟應用防火牆",
       "retry": "重新開啟",
-      "steps": "開啟時 macOS 會請你確認兩次：先在「系統設定」裡允許 OpenNavo 的系統擴充套件，再允許它過濾網路內容。",
-      "privacy": "判斷都在這臺 Mac 上完成，連線資訊不會上傳。",
+      "steps": "開啟時 macOS 會請你確認兩次：先在「系統設定」裡允許 OpenNavo 的系統延伸功能，再允許它過濾網路內容。",
+      "privacy": "判斷都在這台 Mac 上完成，連線資訊不會上傳。",
       "failedTitle": "沒能開啟應用防火牆",
       "failed": "沒能開啟：{reason}",
       "removed": "應用防火牆已移除，不用馬上重啟。剩下的元件會在下次重啟 Mac 時由 macOS 清除。"
@@ -2678,10 +2678,10 @@
     "progress": {
       "title": "正在開啟應用防火牆",
       "uninstalling": "正在移除應用防火牆…",
-      "install": "安裝系統擴充套件",
+      "install": "安裝系統延伸功能",
       "installHint": "正在把防火牆元件交給 macOS，通常只要幾秒鐘。",
       "approve": "在「系統設定」中允許",
-      "approveHint": "在「系統設定」→「通用」→「登入項與擴充套件」→「網路擴充套件」裡開啟 OpenNavo；macOS 14 及更早的版本在「隱私與安全性」裡點「允許」。",
+      "approveHint": "在「系統設定」→「一般」→「登入項目與延伸功能」→「網路延伸功能」裡開啟 OpenNavo；macOS 14 及更早的版本在「隱私權與安全性」裡點「允許」。",
       "consent": "允許過濾網路內容",
       "consentHint": "在彈出的對話方塊裡點「允許」。",
       "openSettings": "開啟系統設定",
@@ -2723,7 +2723,7 @@
       "invalid": "簽名無效"
     },
     "rules": {
-      "search": "搜尋 App、開發者或地址",
+      "search": "搜尋 App、開發者或位址",
       "filterLabel": "篩選規則",
       "filters": {
         "all": "全部",
@@ -2735,7 +2735,7 @@
       "add": "新增規則",
       "allApps": "所有 App",
       "allAppsHint": "對每個 App 都生效",
-      "anyRemote": "任何地址",
+      "anyRemote": "任何位址",
       "anyPort": "任何埠",
       "port": "埠 {port}",
       "action": {
@@ -2770,20 +2770,20 @@
       "program": "程式",
       "oneApp": "一個 App",
       "allApps": "所有 App",
-      "allAppsHint": "對每個 App 都生效，需要指定地址或埠。",
+      "allAppsHint": "對每個 App 都生效，需要指定位址或埠。",
       "chooseApp": "選擇 App 或程式…",
       "change": "更換",
       "needApp": "請選擇一個 App 或程式",
       "action": "操作",
       "remote": "目的地",
-      "someRemote": "指定地址",
+      "someRemote": "指定位址",
       "remotePlaceholder": "example.com、*.example.com、IP 或網段",
       "remoteHint": "*.example.com 包含它的所有子域名；網段寫成 10.0.0.0/8 這樣。",
       "port": "埠",
       "somePort": "指定埠",
-      "invalid": "地址或埠的格式不對",
-      "needDestination": "給所有 App 設的規則要指定地址或埠，否則會放行或阻止整臺 Mac 的網路。",
-      "order": "越具體的規則越優先：指定了地址或埠的規則先生效；同樣具體時，阻止優先於允許。",
+      "invalid": "位址或埠的格式不對",
+      "needDestination": "給所有 App 設的規則要指定位址或埠，否則會放行或阻止整台 Mac 的網路。",
+      "order": "越具體的規則越優先：指定了位址或埠的規則先生效；同樣具體時，阻止優先於允許。",
       "save": "儲存",
       "saved": "已儲存規則",
       "added": "已新增規則"
@@ -2850,16 +2850,16 @@
       "emptyBody": "支援 hosts 檔案，也支援每行一個域名、IP 或網段的列表。",
       "boundary": "有些 App 自己查好 IP 再直接連線，這類連線只能按列表裡的 IP 遮蔽，按域名可能攔不到。",
       "removeTitle": "移除這個遮蔽列表？",
-      "removeBody": "移除「{name}」後，列表裡的地址不再被直接阻止。",
+      "removeBody": "移除「{name}」後，列表裡的位址不再被直接阻止。",
       "removeAction": "移除"
     },
     "settings": {
       "automatic": "自動允許",
       "allowInstalledHint": "開啟防火牆時已經裝好的 App 直接放行，只詢問之後新裝的 App。",
-      "closedHint": "這些設定由系統擴充套件儲存，OpenNavo 退出後也照常生效。",
+      "closedHint": "這些設定由系統延伸功能儲存，OpenNavo 退出後也照常生效。",
       "remove": "移除",
       "removeLabel": "移除應用防火牆",
-      "removeHint": "關閉過濾並解除安裝系統擴充套件，規則和記錄會一起刪除。macOS 可能會要求輸入密碼。",
+      "removeHint": "關閉過濾並解除安裝系統延伸功能，規則和記錄會一起刪除。macOS 可能會要求輸入密碼。",
       "removeAction": "移除",
       "removeTitle": "移除應用防火牆？",
       "removeBody": "之後所有 App 都能直接聯網，規則、遮蔽列表和連線記錄會一起刪除。可以隨時重新開啟。"
@@ -2879,7 +2879,7 @@
       "scope": "範圍",
       "scopes": {
         "app": "這個 App 的所有連線",
-        "destination": "只限這個地址"
+        "destination": "只限這個位址"
       },
       "until": "有效期",
       "untils": {
@@ -2906,7 +2906,7 @@
       "blockedToday": "今天阻止",
       "version": "元件版本",
       "limitsTitle": "它管什麼",
-      "limits": "只管這臺 Mac 上的 App 向外發起的連線，不管別人連進來的連線，那由 macOS 自帶的防火牆負責。OpenNavo 沒有執行時沒法詢問，沒有規則的連線會先放行，並記在連線記錄裡。"
+      "limits": "只管這台 Mac 上的 App 向外發起的連線，不管別人連進來的連線，那由 macOS 自帶的防火牆負責。OpenNavo 沒有執行時沒法詢問，沒有規則的連線會先放行，並記在連線記錄裡。"
     }
   }
 }

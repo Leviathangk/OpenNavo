@@ -201,7 +201,7 @@ func (s *Service) translationManage(ctx context.Context, op string, in Input) (a
 	if op == "GetTranslationStatus" {
 		ref = content.Ref{Entity: text(in.Params, "entity"), ID: int64(number(in.Params, "id", 0)), SecondaryID: int64(number(in.Params, "secondaryid", 0))}
 		if !ref.Valid() {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("content_ref_invalid")
 		}
 		err = nil
 	}
@@ -219,7 +219,7 @@ func (s *Service) translationManage(ctx context.Context, op string, in Input) (a
 	return s.write(ctx, in, op, "translation", func(st *store.Store) (any, error) {
 		fields, ok := in.Body["fields"].(map[string]any)
 		if !ok {
-			return nil, domain.Validation()
+			return nil, fieldError(in.Body, "fields")
 		}
 		if err := st.WriteContentText(ctx, ref, text(in.Body, "locale"), fields, false); err != nil {
 			return nil, err
@@ -237,7 +237,7 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 	entities := content.Names()
 	if v := text(in.Params, "entity"); v != "" {
 		if _, ok := content.Registry[v]; !ok {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("parameter_invalid:entity")
 		}
 		entities = []string{v}
 	}

@@ -112,9 +112,6 @@ func (s *Service) agentOperation(ctx context.Context, op string, in Input) (any,
 						return nil, domain.Validation()
 					}
 					if key == "permissions" {
-						if !agent.ValidPermissionSet(list) {
-							return nil, domain.Validation()
-						}
 						for _, p := range list {
 							if !slices.Contains(agent.Grantable, p) {
 								return nil, domain.Validation()

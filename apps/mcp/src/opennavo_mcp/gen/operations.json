@@ -4,21 +4,15 @@
       "$ref": "#/components/schemas/LinkPackageAdd"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "AddLinkPackageInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -39,21 +33,15 @@
       "$ref": "#/components/schemas/ScreenshotCreate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "AddPackageScreenshotInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -76,21 +64,15 @@
       "$ref": "#/components/schemas/TapPackageAdd"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "AddTapPackageInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -106,108 +88,20 @@
     },
     "summary": "Add a third-party tap cask"
   },
-  "claimSeoTasks": {
-    "body": {
-      "$ref": "#/components/schemas/SeoTaskClaim"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "ClaimSeoTasksInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/tasks/claim",
-    "policy": {
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "claimSeoTasks"
-  },
-  "compensateSeoAction": {
-    "body": {
-      "$ref": "#/components/schemas/SeoCompensation"
-    },
-    "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
-    },
-    "method": "POST",
-    "model": "CompensateSeoActionInput",
-    "parameters": {
-      "header": [
-        "taskId",
-        "fencing",
-        "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
-      ],
-      "path": [
-        "id"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/actions/{id}/compensate",
-    "policy": {
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "compensateSeoAction"
-  },
-  "completeSeoTask": {
-    "body": {
-      "$ref": "#/components/schemas/SeoTaskComplete"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "CompleteSeoTaskInput",
-    "parameters": {
-      "header": [],
-      "path": [
-        "id"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/tasks/{id}/complete",
-    "policy": {
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "completeSeoTask"
-  },
   "createArticle": {
     "body": {
       "$ref": "#/components/schemas/ArticleCreate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateArticleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -228,21 +122,15 @@
       "$ref": "#/components/schemas/ArticleAuthorWrite"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateArticleAuthorInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -263,21 +151,15 @@
       "$ref": "#/components/schemas/AssetUploadTicketCreate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateAssetUploadTicketInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -298,21 +180,15 @@
       "$ref": "#/components/schemas/CategoryUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateCategoryInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -333,21 +209,15 @@
       "$ref": "#/components/schemas/CollectionUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateCollectionInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -368,21 +238,15 @@
       "$ref": "#/components/schemas/FeatureUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateFeatureInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -398,48 +262,20 @@
     },
     "summary": "Create featured placement"
   },
-  "createSeoEvidence": {
-    "body": {
-      "$ref": "#/components/schemas/SeoEvidenceCapture"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "CreateSeoEvidenceInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/evidence",
-    "policy": {
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "createSeoEvidence"
-  },
   "createSynonym": {
     "body": {
       "$ref": "#/components/schemas/SynonymUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "CreateSynonymInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -455,48 +291,18 @@
     },
     "summary": "Create synonym"
   },
-  "deferSeoTask": {
-    "body": {
-      "$ref": "#/components/schemas/SeoTaskDefer"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "DeferSeoTaskInput",
-    "parameters": {
-      "header": [],
-      "path": [
-        "id"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/tasks/{id}/defer",
-    "policy": {
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "deferSeoTask"
-  },
   "deleteCategory": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeleteCategoryInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -517,21 +323,15 @@
   "deleteCollection": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeleteCollectionInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -552,21 +352,15 @@
   "deleteFeature": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeleteFeatureInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -587,21 +381,15 @@
   "deleteGlossaryTerm": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeleteGlossaryTermInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -622,21 +410,15 @@
   "deletePackageIcon": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeletePackageIconInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -657,21 +439,15 @@
   "deletePackageScreenshot": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeletePackageScreenshotInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id",
@@ -693,21 +469,15 @@
   "deleteSynonym": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "DeleteSynonymInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -730,21 +500,15 @@
       "$ref": "#/components/schemas/UpdateFeedKey"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "DisableUpdateFeedInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -765,21 +529,15 @@
       "$ref": "#/components/schemas/TranslationFix"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "FixTranslationInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -1112,30 +870,11 @@
     },
     "summary": "Read sourced app facts"
   },
-  "getSeoAutomation": {
+  "getPackageIntentPages": {
     "body": null,
     "headerNames": {},
     "method": "GET",
-    "model": "GetSeoAutomationInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": []
-    },
-    "path": "/seo/automation",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:automation:tune"
-      ]
-    },
-    "summary": "getSeoAutomation"
-  },
-  "getSeoGeo": {
-    "body": null,
-    "headerNames": {},
-    "method": "GET",
-    "model": "GetSeoGeoInput",
+    "model": "GetPackageIntentPagesInput",
     "parameters": {
       "header": [],
       "path": [
@@ -1143,60 +882,41 @@
       ],
       "query": []
     },
-    "path": "/seo/geo/{id}",
+    "path": "/packages/{id}/intent-pages",
     "policy": {
       "deleteAction": "never",
       "permissions": [
-        "seo:insight:view"
+        "catalog:package:view"
       ]
     },
-    "summary": "getSeoGeo"
+    "summary": "An app's intent page switches"
   },
-  "getSeoListingCandidate": {
+  "getPackageSeo": {
     "body": null,
     "headerNames": {},
     "method": "GET",
-    "model": "GetSeoListingCandidateInput",
+    "model": "GetPackageSeoInput",
     "parameters": {
       "header": [],
       "path": [
-        "token"
+        "id"
       ],
       "query": []
     },
-    "path": "/seo/listings/{token}",
+    "path": "/packages/{id}/seo",
     "policy": {
       "deleteAction": "never",
       "permissions": [
-        "catalog:package:edit"
+        "catalog:package:view"
       ]
     },
-    "summary": "getSeoListingCandidate"
+    "summary": "An app's overview title and description overrides"
   },
-  "getSeoOverview": {
+  "getPageDecision": {
     "body": null,
     "headerNames": {},
     "method": "GET",
-    "model": "GetSeoOverviewInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": []
-    },
-    "path": "/seo/overview",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:insight:view"
-      ]
-    },
-    "summary": "get Seo Overview"
-  },
-  "getSeoPage": {
-    "body": null,
-    "headerNames": {},
-    "method": "GET",
-    "model": "GetSeoPageInput",
+    "model": "GetPageDecisionInput",
     "parameters": {
       "header": [],
       "path": [],
@@ -1204,34 +924,33 @@
         "url"
       ]
     },
-    "path": "/seo/page",
+    "path": "/page-decision",
     "policy": {
       "deleteAction": "never",
       "permissions": [
-        "seo:insight:view"
+        "site:index:view"
       ]
     },
-    "summary": "get Seo Page"
+    "summary": "Index decision for one page of the site"
   },
-  "getSeoTask": {
+  "getSiteIndexSettings": {
     "body": null,
     "headerNames": {},
     "method": "GET",
-    "model": "GetSeoTaskInput",
+    "model": "GetSiteIndexSettingsInput",
     "parameters": {
       "header": [],
-      "path": [
-        "id"
-      ],
+      "path": [],
       "query": []
     },
-    "path": "/seo/tasks/{id}",
+    "path": "/site-index/settings",
     "policy": {
+      "deleteAction": "never",
       "permissions": [
-        "seo:task:handle"
+        "site:index:view"
       ]
     },
-    "summary": "getSeoTask"
+    "summary": "Read-only site settings for indexing"
   },
   "getTranslationLog": {
     "body": null,
@@ -1321,29 +1040,6 @@
     },
     "summary": "View trash snapshot"
   },
-  "importSeoTasks": {
-    "body": {
-      "$ref": "#/components/schemas/SeoTasksImport"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "ImportSeoTasksInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/tasks/import",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "importSeoTasks"
-  },
   "introspectAgentToken": {
     "body": null,
     "headerNames": {},
@@ -1399,6 +1095,7 @@
         "from",
         "to",
         "type",
+        "afterSeq",
         "hasEditorial",
         "sort"
       ]
@@ -1676,6 +1373,30 @@
     },
     "summary": "Client release list"
   },
+  "listDueFactRecords": {
+    "body": null,
+    "headerNames": {},
+    "method": "GET",
+    "model": "ListDueFactRecordsInput",
+    "parameters": {
+      "header": [],
+      "path": [],
+      "query": [
+        "current",
+        "size",
+        "withinDays",
+        "kind"
+      ]
+    },
+    "path": "/facts/due",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:view"
+      ]
+    },
+    "summary": "Verified fact records due for a recheck"
+  },
   "listFeatures": {
     "body": null,
     "headerNames": {},
@@ -1748,6 +1469,30 @@
       ]
     },
     "summary": "Query glossary"
+  },
+  "listIntentPages": {
+    "body": null,
+    "headerNames": {},
+    "method": "GET",
+    "model": "ListIntentPagesInput",
+    "parameters": {
+      "header": [],
+      "path": [],
+      "query": [
+        "current",
+        "size",
+        "pageKind",
+        "locale"
+      ]
+    },
+    "path": "/intent-pages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:view"
+      ]
+    },
+    "summary": "Open intent page switches of the site"
   },
   "listJobRuns": {
     "body": null,
@@ -1859,76 +1604,6 @@
       ]
     },
     "summary": "Queue status"
-  },
-  "listSeoActions": {
-    "body": null,
-    "headerNames": {},
-    "method": "GET",
-    "model": "ListSeoActionsInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "current",
-        "size",
-        "operation",
-        "mode",
-        "result"
-      ]
-    },
-    "path": "/seo/actions",
-    "policy": {
-      "permissions": [
-        "seo:insight:view"
-      ]
-    },
-    "summary": "listSeoActions"
-  },
-  "listSeoGeo": {
-    "body": null,
-    "headerNames": {},
-    "method": "GET",
-    "model": "ListSeoGeoInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "current",
-        "size"
-      ]
-    },
-    "path": "/seo/geo",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:insight:view"
-      ]
-    },
-    "summary": "listSeoGeo"
-  },
-  "listSeoKeywords": {
-    "body": null,
-    "headerNames": {},
-    "method": "GET",
-    "model": "ListSeoKeywordsInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "current",
-        "size",
-        "language",
-        "q"
-      ]
-    },
-    "path": "/seo/keywords",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:insight:view"
-      ]
-    },
-    "summary": "list Seo Keywords"
   },
   "listSynonyms": {
     "body": null,
@@ -2102,108 +1777,20 @@
     },
     "summary": "Zero-result search queries"
   },
-  "nominateSeoListing": {
-    "body": {
-      "$ref": "#/components/schemas/SeoListingNomination"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "NominateSeoListingInput",
-    "parameters": {
-      "header": [],
-      "path": [
-        "token"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/listings/{token}/nominate",
-    "policy": {
-      "permissions": [
-        "catalog:package:edit"
-      ]
-    },
-    "summary": "nominateSeoListing"
-  },
-  "nominateSeoTopic": {
-    "body": {
-      "$ref": "#/components/schemas/SeoTopicNomination"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "NominateSeoTopicInput",
-    "parameters": {
-      "header": [],
-      "path": [
-        "key"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/topics/{key}/nominate",
-    "policy": {
-      "permissions": [
-        "content:article:edit"
-      ]
-    },
-    "summary": "nominateSeoTopic"
-  },
-  "proposeSnippetTemplate": {
-    "body": {
-      "$ref": "#/components/schemas/SeoSnippetProposal"
-    },
-    "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
-    },
-    "method": "POST",
-    "model": "ProposeSnippetTemplateInput",
-    "parameters": {
-      "header": [
-        "taskId",
-        "fencing",
-        "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
-      ],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/snippet-templates",
-    "policy": {
-      "permissions": [
-        "seo:snippet:propose"
-      ]
-    },
-    "summary": "proposeSnippetTemplate"
-  },
   "publishArticle": {
     "body": {
       "$ref": "#/components/schemas/ArticleRevisionCheck"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "PublishArticleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2226,21 +1813,15 @@
       "$ref": "#/components/schemas/PublishRequest"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "PublishCollectionInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2258,47 +1839,18 @@
     },
     "summary": "Publish collection"
   },
-  "recordSeoGeo": {
-    "body": {
-      "$ref": "#/components/schemas/SeoGeoImport"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "RecordSeoGeoInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/geo",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "recordSeoGeo"
-  },
   "removeLinkPackage": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "RemoveLinkPackageInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2319,21 +1871,15 @@
   "removeTapPackage": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "DELETE",
     "model": "RemoveTapPackageInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2351,50 +1897,20 @@
     },
     "summary": "Remove a third-party tap cask"
   },
-  "reopenSeoTask": {
-    "body": {
-      "$ref": "#/components/schemas/SeoTaskReopen"
-    },
-    "headerNames": {},
-    "method": "POST",
-    "model": "ReopenSeoTaskInput",
-    "parameters": {
-      "header": [],
-      "path": [
-        "id"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/tasks/{id}/reopen",
-    "policy": {
-      "permissions": [
-        "seo:task:handle"
-      ]
-    },
-    "summary": "reopenSeoTask"
-  },
   "reorderCategories": {
     "body": {
       "$ref": "#/components/schemas/CategoryOrder"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "ReorderCategoriesInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -2415,21 +1931,15 @@
       "$ref": "#/components/schemas/IdList"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "ReorderPackageScreenshotsInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2452,21 +1962,15 @@
       "$ref": "#/components/schemas/ArticleRevisionCheck"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "RestoreArticleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2489,21 +1993,15 @@
       "$ref": "#/components/schemas/RestoreOptions"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "RestoreRevisionInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2524,21 +2022,15 @@
   "restoreTrash": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "RestoreTrashInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2559,21 +2051,15 @@
   "resyncPackage": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "ResyncPackageInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2596,21 +2082,15 @@
       "$ref": "#/components/schemas/ArticleRevert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "RevertArticleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2631,21 +2111,15 @@
   "revertRequest": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "RevertRequestInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "requestId"
@@ -2668,21 +2142,15 @@
       "$ref": "#/components/schemas/ArticleLocaleUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetArticleLocaleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id",
@@ -2706,21 +2174,15 @@
       "$ref": "#/components/schemas/ArticlePackagesUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetArticlePackagesInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2743,21 +2205,15 @@
       "$ref": "#/components/schemas/ArticleSlugUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetArticleSlugInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2780,21 +2236,15 @@
       "$ref": "#/components/schemas/BackgroundContent"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetBackgroundItemInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "label"
@@ -2817,21 +2267,15 @@
       "$ref": "#/components/schemas/CollectionItemsUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetCollectionItemsInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2854,21 +2298,15 @@
       "$ref": "#/components/schemas/CollectionCriteria"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetCollectionSetupCriteriaInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2891,21 +2329,15 @@
       "$ref": "#/components/schemas/PackageAlternativesUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetPackageAlternativesInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2928,21 +2360,15 @@
       "$ref": "#/components/schemas/PackageCategoriesUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetPackageCategoriesInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -2965,21 +2391,15 @@
       "$ref": "#/components/schemas/FactRecordsUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetPackageFactRecordsInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3002,21 +2422,15 @@
       "$ref": "#/components/schemas/AssetRef"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetPackageIconInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3034,26 +2448,51 @@
     },
     "summary": "Set icon"
   },
+  "setPackageIntentPages": {
+    "body": {
+      "$ref": "#/components/schemas/PackageIntentPagesUpdate"
+    },
+    "headerNames": {
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
+    },
+    "method": "PUT",
+    "model": "SetPackageIntentPagesInput",
+    "parameters": {
+      "header": [
+        "expectedRevision",
+        "idempotencyKey"
+      ],
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/packages/{id}/intent-pages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Open or close an app's intent pages"
+  },
   "setPackageMacosSupport": {
     "body": {
       "$ref": "#/components/schemas/PackageMacosUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetPackageMacosSupportInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3076,21 +2515,15 @@
       "$ref": "#/components/schemas/PackagePriceUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "SetPackagePriceInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3108,26 +2541,51 @@
     },
     "summary": "Set price type with evidence"
   },
+  "setPackageSeo": {
+    "body": {
+      "$ref": "#/components/schemas/PackageSeoUpdate"
+    },
+    "headerNames": {
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
+    },
+    "method": "PUT",
+    "model": "SetPackageSeoInput",
+    "parameters": {
+      "header": [
+        "expectedRevision",
+        "idempotencyKey"
+      ],
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/packages/{id}/seo",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Set an app's overview title and description"
+  },
   "submitArticleReview": {
     "body": {
       "$ref": "#/components/schemas/ArticleRevisionCheck"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "SubmitArticleReviewInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3148,21 +2606,15 @@
   "triggerJob": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "TriggerJobInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "jobType"
@@ -3183,21 +2635,15 @@
   "unpublishCollection": {
     "body": null,
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "UnpublishCollectionInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3220,21 +2666,15 @@
       "$ref": "#/components/schemas/AnnouncementUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateAnnouncementInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -3255,21 +2695,15 @@
       "$ref": "#/components/schemas/ArticleUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateArticleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3292,21 +2726,15 @@
       "$ref": "#/components/schemas/ArticleAuthorWrite"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateArticleAuthorInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3329,21 +2757,15 @@
       "$ref": "#/components/schemas/CategoryUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateCategoryInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3366,21 +2788,15 @@
       "$ref": "#/components/schemas/CollectionUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateCollectionInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3403,21 +2819,15 @@
       "$ref": "#/components/schemas/DesktopNotesUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateDesktopReleaseNotesInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3440,21 +2850,15 @@
       "$ref": "#/components/schemas/FeatureUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateFeatureInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3477,21 +2881,15 @@
       "$ref": "#/components/schemas/FeedbackUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateFeedbackInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3514,21 +2912,15 @@
       "$ref": "#/components/schemas/LinkPackageUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PATCH",
     "model": "UpdateLinkPackageInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3551,21 +2943,15 @@
       "$ref": "#/components/schemas/PackageMetaUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdatePackageMetaInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3588,21 +2974,15 @@
       "$ref": "#/components/schemas/ScreenshotUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdatePackageScreenshotInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id",
@@ -3626,21 +3006,15 @@
       "$ref": "#/components/schemas/PackageTextUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdatePackageTextInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3663,21 +3037,15 @@
       "$ref": "#/components/schemas/ReleaseUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateReleaseInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3695,49 +3063,20 @@
     },
     "summary": "Edit release"
   },
-  "updateSeoAutomation": {
-    "body": {
-      "$ref": "#/components/schemas/SeoAutomationUpdate"
-    },
-    "headerNames": {},
-    "method": "PUT",
-    "model": "UpdateSeoAutomationInput",
-    "parameters": {
-      "header": [],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/automation",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:automation:tune"
-      ]
-    },
-    "summary": "updateSeoAutomation"
-  },
   "updateSynonym": {
     "body": {
       "$ref": "#/components/schemas/SynonymUpsert"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpdateSynonymInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"
@@ -3794,21 +3133,15 @@
       "type": "object"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "UploadAssetInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -3829,21 +3162,15 @@
       "$ref": "#/components/schemas/GlossaryTermUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpsertGlossaryTermInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -3864,21 +3191,15 @@
       "$ref": "#/components/schemas/EditorialNotesUpdate"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpsertReleaseNotesInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id",
@@ -3897,98 +3218,20 @@
     },
     "summary": "Write or clear editorial release notes"
   },
-  "upsertSeoKeywords": {
-    "body": {
-      "$ref": "#/components/schemas/SeoKeywordsWrite"
-    },
-    "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
-    },
-    "method": "POST",
-    "model": "UpsertSeoKeywordsInput",
-    "parameters": {
-      "header": [
-        "taskId",
-        "fencing",
-        "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
-      ],
-      "path": [],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/keywords",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "seo:keyword:edit"
-      ]
-    },
-    "summary": "upsert Seo Keywords"
-  },
-  "upsertSeoListingCandidate": {
-    "body": {
-      "$ref": "#/components/schemas/SeoListingWrite"
-    },
-    "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
-    },
-    "method": "PUT",
-    "model": "UpsertSeoListingCandidateInput",
-    "parameters": {
-      "header": [
-        "taskId",
-        "fencing",
-        "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
-      ],
-      "path": [
-        "token"
-      ],
-      "query": [
-        "dryRun"
-      ]
-    },
-    "path": "/seo/listings/{token}",
-    "policy": {
-      "deleteAction": "never",
-      "permissions": [
-        "catalog:package:edit"
-      ]
-    },
-    "summary": "upsertSeoListingCandidate"
-  },
   "upsertUpdateFeed": {
     "body": {
       "$ref": "#/components/schemas/UpdateFeedInput"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "PUT",
     "model": "UpsertUpdateFeedInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [],
       "query": [
@@ -4009,21 +3252,15 @@
       "$ref": "#/components/schemas/ArticleWithdraw"
     },
     "headerNames": {
-      "evidenceIds": "X-SEO-Evidence-IDs",
-      "expectedRevision": "X-SEO-Expected-Revision",
-      "fencing": "X-SEO-Fencing",
-      "idempotencyKey": "Idempotency-Key",
-      "taskId": "X-SEO-Task-ID"
+      "expectedRevision": "X-Expected-Revision",
+      "idempotencyKey": "Idempotency-Key"
     },
     "method": "POST",
     "model": "WithdrawArticleInput",
     "parameters": {
       "header": [
-        "taskId",
-        "fencing",
         "expectedRevision",
-        "idempotencyKey",
-        "evidenceIds"
+        "idempotencyKey"
       ],
       "path": [
         "id"

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,19 +15,10 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/fetch"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"golang.org/x/net/html"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-const RuleVersion = "agent-v1"
-const PlaybookVersion = "seo-routine-v1"
-
-type Violation struct{ Reason string }
-
-func (e *Violation) Error() string { return "Agent gate: " + e.Reason }
-func reject(reason string) error   { return &Violation{Reason: reason} }
 
 type Evidence struct {
 	ID          int64      `json:"id"`
@@ -48,7 +38,7 @@ type Evidence struct {
 	RevokedAt   *time.Time `json:"revokedAt"`
 }
 
-func (Evidence) TableName() string { return "seo_evidence_snapshots" }
+func (Evidence) TableName() string { return "evidence_snapshots" }
 
 type EvidenceService struct {
 	DB        *gorm.DB
@@ -57,7 +47,6 @@ type EvidenceService struct {
 }
 type Capture struct {
 	DryRun                                         bool
-	TaskID, Fencing                                int64
 	Owner, IdempotencyKey, EntityKey, URL, Excerpt string
 }
 
@@ -67,37 +56,17 @@ func NewEvidenceService(db *gorm.DB, userAgent string) *EvidenceService {
 
 func normalizeText(value string) string { return strings.Join(strings.Fields(value), " ") }
 
-// Capture keeps the Agent path fenced by its task lease.
-func (e *EvidenceService) Capture(ctx context.Context, in Capture) (Evidence, error) {
-	return e.capture(ctx, in, func(tx *gorm.DB) error {
-		task, err := seotasks.Verify(ctx, tx, in.TaskID, in.Fencing, in.Owner)
-		if err != nil {
-			return err
-		}
-		key, err := seotasks.CanonicalEntity(ctx, tx, task.EntityKey)
-		if err != nil {
-			return err
-		}
-		wanted, err := seotasks.CanonicalEntity(ctx, tx, in.EntityKey)
-		if err != nil {
-			return err
-		}
-		if key != wanted {
-			return reject("evidence_entity_mismatch")
-		}
-		return nil
-	})
-}
-
-// CaptureArticle is the human editor path. It uses article edit permission and
-// current package membership instead of requiring an unrelated Agent task.
+// CaptureArticle is the human editor path. It requires article edit permission
+// and binds package evidence to the article's current package membership.
 func (e *EvidenceService) CaptureArticle(ctx context.Context, in Capture, articleID int64) (Evidence, error) {
 	op := domain.CurrentOperation(ctx)
-	if op == nil || op.ActorID == nil || op.AgentClientID > 0 || op.AgentTokenID > 0 || !op.Allowed("content:article:edit") {
-		return Evidence{}, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}
+	if op == nil || op.ActorID == nil || op.AgentClientID > 0 || op.AgentTokenID > 0 {
+		return Evidence{}, domain.Forbidden(http.StatusForbidden, "operation_not_exposed")
+	}
+	if !op.Allowed("content:article:edit") {
+		return Evidence{}, domain.Forbidden(http.StatusForbidden, "permission_required:content:article:edit")
 	}
 	in.Owner = fmt.Sprintf("admin:%d", *op.ActorID)
-	in.TaskID, in.Fencing = 0, 0
 	return e.capture(ctx, in, func(tx *gorm.DB) error {
 		var revision int64
 		r := tx.Raw("SELECT working_revision_id FROM articles WHERE id=? FOR SHARE", articleID).Scan(&revision)
@@ -123,7 +92,7 @@ func (e *EvidenceService) CaptureArticle(ctx context.Context, in Capture, articl
 
 func (e *EvidenceService) capture(ctx context.Context, in Capture, verify func(*gorm.DB) error) (Evidence, error) {
 	out := Evidence{}
-	normalized, err := seotasks.CanonicalEntity(ctx, e.DB, in.EntityKey)
+	normalized, err := CanonicalEntity(ctx, e.DB, in.EntityKey)
 	if err != nil {
 		return out, err
 	}
@@ -139,8 +108,9 @@ func (e *EvidenceService) capture(ctx context.Context, in Capture, verify func(*
 	if excerpt == "" {
 		return out, reject("empty_excerpt")
 	}
-	raw, _ := json.Marshal([]string{strconv.FormatInt(in.TaskID, 10), canonicalEntity(in.EntityKey), in.URL, excerpt})
-	requestHash := seotasks.Hash(raw)
+	// The leading "0" is the retired task ID; it keeps recorded capture keys replayable.
+	raw, _ := json.Marshal([]string{"0", canonicalEntity(in.EntityKey), in.URL, excerpt})
+	requestHash := Hash(raw)
 	captureKey := in.Owner + ":" + in.IdempotencyKey
 	existing := e.DB.WithContext(ctx).Where("capture_key=?", captureKey).Limit(1).Find(&out)
 	if existing.Error != nil {
@@ -148,7 +118,7 @@ func (e *EvidenceService) capture(ctx context.Context, in Capture, verify func(*
 	}
 	if existing.RowsAffected > 0 {
 		if out.RequestHash != requestHash {
-			return Evidence{}, seotasks.ErrConflict
+			return Evidence{}, ErrIdempotencyKeyReused
 		}
 		if err := e.DB.WithContext(ctx).Transaction(verify); err != nil {
 			return Evidence{}, err
@@ -218,7 +188,7 @@ func (e *EvidenceService) capture(ctx context.Context, in Capture, verify func(*
 			return err
 		}
 		out.ValidUntil = out.FetchedAt.Add(30 * 24 * time.Hour)
-		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "seo:evidence:"+captureKey).Error; err != nil {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "evidence:capture:"+captureKey).Error; err != nil {
 			return err
 		}
 		var prior Evidence
@@ -228,7 +198,7 @@ func (e *EvidenceService) capture(ctx context.Context, in Capture, verify func(*
 		}
 		if result.RowsAffected > 0 {
 			if prior.RequestHash != requestHash {
-				return seotasks.ErrConflict
+				return ErrIdempotencyKeyReused
 			}
 			out = prior
 			return nil
@@ -356,7 +326,7 @@ func LoadEvidence(ctx context.Context, tx *gorm.DB, ids []int64, entity string, 
 		}
 		seen[id] = true
 	}
-	entity, err := seotasks.CanonicalEntity(ctx, tx, entity)
+	entity, err := CanonicalEntity(ctx, tx, entity)
 	if err != nil {
 		return nil, err
 	}
@@ -374,16 +344,4 @@ func LoadEvidence(ctx context.Context, tx *gorm.DB, ids []int64, entity string, 
 		}
 	}
 	return rows, nil
-}
-
-func IsViolation(err error) bool { var v *Violation; return errors.As(err, &v) }
-
-// Rejection names the broken rule so an agent can correct its request instead of
-// retrying blind. Reasons are fixed rule codes and never carry fetched content.
-func Rejection(err error, status int) (*domain.AppError, string, bool) {
-	var v *Violation
-	if !errors.As(err, &v) {
-		return nil, "", false
-	}
-	return &domain.AppError{Code: domain.CodeValidation, HTTPStatus: status, Msg: "rejected: " + v.Reason}, v.Reason, true
 }

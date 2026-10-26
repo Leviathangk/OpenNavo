@@ -26,20 +26,9 @@
     }
   ],
   "permissions": [
-    {"code":"seo:automation:tune","name":"Tune SEO automation","roles":["R_ADMIN","R_AGENT"]},
-    {"code":"seo:snippet:propose","name":"Propose SEO templates","roles":["R_ADMIN","R_AGENT"]},
-    {"code":"seo:task:handle","name":"Handle SEO tasks","roles":["R_ADMIN","R_AGENT"]},
     {
-      "code": "seo:insight:view",
-      "name": "View SEO measurements and keyword ledger",
-      "roles": [
-        "R_ADMIN",
-        "R_AGENT"
-      ]
-    },
-    {
-      "code": "seo:keyword:edit",
-      "name": "Update SEO keyword ledger and targets",
+      "code": "site:index:view",
+      "name": "View page indexing decisions and site index settings",
       "roles": [
         "R_ADMIN",
         "R_AGENT"

@@ -126,7 +126,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 					return nil, err
 				}
 				if a.Kind != "icon" {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("asset_kind_mismatch:icon")
 				}
 				fields["icon_asset_id"] = assetID
 				fields["icon_source"] = "manual"
@@ -224,7 +224,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 				return nil, err
 			}
 			if a.Kind != "screenshot" {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("asset_kind_mismatch:screenshot")
 			}
 			theme := text(in.Body, "theme")
 			if theme == "" {
@@ -271,7 +271,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 				return nil, err
 			}
 			if len(order) != int(count) {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("screenshot_order_incomplete")
 			}
 			for i, id := range order {
 				r := st.DB.WithContext(ctx).Exec("UPDATE package_screenshots SET sort=? WHERE id=? AND package_id=?", i, id, in.ID)
@@ -279,7 +279,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 					return nil, r.Error
 				}
 				if r.RowsAffected != 1 {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("screenshot_not_found")
 				}
 			}
 		default:

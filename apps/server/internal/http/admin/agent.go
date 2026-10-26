@@ -83,7 +83,7 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 		c.Header("Cache-Control", "no-store")
 		svc := h.agentService()
 		if svc == nil {
-			respond.Error(c, agent.Error(domain.CodeForbidden), true)
+			respond.Error(c, domain.Forbidden(http.StatusForbidden, "operation_not_exposed"), true)
 			return
 		}
 		id, err := svc.Authenticate(c.Request.Context(), c.GetHeader("X-Agent-Gateway-Key"), auth.Bearer(c.GetHeader("Authorization")), c.GetHeader("X-Agent-Client-IP"))
@@ -93,7 +93,7 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 		}
 		p, ok := policies[c.Request.Method+" "+strings.TrimPrefix(c.FullPath(), "/agent-api")]
 		if !ok {
-			respond.Error(c, agent.Error(domain.CodeForbidden), true)
+			respond.Error(c, domain.Forbidden(http.StatusForbidden, "operation_not_exposed"), true)
 			return
 		}
 		op := &domain.Operation{RequestID: c.GetString("requestId"), Name: p.Operation, Tool: c.GetHeader("X-Agent-Tool"), ActorName: id.ClientName, ActorID: &id.UserID, AgentClientID: id.ClientID, AgentTokenID: id.ID, Permissions: id.Permissions, RequiredPermissions: p.Permissions, AllowDelete: id.AllowDelete, DryRun: c.Query("dryRun") == "true"}
@@ -106,8 +106,12 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 				return
 			}
 		}
-		if c.GetHeader("X-Request-ID") == "" || len(c.GetHeader("X-Request-ID")) > 128 || (!p.Introspection && !agentToolPattern.MatchString(op.Tool)) {
-			respond.Error(c, domain.Validation(), true)
+		if c.GetHeader("X-Request-ID") == "" || len(c.GetHeader("X-Request-ID")) > 128 {
+			respond.Error(c, domain.Rejected("header_invalid:X-Request-ID"), true)
+			return
+		}
+		if !p.Introspection && !agentToolPattern.MatchString(op.Tool) {
+			respond.Error(c, domain.Rejected("header_invalid:X-Agent-Tool"), true)
 			return
 		}
 		callID, finish, ok := beginAgentCall(c, svc, id, op, c.GetHeader("X-Agent-Client-IP"), c.Request.Method != "GET" && !p.Introspection)
@@ -117,27 +121,31 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 		defer finish()
 		for _, permission := range p.Permissions {
 			if !op.Allowed(permission) {
-				respond.Error(c, agent.Error(domain.CodeForbidden), true)
+				respond.Error(c, domain.Forbidden(http.StatusForbidden, "permission_required:"+permission), true)
 				return
 			}
 		}
 		var body map[string]any
 		if strings.HasPrefix(c.GetHeader("Content-Type"), "application/json") {
 			raw, err := io.ReadAll(io.LimitReader(c.Request.Body, 1024*1024+1))
-			if err != nil || len(raw) > 1024*1024 || json.Unmarshal(raw, &body) != nil {
-				respond.Error(c, domain.Validation(), true)
+			if err == nil && len(raw) > 1024*1024 {
+				respond.Error(c, domain.Rejected("body_too_large:1048576"), true)
+				return
+			}
+			if err != nil || json.Unmarshal(raw, &body) != nil {
+				respond.Error(c, domain.Rejected("body_invalid"), true)
 				return
 			}
 			c.Request.Body = io.NopCloser(bytes.NewReader(raw))
 			c.Set("adminBody", raw)
 		}
 		if !id.AllowDelete && (p.DeleteAction == "always" || (p.DeleteAction == "clear" && body["clear"] == true)) {
-			respond.Error(c, agent.Error(domain.CodeForbidden), true)
+			respond.Error(c, domain.Forbidden(http.StatusForbidden, "delete_not_allowed"), true)
 			return
 		}
 		for _, v := range body {
 			if list, ok := v.([]any); ok && len(list) > id.Limits.BatchLimit {
-				respond.Error(c, agent.Error(domain.CodeRateLimited), true)
+				respond.Error(c, domain.Rejected("batch_too_large:"+strconv.Itoa(id.Limits.BatchLimit)), true)
 				return
 			}
 		}
@@ -170,7 +178,7 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 func (h *Handler) agentUpload(c *gin.Context) {
 	svc := h.agentService()
 	if svc == nil {
-		respond.Error(c, agent.Error(domain.CodeForbidden), true)
+		respond.Error(c, domain.Forbidden(http.StatusForbidden, "operation_not_exposed"), true)
 		return
 	}
 	ip := c.ClientIP()
@@ -191,7 +199,7 @@ func (h *Handler) agentUpload(c *gin.Context) {
 	}
 	defer finish()
 	if !op.Allowed("catalog:asset:upload") {
-		respond.Error(c, agent.Error(domain.CodeForbidden), true)
+		respond.Error(c, domain.Forbidden(http.StatusForbidden, "permission_required:catalog:asset:upload"), true)
 		return
 	}
 	// Issuing the ticket already reserved the write quota; link this upload to that call instead of charging again.
@@ -220,7 +228,7 @@ func beginAgentCall(c *gin.Context, svc *agent.Service, id agent.Identity, op *d
 		return 0, nil, false
 	}
 	if callID == 0 {
-		respond.Error(c, agent.Error(domain.CodeConflict), true)
+		respond.Error(c, &domain.AppError{Code: domain.CodeConflict, HTTPStatus: http.StatusForbidden, Msg: "rejected: request_id_reused"}, true)
 		return 0, nil, false
 	}
 	w := &agentWriter{ResponseWriter: c.Writer}
@@ -250,12 +258,17 @@ func touchAgentToken(c *gin.Context, svc *agent.Service, id agent.Identity, ip s
 func optionalCatalogExecution(_ string, headers http.Header, _ bool) (*domain.AgentExecution, error) {
 	out := &domain.AgentExecution{IdempotencyKey: headers.Get("Idempotency-Key")}
 	if out.IdempotencyKey != "" && (len(out.IdempotencyKey) < 8 || len(out.IdempotencyKey) > 200) {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("header_invalid:Idempotency-Key")
 	}
-	if raw := headers.Get("X-SEO-Expected-Revision"); raw != "" {
+	raw := headers.Get("X-Expected-Revision")
+	if raw == "" {
+		// Accepted for one release while MCP clients move to X-Expected-Revision.
+		raw = headers.Get("X-SEO-Expected-Revision")
+	}
+	if raw != "" {
 		value, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || value < 0 {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("header_invalid:X-Expected-Revision")
 		}
 		out.ExpectedRevision, out.ExpectedRevisionSet = value, true
 	}
@@ -287,13 +300,8 @@ func (r AgentRouter) DELETE(p string, h ...gin.HandlerFunc) gin.IRoutes {
 	return r.register(http.MethodDelete, p, h...)
 }
 
-// Control operations and batch translations parse their own optional execution
-// metadata. Task claim/complete/defer still enforce the queue lease contract.
+// Batch translations carry per-language idempotency keys and revisions in
+// their body instead of the request headers.
 func agentControlOperation(operation string) bool {
-	switch operation {
-	case "claimSeoTasks", "completeSeoTask", "deferSeoTask", "reopenSeoTask", "nominateSeoListing", "nominateSeoTopic", "createSeoEvidence", "updateSeoAutomation", "importSeoTasks", "writeTranslations", "recordSeoGeo":
-		return true
-	default:
-		return false
-	}
+	return operation == "writeTranslations"
 }

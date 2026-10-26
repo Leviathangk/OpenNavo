@@ -194,20 +194,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   const entry = fileURLToPath(new URL('../.output/server/index.mjs', import.meta.url));
   await access(entry);
   const requestedTokens = new Set();
-  const experimentUrls = [];
-  const hasPayloadKey = (html, key) => {
-    const json = /<script[^>]+id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1];
-    return json && JSON.parse(json).some(value => value && typeof value === 'object' && Object.hasOwn(value, key));
-  };
-  const experimentFixtures = {
-    'seo-free': { variant: 'verified_free' },
-    'seo-version': { variant: 'current_version' },
-    'seo-uninstall': { variant: 'uninstall_alternatives' },
-    'seo-control': { variant: 'current_version', arm: 'control' },
-    'seo-ineligible': { variant: 'current_version', eligible: false },
-    'seo-unverified': { variant: 'verified_free' },
-    'seo-error': {},
-    'seo-timeout': {}
+  // Requests for the retired SEO experiment API; no page may ask for it any more.
+  const seoApiRequests = [];
+  // Synthetic "SEO App" overviews: no extra facts, a verified free price, full uninstall and alternatives
+  // facts, and per-language search overrides (English and Chinese for both fields, English title only, and
+  // an app Homebrew has disabled).
+  const seoApps = ['seo-basic', 'seo-free', 'seo-uninstall', 'seo-override', 'seo-override-title', 'seo-disabled'];
+  const seoOverrides = {
+    'seo-override': {
+      'en-US': {
+        title: 'SEO App for Mac, picked by editors',
+        description: 'An editor-written description of SEO App.'
+      },
+      'zh-CN': { title: 'SEO App 编辑精选', description: '编辑撰写的 SEO App 介绍。' }
+    },
+    'seo-override-title': { 'en-US': { title: 'Custom SEO App title' } },
+    'seo-disabled': {
+      'en-US': { title: 'SEO App for Mac – Free Download', description: 'Download SEO App for free on your Mac.' }
+    }
   };
   // Admin SEO settings (WP24) as served by GET /site/settings.
   const siteSettings = {
@@ -433,22 +437,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     let data;
     let status = 200;
     const lifecycle = /^\/api\/v1\/packages\/cask\/([^/]+)\/lifecycle$/.exec(path)?.[1];
-    if (path === '/api/v1/seo/experiment') {
-      const canonical = query.get('url');
-      experimentUrls.push(canonical);
-      const token = new URL(canonical).pathname.split('/').at(-1);
-      // A hung upstream never answers. The page must still finish with its original metadata.
-      if (token === 'seo-timeout') return;
-      if (token === 'seo-error') status = 503;
-      data = {
-        experimentId: 42,
-        arm: 'treatment',
-        variant: null,
-        templateVersion: 'snippet-v1',
-        eligible: true,
-        expiresAt: '2026-12-01T00:00:00Z',
-        ...(experimentFixtures[token] ?? { experimentId: null, arm: 'none', eligible: false })
-      };
+    if (path.startsWith('/api/v1/seo/')) {
+      seoApiRequests.push(path);
+      status = 404;
+      data = null;
     } else if (lifecycle === 'old-token') {
       data = { state: 'renamed', token: 'ordinary-app' };
     } else if (lifecycle === 'gone-app') {
@@ -622,7 +614,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         '/api/v1/packages/cask/plus-app++/releases',
         '/api/v1/packages/cask/ordinary-app/releases',
         '/api/v1/packages/cask/variant-app@beta/releases',
-        '/api/v1/packages/cask/opennavo/releases'
+        '/api/v1/packages/cask/opennavo/releases',
+        '/api/v1/packages/cask/seo-override/releases'
       ].includes(path)
     ) {
       const original = query.get('original') === 'true';
@@ -707,7 +700,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     } else if (
       match &&
       [
-        ...Object.keys(experimentFixtures),
+        ...seoApps,
         'versioned-app@11',
         'plus-app++',
         'ordinary-app',
@@ -783,7 +776,14 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             ...(token === 'ordinary-app' ? { articles: [roundupCard(false)] } : {}),
             ...(token === 'facts-app' || token === 'seo-uninstall' ? factsApp : {}),
             ...(token.startsWith('seo-') ? { displayName: 'SEO App', names: ['SEO App'] } : {}),
-            ...(['seo-free', 'seo-unverified'].includes(token)
+            ...(token === 'seo-disabled'
+              ? { disabled: true, homebrewStatus: { state: 'disabled', reason: 'discontinued', date: '2026-09-01' } }
+              : {}),
+            // The API returns the override of the requested language only, or null.
+            ...(seoOverrides[token]
+              ? { seoOverride: seoOverrides[token][req.headers['accept-language'] ?? 'en-US'] ?? null }
+              : {}),
+            ...(token === 'seo-free'
               ? {
                   price: {
                     type: 'free',
@@ -793,7 +793,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                     plan: 'Personal',
                     sourceUrl: 'https://vendor.example/pricing',
                     verifiedAt: '2025-12-01T08:00:00Z',
-                    stale: token === 'seo-unverified'
+                    stale: false
                   }
                 }
               : {}),
@@ -1860,6 +1860,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     );
   });
   await t.test('only public cached pages may be cached at the edge', async () => {
+    // Purged pages keep two days and lists ten minutes; both answer from the edge while the origin sheds load.
+    const LONG_EDGE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
+    const SHORT_EDGE = 'max-age=600, stale-while-revalidate=3600, stale-if-error=86400';
     const edge = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       await response.text();
@@ -1867,11 +1870,11 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     };
     // App pages with their tabs, and article pages, are purged on change and after each release, so
     // they stay for hours.
-    assert.deepEqual(await edge('/apps/ordinary-app'), [200, 'max-age=21600, stale-while-revalidate=86400']);
-    assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, 'max-age=21600, stale-while-revalidate=86400']);
+    assert.deepEqual(await edge('/apps/ordinary-app'), [200, LONG_EDGE]);
+    assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, LONG_EDGE]);
     // X5: collections now use the same short edge cache as other public lists; search stays private.
     assert.equal((await edge('/search?q=editor'))[1], 'no-store');
-    assert.deepEqual(await edge('/collections'), [200, 'max-age=600, stale-while-revalidate=3600']);
+    assert.deepEqual(await edge('/collections'), [200, SHORT_EDGE]);
     assert.deepEqual(await edge('/apps/gone-app'), [410, 'no-store']);
     assert.deepEqual(await edge('/apps/missing-app@0'), [404, 'no-store']);
     // The category overview and the feedback form are cached at the origin like their neighbours.
@@ -1881,11 +1884,22 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.equal(response.status, 200, `${path}\n${logs}`);
       assert.match(response.headers.get('cache-control') ?? '', /s-maxage=900/, path);
     }
-    assert.deepEqual(await edge('/categories'), [200, 'max-age=600, stale-while-revalidate=3600']);
+    assert.deepEqual(await edge('/categories'), [200, SHORT_EDGE]);
     // Recently Updated is a list like /apps, paginated pages included. (Later tests need /recent itself
     // uncached by the route cache, so these are other languages' URLs.)
     for (const path of ['/pt/recent', '/ru/recent?page=2', '/es/recent?page=2&size=12'])
-      assert.deepEqual(await edge(path), [200, 'max-age=600, stale-while-revalidate=3600'], path);
+      assert.deepEqual(await edge(path), [200, SHORT_EDGE], path);
+    // Feeds: an app's release feed is purged with the app, so it keeps long; the others expire like lists.
+    for (const path of ['/apps/ordinary-app/feed.xml', '/zh/apps/ordinary-app/feed.xml']) {
+      const response = await fetch(`${origin}${path}`);
+      await response.text();
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      assert.match(response.headers.get('content-type') ?? '', /application\/rss\+xml/, path);
+      assert.match(response.headers.get('cache-control') ?? '', /s-maxage=21600/, path);
+      assert.equal(response.headers.get('cloudflare-cdn-cache-control'), LONG_EDGE, path);
+    }
+    for (const path of ['/articles/feed.xml', '/collections/editors/feed.xml'])
+      assert.deepEqual(await edge(path), [200, SHORT_EDGE], path);
     // GA4 page_type and the crawler counters still call it "other".
     const metrics = await (await fetch(`${internal}/metrics`)).text();
     assert.match(
@@ -1989,57 +2003,52 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       '腾讯的 Mac 即时通信客户端，可与 WeChat 联系人收发文字消息和文件，以及进行语音和视频通话。查看微信 Mac 版在 Mac 上的安装方法和卸载方法。'
     );
   });
-  await t.test('H3 renders stable canonical assignments, with locally verified facts', async () => {
-    for (const [path, expected] of [
-      ['/apps/seo-free', 'SEO App Free for Mac – Download &amp; Install · OpenNavo'],
-      ['/zh/apps/seo-free', 'SEO App 免费 Mac 版下载安装 · OpenNavo'],
-      ['/ja/apps/seo-free', 'SEO App 無料 for Mac ダウンロード・インストール · OpenNavo'],
-      ['/apps/seo-version?utm_source=fixture', 'SEO App 11.0 for Mac – Download &amp; Install · OpenNavo'],
-      ['/apps/seo-control', 'SEO App for Mac – Download &amp; Install · OpenNavo'],
-      ['/apps/seo-ineligible', 'SEO App for Mac – Download &amp; Install · OpenNavo'],
-      ['/apps/seo-unverified', 'SEO App for Mac – Download &amp; Install · OpenNavo']
-    ]) {
+  await t.test('overview overrides replace the title and description where set, on the overview only', async () => {
+    const page = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       assert.equal(response.status, 200, `${path}\n${logs}`);
       const html = await response.text();
-      assert.equal(/<title>([^<]*)<\/title>/.exec(html)?.[1], expected, path);
-      const canonical = /rel="canonical" href="([^"]*)"/.exec(html)?.[1];
-      assert.equal(canonical, `https://example.test${path.split('?')[0]}`);
-      assert.ok(experimentUrls.includes(canonical), 'assignment uses the actual canonical, including its language');
-      assert.ok(
-        hasPayloadKey(html, `seo-experiment:${canonical}`),
-        'canonical key and assignment travel in the SSR payload'
-      );
-      assert.equal(
-        experimentUrls.filter(url => url === canonical).length,
-        1,
-        'one assignment request per rendered page'
-      );
-    }
-    assert.ok(!experimentUrls.some(url => url.includes('utm_source')));
+      return {
+        title: /<title>([^<]*)<\/title>/.exec(html)?.[1],
+        description: /<meta name="description" content="([^"]*)"/.exec(html)?.[1]
+      };
+    };
+    // Both fields come from the language's override; the title still ends with the brand, once.
+    assert.deepEqual(await page('/apps/seo-override'), {
+      title: 'SEO App for Mac, picked by editors · OpenNavo',
+      description: 'An editor-written description of SEO App.'
+    });
+    assert.deepEqual(await page('/zh/apps/seo-override'), {
+      title: 'SEO App 编辑精选 · OpenNavo',
+      description: '编辑撰写的 SEO App 介绍。'
+    });
+    // Without an override in a language, the overview is exactly what the templates make for any app.
+    const basic = await page('/apps/seo-basic');
+    assert.equal(basic.title, 'SEO App for Mac – Download &amp; Install · OpenNavo');
+    assert.deepEqual(await page('/ja/apps/seo-override'), await page('/ja/apps/seo-basic'));
+    // A title alone leaves the template description in place.
+    assert.deepEqual(await page('/apps/seo-override-title'), {
+      title: 'Custom SEO App title · OpenNavo',
+      description: basic.description
+    });
+    // A Homebrew-disabled app can no longer be installed, so no override may promise a download.
+    const disabled = await page('/apps/seo-disabled');
+    assert.equal(disabled.title, 'SEO App for Mac · OpenNavo');
+    assert.match(disabled.description, /Homebrew has disabled SEO App/);
+    assert.doesNotMatch(`${disabled.title} ${disabled.description}`, /Download/);
+    // Other tabs keep their own templates.
+    const versions = await page('/apps/seo-override/versions');
+    assert.equal(versions.title, 'SEO App Release Notes (Latest 11.0) · OpenNavo');
+    assert.doesNotMatch(versions.description, /editor/);
   });
-  await t.test('H3 experiment errors and timeouts preserve successful SSR and the control title', async () => {
-    for (const token of ['seo-error', 'seo-timeout']) {
-      const response = await fetch(`${origin}/apps/${token}`, {
-        headers: { accept: 'text/html' },
-        signal: AbortSignal.timeout(3000)
-      });
-      assert.equal(response.status, 200, logs);
-      const html = await response.text();
-      assert.equal(/<title>([^<]*)<\/title>/.exec(html)?.[1], 'SEO App for Mac – Download &amp; Install · OpenNavo');
-      assert.ok(html.includes('data-testid="package-install"'));
-      assert.ok(hasPayloadKey(html, `seo-experiment:https://example.test/apps/${token}`));
-      assert.equal(experimentUrls.filter(url => url.endsWith(`/apps/${token}`)).length, 1, 'failures are not retried');
-    }
-  });
-  await t.test('C2 descriptions name visible modules and H3 prioritizes uninstall and alternatives', async () => {
+  await t.test('C2 descriptions name visible modules in a fixed order', async () => {
     const page = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       assert.equal(response.status, 200, logs);
       const html = await response.text();
       return { html, description: /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '' };
     };
-    const basic = await page('/apps/seo-control');
+    const basic = await page('/apps/seo-basic');
     assert.ok(basic.description.includes('installation and uninstallation'));
     assert.doesNotMatch(basic.description, /pricing|system requirements|alternatives|release history/);
     const free = await page('/apps/seo-free');
@@ -2048,13 +2057,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const full = await page('/apps/seo-uninstall');
     assert.match(
       full.description,
-      /Explore uninstallation, alternatives, installation, pricing, and system requirements/
+      /Explore installation, pricing, system requirements, uninstallation, and alternatives/
     );
     for (const id of ['package-uninstall', 'package-alternatives', 'package-requirements', 'package-price'])
       assert.ok(full.html.includes(`data-testid="${id}"`), id);
     // The eight untranslated locales fall back to English keys while retaining locale list punctuation.
     for (const prefix of Object.values(localePrefixes)) {
-      const { description } = await page(`${prefix}/apps/seo-control`);
+      const { description } = await page(`${prefix}/apps/seo-basic`);
       assert.ok(description.includes('SEO App'), prefix);
       assert.doesNotMatch(description, /package\.seo|[{}]|undefined/);
     }
@@ -2514,6 +2523,23 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(text.includes('\n\nUser-agent: GPTBot\nUser-agent: ClaudeBot\nDisallow: /\n'), text);
     assert.ok(text.endsWith('\nSitemap: https://example.test/sitemap_index.xml\n'), text);
     assert.ok(!/googlebot|bingbot|oai-searchbot/i.test(text));
+    // The rate-limited group also skips share images, feeds, query variants and the closed languages
+    // (here the settings name none, so the six app languages are open); the default group does not.
+    const limited = text.split('\n\n').find(group => group.startsWith('User-agent: AhrefsBot')) ?? '';
+    for (const path of ['/_og/', '/*/feed.xml', '/*?', '/de/', '/fr/', '/it/', '/zh-hant/'])
+      assert.match(limited, new RegExp(`^Disallow: ${path.replace(/[*?]/g, '\\$&')}$`, 'm'), path);
+    assert.doesNotMatch(text.split('\n\n')[0], /_og|feed\.xml|\/\*\?|\/de\/$/m);
+    // The served file follows the open languages in the settings, like the admin preview.
+    try {
+      siteSettings.pages.openLocales = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'ru-RU'];
+      await invalidatePaths(['/robots.txt'], true);
+      const closed = await (await fetch(`${origin}/robots.txt`)).text();
+      assert.match(closed, /^Disallow: \/pt\/$/m, closed);
+      assert.doesNotMatch(closed, /^Disallow: \/ja\/$/m);
+    } finally {
+      delete siteSettings.pages.openLocales;
+      await invalidatePaths(['/robots.txt'], true);
+    }
   });
   await t.test('G6 llms is plain English text with public HTML links and a fixed origin metric', async () => {
     const response = await fetch(`${origin}/llms.txt?locale=de&tracking=fixture`, {
@@ -3064,10 +3090,11 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       sitemapState = 'ok';
     }
   });
+  assert.deepEqual(seoApiRequests, []);
   assert.deepEqual(
     [...requestedTokens].sort(),
     [
-      ...Object.keys(experimentFixtures).sort(),
+      ...seoApps,
       'dependency-content-app',
       'facts-app',
       'font-sample',

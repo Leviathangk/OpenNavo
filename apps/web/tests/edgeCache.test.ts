@@ -21,6 +21,11 @@ const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
 });
 
 describe('HTML edge cache switch', () => {
+  it('Keeps purged pages for two days and lists for ten minutes, serving either while the origin errs', () => {
+    expect(LONG_EDGE_CACHE_VALUE).toBe('max-age=172800, stale-while-revalidate=604800, stale-if-error=604800');
+    expect(SHORT_EDGE_CACHE_VALUE).toBe('max-age=600, stale-while-revalidate=3600, stale-if-error=86400');
+  });
+
   it('Caches purged app and article pages for hours, home and lists for minutes', () => {
     for (const path of [
       '/zh/apps/visual-studio-code',
@@ -82,5 +87,41 @@ describe('HTML edge cache switch', () => {
     for (const overrides of bypass)
       expect(edgeCacheHeader(page(overrides)), JSON.stringify(overrides)).toBe('no-store');
     expect(edgeCacheHeader(page({ contentType: 'application/json' }))).toBeUndefined();
+    // The load-shedding 503 is plain text and already no-store; the edge rule never touches it.
+    expect(edgeCacheHeader(page({ status: 503, contentType: 'text/plain; charset=utf-8' }))).toBeUndefined();
+  });
+});
+
+describe('RSS edge cache', () => {
+  const feed = (path: string, overrides: Partial<EdgeCacheInput> = {}) =>
+    edgeCacheHeader(
+      page({ path, contentType: 'application/rss+xml; charset=utf-8', cacheControl: 's-maxage=600', ...overrides })
+    );
+
+  it('Keeps app release feeds as long as app pages and the other feeds as long as lists', () => {
+    // Purged with their app: the /apps/{token} prefix covers the feed in every language.
+    for (const path of ['/apps/visual-studio-code/feed.xml', '/zh/apps/nextpad++/feed.xml', '/zh-hant/apps/x/feed.xml'])
+      expect(feed(path), path).toBe(LONG_EDGE_CACHE_VALUE);
+    for (const path of ['/articles/feed.xml', '/ja/articles/feed.xml', '/collections/editors/feed.xml'])
+      expect(feed(path), path).toBe(SHORT_EDGE_CACHE_VALUE);
+    expect(feed('/zh/collections/editors/feed.xml', { method: 'HEAD' })).toBe(SHORT_EDGE_CACHE_VALUE);
+  });
+
+  it('Shares only successful, publicly cached feeds at feed paths', () => {
+    const bypass: [string, Partial<EdgeCacheInput>][] = [
+      ['/apps/x/feed.xml', { enabled: false }],
+      ['/apps/x/feed.xml', { status: 404 }],
+      ['/apps/x/feed.xml', { status: 503 }],
+      ['/articles/feed.xml', { cacheControl: '' }],
+      ['/articles/feed.xml', { cacheControl: 's-maxage=600, private' }],
+      ['/articles/feed.xml', { setCookie: true }],
+      ['/articles/feed.xml', { method: 'POST' }],
+      // RSS anywhere but a feed path, and a feed path answered with HTML, are not feeds.
+      ['/apps/x', {}],
+      ['/xx/articles/feed.xml', {}]
+    ];
+    for (const [path, overrides] of bypass)
+      expect(feed(path, overrides), `${path} ${JSON.stringify(overrides)}`).toBe('no-store');
+    expect(edgeCacheHeader(page({ path: '/apps/x/feed.xml' }))).toBe('no-store');
   });
 });

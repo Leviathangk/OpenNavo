@@ -94,7 +94,7 @@ func (s *Service) read(ctx context.Context, op string, in Input) (any, error) {
 			args = append(args, id)
 		}
 	default:
-		return nil, domain.Validation()
+		return nil, domain.Rejected("operation_unsupported")
 	}
 	return s.Store.AdminPage(ctx, expr, from, strings.Join(where, " AND "), order, args, current, size)
 }
@@ -177,9 +177,11 @@ SELECT jsonb_build_object(
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err
 	}
+	// Agent changes today: translations count one per language written, by FixTranslation or a
+	// WriteTranslations batch (which records its revisions under that operation name).
 	var metrics struct{ Writes, Translations, Failures int64 }
 	day := s.now().Truncate(24 * time.Hour)
-	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT (SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code='0000' AND is_write AND NOT dry_run) writes,(SELECT count(*) FROM content_revisions WHERE created_at>=? AND actor_type='agent' AND operation_id='fixTranslation') translations,(SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code<>'0000') failures`, day, day, day).Scan(&metrics).Error; err != nil {
+	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT (SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code='0000' AND is_write AND NOT dry_run) writes,(SELECT count(*) FROM content_revisions WHERE created_at>=? AND actor_type='agent' AND operation_id IN ('fixTranslation','WriteTranslations')) translations,(SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code<>'0000') failures`, day, day, day).Scan(&metrics).Error; err != nil {
 		return nil, err
 	}
 	usage, err := s.Store.UsageOverview(ctx, s.now())

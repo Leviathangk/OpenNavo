@@ -1,33 +1,19 @@
-"""Execution metadata crosses the MCP/HTTP boundary without entering business data."""
+"""Write-safety metadata crosses the MCP/HTTP boundary only as headers; guides follow OpenSEO."""
 
 import json
+import re
 
 import pytest
 from conftest import Backend, execution_args
 from fastmcp import Client
 
-
-async def test_snippet_proposal_uses_server_baseline(backend: Backend) -> None:
-    async with Client(backend.server) as client:
-        result = await client.call_tool(
-            "seo_snippet_template_propose",
-            {
-                "page_kind": "overview",
-                "locale": "en-US",
-                "variant": "current_version",
-                "slots": ["name", "version"],
-                "target_ctr": 0.015,
-            },
-            raise_on_error=False,
-        )
-    assert not result.is_error, result.content
-    request = next(req for name, req in backend.calls if name == "proposeSnippetTemplate")
-    body = json.loads(request.content)
-    assert "baselineCtr" not in body
-    assert body["targetCtr"] == 0.015
+from opennavo_mcp.contracts import OPERATIONS
+from opennavo_mcp.resources import GUIDES
+from opennavo_mcp.tools.manifest import BY_NAME, TOOLS
+from opennavo_mcp.tools.runtime import LEGACY, tool_schema
 
 
-async def test_catalog_write_without_task_or_evidence(backend: Backend) -> None:
+async def test_catalog_write_sends_only_write_safety_headers(backend: Backend) -> None:
     async with Client(backend.server) as client:
         result = await client.call_tool(
             "package_set_text",
@@ -37,40 +23,21 @@ async def test_catalog_write_without_task_or_evidence(backend: Backend) -> None:
                 "summary": "Mac utility",
                 "idempotency_key": "catalog-text-001",
                 "expected_revision": 7,
+                "dry_run": True,
             },
             raise_on_error=False,
         )
     assert not result.is_error, result.content
     req = next(req for name, req in backend.calls if name == "updatePackageText")
-    assert "x-seo-task-id" not in req.headers
-    assert "x-seo-evidence-ids" not in req.headers
     assert req.headers["idempotency-key"] == "catalog-text-001"
-    assert req.headers["x-seo-expected-revision"] == "7"
+    assert req.headers["x-expected-revision"] == "7"
+    assert not [name for name in req.headers if name.startswith("x-seo-")]
     assert json.loads(req.content) == {"sourceLocale": "en-US", "summary": "Mac utility"}
+    assert req.url.params["dryRun"] == "true"
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        {},  # no execution metadata is required
-        {"idempotency_key": "catalog-text-002", "task_id": 7},  # legacy task metadata is optional
-    ],
-)
-async def test_catalog_write_metadata_is_optional(
-    backend: Backend, args: dict[str, object]
-) -> None:
-    async with Client(backend.server) as client:
-        result = await client.call_tool(
-            "package_set_text",
-            {"package": 42, "source_locale": "en-US", "summary": "Mac utility", **args},
-            raise_on_error=False,
-        )
-    assert not result.is_error, result.content
-    assert any(name == "updatePackageText" for name, _ in backend.calls)
-
-
-@pytest.mark.parametrize("missing", ["task_id", "fencing", "idempotency_key", "expected_revision"])
-async def test_business_write_accepts_partial_metadata(backend: Backend, missing: str) -> None:
+@pytest.mark.parametrize("missing", ["idempotency_key", "expected_revision"])
+async def test_write_safety_metadata_is_optional(backend: Backend, missing: str) -> None:
     args = execution_args(
         "package_set_text", {"package": 42, "source_locale": "en-US", "summary": "Mac utility"}
     )
@@ -78,140 +45,95 @@ async def test_business_write_accepts_partial_metadata(backend: Backend, missing
     async with Client(backend.server) as client:
         result = await client.call_tool("package_set_text", args, raise_on_error=False)
     assert not result.is_error, result.content
-    assert any(name == "updatePackageText" for name, _ in backend.calls)
-
-
-async def test_business_execution_is_sent_only_in_headers(backend: Backend) -> None:
-    args = execution_args(
-        "package_set_text",
-        {
-            "package": 42,
-            "source_locale": "en-US",
-            "summary": "Mac utility",
-            "evidence_ids": [11, 12],
-            "expected_revision": 67,
-            "dry_run": True,
-        },
-    )
-    async with Client(backend.server) as client:
-        result = await client.call_tool("package_set_text", args, raise_on_error=False)
-    assert not result.is_error, result.content
     req = next(req for name, req in backend.calls if name == "updatePackageText")
-    assert req.headers["x-seo-task-id"] == "7"
-    assert req.headers["x-seo-fencing"] == "3"
-    assert req.headers["idempotency-key"] == "fixture-write-001"
-    assert req.headers["x-seo-expected-revision"] == "67"
-    assert req.headers["x-seo-evidence-ids"] == "11,12"
-    assert json.loads(req.content) == {"sourceLocale": "en-US", "summary": "Mac utility"}
-    assert req.url.params["dryRun"] == "true"
+    assert ("x-expected-revision" in req.headers) == (missing != "expected_revision")
+    assert ("idempotency-key" in req.headers) == (missing != "idempotency_key")
 
 
-async def test_claim_has_its_own_idempotent_body_and_no_lease_headers(backend: Backend) -> None:
+@pytest.mark.parametrize("value", [None, ""])
+async def test_null_write_safety_values_send_no_header(backend: Backend, value: object) -> None:
+    args = {"package": 42, "source_locale": "en-US", "summary": "Mac utility"}
+    revision = None if value == "" else value  # expected_revision takes integers or null
     async with Client(backend.server) as client:
         result = await client.call_tool(
-            "seo_task_claim",
-            {"idempotency_key": "claim-001", "limit": 3, "kinds": ["translate"]},
+            "package_set_text",
+            args | {"expected_revision": revision, "idempotency_key": value},
             raise_on_error=False,
         )
     assert not result.is_error, result.content
-    req = next(req for name, req in backend.calls if name == "claimSeoTasks")
-    assert "x-seo-task-id" not in req.headers
-    assert "x-seo-fencing" not in req.headers
-    assert json.loads(req.content) == {
-        "idempotencyKey": "claim-001",
-        "limit": 3,
-        "kinds": ["translate"],
+    req = next(req for name, req in backend.calls if name == "updatePackageText")
+    assert "x-expected-revision" not in req.headers and "idempotency-key" not in req.headers
+
+
+@pytest.mark.parametrize("legacy", [("task_id", 7), ("fencing", 3), ("evidence_ids", [11])])
+async def test_legacy_execution_metadata_is_rejected(
+    backend: Backend, legacy: tuple[str, object]
+) -> None:
+    args = {"package": 42, "source_locale": "en-US", "summary": "Mac utility", legacy[0]: legacy[1]}
+    async with Client(backend.server) as client:
+        result = await client.call_tool("package_set_text", args, raise_on_error=False)
+    assert result.is_error
+    assert result.structured_content is not None
+    assert result.structured_content["error"]["code"] == "1001"
+    assert all(name == "introspectAgentToken" for name, _ in backend.calls)
+
+
+def test_write_schemas_expose_only_write_safety_headers() -> None:
+    for spec in TOOLS:
+        properties = tool_schema(spec)["properties"]
+        assert not set(LEGACY) & set(properties), spec.name
+        if spec.write and any(OPERATIONS[op]["parameters"].get("header") for op in spec.operations):
+            assert {"idempotency_key", "expected_revision", "dry_run"} <= set(properties)
+
+
+async def test_routines_follow_openseo_and_business_tools(backend: Backend) -> None:
+    async with Client(backend.server) as client:
+        seo_content = await client.read_resource("opennavo://guide/seo-routine")
+        daily_content = await client.read_resource("opennavo://guide/daily-routine")
+    seo = json.loads(seo_content[0].text)  # type: ignore[union-attr]
+    daily = json.loads(daily_content[0].text)  # type: ignore[union-attr]
+    assert seo["version"] == "seo-routine-v2"
+    assert daily["version"] == "daily-routine-v2"
+    for text in (
+        "OpenSEO",
+        "inspect_urls",
+        "page_index_get",
+        "intent_page_set",
+        "package_seo_set",
+        "translations_write",
+        "idempotency_key",
+        "expected_revision",
+        "revision_conflict",
+        "Template and technical problems are not fixed through MCP",
+        "one owning agent",
+    ):
+        assert text in seo["guide"], text
+    for text in ("after_seq", "opennavo://guide/seo-routine", "another agent owns the rest"):
+        assert text in daily["guide"], text
+    for guide in (seo["guide"], daily["guide"]):
+        assert "geo-routine" not in guide
+        assert not set(re.findall(r"\bseo_[a-z_]+", guide)) - {"seo_title", "seo_description"}
+        assert not any(name in guide for name in LEGACY)
+    assert all(op == "introspectAgentToken" for op, _ in backend.calls)
+
+
+def test_guides_name_only_existing_tools() -> None:
+    # Snake-case words in guides name tools, apart from parameters, rejection reasons and
+    # OpenSEO's inspect_urls.
+    others = {
+        "after_seq",
+        "batch_too_large",
+        "body_markdown",
+        "dry_run",
+        "expected_revision",
+        "idempotency_key",
+        "idempotency_key_reused",
+        "inspect_urls",
+        "revision_conflict",
+        "seo_description",
+        "seo_title",
+        "source_locale",
     }
-
-
-async def test_workbook_version_and_server_claim_first(backend: Backend) -> None:
-    async with Client(backend.server) as client:
-        content = await client.read_resource("opennavo://guide/seo-routine")
-        daily = await client.read_resource("opennavo://guide/daily-routine")
-    data = json.loads(content[0].text)  # type: ignore[union-attr]
-    routine = json.loads(daily[0].text)  # type: ignore[union-attr]
-    assert data["version"] == "seo-routine-v1"
-    assert "seo_task_claim" in routine["guide"]
-    for name in ("seo_overview", "seo_task_defer", "translations_write", "expected_revision"):
-        assert name in data["guide"]
-
-
-async def test_geo_guide_version_boundaries_and_no_execution(backend: Backend) -> None:
-    async with Client(backend.server) as client:
-        content = await client.read_resource("opennavo://guide/geo-routine")
-        daily = await client.read_resource("opennavo://guide/daily-routine")
-        seo = await client.read_resource("opennavo://guide/seo-routine")
-    data = json.loads(content[0].text)  # type: ignore[union-attr]
-    assert data["version"] == "geo-routine-v2"
-    guide = data["guide"]
-    assert "$15/天" not in guide and "$12/月" not in guide
-    for guard in (
-        "未授权不运行",
-        "paidCalls=0",
-        "summary_only",
-        "evidence_unavailable",
-        "2000 credits",
-        "$5/天",
-        "$100/月",
-        "每月最多 $2",
-        "在途预占",
-        "observation ID",
-        "answerText/bodyText/rawResponse/html",
-        "seotune.Receipt",
-        "seobudget.Record",
-        "不会",
-        "不代理收费",
-        "不增加 scheduler",
-        "seo_task_defer",
-        "topic:uninstall-mac-apps",
-        "source_hash",
-        "manual/machine",
-        "人工",
-        "十种",
-        "claim_evidence",
-    ):
-        assert guard in guide
-    for prompt in (
-        "obsidian alternatives for mac",
-        "best homebrew gui for mac",
-        "how to install mac apps with homebrew",
-        "open source alternative to the mac app store",
-        "best free mac apps",
-        "best free antivirus for mac",
-        "free firewall app for mac",
-        "is vlc safe for mac",
-        "what is xprotect on mac",
-        "how to completely uninstall apps on mac",
-    ):
-        assert prompt in guide
-    for response, version in ((daily, "daily-routine-v1"), (seo, "seo-routine-v1")):
-        entry = json.loads(response[0].text)  # type: ignore[union-attr]
-        assert entry["version"] == version
-        assert "opennavo://guide/geo-routine" in entry["guide"]
-        assert "未授权不运行" in entry["guide"]
-    assert all(op == "introspectAgentToken" for op, _ in backend.calls)
-
-
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        "没有授权的数据保持 unknown",  # no authorized Bing source
-        "IndexNow 成功只表示接受通知",  # notification-only
-        "announce=false",  # suppressed completion is not delivery
-        "仅日志未见",  # no observation is not undiscovered
-        "自测 5xx 可独立报技术故障",  # a local failure is not a Bing index state
-        "只有抓取记录或只有未索引状态时为 unknown",  # insufficient classification
-        "已有 indexed 且现在出错仍 indexed",  # retain independently observed facts
-        "冲突",  # conflicting or stale observations remain unknown
-        "旧 URL 已 301",  # old/new canonical states remain separate
-        "K=0 时比例 unavailable",  # no known denominator is not zero
-    ],
-)
-async def test_bing_diagnostic_guide_requires_evidence(backend: Backend, boundary: str) -> None:
-    async with Client(backend.server) as client:
-        content = await client.read_resource("opennavo://guide/geo-routine")
-    data = json.loads(content[0].text)  # type: ignore[union-attr]
-    assert boundary in data["guide"]
-    assert "只提 **tech_alert**" in data["guide"]
-    assert "不周期性重提全部 URL" in data["guide"]
-    assert all(op == "introspectAgentToken" for op, _ in backend.calls)
+    for slug, guide in GUIDES.items():
+        for name in set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", guide)) - others:
+            assert name in BY_NAME, f"{slug} names unknown tool {name}"

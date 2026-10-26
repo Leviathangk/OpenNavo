@@ -20,10 +20,10 @@ import (
 
 // lockedCrawlers covers search/index, user-triggered fetchers and existing preview/inspection
 // tools, matching shared/robots.ts. These settings locks do not verify identity or bypass access
-// controls. Training/use tokens stay tunable; only ClaudeBot is limited by default.
+// controls. Training/use tokens stay tunable; store.DefaultSEOSettings limits the large ones.
 var lockedCrawlers = []string{
 	"googlebot", "googlebot-image", "googlebot-news", "googlebot-video", "storebot-google", "google-inspectiontool", "adsbot-google",
-	"bingbot", "bingpreview", "msnbot", "oai-searchbot", "chatgpt-user", "claude-searchbot", "claude-user",
+	"bingbot", "bingpreview", "msnbot", "oai-searchbot", "chatgpt-user", "claude-searchbot", "claude-user", "amzn-searchbot", "amzn-user",
 	"perplexitybot", "perplexity-user", "duckduckbot", "duckassistbot", "applebot", "yandexbot", "baiduspider",
 	"meta-webindexer", "meta-externalfetcher", "mistralai-index", "mistralai-user", "yeti", "*",
 }
@@ -51,18 +51,11 @@ func seoView(row store.SEOSettingsRow) map[string]any {
 func (s *Service) seoResponse(ctx context.Context, st *store.Store, row store.SEOSettingsRow) (map[string]any, error) {
 	view := seoView(row)
 	view["siteUrl"] = strings.TrimRight(s.Config.WebBaseURL, "/")
-	feed, err := st.URLNotifyState(ctx)
+	feed, err := s.changeFeedView(ctx, st)
 	if err != nil {
 		return nil, err
 	}
-	var lastRun any
-	if feed.LastRunAt != nil {
-		lastRun = feed.LastRunAt.UTC().Format(time.RFC3339)
-	}
-	view["changeFeed"] = map[string]any{
-		"lastRunAt": lastRun, "lastUrls": feed.LastURLs, "lastIndexnowStatus": feed.LastIndexnowStatus,
-		"lastPurgeStatus": feed.LastPurgeStatus, "lastError": feed.LastError,
-	}
+	view["changeFeed"] = feed
 	return view, nil
 }
 

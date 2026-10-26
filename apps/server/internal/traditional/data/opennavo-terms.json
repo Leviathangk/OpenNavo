@@ -1,0 +1,26 @@
+{
+  "about": "OpenNavo Taiwan wording applied after the OpenCC s2twp conversion, to prose only: protected literals, code, URLs and placeholders keep their text. Users follow these names into System Settings, so they match macOS Traditional Chinese (Taiwan). Rules apply in order; a rule whose replacement extends its source skips text that already has the extension. Repository interface text, release notes and server-side content all use these rules; changing them needs a new converter Version. This is OpenNavo data, not part of the pinned upstream files in upstream.json.",
+  "replace": [
+    { "from": "完全磁碟訪問許可權", "to": "完整磁碟取用權限", "why": "macOS: 完整磁碟取用權限 (Full Disk Access)" },
+    { "from": "完全磁碟訪問", "to": "完整磁碟取用", "why": "macOS: 完整磁碟取用權限" },
+    { "from": "許可權", "to": "權限", "why": "OpenCC IT phrase; macOS and common Taiwan usage say 權限" },
+    { "from": "隱私與安全性", "to": "隱私權與安全性", "why": "macOS: 隱私權與安全性" },
+    { "from": "使用輔助功能", "to": "使用輔助使用功能", "why": "macOS prompt: 使用輔助使用功能 (use Accessibility)" },
+    { "from": "輔助功能", "to": "輔助使用", "why": "macOS: 輔助使用 (Accessibility)" },
+    { "from": "登入項", "to": "登入項目", "why": "macOS: 登入項目與延伸功能" },
+    { "from": "擴充套件", "to": "延伸功能", "why": "macOS: 延伸功能 (extensions)" },
+    { "from": "→ 通用 →", "to": "→ 一般 →", "why": "macOS: System Settings → 一般 (General)" },
+    { "from": "「通用」", "to": "「一般」", "why": "macOS: System Settings → 一般 (General)" },
+    { "from": "「允許在後臺」", "to": "「允許在背景執行」", "why": "macOS: 允許在背景執行 (Allow in the Background)" },
+    { "from": "選單欄", "to": "選單列", "why": "macOS: 選單列 (menu bar)" },
+    { "from": "廢紙簍", "to": "垃圾桶", "why": "macOS: 垃圾桶 (Trash)" },
+    { "from": "Apple 賬戶", "to": "Apple 帳號", "why": "Apple: Apple 帳號 (Apple Account)" },
+    { "from": "App Store 賬戶", "to": "App Store 帳號", "why": "Apple: 帳號" },
+    { "from": "賬號", "to": "帳號", "why": "Taiwan: 帳號" },
+    { "from": "賬戶", "to": "帳戶", "why": "Taiwan: 帳戶" },
+    { "from": "這臺", "to": "這台", "why": "macOS: 關於這台 Mac" },
+    { "from": "整臺", "to": "整台", "why": "Measure word for a Mac, as in 這台 Mac" },
+    { "from": "每臺", "to": "每台", "why": "Measure word for a Mac, as in 這台 Mac" },
+    { "from": "宣告瞭", "to": "宣告了", "why": "OpenCC turns the aspect particle 了 after 宣告 into 瞭" }
+  ]
+}

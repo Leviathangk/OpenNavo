@@ -77,7 +77,8 @@ func (s *Store) WriteLinkApp(ctx context.Context, id int64, input domain.LinkInp
 	if err := s.LinkTokenAvailable(ctx, input.Token, id); err != nil {
 		return 0, err
 	}
-	if id == 0 {
+	created := id == 0
+	if created {
 		if err := s.DB.WithContext(ctx).Raw(`INSERT INTO packages(kind,token,full_token,tap,name,names,homepage,download_url,version,version_base,raw,raw_hash,source_locale) VALUES('link',?,?,'',?,ARRAY[?]::text[],?,?,'','','{}'::jsonb,'',?) RETURNING id`, input.Token, input.Token, input.Name, input.Name, input.Homepage, input.DownloadURL, input.SourceLocale).Scan(&id).Error; err != nil {
 			return 0, err
 		}
@@ -104,7 +105,12 @@ func (s *Store) WriteLinkApp(ctx context.Context, id int64, input domain.LinkInp
 	if err := UpdateSearchIndex(ctx, s.DB, []int64{id}); err != nil {
 		return 0, err
 	}
-	if err := s.linkChanged(ctx, id, "upsert"); err != nil {
+	// Adding a link is a catalog event like a new cask; editing its definition is not (Homebrew's rule).
+	event := ""
+	if created {
+		event = "created"
+	}
+	if err := s.linkChanged(ctx, id, "upsert", event, nil); err != nil {
 		return 0, err
 	}
 	if err := addOutbox(ctx, s.DB, "links:sync", "packageId", id); err != nil {
@@ -123,10 +129,14 @@ func (s *Store) RemoveLinkApp(ctx context.Context, id int64) error {
 	if r.RowsAffected != 1 {
 		return &domain.AppError{Code: domain.CodeNotFound, HTTPStatus: 404}
 	}
-	return s.linkChanged(ctx, id, "delete")
+	return s.linkChanged(ctx, id, "delete", "removed", nil)
 }
-func (s *Store) linkChanged(ctx context.Context, id int64, op string) error {
-	if err := s.DB.WithContext(ctx).Exec("INSERT INTO catalog_changes(package_id,kind,token,op,reason) SELECT id,kind,token,?,'link' FROM packages WHERE id=?", op, id).Error; err != nil {
+
+// linkChanged records a link app change for snapshots, the URL change feed and catalog activity. event is
+// created, updated (a new version), removed or empty for a definition edit; the row carries the current
+// version, and previous names the version an update replaced.
+func (s *Store) linkChanged(ctx context.Context, id int64, op, event string, previous *string) error {
+	if err := s.DB.WithContext(ctx).Exec("INSERT INTO catalog_changes(package_id,kind,token,op,reason,event_type,version,previous_version) SELECT id,kind,token,?,'link',NULLIF(?,''),NULLIF(version,''),NULLIF(?,'') FROM packages WHERE id=?", op, event, previous, id).Error; err != nil {
 		return err
 	}
 	return addCatalogInvalidation(ctx, s.DB)
@@ -168,8 +178,9 @@ func (s *Store) LinkSyncResult(ctx context.Context, before LinkApp, latest *doma
 		if source != "github_release" && source != "sparkle" {
 			return errors.New("invalid link release source")
 		}
-		if err := tx.WithContext(ctx).Exec("INSERT INTO package_versions(package_id,version,version_base,first_seen_at) VALUES(?,?,?,?) ON CONFLICT(package_id,version) DO NOTHING", before.ID, latest.Version, latest.Version, checked).Error; err != nil {
-			return err
+		recorded := tx.WithContext(ctx).Exec("INSERT INTO package_versions(package_id,version,version_base,first_seen_at) VALUES(?,?,?,?) ON CONFLICT(package_id,version) DO NOTHING", before.ID, latest.Version, latest.Version, checked)
+		if recorded.Error != nil {
+			return recorded.Error
 		}
 		release := tx.WithContext(ctx).Exec(`INSERT INTO releases(package_id,source,source_key,version,title,published_at,source_url,body_markdown,source_locale) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(package_id,source,source_key) DO UPDATE SET version=EXCLUDED.version,published_at=EXCLUDED.published_at,source_url=EXCLUDED.source_url,body_markdown=EXCLUDED.body_markdown,source_locale=EXCLUDED.source_locale,updated_at=now() WHERE (releases.version,releases.published_at,releases.source_url,releases.body_markdown,releases.source_locale) IS DISTINCT FROM (EXCLUDED.version,EXCLUDED.published_at,EXCLUDED.source_url,EXCLUDED.body_markdown,EXCLUDED.source_locale)`, before.ID, source, latest.Tag, latest.Version, latest.Tag, latest.PublishedAt, latest.URL, nullable(body), before.SourceLocale)
 		if release.Error != nil {
@@ -186,10 +197,19 @@ func (s *Store) LinkSyncResult(ctx context.Context, before LinkApp, latest *doma
 			}
 			return nil
 		}
+		var previous string
+		if err := tx.WithContext(ctx).Raw("SELECT version FROM packages WHERE id=?", before.ID).Scan(&previous).Error; err != nil {
+			return err
+		}
 		if err := tx.WithContext(ctx).Exec("UPDATE packages SET version_changed_at=CASE WHEN version<>? THEN ? ELSE version_changed_at END,version=?,version_base=?,updated_at=? WHERE id=?", latest.Version, checked, latest.Version, latest.Version, checked, before.ID).Error; err != nil {
 			return err
 		}
-		return st.linkChanged(ctx, before.ID, "upsert")
+		// Like a cask, a link reports updated only for a version it has never shipped before.
+		event := ""
+		if recorded.RowsAffected > 0 && previous != latest.Version {
+			event = "updated"
+		}
+		return st.linkChanged(ctx, before.ID, "upsert", event, &previous)
 	})
 }
 func sameLinkSource(a, b LinkApp) bool {

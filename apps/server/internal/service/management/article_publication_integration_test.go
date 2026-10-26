@@ -5,7 +5,6 @@ package management
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -19,7 +18,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -34,16 +32,16 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
  INSERT INTO packages(id,kind,token,full_token,tap,name,homepage,version,version_base,raw,raw_hash) VALUES(81,'cask','article-app','article-app','','Article App','https://vendor.example.test','1.0','1.0','{}','')`).Error)
 	title := "Article App supports macOS."
 	body := title + " It exports local documents without requiring a network connection. The source documentation explains how to select a document and export the selected pages."
-	e := listingEvidence(t, st, "pkg:81", body+" Version 1.0 is available in US.", "https://vendor.example.test/guide", "official")
+	e := evidenceFixture(t, st, "pkg:81", body+" Version 1.0 is available in US.", "https://vendor.example.test/guide", "official")
 	pkg := int64(81)
 	claims := []articles.Claim{{Text: title, Kind: "factual", EvidenceID: e.ID, Excerpt: body, PackageID: &pkg, Region: "ZZ"}, {Text: body, Kind: "factual", EvidenceID: e.ID, Excerpt: body, PackageID: &pkg, Region: "ZZ"}}
 	create := map[string]any{"slug": "article-gate", "sourceLocale": "en-US", "type": "news", "title": title, "summary": title, "bodyMarkdown": body, "sources": []articles.Source{{Title: "Vendor guide", URL: e.FinalURL}}, "packageIds": []int64{pkg}, "claims": claims, "target": articles.Target{EntityKey: "pkg:81", Intent: "topic"}}
-	result, err := s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, create)})
+	result, err := s.Execute(ctx, "CreateArticle", Input{Body: jsonBody(t, create)})
 	require.NoError(t, err)
 	id := result.(map[string]any)["id"].(int64)
 	// SEO targets do not prevent publishing another editorial page.
 	create["slug"] = "duplicate-gate"
-	_, err = s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, create)})
+	_, err = s.Execute(ctx, "CreateArticle", Input{Body: jsonBody(t, create)})
 	require.NoError(t, err)
 	state := func() store.Article {
 		a, found, err := st.LoadArticle(ctx, id, false)
@@ -53,7 +51,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	}
 	mutate := func(op string, fields map[string]any) (any, error) {
 		fields["expectedRevision"] = state().Revision
-		return s.Execute(ctx, op, Input{ID: id, Body: listingBody(t, fields)})
+		return s.Execute(ctx, op, Input{ID: id, Body: jsonBody(t, fields)})
 	}
 	_, err = mutate("SubmitArticleReview", map[string]any{})
 	require.NoError(t, err)
@@ -83,7 +81,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	require.JSONEq(t, "[]", bound)
 	// Testing-related prose does not imply an administrator-attested test.
 	testText := "This is not a benchmark; the vendor describes export performance."
-	testEvidence := listingEvidence(t, st, "pkg:81", testText+" Version 1.0 is available in US.", "https://vendor.example.test/release", "official")
+	testEvidence := evidenceFixture(t, st, "pkg:81", testText+" Version 1.0 is available in US.", "https://vendor.example.test/release", "official")
 	testClaim := articles.Claim{Text: testText, Kind: "factual", EvidenceID: testEvidence.ID, Excerpt: testEvidence.Excerpt, PackageID: &pkg, AppVersion: "1.0", Region: "US"}
 	nextClaims := append(append([]articles.Claim{}, claims...), testClaim)
 	_, err = mutate("UpdateArticle", map[string]any{"type": "review", "bodyMarkdown": body + " " + testText, "testNote": testText, "claims": nextClaims})
@@ -95,7 +93,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	require.NotEqual(t, first, *state().PublishedRevisionID)
 	// Only the trusted administrator/runner channel can register actual output.
 	report := articles.TestArtifactInput{PackageID: pkg, AppVersion: "1.0", MacOS: "15.0", Architecture: "arm64", Region: "US", PerformedAt: time.Now().Add(-time.Minute).UTC().Truncate(time.Second), Runner: "isolated-fixture-runner", Command: "fixture-export --count 10", Environment: map[string]string{"machine": "fixture"}, Output: body + " " + testText, Conclusions: []string{title, body, testText}, Attested: true}
-	artifactInput := Input{ID: id, Body: listingBody(t, report)}
+	artifactInput := Input{ID: id, Body: jsonBody(t, report)}
 	agentCtx := domain.WithOperation(ctx, &domain.Operation{ActorID: &actor, AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"*"}})
 	_, err = s.articleTestArtifacts(agentCtx, "CreateArticleTestArtifact", artifactInput)
 	require.Error(t, err)
@@ -122,18 +120,8 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	require.NoError(t, err)
 	_, err = mutate("SubmitArticleReview", map[string]any{})
 	require.NoError(t, err)
-	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(automation,'{actions,article,mode}','"live"')`).Error)
-	tasks := &seotasks.Service{DB: st.DB}
-	_, err = tasks.Enqueue(ctx, seotasks.NewTask{Kind: "article", EntityKey: fmt.Sprintf("article:%d", id), DedupeKey: uuid.NewString(), RuleVersion: "fixture", Evidence: map[string]any{}})
-	require.NoError(t, err)
-	leases, err := tasks.Claim(ctx, seotasks.Owner(1, 2), 1, []string{"article"})
-	require.NoError(t, err)
-	require.Len(t, leases, 1)
-	taskEvidence := listingEvidence(t, st, fmt.Sprintf("article:%d", id), body+" "+testText, e.FinalURL, "reference")
-	agentPublish := &domain.Operation{Name: "publishArticle", RequestID: uuid.NewString(), ActorID: &actor, AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"content:article:publish"}, RequiredPermissions: []string{"content:article:publish"}, Execution: &domain.AgentExecution{TaskID: leases[0].ID, Fencing: leases[0].Fencing, IdempotencyKey: uuid.NewString(), ExpectedRevision: state().Revision, EvidenceIDs: []int64{taskEvidence.ID}}}
+	agentPublish := &domain.Operation{Name: "publishArticle", RequestID: uuid.NewString(), ActorID: &actor, AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"content:article:publish"}, RequiredPermissions: []string{"content:article:publish"}, Execution: &domain.AgentExecution{IdempotencyKey: uuid.NewString(), ExpectedRevision: state().Revision}}
 	_, err = s.Execute(domain.WithOperation(ctx, agentPublish), "PublishArticle", Input{ID: id, Body: map[string]any{"expectedRevision": state().Revision}})
-	require.NoError(t, err)
-	_, err = tasks.Complete(ctx, leases[0].ID, leases[0].Fencing, seotasks.Owner(1, 2), "done", "")
 	require.NoError(t, err)
 	second := *state().PublishedRevisionID
 	require.NotEqual(t, first, second)
@@ -168,7 +156,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	traditionalBefore, err := st.TranslationValue(ctx, ref, "zh-Hant")
 	require.NoError(t, err)
 	require.Equal(t, "missing", traditionalBefore.Status)
-	require.NoError(t, st.DB.Exec("UPDATE seo_evidence_snapshots SET revoked_at=now() WHERE id=?", e.ID).Error)
+	require.NoError(t, st.DB.Exec("UPDATE evidence_snapshots SET revoked_at=now() WHERE id=?", e.ID).Error)
 	_, err = mutate("RestoreArticle", map[string]any{})
 	require.NoError(t, err)
 	require.Equal(t, "published", state().Status)
@@ -212,7 +200,7 @@ func TestHumanArticleCaptureRegisterAndPublish(t *testing.T) {
 	s.Evidence.HTTP = &http.Client{Transport: articleEvidenceTransport(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/plain"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})}
-	created, err := s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, map[string]any{"slug": "human-publish", "sourceLocale": "en-US", "type": "review", "title": title, "summary": title, "bodyMarkdown": body, "testNote": title, "packageIds": []int64{81}})})
+	created, err := s.Execute(ctx, "CreateArticle", Input{Body: jsonBody(t, map[string]any{"slug": "human-publish", "sourceLocale": "en-US", "type": "review", "title": title, "summary": title, "bodyMarkdown": body, "testNote": title, "packageIds": []int64{81}})})
 	require.NoError(t, err)
 	id := created.(map[string]any)["id"].(int64)
 	capture := Input{ID: id, Body: map[string]any{"url": "https://vendor.example.test/test", "excerpt": body, "packageId": float64(81), "idempotencyKey": uuid.NewString()}}
@@ -238,7 +226,7 @@ func TestHumanArticleCaptureRegisterAndPublish(t *testing.T) {
 		require.Error(t, err)
 	}
 	report := articles.TestArtifactInput{PackageID: 81, AppVersion: "1.0", MacOS: "15.0", Architecture: "arm64", Region: "ZZ", PerformedAt: time.Now().Add(-time.Minute).UTC(), Runner: "Human tester", Command: "Export fixture and compare output", Environment: map[string]string{"machine": "test Mac"}, Output: body, Conclusions: []string{title, body}, Attested: true}
-	registered, err := s.Execute(ctx, "CreateArticleTestArtifact", Input{ID: id, Body: listingBody(t, report)})
+	registered, err := s.Execute(ctx, "CreateArticleTestArtifact", Input{ID: id, Body: jsonBody(t, report)})
 	require.NoError(t, err)
 	artifact := registered.(store.ArticleTestArtifact)
 	pkg := int64(81)
@@ -251,7 +239,7 @@ func TestHumanArticleCaptureRegisterAndPublish(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, found)
 		fields["expectedRevision"] = a.Revision
-		_, err = s.Execute(ctx, op, Input{ID: id, Body: listingBody(t, fields)})
+		_, err = s.Execute(ctx, op, Input{ID: id, Body: jsonBody(t, fields)})
 		require.NoError(t, err)
 	}
 	mutate("UpdateArticle", map[string]any{"claims": claims, "target": articles.Target{EntityKey: "pkg:81", Intent: "topic"}})
@@ -281,7 +269,7 @@ func TestArticlePackageReplacementIsAtomicAtLimit(t *testing.T) {
 		oldIDs = append(oldIDs, id)
 		newIDs = append(newIDs, id+1)
 	}
-	created, err := s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, map[string]any{
+	created, err := s.Execute(ctx, "CreateArticle", Input{Body: jsonBody(t, map[string]any{
 		"slug": "replace-at-limit", "sourceLocale": "en-US", "type": "roundup", "title": "Apps", "packageIds": oldIDs,
 		"target": map[string]any{"entityKey": "pkg:1", "intent": "download"},
 	})})
@@ -297,7 +285,7 @@ func TestArticlePackageReplacementIsAtomicAtLimit(t *testing.T) {
 	}
 	a, _ := read()
 	update := func(revision int64, ids []int64, target any) error {
-		_, err := s.Execute(ctx, "UpdateArticle", Input{ID: id, Body: listingBody(t, map[string]any{
+		_, err := s.Execute(ctx, "UpdateArticle", Input{ID: id, Body: jsonBody(t, map[string]any{
 			"expectedRevision": revision, "packageIds": ids, "target": target,
 		})})
 		return err

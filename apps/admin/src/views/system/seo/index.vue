@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
-import { LOCALES, LOCKED_CRAWLERS, buildRobotsTxt } from '@opennavo/shared';
+import { LOCALES, LOCKED_CRAWLERS, buildRobotsTxt, formatRelativeTime } from '@opennavo/shared';
 import { fetchSeoSettings, updateSeoSettings } from '@/service/api';
+import { useAppStore } from '@/store/modules/app';
 import type { BodyOf, DataOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 import { formatDateTime } from '@/utils/opennavo';
@@ -20,8 +21,6 @@ import {
   validRegions,
   validSecret
 } from './modules/validate';
-import { useAuth } from '@/hooks/business/auth';
-import DataProviders from './modules/data-providers.vue';
 import IndexReport from './modules/index-report.vue';
 import TranslationImpact from './modules/translation-impact.vue';
 
@@ -32,7 +31,7 @@ type Settings = View['settings'];
 type CrawlerClass = 'training' | 'seoTools';
 
 const crawlerClasses: CrawlerClass[] = ['training', 'seoTools'];
-const { hasAuth } = useAuth();
+const appStore = useAppStore();
 const crawlerModes = ['allow', 'limit', 'block'] as const;
 
 // Placeholder until the first load; the form stays hidden while `ready` is false.
@@ -68,7 +67,18 @@ const view = ref<View>({
   updatedAt: '',
   revision: 0,
   siteUrl: '',
-  changeFeed: { lastRunAt: null, lastUrls: 0, lastIndexnowStatus: '', lastPurgeStatus: '', lastError: '' }
+  changeFeed: {
+    lastRunAt: null,
+    lastUrls: 0,
+    lastIndexnowStatus: '',
+    lastPurgeStatus: '',
+    lastError: '',
+    pendingAnnouncements: 0,
+    oldestPendingAt: null,
+    deadAnnouncements: 0,
+    probeCooldownUntil: null,
+    overloadedProbes: 0
+  }
 });
 const draft = ref<Settings>(blankSettings());
 const baseline = ref('');
@@ -106,19 +116,36 @@ const robotsPreview = computed(() =>
     ? buildRobotsTxt({
         crawlers: draft.value.crawlers,
         indexable: true,
+        openLocales: draft.value.pages.openLocales,
         sitemap: `${view.value.siteUrl}/sitemap_index.xml`
       })
     : ''
 );
 
-// No rule-level message: async-validator would let it replace the specific Error returned here.
 const feedSummary = computed(() => {
   const feed = view.value.changeFeed;
   return feed.lastRunAt
     ? text('changeFeed.lastRun', { time: formatDateTime(feed.lastRunAt), count: feed.lastUrls })
     : text('changeFeed.never');
 });
+const pendingSummary = computed(() => {
+  const { pendingAnnouncements: count, oldestPendingAt } = view.value.changeFeed;
+  return oldestPendingAt
+    ? text('changeFeed.pendingSince', { count, time: formatRelativeTime(oldestPendingAt, { locale: appStore.locale }) })
+    : text('changeFeed.pending', { count });
+});
+// A change waiting more than a day, or announcements that died, mean the feed needs someone to look.
+const STALE_PENDING_MS = 24 * 60 * 60 * 1000;
+const feedAlerts = computed(() => {
+  const feed = view.value.changeFeed;
+  const alerts: string[] = [];
+  if (feed.oldestPendingAt && Date.now() - new Date(feed.oldestPendingAt).getTime() > STALE_PENDING_MS)
+    alerts.push(text('changeFeed.staleAlert', { time: formatDateTime(feed.oldestPendingAt) }));
+  if (feed.deadAnnouncements > 0) alerts.push(text('changeFeed.deadAlert', { count: feed.deadAnnouncements }));
+  return alerts;
+});
 
+// No rule-level message: async-validator would let it replace the specific Error returned here.
 function check(valid: () => boolean | Error, message: string): FormItemRule {
   return {
     trigger: ['input', 'blur', 'change'],
@@ -458,6 +485,23 @@ void load();
             <NText v-if="view.changeFeed.lastError" type="error">
               {{ text('changeFeed.error', { error: view.changeFeed.lastError }) }}
             </NText>
+            <NText depth="3" data-testid="change-feed-pending">{{ pendingSummary }}</NText>
+            <NText depth="3">{{ text('changeFeed.dead', { count: view.changeFeed.deadAnnouncements }) }}</NText>
+            <NText v-if="view.changeFeed.probeCooldownUntil" depth="3" data-testid="change-feed-cooldown">
+              {{ text('changeFeed.cooldown', { time: formatDateTime(view.changeFeed.probeCooldownUntil) }) }}
+            </NText>
+            <NText depth="3">
+              {{ text('changeFeed.overloaded', { count: view.changeFeed.overloadedProbes }) }}
+            </NText>
+            <NAlert
+              v-if="feedAlerts.length"
+              type="warning"
+              :title="text('changeFeed.alertTitle')"
+              class="mt-8px"
+              data-testid="change-feed-alert"
+            >
+              <div v-for="alert in feedAlerts" :key="alert">{{ alert }}</div>
+            </NAlert>
           </div>
         </NFormItem>
 
@@ -638,11 +682,4 @@ void load();
       </NForm>
     </div>
   </NCard>
-  <!-- Provider credentials save on their own endpoints, so they sit outside the settings form. -->
-  <DataProviders
-    v-if="ready && hasAuth('system:seo:edit')"
-    class="mt-16px"
-    :site-url="view.siteUrl"
-    :revision="reportRevision"
-  />
 </template>

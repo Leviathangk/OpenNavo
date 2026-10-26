@@ -51,61 +51,6 @@ tags:
     description: 'Published articles and author pages'
 
 paths:
-  /seo/experiment:
-    get:
-      tags: [site]
-      operationId: getSeoExperimentAssignment
-      summary: Get the stable template experiment assignment for a canonical page
-      description: Render a variant only when eligible is true and arm is treatment. The web layer renders titles; this response never overrides factual page eligibility.
-      parameters:
-        - in: query
-          name: url
-          required: true
-          schema:
-            type: string
-            format: uri
-            maxLength: 2048
-            example: https://opennavo.example/apps/example-editor
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SeoExperimentAssignmentResponse'
-              examples:
-                en-US:
-                  summary: en-US
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                zh-CN:
-                  summary: zh-CN
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                ja-JP:
-                  summary: ja-JP
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                es-ES:
-                  summary: es-ES
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                pt-BR:
-                  summary: pt-BR
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                ru-RU:
-                  summary: ru-RU
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                de-DE:
-                  summary: de-DE
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                fr-FR:
-                  summary: fr-FR
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                it-IT:
-                  summary: it-IT
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-                zh-Hant:
-                  summary: zh-Hant
-                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-        default:
-          $ref: '#/components/responses/Error'
   /background-items:
     get:
       tags:
@@ -9633,51 +9578,6 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
-    SeoExperimentAssignmentResponse:
-      type: object
-      additionalProperties: false
-      required: [code, msg, data]
-      properties:
-        code:
-          type: string
-          example: '0000'
-        msg:
-          type: string
-          example: ok
-        data:
-          $ref: '#/components/schemas/SeoExperimentAssignment'
-      example: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
-    SeoExperimentAssignment:
-      type: object
-      additionalProperties: false
-      required: [experimentId, arm, variant, templateVersion, eligible, expiresAt]
-      properties:
-        experimentId:
-          type: integer
-          format: int64
-          nullable: true
-          example: null
-        arm:
-          type: string
-          enum: [none, control, treatment]
-          example: none
-        variant:
-          type: string
-          nullable: true
-          enum: [verified_free, current_version, uninstall_alternatives, null]
-          example: null
-        templateVersion:
-          type: string
-          example: snippet-v1
-        eligible:
-          type: boolean
-          example: false
-        expiresAt:
-          type: string
-          format: date-time
-          nullable: true
-          example: null
-      example: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}
     ImageVariant:
       type: object
       required:
@@ -12414,6 +12314,22 @@ components:
         locale: en-US
         sourceLocale: en-US
         machineTranslated: false
+    PackageSeoOverride:
+      type: object
+      nullable: true
+      additionalProperties: false
+      description: "The overview page's search title and meta description set for the requested language; a null field keeps the template, and the site adds its brand suffix to the title. zh-Hant shows zh-CN's override converted to Traditional Chinese. Null when the language has none; other pages ignore it."
+      required: [title, description]
+      properties:
+        title:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      example:
+        title: 'Visual Studio Code for Mac: download and install'
+        description: null
     PackageDetail:
       allOf:
         - $ref: '#/components/schemas/PackageSummary'
@@ -12435,6 +12351,8 @@ components:
             - formulaeUrl
             - summaryTranslation
           properties:
+            seoOverride:
+              $ref: '#/components/schemas/PackageSeoOverride'
             collections:
               type: array
               items:

@@ -78,7 +78,7 @@ def verify(verification):
     jwt = admin('/auth/login', {'userName': verification.ENV['ADMIN_BOOTSTRAP_USERNAME'],
                 'password': verification.ENV['ADMIN_BOOTSTRAP_PASSWORD']}, 'POST')['token']
     settings = admin('/agent/settings', jwt=jwt)
-    assert len(settings['grantablePermissions']) == 21
+    assert len(settings['grantablePermissions']) == 24
     client = admin('/agent/clients', {'name': 'B5 disposable deployment check'}, 'POST', jwt)
     issued = admin(f'/agent/clients/{client["id"]}/tokens',
                    {'name': 'B5 deployment check', 'permissions': settings['grantablePermissions'],
@@ -90,9 +90,9 @@ def verify(verification):
             'clientInfo': {'name': 'opennavo-deployment-check', 'version': '1'}})
         assert status == 200 and initialized['serverInfo']['name'] == 'OpenNavo'
         status, listed = rpc(verification, token, 'tools/list')
-        assert status == 200 and len(listed['tools']) == 61
+        assert status == 200 and len(listed['tools']) == 102
         status, resources = rpc(verification, token, 'resources/list')
-        assert status == 200 and len(resources['resources']) == 7
+        assert status == 200 and len(resources['resources']) == 9
         status, guide = rpc(verification, token, 'resources/read', {'uri': 'opennavo://guide/daily-routine'})
         assert status == 200 and guide['contents']
         forged = '198.51.100.77'
@@ -150,7 +150,7 @@ print(json.dumps({'codes': results, 'uid': os.getuid()}))
     logs = verification.compose('logs', '--no-color', 'api', 'mcp', 'caddy').stdout
     assert all(secret.encode() not in logs for secret in [token, jwt, ticket, verification.ENV['AGENT_GATEWAY_SECRET']]), 'credential appeared in container logs'
     print('MCP production route/auth/tools/resources/IP/body-limit/ticket-upload/non-root/log checks: passed', flush=True)
-    return {'tools': 61, 'resources': 7, 'grantablePermissions': 21, 'publicMissingToken': 401,
+    return {'tools': 102, 'resources': 9, 'grantablePermissions': 24, 'publicMissingToken': 401,
             'publicAgentRoute': 404, 'internalMissingGateway': '1004', 'internalMissingToken': '8888',
             'containerUID': internal['uid'], 'spoofedClientIPRejected': True, 'oversizeBody': 413,
             'ticketUploads': uploads, 'revokedTokenRejected': True, 'credentialLogMatches': 0}

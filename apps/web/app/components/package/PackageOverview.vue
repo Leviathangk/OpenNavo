@@ -8,8 +8,13 @@ import { capabilities } from '~/utils/packageFacts';
 import { packagePath } from '~/utils/packageView';
 import { appEntityId, softwareAppNode } from '~/utils/structuredData';
 import { trackEvent } from '~/utils/analytics';
-import { overviewDescription, overviewTitle, withVariantNames } from '~/utils/seoTitles';
-import type { SeoExperimentAssignment } from '~/utils/seoTitles';
+import {
+  overrideDescription,
+  overrideTitle,
+  overviewDescription,
+  overviewTitle,
+  withVariantNames
+} from '~/utils/seoTitles';
 import { httpsUrl } from '~/utils/linkApp';
 
 const { locale: useI18nLocale } = useI18n();
@@ -42,28 +47,6 @@ const isSecurityApp = computed(
     Boolean(pkg.value?.categories?.some(category => category.slug === 'security'))
 );
 
-// H3: stable page assignment, shared with hydration. Run alongside recommendations, with a 250 ms
-// budget and a concrete control payload on failure so an outage never breaks SSR or triggers a retry.
-const canonical = useCanonicalUrl();
-const control: SeoExperimentAssignment = {
-  experimentId: null,
-  arm: 'control',
-  variant: null,
-  templateVersion: '',
-  eligible: false,
-  expiresAt: null
-};
-const experimentRequest = useAsyncData(
-  () => `seo-experiment:${canonical.value}`,
-  () =>
-    unwrap(
-      api.GET('/seo/experiment', {
-        params: { query: { url: canonical.value } },
-        signal: AbortSignal.timeout(250)
-      })
-    ).catch(() => control)
-);
-
 // T1: same-kind recommendations (apps for apps, fonts for fonts), eight of them.
 const { data: related } = await useAsyncData(
   () => `related:${kind.value}:${token.value}:${locale.value}`,
@@ -75,7 +58,6 @@ const { data: related } = await useAsyncData(
     ).catch(() => []),
   { transform: withVariantNames }
 );
-const { data: experiment } = await experimentRequest;
 
 const shots = computed(() =>
   (pkg.value?.screenshots ?? []).map(shot => ({
@@ -166,6 +148,7 @@ type SoftwareAppInput = NonNullable<Parameters<typeof defineSoftwareApp>[0]>;
 // has the app as mainEntity and the icon as its primary image; the app and the icon have stable @ids,
 // the same in every language, so subpages and articles point at them instead of repeating them.
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
+const canonical = useCanonicalUrl();
 const iconId = computed(() => (pkg.value?.iconUrl ? `${siteUrl}/apps/${pkg.value.token}#icon` : undefined));
 useSchemaOrg(
   computed(() => {
@@ -194,26 +177,26 @@ usePageSchema(() => ({
   imageId: iconId.value
 }));
 
-// WP1 titles and descriptions (utils/seoTitles). The legacy branch is the rollout fallback
-// selected in admin; it goes away together with the switch. Cask-only (ADR-018).
+// WP1 titles and descriptions (utils/seoTitles). An override set for this language wins over both
+// templates, one field at a time, unless Homebrew has disabled the app. The legacy branch is the rollout
+// fallback selected in admin; it goes away together with the switch. Cask-only (ADR-018).
 const legacyTitles = useLegacyTitles();
 usePageSeo({
   title: () => {
     const value = pkg.value;
     if (!value) return token.value;
-    if (!legacyTitles.value) return overviewTitle(value, t, experiment.value);
+    const custom = overrideTitle(value);
+    if (custom) return custom;
+    if (!legacyTitles.value) return overviewTitle(value, t);
     return t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' });
   },
   description: () => {
     const value = pkg.value;
     if (!value) return undefined;
+    const custom = overrideDescription(value);
+    if (custom) return custom;
     if (!legacyTitles.value)
-      return overviewDescription(
-        value,
-        t,
-        values => formatList(values, { locale: formattingLocale.value }),
-        experiment.value
-      );
+      return overviewDescription(value, t, values => formatList(values, { locale: formattingLocale.value }));
     return t(
       'package.metaDescription',
       {

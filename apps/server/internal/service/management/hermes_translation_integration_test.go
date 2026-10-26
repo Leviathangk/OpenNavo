@@ -5,13 +5,13 @@ package management
 import (
 	"context"
 	"errors"
-	"strconv"
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -32,20 +32,17 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.NoError(t, writeSource(original))
 	require.NoError(t, writeSource(original))
 	var count int64
-	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state='open'").Count(&count).Error)
-	// All writable content languages except the source are scheduled, independently of indexing.
-	// Traditional Chinese is derived from Simplified Chinese and gets no translation task.
+	require.NoError(t, st.DB.Table("content_translation_sources").Where("entity='category' AND object_key='700'").Count(&count).Error)
+	require.EqualValues(t, 1, count, "an identical source is recorded once")
+	// Every writable content language except the source awaits translation, independently of indexing.
+	// Traditional Chinese is derived from Simplified Chinese and is never a target.
 	expectedLocales := []string{"zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT"}
-	require.EqualValues(t, len(expectedLocales), count, "identical source schedules each target locale once")
-	var locales []string
-	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state='open'").Pluck("locale", &locales).Error)
-	require.ElementsMatch(t, expectedLocales, locales)
+	pending, err := st.ReadContentSource(ctx, ref)
+	require.NoError(t, err)
+	require.ElementsMatch(t, expectedLocales, slices.Collect(maps.Keys(pending.Targets)))
 	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='translate:content'").Count(&count).Error)
 	require.Zero(t, count)
 	svc := &Service{Store: st}
-	leased, err := (&seotasks.Service{DB: st.DB}).Claim(ctx, seotasks.Owner(1, 2), 1, []string{"translate"})
-	require.NoError(t, err)
-	require.Len(t, leased, 1)
 	fix := func(agent bool, model string, fields map[string]any) error {
 		op := &domain.Operation{RequestID: uuid.NewString(), Name: "fixTranslation", Permissions: []string{"*"}, RequiredPermissions: []string{"translation:review"}}
 		if agent {
@@ -55,7 +52,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			op.Execution = &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString(), ExpectedRevision: revision}
+			op.Execution = &domain.AgentExecution{IdempotencyKey: uuid.NewString(), ExpectedRevision: revision}
 		}
 		request := domain.WithOperation(ctx, op)
 		_, err := svc.Execute(request, "FixTranslation", Input{Body: map[string]any{"ref": map[string]any{"entity": "category", "id": float64(700)}, "locale": "zh-CN", "model": model, "fields": fields}})
@@ -100,8 +97,9 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	after, err := st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.Equal(t, source.Hash, after.Hash)
-	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state IN ('open','leased')").Count(&count).Error)
-	require.EqualValues(t, len(expectedLocales), count, "the rolled-back edit leaves the target locales' work as it was")
+	var recorded string
+	require.NoError(t, st.DB.Raw("SELECT source_hash FROM content_translation_sources WHERE entity='category' AND object_key='700'").Scan(&recorded).Error)
+	require.Equal(t, source.Hash, recorded, "the rolled-back edit leaves the recorded source as it was")
 	require.NoError(t, st.DB.Table("translation_logs").Count(&count).Error)
 	require.Zero(t, count)
 }
@@ -114,9 +112,6 @@ func TestBatchTranslationAcceptsChangedFormatting(t *testing.T) {
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
 		return (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"name": "File organizer", "description": "Run `brew install organizer` once."}, true)
 	}))
-	leased, err := (&seotasks.Service{DB: st.DB}).Claim(ctx, seotasks.Owner(1, 2), 1, []string{"translate"})
-	require.NoError(t, err)
-	require.Len(t, leased, 1)
 	source, err := st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	current, err := st.TranslationValue(ctx, ref, "de-DE")
@@ -125,7 +120,7 @@ func TestBatchTranslationAcceptsChangedFormatting(t *testing.T) {
 	svc := &Service{Store: st}
 	// The translation drops the code span around the command.
 	result, err := svc.Execute(domain.WithOperation(ctx, op), "WriteTranslations", Input{Body: map[string]any{
-		"ref": map[string]any{"entity": "category", "id": 701}, "model": "fixture-model", "taskId": leased[0].ID, "fencing": leased[0].Fencing,
+		"ref": map[string]any{"entity": "category", "id": 701}, "model": "fixture-model",
 		"translations": []any{map[string]any{"locale": "de-DE", "sourceHash": source.Hash, "expectedRevision": current.Revision, "idempotencyKey": uuid.NewString(),
 			"fields": map[string]any{"name": "Dateiorganisator", "description": "Führe brew install organizer einmal aus."}}},
 	}})
@@ -148,23 +143,17 @@ func TestTranslationsLeaveWordingToTheCaller(t *testing.T) {
 		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
 			return (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"name": "File organizer", "description": description}, true)
 		}))
-		leased, err := (&seotasks.Service{DB: st.DB}).Claim(ctx, seotasks.Owner(1, 2), 1, []string{"translate"})
-		require.NoError(t, err)
-		require.Len(t, leased, 1)
 		source, err := st.ReadContentSource(ctx, ref)
 		require.NoError(t, err)
 		current, err := st.TranslationValue(ctx, ref, "zh-CN")
 		require.NoError(t, err)
 		op := &domain.Operation{RequestID: uuid.NewString(), Name: "writeTranslations", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"*"}, RequiredPermissions: []string{"translation:review"}}
 		result, err := svc.Execute(domain.WithOperation(ctx, op), "WriteTranslations", Input{Body: map[string]any{
-			"ref": map[string]any{"entity": "category", "id": id}, "model": "fixture-model", "taskId": leased[0].ID, "fencing": leased[0].Fencing,
+			"ref": map[string]any{"entity": "category", "id": id}, "model": "fixture-model",
 			"translations": []any{map[string]any{"locale": "zh-CN", "sourceHash": source.Hash, "expectedRevision": current.Revision, "idempotencyKey": uuid.NewString(),
 				"fields": map[string]any{"name": "檔案整理工具", "description": translated}}},
 		}})
 		require.NoError(t, err)
-		// Retire this category's other languages so the next claim gets the next fixture.
-		require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state='done',lease_owner=NULL,lease_until=NULL WHERE entity_key=?", "category:"+strconv.FormatInt(id, 10)).Error)
-		require.NoError(t, st.DB.Exec("UPDATE seo_entity_leases SET owner=NULL,task_id=NULL,lease_until=NULL WHERE entity_key=?", "category:"+strconv.FormatInt(id, 10)).Error)
 		return result.(map[string]any)["results"].([]any)[0].(map[string]any)
 	}
 	stated := write(702, "Opens large folders faster than the Finder list view.", "開啟大型資料夾的速度比 Finder 列表檢視更快。")

@@ -63,7 +63,7 @@ watch(id, load, { immediate: true });
             <ChangelogTab :key="detail.id" :package-id="detail.id" />
           </NTabPane>
           <NTabPane
-            v-if="hasAuth('system:seo:edit')"
+            v-if="hasAuth(['system:seo:edit', 'catalog:package:view'])"
             name="index"
             :tab="$t('page.catalog.packageDetail.tabs.index')"
             display-directive="if"

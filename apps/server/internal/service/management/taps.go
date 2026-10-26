@@ -56,7 +56,7 @@ func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, 
 	if err != nil {
 		return nil, err
 	}
-	if err := taps.Conflict(owner, candidate.Tap); err != nil {
+	if err := taps.Conflict(owner, candidate.Tap, candidate.Token); err != nil {
 		return nil, err
 	}
 	if domain.CurrentOperation(ctx).DryRun {
@@ -70,7 +70,7 @@ func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, 
 		if err != nil {
 			return nil, err
 		}
-		if err := taps.Conflict(owner, candidate.Tap); err != nil {
+		if err := taps.Conflict(owner, candidate.Tap, candidate.Token); err != nil {
 			return nil, err
 		}
 		now := s.now()

@@ -17,6 +17,31 @@ export const fetchPackageIndexStatus = (id: number) =>
 export const updatePackageIndexStatus = (id: number, data: BodyOf<'setPackageIndexStatus'>) =>
   request<DataOf<'setPackageIndexStatus'>>({ url: `/packages/${id}/index-status`, method: 'put', data });
 
+// Intent pages and search snippet overrides, per language. Agents edit the same objects, so writes carry
+// the revision the page last read and fail with a conflict instead of overwriting a newer change.
+const expectRevision = (revision: number) => ({ 'X-Expected-Revision': String(revision) });
+
+export const fetchPackageIntentPages = (id: number) =>
+  request<DataOf<'getPackageIntentPages'>>({ url: `/packages/${id}/intent-pages` });
+
+export const updatePackageIntentPages = (id: number, data: BodyOf<'setPackageIntentPages'>, revision: number) =>
+  request<DataOf<'setPackageIntentPages'>>({
+    url: `/packages/${id}/intent-pages`,
+    method: 'put',
+    data,
+    headers: expectRevision(revision)
+  });
+
+export const fetchPackageSeo = (id: number) => request<DataOf<'getPackageSeo'>>({ url: `/packages/${id}/seo` });
+
+export const updatePackageSeo = (id: number, data: BodyOf<'setPackageSeo'>, revision: number) =>
+  request<DataOf<'setPackageSeo'>>({
+    url: `/packages/${id}/seo`,
+    method: 'put',
+    data,
+    headers: expectRevision(revision)
+  });
+
 // Sourced facts (WP12): writes return the facts after the change and record a package revision.
 export const fetchPackageFacts = (id: number) => request<DataOf<'getPackageFacts'>>({ url: `/packages/${id}/facts` });
 

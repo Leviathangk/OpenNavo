@@ -117,7 +117,7 @@ func TestPageDatesIgnoreRechecksAndOlderHashVersions(t *testing.T) {
 	}
 	refresh()
 	first := state()
-	require.Equal(t, 2, first.ContentHashVersion)
+	require.Equal(t, 4, first.ContentHashVersion)
 	// The daily re-check confirms the same result: only its times move.
 	require.NoError(t, st.DB.Exec(`UPDATE package_cve_checks SET checked_at=now(),valid_until=now()+interval '1 day' WHERE package_id=?`, id).Error)
 	refresh()
@@ -127,9 +127,10 @@ func TestPageDatesIgnoreRechecksAndOlderHashVersions(t *testing.T) {
 	// No content event: the worker proactively establishes the new baseline.
 	refresh()
 	require.Equal(t, first, state())
-	// An edit arriving before its baseline refresh must not lose its original change date.
+	// An edit arriving before its baseline refresh keeps its change date: like every text write, it records
+	// updated_at, the evidence of a real change after the old date.
 	require.NoError(t, st.DB.Exec(`UPDATE package_page_state SET content_hash=repeat('b',64),content_hash_version=1 WHERE package_id=?`, id).Error)
-	require.NoError(t, st.DB.Exec(`UPDATE package_i18n SET description='First real edit during upgrade' WHERE package_id=?`, id).Error)
+	require.NoError(t, st.DB.Exec(`UPDATE package_i18n SET description='First real edit during upgrade',updated_at=now() WHERE package_id=?`, id).Error)
 	var changedAt time.Time
 	require.NoError(t, st.DB.Raw(`SELECT changed_at FROM package_page_dirty WHERE package_id=?`, id).Scan(&changedAt).Error)
 	refresh()
@@ -174,6 +175,6 @@ func TestPageHashUpgradeSkipsRemovedPackagesBeforeBatchLimit(t *testing.T) {
 		var version int
 		require.NoError(t, st.DB.Raw(`SELECT content_hash_version FROM package_page_state
  WHERE package_id=? AND locale='en-US' AND page_kind='overview'`, id).Scan(&version).Error)
-		require.Equal(t, 2, version)
+		require.Equal(t, 4, version)
 	}
 }

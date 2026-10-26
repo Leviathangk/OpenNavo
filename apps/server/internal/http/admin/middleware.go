@@ -20,7 +20,7 @@ func (h *Handler) Middleware(limiter *middleware.RateLimiter) gin.HandlerFunc {
 		key := c.Request.Method + " " + c.FullPath()
 		// The generator shares the introspection and ticket-issuing paths, but they must never be accessible through the admin entry point.
 		if key == "POST /admin-api/introspect" || key == "POST /admin-api/assets/upload-tickets" {
-			respond.Error(c, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}, true)
+			respond.Error(c, domain.Forbidden(403, "operation_not_exposed"), true)
 			return
 		}
 		// Ticket uploads authenticate only by the ticket; admin JWTs and CI tokens never apply to this route.
@@ -52,7 +52,7 @@ func (h *Handler) Middleware(limiter *middleware.RateLimiter) gin.HandlerFunc {
 				c.Next()
 				return
 			}
-			respond.Error(c, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}, true)
+			respond.Error(c, domain.Forbidden(403, "operation_not_exposed"), true)
 			return
 		}
 		i, err := h.Auth.Authenticate(c.Request.Context(), token)
@@ -65,8 +65,12 @@ func (h *Handler) Middleware(limiter *middleware.RateLimiter) gin.HandlerFunc {
 		if key == "GET /admin-api/desktop-releases" || key == "GET /admin-api/desktop-releases/:id" {
 			allowed = allowed || i.Allowed("release:desktop:notes")
 		}
-		if !registered || !allowed {
-			respond.Error(c, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}, true)
+		if !registered {
+			respond.Error(c, domain.Forbidden(403, "operation_not_exposed"), true)
+			return
+		}
+		if !allowed {
+			respond.Error(c, domain.Forbidden(403, "permission_required:"+permission), true)
 			return
 		}
 		if limiter != nil {

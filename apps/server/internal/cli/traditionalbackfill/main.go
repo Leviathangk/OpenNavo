@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -40,7 +41,11 @@ func run() int {
 	if *rollback {
 		counts, err = st.RollbackTraditional(ctx, !*apply)
 	} else {
-		counts, err = st.BackfillTraditional(ctx, !*apply)
+		// The worker's limits apply here too; progress goes to stderr, the result to stdout.
+		counts, err = st.RunTraditionalBackfill(ctx, store.TraditionalBackfill{DryRun: !*apply, ObjectsPerSecond: cfg.TraditionalObjectsPerSecond, WritesPerMinute: cfg.TraditionalWritesPerMinute,
+			Progress: func(p store.TraditionalProgress) {
+				fmt.Fprintf(os.Stderr, "processed=%d stamped=%d written=%d failed=%d pending=%d remaining=%d eta=%s\n", p.Processed, p.Stamped, p.Written, p.Failed, p.Pending, p.Remaining, p.ETA.Round(time.Second))
+			}})
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Traditional Chinese migration failed; inspect locally without exposing credentials")

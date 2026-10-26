@@ -185,9 +185,10 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM content_url_changes").Scan(&sectionCursor).Error)
 	settings := adminCall("GET", "/system/seo-settings", nil, "0000")["settings"].(map[string]any)
 	training := settings["crawlers"].(map[string]any)["training"].(map[string]any)
-	training["bots"] = append(training["bots"].([]any), "GPTBot")
+	// GPTBot is limited by default now; add a crawler the defaults leave out.
+	training["bots"] = append(training["bots"].([]any), "Google-Extended")
 	saved := adminCall("PUT", "/system/seo-settings", map[string]any{"settings": settings}, "0000")["settings"].(map[string]any)
-	require.Contains(t, saved["crawlers"].(map[string]any)["training"].(map[string]any)["bots"], "GPTBot")
+	require.Contains(t, saved["crawlers"].(map[string]any)["training"].(map[string]any)["bots"], "Google-Extended")
 	var crawlerChanges, sectionChanges int
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM catalog_changes WHERE seq>?", crawlerCursor).Scan(&crawlerChanges).Error)
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes WHERE seq>?", sectionCursor).Scan(&sectionChanges).Error)

@@ -7,6 +7,7 @@ from fastmcp import Client
 
 from opennavo_mcp.contracts import OPERATIONS, snake
 from opennavo_mcp.tools.manifest import RESOURCE_PERMISSIONS, TOOLS, ToolSpec
+from opennavo_mcp.tools.runtime import LEGACY
 
 
 def arguments(spec: ToolSpec) -> dict[str, Any]:
@@ -32,8 +33,12 @@ def arguments(spec: ToolSpec) -> dict[str, Any]:
         args["package"] = args.pop("id", 1)
     if spec.name == "asset_upload_from_url":
         args = {"url": "https://example.com/icon.png", "kind": "icon"}
+    if spec.name == "package_text_get":
+        args |= {"locale": "en-US", "field": "summary"}
     if spec.write:
         args["dry_run"] = True
+    for key in LEGACY:  # Spec examples may still carry retired task metadata.
+        args.pop(key, None)
     return execution_args(spec.name, args)
 
 

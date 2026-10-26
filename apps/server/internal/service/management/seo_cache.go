@@ -6,7 +6,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/content"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
+	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
 
@@ -20,7 +20,7 @@ func queueAgentInvalidation(ctx context.Context, st *store.Store, entity string,
 		kinds[ref.Entity] = true
 	}
 	patterns := []string{}
-	canonical, err := seotasks.CanonicalEntity(ctx, st.DB, entity)
+	canonical, err := agentgate.CanonicalEntity(ctx, st.DB, entity)
 	if err != nil {
 		return err
 	}

@@ -75,17 +75,17 @@ func (s *Service) categoryWrite(ctx context.Context, op string, in Input) (any, 
 		case "ReorderCategories":
 			list, ok := in.Body["items"].([]any)
 			if !ok {
-				return nil, domain.Validation()
+				return nil, fieldError(in.Body, "items")
 			}
 			seen := map[int64]bool{}
 			for _, value := range list {
 				row, ok := value.(map[string]any)
 				if !ok {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("category_items_invalid")
 				}
 				id := int64(number(row, "id", 0))
 				if id < 1 || seen[id] {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("category_items_invalid")
 				}
 				seen[id] = true
 				r := st.DB.WithContext(ctx).Exec("UPDATE categories SET parent_id=?,sort=?,updated_at=? WHERE id=?", row["parentId"], number(row, "sort", 0), s.now(), id)

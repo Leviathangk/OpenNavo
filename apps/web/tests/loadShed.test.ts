@@ -1,10 +1,21 @@
 import { IncomingMessage, ServerResponse, createServer } from 'node:http';
 import { Socket } from 'node:net';
 import { once } from 'node:events';
-import { createApp, createError, createEvent, defineEventHandler, setHeader, toNodeListener, type H3Event } from 'h3';
+import {
+  createApp,
+  createError,
+  createEvent,
+  defineEventHandler,
+  getHeader,
+  setHeader,
+  toNodeListener,
+  type H3Event
+} from 'h3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { agentLabel, countResponse, RequestCounter } from '../server/utils/crawlerMetrics';
+import { edgeCacheable, edgeCacheHeader } from '../server/utils/edgeCache';
 import {
+  crawlerBudgeted,
   LOAD_SHED_DEFAULTS,
   LoadShedState,
   loadShedConfig,
@@ -18,6 +29,13 @@ import {
 } from '../server/utils/loadShed';
 
 afterEach(() => vi.unstubAllGlobals());
+
+// Amazon's documented format: its search and user-triggered fetchers link a page whose address contains
+// "amazonbot", which must not make them training traffic held to the crawler budget.
+const AMAZON_SEARCH =
+  'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Amzn-SearchBot/0.1; +https://developer.amazon.com/amazonbot) Chrome/120.0.0.0 Safari/537.36';
+const AMAZON_USER =
+  'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Amzn-User/0.1; +https://developer.amazon.com/amazonbot) Chrome/120.0.0.0 Safari/537.36';
 
 const tiers: Record<LoadShedTier, (string | undefined)[]> = {
   low: [
@@ -33,7 +51,15 @@ const tiers: Record<LoadShedTier, (string | undefined)[]> = {
     'ExampleBot',
     undefined
   ],
-  medium: ['PerplexityBot', 'OAI-SearchBot', 'Claude-SearchBot', 'Meta-WebIndexer', 'MistralAI-Index', 'GoogleOther'],
+  medium: [
+    'PerplexityBot',
+    'OAI-SearchBot',
+    'Claude-SearchBot',
+    'Meta-WebIndexer',
+    'MistralAI-Index',
+    'GoogleOther',
+    AMAZON_SEARCH
+  ],
   protected: [
     'OpenNavo-Probe',
     'OpenNavo-Test',
@@ -46,6 +72,7 @@ const tiers: Record<LoadShedTier, (string | undefined)[]> = {
     'YandexBot',
     'Baiduspider',
     'ChatGPT-User',
+    AMAZON_USER,
     'Claude-User',
     'Perplexity-User',
     'MistralAI-User',
@@ -192,18 +219,24 @@ describe('priority load shedding', () => {
   it('sends uncached 503 immediately through real H3, retains retry jitter and counts island/OG rejections', async () => {
     const state = new LoadShedState();
     const counter = new RequestCounter();
-    const beforeHooks: ((event: H3Event) => void)[] = [];
+    const beforeHooks: ((event: H3Event) => void | Promise<void>)[] = [];
     vi.stubGlobal('setHeader', setHeader);
+    vi.stubGlobal('getHeader', getHeader);
+    vi.stubGlobal('edgeCacheable', edgeCacheable);
+    vi.stubGlobal('edgeCacheHeader', edgeCacheHeader);
+    vi.stubGlobal('getSiteSettings', async () => ({ edgeCache: { enabled: true } }));
     vi.stubGlobal('defineNitroPlugin', (plugin: (nitro: unknown) => void) =>
       plugin({ hooks: { hook: (_name: string, handler: (event: H3Event) => void) => beforeHooks.push(handler) } })
     );
-    // The existing error plugin must not shorten the overload Retry-After to five seconds.
+    // The existing error plugin must not shorten the overload Retry-After to five seconds, and the edge
+    // rule must never make a refusal cacheable: Cloudflare serves its stale copy instead (stale-if-error).
     await import('../server/plugins/error-cache-control');
+    await import('../server/plugins/edge-cache');
     const config = { ...LOAD_SHED_DEFAULTS };
     const downstream = vi.fn(() => 'page');
     const app = createApp({
-      onBeforeResponse: event => {
-        for (const hook of beforeHooks) hook(event);
+      onBeforeResponse: async event => {
+        for (const hook of beforeHooks) await hook(event);
       },
       onAfterResponse: event => {
         event.context.releaseLoadShed?.();
@@ -229,6 +262,8 @@ describe('priority load shedding', () => {
           expect(response.headers.get(header)).toBe('no-store');
         expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8');
         expect(response.headers.get('x-robots-tag')).toBeNull();
+        // The probe defers only 503s that carry the shed level; real page errors never have it.
+        expect(response.headers.get('x-opennavo-load-shed')).toBe('mild');
         expect(await response.text()).toContain('temporarily unavailable');
       }
       expect(downstream).not.toHaveBeenCalled();
@@ -237,15 +272,30 @@ describe('priority load shedding', () => {
       expect(state.render()).toContain('agent="gptbot",tier="low",level="mild"} 3');
       expect(state.render()).toContain('opennavo_web_in_flight 8');
       expect(state.render() + counter.render()).not.toMatch(/private|vlc|image\.png/);
-      expect((await request('/apps/vlc', 'Googlebot')).status).toBe(200);
+      const admitted = await request('/apps/vlc', 'Googlebot');
+      expect(admitted.status).toBe(200);
+      expect(admitted.headers.get('x-opennavo-load-shed')).toBeNull();
       expect((await request('/apps/vlc', 'PerplexityBot')).status).toBe(200);
       state.inFlight = 16;
-      expect((await request('/apps/vlc', 'PerplexityBot')).status).toBe(503);
+      const heavy = await request('/apps/vlc', 'PerplexityBot');
+      expect(heavy.status).toBe(503);
+      expect(heavy.headers.get('x-opennavo-load-shed')).toBe('heavy');
       expect((await request('/apps/vlc', 'ChatGPT-User')).status).toBe(200);
       state.inFlight = 64;
-      expect((await request('/apps/vlc', 'Googlebot')).status).toBe(503);
-      for (const path of ['/robots.txt', '/sitemap_index.xml', '/_nuxt/page.js'])
-        expect((await request(path)).status).toBe(200);
+      const extreme = await request('/apps/vlc', 'Googlebot');
+      expect(extreme.status).toBe(503);
+      expect(extreme.headers.get('x-opennavo-load-shed')).toBe('extreme');
+      for (const path of ['/robots.txt', '/sitemap_index.xml', '/_nuxt/page.js']) {
+        const exempt = await request(path);
+        expect(exempt.status).toBe(200);
+        expect(exempt.headers.get('x-opennavo-load-shed')).toBeNull();
+      }
+      state.inFlight = 0;
+      state.imageInFlight = config.imageInFlight;
+      const image = await request('/_og/image.png', 'Mozilla/5.0 Chrome/145');
+      expect(image.status).toBe(503);
+      expect(image.headers.get('x-opennavo-load-shed')).toBe('image_capacity');
+      state.imageInFlight = 0;
       config.enabled = false;
       expect((await request('/apps/vlc')).status).toBe(200);
     } finally {
@@ -305,5 +355,135 @@ describe('priority load shedding', () => {
       server.closeAllConnections();
       await new Promise<void>(resolve => server.close(() => resolve()));
     }
+  });
+});
+
+describe('AI training crawler budget', () => {
+  // Lag thresholds out of reach, so only the budget can refuse a request here.
+  const quiet = { ...LOAD_SHED_DEFAULTS, lowLagMs: 60_000, mediumLagMs: 60_000, extremeLagMs: 60_000 };
+  const training = [
+    'GPTBot/1.2',
+    'ClaudeBot/1.0',
+    'CCBot/2.0',
+    'Bytespider',
+    'Meta-ExternalAgent/1.1',
+    'MistralAI-Training/1.0',
+    'Amazonbot/0.1'
+  ];
+
+  async function serve(state: LoadShedState) {
+    const app = createApp({ onAfterResponse: event => event.context.releaseLoadShed?.() });
+    app.use(defineEventHandler(event => shedRequest(event, quiet, state)));
+    app.use(defineEventHandler(() => 'page'));
+    const server = createServer(toNodeListener(app));
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const port = (server.address() as { port: number }).port;
+    return {
+      status: async (userAgent: string, path = '/apps/vlc') => {
+        const response = await fetch(`http://127.0.0.1:${port}${path}`, { headers: { 'user-agent': userAgent } });
+        await response.arrayBuffer();
+        return response.status;
+      },
+      request: (userAgent: string) =>
+        fetch(`http://127.0.0.1:${port}/apps/vlc`, { headers: { 'user-agent': userAgent } }),
+      close: () => new Promise<void>(resolve => server.close(() => resolve()))
+    };
+  }
+
+  it('covers exactly the AI training crawlers', () => {
+    for (const ua of training) expect(crawlerBudgeted(agentLabel(ua)), ua).toBe(true);
+    for (const ua of [...tiers.medium, ...tiers.protected, 'AhrefsBot', 'DataForSeoBot/1.0', 'ExampleBot', undefined])
+      expect(crawlerBudgeted(agentLabel(ua)), String(ua)).toBe(false);
+  });
+
+  it('gives each crawler its own burst, then refuses with an uncacheable, counted 429', async () => {
+    const now = 0;
+    const state = new LoadShedState(() => now);
+    const server = await serve(state);
+    try {
+      for (const ua of training) {
+        for (let index = 0; index < quiet.crawlerBurst; index++) expect(await server.status(ua), ua).toBe(200);
+        const refused = await server.request(ua);
+        expect(refused.status, ua).toBe(429);
+        expect(Number(refused.headers.get('retry-after'))).toBeGreaterThanOrEqual(60);
+        expect(Number(refused.headers.get('retry-after'))).toBeLessThanOrEqual(180);
+        for (const header of ['cache-control', 'cdn-cache-control', 'cloudflare-cdn-cache-control'])
+          expect(refused.headers.get(header), header).toBe('no-store');
+        expect(refused.headers.get('x-opennavo-load-shed')).toBe('budget');
+        expect(await refused.text()).toContain('Too many requests');
+      }
+      const metrics = state.render();
+      for (const agent of ['gptbot', 'claudebot', 'ccbot', 'bytespider', 'meta_externalagent', 'mistral_training'])
+        expect(metrics).toContain(`opennavo_web_load_shed_total{agent="${agent}",tier="low",level="budget"} 1`);
+      expect(metrics).toContain('opennavo_web_load_shed_total{agent="amazonbot",tier="low",level="budget"} 1');
+    } finally {
+      state.stop();
+      await server.close();
+    }
+  });
+
+  it('refills each budget at the per-minute rate, never past the burst', async () => {
+    let now = 0;
+    const state = new LoadShedState(() => now);
+    const server = await serve(state);
+    try {
+      for (let index = 0; index < quiet.crawlerBurst; index++) await server.status('GPTBot/1.2');
+      expect(await server.status('GPTBot/1.2')).toBe(429);
+      // Six a minute: one request every ten seconds.
+      now += 9_000;
+      expect(await server.status('GPTBot/1.2')).toBe(429);
+      now += 1_000;
+      expect(await server.status('GPTBot/1.2')).toBe(200);
+      expect(await server.status('GPTBot/1.2')).toBe(429);
+      // An hour away refills only up to the burst.
+      now += 3_600_000;
+      for (let index = 0; index < quiet.crawlerBurst; index++) expect(await server.status('GPTBot/1.2')).toBe(200);
+      expect(await server.status('GPTBot/1.2')).toBe(429);
+    } finally {
+      state.stop();
+      await server.close();
+    }
+  });
+
+  it('never limits other agents, nor paths outside load shedding', async () => {
+    const state = new LoadShedState(() => 0);
+    const server = await serve(state);
+    try {
+      for (const ua of [
+        'Googlebot/2.1',
+        'PerplexityBot/1.0',
+        'OAI-SearchBot/1.0',
+        'ChatGPT-User/1.0',
+        'AhrefsBot/7.0',
+        'DataForSeoBot/1.0',
+        'ExampleBot/1.0',
+        'Applebot-Extended',
+        'OpenNavo-Probe/1.0 IndexNow',
+        'Twitterbot/1.0',
+        AMAZON_SEARCH,
+        AMAZON_USER,
+        'Mozilla/5.0 Chrome/145'
+      ])
+        for (let index = 0; index < quiet.crawlerBurst * 3; index++) expect(await server.status(ua), ua).toBe(200);
+      for (let index = 0; index <= quiet.crawlerBurst; index++) await server.status('ClaudeBot/1.0');
+      expect(await server.status('ClaudeBot/1.0')).toBe(429);
+      for (const path of ['/robots.txt', '/sitemap_index.xml', '/_nuxt/app.js'])
+        expect(await server.status('ClaudeBot/1.0', path), path).toBe(200);
+    } finally {
+      state.stop();
+      await server.close();
+    }
+  });
+
+  it('reads per-minute and burst overrides like the other settings', () => {
+    expect(loadShedConfig({ crawlerPerMinute: '30', crawlerBurst: 3 })).toMatchObject({
+      crawlerPerMinute: 30,
+      crawlerBurst: 3
+    });
+    expect(loadShedConfig({ crawlerPerMinute: 0, crawlerBurst: 'many' })).toMatchObject({
+      crawlerPerMinute: 6,
+      crawlerBurst: 12
+    });
   });
 });

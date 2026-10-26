@@ -101,8 +101,7 @@ func (s *Store) SaveBackgroundContent(ctx context.Context, label string, v facts
 		return err
 	}
 	if v.Locale == "zh-CN" {
-		_, err := s.deriveAuxiliaryTraditional(ctx, "background_item", label)
-		return err
+		return s.deriveAuxiliaryTraditional(ctx, "background_item", label)
 	}
 	return nil
 }

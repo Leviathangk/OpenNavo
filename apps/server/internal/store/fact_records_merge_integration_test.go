@@ -39,8 +39,6 @@ func TestFactMergeKeepsIDsEvidenceAndNewestPrice(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, before, 2)
 	require.NoError(t, st.DB.Exec("UPDATE package_fact_records SET updated_at=CASE WHEN package_id=? THEN '2026-01-01'::timestamptz ELSE '2026-02-01'::timestamptz END", target.ID).Error)
-	require.NoError(t, st.DB.Exec("INSERT INTO admin_users(id,user_name,password_hash) VALUES(901,'merge-reviewer','fixture-not-a-password-hash')").Error)
-	require.NoError(t, st.DB.Exec("INSERT INTO seo_listing_baselines(package_id,domain,developer,team_id,fact_id,evidence_id,evidence_hash,verified_by,valid_until) SELECT package_id,'example.org','Fixture','ABCDEFGHIJ',id,1,repeat('a',64),901,now()+interval '1 day' FROM package_fact_records WHERE package_id=? AND kind='price'", target.ID).Error)
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error { return store.MergeFactRelationshipsForTest(ctx, tx, from, target.ID) }))
 	after, err := st.FactRecords(ctx, target.ID)
 	require.NoError(t, err)
@@ -49,9 +47,6 @@ func TestFactMergeKeepsIDsEvidenceAndNewestPrice(t *testing.T) {
 	require.Equal(t, before[0].Evidence, after[0].Evidence)
 	require.Equal(t, "old-price", after[1].Key)
 	require.Equal(t, before[1].ID, after[1].ID)
-	var retainedFactID int64
-	require.NoError(t, st.DB.Raw("SELECT fact_id FROM seo_listing_baselines WHERE package_id=?", target.ID).Scan(&retainedFactID).Error)
-	require.Equal(t, after[1].ID, retainedFactID)
 	left, err := st.FactRecords(ctx, from)
 	require.NoError(t, err)
 	require.Empty(t, left)

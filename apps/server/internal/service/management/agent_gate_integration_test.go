@@ -4,31 +4,21 @@ package management
 
 import (
 	"context"
+	"strconv"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/service/agentgate"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAgentWritesIgnoreProposalAndKeepPreview(t *testing.T) {
+func TestAgentWritesPreviewCommitAndReplayWithoutTasks(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(703,'gate-category','lucide:box','en-US')").Error)
-	tasks := &seotasks.Service{DB: st.DB}
-	_, err := tasks.Enqueue(ctx, seotasks.NewTask{Kind: "content", EntityKey: "category:703", DedupeKey: "gate-proposal", RuleVersion: "test", Evidence: map[string]any{}})
-	require.NoError(t, err)
-	claimed, err := tasks.Claim(ctx, seotasks.Owner(1, 2), 1, []string{"content"})
-	require.NoError(t, err)
-	require.Len(t, claimed, 1)
-	evidence := agentgate.Evidence{EntityKey: "category:703", SourceURL: "https://vendor.example.test", FinalURL: "https://vendor.example.test", BodyText: "Mac utilities", Excerpt: "Mac utilities", BodyHash: seotasks.Hash([]byte("Mac utilities")), FetchedAt: time.Now(), ValidUntil: time.Now().Add(time.Hour), Authority: "reference", FetchStatus: 200, CreatedBy: "fixture", CaptureKey: uuid.NewString(), RequestHash: seotasks.Hash([]byte("fixture"))}
-	require.NoError(t, st.DB.Create(&evidence).Error)
-	op := &domain.Operation{RequestID: uuid.NewString(), Name: "updateCategory", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"catalog:category:edit"}, RequiredPermissions: []string{"catalog:category:edit"}, DryRun: true, Execution: &domain.AgentExecution{TaskID: claimed[0].ID, Fencing: claimed[0].Fencing, IdempotencyKey: uuid.NewString(), EvidenceIDs: []int64{evidence.ID}}}
+	op := &domain.Operation{RequestID: uuid.NewString(), Name: "updateCategory", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"catalog:category:edit"}, RequiredPermissions: []string{"catalog:category:edit"}, DryRun: true, Execution: &domain.AgentExecution{IdempotencyKey: uuid.NewString()}}
 	svc := &Service{Store: st, Config: config.Config{WebBaseURL: "https://fixture.example"}}
 	in := Input{ID: 703, Body: map[string]any{"icon": "lucide:folder", "sourceLocale": "en-US", "i18n": map[string]any{"en-US": map[string]any{"name": "Mac utilities"}}}}
 	preview, err := svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
@@ -36,35 +26,62 @@ func TestAgentWritesIgnoreProposalAndKeepPreview(t *testing.T) {
 	require.NotNil(t, preview)
 	require.Equal(t, "passed", preview.(map[string]any)["validation"])
 	require.Contains(t, preview.(map[string]any)["affectedUrls"], "https://fixture.example/")
-	task, err := tasks.Get(ctx, claimed[0].ID)
-	require.NoError(t, err)
-	require.Equal(t, "leased", task.State)
 	var count int64
-	require.NoError(t, st.DB.Table("seo_actions").Count(&count).Error)
-	require.Zero(t, count)
+	for _, table := range []string{"agent_write_controls", "agent_write_events", "content_revisions"} {
+		require.NoError(t, st.DB.Table(table).Count(&count).Error)
+		require.Zero(t, count, "a preview records nothing: "+table)
+	}
 	op.DryRun = false
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
 	require.NoError(t, err)
 	var icon string
 	require.NoError(t, st.DB.Raw("SELECT icon FROM categories WHERE id=703").Scan(&icon).Error)
 	require.Equal(t, "lucide:folder", icon)
-	for _, table := range []string{"content_revisions", "content_translation_sources", "job_outbox"} {
+	for _, table := range []string{"content_revisions", "content_translation_sources", "job_outbox", "agent_write_events"} {
 		require.NoError(t, st.DB.Table(table).Count(&count).Error)
 		require.Positive(t, count, table)
 	}
+	var owner string
+	require.NoError(t, st.DB.Raw("SELECT owner FROM agent_write_events WHERE request_id=? AND operation='UpdateCategory' AND result='live'", op.RequestID).Scan(&owner).Error)
+	require.Equal(t, "agent:1:2", owner)
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
-	require.NoError(t, err)
-	require.NoError(t, st.DB.Table("seo_task_controls").Count(&count).Error)
+	require.NoError(t, err, "an identical retry replays the first result")
+	require.NoError(t, st.DB.Table("agent_write_controls").Count(&count).Error)
 	require.EqualValues(t, 1, count)
 
+	other := Input{ID: 703, Body: map[string]any{"icon": "lucide:star", "sourceLocale": "en-US", "i18n": map[string]any{"en-US": map[string]any{"name": "Mac utilities"}}}}
+	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", other)
+	var appErr *domain.AppError
+	require.ErrorAs(t, err, &appErr)
+	require.Equal(t, domain.CodeConflict, appErr.Code)
+	require.Equal(t, "rejected: idempotency_key_reused", appErr.Msg)
+
+	current, err := svc.CurrentRevision(ctx, "UpdateCategory", Input{ID: 703})
+	require.NoError(t, err)
+	require.Positive(t, current)
+	stale := *op
+	stale.Execution = &domain.AgentExecution{IdempotencyKey: uuid.NewString(), ExpectedRevision: current - 1, ExpectedRevisionSet: true}
+	_, err = svc.Execute(domain.WithOperation(ctx, &stale), "UpdateCategory", other)
+	require.ErrorAs(t, err, &appErr)
+	require.Equal(t, domain.CodeConflict, appErr.Code)
+	require.Equal(t, "rejected: revision_conflict:"+strconv.FormatInt(current, 10), appErr.Msg)
+	fresh := *op
+	fresh.Execution = &domain.AgentExecution{IdempotencyKey: uuid.NewString(), ExpectedRevision: current, ExpectedRevisionSet: true}
+	_, err = svc.Execute(domain.WithOperation(ctx, &fresh), "UpdateCategory", other)
+	require.NoError(t, err)
+	next, err := svc.CurrentRevision(ctx, "UpdateCategory", Input{ID: 703})
+	require.NoError(t, err)
+	require.Greater(t, next, current)
 }
 
 func TestAgentWritesStillRequirePermissions(t *testing.T) {
 	// Authorization still fails before a database is needed.
 	s := &Service{}
 	ctx := domain.WithOperation(context.Background(), &domain.Operation{AgentClientID: 1, AgentTokenID: 2, RequiredPermissions: []string{"catalog:package:edit"}})
-	for _, op := range []string{"FixTranslation", "AddLinkPackage", "PublishArticle", "WithdrawArticle", "RestoreRevision", "RevertRequest", "UpsertSeoKeywords"} {
+	for _, op := range []string{"FixTranslation", "AddLinkPackage", "PublishArticle", "WithdrawArticle", "RestoreRevision", "RevertRequest"} {
 		_, err := s.Execute(ctx, op, Input{})
 		require.Error(t, err, op)
 	}
+	_, err := s.CurrentRevision(ctx, "UpsertSeoKeywords", Input{})
+	require.Error(t, err, "unregistered operations have no write revision")
 }

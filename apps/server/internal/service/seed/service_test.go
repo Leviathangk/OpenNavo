@@ -28,7 +28,7 @@ func TestSeedDefinitionsAndBootstrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(data.Categories) != 22 || len(data.Roles) != 6 || len(data.Permissions) != 37 || len(data.Mirrors) != 4 || len(data.Configs) != 6 {
+	if len(data.Categories) != 22 || len(data.Roles) != 6 || len(data.Permissions) != 33 || len(data.Mirrors) != 4 || len(data.Configs) != 6 {
 		t.Fatal("seed definitions incomplete")
 	}
 	if !data.Categories[20].Hidden || !data.Categories[21].Hidden {

@@ -8,157 +8,6 @@ from typing_extensions import TypeAliasType
 from datetime import date as date_aliased
 
 
-class Credentials(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    property: Annotated[str | None, Field(max_length=4096)] = None
-    clientId: Annotated[str | None, Field(max_length=4096)] = None
-    clientSecret: Annotated[str | None, Field(max_length=4096)] = None
-    refreshToken: Annotated[str | None, Field(max_length=4096)] = None
-    serviceAccountJson: Annotated[str | None, Field(description='GSC service account JSON document serialized as a string, not a nested object. Must contain type=service_account, client_email and a valid RSA private_key of at least 2048 bits. token_uri defaults to https://oauth2.googleapis.com/token; if supplied, only that URL or https://accounts.google.com/o/oauth2/token is accepted. Send together with property and omit the OAuth fields.', max_length=16384)] = None
-    apiKey: Annotated[str | None, Field(max_length=4096)] = None
-    originUrl: Annotated[str | None, Field(max_length=4096)] = None
-
-
-class SeoProviderUpdate(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool | None = None
-    clearCredentials: Annotated[bool | None, Field(description='Clear stored credentials. Mutually exclusive with credentials; also set enabled to false when clearing an enabled provider.')] = None
-    credentials: Annotated[Credentials | None, Field(description='Replaces the entire stored credential document; omit to retain it. For gsc, send property with either serviceAccountJson or all three OAuth fields (clientId, clientSecret, refreshToken), never both. For bing, send property and apiKey. For audit, send originUrl only. Credential values are never returned.')] = None
-
-
-class Kind(RootModel[str]):
-    root: Annotated[str, Field(max_length=80)]
-
-
-class TaskId(RootModel[int]):
-    root: Annotated[int, Field(ge=1)]
-
-
-class SeoTaskClaim(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    limit: Annotated[int, Field(ge=1, le=50)] = 1
-    kinds: Annotated[list[Kind] | None, Field(max_length=20)] = None
-    taskIds: Annotated[list[TaskId] | None, Field(description='Claim only these tasks (a nomination or a task the caller reopened); they must still be claimable.', max_length=50)] = None
-
-
-class SeoTaskComplete(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    fencing: Annotated[int, Field(ge=1)]
-    outcome: Literal['done', 'skipped', 'quarantined']
-    reason: Annotated[str | None, Field(max_length=1000)] = None
-
-
-class SeoTaskReopen(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str | None, Field(max_length=200, min_length=8)] = None
-    reason: Annotated[str, Field(max_length=1000, min_length=1)]
-
-
-class SeoListingNomination(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    name: Annotated[str, Field(max_length=256, min_length=1)]
-    homepage: Annotated[str | None, Field(description='Official https page of the app, where the agent starts its research.', max_length=2048)] = None
-    reason: Annotated[str, Field(description='Who asked for the app and why.', max_length=1000, min_length=1)]
-
-
-class SeoTaskDefer(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    fencing: Annotated[int, Field(ge=1)]
-    reason: Annotated[str, Field(max_length=1000, min_length=1)]
-    retryAt: AwareDatetime
-
-
-class SeoEvidenceCapture(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    taskId: Annotated[int, Field(ge=1)]
-    fencing: Annotated[int, Field(ge=1)]
-    entityKey: Annotated[str, Field(max_length=300)]
-    url: AnyUrl
-    excerpt: Annotated[str, Field(max_length=20000, min_length=1)]
-
-
-class FieldPath(RootModel[str]):
-    root: Annotated[str, Field(max_length=1000)]
-
-
-class SeoCompensation(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    reason: Literal['implementation_error', 'previous_still_valid']
-    fieldPaths: list[FieldPath] | None = None
-
-
-class SeoTask(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(ge=0)]
-    kind: str
-    entityKey: str
-    locale: Annotated[str | None, Field(...)]
-    dedupeKey: str
-    priority: float
-    evidence: Any
-    evidenceHash: str
-    ruleVersion: str
-    state: Literal['open', 'leased', 'done', 'deferred', 'skipped', 'quarantined', 'expired']
-    fencing: Annotated[int, Field(ge=0)]
-    attempts: Annotated[int, Field(ge=0)]
-    createdAt: str
-    updatedAt: str
-    result: Any | None = None
-    leaseUntil: AwareDatetime | None = None
-    nextRetryAt: AwareDatetime | None = None
-    lastAttemptAt: AwareDatetime | None = None
-    expiresAt: AwareDatetime | None = None
-    leaseOwner: str | None = None
-    pendingEvidence: Annotated[Any | None, Field(description='Evidence that changed while the task was leased; it replaces evidence when the lease ends and then reopens the task.')] = None
-    reopenCount: Annotated[int | None, Field(ge=0)] = None
-    reopenedAt: AwareDatetime | None = None
-
-
-class SeoTaskList(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    records: list[SeoTask]
-
-
-class SeoTaskTrace(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    currentRevision: Annotated[int | None, Field(ge=0)] = None
-    revisions: dict[str, int] | None = None
-    task: dict[str, Any]
-    actions: list[dict[str, Any]]
-    evidence: list[dict[str, Any]]
-    experiments: list[dict[str, Any]]
-    gateEvents: list[dict[str, Any]]
-
-
 class SeoEvidence(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -176,199 +25,6 @@ class SeoEvidence(BaseModel):
     revokedAt: Annotated[AwareDatetime | None, Field(...)]
 
 
-class SeoActionPage(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    records: list[dict[str, Any]]
-    current: Annotated[int, Field(ge=1)]
-    size: Annotated[int, Field(ge=1)]
-    total: Annotated[int, Field(ge=0)]
-    metrics: list[dict[str, Any]]
-
-
-class SeoSnippetResult(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(ge=1)]
-    state: str
-    requiredImpressions: Annotated[int, Field(ge=1)]
-    variant: str
-    templateVersion: str
-
-
-class SeoCompensationResult(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    actionId: Annotated[int, Field(ge=1)]
-    compensated: bool
-    affectedUrls: list[str]
-
-
-class Maintenance(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Translation(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class FactFix(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Withdraw(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Compensate(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class FactFill(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Content(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Listing(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Article(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Snippet(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Operations(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Research(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    enabled: bool
-    mode: Literal['proposal', 'live']
-
-
-class Actions(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    maintenance: Maintenance
-    translation: Translation
-    fact_fix: FactFix
-    withdraw: Withdraw
-    compensate: Compensate
-    fact_fill: FactFill
-    content: Content
-    listing: Listing
-    article: Article
-    snippet: Snippet
-    operations: Operations
-    research: Research
-
-
-class DailyEntities(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    maintenance: Annotated[int, Field(ge=0, le=1000000)]
-    translation: Annotated[int, Field(ge=0, le=1000000)]
-    fact_fix: Annotated[int, Field(ge=0, le=1000000)]
-    withdraw: Annotated[int, Field(ge=0, le=1000000)]
-    compensate: Annotated[int, Field(ge=0, le=1000000)]
-    fact_fill: Annotated[int, Field(ge=0, le=1000000)]
-    content: Annotated[int, Field(ge=0, le=1000000)]
-    listing: Annotated[int, Field(ge=0, le=1000000)]
-    article: Annotated[int, Field(ge=0, le=1000000)]
-    snippet: Annotated[int, Field(ge=0, le=1000000)]
-    operations: Annotated[int, Field(ge=0, le=1000000)]
-    research: Annotated[int, Field(ge=0, le=1000000)]
-
-
-class SeoAutomation(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    version: Literal[1]
-    actions: Actions
-    dailyEntities: DailyEntities
-    researchDailyMicros: Annotated[int, Field(ge=0, le=1000000000000)]
-    researchMonthlyMicros: Annotated[int, Field(ge=0, le=1000000000000)]
-    businessDropRatio: Annotated[float, Field(gt=0.0, lt=1.0)]
-
-
-class SeoAutomationView(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    automation: SeoAutomation
-    revision: Annotated[int, Field(ge=1, le=1000000000)]
-
-
-class SeoAutomationUpdate(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    automation: SeoAutomation
-    expectedRevision: Annotated[int, Field(ge=1, le=1000000000)]
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    reason: Annotated[str, Field(max_length=2000, min_length=1)]
-
-
 class TranslationViolation(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -384,45 +40,6 @@ class TranslationViolation(BaseModel):
     limit: int | None = None
     length: int | None = None
     sourceLength: int | None = None
-
-
-class SeoImportResult(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    taskId: Annotated[int, Field(ge=1, le=1000000000)]
-    state: str
-    reconciliation: str
-    currentHash: Annotated[str, Field(pattern='^[0-9a-f]{64}$')]
-    currentVersion: str
-
-
-class SeoTasksImportResult(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    results: list[SeoImportResult]
-    processed: Annotated[int, Field(ge=0, le=1000000000)]
-    deferred: Annotated[int, Field(ge=0, le=1000000000)]
-    cursor: dict[str, Any]
-
-
-class SeoAutomationViewResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: str
-    msg: str
-    data: SeoAutomationView
-
-
-class SeoTasksImportResultResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: str
-    msg: str
-    data: SeoTasksImportResult
 
 
 class ArticleClaim(BaseModel):
@@ -534,42 +151,6 @@ class ArticleTestArtifactResponse(BaseModel):
     data: ArticleTestArtifact
 
 
-class SeoListingBaselineWrite(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    factId: Annotated[int, Field(examples=[1], ge=1)]
-    evidenceId: Annotated[int, Field(examples=[1], ge=1)]
-    domainOwnershipConfirmed: Annotated[Literal[True], Field(examples=[True])]
-    suspicious: Annotated[bool, Field(examples=[False])]
-
-
-class SeoListingBaseline(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    packageId: Annotated[int, Field(examples=[1], ge=1)]
-    domain: Annotated[str, Field(examples=['vendor.example.test'], max_length=1000)]
-    developer: Annotated[str, Field(examples=['Example Software'], max_length=1000)]
-    teamId: Annotated[str, Field(examples=['EXAMPL1234'], max_length=1000)]
-    factId: Annotated[int, Field(examples=[1], ge=1)]
-    evidenceId: Annotated[int, Field(examples=[1], ge=1)]
-    evidenceHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=1000)]
-    verifiedBy: Annotated[int, Field(examples=[1], ge=1)]
-    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19T00:00:00+00:00'], max_length=1000)]
-    validUntil: Annotated[AwareDatetime, Field(examples=['2026-11-19T00:00:00+00:00'], max_length=1000)]
-    suspicious: Annotated[bool, Field(examples=[False])]
-
-
-class SeoListingBaselineResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Annotated[Literal['0000'], Field(examples=['0000'])]
-    msg: Annotated[str, Field(examples=['ok'], max_length=1000)]
-    data: SeoListingBaseline
-
-
 class Installation(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -648,420 +229,6 @@ class CompatibilityObservation(BaseModel):
     minimumMacOS: Annotated[str | None, Field(...)]
     maximumMacOS: Annotated[str | None, Field(...)]
     appleSilicon: Literal[True, False, 'unknown']
-
-
-class SerpFeature(RootModel[str]):
-    root: Annotated[str, Field(examples=['ai_overview'], max_length=100)]
-
-
-class Link(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    packageId: Annotated[int, Field(examples=[1], ge=1)]
-    intent: Annotated[str, Field(examples=['download'])]
-    confidence: Annotated[float, Field(examples=[1], ge=0.0, le=1.0)]
-    state: Annotated[Literal['candidate', 'confirmed', 'rejected'], Field(examples=['confirmed'])]
-
-
-class SeoWatermark(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    source: Annotated[Literal['gsc_page', 'gsc_query', 'inspection', 'bing', 'audit', 'edge_probe'], Field(examples=['gsc_page'])]
-    completeThrough: Annotated[date_aliased | None, Field(examples=['2026-10-16'])]
-    freshThrough: Annotated[date_aliased | None, Field(examples=['2026-10-18'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00+00:00'])]
-
-
-class SeoOverviewBreakerEvidence(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    unresolved: Annotated[int | None, Field(examples=[2], ge=0)] = None
-    layers: list[Literal['origin', 'edge']] | None = None
-    receiptId: Annotated[str | None, Field(examples=['fixture-reservation-001'])] = None
-    Daily: Annotated[int | None, Field(examples=[100], ge=0)] = None
-    Monthly: Annotated[int | None, Field(examples=[100], ge=0)] = None
-    Days: Annotated[int | None, Field(examples=[56], ge=0)] = None
-    OldClicks: Annotated[int | None, Field(examples=[100], ge=0)] = None
-    NewClicks: Annotated[int | None, Field(examples=[100], ge=0)] = None
-    OldImpressions: Annotated[int | None, Field(examples=[100], ge=0)] = None
-    NewImpressions: Annotated[int | None, Field(examples=[100], ge=0)] = None
-
-
-class SeoOverviewBreaker(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    kind: Annotated[Literal['technical', 'business', 'budget'], Field(examples=['technical'])]
-    scope: Annotated[str, Field(examples=['*'])]
-    reason: Annotated[str, Field(examples=['audit_p0'])]
-    openedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    retryAt: Annotated[AwareDatetime | None, Field(examples=[None])]
-    evidence: SeoOverviewBreakerEvidence | None
-
-
-class SeoEntityBudget(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    action: Annotated[str, Field(examples=['listing'])]
-    period: Annotated[Literal['day'], Field(examples=['day'])]
-    limit: Annotated[int, Field(examples=[20], ge=0)]
-    used: Annotated[int, Field(examples=[3], ge=0)]
-    remaining: Annotated[int, Field(examples=[17], ge=0)]
-
-
-class SeoResearchBudget(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    action: Annotated[Literal['paid_research'], Field(examples=['paid_research'])]
-    period: Annotated[Literal['day', 'month'], Field(examples=['day'])]
-    limitMicros: Annotated[int, Field(examples=[15000000], ge=0)]
-    usedMicros: Annotated[int, Field(examples=[250000], ge=0)]
-    remainingMicros: Annotated[int, Field(examples=[14750000], ge=0)]
-
-
-class SeoOverviewBudget(RootModel[SeoEntityBudget | SeoResearchBudget]):
-    root: Annotated[SeoEntityBudget | SeoResearchBudget, Field(description='Entity quotas and paid research costs retain their distinct existing fields. Narrow by presence of limitMicros for research costs.', examples=[{'action': 'listing', 'period': 'day', 'limit': 20, 'used': 3, 'remaining': 17}])]
-
-
-class SeoOverviewActionMode(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    liveOperations: Annotated[list[str] | None, Field(description="Operations that execute live independently of this action's default policy. Parentheses restrict the entity scope.")] = None
-    action: Annotated[str, Field(examples=['listing'])]
-    enabled: Annotated[bool, Field(examples=[True])]
-    mode: Annotated[Literal['proposal', 'live'], Field(examples=['proposal'])]
-
-
-class SeoYesterdayAction(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    operation: Annotated[str, Field(examples=['UpdatePackageMeta'])]
-    mode: Annotated[Literal['proposal', 'live'], Field(examples=['live'])]
-    count: Annotated[int, Field(examples=[12], ge=0)]
-    compensated: Annotated[int, Field(examples=[1], ge=0)]
-
-
-class SeoYesterday(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    actions: list[SeoYesterdayAction]
-
-
-class SeoAlert(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    kind: Annotated[Literal['tech_alert'], Field(examples=['tech_alert'])]
-    rule: Annotated[str, Field(examples=['canonical'])]
-    url: Annotated[AnyUrl, Field(examples=['https://fixture.example/apps/example-editor'])]
-    layer: Annotated[Literal['origin', 'edge'], Field(examples=['edge'])]
-    severity: Annotated[Literal['p0', 'p1', 'p2'], Field(examples=['p0'])]
-    detail: Annotated[str, Field(examples=['Canonical URL differs from the page decision.'])]
-    firstSeen: Annotated[AwareDatetime, Field(examples=['2026-10-17T10:00:00Z'])]
-    lastSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    resolvedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
-    status: Annotated[Literal['open', 'resolved'], Field(examples=['open'])]
-
-
-class SeoAlertPage(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    records: list[SeoAlert]
-    current: Annotated[int, Field(examples=[1], ge=1)]
-    size: Annotated[int, Field(examples=[20], ge=1, le=100)]
-    total: Annotated[int, Field(examples=[1], ge=0)]
-
-
-class SeoGeoPrompt(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    text: Annotated[str, Field(examples=['best free mac apps'], max_length=500, min_length=1)]
-    hash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-    classification: Annotated[Literal['neutral', 'brand', 'exploration'], Field(examples=['neutral'])]
-
-
-class SeoGeoEngine(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    key: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    name: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    surface: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    modelVersion: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    toolVersion: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-
-
-class SeoGeoContext(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    market: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    promptLanguage: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    answerLanguage: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    searchMode: Annotated[str, Field(examples=['unknown'], max_length=120, pattern='^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,119}$')]
-    windowDays: Annotated[int, Field(examples=[7], ge=1, le=366)]
-
-
-class OwnUrl(RootModel[AnyUrl]):
-    root: Annotated[AnyUrl, Field(examples=['https://fixture.example/apps/example-editor'])]
-
-
-class ThirdPartyDomain(RootModel[str]):
-    root: Annotated[str, Field(examples=['vendor.example'], max_length=253, pattern='^[a-z0-9.-]+$')]
-
-
-class SeoGeoCell(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    promptId: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    engineKey: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    status: Annotated[Literal['answered', 'not_triggered', 'error', 'unsupported', 'missing'], Field(examples=['answered'])]
-    observationId: Annotated[str | None, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    answerHash: Annotated[str | None, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-    searchTriggered: Annotated[bool | None, Field(examples=[None])]
-    citationExtraction: Annotated[Literal['complete', 'incomplete', 'unknown'], Field(examples=['complete'])]
-    evidenceAvailability: Annotated[Literal['available', 'unknown', 'evidence_unavailable'], Field(examples=['available'])]
-    mentioned: Annotated[bool | None, Field(examples=[None])]
-    candidate: Annotated[bool | None, Field(examples=[None])]
-    cited: Annotated[bool | None, Field(examples=[None])]
-    ownUrls: Annotated[list[OwnUrl], Field(examples=[[]], max_length=20)]
-    thirdPartyDomains: Annotated[list[ThirdPartyDomain], Field(examples=[[]], max_length=10)]
-    domainsTruncated: Annotated[bool, Field(examples=[False])]
-
-
-class MissingField(RootModel[str]):
-    root: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-
-
-class SeoGeoReported(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    answered: Annotated[int | None, Field(examples=[49], ge=0, le=500)]
-    mentioned: Annotated[int | None, Field(examples=[0], ge=0, le=500)]
-    candidate: Annotated[int | None, Field(examples=[None], ge=0, le=500)]
-    cited: Annotated[int | None, Field(examples=[0], ge=0, le=500)]
-    missingFields: Annotated[list[MissingField], Field(examples=[['observations', 'citationExtraction']], max_length=20)]
-
-
-class SeoGeoCharge(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    vendorTaskId: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    costUsd: Annotated[str | None, Field(examples=['0.1'], max_length=16, pattern='^(0|[1-9][0-9]{0,8})(\\.[0-9]{1,6})?$')]
-    credits: Annotated[int | None, Field(examples=[1], ge=0, le=1000000000)]
-    incurredAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-
-
-class SeoGeoSnapshot(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    schemaVersion: Annotated[Literal[1], Field(examples=[1])]
-    provider: Annotated[Literal['openseo'], Field(examples=['openseo'])]
-    sourceProject: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    providerRunKey: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    panelId: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    panelVersion: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    approvedBatchRef: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    hashNormalization: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    mode: Annotated[Literal['imported_observation', 'summary_only'], Field(examples=['imported_observation'])]
-    periodStart: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    periodEnd: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    context: SeoGeoContext
-    prompts: Annotated[list[SeoGeoPrompt], Field(examples=[[{'id': 'p1', 'text': 'best free mac apps', 'hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'classification': 'neutral'}]], max_length=100, min_length=1)]
-    engines: Annotated[list[SeoGeoEngine], Field(examples=[[{'key': 'chatgpt', 'name': 'ChatGPT', 'surface': 'provider_api', 'modelVersion': 'unknown', 'toolVersion': 'unknown'}]], max_length=10, min_length=1)]
-    plannedCount: Annotated[int, Field(examples=[1], ge=1, le=500)]
-    cells: Annotated[list[SeoGeoCell], Field(examples=[[{'id': 'p1-chatgpt', 'promptId': 'p1', 'engineKey': 'chatgpt', 'status': 'answered', 'observationId': 'observation-fixture-001', 'answerHash': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'searchTriggered': None, 'citationExtraction': 'unknown', 'evidenceAvailability': 'unknown', 'mentioned': None, 'candidate': None, 'cited': None, 'ownUrls': [], 'thirdPartyDomains': [], 'domainsTruncated': False}]], max_length=500)]
-    reported: SeoGeoReported | None
-    artifactCompleteness: Annotated[Literal['complete', 'incomplete', 'unknown'], Field(examples=['complete'])]
-    hashAlgorithm: Annotated[Literal['sha256'], Field(examples=['sha256'])]
-    charges: Annotated[list[SeoGeoCharge], Field(examples=[[{'vendorTaskId': 'fixture-charge-001', 'costUsd': None, 'credits': None, 'incurredAt': '2026-10-18T10:00:00Z'}]], max_length=100)]
-
-
-class SeoGeoImport(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(examples=['fixture-001'], max_length=200, min_length=8, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    supersedes: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    snapshot: SeoGeoSnapshot
-
-
-class SeoGeoMetric(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    positive: Annotated[int, Field(examples=[0], ge=0)]
-    known: Annotated[int, Field(examples=[0], ge=0)]
-
-
-class SeoGeoCounts(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    planned: Annotated[int, Field(examples=[1], ge=0)]
-    answered: Annotated[int | None, Field(examples=[1], ge=0)]
-    searchTriggered: SeoGeoMetric
-    mentioned: SeoGeoMetric
-    candidate: SeoGeoMetric
-    cited: SeoGeoMetric
-    citationComplete: Annotated[int, Field(examples=[0], ge=0)]
-    reported: SeoGeoReported | None
-
-
-class SeoGeoTrend(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    previousId: Annotated[int, Field(examples=[1])]
-    citedRateDelta: Annotated[float, Field(examples=[0.1], ge=-1.0, le=1.0)]
-
-
-class SeoGeoSummary(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(examples=[1])]
-    site: Annotated[str, Field(examples=['fixture.example'], max_length=253)]
-    mode: Annotated[Literal['imported_observation', 'summary_only'], Field(examples=['imported_observation'])]
-    panelId: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    panelVersion: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    periodStart: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    periodEnd: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    importedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    payloadHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-    comparisonKey: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-    supersedes: Annotated[int | None, Field(examples=[1], ge=1)]
-    counts: SeoGeoCounts
-    trend: SeoGeoTrend | None
-
-
-class SeoGeoObservationLink(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    observationId: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    url: Annotated[AnyUrl | None, Field(examples=['https://evidence.example/observations/fixture-001'])]
-
-
-class SeoGeoRecord(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(examples=[1])]
-    site: Annotated[str, Field(examples=['fixture.example'], max_length=253)]
-    mode: Annotated[Literal['imported_observation', 'summary_only'], Field(examples=['imported_observation'])]
-    panelId: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    panelVersion: Annotated[str, Field(examples=['fixture-001'], max_length=200, pattern='^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$')]
-    periodStart: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    periodEnd: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    importedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    payloadHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-    comparisonKey: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-    supersedes: Annotated[int | None, Field(examples=[1], ge=1)]
-    counts: SeoGeoCounts
-    trend: SeoGeoTrend | None
-    importedBy: Annotated[str, Field(examples=['agent:1:1'], max_length=200)]
-    snapshot: SeoGeoSnapshot
-    observationLinks: Annotated[list[SeoGeoObservationLink], Field(examples=[[{'observationId': 'observation-fixture-001', 'url': None}]], max_length=500)]
-
-
-class SeoGeoPage(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    current: Annotated[int, Field(examples=[1], ge=1)]
-    size: Annotated[int, Field(examples=[20], ge=1, le=100)]
-    total: Annotated[int, Field(examples=[1], ge=0)]
-    records: Annotated[list[SeoGeoSummary | None], Field(examples=[[{'id': 1, 'site': 'fixture.example', 'mode': 'imported_observation', 'panelId': 'neutral-core', 'panelVersion': 'v1', 'periodStart': '2026-10-18T09:00:00Z', 'periodEnd': '2026-10-18T10:00:00Z', 'importedAt': '2026-10-18T11:00:00Z', 'payloadHash': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'comparisonKey': 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd', 'supersedes': None, 'counts': {'planned': 1, 'answered': 1, 'searchTriggered': {'positive': 0, 'known': 0}, 'mentioned': {'positive': 0, 'known': 0}, 'candidate': {'positive': 0, 'known': 0}, 'cited': {'positive': 0, 'known': 0}, 'citationComplete': 0, 'reported': None}, 'trend': None}]], max_length=100)]
-
-
-class SeoGeoImportResult(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(examples=[1])]
-    payloadHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[a-f0-9]{64}$')]
-
-
-class SeoGeoPageResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Annotated[str, Field(examples=['0000'], max_length=120)]
-    msg: Annotated[str, Field(examples=['ok'], max_length=120)]
-    data: SeoGeoPage
-
-
-class SeoGeoRecordResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Annotated[str, Field(examples=['0000'], max_length=120)]
-    msg: Annotated[str, Field(examples=['ok'], max_length=120)]
-    data: SeoGeoRecord
-
-
-class SeoGeoImportResultResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Annotated[str, Field(examples=['0000'], max_length=120)]
-    msg: Annotated[str, Field(examples=['ok'], max_length=120)]
-    data: SeoGeoImportResult
-
-
-class SeoOverview(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    geo: SeoGeoSummary | None
-    watermarks: list[SeoWatermark]
-    keywordCount: Annotated[int, Field(examples=[1], ge=0)]
-    targetCount: Annotated[int, Field(examples=[0], ge=0)]
-    automationReady: Annotated[bool, Field(description='At least one search-data source has completeness and freshness dates within the last seven UTC days and was updated within seven days. Does not gate catalog editing.', examples=[True])]
-    breakers: list[SeoOverviewBreaker]
-    budgets: list[SeoOverviewBudget]
-    actionModes: list[SeoOverviewActionMode]
-    yesterday: SeoYesterday
-
-
-class AuditIssue(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    rule: Annotated[str, Field(examples=['seo.canonical'])]
-    layer: Annotated[Literal['origin', 'edge'], Field(examples=['origin'])]
-    severity: Annotated[Literal['p0', 'p1', 'p2'], Field(examples=['p0'])]
-    detail: Annotated[str, Field(examples=['Canonical mismatch'])]
-    firstSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-    lastSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
-
-
-class Gsc(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    completeThrough: Annotated[date_aliased | None, Field(examples=['2026-10-16'])]
-    clicks: Annotated[int, Field(examples=[10], ge=0)]
-    impressions: Annotated[int, Field(examples=[100], ge=0)]
-    averagePosition: Annotated[float | None, Field(examples=[3])]
 
 
 class ComparisonAttribute(BaseModel):
@@ -1323,6 +490,11 @@ class ChangeFeedStatus(BaseModel):
     lastIndexnowStatus: Annotated[str, Field(description='ok, accepted (key verification pending), skipped or error with details; empty when not used.')]
     lastPurgeStatus: str
     lastError: str
+    pendingAnnouncements: Annotated[int, Field(description='Live announcement receipts not yet delivered (pending, invalidated or probed).')]
+    oldestPendingAt: Annotated[AwareDatetime | None, Field(description='Creation time of the oldest undelivered announcement; null when none.')]
+    deadAnnouncements: Annotated[int, Field(description='Announcements dead in the last 30 days with no newer receipt for the same URL.')]
+    probeCooldownUntil: Annotated[AwareDatetime | None, Field(description='Shared public-probe cooldown end while it lies in the future.')]
+    overloadedProbes: Annotated[int, Field(description='Consecutive probe responses that reported load shedding or rate limiting; 0 after a normal probe.')]
 
 
 class Bot(RootModel[str]):
@@ -1406,15 +578,6 @@ class Crawlers(BaseModel):
     )
     training: SeoCrawlerRule
     seoTools: SeoCrawlerRule
-
-
-class IndexPolicy(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    mode: Annotated[Literal['off', 'shadow', 'enforce'], Field(description='Temporary rollout switch for the index eligibility policy.')]
-    scope: Literal['new', 'all']
-    since: Annotated[str, Field(description='Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept.', max_length=40)]
 
 
 class BusinessErrorResponse(BaseModel):
@@ -1557,7 +720,7 @@ class UserInfo(BaseModel):
     userId: Annotated[str, Field(examples=['1'])]
     userName: Annotated[str, Field(examples=['local-admin'])]
     roles: Annotated[list[str], Field(examples=[['R_SUPER']])]
-    buttons: Annotated[list[str], Field(description='Permission code', examples=[['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'seo:insight:view', 'seo:keyword:edit', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'system:github:edit', 'system:seo:edit']])]
+    buttons: Annotated[list[str], Field(description='Permission code', examples=[['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'system:github:edit', 'system:seo:edit']])]
 
 
 class ProfileUpdate(BaseModel):
@@ -1766,6 +929,7 @@ class ReleaseSection(BaseModel):
 
 
 class AdminRelease(BaseModel):
+    revision: Annotated[int | None, Field(description='Revision the release writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
     id: Annotated[int, Field(examples=[1])]
     packageId: Annotated[int, Field(examples=[1])]
     kind: PackageKind
@@ -1903,7 +1067,7 @@ class SynonymUpsert(BaseModel):
     enabled: Annotated[bool, Field(examples=[True])]
 
 
-class Link1(RootModel[AnyUrl]):
+class Link(RootModel[AnyUrl]):
     root: AnyUrl
 
 
@@ -1929,7 +1093,7 @@ class Feedback(BaseModel):
     macosVersion: Annotated[str | None, Field(max_length=100)] = None
     symptom: Annotated[str | None, Field(max_length=500)] = None
     diagnosticLog: Annotated[str | None, Field(description='Private diagnostic text, at most 16 KiB UTF-8; secrets and personal paths are redacted before storage.', max_length=16384)] = None
-    links: Annotated[list[Link1] | None, Field(max_length=3)] = None
+    links: Annotated[list[Link] | None, Field(max_length=3)] = None
     visibility: Literal['private'] | None = None
 
 
@@ -3311,6 +2475,8 @@ class CatalogActivity(BaseModel):
     type: Annotated[Literal['created', 'updated', 'removed', 'renamed'], Field(examples=['updated'])]
     packageId: Annotated[int, Field(examples=[1], ge=1)]
     token: Annotated[str, Field(examples=['visual-studio-code'], max_length=128)]
+    kind: Annotated[Literal['cask', 'link'], Field(examples=['cask'])]
+    source: Annotated[Literal['homebrew', 'tap', 'link'], Field(description='Where the app comes from: an official Homebrew cask, a cask of a third-party tap, or a link app', examples=['homebrew'])]
     previousToken: Annotated[str | None, Field(examples=[None], max_length=128)]
     version: Annotated[str | None, Field(description='Full build version (0.1,49); events recorded before build notes hold only the base version', examples=[None], max_length=256)]
     versionBase: Annotated[str | None, Field(examples=[None], max_length=256)]
@@ -3328,9 +2494,10 @@ class Data19(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[CatalogActivity], Field(examples=[[{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07T08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}]])]
+    records: Annotated[list[CatalogActivity], Field(examples=[[{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'kind': 'cask', 'source': 'homebrew', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07T08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
+    nextSeq: Annotated[int, Field(description='Cursor to pass as afterSeq to continue after this page: the last event returned while more remain, otherwise the newest event so far', examples=[1], ge=0)]
     total: Annotated[int, Field(examples=[1], ge=0)]
 
 
@@ -3344,11 +2511,11 @@ class CatalogActivityResponse(BaseModel):
 
 
 class CatalogActivityResponseResult(RootModel[CatalogActivityResponse | BusinessErrorResponse]):
-    root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07T08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'kind': 'cask', 'source': 'homebrew', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07T08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1, 'nextSeq': 1}}])]
 
 
-class AgentPermission(RootModel[Literal['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes', 'seo:insight:view', 'seo:keyword:edit']]):
-    root: Annotated[Literal['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes', 'seo:insight:view', 'seo:keyword:edit'], Field(examples=['dashboard:view'])]
+class AgentPermission(RootModel[Literal['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']]):
+    root: Annotated[Literal['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], Field(examples=['dashboard:view'])]
 
 
 class AgentLimits(BaseModel):
@@ -3390,7 +2557,7 @@ class AgentSettingsResponse(BaseModel):
 
 
 class AgentSettingsResponseResult(RootModel[AgentSettingsResponse | BusinessErrorResponse]):
-    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes', 'seo:insight:view', 'seo:keyword:edit'], 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
+    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class AgentClientCreate(BaseModel):
@@ -3471,7 +2638,7 @@ class AgentTokenCreate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str, Field(examples=['日常运营'], max_length=128, min_length=1)]
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['seo:insight:view', 'seo:keyword:edit', 'seo:task:handle', 'seo:snippet:propose', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=27)] = None
+    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=27)] = None
     allowDelete: Annotated[bool, Field(examples=[True])] = True
     expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
@@ -3951,97 +3118,278 @@ class AdminCatalogVersionsResponseResult(RootModel[AdminCatalogVersionsResponse 
     root: Annotated[AdminCatalogVersionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07T08:00:00+00:00', 'brewCommittedAt': '2026-10-07T07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
-class ClaimSeoTasksInput(BaseModel):
+class IndexPolicy(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoTaskClaim
+    mode: Annotated[Literal['off', 'shadow', 'enforce'], Field(description='Temporary rollout switch for the index eligibility policy.')]
+    scope: Literal['new', 'all']
+    since: Annotated[str, Field(description='Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept.', max_length=40)]
 
 
-class GetSeoTaskInput(BaseModel):
+class SeoPageSettings(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    id: Annotated[int, Field(examples=[1], ge=1)]
+    titleTemplate: Annotated[Literal['new', 'legacy'], Field(description='Temporary rollout switch; removed together with the legacy templates.')]
+    indexPolicy: IndexPolicy
+    translationMode: Annotated[Literal['shadow', 'enforce'], Field(description='Published translation quality rollout; new site-only languages are always enforced.')] = 'shadow'
+    translationLocales: Annotated[list[Locale] | None, Field(description='Locales to enforce; empty means all locales.')] = None
+    versionsMinNotesChars: Annotated[int, Field(ge=1, le=100000)] = 300
+    openLocales: Annotated[list[Locale], Field(description='Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.', validate_default=True)] = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']
+    intentPagesEnabled: Annotated[bool, Field(description='Enable qualified intent pages backed by confirmed search demand and unique targets.')] = False
+    detailsRedirect: Annotated[bool, Field(description='Enable details redirects after migrated overview content has been verified.')] = False
+    versionsSitemap: bool
 
 
-class CompleteSeoTaskInput(BaseModel):
+class PageAlternate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoTaskComplete
+    locale: Locale
+    url: AnyUrl
 
 
-class DeferSeoTaskInput(BaseModel):
+class PageEntity(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoTaskDefer
+    type: Literal['package', 'article', 'author', 'category', 'collection', 'background_item', 'security_topic', 'static']
+    id: Annotated[int | None, Field(...)]
+    key: Annotated[str, Field(description='App token, slug, background item label or static page name.', max_length=2048)]
+    packageKind: Annotated[Literal['cask', 'link'] | None, Field(description='Apps only.')] = None
 
 
-class ReopenSeoTaskInput(BaseModel):
+class PageDecisionLookup(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoTaskReopen
+    url: Annotated[AnyUrl, Field(description='The URL on the site origin, as looked up.')]
+    path: Annotated[str, Field(max_length=2048)]
+    locale: Locale
+    localeOpen: Annotated[bool, Field(description='The language is open for indexing (pages.openLocales).')]
+    kind: Annotated[Literal['home', 'app', 'app_versions', 'app_details', 'app_dependencies', 'app_troubleshooting', 'app_alternatives', 'app_uninstall', 'article', 'article_list', 'author', 'category', 'collection', 'background_item', 'security_topic', 'list', 'static', 'other'], Field(description='Page type: app pages, articles, authors, categories, collections, background items, security topics, lists (browse, rankings, recent and the other indexes), static pages (download, security, about, feedback, brewfile, search) or other.')]
+    entity: PageEntity | None
+    decidedBy: Literal['server', 'web']
+    indexable: Annotated[bool | None, Field(...)]
+    robots: Annotated[str | None, Field(description='index, follow or noindex, follow; null when the web app decides.')]
+    reason: Annotated[str | None, Field(description='Why the page is not indexed; null when it is or when the web app decides.')]
+    canonical: Annotated[AnyUrl | None, Field(description='Absolute canonical URL; the page itself unless it names another page (install details name the overview).')]
+    hreflang: list[PageAlternate]
+    inSitemap: Annotated[bool | None, Field(...)]
+    announce: Annotated[bool | None, Field(description='The URL change feed announces the page to IndexNow when it changes.')]
 
 
-class CreateSeoEvidenceInput(BaseModel):
+class PageDecisionLookupResult(BaseModel):
+    code: str
+    msg: str
+    data: PageDecisionLookup
+
+
+class EdgeCache1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoEvidenceCapture
+    enabled: Annotated[bool, Field(description='HTML pages are cached at the edge.')]
+    longTtlSeconds: Annotated[int, Field(description='Edge lifetime of app, article and author pages, which the URL change feed purges when they change.')]
+    shortTtlSeconds: Annotated[int, Field(description='Edge lifetime of the home page, lists and the other cached pages, which expire instead.')]
 
 
-class ListSeoActionsInput(BaseModel):
+class Analytics1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    current: Annotated[int, Field(examples=[1], ge=1)] = 1
-    size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    operation: Annotated[str | None, Field(max_length=100)] = None
-    mode: Literal['live', 'proposal'] | None = None
-    result: Literal['retained', 'compensated'] | None = None
+    usageEnabled: bool
+    ga4Enabled: bool
+    ga4MeasurementId: Annotated[str, Field(description='Public GA4 measurement ID; empty when not set.')]
 
 
-class EvidenceId(RootModel[int]):
-    root: Annotated[int, Field(ge=1)]
-
-
-class CompensateSeoActionInput(BaseModel):
+class SiteIndexSettings(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
-    body: SeoCompensation
+    siteUrl: AnyUrl
+    revision: Annotated[int, Field(description='Revision of the site settings.', ge=0)]
+    updatedAt: AwareDatetime
+    pages: SeoPageSettings
+    crawlers: Crawlers
+    edgeCache: EdgeCache1
+    indexNow: IndexNow
+    analytics: Analytics1
+    changeFeed: ChangeFeedStatus
 
 
-class GetSeoAutomationInput(BaseModel):
+class SiteIndexSettingsResult(BaseModel):
+    code: str
+    msg: str
+    data: SiteIndexSettings
+
+
+class IntentPageKind(RootModel[Literal['alternatives', 'uninstall']]):
+    root: Annotated[Literal['alternatives', 'uninstall'], Field(examples=['alternatives'])]
+
+
+class WriteOwner(RootModel[str]):
+    root: Annotated[str, Field(description='Who wrote: admin:<admin user id>, agent:<agent client id>:<token id>, or system (migrations and jobs).', examples=['agent:3:7'], pattern='^(admin:[0-9]+|agent:[0-9]+:[0-9]+|system)$')]
+
+
+class PackageIntentPage(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    pageKind: IntentPageKind
+    locale: Locale
+    enabled: Annotated[bool, Field(description="The editorial switch is open. zh-Hant shows zh-CN's switch.")]
+    derived: Annotated[bool, Field(description='zh-Hant follows the zh-CN switch and cannot be written.')]
+    contentEligible: Annotated[bool, Field(description='The app has the content: three alternatives with a verified reason; uninstall steps from a cask (link apps have no uninstall page).')]
+    indexable: Annotated[bool, Field(description='Final decision: switch open, content eligible, pages.intentPagesEnabled on and the language open for indexing with the overview indexed.')]
+    reason: Annotated[str | None, Field(description='Why the page is not indexed: intent_disabled, intent_not_eligible, unsupported_page, locale_closed and the overview reasons; null when indexed.')]
+    url: AnyUrl
+    enabledAt: Annotated[AwareDatetime | None, Field(...)]
+    enabledBy: Annotated[str | None, Field(description='Write owner of the open switch (see WriteOwner); null while closed.', pattern='^(admin:[0-9]+|agent:[0-9]+:[0-9]+|system)$')]
 
 
-class UpdateSeoAutomationInput(BaseModel):
+class PackageIntentPages(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    dryRun: bool = False
-    body: SeoAutomationUpdate
+    packageId: Annotated[int, Field(ge=1)]
+    token: str
+    revision: Annotated[int, Field(description='Revision setPackageIntentPages checks: pass it as X-Expected-Revision.', ge=0)]
+    globalEnabled: Annotated[bool, Field(description='pages.intentPagesEnabled; off keeps every intent page out of the index.')]
+    items: list[PackageIntentPage]
+
+
+class PackageIntentPagesResult(BaseModel):
+    code: str
+    msg: str
+    data: PackageIntentPages
+
+
+class Item4(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    pageKind: IntentPageKind
+    locale: Locale
+    enabled: bool
+
+
+class PackageIntentPagesUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: Annotated[list[Item4], Field(max_length=20, min_length=1)]
+
+
+class IntentPageListItem(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    packageId: Annotated[int, Field(ge=1)]
+    token: str
+    name: str
+    kind: Literal['cask', 'link']
+    pageKind: IntentPageKind
+    locale: Locale
+    derived: Annotated[bool, Field(description='Listed for locale=zh-Hant: the zh-CN switch the zh-Hant page follows.')]
+    contentEligible: bool
+    indexable: bool
+    reason: Annotated[str | None, Field(...)]
+    url: AnyUrl
+    enabledAt: AwareDatetime
+    enabledBy: WriteOwner
+
+
+class IntentPageList(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    current: Annotated[int, Field(ge=1)]
+    size: Annotated[int, Field(ge=1)]
+    total: Annotated[int, Field(ge=0)]
+    globalEnabled: bool
+    records: list[IntentPageListItem]
+
+
+class IntentPageListResult(BaseModel):
+    code: str
+    msg: str
+    data: IntentPageList
+
+
+class PackageSeoItem(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    locale: Locale
+    title: Annotated[str | None, Field(description='Overview search title (up to 70 characters) without the brand suffix the site adds; null keeps the template.')]
+    description: Annotated[str | None, Field(description='Overview meta description (up to 200 characters); null keeps the template.')]
+    derived: Annotated[bool, Field(description="zh-Hant: zh-CN's override converted to Traditional Chinese; read-only.")]
+    updatedAt: AwareDatetime
+    updatedBy: WriteOwner
+
+
+class PackageSeo(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    packageId: Annotated[int, Field(ge=1)]
+    token: str
+    revision: Annotated[int, Field(description='Revision setPackageSeo checks: pass it as X-Expected-Revision.', ge=0)]
+    items: list[PackageSeoItem]
+
+
+class PackageSeoResult(BaseModel):
+    code: str
+    msg: str
+    data: PackageSeo
+
+
+class PackageSeoUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    locale: Locale
+    title: Annotated[str | None, Field(description='Search title without the brand suffix, up to 70 characters after trimming.')] = None
+    description: Annotated[str | None, Field(description='Meta description, up to 200 characters after trimming.')] = None
+
+
+class DueFactRecord(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(ge=1)]
+    packageId: Annotated[int, Field(ge=1)]
+    token: str
+    name: str
+    packageKind: Literal['cask', 'link']
+    kind: Literal['integration', 'issue', 'compatibility', 'attribute', 'migration', 'security', 'price']
+    key: str
+    value: Annotated[dict[str, Any], Field(description='The record value, typed by kind as in FactRecord.')]
+    expired: Annotated[bool, Field(description='validUntil has passed; pages already show the fact as unverified.')]
+    evidence: FactRecordEvidence
+    popularity: float
+    rank30d: Annotated[int | None, Field(...)]
+    installs30d: int
+    webUrl: AnyUrl
+
+
+class DueFactRecordList(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    current: Annotated[int, Field(ge=1)]
+    size: Annotated[int, Field(ge=1)]
+    total: Annotated[int, Field(ge=0)]
+    withinDays: int
+    records: list[DueFactRecord]
+
+
+class DueFactRecordListResult(BaseModel):
+    code: str
+    msg: str
+    data: DueFactRecordList
 
 
 class GetTranslationsSourceInput(BaseModel):
@@ -4051,52 +3399,6 @@ class GetTranslationsSourceInput(BaseModel):
     entity: ContentEntity
     id: Annotated[int, Field(ge=0, le=1000000000)]
     secondaryId: Annotated[int | None, Field(ge=0, le=1000000000)] = None
-
-
-class ListSeoGeoInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    current: Annotated[int, Field(examples=[1], ge=1)] = 1
-    size: Annotated[int, Field(examples=[20], ge=1, le=100)] = 20
-
-
-class RecordSeoGeoInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    dryRun: bool = False
-    body: SeoGeoImport
-
-
-class GetSeoGeoInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-
-
-class GetSeoOverviewInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-
-
-class GetSeoPageInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    url: Annotated[AnyUrl, Field(examples=['https://example.test/apps/example-editor'])]
-
-
-class ListSeoKeywordsInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    current: Annotated[int, Field(examples=[1], ge=1)] = 1
-    size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    language: Locale | None = None
-    q: Annotated[str | None, Field(examples=['editor'], max_length=1000)] = None
 
 
 class GetPackageFactRecordsInput(BaseModel):
@@ -4147,11 +3449,8 @@ class UpdatePackageMetaInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageMetaUpdate
@@ -4168,11 +3467,8 @@ class SetPackagePriceInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackagePriceUpdate
@@ -4182,11 +3478,8 @@ class SetPackageMacosSupportInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageMacosUpdate
@@ -4196,11 +3489,8 @@ class SetPackageAlternativesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageAlternativesUpdate
@@ -4210,11 +3500,8 @@ class SetPackageCategoriesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageCategoriesUpdate
@@ -4224,11 +3511,8 @@ class SetPackageIconInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AssetRef
@@ -4238,11 +3522,8 @@ class DeletePackageIconInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4258,11 +3539,8 @@ class ReorderPackageScreenshotsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: IdList
@@ -4272,11 +3550,8 @@ class DeletePackageScreenshotInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     screenshotId: Annotated[int, Field(examples=[1])]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4295,11 +3570,8 @@ class ResyncPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4317,11 +3589,8 @@ class RemoveLinkPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4336,11 +3605,8 @@ class AddTapPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: TapPackageAdd
 
@@ -4349,11 +3615,8 @@ class RemoveTapPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4368,11 +3631,8 @@ class ReorderCategoriesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryOrder
 
@@ -4381,11 +3641,8 @@ class DeleteCategoryInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4405,11 +3662,8 @@ class CreateArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleCreate
 
@@ -4425,11 +3679,8 @@ class UpdateArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleUpdate
@@ -4439,11 +3690,8 @@ class SetArticlePackagesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticlePackagesUpdate
@@ -4453,11 +3701,8 @@ class SubmitArticleReviewInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleRevisionCheck
@@ -4467,11 +3712,8 @@ class PublishArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleRevisionCheck
@@ -4481,11 +3723,8 @@ class WithdrawArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleWithdraw
@@ -4495,11 +3734,8 @@ class RestoreArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleRevisionCheck
@@ -4509,11 +3745,8 @@ class RevertArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleRevert
@@ -4523,11 +3756,8 @@ class SetArticleSlugInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleSlugUpdate
@@ -4537,11 +3767,8 @@ class SetArticleLocaleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     locale: Locale
@@ -4558,11 +3785,8 @@ class CreateArticleAuthorInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleAuthorWrite
 
@@ -4571,11 +3795,8 @@ class UpdateArticleAuthorInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleAuthorWrite
@@ -4604,11 +3825,8 @@ class DeleteCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4617,11 +3835,8 @@ class PublishCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PublishRequest | None = None
@@ -4631,11 +3846,8 @@ class UnpublishCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4663,11 +3875,8 @@ class DeleteFeatureInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4699,11 +3908,8 @@ class UpdateReleaseInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ReleaseUpdate
@@ -4736,11 +3942,8 @@ class TriggerJobInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     jobType: TriggerJobType
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4776,11 +3979,8 @@ class CreateSynonymInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: SynonymUpsert
 
@@ -4789,11 +3989,8 @@ class UpdateSynonymInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: SynonymUpsert
@@ -4803,11 +4000,8 @@ class DeleteSynonymInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4833,11 +4027,8 @@ class UpdateFeedbackInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeedbackUpdate
@@ -4870,11 +4061,8 @@ class UploadAssetInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: Body | Body1
 
@@ -4883,11 +4071,8 @@ class CreateAssetUploadTicketInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AssetUploadTicketCreate
 
@@ -4912,11 +4097,8 @@ class UpdatePackageTextInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageTextUpdate
@@ -4926,11 +4108,8 @@ class UpsertReleaseNotesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     version: Annotated[str, Field(examples=['1.140.0'], max_length=256, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4963,11 +4142,8 @@ class FixTranslationInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: TranslationFix
 
@@ -4986,11 +4162,8 @@ class UpsertGlossaryTermInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: GlossaryTermUpdate
 
@@ -4999,11 +4172,8 @@ class DeleteGlossaryTermInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -5018,11 +4188,8 @@ class UpdateAnnouncementInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AnnouncementUpdate
 
@@ -5031,11 +4198,8 @@ class UpdateDesktopReleaseNotesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: DesktopNotesUpdate
@@ -5050,6 +4214,7 @@ class ListAdminCatalogChangesInput(BaseModel):
     from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-06T08:00:00Z'])] = None
     to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
     type: Annotated[Literal['created', 'updated', 'removed', 'renamed'] | None, Field(examples=['updated'])] = None
+    afterSeq: Annotated[int | None, Field(examples=[0], ge=0)] = None
     hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
     sort: Annotated[Literal['changed', 'popular'], Field(examples=['changed'])] = 'changed'
 
@@ -5086,11 +4251,8 @@ class RestoreRevisionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: RestoreOptions
@@ -5121,11 +4283,8 @@ class RestoreTrashInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -5134,11 +4293,8 @@ class RevertRequestInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     requestId: Annotated[str, Field(examples=['demo-request-001'], max_length=128, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -5206,11 +4362,8 @@ class UpsertUpdateFeedInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: UpdateFeedInput
 
@@ -5219,29 +4372,10 @@ class DisableUpdateFeedInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: UpdateFeedKey
-
-
-class GetSeoListingCandidateInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
-
-
-class NominateSeoListingInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoListingNomination
 
 
 class ListArticleTestArtifactsInput(BaseModel):
@@ -5251,24 +4385,73 @@ class ListArticleTestArtifactsInput(BaseModel):
     id: Annotated[int, Field(examples=[1], ge=1)]
 
 
-class SeoProviderView(BaseModel):
+class GetPageDecisionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    source: Literal['gsc', 'bing', 'audit']
-    enabled: Annotated[bool, Field(description='Whether scheduled ingestion is enabled; does not imply a successful connection or fresh data.')]
-    configured: Annotated[bool, Field(description='Whether encrypted credentials are stored; does not imply that the provider has accepted them.')]
-    credentialType: Annotated[Literal['oauth', 'service_account', 'api_key', 'origin'] | None, Field(description='Stored credential kind only; gsc uses oauth or service_account, bing uses api_key, and audit uses origin. Null when unconfigured or the kind cannot be determined. Credential contents are never returned.')]
-    watermarks: Annotated[list[SeoWatermark], Field(description='Data progress for this provider, ordered as gsc_page/gsc_query/inspection for gsc, bing for bing, and audit/edge_probe for audit. Missing rows are omitted. Null dates mean no recorded progress; updatedAt is the watermark row update time, not proof of a successful ingestion. Clearing credentials or disabling ingestion does not erase historical progress.')]
+    url: Annotated[str, Field(examples=['https://opennavo.example/apps/visual-studio-code'], max_length=2048, min_length=1)]
 
 
-class SeoProviderResponse(BaseModel):
+class GetSiteIndexSettingsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    code: Code
-    msg: str
-    data: SeoProviderView
+
+
+class GetPackageIntentPagesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+
+
+class SetPackageIntentPagesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool, Field(examples=[False])] = False
+    body: PackageIntentPagesUpdate
+
+
+class ListIntentPagesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    current: Annotated[int, Field(examples=[1], ge=1)] = 1
+    size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
+    pageKind: IntentPageKind | None = None
+    locale: Locale | None = None
+
+
+class GetPackageSeoInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+
+
+class SetPackageSeoInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool, Field(examples=[False])] = False
+    body: PackageSeoUpdate
+
+
+class ListDueFactRecordsInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    current: Annotated[int, Field(examples=[1], ge=1)] = 1
+    size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
+    withinDays: Annotated[int, Field(examples=[14], ge=0, le=90)] = 14
+    kind: Annotated[Literal['integration', 'issue', 'compatibility', 'attribute', 'migration', 'security', 'price'] | None, Field(examples=['attribute'])] = None
 
 
 class TranslationReadFields(BaseModel):
@@ -5297,55 +4480,6 @@ class TranslationReadFields(BaseModel):
     coverAlt: Annotated[str | None, Field(description='Article revision cover alt in this translation locale. Empty falls back to English then source.', examples=[None], max_length=300)] = None
 
 
-class SeoTopicNomination(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    keyword: Annotated[str, Field(description='The search phrase the article answers.', max_length=200, min_length=1)]
-    locale: Locale | None = None
-    reason: Annotated[str, Field(description="Why the topic is worth an article. The article's source language is locale, en-US by default.", max_length=1000, min_length=1)]
-
-
-class SeoSnippetProposal(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    pageKind: Literal['overview']
-    locale: Locale
-    variant: Literal['verified_free', 'current_version', 'uninstall_alternatives']
-    slots: list[Literal['name', 'version', 'free', 'uninstall', 'alternatives']]
-    baselineCtr: Annotated[float | None, Field(deprecated=True, description='Ignored for compatibility; the server computes the baseline from the eligible GSC cohort.', ge=0.0, le=1.0)] = None
-    targetCtr: Annotated[float, Field(ge=0.0, le=1.0)]
-
-
-class SeoTaskListResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: str
-    data: SeoTaskList
-
-
-class SeoTaskTraceResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: str
-    data: SeoTaskTrace
-
-
-class SeoTaskResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: str
-    data: SeoTask
-
-
 class SeoEvidenceResponse(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -5353,33 +4487,6 @@ class SeoEvidenceResponse(BaseModel):
     code: Code
     msg: str
     data: SeoEvidence
-
-
-class SeoActionPageResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: str
-    data: SeoActionPage
-
-
-class SeoSnippetResultResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: str
-    data: SeoSnippetResult
-
-
-class SeoCompensationResultResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: str
-    data: SeoCompensationResult
 
 
 class BatchTranslationValue(BaseModel):
@@ -5423,8 +4530,8 @@ class TranslationsBatchWrite(BaseModel):
     )
     ref: ContentRef
     model: Annotated[str | None, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
-    taskId: Annotated[int | None, Field(ge=1, le=1000000000)] = None
-    fencing: Annotated[int | None, Field(ge=1, le=1000000000)] = None
+    taskId: Annotated[int | None, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = None
+    fencing: Annotated[int | None, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = None
     translations: Annotated[list[BatchTranslationInput], Field(max_length=10, min_length=1)]
 
 
@@ -5444,33 +4551,6 @@ class TranslationsBatchResult(BaseModel):
         extra='forbid',
     )
     results: list[BatchTranslationResult]
-    taskId: Annotated[int, Field(description='Zero when catalog translations are written without a task.', ge=0, le=1000000000)]
-    leaseRetained: bool
-
-
-class SeoImportEntry(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    ref: ContentRef
-    field: Annotated[str, Field(max_length=80, min_length=1)]
-    locale: Locale
-    sourceVersion: Annotated[str, Field(max_length=200, min_length=1)]
-    state: Literal['processed', 'deferred']
-    reason: Annotated[str, Field(max_length=2000)]
-    evidence: dict[str, Any]
-    lastAttemptAt: AwareDatetime
-    valueHash: Annotated[str, Field(pattern='^[0-9a-f]{64}$')]
-
-
-class SeoTasksImport(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
-    profile: Annotated[str, Field(max_length=100, min_length=1)]
-    cursor: dict[str, Any]
-    entries: Annotated[list[SeoImportEntry], Field(max_length=2000, min_length=1)]
 
 
 class TranslationsSourceResponse(BaseModel):
@@ -5539,204 +4619,6 @@ class BackgroundContent(BaseModel):
     itemType: Literal['launch_agent', 'launch_daemon', 'login_item', 'package_receipt', 'unknown']
     commonPaths: list[str]
     evidence: FactRecordEvidence
-
-
-class SeoKeywordObservation(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    keyword: Annotated[str, Field(examples=['Example Editor mac'], max_length=1000, min_length=1)]
-    source: Annotated[Literal['openseo:dataforseo', 'gsc', 'bing', 'site_search', 'homebrew'], Field(examples=['gsc'])]
-    engine: Annotated[Literal['google', 'bing', 'site', 'homebrew'], Field(examples=['google'])]
-    country: Annotated[str, Field(examples=['US'], pattern='^[A-Z]{2,3}$')]
-    language: Locale
-    device: Annotated[Literal['all', 'desktop', 'mobile', 'tablet'], Field(examples=['desktop'])]
-    period: Annotated[str, Field(examples=['2026-10'], pattern='^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$')]
-    searchVolume: Annotated[int | None, Field(examples=[100], ge=0)] = None
-    volumeState: Annotated[Literal['known', 'unsupported', 'unknown'], Field(examples=['known'])]
-    difficulty: Annotated[float | None, Field(examples=[10], ge=0.0, le=100.0)] = None
-    ourPosition: Annotated[float | None, Field(examples=[4], ge=0.0)] = None
-    serpFeatures: Annotated[list[SerpFeature] | None, Field(max_length=30)] = None
-    vendorTaskId: Annotated[str | None, Field(examples=['fixture-task-1'], max_length=200)] = None
-    costUsd: Annotated[str | None, Field(examples=['0.0000'], pattern='^(0|[1-9][0-9]{0,5})(\\.[0-9]{1,4})?$')] = None
-    observedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00+00:00'])]
-
-
-class SeoTarget(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    entityKey: Annotated[str, Field(examples=['pkg:1'], pattern='^(pkg:[1-9][0-9]*|topic:[a-z0-9][a-z0-9-]*)$')]
-    intent: Annotated[Literal['download', 'install', 'brew', 'uninstall', 'alternative', 'price', 'version', 'requirements', 'compare', 'topic'], Field(examples=['download'])]
-    locale: Locale
-    targetUrl: Annotated[AnyUrl, Field(examples=['https://example.test/apps/example-editor'])]
-
-
-class SeoKeywordRecord(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    keyword: Annotated[str, Field(examples=['Example Editor mac'], max_length=1000, min_length=1)]
-    source: Annotated[Literal['openseo:dataforseo', 'gsc', 'bing', 'site_search', 'homebrew'], Field(examples=['gsc'])]
-    engine: Annotated[Literal['google', 'bing', 'site', 'homebrew'], Field(examples=['google'])]
-    country: Annotated[str, Field(examples=['US'], pattern='^[A-Z]{2,3}$')]
-    language: Locale
-    device: Annotated[Literal['all', 'desktop', 'mobile', 'tablet'], Field(examples=['desktop'])]
-    period: Annotated[str, Field(examples=['2026-10'], pattern='^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$')]
-    searchVolume: Annotated[int | None, Field(examples=[100], ge=0)]
-    volumeState: Annotated[Literal['known', 'unsupported', 'unknown'], Field(examples=['known'])]
-    difficulty: Annotated[float | None, Field(examples=[10], ge=0.0, le=100.0)]
-    ourPosition: Annotated[float | None, Field(examples=[4], ge=0.0)]
-    serpFeatures: Annotated[list[SerpFeature], Field(max_length=30)]
-    vendorTaskId: Annotated[str | None, Field(examples=['fixture-task-1'], max_length=200)]
-    costUsd: Annotated[str | None, Field(examples=['0.0000'], pattern='^(0|[1-9][0-9]{0,5})(\\.[0-9]{1,4})?$')]
-    observedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00+00:00'])]
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    normalized: Annotated[str, Field(examples=['example editor mac'])]
-    anomaly: Annotated[str | None, Field(examples=['piracy'])]
-    links: list[Link]
-
-
-class SeoKeywordsWrite(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    records: Annotated[list[SeoKeywordObservation], Field(max_length=100, min_length=1)]
-    targets: Annotated[list[SeoTarget] | None, Field(max_length=100)] = None
-
-
-class SeoKeywordsResult(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    records: list[SeoKeywordRecord]
-    targets: list[SeoTarget]
-
-
-class SeoKeywordPage(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    current: Annotated[int, Field(examples=[1], ge=1)]
-    size: Annotated[int, Field(examples=[10], ge=1, le=100)]
-    total: Annotated[int, Field(examples=[1], ge=0)]
-    records: list[SeoKeywordRecord]
-
-
-class SeoAlertPageResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: Annotated[str, Field(examples=['ok'])]
-    data: SeoAlertPage
-
-
-class SeoAlertPageResponseResult(RootModel[SeoAlertPageResponse | BusinessErrorResponse]):
-    root: Annotated[SeoAlertPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'kind': 'tech_alert', 'rule': 'canonical', 'url': 'https://fixture.example/apps/example-editor', 'layer': 'edge', 'severity': 'p0', 'detail': 'Canonical URL differs from the page decision.', 'firstSeen': '2026-10-17T10:00:00Z', 'lastSeen': '2026-10-18T10:00:00Z', 'resolvedAt': None, 'status': 'open'}], 'current': 1, 'size': 20, 'total': 1}}])]
-
-
-class SeoGeoImportResultResponseResult(RootModel[SeoGeoImportResultResponse | BusinessErrorResponse]):
-    root: Annotated[SeoGeoImportResultResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'payloadHash': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'}}])]
-
-
-class SeoGeoPageResponseResult(RootModel[SeoGeoPageResponse | BusinessErrorResponse]):
-    root: Annotated[SeoGeoPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'current': 1, 'size': 20, 'total': 1, 'records': [{'id': 1, 'site': 'fixture.example', 'mode': 'imported_observation', 'panelId': 'neutral-core', 'panelVersion': 'v1', 'periodStart': '2026-10-18T09:00:00Z', 'periodEnd': '2026-10-18T10:00:00Z', 'importedAt': '2026-10-18T11:00:00Z', 'payloadHash': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'comparisonKey': 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd', 'supersedes': None, 'counts': {'planned': 1, 'answered': 1, 'searchTriggered': {'positive': 0, 'known': 0}, 'mentioned': {'positive': 0, 'known': 0}, 'candidate': {'positive': 0, 'known': 0}, 'cited': {'positive': 0, 'known': 0}, 'citationComplete': 0, 'reported': None}, 'trend': None}]}}])]
-
-
-class SeoGeoRecordResponseResult(RootModel[SeoGeoRecordResponse | BusinessErrorResponse]):
-    root: Annotated[SeoGeoRecordResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'site': 'fixture.example', 'mode': 'imported_observation', 'panelId': 'neutral-core', 'panelVersion': 'v1', 'periodStart': '2026-10-18T09:00:00Z', 'periodEnd': '2026-10-18T10:00:00Z', 'importedAt': '2026-10-18T11:00:00Z', 'payloadHash': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'comparisonKey': 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd', 'supersedes': None, 'counts': {'planned': 1, 'answered': 1, 'searchTriggered': {'positive': 0, 'known': 0}, 'mentioned': {'positive': 0, 'known': 0}, 'candidate': {'positive': 0, 'known': 0}, 'cited': {'positive': 0, 'known': 0}, 'citationComplete': 0, 'reported': None}, 'trend': None, 'importedBy': 'agent:1:1', 'snapshot': {'schemaVersion': 1, 'provider': 'openseo', 'sourceProject': 'fixture-project', 'providerRunKey': 'fixture-run-001', 'mode': 'imported_observation', 'panelId': 'neutral-core', 'panelVersion': 'v1', 'periodStart': '2026-10-18T09:00:00Z', 'periodEnd': '2026-10-18T10:00:00Z', 'context': {'market': 'unknown', 'promptLanguage': 'en', 'answerLanguage': 'unknown', 'searchMode': 'unknown', 'windowDays': 7}, 'prompts': [{'id': 'p1', 'text': 'best free mac apps', 'hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'classification': 'neutral'}], 'engines': [{'key': 'chatgpt', 'name': 'ChatGPT', 'surface': 'provider_api', 'modelVersion': 'unknown', 'toolVersion': 'unknown'}], 'plannedCount': 1, 'cells': [{'id': 'p1-chatgpt', 'promptId': 'p1', 'engineKey': 'chatgpt', 'status': 'answered', 'observationId': 'observation-fixture-001', 'answerHash': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'searchTriggered': None, 'citationExtraction': 'unknown', 'evidenceAvailability': 'unknown', 'mentioned': None, 'candidate': None, 'cited': None, 'ownUrls': [], 'thirdPartyDomains': [], 'domainsTruncated': False}], 'reported': None, 'artifactCompleteness': 'unknown', 'hashAlgorithm': 'sha256', 'hashNormalization': 'provider-v1', 'charges': [{'vendorTaskId': 'fixture-charge-001', 'costUsd': None, 'credits': None, 'incurredAt': '2026-10-18T10:00:00Z'}], 'approvedBatchRef': 'fixture-approval-001'}, 'observationLinks': [{'observationId': 'observation-fixture-001', 'url': None}]}}])]
-
-
-class SeoInsightDecision(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    robots: Annotated[str, Field(examples=['index, follow'])]
-    canonicalPath: Annotated[str, Field(examples=[''])]
-    hreflang: list[Locale]
-    inSitemap: Annotated[bool, Field(examples=[True])]
-    announce: Annotated[bool, Field(examples=[True])]
-    reason: Annotated[str, Field(examples=[''])]
-
-
-class Language(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    locale: Locale
-    ready: Annotated[bool, Field(examples=[True])]
-
-
-class SeoPageInsight(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    url: Annotated[AnyUrl, Field(examples=['https://example.test/apps/example-editor'])]
-    urlId: Annotated[int, Field(examples=[1], ge=0)]
-    entityKey: Annotated[str, Field(examples=['pkg:1'])]
-    locale: Locale
-    indexing: SeoInsightDecision
-    languages: list[Language]
-    missingFacts: list[str]
-    inboundLinks: Annotated[int | None, Field(examples=[0], ge=0)]
-    outboundLinks: Annotated[int | None, Field(examples=[0], ge=0)]
-    linkCoverage: Annotated[Literal['unknown', 'sampled_html'] | None, Field(description='Counts cover recently observed internal HTML links, not a complete crawl of the site.', examples=['sampled_html'])] = None
-    linksCheckedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    auditIssues: list[AuditIssue]
-    gsc: Annotated[Gsc | None, Field(...)]
-
-
-class SeoKeywordsResultResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: Annotated[str, Field(examples=['ok'])]
-    data: SeoKeywordsResult
-
-
-class SeoKeywordsResultResponseResult(RootModel[SeoKeywordsResultResponse | BusinessErrorResponse]):
-    root: Annotated[SeoKeywordsResultResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'keyword': 'Example Editor mac', 'source': 'gsc', 'engine': 'google', 'country': 'US', 'language': 'en-US', 'device': 'desktop', 'period': '2026-10', 'searchVolume': 100, 'volumeState': 'known', 'observedAt': '2026-10-18T10:00:00+00:00', 'id': 1, 'normalized': 'example editor mac', 'difficulty': None, 'ourPosition': None, 'serpFeatures': [], 'vendorTaskId': None, 'costUsd': None, 'anomaly': None, 'links': []}], 'targets': []}}])]
-
-
-class SeoKeywordPageResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: Annotated[str, Field(examples=['ok'])]
-    data: SeoKeywordPage
-
-
-class SeoKeywordPageResponseResult(RootModel[SeoKeywordPageResponse | BusinessErrorResponse]):
-    root: Annotated[SeoKeywordPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'current': 1, 'size': 10, 'total': 1, 'records': [{'keyword': 'Example Editor mac', 'source': 'gsc', 'engine': 'google', 'country': 'US', 'language': 'en-US', 'device': 'desktop', 'period': '2026-10', 'searchVolume': 100, 'volumeState': 'known', 'observedAt': '2026-10-18T10:00:00+00:00', 'id': 1, 'normalized': 'example editor mac', 'difficulty': None, 'ourPosition': None, 'serpFeatures': [], 'vendorTaskId': None, 'costUsd': None, 'anomaly': None, 'links': []}]}}])]
-
-
-class SeoOverviewResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: Annotated[str, Field(examples=['ok'])]
-    data: SeoOverview
-
-
-class SeoOverviewResponseResult(RootModel[SeoOverviewResponse | BusinessErrorResponse]):
-    root: Annotated[SeoOverviewResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'geo': None, 'watermarks': [], 'keywordCount': 1, 'targetCount': 0, 'automationReady': True, 'breakers': [{'kind': 'technical', 'scope': '*', 'reason': 'audit_p0', 'openedAt': '2026-10-18T10:00:00Z', 'retryAt': None, 'evidence': {'unresolved': 2, 'layers': ['origin', 'edge']}}], 'budgets': [{'action': 'listing', 'period': 'day', 'limit': 20, 'used': 3, 'remaining': 17}, {'action': 'paid_research', 'period': 'day', 'limitMicros': 15000000, 'usedMicros': 250000, 'remainingMicros': 14750000}], 'actionModes': [{'action': 'listing', 'enabled': True, 'mode': 'proposal'}], 'yesterday': {'actions': [{'operation': 'UpdatePackageMeta', 'mode': 'live', 'count': 12, 'compensated': 1}]}}}])]
-
-
-class SeoPageInsightResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: Annotated[str, Field(examples=['ok'])]
-    data: SeoPageInsight
-
-
-class SeoPageInsightResponseResult(RootModel[SeoPageInsightResponse | BusinessErrorResponse]):
-    root: Annotated[SeoPageInsightResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'url': 'https://example.test/apps/example-editor', 'urlId': 1, 'entityKey': 'pkg:1', 'locale': 'en-US', 'indexing': {'robots': 'index, follow', 'canonicalPath': '', 'hreflang': ['en-US'], 'inSitemap': True, 'announce': True, 'reason': ''}, 'languages': [{'locale': 'en-US', 'ready': True}], 'missingFacts': ['price'], 'inboundLinks': None, 'outboundLinks': None, 'auditIssues': [], 'gsc': {'completeThrough': '2026-10-16', 'clicks': 10, 'impressions': 100, 'averagePosition': 3}}}])]
 
 
 class MigrationStep(BaseModel):
@@ -5931,21 +4813,6 @@ class IndexReportResponseResult(RootModel[IndexReportResponse | BusinessErrorRes
     root: Annotated[IndexReportResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'token': 'visual-studio-code', 'displayName': 'Visual Studio Code', 'firstSeenAt': '2026-10-01T08:00:00+00:00', 'eligible': False, 'reason': 'missing_summary', 'enforced': False, 'override': 'auto', 'overrideReason': None}], 'current': 1, 'size': 24, 'total': 1, 'counts': {'hidden': 0, 'forcedNoindex': 0, 'unavailable': 12, 'missingSummary': 1, 'thin': 3, 'forcedIndex': 0}}}])]
 
 
-class Pages(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    titleTemplate: Annotated[Literal['new', 'legacy'], Field(description='Temporary rollout switch; removed together with the legacy templates.')]
-    indexPolicy: IndexPolicy
-    translationMode: Annotated[Literal['shadow', 'enforce'], Field(description='Published translation quality rollout; new site-only languages are always enforced.')] = 'shadow'
-    translationLocales: Annotated[list[Locale] | None, Field(description='Locales to enforce; empty means all locales.')] = None
-    versionsMinNotesChars: Annotated[int, Field(ge=1, le=100000)] = 300
-    openLocales: Annotated[list[Locale], Field(description='Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.', validate_default=True)] = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']
-    intentPagesEnabled: Annotated[bool, Field(description='Enable qualified intent pages backed by confirmed search demand and unique targets.')] = False
-    detailsRedirect: Annotated[bool, Field(description='Enable details redirects after migrated overview content has been verified.')] = False
-    versionsSitemap: bool
-
-
 class SeoSettings(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -5957,7 +4824,7 @@ class SeoSettings(BaseModel):
     cloudflare: Cloudflare
     edgeCache: EdgeCache
     crawlers: Crawlers
-    pages: Pages
+    pages: SeoPageSettings
 
 
 class SeoSettingsUpdate(BaseModel):
@@ -5991,7 +4858,7 @@ class SeoSettingsResponse(BaseModel):
 
 
 class SeoSettingsResponseResult(RootModel[SeoSettingsResponse | BusinessErrorResponse]):
-    root: Annotated[SeoSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'settings': {'identity': {'name': 'OpenNavo', 'alternateNames': ['opennavo.com'], 'logoUrl': 'https://opennavo.example/brand/logo-512.png', 'sameAs': ['https://github.com/opennavo/OpenNavo', 'https://x.com/opennavo']}, 'verification': {'google': '', 'bing': ''}, 'analytics': {'ga4Enabled': True, 'ga4MeasurementId': 'G-EXAMPLE123', 'consentRegions': ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', False, 'GB', 'CH']}, 'indexNow': {'enabled': False}, 'cloudflare': {'zoneId': '', 'purgeEnabled': False}, 'edgeCache': {'enabled': False}, 'crawlers': {'training': {'mode': 'limit', 'delaySeconds': 10, 'bots': ['ClaudeBot']}, 'seoTools': {'mode': 'block', 'delaySeconds': 10, 'bots': ['MJ12bot', 'SerpstatBot']}}, 'pages': {'titleTemplate': 'new', 'indexPolicy': {'mode': 'shadow', 'scope': 'new', 'since': ''}, 'versionsSitemap': False}}, 'indexNowKeyConfigured': False, 'cloudflareTokenConfigured': False, 'updatedAt': '2026-10-13T08:00:00+00:00', 'revision': 1, 'siteUrl': 'https://opennavo.example', 'changeFeed': {'lastRunAt': '2026-10-13T08:00:00+00:00', 'lastUrls': 6, 'lastIndexnowStatus': 'ok: 6 URLs', 'lastPurgeStatus': '', 'lastError': ''}}}])]
+    root: Annotated[SeoSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'settings': {'identity': {'name': 'OpenNavo', 'alternateNames': ['opennavo.com'], 'logoUrl': 'https://opennavo.example/brand/logo-512.png', 'sameAs': ['https://github.com/opennavo/OpenNavo', 'https://x.com/opennavo']}, 'verification': {'google': '', 'bing': ''}, 'analytics': {'ga4Enabled': True, 'ga4MeasurementId': 'G-EXAMPLE123', 'consentRegions': ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', False, 'GB', 'CH']}, 'indexNow': {'enabled': False}, 'cloudflare': {'zoneId': '', 'purgeEnabled': False}, 'edgeCache': {'enabled': False}, 'crawlers': {'training': {'mode': 'limit', 'delaySeconds': 10, 'bots': ['ClaudeBot']}, 'seoTools': {'mode': 'block', 'delaySeconds': 10, 'bots': ['MJ12bot', 'SerpstatBot']}}, 'pages': {'titleTemplate': 'new', 'indexPolicy': {'mode': 'shadow', 'scope': 'new', 'since': ''}, 'versionsSitemap': False}}, 'indexNowKeyConfigured': False, 'cloudflareTokenConfigured': False, 'updatedAt': '2026-10-13T08:00:00+00:00', 'revision': 1, 'siteUrl': 'https://opennavo.example', 'changeFeed': {'lastRunAt': '2026-10-13T08:00:00+00:00', 'lastUrls': 6, 'lastIndexnowStatus': 'ok: 6 URLs', 'lastPurgeStatus': '', 'lastError': '', 'pendingAnnouncements': 3, 'oldestPendingAt': '2026-10-26T08:00:00+00:00', 'deadAnnouncements': 0, 'probeCooldownUntil': None, 'overloadedProbes': 0}}}])]
 
 
 class AdminReleasePageResponseResult(RootModel[AdminReleasePageResponse | BusinessErrorResponse]):
@@ -6075,7 +4942,7 @@ class SynonymPageResponseResult(RootModel[SynonymPageResponse | BusinessErrorRes
 
 
 class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]):
-    root: Annotated[UserInfoResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'userId': '1', 'userName': 'local-admin', 'roles': ['R_SUPER'], 'buttons': ['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'seo:insight:view', 'seo:keyword:edit', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'system:github:edit', 'system:seo:edit', 'content:glossary:edit', 'agent:log:view', 'content:revision:restore', 'agent:manage', 'content:announcement:edit', 'release:desktop:notes']}}])]
+    root: Annotated[UserInfoResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'userId': '1', 'userName': 'local-admin', 'roles': ['R_SUPER'], 'buttons': ['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'system:github:edit', 'system:seo:edit', 'content:glossary:edit', 'agent:log:view', 'content:revision:restore', 'agent:manage', 'content:announcement:edit', 'release:desktop:notes']}}])]
 
 
 class DashboardOverview(BaseModel):
@@ -6145,6 +5012,7 @@ class AdminScreenshot(BaseModel):
 
 
 class AdminPackageDetail(AdminPackage):
+    revision: Annotated[int | None, Field(description='Revision the UpdatePackageMeta and the other package writes (text, i18n, categories, facts, icon); link app definitions use their own revision check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
     webUrl: Annotated[AnyUrl | None, Field(description='/apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.', examples=['https://opennavo.example/apps/visual-studio-code'])] = None
     names: list[str]
     descEn: Annotated[str | None, Field(examples=['Open-source code editor with debugging and extensions'])] = None
@@ -6174,6 +5042,7 @@ class ScreenshotUpdate(BaseModel):
 
 
 class AdminCategoryNode(BaseModel):
+    revision: Annotated[int | None, Field(description='Revision the category writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
     id: Annotated[int, Field(examples=[1])]
     parentId: Annotated[int | None, Field(examples=[None])] = None
     slug: Annotated[str, Field(examples=['new-mac'])]
@@ -6212,6 +5081,7 @@ class AdminCollectionItem(BaseModel):
 
 
 class AdminCollection(AuditFields):
+    revision: Annotated[int | None, Field(description='Revision the collection writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
     webUrl: Annotated[AnyUrl | None, Field(description='/collections/{slug} under WEB_BASE_URL; available when published or scheduled, null when draft or archived', examples=['https://opennavo.example/collections/new-mac'])] = None
     id: Annotated[int, Field(examples=[1])]
     slug: Annotated[str, Field(examples=['new-mac'])]
@@ -6247,6 +5117,7 @@ class CollectionItemsUpdate(BaseModel):
 
 
 class AdminFeature(AuditFields):
+    revision: Annotated[int | None, Field(description='Revision the feature writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
     id: Annotated[int, Field(examples=[1])]
     placement: FeaturePlacement
     categoryId: Annotated[int | None, Field(examples=[None])] = None
@@ -6508,7 +5379,7 @@ class AgentDryRun(BaseModel):
     changes: Annotated[list[Change1], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
     sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
-    expectedRevision: Annotated[int | None, Field(description='Unleased catalog edits only: the current revision of the edited objects. Commit with it as X-SEO-Expected-Revision; a newer revision rejects the commit with a conflict.', ge=0)] = None
+    expectedRevision: Annotated[int | None, Field(description='The current revision of the edited objects. Commit with it as X-Expected-Revision; a newer revision rejects the commit with a conflict.', ge=0)] = None
 
 
 class ContentLocaleState(BaseModel):
@@ -6655,27 +5526,6 @@ class LinkPackageListResponse(BaseModel):
     data: Data27
 
 
-class ProposeSnippetTemplateInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
-    body: SeoSnippetProposal
-
-
-class ImportSeoTasksInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    dryRun: bool = False
-    body: SeoTasksImport
-
-
 class WriteTranslationsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -6688,11 +5538,8 @@ class SetCollectionSetupCriteriaInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionCriteria
@@ -6702,38 +5549,19 @@ class SetBackgroundItemInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     label: Annotated[str, Field(max_length=255, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: BackgroundContent
-
-
-class UpsertSeoKeywordsInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoKeywordsWrite
 
 
 class AddPackageScreenshotInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ScreenshotCreate
@@ -6743,11 +5571,8 @@ class UpdatePackageScreenshotInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     screenshotId: Annotated[int, Field(examples=[1])]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6758,11 +5583,8 @@ class AddLinkPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: LinkPackageAdd
 
@@ -6771,11 +5593,8 @@ class UpdateLinkPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: LinkPackageUpdate
@@ -6785,11 +5604,8 @@ class CreateCategoryInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryUpsert
 
@@ -6798,11 +5614,8 @@ class UpdateCategoryInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryUpsert
@@ -6812,11 +5625,8 @@ class CreateCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionUpsert
 
@@ -6825,11 +5635,8 @@ class UpdateCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionUpsert
@@ -6839,11 +5646,8 @@ class SetCollectionItemsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionItemsUpdate
@@ -6853,11 +5657,8 @@ class CreateFeatureInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeatureUpsert
 
@@ -6866,63 +5667,11 @@ class UpdateFeatureInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeatureUpsert
-
-
-class NominateSeoTopicInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    key: Annotated[str, Field(max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: SeoTopicNomination
-
-
-class SeoListingWrite(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    expectedRevision: Annotated[int | None, Field(examples=[0], ge=0)] = None
-    action: Annotated[Literal['save', 'publish', 'reject'], Field(examples=['save'])]
-    link: LinkPackageAdd
-    summary: Annotated[str | None, Field(examples=['An editor for macOS.'], max_length=400)] = None
-    description: Annotated[str | None, Field(examples=[''], max_length=100000)] = None
-    categoryId: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    iconAssetId: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    baselinePackageId: Annotated[int | None, Field(description='Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.', examples=[1], ge=0)] = None
-    downloadMode: Annotated[Literal['official_page', 'not_applicable', 'direct'] | None, Field(examples=['official_page'])] = None
-    evidenceId: Annotated[int | None, Field(examples=[1], ge=0)] = None
-
-
-class SeoListingCandidate(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    id: Annotated[int, Field(examples=[1], ge=1)]
-    token: Annotated[str, Field(examples=['example-app'], max_length=128)]
-    state: Annotated[Literal['candidate', 'published', 'rejected'], Field(examples=['candidate'])]
-    revision: Annotated[int, Field(examples=[1], ge=1)]
-    packageId: Annotated[int | None, Field(examples=[1], ge=1)]
-    identityVerified: Annotated[bool, Field(examples=[False])]
-    canDirectDownload: Annotated[Literal[False], Field(examples=[False])]
-    indexing: Annotated[SeoPageDecision | None, Field(...)]
-    input: SeoListingWrite
-
-
-class SeoListingCandidateResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Annotated[Literal['0000'], Field(examples=['0000'])]
-    msg: Annotated[str, Field(examples=['ok'], max_length=1000)]
-    data: SeoListingCandidate
 
 
 class CollectionCriteriaResponse(BaseModel):
@@ -7049,28 +5798,11 @@ class SetPackageFactRecordsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
     idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FactRecordsUpdate
-
-
-class UpsertSeoListingCandidateInput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
-    dryRun: Annotated[bool, Field(examples=[False])] = False
-    taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
-    evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
-    body: SeoListingWrite
 
 
 AdminCategoryNode.model_rebuild()

@@ -22,8 +22,12 @@ function main() {
     });
     if (result.status !== 0) process.exitCode = result.status ?? 1;
     // Do not write failed batches, but persist completed batches to avoid duplicate charges on retries.
-    if (!args.includes('--dry-run') && existsSync(`apps/server/${output}`))
+    if (!args.includes('--dry-run') && existsSync(`apps/server/${output}`)) {
       writeResult(plan, JSON.parse(readFileSync(`apps/server/${output}`, 'utf8')), true);
+      // The Go result carries plain converter output for Traditional Chinese; derive again so the
+      // repository wording (tooling/i18n/zh-Hant-terms.json and zh-Hant-overrides.json) applies.
+      generateTraditional();
+    }
   } finally {
     for (const path of [input, output]) rmSync(`apps/server/${path}`, { force: true });
   }

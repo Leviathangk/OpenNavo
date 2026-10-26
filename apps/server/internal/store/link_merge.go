@@ -13,7 +13,7 @@ import (
 
 // Every live FK into packages has an explicit policy below. Audit snapshots also
 // include colliding rows and overflow alternatives; history keeps its original IDs.
-var linkMergeTables = append([]string{"package_meta", "package_i18n", "package_categories", "package_screenshots", "package_versions", "releases", "changelog_sources", "analytics_snapshots", "collection_items", "features", "feedback", "package_aliases", "tap_casks", "article_revision_packages", "article_test_artifacts", "package_source_facts", "package_facts", "package_alternatives", "link_apps", "update_feeds", "package_page_state", "package_page_dirty", "seo_urls", "seo_keyword_links", "seo_listing_baselines", "seo_listing_candidates"}, factRelationshipTables...)
+var linkMergeTables = append([]string{"package_meta", "package_i18n", "package_categories", "package_screenshots", "package_versions", "releases", "changelog_sources", "analytics_snapshots", "collection_items", "features", "feedback", "package_aliases", "tap_casks", "article_revision_packages", "article_test_artifacts", "package_source_facts", "package_facts", "package_alternatives", "link_apps", "update_feeds", "package_page_state", "package_page_dirty", "package_intent_pages", "package_seo_overrides"}, factRelationshipTables...)
 
 func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutation, now time.Time) error {
 	if mutation.Previous == nil || mutation.RenamedFrom == "" {
@@ -52,7 +52,7 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 		}
 	}
 	archive := map[string]json.RawMessage{}
-	if err := archiveSEOLink(db, archive, from, to); err != nil {
+	if err := archiveEvidenceLink(db, archive, from, to); err != nil {
 		return err
 	}
 
@@ -60,8 +60,6 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	for _, table := range linkMergeTables {
 		snapshots[table] = "package_id IN (?,?)"
 	}
-	snapshots["seo_listing_candidates"] = "package_id IN (?,?) OR baseline_package_id IN (?,?) OR payload->>'evidenceId' IN (SELECT id::text FROM seo_evidence_snapshots WHERE entity_key IN ('pkg:'||(?::bigint)::text,'pkg:'||(?::bigint)::text))"
-	snapshots["seo_listing_baselines"] = "package_id IN (?,?) OR fact_id IN (SELECT id FROM package_fact_records WHERE package_id IN (?,?)) OR evidence_id IN (SELECT id FROM seo_evidence_snapshots WHERE entity_key IN ('pkg:'||(?::bigint)::text,'pkg:'||(?::bigint)::text))"
 	snapshots["package_fact_records"] = "package_id IN (?,?) OR (kind='migration' AND value->>'targetPackageId' IN ((?::bigint)::text,(?::bigint)::text))"
 	snapshots["package_alternatives"] = "package_id IN (?,?) OR alternative_id IN (?,?)"
 	snapshots["release_i18n"] = "release_id IN (SELECT id FROM releases WHERE package_id IN (?,?))"
@@ -73,9 +71,6 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 		args := []any{from, to}
 		if table == "package_fact_records" || table == "package_alternatives" || table == "content_translation_sources" || table == "job_outbox" {
 			args = append(args, from, to)
-		}
-		if table == "seo_listing_baselines" || table == "seo_listing_candidates" {
-			args = append(args, from, to, from, to)
 		}
 		var raw string
 		if err := db.Raw("SELECT coalesce(jsonb_agg(to_jsonb(r)),'[]'::jsonb)::text FROM "+table+" r WHERE "+where, args...).Scan(&raw).Error; err != nil {
@@ -99,10 +94,10 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	if err != nil {
 		return err
 	}
-	if err := db.Exec("INSERT INTO audit_logs(action,entity_type,entity_id,before,after) VALUES('link.adopt.rename','package',?,?::jsonb,jsonb_build_object('retiredId',?::bigint,'canonicalId',?::bigint,'policy','canonical wins equal priority; human before machine; hidden OR; overflow archived; SEO newest row wins (keyword xmin ordering); differing baseline identities rejected; original candidate baseline IDs and artifact payload/hash preserved; article package references remapped, evidence IDs preserved; page state recomputed; leases revoked'))", fmt.Sprint(to), string(before), from, to).Error; err != nil {
+	if err := db.Exec("INSERT INTO audit_logs(action,entity_type,entity_id,before,after) VALUES('link.adopt.rename','package',?,?::jsonb,jsonb_build_object('retiredId',?::bigint,'canonicalId',?::bigint,'policy','canonical wins equal priority; human before machine; hidden OR; overflow archived; artifact payload/hash preserved; article package references remapped, evidence IDs preserved; page state recomputed'))", fmt.Sprint(to), string(before), from, to).Error; err != nil {
 		return err
 	}
-	if err := mergeSEORelationships(ctx, tx, from, to); err != nil {
+	if err := mergeEvidenceRelationships(ctx, tx, from, to); err != nil {
 		return err
 	}
 	if err := mergeArticleRelationships(db, from, to); err != nil {
@@ -192,6 +187,10 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 		if err := copyRows(table, "s.package_id=?", "jsonb_build_object('package_id',?::bigint)", to, from); err != nil {
 			return err
 		}
+	}
+	// Intent switches and search titles keep the canonical app's own rows.
+	if err := MergePackagePageSettings(ctx, tx, from, to); err != nil {
+		return err
 	}
 	if err := exec(`UPDATE link_apps c SET homepage=coalesce(nullif(c.homepage,''),l.homepage),download_url=coalesce(nullif(c.download_url,''),l.download_url),github_repo=coalesce(c.github_repo,l.github_repo),team_id=coalesce(c.team_id,l.team_id),sparkle_feed=coalesce(c.sparkle_feed,l.sparkle_feed),asset_rules=coalesce(c.asset_rules,l.asset_rules),notes=coalesce(c.notes,l.notes),bundle_ids=ARRAY(SELECT DISTINCT unnest(c.bundle_ids||l.bundle_ids) ORDER BY 1),adopted_by_cask_at=? FROM link_apps l WHERE c.package_id=? AND l.package_id=?`, now, to, from); err != nil {
 		return err
@@ -348,12 +347,7 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	}
 	for _, table := range linkMergeTables {
 		var n int64
-		condition, args := "package_id=?", []any{from}
-		if table == "seo_listing_candidates" {
-			condition += " OR baseline_package_id=?"
-			args = append(args, from)
-		}
-		if err := db.Raw("SELECT count(*) FROM "+table+" WHERE "+condition, args...).Scan(&n).Error; err != nil {
+		if err := db.Raw("SELECT count(*) FROM "+table+" WHERE package_id=?", from).Scan(&n).Error; err != nil {
 			return err
 		}
 		if n != 0 {

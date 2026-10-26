@@ -52,12 +52,10 @@ def generate_files() -> dict[str, str]:
             properties: dict[str, Any] = {}
             required: list[str] = []
             parameters: dict[str, list[str]] = {"path": [], "query": [], "header": []}
-            execution_headers = {
-                "X-SEO-Task-ID": "taskId",
-                "X-SEO-Fencing": "fencing",
-                "X-SEO-Expected-Revision": "expectedRevision",
+            # Only the generic write-safety headers cross MCP; other headers are never forwarded.
+            write_headers = {
+                "X-Expected-Revision": "expectedRevision",
                 "Idempotency-Key": "idempotencyKey",
-                "X-SEO-Evidence-IDs": "evidenceIds",
             }
             header_names: dict[str, str] = {}
             for raw in item.get("parameters", []) + operation.get("parameters", []):
@@ -67,10 +65,10 @@ def generate_files() -> dict[str, str]:
                     continue
                 key = param["name"]
                 if location == "header":
-                    if key not in execution_headers:
+                    if key not in write_headers:
                         continue
-                    header_names[execution_headers[key]] = key
-                    key = execution_headers[key]
+                    header_names[write_headers[key]] = key
+                    key = write_headers[key]
                 parameters[location].append(key)
                 properties[key] = param["schema"]
                 if param.get("required"):

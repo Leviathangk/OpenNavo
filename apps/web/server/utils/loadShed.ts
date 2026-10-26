@@ -11,11 +11,16 @@ export const LOAD_SHED_DEFAULTS = {
   extremeInFlight: 64,
   lowLagMs: 50,
   mediumLagMs: 200,
-  extremeLagMs: 1000
+  extremeLagMs: 1000,
+  // Each AI training crawler's request budget: 6 a minute matches robots.txt's Crawl-delay: 10.
+  crawlerPerMinute: 6,
+  crawlerBurst: 12
 };
 export type LoadShedConfig = typeof LOAD_SHED_DEFAULTS;
 export type LoadShedTier = 'low' | 'medium' | 'protected';
 export type LoadShedLevel = 'normal' | 'mild' | 'heavy' | 'extreme';
+/** Why a request was refused: a load level, the image render limit, or a crawler's spent budget. */
+export type LoadShedReason = Exclude<LoadShedLevel, 'normal'> | 'image_capacity' | 'budget';
 
 // Exhaustive mapping: new crawler labels require an explicit priority decision.
 const TIERS: Record<AgentLabel, LoadShedTier> = {
@@ -30,6 +35,7 @@ const TIERS: Record<AgentLabel, LoadShedTier> = {
   yandexbot: 'protected',
   baiduspider: 'protected',
   chatgpt_user: 'protected',
+  amzn_user: 'protected',
   claude_user: 'protected',
   perplexity_user: 'protected',
   mistral_user: 'protected',
@@ -39,6 +45,7 @@ const TIERS: Record<AgentLabel, LoadShedTier> = {
   link_preview: 'protected',
   perplexitybot: 'medium',
   oai_searchbot: 'medium',
+  amzn_searchbot: 'medium',
   claude_searchbot: 'medium',
   meta_webindexer: 'medium',
   mistral_index: 'medium',
@@ -57,6 +64,23 @@ const TIERS: Record<AgentLabel, LoadShedTier> = {
 
 export const loadShedTier = (agent: AgentLabel): LoadShedTier => TIERS[agent];
 
+/**
+ * AI training crawlers, held to a request budget whatever the load. SEO tools, unknown bots (our own
+ * OpenSEO audits arrive as DataForSeoBot), AI search crawlers, the IndexNow probe and protected agents
+ * never are.
+ */
+const BUDGETED_AGENTS: ReadonlySet<AgentLabel> = new Set([
+  'gptbot',
+  'claudebot',
+  'ccbot',
+  'bytespider',
+  'meta_externalagent',
+  'mistral_training',
+  'amazonbot'
+]);
+
+export const crawlerBudgeted = (agent: AgentLabel): boolean => BUDGETED_AGENTS.has(agent);
+
 export function loadShedConfig(input: Record<string, unknown> = {}): LoadShedConfig {
   const config = { ...LOAD_SHED_DEFAULTS };
   config.enabled = input.enabled !== false && input.enabled !== 'false';
@@ -67,7 +91,9 @@ export function loadShedConfig(input: Record<string, unknown> = {}): LoadShedCon
     'extremeInFlight',
     'lowLagMs',
     'mediumLagMs',
-    'extremeLagMs'
+    'extremeLagMs',
+    'crawlerPerMinute',
+    'crawlerBurst'
   ] as const) {
     const value = Number(input[key]);
     if (Number.isFinite(value) && value >= 1) config[key] = Math.floor(value);
@@ -118,7 +144,12 @@ export class LoadShedState {
   private readonly imageAdmissions = new WeakSet<object>();
   lagMs = 0;
   private readonly counts = new Map<string, number>();
+  // Token buckets per crawler label, counted in this process only: production runs one web container,
+  // briefly two during a rolling deploy, when a crawler may get up to twice its budget.
+  private readonly budgets = new Map<AgentLabel, { tokens: number; at: number }>();
   private stopMonitor?: () => void;
+
+  constructor(private readonly now: () => number = () => performance.now()) {}
 
   start() {
     if (this.stopMonitor) return;
@@ -199,7 +230,20 @@ export class LoadShedState {
     return true;
   }
 
-  reject(agent: AgentLabel, level: Exclude<LoadShedLevel, 'normal'> | 'image_capacity') {
+  /** Takes one request from the crawler's bucket, which refills at perMinute up to burst. */
+  spend(agent: AgentLabel, perMinute: number, burst: number): boolean {
+    const now = this.now();
+    const bucket = this.budgets.get(agent) ?? { tokens: burst, at: now };
+    bucket.tokens = Math.min(burst, bucket.tokens + ((now - bucket.at) / 60_000) * perMinute);
+    bucket.at = now;
+    this.budgets.set(agent, bucket);
+    // Fractions add up inexactly (0.9 + 0.1 < 1), so a request exactly on schedule still gets its token.
+    if (bucket.tokens < 1 - 1e-9) return false;
+    bucket.tokens = Math.max(0, bucket.tokens - 1);
+    return true;
+  }
+
+  reject(agent: AgentLabel, level: LoadShedReason) {
     const key = `${agent}\u0000${loadShedTier(agent)}\u0000${level}`;
     this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
   }
@@ -228,6 +272,25 @@ export class LoadShedState {
 
 export const loadShedState = new LoadShedState();
 
+/** Refuses a request for now: never cached anywhere, with a jittered retry a minute or more away. */
+function refuse(event: H3Event, status: 429 | 503, reason: LoadShedReason, message: string) {
+  event.context.loadShed = true;
+  setResponseStatus(event, status);
+  setHeaders(event, {
+    'retry-after': 60 + Math.floor(Math.random() * 121),
+    'cache-control': 'no-store',
+    'cdn-cache-control': 'no-store',
+    'cloudflare-cdn-cache-control': 'no-store',
+    'content-type': 'text/plain; charset=utf-8',
+    // The worker's IndexNow probe tells load shedding from a broken page only by this header:
+    // such a refusal is retried later and never counted as a failure.
+    'x-opennavo-load-shed': reason
+  });
+  // End immediately: H3 still calls afterResponse (metrics), but skips beforeResponse hooks,
+  // including the generic error hook that would replace Retry-After with 5 seconds.
+  return send(event, message);
+}
+
 export function shedRequest(event: H3Event, config: LoadShedConfig, state = loadShedState): Promise<void> | undefined {
   if (!config.enabled || !loadShedPath(event.path)) return;
   if (state.admittedImageChild(event)) return;
@@ -239,18 +302,12 @@ export function shedRequest(event: H3Event, config: LoadShedConfig, state = load
       : loadShedLevel(state.inFlight, state.lagMs, config);
   if (level === 'image_capacity' || (level !== 'normal' && shouldShed(loadShedTier(agent), level))) {
     state.reject(agent, level);
-    event.context.loadShed = true;
-    setResponseStatus(event, 503);
-    setHeaders(event, {
-      'retry-after': 60 + Math.floor(Math.random() * 121),
-      'cache-control': 'no-store',
-      'cdn-cache-control': 'no-store',
-      'cloudflare-cdn-cache-control': 'no-store',
-      'content-type': 'text/plain; charset=utf-8'
-    });
-    // End immediately: H3 still calls afterResponse (metrics), but skips beforeResponse hooks,
-    // including the generic error hook that would replace Retry-After with 5 seconds.
-    return send(event, 'Service temporarily unavailable. Please retry later.\n');
+    return refuse(event, 503, level, 'Service temporarily unavailable. Please retry later.\n');
+  }
+  // Only requests the origin would serve spend budget, so a shed request costs the crawler nothing.
+  if (crawlerBudgeted(agent) && !state.spend(agent, config.crawlerPerMinute, config.crawlerBurst)) {
+    state.reject(agent, 'budget');
+    return refuse(event, 429, 'budget', 'Too many requests. Please slow down and retry later.\n');
   }
   state.track(event);
 }

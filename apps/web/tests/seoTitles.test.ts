@@ -8,10 +8,10 @@ import {
   detailsDescription,
   DESCRIPTION_WIDTH,
   fitSummary,
+  overrideDescription,
+  overrideTitle,
   overviewDescription as describeOverview,
-  TITLE_WIDTH,
   type OverviewFacts,
-  type SeoExperimentAssignment,
   overviewTitle,
   brandlessTitle,
   pagedDescription,
@@ -51,12 +51,8 @@ function translator(code: (typeof LOCALES)[number]) {
   return Object.assign(t, { locale: code });
 }
 
-function overviewDescription(
-  pkg: OverviewFacts,
-  t: ReturnType<typeof translator>,
-  assignment?: SeoExperimentAssignment | null
-) {
-  return describeOverview(pkg, t, values => formatList(values, { locale: t.locale }), assignment);
+function overviewDescription(pkg: OverviewFacts, t: ReturnType<typeof translator>) {
+  return describeOverview(pkg, t, values => formatList(values, { locale: t.locale }));
 }
 
 const app: OverviewFacts = {
@@ -614,19 +610,7 @@ describe('C2 page descriptions', () => {
   });
 });
 
-describe('H3 assignments and C2 factual overview descriptions', () => {
-  const assignment = (
-    variant: SeoExperimentAssignment['variant'],
-    overrides: Partial<SeoExperimentAssignment> = {}
-  ): SeoExperimentAssignment => ({
-    experimentId: 1,
-    arm: 'treatment',
-    variant,
-    templateVersion: 'snippet-v1',
-    eligible: true,
-    expiresAt: '2026-12-01T00:00:00Z',
-    ...overrides
-  });
+describe('C2 factual overview descriptions', () => {
   const free: PriceFact = {
     region: 'US',
     edition: 'Personal',
@@ -726,57 +710,6 @@ describe('H3 assignments and C2 factual overview descriptions', () => {
     expect(textWidth(closing), closing).toBeGreaterThan(DESCRIPTION_WIDTH);
   };
 
-  it.each(LOCALES)('%s applies only eligible treatment, with one platform and a final brand', code => {
-    const t = translator(code);
-    const controlTitle = overviewTitle(complete, t);
-    const controlDescription = overviewDescription(complete, t);
-    for (const variant of ['verified_free', 'current_version', 'uninstall_alternatives'] as const) {
-      for (const overrides of [{ arm: 'control' as const }, { arm: 'none' as const }, { eligible: false }]) {
-        const group = assignment(variant, overrides);
-        expect(overviewTitle(complete, t, group)).toBe(controlTitle);
-        expect(overviewDescription(complete, t, group)).toBe(controlDescription);
-      }
-    }
-    expect(overviewTitle(complete, t, null)).toBe(controlTitle);
-    for (const [variant, label] of [
-      ['verified_free', t('package.link.pricing.free')],
-      ['current_version', '2.4.1']
-    ] as const) {
-      const title = overviewTitle(complete, t, assignment(variant));
-      expect(title).toContain(`Arc ${label}`);
-      expect(title).not.toBe(controlTitle);
-      expect(title.match(/Mac/g)).toHaveLength(1);
-      expect(title.match(/OpenNavo/g)).toHaveLength(1);
-      expect(title.endsWith(' · OpenNavo')).toBe(true);
-      expect(textWidth(title)).toBeLessThanOrEqual(TITLE_WIDTH);
-      const long = { ...complete, displayName: longName };
-      expect(overviewTitle(long, t, assignment(variant))).toBe(overviewTitle(long, t));
-      expect(overviewTitle(long, t, assignment(variant))).toContain(longName);
-    }
-  });
-
-  it.each(LOCALES)('%s requires verified free usage and a real current version', code => {
-    const t = translator(code);
-    for (const prices of [
-      [],
-      [{ ...free, usage: 'unknown' as const }],
-      [{ ...free, usage: 'free_with_iap' as const }],
-      ...(['stale', 'needs_review', 'unknown'] as const).map(status => [
-        { ...free, evidence: { ...free.evidence, status } }
-      ]),
-      [{ ...free, evidence: { ...free.evidence, checkedAt: null } }]
-    ]) {
-      const pkg = changeFacts({ prices });
-      expect(overviewTitle(pkg, t, assignment('verified_free'))).toBe(overviewTitle(pkg, t));
-    }
-    for (const version of ['latest', 'LATEST', '']) {
-      const pkg = { ...changeFacts({ overview: { ...complete.facts.overview, version } }), version };
-      expect(overviewTitle(pkg, t, assignment('current_version'))).toBe(overviewTitle(pkg, t));
-    }
-    const fallback = changeFacts({ overview: { ...complete.facts.overview, version: '' } });
-    expect(overviewTitle(fallback, t, assignment('current_version'))).toContain(app.version);
-  });
-
   it.each(LOCALES)('%s lists only visible sections, retaining dated and pending requirements', code => {
     const t = translator(code);
     const basic = overviewDescription({ ...app, summary: null }, t);
@@ -804,49 +737,65 @@ describe('H3 assignments and C2 factual overview descriptions', () => {
     );
   });
 
-  it.each(LOCALES)('%s focuses the uninstall experiment only when both modules have content', code => {
-    const t = translator(code);
-    const group = assignment('uninstall_alternatives');
-    const text = overviewDescription(complete, t, group);
-    const uninstall = t('package.seo.overviewParts.uninstall');
-    const alternatives = t('package.seo.overviewParts.alternatives');
-    expect(text).not.toBe(overviewDescription(complete, t));
-    expectListed(text, t, ['uninstall', 'alternatives', 'installation', 'price', 'requirements', 'versions'], 4);
-    expect(text.indexOf(uninstall)).toBeLessThan(text.indexOf(alternatives));
-    expect(text.indexOf(alternatives)).toBeLessThan(text.lastIndexOf(t('package.seo.overviewParts.installation')));
-    for (const pkg of [
-      changeFacts({ uninstall: [] }),
-      changeFacts({ alternatives: [] }),
-      changeFacts({
-        uninstall: complete.facts.uninstall.map(item => ({
-          ...item,
-          evidence: { ...item.evidence, status: 'unknown' as const }
-        }))
-      }),
-      changeFacts({ uninstall: complete.facts.uninstall.map(item => ({ ...item, value: '' })) })
-    ]) {
-      expect(overviewDescription(pkg, t, group)).toBe(overviewDescription(pkg, t));
-    }
-    const zapOnly = changeFacts({
-      uninstall: complete.facts.uninstall.map(item => ({ ...item, phase: 'zap' as const, kind: 'zap' as const }))
-    });
-    expect(overviewDescription(zapOnly, t, group)).toBe(text);
-  });
-
   it.each(LOCALES)('%s keeps the summary ahead of template lists and long product names', code => {
     const t = translator(code);
-    for (const group of [undefined, assignment('uninstall_alternatives')]) {
-      const summary = 'A code editor with extensions, themes and useful tools for every project. '.repeat(5);
-      const description = overviewDescription({ ...complete, summary }, t, group);
-      expect(description).toContain(summary.slice(0, 50));
-      expect(description).not.toContain(overviewDescription(complete, t, group));
-      for (const displayName of [longName, '很长的应用名称'.repeat(30)]) {
-        const long = overviewDescription({ ...complete, displayName, summary }, t, group);
-        expect(textWidth(long), long).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
-        expect(long).toBe(description);
-        expect(long).not.toMatch(/…\.|[{}]|\p{Co}/u);
-        expect(long).toContain(summary.slice(0, 30));
-      }
+    const summary = 'A code editor with extensions, themes and useful tools for every project. '.repeat(5);
+    const description = overviewDescription({ ...complete, summary }, t);
+    expect(description).toContain(summary.slice(0, 50));
+    expect(description).not.toContain(overviewDescription(complete, t));
+    for (const displayName of [longName, '很长的应用名称'.repeat(30)]) {
+      const long = overviewDescription({ ...complete, displayName, summary }, t);
+      expect(textWidth(long), long).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+      expect(long).toBe(description);
+      expect(long).not.toMatch(/…\.|[{}]|\p{Co}/u);
+      expect(long).toContain(summary.slice(0, 30));
     }
+  });
+});
+
+describe('Overview search overrides', () => {
+  it('use each field that is set, trimmed, and brand the title once', () => {
+    const both = {
+      seoOverride: { title: '  Arc for Mac, picked by editors ', description: ' Fast, private browsing. ' }
+    };
+    expect(overrideTitle(both)).toBe('Arc for Mac, picked by editors · OpenNavo');
+    expect(overrideDescription(both)).toBe('Fast, private browsing.');
+    expect(overrideTitle({ seoOverride: { title: 'Arc · OpenNavo' } })).toBe('Arc · OpenNavo');
+    // One field alone: the other stays with the template.
+    expect(overrideTitle({ seoOverride: { description: 'Only a description' } })).toBeUndefined();
+    expect(overrideDescription({ seoOverride: { title: 'Only a title' } })).toBeUndefined();
+  });
+
+  it('leave the templates in charge without an override', () => {
+    for (const seoOverride of [
+      undefined,
+      null,
+      {},
+      { title: null, description: null },
+      { title: '  ', description: '' }
+    ]) {
+      expect(overrideTitle({ seoOverride })).toBeUndefined();
+      expect(overrideDescription({ seoOverride })).toBeUndefined();
+    }
+    expect(overrideTitle(app)).toBeUndefined();
+  });
+
+  it.each(LOCALES)('%s never let an override promise a download Homebrew has disabled', code => {
+    const t = translator(code);
+    const seoOverride = { title: 'Arc for Mac – Free Download', description: 'Download Arc for free on your Mac.' };
+    for (const pkg of [
+      { ...app, disabled: true, seoOverride },
+      { ...app, disabled: true, homebrewStatus: { state: 'disabled' }, seoOverride }
+    ]) {
+      expect(overrideTitle(pkg)).toBeUndefined();
+      expect(overrideDescription(pkg)).toBeUndefined();
+      // What the overview shows instead: the unavailable templates.
+      expect(overviewTitle(pkg, t)).toBe(overviewTitle({ ...app, disabled: true }, t));
+      expect(overviewDescription(pkg, t)).not.toContain('Download Arc');
+    }
+    // Paused only by the catalog's 90-day rule, Homebrew still installs it, so the override stays.
+    const paused = { ...app, disabled: true, homebrewStatus: { state: 'active' }, seoOverride };
+    expect(overrideTitle(paused)).toBe('Arc for Mac – Free Download · OpenNavo');
+    expect(overrideDescription(paused)).toBe('Download Arc for free on your Mac.');
   });
 });

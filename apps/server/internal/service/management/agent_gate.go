@@ -2,7 +2,8 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
+	"net/http"
 
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
@@ -16,17 +17,16 @@ func agentTransaction(ctx context.Context) bool {
 	return v
 }
 
-// Agent writes use the same audited mutations as the admin console. Tasks and
-// evidence are optional workflow records, not authorization prerequisites.
+// Agent writes use the same audited mutations as the admin console.
 func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any, error) {
 	op := domain.CurrentOperation(ctx)
 	for _, permission := range op.RequiredPermissions {
 		if !op.Allowed(permission) {
-			return nil, fail(domain.CodeForbidden)
+			return nil, forbidden("permission_required:" + permission)
 		}
 	}
 	if _, ok := agentgate.RuleFor(name); !ok {
-		return nil, fail(domain.CodeForbidden)
+		return nil, forbidden("operation_not_exposed")
 	}
 	copy := *op
 	copy.Execution = &domain.AgentExecution{}
@@ -36,29 +36,40 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 	return s.executeCatalogEdit(domain.WithOperation(ctx, &copy), name, in)
 }
 
+// writeOwner keys idempotency records and write events by credential.
+func writeOwner(ctx context.Context) string {
+	op := domain.CurrentOperation(ctx)
+	if op.AgentClientID > 0 {
+		return agentgate.Owner(op.AgentClientID, op.AgentTokenID)
+	}
+	if op.ActorID != nil {
+		return fmt.Sprintf("admin:%d", *op.ActorID)
+	}
+	return "system"
+}
+
+func requirePermission(ctx context.Context, permission string) error {
+	op := domain.CurrentOperation(ctx)
+	if op == nil || !op.Allowed(permission) {
+		return forbidden("permission_required:" + permission)
+	}
+	return nil
+}
+
+// forbidden names why the caller may not do this, with fail's status.
+func forbidden(reason string) error { return domain.Forbidden(http.StatusConflict, reason) }
+
 func (s *Service) agentSnapshot(ctx context.Context, name, object string, in Input, refs []content.Ref) (any, error) {
 	if name == "AddLinkPackage" || name == "UpdateLinkPackage" || name == "RemoveLinkPackage" {
 		return snapshotEntity(ctx, s.Store, "link_app", in)
 	}
-	if nonHistorySEOObject(object) {
+	if nonHistoryObject(object) {
 		return s.nonHistorySnapshot(ctx, object, in)
 	}
 	// Release notes are addressed by package and version, so in.ID is the package.
 	// A version without editorial notes yet has an empty state, never release #in.ID.
 	if name == "UpsertReleaseNotes" {
 		return captureHistory(ctx, s.Store, refs)
-	}
-	if object == "experiment" {
-		if in.ID == 0 {
-			return nil, nil
-		}
-		var row struct{ Data json.RawMessage }
-		if err := s.Store.DB.WithContext(ctx).Raw("SELECT to_jsonb(e)||jsonb_build_object('pages',(SELECT jsonb_agg(to_jsonb(p) ORDER BY url_id) FROM seo_experiment_pages p WHERE p.experiment_id=e.id)) data FROM seo_experiments e WHERE id=?", in.ID).Scan(&row).Error; err != nil {
-			return nil, err
-		}
-		var value any
-		err := json.Unmarshal(row.Data, &value)
-		return value, err
 	}
 	if object == "article" {
 		if in.ID == 0 {

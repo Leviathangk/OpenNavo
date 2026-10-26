@@ -152,13 +152,13 @@ func historyRefs(ctx context.Context, st *store.Store, op, entity string, in Inp
 	if op == "ReorderCategories" {
 		items, ok := in.Body["items"].([]any)
 		if !ok {
-			return nil, domain.Validation()
+			return nil, fieldError(in.Body, "items")
 		}
 		out := []content.Ref{}
 		for _, value := range items {
 			item, ok := value.(map[string]any)
 			if !ok || valueID(item["id"]) < 1 {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("category_items_invalid")
 			}
 			out = append(out, content.Ref{Entity: "category", ID: valueID(item["id"])})
 		}
@@ -237,7 +237,7 @@ func contentRef(value any) (content.Ref, error) {
 	var ref content.Ref
 	b, err := json.Marshal(value)
 	if err != nil || json.Unmarshal(b, &ref) != nil || !ref.Valid() {
-		return ref, domain.Validation()
+		return ref, domain.Rejected("content_ref_invalid")
 	}
 	return ref, nil
 }
@@ -247,11 +247,11 @@ func assertContentAccess(ctx context.Context, ref content.Ref) error {
 		return nil
 	}
 	if ref.Entity == "mirror" {
-		return fail(domain.CodeForbidden)
+		return forbidden("operation_not_exposed")
 	}
 	permission := entityPermission(ref.Entity)
 	if !op.Allowed(permission) {
-		return fail(domain.CodeForbidden)
+		return forbidden("permission_required:" + permission)
 	}
 	return nil
 }

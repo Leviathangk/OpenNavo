@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"regexp"
 	"strings"
 
@@ -65,14 +64,13 @@ var translationModelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,15
 // Explicit agent edits record provenance without mechanical translation checks.
 // Other callers retain validation of the full resulting snapshot.
 func (s *Store) validateTranslationWrite(ctx context.Context, source ContentSource, locale string, fields map[string]any) (string, error) {
-	model := ""
 	if op := domain.CurrentOperation(ctx); op != nil && op.AgentClientID > 0 {
 		name, _ := ctx.Value(translationModelKey{}).(string)
 		if name == "" {
 			return "agent:unspecified", nil
 		}
 		if !translationModelName.MatchString(name) {
-			return "", domain.Validation()
+			return "", domain.Rejected("field_invalid:model")
 		}
 		return "hermes:" + strings.TrimPrefix(name, "hermes:"), nil
 	}
@@ -106,16 +104,9 @@ func (s *Store) validateTranslationWrite(ctx context.Context, source ContentSour
 		limits[key] = spec.Fields[strings.Split(key, ".")[0]]
 	}
 	input := llm.ContentInput{SourceLocale: source.SourceLocale, Targets: []string{locale}, Fields: content.Flatten(source.Fields), Limits: limits, Protected: append(source.Protected, protected...), Glossary: glossary, Strict: true}
+	// Agent writes returned above, so only people reach the checks; they keep the localized message.
 	if err := llm.ValidateContent(llm.ContentOutput{locale: content.Flatten(merged)}, input); err != nil {
-		// An agent gets the rule (for example changed_structure) so it can correct the
-		// translation. The failure stays attached as the cause: batch writes report its
-		// violations (field and the spans that differ) next to the rule. People keep
-		// the localized message.
-		var failure *llm.Failure
-		if model != "" && errors.As(err, &failure) {
-			return "", &domain.AppError{Code: domain.CodeValidation, HTTPStatus: http.StatusBadRequest, Msg: failure.Reason, Cause: failure}
-		}
 		return "", domain.Validation()
 	}
-	return model, nil
+	return "", nil
 }

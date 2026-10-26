@@ -258,7 +258,7 @@ const local: App.I18n.Schema = {
     system_user: '管理员',
     system_role: '角色与权限',
     system_github: 'GitHub 设置',
-    system_seo: 'SEO 与统计',
+    system_seo: '站点与索引',
     system_agent: 'Agent 接入',
     system_audit: '审计日志',
     'user-center': '个人中心'

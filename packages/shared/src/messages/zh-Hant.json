@@ -62,7 +62,7 @@
     "source": "來原始檔",
     "target": "宣告的目標位置",
     "declaration": "檢視完整宣告",
-    "download": "下載地址"
+    "download": "下載網址"
   },
   "hero": {
     "viewDetails": "檢視詳情"
@@ -128,7 +128,7 @@
   },
   "chart": {
     "other": "其他",
-    "item": "專案",
+    "item": "項目",
     "value": "數值",
     "share": "佔比"
   },

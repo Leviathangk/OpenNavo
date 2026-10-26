@@ -14,7 +14,8 @@ const ttls: Record<string, number> = {
   '/about': 900,
   '/feedback': 900,
   '/apps': 600,
-  '/apps/**': 600,
+  // App pages and their feeds are dropped on change and cached per build, so they keep six hours.
+  '/apps/**': 21600,
   '/categories': 900,
   '/categories/**': 900,
   '/rankings': 900,

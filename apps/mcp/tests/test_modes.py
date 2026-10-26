@@ -9,7 +9,6 @@ from test_tools import arguments
 from opennavo_mcp.tools.manifest import BY_NAME
 
 MODES = [
-    ("seo_automation_set", {"mode": "read"}, "getSeoAutomation"),
     (
         "translations_write",
         {"mode": "read", "entity": "category", "id": 702},

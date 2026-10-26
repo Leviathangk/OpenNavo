@@ -69,6 +69,20 @@ test('generated-data exemptions require both exact path and exact line shape', t
   result(f.scan('--worktree'), 1); // Never exempt similarly named nested files.
 });
 
+test('lock hashes stay exempt when a scan chunk boundary cuts their line', t => {
+  const f = fixture(t);
+  const hash = 'abcdef0123456789'.repeat(4);
+  // Megabytes of hash lines guarantee findings that start mid-line at a chunk boundary.
+  const lines = Array.from({ length: 30000 }, (_, i) => `    "page.system.seo.key${i}Token": "${hash}",`);
+  f.put('tooling/i18n/i18n.lock.json', `{"sources": {\n${lines.join('\n')}\n    "last": "${hash}"\n}}\n`);
+  result(f.scan('--worktree'), 0);
+  f.put('tooling/i18n/i18n.lock.json', `{"sources": {\n${lines.join('\n')}\n    "apiKey": "${token}"\n}}\n`);
+  result(f.scan('--worktree'), 1);
+  // Hex that is not a whole hash, such as a 32-character key, fails the lock structure check.
+  f.put('tooling/i18n/i18n.lock.json', `{"sources": {\n    "indexNowKey": "${'0123456789abcdef'.repeat(2)}"\n}}\n`);
+  result(f.scan('--worktree'), 1);
+});
+
 test('About source revision exemptions reject tokens and unrelated paths or fields', t => {
   const f = fixture(t);
   const hash = 'abcdef0123456789'.repeat(2) + 'abcdef01';

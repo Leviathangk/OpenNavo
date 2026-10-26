@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authorizationParams, compatibleScopes, oauthRequest } from '@/service/api/oauth';
+import { authorizationParams, oauthRequest } from '@/service/api/oauth';
 import type { OAuthConsent } from '@/service/api/oauth';
 import { $t } from '@/locales';
 import { permissionLabel } from '@/views/system/agent/modules/permissions';
@@ -14,7 +14,6 @@ const allowDelete = ref(false);
 const loading = ref(false);
 const saving = ref(false);
 const failed = ref(false);
-const compatible = computed(() => compatibleScopes(selected.value));
 let generation = 0;
 let authorization: Record<string, string> = {};
 
@@ -98,16 +97,10 @@ watch(() => route.fullPath, load, { immediate: true });
           </NCheckboxGroup>
           <NCheckbox v-model:checked="allowDelete" class="mt-24px" :disabled="saving">{{ t('delete') }}</NCheckbox>
         </fieldset>
-        <NAlert v-if="!compatible" type="warning" class="mt-16px">{{ t('incompatible') }}</NAlert>
         <p class="my-24px">{{ t('limited') }}</p>
         <div class="flex flex-wrap justify-end gap-12px">
           <NButton :disabled="saving" @click="decide(false)">{{ t('deny') }}</NButton>
-          <NButton
-            type="primary"
-            :disabled="!selected.length || !compatible || saving"
-            :loading="saving"
-            @click="decide(true)"
-          >
+          <NButton type="primary" :disabled="!selected.length || saving" :loading="saving" @click="decide(true)">
             {{ t('approve') }}
           </NButton>
         </div>

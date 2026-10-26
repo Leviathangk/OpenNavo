@@ -109,17 +109,25 @@ func number(m map[string]any, key string, def int) int {
 }
 func text(m map[string]any, key string) string  { v, _ := m[key].(string); return v }
 func boolean(m map[string]any, key string) bool { v, _ := m[key].(bool); return v }
+
+// fieldError names a body field that is missing or has the wrong type.
+func fieldError(body map[string]any, key string) error {
+	if value, ok := body[key]; !ok || value == nil {
+		return domain.Rejected("field_required:" + key)
+	}
+	return domain.Rejected("field_type_invalid:" + key)
+}
 func ids(value any) ([]int64, error) {
 	list, ok := value.([]any)
 	if !ok {
-		return nil, domain.Validation()
+		return nil, fieldError(map[string]any{"ids": value}, "ids")
 	}
 	out := []int64{}
 	seen := map[int64]bool{}
 	for _, v := range list {
 		n, ok := v.(float64)
 		if !ok || n < 1 || n >= float64(math.MaxInt64) || n != math.Trunc(n) || seen[int64(n)] {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("ids_invalid")
 		}
 		seen[int64(n)] = true
 		out = append(out, int64(n))
@@ -135,8 +143,11 @@ func (s *Service) now() time.Time {
 }
 func page(in Input) (int, int, error) {
 	current, size := number(in.Params, "current", 1), number(in.Params, "size", 20)
-	if current < 1 || size < 1 || size > 100 || current > math.MaxInt/size {
-		return 0, 0, domain.Validation()
+	if size < 1 || size > 100 {
+		return 0, 0, domain.Rejected("parameter_invalid:size")
+	}
+	if current < 1 || current > math.MaxInt/size {
+		return 0, 0, domain.Rejected("parameter_invalid:current")
 	}
 	return current, size, nil
 }
@@ -151,12 +162,6 @@ func mapped(body map[string]any, names map[string]string) map[string]any {
 }
 func snapshotEntity(ctx context.Context, st *store.Store, entity string, in Input) (any, error) {
 	id := in.ID
-	if entity == "listing" {
-		return st.ListingCandidate(ctx, in.Key)
-	}
-	if entity == "listing_baseline" {
-		return st.ListingBaseline(ctx, in.ID)
-	}
 	if entity == "update_feed" {
 		return st.UpdateFeed(ctx, domain.UpdateFeedKey{BundleID: text(in.Body, "bundleId"), Source: text(in.Body, "source")})
 	}
@@ -242,14 +247,6 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 			}
 		}
 		st := &store.Store{DB: tx, Redis: s.Store.Redis}
-		action, err := beginAgentAction(ctx, st, in)
-		if err != nil {
-			return err
-		}
-		if action != nil && action.Replayed {
-			result, err = replayAction(action)
-			return err
-		}
 		if entity == "admin_user" || entity == "role" {
 			if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended('admin:super',0))").Error; err != nil {
 				return err
@@ -257,9 +254,6 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 		}
 		refs, err := historyRefs(ctx, st, op, entity, in, nil)
 		if err != nil {
-			return err
-		}
-		if err := checkActionRevision(ctx, st, action, refs); err != nil {
 			return err
 		}
 		states, err := captureHistory(ctx, st, refs)
@@ -318,7 +312,7 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 			return errPreviewRollback
 		}
 		var after any = mapped(in.Body, map[string]string{"name": "name", "permissions": "permissions", "allowDelete": "allowDelete", "ipAllowlist": "ipAllowlist", "expiresAt": "expiresAt", "limits": "limits", "sourceLocale": "sourceLocale", "title": "title", "body": "body", "sections": "sections", "term": "term", "translations": "translations", "doNotTranslate": "doNotTranslate", "developer": "developer", "repoUrl": "repoUrl", "hidden": "hidden", "editorChoice": "editorChoice", "tags": "tags", "notes": "notes", "downloadSize": "downloadSize", "accentColor": "accentColor", "displayName": "displayName", "summary": "summary", "description": "description", "assetId": "assetId", "captionZh": "captionZh", "captionEn": "captionEn", "theme": "theme", "items": "items", "ids": "ids", "slug": "slug", "icon": "icon", "appliesTo": "appliesTo", "visible": "visible", "hiddenByDefault": "hiddenByDefault", "parentId": "parentId", "i18n": "i18n", "roles": "roles", "status": "status", "nickName": "nickName", "email": "email", "userName": "userName", "roleCode": "roleCode", "roleName": "roleName", "roleDesc": "roleDesc", "permissionCodes": "permissionCodes", "terms": "terms", "enabled": "enabled", "handlerNote": "handlerNote", "manual": "manual", "autoEnabled": "autoEnabled", "value": "value", "key": "key", "nameZh": "nameZh", "nameEn": "nameEn", "probeUrl": "probeUrl", "recommended": "recommended", "sort": "sort", "apiDomain": "apiDomain", "bottleDomain": "bottleDomain", "brewGitRemote": "brewGitRemote", "coreGitRemote": "coreGitRemote", "publishAt": "publishAt", "unpublishAt": "unpublishAt", "coverAssetId": "coverAssetId", "placement": "placement", "targetType": "targetType", "packageId": "packageId", "collectionId": "collectionId", "url": "url", "glowColor": "glowColor", "startsAt": "startsAt", "endsAt": "endsAt", "type": "type", "amount": "amount", "currency": "currency", "region": "region", "plan": "plan", "period": "period", "appVersion": "appVersion", "sourceUrl": "sourceUrl", "method": "method", "verifiedAt": "verifiedAt", "ranges": "ranges", "note": "note"})
-		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source" || entity == "link_app" || entity == "update_feed" || entity == "listing" || entity == "listing_baseline") {
+		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source" || entity == "link_app" || entity == "update_feed") {
 			auditInput := in
 			if entity == "link_app" && auditInput.ID == 0 {
 				if created, ok := result.(map[string]any); ok {
@@ -342,17 +336,7 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 		if in.JobType != "" {
 			entityID = in.JobType
 		}
-		if err := store.Audit(ctx, tx, in.Actor, op, entity, entityID, before, redact(after)); err != nil {
-			return err
-		}
-		if action != nil {
-			afterStates, err := captureHistory(ctx, st, refs)
-			if err != nil {
-				return err
-			}
-			return finishAgentAction(ctx, st, action, in, entity, entityID, map[string]any{"history": states, "object": before}, map[string]any{"history": afterStates, "object": after}, result)
-		}
-		return nil
+		return store.Audit(ctx, tx, in.Actor, op, entity, entityID, before, redact(after))
 	})
 	if errors.Is(err, errPreviewRollback) {
 		return result, nil
@@ -376,35 +360,14 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 			return nil, err
 		}
 	}
-	// Keyword observations, page targets and topic nominations describe locales;
-	// their strict request schemas do not accept authored translation text.
-	if op != "UpsertSeoKeywords" && op != "NominateSeoTopic" && !strings.HasPrefix(op, "Get") && !strings.HasPrefix(op, "List") && !strings.HasPrefix(op, "Preview") {
+	if !strings.HasPrefix(op, "Get") && !strings.HasPrefix(op, "List") && !strings.HasPrefix(op, "Preview") {
 		if in.Locale == "zh-Hant" || derivedWrite(in.Body) {
 			return nil, domain.Rejected("derived_locale_read_only:zh-Hant:zh-CN")
 		}
 	}
 	domain.CurrentOperation(ctx).WebBaseURL = s.Config.WebBaseURL
-	// Control operations and batch translations have their own permission and
-	// transaction boundaries; task queue operations also verify lease ownership.
+	// Batch translations have their own permission and transaction boundaries.
 	switch op {
-	case "ClaimSeoTasks", "GetSeoTask", "CompleteSeoTask", "DeferSeoTask", "ReopenSeoTask":
-		return s.seoTaskControl(ctx, op, in)
-	case "NominateSeoListing":
-		return s.nominateListing(ctx, in)
-	case "NominateSeoTopic":
-		return s.nominateTopic(ctx, in)
-	case "CreateSeoEvidence":
-		return s.captureSeoEvidence(ctx, in)
-	case "ListSeoActions":
-		return s.seoActions(ctx, in)
-	case "GetSeoAutomation", "UpdateSeoAutomation":
-		return s.seoAutomation(ctx, op, in)
-	case "RecordSeoGeo":
-		return s.recordSeoGeo(ctx, in)
-	case "ListSeoGeo", "GetSeoGeo":
-		return s.readSeoGeo(ctx, op, in)
-	case "ImportSeoTasks":
-		return s.importSeoTasks(ctx, in)
 	case "GetTranslationsSource":
 		return s.translationsSource(ctx, in)
 	case "WriteTranslations":
@@ -413,27 +376,16 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 	if current := domain.CurrentOperation(ctx); current.AgentClientID > 0 && !strings.HasPrefix(op, "Get") && !strings.HasPrefix(op, "List") {
 		return s.executeAgent(ctx, op, in)
 	}
+	// SEO and intent-page views attach their own revisions inside execute; they need
+	// the same snapshot boundary as reads augmented by withReadRevision.
+	if _, ok := readRevisionWrites[op]; ok || op == "GetPackageSeo" || op == "GetPackageIntentPages" {
+		return s.readWithRevision(ctx, op, in)
+	}
 	return s.execute(ctx, op, in)
 }
 
 func (s *Service) execute(ctx context.Context, op string, in Input) (any, error) {
 	switch op {
-	case "ProposeSnippetTemplate":
-		return s.proposeSnippet(ctx, in)
-	case "CompensateSeoAction":
-		return s.compensateAction(ctx, in)
-	case "GetSeoListingCandidate", "UpsertSeoListingCandidate":
-		return s.listingCandidate(ctx, op, in)
-	case "LockSeoListingBaseline":
-		return s.lockListingBaseline(ctx, in)
-	case "GetSeoOverview":
-		return s.seoOverview(ctx)
-	case "ListSeoAlerts":
-		return s.seoAlerts(ctx, in)
-	case "GetSeoPage":
-		return s.seoPage(ctx, in)
-	case "ListSeoKeywords", "UpsertSeoKeywords":
-		return s.seoKeywords(ctx, op, in)
 	case "UpsertUpdateFeed", "DisableUpdateFeed":
 		return s.updateFeedOperation(ctx, op, in)
 	case "ListLinkPackages", "AddLinkPackage", "UpdateLinkPackage", "RemoveLinkPackage":
@@ -442,6 +394,16 @@ func (s *Service) execute(ctx context.Context, op string, in Input) (any, error)
 		return s.adminVersions(ctx, in)
 	case "ListAdminCatalogChanges":
 		return s.catalogActivity(ctx, in)
+	case "GetPageDecision":
+		return s.pageDecision(ctx, in)
+	case "GetSiteIndexSettings":
+		return s.siteIndexSettings(ctx)
+	case "GetPackageIntentPages", "SetPackageIntentPages", "ListIntentPages":
+		return s.intentPages(ctx, op, in)
+	case "GetPackageSeo", "SetPackageSeo":
+		return s.packageSEO(ctx, op, in)
+	case "ListDueFactRecords":
+		return s.dueFactRecords(ctx, in)
 	case "ListContentRevisions", "GetContentRevision", "ListTrash", "GetTrashItem":
 		return s.historyRead(ctx, op, in)
 	case "RestoreRevision", "RestoreTrash", "RevertRequest":
@@ -462,8 +424,6 @@ func (s *Service) execute(ctx context.Context, op string, in Input) (any, error)
 		return s.agentOperation(ctx, op, in)
 	case "GetGitHubSettings", "UpdateGitHubSettings":
 		return s.githubSettings(ctx, op, in)
-	case "GetSeoProvider", "UpdateSeoProvider":
-		return s.seoProvider(ctx, op, in)
 	case "GetSeoSettings", "UpdateSeoSettings":
 		return s.seoSettings(ctx, op, in)
 	case "GetPackageIndexStatus", "SetPackageIndexStatus":
@@ -570,7 +530,7 @@ func (s *Service) execute(ctx context.Context, op string, in Input) (any, error)
 	case "UpdatePackageChangelogSettings":
 		excluded, ok := in.Body["excluded"].(bool)
 		if !ok {
-			return nil, domain.Validation()
+			return nil, fieldError(in.Body, "excluded")
 		}
 		return s.Store.SetPackageChangelogSettings(ctx, in.ID, excluded, in.Actor)
 	case "ListChangelogSources":
