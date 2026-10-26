@@ -37,7 +37,7 @@ test('English details have English UI/body and complete SEO/hreflang', async ({ 
   for (const label of ['Overview', 'Release Notes', 'Dependencies', 'Install Details']) {
     await expect(tabs.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
   }
-  await expect(page.getByRole('button', { name: 'Get', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Get Visual Studio Code', exact: true })).toBeVisible();
   // Long install commands use Shell continuation across two lines.
   const install = page.locator('main pre', { hasText: 'brew install' });
   await expect(install).toContainText('brew install --cask');
