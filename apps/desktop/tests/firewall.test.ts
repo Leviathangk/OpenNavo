@@ -187,6 +187,8 @@ describe('Running', () => {
   it('Keeps the switch on the requested state until macOS applies it, without bouncing back', async () => {
     const disable = vi.spyOn(commands, 'firewallDisable');
     const { wrapper } = await open('/firewall', 'firewall-on');
+    // Hold the intermediate state until the test explicitly advances macOS's reply.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const toggle = () => wrapper.get('[aria-labelledby="firewall-status"] [role="switch"]');
     await toggle().trigger('click');
     await settle();
@@ -645,7 +647,7 @@ describe('Activity', () => {
     await settle();
     store.applyActivity([live('while-away', 5000)]);
     expect(store.activity.some(event => event.id === 'while-away')).toBe(false);
-  });
+  }, 15_000); // Rendering 1,000 real rows needs headroom on shared CI runners.
 
   it('Reads an open tab again once the extension answers after a failed load', async () => {
     const { wrapper } = await open('/firewall/activity', 'firewall-disconnected');
