@@ -1,4 +1,5 @@
 import { webRouteType } from '@opennavo/shared';
+import { trackGeoinflow } from './geoinflow';
 
 // GA4 with Consent Mode v2 (WP8). In consent regions (EU/EEA, UK, Switzerland, or an unknown region)
 // nothing loads until the visitor agrees; elsewhere GA4 loads once the page is idle. Ad signals are
@@ -60,6 +61,7 @@ export function loadGtag(id: string) {
 
 export function stopGtag(id: string) {
   activeId = '';
+  lastPageView = '';
   (window as unknown as Record<string, unknown>)[`ga-disable-${id}`] = true;
   window.gtag?.('consent', 'update', { analytics_storage: 'denied' });
   const names = document.cookie
@@ -74,13 +76,17 @@ export function stopGtag(id: string) {
 }
 
 function params() {
-  return { page_type: webRouteType(location.pathname), content_language: document.documentElement.lang };
+  return {
+    page_type: webRouteType(location.pathname),
+    content_language: document.documentElement.lang
+  };
 }
 
 let lastPageView = '';
 
 /** Page views are sent manually so they carry the page type; query strings are left out. */
 export function trackPageView() {
+  trackGeoinflow();
   if (!activeId || !window.gtag || lastPageView === location.pathname) return;
   lastPageView = location.pathname;
   window.gtag('event', 'page_view', {
@@ -92,6 +98,7 @@ export function trackPageView() {
 
 /** Install-intent events (marked as key events in GA4). A no-op until analytics is active. */
 export function trackEvent(event: AnalyticsEvent) {
+  trackGeoinflow(event);
   if (!activeId || !window.gtag) return;
   window.gtag('event', event, params());
 }

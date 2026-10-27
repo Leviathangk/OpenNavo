@@ -1,6 +1,6 @@
 import { CONSENT_STORAGE_KEY, trackPageView } from '~/utils/analytics';
 
-// Starts GA4 after the page is idle so it never competes with rendering (WP8); later navigations
+// Starts configured analytics after the page is idle so it never competes with rendering; later navigations
 // send their own page views.
 export default defineNuxtPlugin(nuxtApp => {
   const consent = useAnalyticsConsent();

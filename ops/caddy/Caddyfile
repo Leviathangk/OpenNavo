@@ -28,14 +28,14 @@
 	}
 }
 
-# Web pages also load GA4 from Google Tag Manager and send hits to Google Analytics (WP8). The
+# Web pages allow GA4 and the optional GEOInflow origin configured by the operator. The
 # script only runs once the visitor's region or consent allows it; API and admin keep the policy above.
 (security-web) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
-		?Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' {$PUBLIC_BASE_URL} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		?Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.googletagmanager.com {$GEOINFLOW_ORIGIN}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' {$PUBLIC_BASE_URL} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com {$GEOINFLOW_ORIGIN}; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
 		-Server
 	}
 }
