@@ -3,6 +3,7 @@ package facts
 import (
 	"slices"
 	"time"
+	"unicode/utf8"
 
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 )
@@ -15,7 +16,7 @@ type Compatibility struct {
 }
 
 func (v Compatibility) Validate() error {
-	if v.AppVersion == "" || len(v.AppVersion) > 100 || !slices.Contains([]string{"yes", "no", "unknown"}, v.AppleSilicon) {
+	if v.AppVersion == "" || utf8.RuneCountInString(v.AppVersion) > 100 || !slices.Contains([]string{"yes", "no", "unknown"}, v.AppleSilicon) {
 		return ErrInvalid
 	}
 	for _, value := range []*string{v.Minimum, v.Maximum} {

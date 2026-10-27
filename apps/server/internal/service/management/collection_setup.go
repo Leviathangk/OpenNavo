@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
@@ -22,7 +23,7 @@ func (s *Service) saveCollectionCriteria(ctx context.Context, op string, in Inpu
 	if strings.TrimSpace(body.Criteria) == "" {
 		return nil, domain.Rejected("field_required:criteria")
 	}
-	if len(body.Criteria) > 10000 {
+	if utf8.RuneCountInString(body.Criteria) > 10000 {
 		return nil, domain.Rejected("field_too_long:criteria")
 	}
 	if err := body.Evidence.Validate(s.now()); err != nil {

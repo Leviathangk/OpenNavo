@@ -13,20 +13,22 @@ import (
 
 type Spec struct {
 	Parent, Table, Key string
-	Fields             map[string]int
-	Long               map[string]bool
+	// Fields bounds externally authored text in Unicode characters. Trusted
+	// Traditional Chinese conversion may expand it beyond these input limits.
+	Fields map[string]int
+	Long   map[string]bool
 }
 
 var Registry = map[string]Spec{
 	"package":         {"packages", "package_i18n", "package_id", map[string]int{"display_name": 128, "summary": 200, "description": 20000}, map[string]bool{"description": true}},
-	"release":         {"releases", "release_i18n", "release_id", map[string]int{"title": 256, "summary": 400, "sections": 2400, "body_markdown": 200000}, map[string]bool{"body_markdown": true}},
-	"category":        {"categories", "category_i18n", "category_id", map[string]int{"name": 128, "description": 1000, "seo_title": 120, "seo_description": 300}, nil},
-	"collection":      {"collections", "collection_i18n", "collection_id", map[string]int{"title": 200, "subtitle": 500, "body": 20000, "seo_title": 120, "seo_description": 300}, map[string]bool{"body": true}},
-	"feature":         {"features", "feature_i18n", "feature_id", map[string]int{"badge": 80, "title": 200, "subtitle": 500, "body": 20000, "cta_label": 80}, map[string]bool{"body": true}},
-	"screenshot":      {"package_screenshots", "screenshot_i18n", "screenshot_id", map[string]int{"caption": 1000}, nil},
-	"collection_item": {"collection_items", "collection_item_i18n", "collection_id", map[string]int{"note": 2000}, nil},
+	"release":         {"releases", "release_i18n", "release_id", map[string]int{"title": 256, "summary": 400, "sections": 80, "body_markdown": 200000}, map[string]bool{"body_markdown": true}},
+	"category":        {"categories", "category_i18n", "category_id", map[string]int{"name": 30, "description": 200, "seo_title": 120, "seo_description": 300}, nil},
+	"collection":      {"collections", "collection_i18n", "collection_id", map[string]int{"title": 40, "subtitle": 80, "body": 10000, "seo_title": 120, "seo_description": 300}, map[string]bool{"body": true}},
+	"feature":         {"features", "feature_i18n", "feature_id", map[string]int{"badge": 12, "title": 30, "subtitle": 30, "body": 120, "cta_label": 10}, nil},
+	"screenshot":      {"package_screenshots", "screenshot_i18n", "screenshot_id", map[string]int{"caption": 120}, nil},
+	"collection_item": {"collection_items", "collection_item_i18n", "collection_id", map[string]int{"note": 160}, nil},
 	"desktop_release": {"desktop_releases", "desktop_release_i18n", "desktop_release_id", map[string]int{"notes": 20000}, map[string]bool{"notes": true}},
-	"mirror":          {"mirrors", "mirror_i18n", "mirror_id", map[string]int{"name": 128}, nil},
+	"mirror":          {"mirrors", "mirror_i18n", "mirror_id", map[string]int{"name": 40}, nil},
 	"announcement":    {"app_config", "announcement_i18n", "config_key", map[string]int{"title": 200, "body": 2000}, nil},
 	// Articles translate per revision: the ID is the revision, and only the published revision of a
 	// published article is translatable, so late jobs for an older revision change nothing.

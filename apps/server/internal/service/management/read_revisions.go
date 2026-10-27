@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
@@ -12,11 +13,19 @@ import (
 // Reads that agents edit from return the revision their writes check (decision D7), so a caller can pass
 // it back as X-Expected-Revision. Each read names the write whose revision it reports.
 var readRevisionWrites = map[string]string{
-	"GetAdminPackage":    "UpdatePackageMeta",
-	"GetAdminCollection": "UpdateCollection",
-	"GetAdminRelease":    "UpdateRelease",
-	"GetFeature":         "UpdateFeature",
-	"GetCategoryTree":    "UpdateCategory",
+	"GetAdminPackage":     "UpdatePackageMeta",
+	"GetAdminCollection":  "UpdateCollection",
+	"GetAdminRelease":     "UpdateRelease",
+	"GetFeature":          "UpdateFeature",
+	"GetCategoryTree":     "UpdateCategory",
+	"GetAnnouncement":     "UpdateAnnouncement",
+	"GetDesktopRelease":   "UpdateDesktopReleaseNotes",
+	"ListDesktopReleases": "UpdateDesktopReleaseNotes",
+	"ListGlossary":        "DeleteGlossaryTerm",
+	"ListSynonyms":        "UpdateSynonym",
+	"GetFeedback":         "UpdateFeedback",
+	"ListFeedback":        "UpdateFeedback",
+	"ListArticleAuthors":  "UpdateArticleAuthor",
 }
 
 // withReadRevision adds "revision" to the result of a read in readRevisionWrites; the category tree gets
@@ -30,7 +39,7 @@ func (s *Service) withReadRevision(ctx context.Context, op string, in Input, res
 	if err != nil {
 		return nil, err
 	}
-	if op == "GetCategoryTree" {
+	if op == "GetCategoryTree" || op == "ListArticleAuthors" {
 		var nodes []map[string]any
 		if err := json.Unmarshal(raw, &nodes); err != nil {
 			return nil, err
@@ -43,6 +52,16 @@ func (s *Service) withReadRevision(ctx context.Context, op string, in Input, res
 	var view map[string]any
 	if err := json.Unmarshal(raw, &view); err != nil {
 		return nil, err
+	}
+	if strings.HasPrefix(op, "List") {
+		records, _ := view["records"].([]any)
+		for _, record := range records {
+			node, _ := record.(map[string]any)
+			if err := s.addNodeRevisions(ctx, write, []map[string]any{node}); err != nil {
+				return nil, err
+			}
+		}
+		return view, nil
 	}
 	if view["revision"], err = s.CurrentRevision(ctx, write, Input{ID: in.ID}); err != nil {
 		return nil, err
@@ -77,6 +96,11 @@ func (s *Service) readWithRevision(ctx context.Context, op string, in Input) (an
 		st := *s.Store
 		st.DB = tx
 		copy.Store = &st
+		if s.Desktop != nil {
+			desktop := *s.Desktop
+			desktop.Store = &st
+			copy.Desktop = &desktop
+		}
 		var err error
 		result, err = copy.execute(ctx, op, in)
 		if err != nil {

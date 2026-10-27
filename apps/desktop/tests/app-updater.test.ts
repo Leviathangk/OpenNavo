@@ -12,6 +12,8 @@ import { useAppUpdateChecks } from '@/composables/useAppUpdateChecks';
 import AppUpdateDialog from '@/components/shell/AppUpdateDialog.vue';
 import { i18n } from '@/i18n';
 import { api } from '@/api';
+import { commands } from '@/ipc/client';
+import AppUpdater from '@/components/settings/AppUpdater.vue';
 import { setup } from './helpers';
 
 vi.mock('@tauri-apps/plugin-updater', () => ({ check: vi.fn() }));
@@ -44,6 +46,147 @@ afterEach(() => {
 });
 
 describe('OpenNavo automatic self-update checks', () => {
+  it('Shows checking immediately while the initial native app-info request is pending', async () => {
+    let finish!: (info: Awaited<ReturnType<typeof commands.appInfo>>) => void;
+    vi.spyOn(commands, 'appInfo').mockReturnValueOnce(
+      new Promise(resolve => {
+        finish = resolve;
+      })
+    );
+    const updater = useAppUpdaterStore();
+    const pending = updater.checkNow();
+    expect(updater.state).toBe('checking');
+    expect(updater.working).toBe(true);
+    finish({ status: 'ok', data: { version: '0.1.3', os: 'macos', arch: 'aarch64' } });
+    await pending;
+    expect(updater.state).toBe('latest');
+  });
+
+  it('A manual check joining an automatic check still opens a previously dismissed update', async () => {
+    const updater = useAppUpdaterStore();
+    vi.mocked(check).mockResolvedValue(release());
+    await updater.checkNow(true);
+    updater.dismiss();
+    await vi.advanceTimersByTimeAsync(3_600_000);
+    let finish!: (update: Update | null) => void;
+    vi.mocked(check).mockReturnValueOnce(
+      new Promise(resolve => {
+        finish = resolve;
+      })
+    );
+    const automatic = updater.checkNow(true);
+    await flushPromises();
+    const manual = updater.checkNow();
+    finish(release());
+    await Promise.all([automatic, manual]);
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(updater.dialogOpen).toBe(true);
+  });
+
+  it.each(['hidden-window', 'hidden-dialog', 'hidden-parent'])(
+    'Opens a cached update without a network wait when there is a %s',
+    async scenario => {
+      const updater = useAppUpdaterStore();
+      updater.update = release();
+      updater.state = 'available';
+      const blocker = document.createElement('div');
+      blocker.setAttribute('role', 'dialog');
+      const parent = document.createElement('div');
+      parent.append(blocker);
+      if (scenario === 'hidden-dialog') blocker.hidden = true;
+      if (scenario === 'hidden-parent') parent.style.display = 'none';
+      if (scenario === 'hidden-window') vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+      else document.body.append(parent);
+      const get = vi.spyOn(api, 'GET').mockReturnValue(new Promise(() => {}));
+      const dialog = mount(AppUpdateDialog, { attachTo: document.body, global: { plugins: [i18n] } });
+      const row = mount(AppUpdater, { props: { currentVersion: '0.1.3' }, global: { plugins: [i18n] } });
+      try {
+        await row.get('button').trigger('click');
+        await flushPromises();
+        expect(document.querySelector('.on-app-update-dialog')).not.toBeNull();
+        expect(get).toHaveBeenCalledTimes(1);
+        expect(check).not.toHaveBeenCalled();
+      } finally {
+        row.unmount();
+        dialog.unmount();
+        parent.remove();
+        document.body.innerHTML = '';
+      }
+    }
+  );
+
+  it('Releases a postponed prompt as soon as another dialog becomes hidden without being removed', async () => {
+    const updater = useAppUpdaterStore();
+    updater.update = release();
+    updater.state = 'available';
+    updater.show();
+    const blocker = document.createElement('div');
+    blocker.setAttribute('role', 'alertdialog');
+    document.body.append(blocker);
+    vi.spyOn(api, 'GET').mockReturnValue(new Promise(() => {}));
+    const dialog = mount(AppUpdateDialog, { attachTo: document.body, global: { plugins: [i18n] } });
+    try {
+      await flushPromises();
+      expect(document.querySelector('.on-app-update-dialog')).toBeNull();
+      blocker.hidden = true;
+      await flushPromises();
+      expect(document.querySelector('.on-app-update-dialog')).not.toBeNull();
+    } finally {
+      dialog.unmount();
+      blocker.remove();
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('The Settings restart action starts native restart immediately and shows pending feedback', async () => {
+    const updater = useAppUpdaterStore();
+    updater.update = release();
+    updater.state = 'installed';
+    let finish!: () => void;
+    vi.mocked(relaunch).mockReturnValueOnce(
+      new Promise(resolve => {
+        finish = resolve;
+      })
+    );
+    const row = mount(AppUpdater, { props: { currentVersion: '0.1.3' }, global: { plugins: [i18n] } });
+    try {
+      await row.get('button').trigger('click');
+      expect(relaunch).toHaveBeenCalledTimes(1);
+      expect(row.get('button').attributes('aria-busy')).toBe('true');
+      expect(row.get('button').attributes('disabled')).toBeDefined();
+      expect(updater.dialogOpen).toBe(false);
+      await row.get('button').trigger('click');
+      expect(relaunch).toHaveBeenCalledTimes(1);
+      finish();
+      await flushPromises();
+      expect(row.get('button').attributes('aria-busy')).toBeUndefined();
+    } finally {
+      row.unmount();
+    }
+  });
+
+  it('Deduplicates restart requests and allows retry after the native process rejects one', async () => {
+    const updater = useAppUpdaterStore();
+    updater.update = release();
+    updater.state = 'installed';
+    let fail!: (error: Error) => void;
+    vi.mocked(relaunch).mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      })
+    );
+    const first = updater.restart();
+    const rejected = expect(first).rejects.toThrow('active_tasks');
+    const duplicate = updater.restart();
+    expect(relaunch).toHaveBeenCalledTimes(1);
+    fail(new Error('active_tasks'));
+    await rejected;
+    await duplicate;
+    expect(updater.state).toBe('installed');
+    await updater.restart();
+    expect(relaunch).toHaveBeenCalledTimes(2);
+  });
+
   it('Simulates a failed download and allows a successful retry without native updates', async () => {
     vi.stubEnv('VITE_OPENNAVO_UPDATE_PREVIEW', '1');
     const updater = useAppUpdaterStore();

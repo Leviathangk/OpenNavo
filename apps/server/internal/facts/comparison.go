@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/opennavo/opennavo/server/internal/i18n"
 )
@@ -17,7 +18,7 @@ type Attribute struct {
 }
 
 func (v Attribute) Validate() error {
-	if len(v.AppVersion) > 100 {
+	if utf8.RuneCountInString(v.AppVersion) > 100 {
 		return ErrInvalid
 	}
 	switch v.Name {
@@ -30,7 +31,7 @@ func (v Attribute) Validate() error {
 			return ErrInvalid
 		}
 		for _, f := range v.Formats {
-			if strings.TrimSpace(f) == "" || len(f) > 80 {
+			if strings.TrimSpace(f) == "" || utf8.RuneCountInString(f) > 80 {
 				return ErrInvalid
 			}
 		}
@@ -54,11 +55,11 @@ type Migration struct {
 }
 
 func (v Migration) Validate(now time.Time) error {
-	if v.TargetPackageID < 1 || !slices.Contains(i18n.SiteLocales[:], i18n.LocaleCode(v.Locale)) || len(v.Steps) == 0 || len(v.Steps) > 20 || len(v.SourceVersion) > 100 || len(v.TargetVersion) > 100 {
+	if v.TargetPackageID < 1 || !slices.Contains(i18n.SiteLocales[:], i18n.LocaleCode(v.Locale)) || len(v.Steps) == 0 || len(v.Steps) > 20 || utf8.RuneCountInString(v.SourceVersion) > 100 || utf8.RuneCountInString(v.TargetVersion) > 100 {
 		return ErrInvalid
 	}
 	for _, s := range v.Steps {
-		if !slices.Contains([]string{"backup", "export", "import", "verify"}, s.Action) || strings.TrimSpace(s.Text) == "" || len(s.Text) > 4000 || s.Evidence.Validate(now) != nil {
+		if !slices.Contains([]string{"backup", "export", "import", "verify"}, s.Action) || strings.TrimSpace(s.Text) == "" || utf8.RuneCountInString(s.Text) > 4000 || s.Evidence.Validate(now) != nil {
 			return ErrInvalid
 		}
 	}

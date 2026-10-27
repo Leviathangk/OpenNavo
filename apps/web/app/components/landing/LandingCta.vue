@@ -28,6 +28,7 @@ function onCopied(command: string) {
           width="112"
           height="112"
           alt=""
+          aria-hidden="true"
           loading="lazy"
           decoding="async"
         />

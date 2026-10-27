@@ -2,6 +2,8 @@ package management
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -19,6 +21,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/searchtext"
+	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
@@ -464,32 +467,41 @@ func (s *Service) createArticle(ctx context.Context, in Input) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.articleWrite(ctx, in, "CreateArticle", func(st *store.Store) (int64, string, error) {
-		if key != nil {
-			existing, err := st.ArticleByClientKey(ctx, *key)
-			if err != nil || existing > 0 {
-				return existing, "create", err
+	create := func(svc *Service) (any, error) {
+		return svc.articleWrite(ctx, in, "CreateArticle", func(st *store.Store) (int64, string, error) {
+			if taken, err := st.SlugTaken(ctx, slug, 0); err != nil || taken {
+				if err == nil {
+					err = fail(domain.CodeConflict)
+				}
+				return 0, "", err
 			}
-		}
-		if taken, err := st.SlugTaken(ctx, slug, 0); err != nil || taken {
-			if err == nil {
-				err = fail(domain.CodeConflict)
+			if err := checkArticleReferences(ctx, st, draft); err != nil {
+				return 0, "", err
 			}
-			return 0, "", err
-		}
-		if err := checkArticleReferences(ctx, st, draft); err != nil {
-			return 0, "", err
-		}
-		id, err := st.CreateArticleRecord(ctx, slug, key)
-		if err != nil {
-			return 0, "", err
-		}
-		_, number, err := st.InsertArticleRevision(ctx, id, draft)
-		if err != nil {
-			return 0, "", err
-		}
-		return id, "create", st.ArticleEvent(ctx, id, number, "create", nil)
-	})
+			id, err := st.CreateArticleRecord(ctx, slug, nil)
+			if err != nil {
+				return 0, "", err
+			}
+			_, number, err := st.InsertArticleRevision(ctx, id, draft)
+			if err != nil {
+				return 0, "", err
+			}
+			return id, "create", st.ArticleEvent(ctx, id, number, "create", nil)
+		})
+	}
+	if key == nil {
+		return create(s)
+	}
+	// Legacy body keys use the same owner/payload checks as write headers.
+	// A separate owner namespace avoids colliding with an enclosing Agent call.
+	keyHash := sha256.Sum256([]byte(*key))
+	result, err := agentgate.Control(ctx, s.Store.DB, writeOwner(ctx)+":article-create", "CreateArticle", hex.EncodeToString(keyHash[:]),
+		map[string]any{"slug": slug, "draft": draft}, domain.CurrentOperation(ctx).DryRun, func(tx *gorm.DB) (any, error) {
+			local := *s
+			local.Store = &store.Store{DB: tx, Redis: s.Store.Redis}
+			return create(&local)
+		})
+	return result, mapWriteError(err)
 }
 
 func (s *Service) updateArticle(ctx context.Context, op string, in Input) (any, error) {

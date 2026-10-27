@@ -298,9 +298,9 @@ async def test_category_read_merge_conflict(backend: Backend) -> None:
         assert not result.is_error, result.content
         written = next(request for op, request in backend.calls if op == "updateCategory")
         body = json.loads(written.content)
-        assert body["slug"] == "editors" and body["visible"] is False
-        assert body["i18n"]["zh-CN"]["description"] == "保留"
+        assert body == {"visible": False}
         backend.calls.clear()
+        backend.code = "1003"
         result = await client.call_tool(
             "category_update",
             execution_args(
@@ -309,4 +309,8 @@ async def test_category_read_merge_conflict(backend: Backend) -> None:
             ),
             raise_on_error=False,
         )
-        assert result.is_error and not any(op == "updateCategory" for op, _ in backend.calls)
+        assert result.is_error
+        written = next(request for op, request in backend.calls if op == "updateCategory")
+        assert json.loads(written.content)["expectedState"] == "stale"
+        assert not any(op == "getCategoryTree" for op, _ in backend.calls)
+        backend.code = "0000"

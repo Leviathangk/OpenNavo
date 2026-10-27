@@ -4,7 +4,7 @@
 
 # OpenNavo
 
-[English](../../README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja-JP.md) · **Español** · [Português (Brasil)](README.pt-BR.md) · [Русский](README.ru-RU.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja-JP.md) · **Español** · [Português (Brasil)](README.pt-BR.md) · [Русский](README.ru-RU.md) · [Deutsch](README.de-DE.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md) · [繁體中文](README.zh-Hant.md)
 
 **La tienda de apps de Homebrew para Mac**
 
@@ -128,6 +128,8 @@ opennavo/
 
 El backend sincroniza el catálogo y las cifras de instalaciones desde las API públicas de Homebrew, consulta sus commits para conocer la fecha de incorporación de cada versión, comprueba los tamaños de descarga y genera instantáneas del catálogo para el uso sin conexión. Las API siguen un flujo basado en contratos: primero se modifica `apps/server/api/*.openapi.yaml` y después `make gen` genera el código Go y TypeScript.
 
+Los Casks que no son fuentes se desactivan automáticamente cuando el commit de Homebrew de su versión completa actual tiene más de 90 días. Un cambio de versión borra este estado local hasta comprobar la fecha del commit. Las apps cuya fecha se desconoce siguen activas según esta regla y se respetan las exclusiones explícitas de consulta del historial. La desactivación propia de Homebrew y las apps ocultas manualmente son independientes. La regla se aplica durante la sincronización del catálogo, incluso con respuestas sin cambios; las entradas desactivadas siguen disponibles mediante **Mostrar desactivadas** y los registros de apps instaladas.
+
 | Parte                  | Tecnología                                                                                   |
 | ---------------------- | -------------------------------------------------------------------------------------------- |
 | Web                    | Nuxt 4 · Vue 3 · UnoCSS (SSR)                                                                |
@@ -142,7 +144,7 @@ El backend sincroniza el catálogo y las cifras de instalaciones desde las API p
 ### Requisitos
 
 - Node.js 24 y pnpm 10
-- Go 1.27 y Rust 1.96
+- Go 1.27 y Rust 1.96.0 (la versión exacta de Rust está fijada en `apps/desktop/src-tauri/rust-toolchain.toml`)
 - Python 3.13 y [uv](https://docs.astral.sh/uv/) (MCP)
 - Docker (PostgreSQL, Redis y MinIO locales)
 - macOS 13 o posterior (solo para la app de escritorio)
@@ -173,7 +175,7 @@ Si solo modificas el frontend, puedes trabajar sin iniciar el backend: `make moc
 
 ### Configuración
 
-- `apps/server/.env.example` enumera las variables de entorno del backend y sus valores locales por defecto. Guarda los secretos locales, como las claves de API, en `apps/server/.env.local`, que Git ignora; el backend lo lee automáticamente al arrancar.
+- `apps/server/.env.example` enumera las variables de entorno del backend y sus valores locales por defecto. Guarda los secretos locales, como las claves de API, en `apps/server/.env.local`, que Git ignora; el backend lo lee automáticamente al arrancar. En los comandos de desarrollo, las variables explícitas del proceso tienen prioridad sobre `.env.local`, que prevalece sobre los valores no vacíos de `.env.example`.
 - La traducción de contenidos está desactivada por defecto. Actívala desde **Sistema → Configuración de IA de traducción** en el panel de administración, indicando la URL, clave y modelo de una API compatible con OpenAI. Si el panel no está configurado, se usan las variables `LLM_BASE_URL` (por defecto, `https://api.openai.com/v1`), `LLM_API_KEY` y `LLM_MODEL`.
 - Cuando `APP_ENV` es `staging` o `prod`, el backend rechaza los secretos de ejemplo de `.env.example` para impedir un despliegue con valores públicos por defecto.
 
@@ -192,12 +194,11 @@ Incluye validación de OpenAPI, análisis estático y pruebas unitarias de Go / 
 
 El despliegue de producción parte de `ops/docker-compose.prod.yml`: dos réplicas de la API y dos de la web, un worker, Redis y Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) y las copias de seguridad diarias (`backup`) se activan mediante perfiles opcionales.
 
-1. Prepara las variables según `ops/.env.example`: dominios, imágenes y secretos de al menos 32 bytes cada uno. Guarda el archivo de entorno fuera del repositorio.
-2. Compila o descarga las imágenes: `docker build --target server server` para el backend, `docker build -f apps/web/Dockerfile .` para la web y `pnpm --filter @opennavo/admin build` para los archivos estáticos del panel. Al subir etiquetas `server-v*`, `web-v*` o `mcp-v*`, GitHub Actions compila y publica las imágenes correspondientes.
-3. Ejecuta, en este orden, las migraciones (`ops/migrate.sh`), la inicialización del almacenamiento de objetos (`storage-init`) y los datos iniciales (`seed`); después inicia todos los servicios. Cambia la contraseña del administrador inicial inmediatamente después del primer acceso.
-4. Para futuras actualizaciones, `ops/rollout.py` sustituye las réplicas de la API de forma gradual. Ejecútalo primero sin opciones para revisar el plan y añade `--apply` para aplicarlo después de confirmarlo.
+Consulta la [guía de despliegue](../../ops/GUIDE.md) para los comandos de construcción de imágenes, los `COMPOSE_ENV_FILES` externos, la inicialización de la base de datos y S3, las copias y restauraciones, los perfiles y las actualizaciones.
 
 ## Contribuir
+
+El proceso completo está en [CONTRIBUTING.md](../../.github/CONTRIBUTING.md).
 
 Las issues y pull requests son bienvenidas. Antes de empezar:
 
@@ -210,11 +211,11 @@ Las issues y pull requests son bienvenidas. Antes de empezar:
 
 ## Seguridad
 
-Si encuentras una vulnerabilidad, comunícala de forma privada desde **Security → Report a vulnerability** en el repositorio, en lugar de abrir una issue pública. Responderemos lo antes posible.
+Comunica las vulnerabilidades en privado a **admin@opennavo.com**. Consulta [SECURITY.md](../../.github/SECURITY.md) para conocer las versiones compatibles y el canal privado opcional de GitHub. No abras una issue pública sobre una vulnerabilidad.
 
 ## Licencia
 
-Este proyecto se distribuye bajo la [Licencia Pública General de GNU, solo versión 3 (GPL-3.0-only)](../../LICENSE). Las versiones publicadas hasta el commit `5fa4056`, inclusive, siguen disponibles bajo Apache-2.0. Los avisos de terceros y los términos adicionales siguientes están en [NOTICE](../../NOTICE).
+Este proyecto se distribuye bajo la [Licencia Pública General de GNU, solo versión 3 (GPL-3.0-only)](../../LICENSE). Las versiones publicadas hasta el commit `5fa4056`, inclusive, siguen disponibles bajo Apache-2.0. Los avisos de terceros y los términos adicionales siguientes están en [NOTICE](../../NOTICE). Las pruebas de dependencias y las instrucciones de distribución están en [THIRD_PARTY.md](../legal/THIRD_PARTY.md).
 
 Los términos adicionales de NOTICE, conforme a la sección 7(e) de GPLv3, no conceden derechos de marca sobre el nombre o el logotipo OpenNavo. Conforme a la sección 7(c), las versiones modificadas que se distribuyan deben distinguirse claramente del original: usa otro nombre e icono y sustituye el Bundle ID, la clave pública y la URL de actualización. Conserva la atribución correcta. Homebrew es una marca del proyecto Homebrew; OpenNavo no está afiliado a él. Los nombres e iconos de las apps pertenecen a sus respectivos titulares.
 

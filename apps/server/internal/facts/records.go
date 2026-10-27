@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/opennavo/opennavo/server/internal/domain"
 )
@@ -65,7 +66,7 @@ func NormalizeRecord(r Record, now time.Time) (Record, error) {
 // ValidateRecord is also the Hermes write gate. Every supported kind has a typed validator;
 // merely possessing a source URL is not sufficient to publish an arbitrary document.
 func ValidateRecord(r Record, now time.Time) error {
-	if len(r.Key) == 0 || len(r.Key) > 160 || strings.TrimSpace(r.Key) != r.Key || strings.ContainsAny(r.Key, "\r\n\x00") {
+	if utf8.RuneCountInString(r.Key) == 0 || utf8.RuneCountInString(r.Key) > 160 || strings.TrimSpace(r.Key) != r.Key || strings.ContainsAny(r.Key, "\r\n\x00") {
 		return rejected("record_key_invalid")
 	}
 	if len(r.Value) > 65536 {
@@ -168,7 +169,7 @@ type PriceFact struct {
 var amountPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,9})(\.[0-9]{1,6})?$`)
 
 func (p PriceObservation) Validate() error {
-	if !regionPattern.MatchString(p.Region) || strings.TrimSpace(p.Edition) == "" || len(p.Edition) > 100 || !ValidSourceURL(p.PurchaseURL) || !slices.Contains([]string{"vendor", "app_store"}, p.Channel) {
+	if !regionPattern.MatchString(p.Region) || strings.TrimSpace(p.Edition) == "" || utf8.RuneCountInString(p.Edition) > 100 || !ValidSourceURL(p.PurchaseURL) || !slices.Contains([]string{"vendor", "app_store"}, p.Channel) {
 		return ErrInvalid
 	}
 	if !slices.Contains([]string{"free", "one_time", "monthly", "yearly", "unknown"}, p.Period) || !slices.Contains(PriceTypes, p.Usage) {

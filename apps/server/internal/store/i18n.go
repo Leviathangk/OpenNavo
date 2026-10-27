@@ -31,28 +31,24 @@ var textSpecs = map[string]textSpec{
 	"mirror":          {"mirrors", "mirror_i18n", "mirror_id", map[string]string{"name": "name"}},
 }
 
-// These localized API schemas have tighter limits than the translation registry.
-// Other entities use the existing content-write limits (including release sections
-// and the 20,000-character desktop notes write path).
-var localizedFieldLimits = map[string]map[string]int{
-	"category":        {"name": 30, "description": 200, "seo_title": 120, "seo_description": 300},
-	"collection":      {"title": 40, "subtitle": 80, "body": 10000, "seo_title": 120, "seo_description": 300},
-	"feature":         {"badge": 12, "title": 30, "subtitle": 30, "body": 120, "cta_label": 10},
-	"screenshot":      {"caption": 120},
-	"collection_item": {"note": 160},
-	"mirror":          {"name": 40},
-}
-
 // ValidateLocalizedFields checks only submitted fields, using API character limits.
 // Unknown field names and invalid locales are never copied into rejection reasons.
 func ValidateLocalizedFields(entity, locale string, fields map[string]any) error {
-	spec, ok := content.Registry[entity]
+	_, ok := content.Registry[entity]
 	if !ok {
 		return domain.Rejected("localized_entity_invalid")
 	}
 	if !i18n.Writable(locale) || entity == "desktop_release" && !i18n.ValidDesktop(locale) {
 		return domain.Rejected("locale_invalid")
 	}
+	return validateContentFields(entity, "."+locale, fields, true)
+}
+
+// External source and translation writers use the registry's character limits.
+// Trusted conversion output keeps shape/type checks but may expand the prose.
+// Sections are bounded by their shape and text leaves, never serialized JSON.
+func validateContentFields(entity, localeSuffix string, fields map[string]any, enforceLengths bool) error {
+	spec := content.Registry[entity]
 	keys := make([]string, 0, len(fields))
 	for key := range fields {
 		keys = append(keys, key)
@@ -64,10 +60,10 @@ func ValidateLocalizedFields(entity, locale string, fields map[string]any) error
 		}
 		text, ok := value.(string)
 		if !ok {
-			return domain.Rejected("field_type_invalid:" + entity + "." + field + "." + locale)
+			return domain.Rejected("field_type_invalid:" + entity + "." + field + localeSuffix)
 		}
-		if utf8.RuneCountInString(text) > limit {
-			return domain.Rejected("field_too_long:" + entity + "." + field + "." + locale)
+		if enforceLengths && utf8.RuneCountInString(text) > limit {
+			return domain.Rejected("field_too_long:" + entity + "." + field + localeSuffix)
 		}
 		return nil
 	}
@@ -77,34 +73,37 @@ func ValidateLocalizedFields(entity, locale string, fields map[string]any) error
 		if !ok {
 			return domain.Rejected("unknown_field")
 		}
-		if max, ok := localizedFieldLimits[entity][column]; ok {
-			limit = max
-		}
 		field, value := textAPIKey(column), fields[key]
 		if column == "sections" {
 			groups, ok := value.([]any)
 			if !ok || len(groups) > 8 {
-				return domain.Rejected("release_sections_invalid")
+				return domain.Rejected("sections_invalid:sections")
 			}
 			for i, item := range groups {
 				group, ok := item.(map[string]any)
 				if !ok {
-					return domain.Rejected("release_sections_invalid")
-				}
-				if err := check(fmt.Sprintf("sections[%d].area", i), group["area"], 12); err != nil {
-					return err
+					return domain.Rejected("section_invalid:sections")
 				}
 				items, ok := group["items"].([]any)
 				if !ok || len(items) > 6 {
-					return domain.Rejected("release_sections_invalid")
+					return domain.Rejected("section_items_invalid:sections.items")
 				}
 				for j, item := range items {
+					if _, ok := item.(string); !ok {
+						return domain.Rejected("section_item_invalid:sections.items")
+					}
 					if err := check(fmt.Sprintf("sections[%d].items[%d]", i, j), item, 80); err != nil {
 						return err
 					}
 				}
+				if _, ok := group["area"].(string); !ok {
+					return domain.Rejected("section_area_invalid:sections.area")
+				}
+				if err := check(fmt.Sprintf("sections[%d].area", i), group["area"], 12); err != nil {
+					return err
+				}
 			}
-			value = jsonText(value)
+			continue
 		}
 		if err := check(field, value, limit); err != nil {
 			return err
@@ -147,10 +146,8 @@ func (s *Store) WriteLocalized(ctx context.Context, entity string, id, secondary
 		if !ok {
 			return domain.Rejected("localized_fields_invalid")
 		}
-		if entity == "collection" || entity == "feature" || entity == "category" || entity == "collection_item" {
-			if err := ValidateLocalizedFields(entity, locale, fields); err != nil {
-				return err
-			}
+		if err := ValidateLocalizedFields(entity, locale, fields); err != nil {
+			return err
 		}
 	}
 	parentWhere, parentArgs := "id=?", []any{id}

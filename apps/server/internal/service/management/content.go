@@ -84,6 +84,16 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 		table = "features"
 	}
 	return s.write(ctx, in, op, entity, func(st *store.Store) (any, error) {
+		in := in
+		if op == "UpdateCollection" || op == "UpdateFeature" {
+			local := *s
+			local.Store = st
+			var err error
+			in, err = local.mergeContentUpdate(ctx, op, in)
+			if err != nil {
+				return nil, err
+			}
+		}
 		id := in.ID
 		if strings.HasPrefix(op, "Delete") {
 			return nil, st.DB.WithContext(ctx).Exec("DELETE FROM "+table+" WHERE id=?", id).Error

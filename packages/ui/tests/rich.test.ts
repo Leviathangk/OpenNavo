@@ -283,6 +283,36 @@ describe('OnScreenshotGallery', () => {
     wrapper.unmount();
   });
 
+  it.each([
+    { locale: 'en-US', name: '  Inkscape  ', expected: 'Inkscape · Screenshot 1' },
+    { locale: 'zh-CN', name: '  绘图工具  ', expected: '绘图工具 · 截图 1' },
+    { locale: 'en-US', name: ' \t ', expected: 'Screenshot 1' }
+  ] as const)('Normalizes blank screenshot captions and names in $locale', async ({ locale, name, expected }) => {
+    const wrapper = mount(OnScreenshotGallery, {
+      props: {
+        name,
+        items: [
+          { src: '/shots/blank.png', caption: ' \n\t\u00a0\u3000 ' },
+          { src: '/shots/settings.png', caption: '  Export settings  ' }
+        ]
+      },
+      global: withLocale(locale),
+      attachTo: document.body
+    });
+    expect(wrapper.findAll('img').map(image => image.attributes('alt'))).toEqual([expected, 'Export settings']);
+    expect(wrapper.findAll('button[aria-haspopup="dialog"] span').map(caption => caption.text())).toEqual([
+      'Export settings'
+    ]);
+    await wrapper.findAll('button')[0]?.trigger('click');
+    expect(dialog()?.querySelector('figure img')?.getAttribute('alt')).toBe(expected);
+    expect(dialog()?.querySelectorAll('figcaption span')).toHaveLength(1);
+    dialog()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await nextTick();
+    expect(dialog()?.querySelector('figure img')?.getAttribute('alt')).toBe('Export settings');
+    expect(dialog()?.querySelector('figcaption span')?.textContent).toBe('Export settings');
+    wrapper.unmount();
+  });
+
   it('Renders caption chips and the lightbox in the dark theme, as their backgrounds stay dark in both themes', async () => {
     const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
     expect(wrapper.get('button span').attributes('data-theme')).toBe('dark');

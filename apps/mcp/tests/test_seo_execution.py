@@ -92,8 +92,8 @@ async def test_routines_follow_openseo_and_business_tools(backend: Backend) -> N
         daily_content = await client.read_resource("opennavo://guide/daily-routine")
     seo = json.loads(seo_content[0].text)  # type: ignore[union-attr]
     daily = json.loads(daily_content[0].text)  # type: ignore[union-attr]
-    assert seo["version"] == "seo-routine-v3"
-    assert daily["version"] == "daily-routine-v3"
+    assert seo["version"] == "seo-routine-v4"
+    assert daily["version"] == "daily-routine-v4"
     for text in (
         "OpenSEO",
         "inspect_urls",
@@ -120,9 +120,9 @@ async def test_routines_follow_openseo_and_business_tools(backend: Backend) -> N
 @pytest.mark.parametrize(
     ("slug", "version"),
     [
-        ("content-style", "content-style-v2"),
-        ("release-notes", "release-notes-v2"),
-        ("article-writing", "article-writing-v2"),
+        ("content-style", "content-style-v3"),
+        ("release-notes", "release-notes-v3"),
+        ("article-writing", "article-writing-v3"),
         ("app-intro", "app-intro-v1"),
     ],
 )
@@ -145,6 +145,7 @@ def test_guides_name_only_existing_tools() -> None:
         "expected_revision",
         "idempotency_key",
         "idempotency_key_reused",
+        "is_font",
         "inspect_urls",
         "revision_conflict",
         "seo_description",

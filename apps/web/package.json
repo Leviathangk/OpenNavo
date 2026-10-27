@@ -41,6 +41,7 @@
     "@lhci/cli": "catalog:",
     "@playwright/test": "catalog:",
     "@unocss/nuxt": "catalog:",
+    "jsdom": "catalog:",
     "subset-font": "catalog:",
     "typescript": "catalog:",
     "unocss": "catalog:",

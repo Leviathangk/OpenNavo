@@ -31,53 +31,11 @@ func textAPIKey(col string) string {
 	return col
 }
 func ValidateContentFields(entity string, fields map[string]any) error {
-	spec, ok := content.Registry[entity]
+	_, ok := content.Registry[entity]
 	if !ok || len(fields) == 0 {
 		return domain.Rejected("content_fields_required")
 	}
-	for key, value := range fields {
-		col := textColumn(key)
-		max, ok := spec.Fields[col]
-		if !ok {
-			return domain.Rejected("unknown_field")
-		}
-		if col == "sections" {
-			list, ok := value.([]any)
-			if !ok || len(list) > 8 {
-				return domain.Rejected("sections_invalid:sections")
-			}
-			for _, item := range list {
-				group, ok := item.(map[string]any)
-				if !ok {
-					return domain.Rejected("section_invalid:sections")
-				}
-				items, ok := group["items"].([]any)
-				if !ok || len(items) > 6 {
-					return domain.Rejected("section_items_invalid:sections.items")
-				}
-				for _, v := range items {
-					if _, ok := v.(string); !ok {
-						return domain.Rejected("section_item_invalid:sections.items")
-					}
-				}
-			}
-			if utf8.RuneCountInString(jsonText(value)) > max {
-				return domain.Rejected("field_too_long:release.sections")
-			}
-			continue
-		}
-		if value == nil {
-			continue
-		}
-		v, ok := value.(string)
-		if !ok {
-			return domain.Rejected("field_type_invalid:" + entity + "." + textAPIKey(col))
-		}
-		if utf8.RuneCountInString(v) > max {
-			return domain.Rejected("field_too_long:" + entity + "." + textAPIKey(col))
-		}
-	}
-	return nil
+	return validateContentFields(entity, "", fields, true)
 }
 func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale string, fields map[string]any, source bool) error {
 	if !ref.Valid() || !i18n.Writable(locale) || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {

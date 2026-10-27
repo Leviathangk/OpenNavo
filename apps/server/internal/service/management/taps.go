@@ -42,15 +42,23 @@ func (s *Service) listTapPackages(ctx context.Context) (any, error) {
 	return map[string]any{"records": records}, nil
 }
 
-func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, error) {
+func (s *Service) readTapCandidate(ctx context.Context, in Input) (*taps.Candidate, error) {
 	if s.Taps == nil {
 		return nil, domain.Internal(errors.New("tap reader is not configured"))
 	}
-	fullToken := strings.TrimSpace(text(in.Body, "cask"))
-	// GitHub is read before the transaction so no lock is held during network calls.
-	candidate, err := s.Taps.Read(ctx, fullToken)
-	if err != nil {
-		return nil, err
+	return s.Taps.Read(ctx, strings.TrimSpace(text(in.Body, "cask")))
+}
+
+func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, error) {
+	candidate := in.tapCandidate
+	if candidate == nil {
+		// The admin path fetches here; the Agent path prepares the candidate
+		// before entering its enclosing catalog transaction.
+		var err error
+		candidate, err = s.readTapCandidate(ctx, in)
+		if err != nil {
+			return nil, err
+		}
 	}
 	owner, err := s.Store.CaskOwner(ctx, candidate.Token)
 	if err != nil {

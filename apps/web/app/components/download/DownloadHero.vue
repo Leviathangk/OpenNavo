@@ -93,6 +93,7 @@ const orbit = computed(() =>
         width="128"
         height="128"
         alt=""
+        aria-hidden="true"
         decoding="async"
         fetchpriority="high"
       />

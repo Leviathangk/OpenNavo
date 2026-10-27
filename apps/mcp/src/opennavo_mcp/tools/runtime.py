@@ -15,6 +15,9 @@ from opennavo_mcp.tools.manifest import ToolSpec
 from opennavo_mcp.tools.packages import CODES, FIELDS, TEXTS, read_package, read_text
 
 SELECTORS: dict[str, dict[str, Any]] = {
+    "translations_write": {
+        "mode": {"type": "string", "enum": ["read", "write"], "default": "write"}
+    },
     "logs_search": {
         "kind": {
             "type": "string",
@@ -58,8 +61,103 @@ SELECTORS: dict[str, dict[str, Any]] = {
 }
 PARTIAL = {"category_update", "collection_update", "feature_upsert"}
 LEGACY = ("task_id", "fencing", "evidence_ids")
+
+
+def operation_keys(spec: ToolSpec, operation: str) -> set[str]:
+    """Arguments consumed by this operation or by the tool's local adapter."""
+    schema, body, _ = fields(operation)
+    keys = {snake(key) for key in schema.get("properties", {}) if key != "body"}
+    keys.update(snake(key) for key in body.get("properties", {}))
+    keys.update(SELECTORS.get(spec.name, {}))
+    if "id" in keys and any(
+        OPERATIONS[op]["path"].startswith(("/packages/{id}", "/links/packages/{id}"))
+        for op in spec.operations
+    ):
+        keys.remove("id")
+        keys.add("package")
+    if spec.name in PARTIAL and operation.startswith("update"):
+        keys.add("expected_state")
+    if spec.name == "asset_upload_from_url":
+        keys.update({"url", "kind", "dry_run"})
+    return keys
+
+
+def operation_cases(spec: ToolSpec) -> list[tuple[str, dict[str, Any]]]:
+    """Mirror dispatch conditions in discovery so inactive filters cannot be lost."""
+    selectors = {
+        "logs_search": "kind",
+        "revision_restore": "kind",
+        "translations_write": "mode",
+        "releases_list": "view",
+        "search_insights": "kind",
+        "package_set_icon": "remove",
+        "collection_publish": "action",
+    }
+    by_id = {
+        "logs_search",
+        "releases_list",
+        "features_list",
+        "desktop_releases_list",
+        "jobs_runs",
+        "feature_upsert",
+        "synonym_upsert",
+    }
+    if spec.name not in selectors and spec.name not in by_id:
+        return []
+    selector = selectors.get(spec.name)
+    options: list[Any] = [None]
+    if selector:
+        definition = SELECTORS[spec.name][selector]
+        options = definition.get("enum", [False, True])
+    cases: list[tuple[str, dict[str, Any]]] = []
+    for option in options:
+        for has_id in [False, True] if spec.name in by_id else [False]:
+            args: dict[str, Any] = {}
+            conditions: list[dict[str, Any]] = []
+            if selector:
+                args[selector] = option
+                condition: dict[str, Any] = {"properties": {selector: {"const": option}}}
+                if option != SELECTORS[spec.name][selector].get("default"):
+                    condition["required"] = [selector]
+                conditions.append(condition)
+            if spec.name in by_id:
+                present: dict[str, Any] = {"required": ["id"]}
+                if spec.name == "jobs_runs":
+                    present = {"anyOf": [present, {"required": ["run_id"]}]}
+                conditions.append(present if has_id else {"not": present})
+                if has_id:
+                    args["id"] = 1
+            cases.append((choose(spec, args), {"allOf": conditions}))
+    return cases
+
+
+def normalize_arguments(spec: ToolSpec, args: dict[str, Any]) -> None:
+    """Optional parameter nulls mean omission; request-body nulls keep their meaning."""
+    for operation in spec.operations:
+        schema, body, _ = fields(operation)
+        headers = OPERATIONS[operation]["parameters"].get("header", [])
+        for key in [*OPERATIONS[operation]["parameters"]["query"], *headers]:
+            if key in schema.get("required", []):
+                continue
+            if key in body.get("properties", {}) and key not in headers:
+                continue
+            name = snake(key)
+            if name in args and args[name] in (None, ""):
+                args.pop(name)
+
+
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "listing_gaps": (
+        " Defaults to visible, enabled, current non-font apps: hidden=false, disabled=false,"
+        " removed=false and is_font=false. Override those filters for another scope. total"
+        " counts matching packages; worklists overlap and their totals must not be added."
+    ),
+    "releases_list": (
+        " view=versions lists recorded cask/link builds; has_editorial filters their notes."
+        " view=releases lists release content and supports source, hidden and translation_status."
+        " Supplying id reads one release; list filters do not apply to that mode."
+    ),
     "translations_write": (
         " For writes, omit ref.secondaryId except for collection_item, where it is the"
         " positive package ID (ref.id is the collection ID). Never send null or zero."
@@ -143,10 +241,10 @@ USAGE = {
         " them as versions), so release notes can be written for them right away."
     ),
     "release_write_notes": (
-        " version must be one package_versions lists. Code 1002 means it is not recorded: Homebrew"
-        " or the tap never shipped it under this token (for example, the cask was added at a later"
-        " version), so skip it instead of waiting. When asked for the latest few versions, count"
-        " recorded versions only."
+        " version is a full version package_versions lists, or the base of a listed build"
+        " (listed 2.0,42 also permits shared base 2.0). Code 1002 means neither is recorded"
+        " under this token (the cask may have been added later); skip it instead of waiting."
+        " When asked for the latest few versions, count recorded versions only."
     ),
     "asset_upload_ticket": (
         " Then, before expiresAt, POST the local PNG/JPEG/WebP file (at most maxBytes) as the only"
@@ -241,7 +339,6 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
         properties.update(
             {snake(k): v for k, v in read_schema.get("properties", {}).items() if k != "body"}
         )
-        properties["mode"] = {"type": "string", "enum": ["read", "write"], "default": "write"}
         required = []  # The selected OpenAPI operation validates its required fields.
     if spec.write:
         properties["dry_run"] = {"type": "boolean", "default": False}
@@ -267,13 +364,32 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
                 "then": {"required": ["secondaryId"]},
             }
         ]
-    result = {
+    result: dict[str, Any] = {
         "type": "object",
         "properties": properties,
         "required": required,
         "additionalProperties": False,
         "$defs": definitions,
     }
+    cases = operation_cases(spec)
+    if cases:
+        result["allOf"] = [
+            {
+                "if": condition,
+                "then": {
+                    "properties": {
+                        key: {"type": "null"}
+                        if "anyOf" in properties[key]
+                        and {"type": "null"} in properties[key]["anyOf"]
+                        else False
+                        for key in properties.keys() - operation_keys(spec, operation)
+                    }
+                },
+            }
+            for operation, condition in cases
+        ]
+    if spec.name == "jobs_runs":
+        result.setdefault("allOf", []).append({"not": {"required": ["id", "run_id"]}})
 
     return writable_schema(result) if spec.write else result
 
@@ -352,8 +468,11 @@ def values_for(operation: str, args: dict[str, Any]) -> dict[str, Any]:
         if key != "body" and snake(key) in args
     }
     if "body" in schema.get("properties", {}):
+        headers = OPERATIONS[operation]["parameters"].get("header", [])
         values["body"] = {
-            key: args[snake(key)] for key in body.get("properties", {}) if snake(key) in args
+            key: args[snake(key)]
+            for key in body.get("properties", {})
+            if snake(key) in args and key not in headers
         }
     return values
 
@@ -437,6 +556,10 @@ class AdapterTool(Tool):
                 kind = "missing"
             raise AgentError("1001", validation=field_detail(loc, kind, self.parameters)) from None
         args = deepcopy(arguments)
+        normalize_arguments(self._spec, args)
+        unused = args.keys() - operation_keys(self._spec, choose(self._spec, deepcopy(args)))
+        if unused:
+            raise AgentError("1001", validation=f"field {sorted(unused)[0]}: unsupported_parameter")
         operation = choose(self._spec, args)
         token = None
         if "package" in args:
@@ -472,6 +595,9 @@ class AdapterTool(Tool):
             )
             args.setdefault("sort", "popular")
             args.setdefault("hidden", False)
+            args.setdefault("disabled", False)
+            args.setdefault("is_font", False)
+            args.setdefault("removed", False)
         if self.name == "asset_upload_from_url":
             values = {
                 "dryRun": args.get("dry_run", False),
@@ -479,10 +605,6 @@ class AdapterTool(Tool):
             }
         else:
             values = values_for(operation, args)
-        if self.name in PARTIAL and "id" in args:
-            from opennavo_mcp.tools.updates import merge_update
-
-            values = await merge_update(self, operation, args, values)
         for key in OPERATIONS[operation]["parameters"].get("header", []):
             if snake(key) in args:
                 values[key] = args[snake(key)]

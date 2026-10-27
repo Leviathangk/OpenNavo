@@ -280,6 +280,17 @@ func mutationResult(ctx context.Context, st *store.Store, ref content.Ref) (any,
 }
 func historyName(ref content.Ref) string { return fmt.Sprintf("%s:%s", ref.Entity, ref.Key()) }
 
-func entityPermission(entity string) string {
-	return map[string]string{"package": "catalog:package:edit", "release": "changelog:release:edit", "category": "catalog:category:edit", "collection": "content:collection:edit", "collection_item": "content:collection:edit", "feature": "content:feature:edit", "screenshot": "catalog:asset:upload", "asset": "catalog:asset:upload", "desktop_release": "release:desktop:notes", "announcement": "content:announcement:edit", "glossary": "content:glossary:edit", "synonym": "ops:search:edit", "feedback": "ops:feedback:handle", "article": "content:article:edit", "article_author": "content:article:publish"}[entity]
+var entityPermissions = map[string]string{"package": "catalog:package:edit", "release": "changelog:release:edit", "category": "catalog:category:edit", "collection": "content:collection:edit", "collection_item": "content:collection:edit", "feature": "content:feature:edit", "screenshot": "catalog:asset:upload", "asset": "catalog:asset:upload", "desktop_release": "release:desktop:notes", "announcement": "content:announcement:edit", "glossary": "content:glossary:edit", "synonym": "ops:search:edit", "feedback": "ops:feedback:handle", "article": "content:article:edit", "article_author": "content:article:publish"}
+
+func entityPermission(entity string) string { return entityPermissions[entity] }
+
+func allowedHistoryEntities(op *domain.Operation) []string {
+	allowed := []string{}
+	for entity, permission := range entityPermissions {
+		if op.Allowed(permission) {
+			allowed = append(allowed, entity)
+		}
+	}
+	slices.Sort(allowed)
+	return allowed
 }

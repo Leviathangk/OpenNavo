@@ -38,6 +38,16 @@ func (s *Service) categories(ctx context.Context, _ Input) (any, error) {
 }
 func (s *Service) categoryWrite(ctx context.Context, op string, in Input) (any, error) {
 	return s.write(ctx, in, op, "category", func(st *store.Store) (any, error) {
+		in := in
+		if op == "UpdateCategory" {
+			local := *s
+			local.Store = st
+			var err error
+			in, err = local.mergeContentUpdate(ctx, op, in)
+			if err != nil {
+				return nil, err
+			}
+		}
 		id := in.ID
 		var result any
 		switch op {

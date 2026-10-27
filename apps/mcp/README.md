@@ -22,6 +22,23 @@ for the identical request) and the revision they read (`expected_revision`, forw
 carry the same checks per language in the body. Explicit translation edits may replace manual
 text; provenance and revision history are retained.
 
+Retry keys are scoped to the calling client/token and must identify one unchanged request.
+MCP sends write-safety values in headers, without duplicating the legacy article body fields.
+Optional query/header nulls mean omission; body nulls retain their clearing semantics.
+Partial category, collection and feature updates send only the caller's patch. The server
+replays identical retry keys before reading state, then merges new writes under its write lock.
+Optional `expected_state` and `expected_revision` checks run in that same transaction; reuse
+the original arguments and retry key after a lost response, including any explicit guards.
+Package content revisions include screenshot edits and deletions; use the revision from
+`package_get` for screenshot writes too.
+
+`listing_gaps` defaults to visible, enabled, current non-font apps (`hidden=false`,
+`disabled=false`, `removed=false`, `is_font=false`). Override those filters to inspect another
+scope. Its total counts matching packages; worklists overlap and are not a unified task queue.
+`releases_list(view="versions")` covers recorded cask and link builds; `source`, `hidden` and
+translation filters belong to `view="releases"`. Reading by ID takes no list filters.
+Tools reject arguments their selected mode does not consume.
+
 Failed calls return an MCP error result whose `structuredContent.error` holds `code`, `message`,
 `reason` and `detail`, plus `currentRevision` for revision conflicts. Known codes forward only
 rule-shaped reasons (`rejected: <reason>[:<detail>]`, such as `revision_conflict:<n>`,
@@ -54,14 +71,15 @@ of `homepage`, `download_url`, or `github_repo`. Complete metadata with `package
 `package_update_meta`, `package_set_categories`, image upload/attachment and `translations_write`.
 Use `link_app_update` for later source changes. Use `tap_package_add` for supported third-party
 Homebrew casks and `package_refresh` to queue a sync for existing Homebrew/tap/link entries. `package_versions`
-lists versions eligible for `release_write_notes`; writing notes does not create a version.
+lists versions eligible for `release_write_notes`; a listed build also permits shared notes
+on its base version (for example, `2.0,42` permits `2.0`). Writing notes does not create a version.
 Listing a link app does not guarantee a one-click installer or a usable update feed.
 
 For an optional concurrency check on `link_app_update` or `link_app_remove`, send the
 Link app's `revision` from `link_apps_list` as `expected_revision`. This counter also tracks
 admin edits; it is separate from package content revisions.
 
-Deploy the API and MCP generated contract together; source changes do not update a running service.
+Apply database migrations and deploy the API and MCP generated contract together; source changes do not update a running service.
 
 ## OAuth connections
 

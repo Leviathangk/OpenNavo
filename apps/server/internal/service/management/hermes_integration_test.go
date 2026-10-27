@@ -119,7 +119,7 @@ func TestHermesContentHistoryTransactions(t *testing.T) {
 	require.Equal(t, "manual", translationStatus)
 	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='translate:content'").Count(&n).Error)
 	require.Zero(t, n)
-	_, err = call("UpsertReleaseNotes", Input{ID: id, Version: "1.0", Body: map[string]any{"sourceLocale": "zh-CN", "title": "第一版", "summary": "更新内容", "sections": []any{map[string]any{"type": "new", "items": []any{"新功能"}}}}})
+	_, err = call("UpsertReleaseNotes", Input{ID: id, Version: "1.0", Body: map[string]any{"sourceLocale": "zh-CN", "title": "第一版", "summary": "更新内容", "sections": []any{map[string]any{"area": "功能", "items": []any{"新功能"}}}}})
 	require.NoError(t, err)
 	_, err = call("UpsertReleaseNotes", Input{ID: id, Version: "1.0", Body: map[string]any{"clear": true}})
 	require.NoError(t, err)

@@ -32,7 +32,8 @@ const (
 )
 
 // DeriveTraditional runs inside the caller's content transaction. It bypasses
-// external authoring validation, but never bypasses source freshness or limits.
+// external authoring validation, but never bypasses source freshness or shape
+// checks. Authoring limits apply before conversion, which can expand the text.
 func (s *Store) DeriveTraditional(ctx context.Context, ref content.Ref) (bool, error) {
 	outcome, err := s.deriveTraditional(ctx, ref, false)
 	return outcome == traditionalWritten, err
@@ -107,11 +108,14 @@ func (s *Store) deriveTraditional(ctx context.Context, ref content.Ref, hold boo
 		return traditionalUnchanged, nil
 	}
 
+	if err = ValidateContentFields(ref.Entity, fields); err != nil {
+		return traditionalUnchanged, fmt.Errorf("%w: %w", errTraditionalInvalid, err)
+	}
 	converted, err := traditional.Fields(fields, protected)
 	if err != nil {
 		return traditionalUnchanged, err
 	}
-	if err = ValidateContentFields(ref.Entity, converted); err != nil {
+	if err = validateContentFields(ref.Entity, "", converted, false); err != nil {
 		return traditionalUnchanged, fmt.Errorf("%w: %w", errTraditionalInvalid, err)
 	}
 	if len(before) > 0 {

@@ -63,7 +63,8 @@ async def test_article_revision_and_payload(
         request = backend.calls[-1][1]
         assert request.url.path.endswith(path)
         assert request.url.params["dryRun"] == "true"
-        assert json.loads(request.content) == {"expectedRevision": 9, **body}
+        assert request.headers["X-Expected-Revision"] == "9"
+        assert json.loads(request.content) == body
         backend.calls.clear()
         result = await client.call_tool(name, {"id": 7, **extra}, raise_on_error=False)
         assert not result.is_error, result.content

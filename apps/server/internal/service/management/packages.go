@@ -45,7 +45,7 @@ func (s *Service) packages(ctx context.Context, in Input) (any, error) {
 		where = append(where, "COALESCE(i.status,'none')=?")
 		args = append(args, status)
 	}
-	for key, col := range map[string]string{"hasicon": "m.icon_asset_id IS NOT NULL", "hidden": "COALESCE(m.hidden,false)", "editorchoice": "COALESCE(m.editor_choice,false)", "deprecated": "p.deprecated", "disabled": store.PackageDisabledSQL, "isfont": "p.is_font", "islibrary": "p.is_library"} {
+	for key, col := range map[string]string{"hasicon": "m.icon_asset_id IS NOT NULL", "hidden": "COALESCE(m.hidden,false)", "editorchoice": "COALESCE(m.editor_choice,false)", "deprecated": "p.deprecated", "disabled": store.PackageDisabledSQL, "isfont": "p.is_font", "islibrary": "p.is_library", "removed": "p.removed_at IS NOT NULL"} {
 		if v, ok := in.Params[key].(bool); ok {
 			where = append(where, "("+col+")=?")
 			args = append(args, v)
@@ -204,6 +204,9 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 				}
 				if err := st.DB.WithContext(ctx).Raw("SELECT kind FROM packages WHERE id=?", in.ID).Scan(&kind).Error; err != nil {
 					return nil, err
+				}
+				if kind == "link" {
+					kind = "cask"
 				}
 				if applies != "both" && applies != kind {
 					return nil, domain.Rejected("category_kind_mismatch:categoryId")

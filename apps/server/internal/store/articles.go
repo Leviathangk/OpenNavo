@@ -97,13 +97,6 @@ func (s *Store) LoadArticle(ctx context.Context, id int64, lock bool) (Article, 
 	return row, true, nil
 }
 
-// ArticleByClientKey finds the article created with an idempotency key.
-func (s *Store) ArticleByClientKey(ctx context.Context, key string) (int64, error) {
-	var id int64
-	err := s.DB.WithContext(ctx).Raw("SELECT id FROM articles WHERE client_key=?", key).Scan(&id).Error
-	return id, err
-}
-
 // SlugTaken reports a slug used by another article, now or formerly.
 func (s *Store) SlugTaken(ctx context.Context, slug string, except int64) (bool, error) {
 	var taken bool

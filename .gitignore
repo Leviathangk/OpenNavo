@@ -57,6 +57,10 @@ __pycache__/
 !/docs/i18n/README.es-ES.md
 !/docs/i18n/README.pt-BR.md
 !/docs/i18n/README.ru-RU.md
+!/docs/i18n/README.de-DE.md
+!/docs/i18n/README.fr-FR.md
+!/docs/i18n/README.it-IT.md
+!/docs/i18n/README.zh-Hant.md
 !/docs/security/
 /docs/security/*
 !/docs/security/DEPENDENCY_SECURITY.md

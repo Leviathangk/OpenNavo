@@ -43,6 +43,7 @@ type Input struct {
 	Body                                     map[string]any
 	Actor                                    store.AuditActor
 	CI                                       bool
+	tapCandidate                             *taps.Candidate
 }
 
 func Decode(request any, body []byte, actor store.AuditActor, ci bool) (Input, error) {

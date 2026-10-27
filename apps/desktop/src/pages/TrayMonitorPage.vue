@@ -66,11 +66,13 @@ const openInMain = (target: 'detail' | 'settings') =>
 <template>
   <div ref="content" class="w-332px max-w-full bg-transparent p-6px">
     <section
-      class="flex flex-col gap-10px rounded-panel bg-surface-card p-14px text-ink-primary"
+      class="flex flex-col gap-10px rounded-panel border border-solid border-line-default bg-surface-overlay p-14px text-ink-primary shadow-popover backdrop-blur-[20px]"
       data-testid="monitor-popover"
     >
       <header class="flex items-center gap-8px">
-        <span class="grid h-22px w-22px place-items-center rounded-[6px] bg-surface-raised text-ink-secondary">
+        <span
+          class="grid h-22px w-22px place-items-center rounded-[6px] border border-solid border-line-subtle bg-surface-card-alt text-ink-secondary"
+        >
           <OnIcon :name="MODULE_ICONS[module]" :size="14" />
         </span>
         <b class="text-14px font-600">{{ t(`monitor.modules.${module}`) }}</b>
@@ -81,7 +83,7 @@ const openInMain = (target: 'detail' | 'settings') =>
       <MonitorModuleBody :module="module" variant="popover" />
       <MonitorProcesses v-if="module === 'cpu'" sort="cpu" :limit="3" compact />
       <MonitorProcesses v-else-if="module === 'memory'" sort="memory" :limit="3" compact />
-      <footer class="flex gap-8px">
+      <footer class="flex gap-8px border-t border-t-solid border-line-subtle pt-10px">
         <OnButton variant="primary" size="sm" class="flex-1" @click="openInMain('detail')">{{
           t('monitor.popover.open')
         }}</OnButton>

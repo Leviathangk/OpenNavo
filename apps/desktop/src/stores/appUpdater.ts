@@ -32,13 +32,16 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
   const currentVersion = ref<string | null>(null);
   const percent = ref<number | null>(null);
   const dialogOpen = ref(false);
+  const manualPrompt = ref(false);
   const installFailed = ref(false);
+  const restarting = ref(false);
   const busy = computed(() => tasks.active.length > 0);
-  const working = computed(() => state.value === 'checking' || state.value === 'downloading');
+  const working = computed(() => state.value === 'checking' || state.value === 'downloading' || restarting.value);
   let history: CheckHistory = {};
   let historyKey = STORAGE_KEY;
   let initialized = false;
   let pending: Promise<void> | null = null;
+  let manualCheckRequested = false;
   let previewTimer: ReturnType<typeof setInterval> | undefined;
 
   // Preview is deliberately development-only and never downloads or replaces the native app.
@@ -74,29 +77,44 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
     }
   }
 
-  function show() {
+  function prompt(manual: boolean) {
     if (!update.value) return;
+    manualPrompt.value = manual;
     dialogOpen.value = true;
     history.promptedVersion = update.value.version;
     history.promptedAt = Date.now();
     persist();
   }
 
+  function show() {
+    prompt(true);
+  }
+
   function dismiss() {
-    if (state.value === 'downloading') return;
+    if (state.value === 'downloading' || restarting.value) return;
     dialogOpen.value = false;
   }
 
   async function checkNow(automatic = false): Promise<void> {
-    if (pending) return pending;
+    if (pending) {
+      // A manual click must retain its prompt even when it joins a scheduled check.
+      if (!automatic) {
+        manualCheckRequested = true;
+        state.value = 'checking';
+      }
+      return pending;
+    }
     if (state.value === 'downloading' || state.value === 'installed') return;
     if (automatic && (!settings.value?.autoCheckAppUpdates || document.visibilityState === 'hidden')) return;
 
+    manualCheckRequested = !automatic;
+    // Reflect the click before the first native IPC read, which can itself be delayed.
+    if (!automatic) state.value = 'checking';
     pending = (async () => {
       try {
         await initialize();
         const now = Date.now();
-        if (automatic) {
+        if (!manualCheckRequested) {
           // Throttle from request start for both success and failure. Using the
           // completion time would skip the hourly timer after a slow response.
           if (history.attemptedAt && now >= history.attemptedAt && now - history.attemptedAt < HOUR) return;
@@ -114,12 +132,12 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
         state.value = next ? 'available' : 'latest';
         if (!next) dialogOpen.value = false;
         // A user disabling the setting while a request is in flight also suppresses its prompt.
-        if (next && (!automatic || settings.value?.autoCheckAppUpdates)) {
+        if (next && (manualCheckRequested || settings.value?.autoCheckAppUpdates)) {
           const alreadyPrompted = history.promptedVersion === next.version && sameDay(history.promptedAt, Date.now());
-          if (!automatic || !alreadyPrompted) show();
+          if (manualCheckRequested || !alreadyPrompted) prompt(manualCheckRequested);
         }
       } catch {
-        if (!automatic) state.value = 'failed';
+        if (manualCheckRequested) state.value = 'failed';
         else state.value = update.value ? 'available' : 'idle';
       }
     })();
@@ -174,14 +192,19 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
   }
 
   async function restart() {
-    if (busy.value || state.value !== 'installed') return;
+    if (busy.value || restarting.value || state.value !== 'installed') return;
     if (preview) {
       dialogOpen.value = false;
       state.value = 'available';
       percent.value = null;
       return;
     }
-    await relaunch();
+    restarting.value = true;
+    try {
+      await relaunch();
+    } finally {
+      restarting.value = false;
+    }
   }
 
   async function showPreview() {
@@ -210,7 +233,9 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
     currentVersion,
     percent,
     dialogOpen,
+    manualPrompt,
     installFailed,
+    restarting,
     busy,
     working,
     preview,

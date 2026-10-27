@@ -118,27 +118,22 @@ async def test_listing_gaps_defaults(backend: Backend) -> None:
         query["gaps"]
         == "zhName,zhSummary,enSummary,primaryCategory,tags,icon,downloadSize,latestEditorial"
     )
-    assert query["hidden"] == "false" and "isFont" not in query and query["sort"] == "popular"
+    assert query["sort"] == "popular"
+    assert all(query[key] == "false" for key in ("hidden", "disabled", "isFont", "removed"))
 
 
-async def test_optimistic_merge_detects_intervening_change(backend: Backend) -> None:
-    # Do not write if another operator changes state between the two reads.
-    from conftest import DOCUMENT, example, resolve
-
-    schema = resolve(DOCUMENT["paths"]["/collections/{id}"]["get"]["responses"]["200"])["content"][
-        "application/json"
-    ]["schema"]
-    before = example(schema)["data"]
-    versions = iter([before, before | {"updatedAt": "2026-10-08T00:00:00Z"}])
-    backend.responses["getAdminCollection"] = lambda: next(versions)
+async def test_partial_update_defers_atomic_merge_to_server(backend: Backend) -> None:
     async with Client(backend.server) as client:
         result = await client.call_tool(
             "collection_update",
             execution_args("collection_update", {"id": 1, "dry_run": True}),
             raise_on_error=False,
         )
-        assert result.is_error
-    assert not any(op == "updateCollection" for op, _ in backend.calls)
+        assert not result.is_error
+    request = next(request for op, request in backend.calls if op == "updateCollection")
+    assert json.loads(request.content) == {}
+    assert request.headers["X-Expected-Revision"] == "0"
+    assert not any(op == "getAdminCollection" for op, _ in backend.calls)
 
 
 async def test_display_preview_fallback(backend: Backend) -> None:

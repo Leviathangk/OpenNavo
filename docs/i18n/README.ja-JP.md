@@ -4,7 +4,7 @@
 
 # OpenNavo
 
-[English](../../README.md) · [简体中文](README.zh-CN.md) · **日本語** · [Español](README.es-ES.md) · [Português (Brasil)](README.pt-BR.md) · [Русский](README.ru-RU.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · **日本語** · [Español](README.es-ES.md) · [Português (Brasil)](README.pt-BR.md) · [Русский](README.ru-RU.md) · [Deutsch](README.de-DE.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md) · [繁體中文](README.zh-Hant.md)
 
 **Mac のための Homebrew アプリストア**
 
@@ -128,6 +128,8 @@ opennavo/
 
 バックエンドは Homebrew の公開 API からカタログとインストール数を同期し、Homebrew のコミット履歴から各バージョンの登録日時を取得します。ダウンロードサイズの検出と、クライアント用のオフラインカタログのスナップショット生成も行います。API は契約を先に定義します。`apps/server/api/*.openapi.yaml` を変更し、`make gen` で Go と TypeScript のコードを生成します。
 
+フォント以外の Cask は、現在の完全なバージョンに対応する Homebrew のコミットが 90 日以上前になると、自動的に無効とマークされます。バージョンが変わると、このローカル状態はコミット日時を再確認するまで解除されます。日時が不明な App はこのルールでは有効のままとなり、履歴取得の明示的な除外も尊重されます。Homebrew 自体の無効状態と手動の非表示は独立しています。このルールは変更のない応答を含め、カタログ同期時に適用されます。無効な項目も「無効な App を表示」やインストール済み App の記録から参照できます。
+
 | 部分               | 技術                                                                           |
 | ------------------ | ------------------------------------------------------------------------------ |
 | Web 版             | Nuxt 4 · Vue 3 · UnoCSS（SSR）                                                 |
@@ -142,7 +144,7 @@ opennavo/
 ### 必要な環境
 
 - Node.js 24、pnpm 10
-- Go 1.27、Rust 1.96
+- Go 1.27、Rust 1.96.0（正確な Rust ツールチェーンは `apps/desktop/src-tauri/rust-toolchain.toml` に固定されています）
 - Python 3.13 と [uv](https://docs.astral.sh/uv/)（MCP）
 - Docker（ローカルの PostgreSQL、Redis、MinIO）
 - macOS 13 以降（クライアントのみ）
@@ -173,7 +175,7 @@ make dev-desktop       # macOS クライアント（Tauri）
 
 ### 設定
 
-- `apps/server/.env.example` にバックエンドの環境変数とローカルの既定値を記載しています。API キーなどのローカルの秘密情報は、Git の対象外である `apps/server/.env.local` に保存してください。バックエンドが起動時に自動で読み込みます。
+- `apps/server/.env.example` にバックエンドの環境変数とローカルの既定値を記載しています。API キーなどのローカルの秘密情報は、Git の対象外である `apps/server/.env.local` に保存してください。バックエンドが起動時に自動で読み込みます。開発コマンドでは、明示的なプロセス環境変数が `.env.local` より優先され、`.env.local` は `.env.example` の空でない既定値より優先されます。
 - コンテンツ翻訳は初期状態では無効です。管理画面の「システム → 翻訳 AI 設定」で、OpenAI 互換 API の URL・キー・モデルを設定すると有効になります。管理画面で未設定の場合は、環境変数 `LLM_BASE_URL`（既定値 `https://api.openai.com/v1`）、`LLM_API_KEY`、`LLM_MODEL` を使用します。
 - `APP_ENV` が `staging` または `prod` の場合、バックエンドは `.env.example` のサンプルの秘密情報を拒否し、公開の既定値でのデプロイを防ぎます。
 
@@ -192,12 +194,11 @@ OpenAPI の検証、Go / TypeScript / Rust / Python の静的検査と単体テ�
 
 本番環境の構成は `ops/docker-compose.prod.yml` です。API と Web 版をそれぞれ 2 レプリカで実行し、ワーカー・Redis・Caddy を含みます。PostgreSQL（`local-db`）、Prometheus / Grafana / asynqmon（`monitoring`）、毎日のバックアップ（`backup`）は必要な profile で有効にします。
 
-1. `ops/.env.example` に従って、ドメイン・イメージ・各種 32 バイト以上の秘密情報を設定します。環境ファイルはリポジトリの外に置いてください。
-2. イメージをビルドまたは取得します。バックエンドは `docker build --target server server`、Web 版は `docker build -f apps/web/Dockerfile .`、管理画面の静的ファイルは `pnpm --filter @opennavo/admin build` です。`server-v*`、`web-v*`、`mcp-v*` タグを push すると、GitHub Actions が対応するイメージをビルド・公開します。
-3. マイグレーション（`ops/migrate.sh`）、オブジェクトストレージの初期化（`storage-init`）、シード（`seed`）の順に実行し、すべてのサービスを起動します。初回ログイン後、初期管理者のパスワードをすぐに変更してください。
-4. 以降の更新では `ops/rollout.py` で API レプリカを順次置き換えられます。まずそのまま実行して計画を確認し、確認後に `--apply` を付けて適用します。
+コピーして使えるイメージのビルド、外部 `COMPOSE_ENV_FILES`、データベースと S3 の初期化、バックアップと復元、profile、更新手順は[デプロイガイド](../../ops/GUIDE.md)をご覧ください。
 
 ## 開発への参加
+
+詳しい手順は [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) をご覧ください。
 
 Issue と Pull Request を歓迎します。作業前に以下をご確認ください。
 
@@ -210,11 +211,11 @@ Issue と Pull Request を歓迎します。作業前に以下をご確認くだ
 
 ## セキュリティ
 
-脆弱性を発見した場合は公開の Issue を作成せず、リポジトリの **Security → Report a vulnerability** から非公開でご報告ください。できるだけ早く対応します。
+脆弱性は **admin@opennavo.com** へ非公開でご報告ください。対応バージョンと任意で利用できる GitHub の非公開報告窓口は [SECURITY.md](../../.github/SECURITY.md) をご覧ください。脆弱性の公開 Issue は作成しないでください。
 
 ## ライセンス
 
-本プロジェクトは [GNU General Public License 第3版のみ（GPL-3.0-only）](../../LICENSE) で公開されています。コミット `5fa4056` 以前（同コミットを含む）に公開されたバージョンは引き続き Apache-2.0 で利用できます。第三者の表記と以下の追加条項は [NOTICE](../../NOTICE) をご覧ください。
+本プロジェクトは [GNU General Public License 第3版のみ（GPL-3.0-only）](../../LICENSE) で公開されています。コミット `5fa4056` 以前（同コミットを含む）に公開されたバージョンは引き続き Apache-2.0 で利用できます。第三者の表記と以下の追加条項は [NOTICE](../../NOTICE) をご覧ください。依存関係の根拠資料と配布手順は [THIRD_PARTY.md](../legal/THIRD_PARTY.md) に記載しています。
 
 NOTICE に記載した GPLv3 第7(e)条に基づく追加条項により、OpenNavo の名称やロゴに関する商標権は許諾されません。第7(c)条に基づき、変更版を配布する際は原版と明確に区別し、別の名称とアイコンを使用し、Bundle ID、更新用公開鍵、更新 URL を変更してください。正確な出典表記は保持してください。Homebrew は Homebrew プロジェクトの商標であり、OpenNavo は公式の関連製品ではありません。各アプリの名称とアイコンは各権利者に帰属します。
 

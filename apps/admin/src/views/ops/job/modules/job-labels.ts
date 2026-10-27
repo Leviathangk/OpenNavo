@@ -1,8 +1,8 @@
 import type { Schemas } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 
-/** All historical job types, including retired types for display. */
-export const JOB_TYPES: Schemas['JobType'][] = [
+/** Job types with localized labels, including retired types for display. */
+export const JOB_TYPES = [
   'catalog_sync',
   'analytics_sync',
   'snapshot_build',
@@ -14,7 +14,7 @@ export const JOB_TYPES: Schemas['JobType'][] = [
   'enrich_schedule',
   'translate_schedule',
   'assets_icons'
-];
+] as const satisfies Schemas['JobType'][];
 
 /** Manually triggerable jobs, matching TriggerJobType. */
 export const TRIGGER_TYPES: Schemas['TriggerJobType'][] = [
@@ -28,8 +28,9 @@ export const TRIGGER_TYPES: Schemas['TriggerJobType'][] = [
   'taps_sync'
 ];
 
-/** History uses asynq names (assets:download-size); replace colons with underscores for translation lookup, preserving unknown names. */
+/** Accept public job names and legacy asynq names, preserving unknown labels. */
 export function jobLabel(type: string): string {
-  const key = type.replace(/:/g, '_') as Schemas['JobType'];
-  return JOB_TYPES.includes(key) ? $t(`page.ops.job.types.${key}`) : type;
+  const key = type.replace(/:/g, '_');
+  const known = JOB_TYPES.find(value => value === key);
+  return known ? $t(`page.ops.job.types.${known}`) : type;
 }

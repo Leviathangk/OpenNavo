@@ -17,6 +17,8 @@ Before pushing a `desktop-vX.Y.Z` tag, add one UTF-8 Markdown file per client la
 
 Describe actual user-facing changes in the tagged code. Keep every translation aligned with the English source. Historical published versions do not need local backfills (versions up to 0.1.16 have six languages). Do not copy preview data or list unreleased features. Prereleases use the complete version directory, such as `0.3.0-beta.1`.
 
+Recheck known issues against the current code and validation results for each release. Remove resolved issues instead of carrying their old descriptions forward.
+
 Validate locally from the repository root:
 
 ```sh

@@ -4,7 +4,7 @@
 
 # OpenNavo
 
-**English** · [简体中文](docs/i18n/README.zh-CN.md) · [日本語](docs/i18n/README.ja-JP.md) · [Español](docs/i18n/README.es-ES.md) · [Português (Brasil)](docs/i18n/README.pt-BR.md) · [Русский](docs/i18n/README.ru-RU.md)
+**English** · [简体中文](docs/i18n/README.zh-CN.md) · [日本語](docs/i18n/README.ja-JP.md) · [Español](docs/i18n/README.es-ES.md) · [Português (Brasil)](docs/i18n/README.pt-BR.md) · [Русский](docs/i18n/README.ru-RU.md) · [Deutsch](docs/i18n/README.de-DE.md) · [Français](docs/i18n/README.fr-FR.md) · [Italiano](docs/i18n/README.it-IT.md) · [繁體中文](docs/i18n/README.zh-Hant.md)
 
 **The Homebrew app store for Mac**
 

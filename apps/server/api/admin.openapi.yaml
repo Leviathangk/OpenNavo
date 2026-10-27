@@ -1712,6 +1712,12 @@ paths:
           schema:
             type: boolean
             example: false
+        - name: removed
+          in: query
+          description: Filter packages removed from the catalog; false keeps current listings.
+          schema:
+            type: boolean
+            example: false
         - name: isFont
           in: query
           schema:
@@ -1796,7 +1802,7 @@ paths:
               schema:
                 type: string
               example: Origin, Accept-Language
-      description: 'Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial matches apps whose current build shows no non-hidden editorial notes (neither its own nor the shared note of its base version); latestBuildEditorial matches apps whose current version is one of several builds of its base version (0.1,49) and has no notes of its own. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.'
+      description: 'Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial matches apps whose current build shows no non-hidden editorial notes (neither its own nor the shared note of its base version); latestBuildEditorial matches apps whose current version is one of several builds of its base version (0.1,49) and has no notes of its own. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false, removed=false and isFont=false define the ordinary active-app worklist. Gap totals count matching packages, can overlap other worklists, and are not a task queue. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.'
       x-permissions:
         - catalog:package:view
       x-agent-access:
@@ -4524,7 +4530,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CategoryUpsert'
+              $ref: '#/components/schemas/CategoryUpdate'
             example:
               parentId: null
               slug: new-mac
@@ -6002,7 +6008,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CollectionUpsert'
+              $ref: '#/components/schemas/CollectionUpdate'
             example:
               slug: new-mac
               sort: 0
@@ -6683,7 +6689,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FeatureUpsert'
+              $ref: '#/components/schemas/FeatureUpdate'
             example:
               placement: home_hero
               categoryId: null
@@ -19727,6 +19733,11 @@ components:
         - cleanup
         - facts_sources
         - taps_sync
+        - links_sync
+        - changelog_resolve
+        - changelog_fetch
+        - update-feeds_verify
+        - seo_pages
       example: catalog_sync
     EmptyResponse:
       type: object
@@ -21117,6 +21128,33 @@ components:
       example:
         name: Visual Studio Code
         description: null
+    CategoryI18nPatch:
+      type: object
+      properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
+        name:
+          type: string
+          maxLength: 30
+          example: Visual Studio Code
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+          example: null
+      example:
+        name: Visual Studio Code
+        description: null
     AdminCategoryNode:
       type: object
       required:
@@ -21295,6 +21333,56 @@ components:
             description: 编辑代码、调试应用并安装扩展。
         sourceLocale: zh-CN
       description: 'Only source-language text is required: sourceLocale identifies it and i18n must contain that language; the other five need not be prefilled. The server validates paired presence and matching source keys (otherwise 1001). Omitted languages retain old translations, refreshed by translation jobs after source changes; manual non-source corrections affect only that language.'
+    CategoryUpdate:
+      type: object
+      properties:
+        expectedState:
+          type: string
+          description: Optional SHA-256 digest of the object read; checked atomically after idempotency replay.
+        parentId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        slug:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]*$
+          maxLength: 40
+          example: new-mac
+        icon:
+          type: string
+          pattern: ^lucide:[a-z0-9-]+$
+          example: lucide:code-xml
+        appliesTo:
+          type: string
+          enum:
+            - cask
+            - formula
+            - both
+          example: cask
+        visible:
+          type: boolean
+          example: true
+        hiddenByDefault:
+          type: boolean
+          example: false
+        i18n:
+          $ref: '#/components/schemas/CategoryI18nPatchMap'
+        sourceLocale:
+          $ref: '#/components/schemas/Locale'
+      example:
+        parentId: null
+        slug: new-mac
+        icon: lucide:code-xml
+        appliesTo: cask
+        visible: true
+        hiddenByDefault: false
+        i18n:
+          zh-CN:
+            name: 开发工具
+            description: 编辑代码、调试应用并安装扩展。
+        sourceLocale: zh-CN
+      description: Partial update. Omitted fields and languages are preserved; supplied language fields are merged. A null non-source translation deletes it where supported. Idempotency hashes the submitted patch before reading current state.
     CategoryOrder:
       type: object
       required:
@@ -21329,6 +21417,39 @@ components:
       type: object
       required:
         - title
+      properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
+        title:
+          type: string
+          maxLength: 40
+          example: Visual Studio Code
+        subtitle:
+          type: string
+          nullable: true
+          maxLength: 80
+          example: null
+        body:
+          type: string
+          nullable: true
+          maxLength: 10000
+          example: null
+      example:
+        title: Visual Studio Code
+        subtitle: null
+        body: null
+    CollectionI18nPatch:
+      type: object
       properties:
         seoTitle:
           type: string
@@ -21678,6 +21799,46 @@ components:
             body: 找到适合你的 Mac 应用。
         sourceLocale: zh-CN
       description: 'Only source-language text is required: sourceLocale identifies it and i18n must contain that language; the other five need not be prefilled. The server validates paired presence and matching source keys (otherwise 1001). Omitted languages retain old translations, refreshed by translation jobs after source changes; manual non-source corrections affect only that language.'
+    CollectionUpdate:
+      type: object
+      properties:
+        expectedState:
+          type: string
+          description: Optional SHA-256 digest of the object read; checked atomically after idempotency replay.
+        slug:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]*$
+          maxLength: 64
+          example: new-mac
+        sort:
+          type: integer
+          example: 0
+        unpublishAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        coverAssetId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        i18n:
+          $ref: '#/components/schemas/CollectionI18nPatchMap'
+        sourceLocale:
+          $ref: '#/components/schemas/Locale'
+      example:
+        slug: new-mac
+        sort: 0
+        unpublishAt: null
+        coverAssetId: null
+        i18n:
+          zh-CN:
+            title: 更好的工作空间
+            subtitle: 日常工作所需的应用
+            body: 找到适合你的 Mac 应用。
+        sourceLocale: zh-CN
+      description: Partial update. Omitted fields and languages are preserved; supplied language fields are merged. A null non-source translation deletes it where supported. Idempotency hashes the submitted patch before reading current state.
     CollectionItemsUpdate:
       type: object
       required:
@@ -21721,6 +21882,40 @@ components:
       type: object
       required:
         - title
+      properties:
+        badge:
+          type: string
+          nullable: true
+          maxLength: 12
+          example: null
+        title:
+          type: string
+          maxLength: 30
+          example: Visual Studio Code
+        subtitle:
+          type: string
+          nullable: true
+          maxLength: 30
+          example: null
+        body:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: 'Only **bold** markup is allowed'
+          example: null
+        ctaLabel:
+          type: string
+          nullable: true
+          maxLength: 10
+          example: null
+      example:
+        badge: null
+        title: Visual Studio Code
+        subtitle: null
+        body: null
+        ctaLabel: null
+    FeatureI18nPatch:
+      type: object
       properties:
         badge:
           type: string
@@ -22004,6 +22199,85 @@ components:
             ctaLabel: 浏览
         sourceLocale: zh-CN
       description: 'Only source-language text is required: sourceLocale identifies it and i18n must contain that language; the other five need not be prefilled. The server validates paired presence and matching source keys (otherwise 1001). Omitted languages retain old translations, refreshed by translation jobs after source changes; manual non-source corrections affect only that language.'
+    FeatureUpdate:
+      type: object
+      properties:
+        expectedState:
+          type: string
+          description: Optional SHA-256 digest of the object read; checked atomically after idempotency replay.
+        placement:
+          $ref: '#/components/schemas/FeaturePlacement'
+        categoryId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        targetType:
+          type: string
+          enum:
+            - package
+            - collection
+            - url
+          example: package
+        packageId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        collectionId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        url:
+          type: string
+          nullable: true
+          example: null
+        glowColor:
+          type: string
+          nullable: true
+          pattern: ^#[0-9A-Fa-f]{6}$
+          example: null
+        status:
+          $ref: '#/components/schemas/PublishStatus'
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        endsAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        sort:
+          type: integer
+          example: 0
+        i18n:
+          $ref: '#/components/schemas/FeatureI18nPatchMap'
+        sourceLocale:
+          $ref: '#/components/schemas/Locale'
+      example:
+        placement: home_hero
+        categoryId: null
+        targetType: package
+        packageId: null
+        collectionId: null
+        url: null
+        glowColor: null
+        status: published
+        startsAt: null
+        endsAt: null
+        sort: 0
+        i18n:
+          zh-CN:
+            title: 更好的工作空间
+            subtitle: 日常工作所需的应用
+            body: 找到适合你的 Mac 应用。
+            badge: 精选
+            ctaLabel: 浏览
+        sourceLocale: zh-CN
+      description: Partial update. Omitted fields and languages are preserved; supplied language fields are merged. A null non-source translation deletes it where supported. Idempotency hashes the submitted patch before reading current state.
     ChangelogSource:
       type: object
       required:
@@ -22959,6 +23233,12 @@ components:
             - terms
             - enabled
           properties:
+            revision:
+              type: integer
+              format: int64
+              minimum: 0
+              description: Management read revision to send as X-Expected-Revision for edits.
+              example: 0
             id:
               type: integer
               format: int64
@@ -23015,6 +23295,12 @@ components:
         - status
         - createTime
       properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Management read revision to send as X-Expected-Revision for edits.
+          example: 0
         id:
           type: integer
           format: int64
@@ -23353,6 +23639,12 @@ components:
         - i18n
         - sourceLocale
       properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Management read revision to send as X-Expected-Revision for edits.
+          example: 0
         id:
           type: integer
           format: int64
@@ -26714,6 +27006,35 @@ components:
         zh-CN:
           name: 开发工具
           description: 编辑代码、调试应用并安装扩展。
+    CategoryI18nPatchMap:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        en-US:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        zh-CN:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        ja-JP:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        es-ES:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        pt-BR:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        ru-RU:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        de-DE:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        fr-FR:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        it-IT:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+        zh-Hant:
+          $ref: '#/components/schemas/CategoryI18nPatch'
+      example:
+        zh-CN:
+          name: 开发工具
+          description: 编辑代码、调试应用并安装扩展。
     CategoryI18nViewMap:
       type: object
       additionalProperties: false
@@ -26902,6 +27223,67 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/CollectionI18n'
+      example:
+        zh-CN:
+          title: 更好的工作空间
+          subtitle: 日常工作所需的应用
+          body: 找到适合你的 Mac 应用。
+      description: 'Non-source languages may pass null to clear a translation; the source language cannot be null.'
+    CollectionI18nPatchMap:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        en-US:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        zh-CN:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        ja-JP:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        es-ES:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        pt-BR:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        ru-RU:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        de-DE:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        fr-FR:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        it-IT:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
+        zh-Hant:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CollectionI18nPatch'
       example:
         zh-CN:
           title: 更好的工作空间
@@ -27103,6 +27485,69 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/FeatureI18n'
+      example:
+        zh-CN:
+          title: 更好的工作空间
+          subtitle: 日常工作所需的应用
+          body: 找到适合你的 Mac 应用。
+          badge: 精选
+          ctaLabel: 浏览
+      description: 'Non-source languages may pass null to clear a translation; the source language cannot be null.'
+    FeatureI18nPatchMap:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        en-US:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        zh-CN:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        ja-JP:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        es-ES:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        pt-BR:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        ru-RU:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        de-DE:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        fr-FR:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        it-IT:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
+        zh-Hant:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FeatureI18nPatch'
       example:
         zh-CN:
           title: 更好的工作空间
@@ -29462,6 +29907,12 @@ components:
         - createdAt
         - updatedAt
       properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Management read revision to send as X-Expected-Revision for edits.
+          example: 0
         id:
           type: integer
           format: int64
@@ -29685,6 +30136,12 @@ components:
         - i18n
         - updatedAt
       properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Management read revision to send as X-Expected-Revision for edits.
+          example: 0
         enabled:
           type: boolean
           example: true
@@ -31719,6 +32176,12 @@ components:
       type: object
       required: [id, slug, name, links, avatarAssetId, avatarUrl, sourceLocale, role, bio, articleCount, updatedAt]
       properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Management read revision to send as X-Expected-Revision for edits.
+          example: 0
         id:
           type: integer
           format: int64

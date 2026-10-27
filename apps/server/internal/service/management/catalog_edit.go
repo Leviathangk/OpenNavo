@@ -23,6 +23,15 @@ func (s *Service) executeCatalogEdit(ctx context.Context, name string, in Input)
 	// evidenceIds stays null so keys recorded before the write-layer rename still replay.
 	payload := map[string]any{"id": in.ID, "key": in.Key, "locale": in.Locale, "version": in.Version, "screenshotId": in.ScreenshotID, "requestId": in.RequestID, "jobType": in.JobType, "body": in.Body, "expectedRevision": e.ExpectedRevision, "expectedRevisionSet": e.ExpectedRevisionSet, "evidenceIds": nil}
 	result, err := agentgate.Control(ctx, s.Store.DB, writeOwner(ctx), name, e.IdempotencyKey, payload, op.DryRun, func(tx *gorm.DB) (any, error) {
+		// Fetch before catalogEdit takes the global catalog lock. Keeping this
+		// inside Control still lets identical retries replay without network I/O.
+		if name == "AddTapPackage" {
+			var err error
+			in.tapCandidate, err = s.readTapCandidate(ctx, in)
+			if err != nil {
+				return nil, err
+			}
+		}
 		local := *s
 		local.Store = &store.Store{DB: tx, Redis: s.Store.Redis}
 		return local.catalogEdit(ctx, name, in)
@@ -66,6 +75,10 @@ func writeRevision(ctx context.Context, st *store.Store, name string, rule agent
 			query += " FOR UPDATE"
 		}
 		err = db.Raw(query, in.ID).Scan(&current).Error
+	case rule.Object == "package" && strings.Contains(name, "Screenshot"):
+		// Screenshot history remains independently restorable, but all package
+		// edits accept the revision returned by the package detail read.
+		current, err = actionRevision(ctx, st, []content.Ref{{Entity: "package", ID: in.ID}})
 	}
 	return current, refs, err
 }

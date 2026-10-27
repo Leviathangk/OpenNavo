@@ -26,12 +26,7 @@ func (s *Service) agentLogs(ctx context.Context, op string, in Input) (any, erro
 	if scope := domain.CurrentOperation(ctx); scope != nil && scope.AgentClientID > 0 {
 		where += " AND " + clientCol + "=?"
 		args = append(args, scope.AgentClientID)
-		allowed := []string{}
-		for _, entity := range []string{"package", "release", "category", "collection", "collection_item", "feature", "screenshot", "desktop_release", "announcement", "glossary", "synonym", "asset", "feedback"} {
-			if scope.Allowed(entityPermission(entity)) {
-				allowed = append(allowed, entity)
-			}
-		}
+		allowed := allowedHistoryEntities(scope)
 		if translation {
 			where += " AND r.entity IN ?"
 			args = append(args, allowed)
@@ -41,6 +36,18 @@ func (s *Service) agentLogs(ctx context.Context, op string, in Input) (any, erro
 			args = append(args, string(raw))
 		}
 
+	}
+	if !translation {
+		objectFilters := []string{}
+		for param, field := range map[string]string{"entity": "entity", "objectkey": "objectKey"} {
+			if value := text(in.Params, param); value != "" {
+				objectFilters = append(objectFilters, "o->>'"+field+"'=?")
+				args = append(args, value)
+			}
+		}
+		if len(objectFilters) > 0 {
+			where += " AND EXISTS(SELECT 1 FROM jsonb_array_elements(r.objects) o WHERE " + strings.Join(objectFilters, " AND ") + ")"
+		}
 	}
 	for param, col := range map[string]string{"requestid": "r.request_id", "tool": "r.tool", "code": "r.code", "status": "r.status", "entity": "r.entity", "objectkey": "r.object_key"} {
 		if v := text(in.Params, param); v != "" {

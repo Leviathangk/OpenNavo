@@ -21,7 +21,9 @@ const titleId = useId();
 const descriptionId = useId();
 const blocked = ref(false);
 const visible = ref(document.visibilityState !== 'hidden');
-const open = computed(() => updater.dialogOpen && (updater.preview || visible.value) && !blocked.value);
+const open = computed(
+  () => updater.dialogOpen && (updater.manualPrompt || updater.preview || visible.value) && !blocked.value
+);
 const localizedNotes = ref<string | null>(null);
 const notes = computed(() => localizedNotes.value ?? updater.update?.body);
 watch(
@@ -61,14 +63,33 @@ let observer: MutationObserver | undefined;
 useAppUpdateChecks();
 
 function observeOverlays() {
-  blocked.value = Boolean(document.querySelector('[role="dialog"]:not(.on-app-update-dialog), [role="alertdialog"]'));
+  blocked.value = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')).some(
+    dialog => {
+      if (dialog.closest('.on-app-update-dialog')) return false;
+      // Closed overlays can remain mounted. Only another visible dialog owns focus.
+      for (let element: HTMLElement | null = dialog; element; element = element.parentElement) {
+        if (element.hidden || element.getAttribute('aria-hidden') === 'true' || element.hasAttribute('inert'))
+          return false;
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+      }
+      return true;
+    }
+  );
   visible.value = document.visibilityState !== 'hidden';
 }
+
+watch([() => updater.dialogOpen, () => updater.manualPrompt], observeOverlays, { flush: 'sync' });
 
 onMounted(() => {
   observeOverlays();
   observer = new MutationObserver(observeOverlays);
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['hidden', 'aria-hidden', 'inert', 'style', 'class', 'role', 'open']
+  });
   document.addEventListener('visibilitychange', observeOverlays);
 });
 onBeforeUnmount(() => {
@@ -105,7 +126,7 @@ function install() {
 <template>
   <OnDialogShell
     :open="open"
-    :dismissible="!downloading"
+    :dismissible="!downloading && !updater.restarting"
     :labelledby="titleId"
     :describedby="descriptionId"
     initial-focus="[data-update-later]"
@@ -129,7 +150,7 @@ function install() {
         size="sm"
         icon="x"
         icon-only
-        :disabled="downloading"
+        :disabled="downloading || updater.restarting"
         :aria-label="messages.dialog.close"
         @click="updater.dismiss"
       />
@@ -190,12 +211,21 @@ function install() {
           @click="updater.install(true)"
           >{{ t('updater.previewFailure') }}</OnButton
         >
-        <OnButton data-update-later variant="secondary" :disabled="downloading" @click="updater.dismiss">{{
-          t('updater.later')
-        }}</OnButton>
-        <OnButton v-if="installed" variant="primary" :disabled="updater.busy" @click="restart">{{
-          t('updater.restart')
-        }}</OnButton>
+        <OnButton
+          data-update-later
+          variant="secondary"
+          :disabled="downloading || updater.restarting"
+          @click="updater.dismiss"
+          >{{ t('updater.later') }}</OnButton
+        >
+        <OnButton
+          v-if="installed"
+          variant="primary"
+          :disabled="updater.busy"
+          :loading="updater.restarting"
+          @click="restart"
+          >{{ t('updater.restart') }}</OnButton
+        >
         <OnButton
           v-else
           variant="primary"

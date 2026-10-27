@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 type Integration struct {
@@ -46,7 +47,7 @@ var integrationPackages = map[string]*regexp.Regexp{
 }
 
 func (v Integration) Validate(now time.Time) error {
-	if !slices.Contains([]string{"mcp", "skill"}, v.Kind) || strings.TrimSpace(v.Name) == "" || len(v.Name) > 160 || len(v.AppVersion) > 100 || !ValidSourceURL(v.RepositoryURL) || !integrationVersion(v.Version) || !slices.Contains([]string{"yes", "no", "unknown"}, v.AppleSilicon) {
+	if !slices.Contains([]string{"mcp", "skill"}, v.Kind) || strings.TrimSpace(v.Name) == "" || utf8.RuneCountInString(v.Name) > 160 || utf8.RuneCountInString(v.AppVersion) > 100 || !ValidSourceURL(v.RepositoryURL) || !integrationVersion(v.Version) || !slices.Contains([]string{"yes", "no", "unknown"}, v.AppleSilicon) {
 		return ErrInvalid
 	}
 	pattern, ok := integrationPackages[v.Installation.Method]
@@ -62,7 +63,7 @@ func (v Integration) Validate(now time.Time) error {
 		}
 	}
 	for _, f := range v.Permissions.Files {
-		if f.Path == "" || len(f.Path) > 1024 || strings.ContainsFunc(f.Path, unicode.IsControl) || !slices.Contains([]string{"read", "write", "read_write"}, f.Access) {
+		if f.Path == "" || utf8.RuneCountInString(f.Path) > 1024 || strings.ContainsFunc(f.Path, unicode.IsControl) || !slices.Contains([]string{"read", "write", "read_write"}, f.Access) {
 			return ErrInvalid
 		}
 	}
@@ -87,5 +88,5 @@ func (v Integration) Validate(now time.Time) error {
 	return nil
 }
 func integrationVersion(v string) bool {
-	return v != "" && len(v) <= 100 && !strings.ContainsAny(v, "*?\r\n\x00")
+	return v != "" && utf8.RuneCountInString(v) <= 100 && !strings.ContainsAny(v, "*?\r\n\x00")
 }

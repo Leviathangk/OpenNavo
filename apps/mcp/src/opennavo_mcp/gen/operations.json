@@ -1154,6 +1154,7 @@
         "editorChoice",
         "deprecated",
         "disabled",
+        "removed",
         "isFont",
         "isLibrary",
         "sort",
@@ -2754,7 +2755,7 @@
   },
   "updateCategory": {
     "body": {
-      "$ref": "#/components/schemas/CategoryUpsert"
+      "$ref": "#/components/schemas/CategoryUpdate"
     },
     "headerNames": {
       "expectedRevision": "X-Expected-Revision",
@@ -2785,7 +2786,7 @@
   },
   "updateCollection": {
     "body": {
-      "$ref": "#/components/schemas/CollectionUpsert"
+      "$ref": "#/components/schemas/CollectionUpdate"
     },
     "headerNames": {
       "expectedRevision": "X-Expected-Revision",
@@ -2847,7 +2848,7 @@
   },
   "updateFeature": {
     "body": {
-      "$ref": "#/components/schemas/FeatureUpsert"
+      "$ref": "#/components/schemas/FeatureUpdate"
     },
     "headerNames": {
       "expectedRevision": "X-Expected-Revision",

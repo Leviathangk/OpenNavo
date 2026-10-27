@@ -20,7 +20,7 @@ func (s *Service) adminVersions(ctx context.Context, in Input) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	where, args := "p.kind='cask'", []any{}
+	where, args := "p.kind IN ('cask','link')", []any{}
 	if id := number(in.Params, strings.ToLower("packageId"), 0); id > 0 {
 		where += " AND p.id=?"
 		args = append(args, id)

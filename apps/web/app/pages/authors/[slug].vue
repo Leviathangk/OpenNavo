@@ -25,7 +25,10 @@ const { data, error, refresh, status } = await useAsyncData(
   () =>
     unwrap(
       api.GET('/authors/{slug}', {
-        params: { path: { slug: slug.value }, query: { current: page.value, size: ARTICLE_PAGE_SIZE } }
+        params: {
+          path: { slug: slug.value },
+          query: { current: page.value, size: ARTICLE_PAGE_SIZE }
+        }
       })
     ).catch((reason: unknown) => {
       if (reason instanceof ApiError && (reason.isNotFound || reason.status === 404))
@@ -113,6 +116,7 @@ if (author.value)
           v-if="author.avatarUrl"
           :src="author.avatarUrl"
           alt=""
+          aria-hidden="true"
           width="72"
           height="72"
           class="block h-72px w-72px shrink-0 rounded-full bg-surface-inset object-cover"
@@ -120,7 +124,9 @@ if (author.value)
         <div class="flex min-w-0 flex-col gap-6px">
           <h1 class="m-0 text-28px font-600 leading-[1.2] text-ink-primary">{{ author.name }}</h1>
           <span v-if="author.role" class="text-13px text-ink-tertiary">{{ author.role }}</span>
-          <p v-if="author.bio" class="m-0 max-w-[72ch] text-14px leading-[1.7] text-ink-secondary">{{ author.bio }}</p>
+          <p v-if="author.bio" class="m-0 max-w-[72ch] text-14px leading-[1.7] text-ink-secondary">
+            {{ author.bio }}
+          </p>
           <ul
             v-if="author.links.length"
             class="m-0 flex list-none flex-wrap gap-12px p-0 text-13px"

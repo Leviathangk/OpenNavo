@@ -15,7 +15,7 @@ import (
 const adminUserJSON = `jsonb_build_object('id',u.id,'userName',u.user_name,'nickName',u.nick_name,'email',u.email,'avatarUrl',u.avatar_url,'status',u.status,'roles',COALESCE((SELECT jsonb_agg(r.role_code ORDER BY r.role_code) FROM admin_user_roles ur JOIN admin_roles r ON r.id=ur.role_id WHERE ur.user_id=u.id),'[]'::jsonb),'locked',COALESCE(u.locked_until>now(),false),'lastLoginAt',u.last_login_at,'lastLoginIp',u.last_login_ip,'createTime',u.created_at,'updateTime',u.updated_at,'createBy',creator.user_name,'updateBy',editor.user_name)`
 const roleJSON = `jsonb_build_object('id',r.id,'roleCode',r.role_code,'roleName',r.role_name,'roleDesc',r.role_desc,'status',r.status,'builtin',r.builtin,'permissionCodes',COALESCE((SELECT jsonb_agg(rp.permission_code ORDER BY rp.permission_code) FROM admin_role_permissions rp WHERE rp.role_id=r.id),'[]'::jsonb),'userCount',(SELECT count(*) FROM admin_user_roles ur WHERE ur.role_id=r.id))`
 const feedbackJSON = `jsonb_build_object('id',f.id,'type',f.type,'packageId',f.package_id,'packageKind',p.kind,'packageToken',p.token,'packageName',p.name,'content',f.content,'contact',f.contact,'platform',f.platform,'appVersion',f.app_version,'osVersion',f.os_version,'errorCode',f.error_code,'packageVersion',f.package_version,'macosVersion',f.macos_version,'symptom',f.symptom,'diagnosticLog',f.diagnostic_log,'links',f.links,'visibility',f.visibility,'status',f.status,'handlerNote',f.handler_note,'handledBy',u.user_name,'handledAt',f.handled_at,'createTime',f.created_at)`
-const jobJSON = `jsonb_build_object('id',j.id,'jobType',j.job_type,'trigger',j.trigger,'triggeredBy',u.user_name,'status',j.status,'stats',j.stats,'error',j.error,'startedAt',j.started_at,'finishedAt',j.finished_at,'durationMs',floor(extract(epoch FROM (j.finished_at-j.started_at))*1000)::bigint)`
+const jobJSON = `jsonb_build_object('id',j.id,'jobType',replace(j.job_type,':','_'),'trigger',j.trigger,'triggeredBy',u.user_name,'status',j.status,'stats',j.stats,'error',j.error,'startedAt',j.started_at,'finishedAt',j.finished_at,'durationMs',floor(extract(epoch FROM (j.finished_at-j.started_at))*1000)::bigint)`
 
 func (s *Service) read(ctx context.Context, op string, in Input) (any, error) {
 	current, size, err := page(in)
@@ -60,7 +60,10 @@ func (s *Service) read(ctx context.Context, op string, in Input) (any, error) {
 		expr = jobJSON
 		from = "FROM sync_runs j LEFT JOIN admin_users u ON u.id=j.triggered_by"
 		order = "j.started_at DESC,j.id DESC"
-		filter("jobtype", "j.job_type")
+		if jobType := text(in.Params, "jobtype"); jobType != "" {
+			where = append(where, "j.job_type=?")
+			args = append(args, strings.Replace(jobType, "_", ":", 1))
+		}
 		filter("status", "j.status")
 		if op == "GetJobRun" {
 			return s.Store.JSONRow(ctx, "SELECT "+expr+" AS data "+from+" WHERE j.id=?", in.ID)

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-// Small line chart for the last minute: missing readings break the line instead of dropping to zero.
+// Small line chart for the last minute: short gaps from a slower sampling rate stay connected, while a real pause
+// still breaks the line instead of dropping to zero or pretending that the value stayed constant.
 const props = withDefaults(
   defineProps<{
     values: readonly (number | null)[];
@@ -16,6 +17,8 @@ const props = withDefaults(
 );
 
 const WIDTH = 300;
+/** Background menu-bar sampling can be as slow as five seconds. Bridge that expected gap, but keep sleep/offline gaps. */
+const MAX_BRIDGED_GAP_SLOTS = 5;
 const segments = computed(() => {
   const n = props.values.length;
   if (n < 2) return [];
@@ -23,13 +26,15 @@ const segments = computed(() => {
   const y = (value: number) => props.height - (Math.min(value, top) / top) * (props.height - 4) - 2;
   const runs: string[][] = [];
   let run: string[] = [];
+  let lastIndex: number | null = null;
   props.values.forEach((value, index) => {
-    if (value == null) {
+    if (value == null) return;
+    if (lastIndex != null && index - lastIndex - 1 > MAX_BRIDGED_GAP_SLOTS) {
       if (run.length) runs.push(run);
       run = [];
-      return;
     }
     run.push(`${((index / (n - 1)) * WIDTH).toFixed(1)},${y(value).toFixed(1)}`);
+    lastIndex = index;
   });
   if (run.length) runs.push(run);
   return runs;

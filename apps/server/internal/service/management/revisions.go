@@ -32,12 +32,7 @@ func historyFilter(ctx context.Context, in Input) (string, []any) {
 	if op := domain.CurrentOperation(ctx); op != nil && op.AgentClientID > 0 {
 		where += " AND r.actor_id=? AND r.entity<>'mirror'"
 		args = append(args, op.ActorID)
-		allowed := []string{}
-		for entity := range map[string]bool{"package": true, "release": true, "category": true, "collection": true, "feature": true, "screenshot": true, "collection_item": true, "desktop_release": true, "announcement": true, "synonym": true, "glossary": true, "feedback": true, "asset": true} {
-			if op.Allowed(entityPermission(entity)) {
-				allowed = append(allowed, entity)
-			}
-		}
+		allowed := allowedHistoryEntities(op)
 		where += " AND r.entity IN ?"
 		args = append(args, allowed)
 

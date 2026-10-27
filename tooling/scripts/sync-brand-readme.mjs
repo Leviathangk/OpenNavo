@@ -14,7 +14,11 @@ export const READMES = {
   'docs/i18n/README.ja-JP.md': 'ja-JP',
   'docs/i18n/README.es-ES.md': 'es-ES',
   'docs/i18n/README.pt-BR.md': 'pt-BR',
-  'docs/i18n/README.ru-RU.md': 'ru-RU'
+  'docs/i18n/README.ru-RU.md': 'ru-RU',
+  'docs/i18n/README.de-DE.md': 'de-DE',
+  'docs/i18n/README.fr-FR.md': 'fr-FR',
+  'docs/i18n/README.it-IT.md': 'it-IT',
+  'docs/i18n/README.zh-Hant.md': 'zh-Hant'
 };
 
 const BLOCK = /<!-- brand-definition -->\n[\s\S]*?\n<!-- \/brand-definition -->/;

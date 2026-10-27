@@ -4,7 +4,7 @@
 
 # OpenNavo
 
-[English](../../README.md) · **简体中文** · [日本語](README.ja-JP.md) · [Español](README.es-ES.md) · [Português (Brasil)](README.pt-BR.md) · [Русский](README.ru-RU.md)
+[English](../../README.md) · **简体中文** · [日本語](README.ja-JP.md) · [Español](README.es-ES.md) · [Português (Brasil)](README.pt-BR.md) · [Русский](README.ru-RU.md) · [Deutsch](README.de-DE.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md) · [繁體中文](README.zh-Hant.md)
 
 **Mac 上的 Homebrew 应用商店**
 
@@ -128,6 +128,8 @@ opennavo/
 
 后端从 Homebrew 公开 API 同步目录与安装量，读取 Homebrew 的提交记录得到每个版本的收录时间，并探测下载大小；为客户端生成离线目录快照。接口采用契约优先：先改 `apps/server/api/*.openapi.yaml`，再由 `make gen` 生成 Go 与 TypeScript 代码。
 
+非字体类 Cask 的当前完整版本对应的 Homebrew 提交超过 90 天后，会被自动标记为停用。版本变化会清除这一局部状态，直到重新查到提交日期。提交日期未知的 App 保持启用，并尊重明确排除的历史抓取规则。Homebrew 自身的停用状态和手动隐藏互不影响。此规则在目录同步时执行，包括内容未变化的响应；停用的项目仍可通过「显示已停用」和已安装 App 记录查看。
+
 | 部分         | 技术                                                                     |
 | ------------ | ------------------------------------------------------------------------ |
 | 网页端       | Nuxt 4 · Vue 3 · UnoCSS（SSR）                                           |
@@ -142,7 +144,7 @@ opennavo/
 ### 环境要求
 
 - Node.js 24、pnpm 10
-- Go 1.27、Rust 1.96
+- Go 1.27、Rust 1.96.0（准确的 Rust 工具链版本固定在 `apps/desktop/src-tauri/rust-toolchain.toml`）
 - Python 3.13 与 [uv](https://docs.astral.sh/uv/)（MCP）
 - Docker（本地 PostgreSQL、Redis、MinIO）
 - macOS 13 或更高版本（仅客户端需要）
@@ -173,7 +175,7 @@ make dev-desktop       # macOS 客户端（Tauri）
 
 ### 配置
 
-- `apps/server/.env.example` 列出后端的全部环境变量与本机默认值。本机机密（例如 API Key）写进被 Git 忽略的 `apps/server/.env.local`，后端启动时会自动读取。
+- `apps/server/.env.example` 列出后端的全部环境变量与本机默认值。本机机密（例如 API Key）写进被 Git 忽略的 `apps/server/.env.local`，后端启动时会自动读取。开发命令中，显式进程环境变量优先于 `.env.local`，后者优先于 `.env.example` 中非空的默认值。
 - 内容翻译默认关闭。在后台「系统 → 翻译 AI 设置」填写任意 OpenAI 兼容接口的地址、密钥与模型即可开启；后台未配置时回退到环境变量 `LLM_BASE_URL`（默认 `https://api.openai.com/v1`）、`LLM_API_KEY` 与 `LLM_MODEL`。
 - `APP_ENV` 为 `staging` 或 `prod` 时，后端会拒绝 `.env.example` 中的示例密钥，避免带着公开的默认值上线。
 
@@ -192,12 +194,11 @@ make lint test
 
 生产部署的入口是 `ops/docker-compose.prod.yml`：API 与网页端各两个副本、任务进程、Redis 与 Caddy；PostgreSQL（`local-db`）、Prometheus / Grafana / asynqmon（`monitoring`）与每日备份（`backup`）以 profile 形式按需启用。
 
-1. 按 `ops/.env.example` 准备环境变量：域名、镜像，以及至少 32 字节的各项密钥。环境文件放在仓库之外。
-2. 构建或拉取镜像：后端 `docker build --target server server`，网页端 `docker build -f apps/web/Dockerfile .`，后台静态包 `pnpm --filter @opennavo/admin build`。推送 `server-v*`、`web-v*`、`mcp-v*` 标签时，GitHub Actions 会构建并发布对应镜像。
-3. 依次执行迁移（`ops/migrate.sh`）、对象存储初始化（`storage-init`）与种子（`seed`），再启动全部服务。首次登录后台后，请立即修改引导管理员的密码。
-4. 后续升级可用 `ops/rollout.py` 滚动替换 API 副本：先直接运行查看计划，确认后加 `--apply` 执行。
+镜像构建命令、外部 `COMPOSE_ENV_FILES`、数据库和 S3 初始化、备份恢复、profile 和升级步骤见[部署指南](../../ops/GUIDE.md)。
 
 ## 参与贡献
+
+完整流程见 [CONTRIBUTING.md](../../.github/CONTRIBUTING.md)。
 
 欢迎提交 Issue 与 Pull Request。动手之前请留意：
 
@@ -210,11 +211,11 @@ make lint test
 
 ## 安全问题
 
-如果发现安全漏洞，请不要公开提交 Issue，而是通过仓库 **Security** 页面的 **Report a vulnerability** 私下报告，我们会尽快回复。
+请将安全漏洞私下报告至 **admin@opennavo.com**。支持的版本和可选的 GitHub 私密报告渠道见 [SECURITY.md](../../.github/SECURITY.md)，请勿公开提交漏洞 Issue。
 
 ## 许可证
 
-本项目以 [GNU 通用公共许可证第 3 版（仅限第 3 版，GPL-3.0-only）](../../LICENSE) 开源。提交 `5fa4056` 及以前发布的版本仍按 Apache-2.0 授权。第三方声明及以下附加条款见 [NOTICE](../../NOTICE)。
+本项目以 [GNU 通用公共许可证第 3 版（仅限第 3 版，GPL-3.0-only）](../../LICENSE) 开源。提交 `5fa4056` 及以前发布的版本仍按 Apache-2.0 授权。第三方声明及以下附加条款见 [NOTICE](../../NOTICE)。依赖证据和分发说明见 [THIRD_PARTY.md](../legal/THIRD_PARTY.md)。
 
 根据 NOTICE 中依据 GPLv3 第 7(e) 条制定的附加条款，本许可不授予「OpenNavo」名称和标志的商标权。依据第 7(c) 条，分发修改版时必须明确区别于原版：使用不同的名称、图标，并更换客户端的 Bundle ID、更新公钥和更新地址，同时保留准确的来源署名。Homebrew 是 Homebrew 项目的商标，OpenNavo 与 Homebrew 官方没有关联；各 App 的名称与图标归各自的权利人所有。
 

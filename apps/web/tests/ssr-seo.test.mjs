@@ -10,6 +10,53 @@ import { createServer } from 'node:http';
 import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { JSDOM } from 'jsdom';
+
+// Check the rendered HTML that crawlers receive. Empty alt is valid for explicit decorations and for an
+// image inside a named graphic, such as OnAppIcon's standalone mode; content images need their own text.
+function assertImageAlternatives(html, page) {
+  const images = [...JSDOM.fragment(html).querySelectorAll('img')];
+  for (const image of images) {
+    const context = `${page}: ${image.getAttribute('src') ?? '<img>'}`;
+    assert.ok(image.hasAttribute('alt'), `${context}: missing alt attribute`);
+    const alt = image.getAttribute('alt');
+    if (alt !== '') {
+      assert.ok(alt.trim(), `${context}: alt contains only whitespace`);
+      continue;
+    }
+    const decorative = image.closest('[aria-hidden="true"]') || ['none', 'presentation'].includes(image.role);
+    const namedGraphic = image.closest('[role="img"][aria-label]')?.getAttribute('aria-label')?.trim();
+    assert.ok(decorative || namedGraphic, `${context}: content image has empty alt without a decorative marker`);
+  }
+  return images;
+}
+
+test('image alternatives reject missing or blank descriptions while accepting explicit decorations', () => {
+  for (const html of [
+    '<img src="/screenshot.png">',
+    '<img src="/screenshot.png" alt="">',
+    '<img src="/screenshot.png" alt=" \t ">',
+    '<img src="/screenshot.png" alt="&#x20;&#xA0;">',
+    '<span aria-hidden="true"><img src="/icon.png"></span>',
+    '<span role="presentation"><img src="/screenshot.png" alt=""></span>',
+    '<span role="img" aria-label=" "><img src="/screenshot.png" alt=""></span>'
+  ]) {
+    assert.throws(() => assertImageAlternatives(html, 'fixture'), /alt/);
+  }
+  for (const html of [
+    '<img src="/screenshot.png" alt="Export settings with format and quality controls">',
+    '<span aria-hidden="true"><span><img src="/icon.png" alt=""></span></span>',
+    '<img src="/icon.png" alt="" aria-hidden="true">',
+    '<img src="/decoration.png" alt="" role="presentation">',
+    '<span role="img" aria-label="Inkscape"><img src="/icon.png" alt=""></span>'
+  ]) {
+    assert.equal(assertImageAlternatives(html, 'fixture').length, 1);
+  }
+  assert.equal(
+    assertImageAlternatives('<script>const example = \'<img src="/example.png">\';</script>', 'fixture').length,
+    0
+  );
+});
 
 // Mirror packageFixtures.ts and the API's normalized facts for the synthetic details below.
 const evidence = (sourceUrl, overrides = {}) => ({
@@ -391,7 +438,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     name: 'Lin Wei',
     role: 'Editor',
     bio: 'Tests Mac productivity apps.',
-    avatarUrl: null,
+    avatarUrl: 'https://example.test/images/editor-avatar.png',
     links: [{ title: 'Personal site', url: 'https://lin.example' }]
   };
   const roundupCard = zh => ({
@@ -412,7 +459,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     type: 'tutorial',
     title: 'Manage Homebrew apps without the terminal',
     summary: null,
-    cover: null,
+    cover: {
+      url: 'https://example.test/images/homebrew-app-list.png',
+      width: 1280,
+      height: 720,
+      alt: 'Homebrew app list showing installed apps and available updates'
+    },
     author: null,
     publishedAt: '2026-10-10T10:00:00Z',
     updatedAt: '2026-10-10T10:00:00Z',
@@ -768,6 +820,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'versioned-app@11',
         'plus-app++',
         'ordinary-app',
+        'image-alt-app',
         'dependency-content-app',
         'reverse-dependency-app',
         'thin-app',
@@ -822,7 +875,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             conflictsWith: { casks: [], formulae: [] },
             supports: { status: 'known', arm64: true, x86_64: true },
             platforms: [],
-            screenshots: [],
+            screenshots:
+              token === 'image-alt-app'
+                ? ['  Export settings with format and quality controls  ', ' \t\u00a0\u3000 '].map(
+                    (caption, index) => ({
+                      url: `https://example.test/screenshots/image-alt-${index}.png`,
+                      thumbUrl: `https://example.test/screenshots/image-alt-${index}-thumb.png`,
+                      width: 1280,
+                      height: 800,
+                      caption,
+                      theme: 'light'
+                    })
+                  )
+                : [],
             releaseCount: 0,
             releaseStats: { count30d: 0, cadence: 'unknown', brewLag: null },
             sourceUrl: 'https://example.test/source',
@@ -979,6 +1044,22 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         size: 12,
         total,
         records: current === 1 ? all : current === 2 ? [tutorialCard] : []
+      };
+    } else if (path === '/api/v1/articles/image-alternatives') {
+      data = {
+        state: 'published',
+        slug: 'image-alternatives',
+        article: {
+          ...roundup(req.headers['accept-language'] === 'zh-CN'),
+          slug: 'image-alternatives',
+          cover: tutorialCard.cover,
+          bodyMarkdown:
+            '![Export settings with format and quality controls](https://example.test/images/export-settings.png)\n\n![   ](https://example.test/images/uncaptioned.png)',
+          images: [
+            { url: 'https://example.test/images/export-settings.png', width: 1280, height: 800 },
+            { url: 'https://example.test/images/uncaptioned.png', width: 1280, height: 800 }
+          ]
+        }
       };
     } else if (path === '/api/v1/articles/choose-a-screenshot-app') {
       data = {
@@ -1428,6 +1509,51 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(response.status, 200, `invalidate ${paths.join(', ')}\n${logs}`);
     return response.json();
   };
+  await t.test(
+    'SSR images keep descriptive alternatives and explicitly decorative empty alt in both languages',
+    async () => {
+      let contentImages = 0;
+      let decorations = 0;
+      for (const prefix of ['', '/zh']) {
+        for (const route of [
+          '/',
+          '/download',
+          '/discover',
+          '/apps',
+          '/categories/utilities',
+          '/collections/editors',
+          '/apps/image-alt-app',
+          labelPath('Google Drive'),
+          '/articles',
+          '/articles/image-alternatives',
+          '/authors/lin-wei'
+        ]) {
+          const path = route === '/' ? prefix || '/' : prefix + route;
+          const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+          assert.equal(response.status, 200, `${path}\n${logs}`);
+          const images = assertImageAlternatives(await response.text(), path);
+          contentImages += images.filter(image => image.getAttribute('alt').trim()).length;
+          decorations += images.filter(image => image.getAttribute('alt') === '').length;
+          if (route === '/apps/image-alt-app') {
+            const screenshots = images.filter(image => image.getAttribute('src').includes('/screenshots/'));
+            assert.deepEqual(
+              screenshots.map(image => image.getAttribute('alt')),
+              [
+                'Export settings with format and quality controls',
+                prefix ? 'Example App @11 · 截图 2' : 'Example App @11 · Screenshot 2'
+              ]
+            );
+          }
+          if (route === '/articles/image-alternatives') {
+            assert.ok(images.some(image => image.getAttribute('src').endsWith('/export-settings.png')));
+            assert.ok(!images.some(image => image.getAttribute('src').endsWith('/uncaptioned.png')));
+          }
+        }
+      }
+      assert.ok(contentImages > 0, 'screenshots, article covers and body images are exercised');
+      assert.ok(decorations > 0, 'app icons and repeated brand images are exercised');
+    }
+  );
   for (const prefix of ['', '/zh', '/ja', '/es', '/pt', '/ru']) {
     await t.test(`${prefix || '/en (root)'} versioned detail`, async () => {
       const path = `${prefix}/apps/versioned-app@11`;
@@ -3625,6 +3751,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'facts-app',
       'font-sample',
       'guard-app',
+      'image-alt-app',
       'ordinary-app',
       'plus-app++',
       'reverse-dependency-app',

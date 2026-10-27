@@ -26,7 +26,14 @@ func actionRevision(ctx context.Context, st *store.Store, refs []content.Ref) (i
 	var current int64
 	for _, ref := range refs {
 		var n int64
-		if err := st.DB.WithContext(ctx).Raw("SELECT coalesce(max(id),0) FROM content_revisions WHERE entity=? AND object_key=?", ref.Entity, ref.Key()).Scan(&n).Error; err != nil {
+		query, args := "SELECT coalesce(max(id),0) FROM content_revisions WHERE entity=? AND object_key=?", []any{ref.Entity, ref.Key()}
+		if ref.Entity == "package" {
+			// Include deleted screenshots through their retained snapshots too;
+			// otherwise deleting the newest screenshot could rewind this revision.
+			query += " OR (entity='screenshot' AND COALESCE(after_data#>>'{package_screenshots,0,package_id}',before_data#>>'{package_screenshots,0,package_id}')=?)"
+			args = append(args, ref.Key())
+		}
+		if err := st.DB.WithContext(ctx).Raw(query, args...).Scan(&n).Error; err != nil {
 			return 0, err
 		}
 		current = max(current, n)

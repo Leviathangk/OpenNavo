@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 type SecurityObservation struct {
@@ -39,7 +40,7 @@ func ExactCPEVersion(cpe string) (string, bool) {
 }
 
 func (v SecurityObservation) Validate() error {
-	if len(v.Developer) > 160 || len(v.AppVersion) > 100 || v.TeamID != "" && !teamIDPattern.MatchString(v.TeamID) {
+	if utf8.RuneCountInString(v.Developer) > 160 || utf8.RuneCountInString(v.AppVersion) > 100 || v.TeamID != "" && !teamIDPattern.MatchString(v.TeamID) {
 		return ErrInvalid
 	}
 	if !slices.Contains([]string{"yes", "no", "unknown"}, v.OpenSource) || len(v.Channels) > 3 {

@@ -315,38 +315,40 @@ describe('Monitor concurrency and time regressions', () => {
 });
 
 describe('Monitor sparkline gaps', () => {
-  it.each([1000, 2000, 5000])(
-    'Keeps valid %d ms readings visible without connecting missing seconds',
-    async interval => {
-      const store = await fixedStore();
-      const base = store.sample!;
-      store.history = Array.from({ length: HISTORY }, (_, index) => ({
-        ...base,
-        at: base.at - (HISTORY - 1 - index) * interval
-      }));
-      const wrapper = mount(MonitorSpark, {
-        props: { values: store.series(entry => entry.cpu.usage), color: 'currentColor', max: 1 }
-      });
-      if (interval === 1000) {
-        expect(wrapper.findAll('polyline')).toHaveLength(1);
-        expect(wrapper.find('polyline').attributes('points')?.split(' ')).toHaveLength(HISTORY);
-        expect(wrapper.findAll('circle')).toHaveLength(0);
-      } else {
-        expect(wrapper.findAll('circle')).toHaveLength(60000 / interval);
-        expect(wrapper.findAll('polyline')).toHaveLength(0);
-        expect(wrapper.findAll('polygon')).toHaveLength(0);
-      }
-    }
-  );
-
-  it('Draws each continuous run and isolated point separately across gaps', () => {
+  it.each([1000, 2000, 5000])('Connects valid %d ms readings across the expected sampling interval', async interval => {
+    const store = await fixedStore();
+    const base = store.sample!;
+    store.history = Array.from({ length: HISTORY }, (_, index) => ({
+      ...base,
+      at: base.at - (HISTORY - 1 - index) * interval
+    }));
     const wrapper = mount(MonitorSpark, {
-      props: { values: [0.1, 0.2, null, 0.3, null, 0.4, 0.5], color: 'currentColor', max: 1 }
+      props: { values: store.series(entry => entry.cpu.usage), color: 'currentColor', max: 1 }
     });
-    expect(wrapper.findAll('polyline').map(line => line.attributes('points')?.split(' ').length)).toEqual([2, 2]);
-    expect(wrapper.findAll('polygon')).toHaveLength(2);
-    expect(wrapper.findAll('circle')).toHaveLength(1);
-    expect(wrapper.find('circle').attributes('cx')).toBe('150.0');
+    if (interval === 1000) {
+      expect(wrapper.findAll('polyline')).toHaveLength(1);
+      expect(wrapper.find('polyline').attributes('points')?.split(' ')).toHaveLength(HISTORY);
+      expect(wrapper.findAll('circle')).toHaveLength(0);
+    } else {
+      expect(wrapper.findAll('polyline')).toHaveLength(1);
+      expect(wrapper.find('polyline').attributes('points')?.split(' ')).toHaveLength(60000 / interval);
+      expect(wrapper.findAll('circle')).toHaveLength(0);
+      expect(wrapper.findAll('polygon')).toHaveLength(1);
+    }
+  });
+
+  it('Breaks the line across a long pause and keeps isolated points visible', () => {
+    const wrapper = mount(MonitorSpark, {
+      props: {
+        values: [0.1, 0.2, null, null, null, null, null, null, 0.3, null, null, null, null, null, null, 0.4],
+        color: 'currentColor',
+        max: 1
+      }
+    });
+    expect(wrapper.findAll('polyline').map(line => line.attributes('points')?.split(' ').length)).toEqual([2]);
+    expect(wrapper.findAll('polygon')).toHaveLength(1);
+    expect(wrapper.findAll('circle')).toHaveLength(2);
+    expect(wrapper.findAll('circle').map(circle => circle.attributes('cx'))).toEqual(['160.0', '300.0']);
   });
 });
 

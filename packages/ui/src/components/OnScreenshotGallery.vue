@@ -27,6 +27,8 @@ export interface OnScreenshotGalleryProps {
 const props = defineProps<OnScreenshotGalleryProps>();
 
 const messages = useUiMessages();
+// Captions name both the thumbnail and lightbox; blank input must use the localized screenshot name.
+const screenshots = computed(() => props.items.map(item => ({ ...item, caption: item.caption?.trim() })));
 
 /** Lightbox index; null means closed. */
 const current = ref<number | null>(null);
@@ -34,15 +36,19 @@ const dialog = ref<HTMLElement>();
 const closeButton = ref<HTMLButtonElement>();
 let opener: HTMLElement | null = null;
 
-const active = computed(() => (current.value === null ? undefined : props.items[current.value]));
+const active = computed(() => (current.value === null ? undefined : screenshots.value[current.value]));
 const position = computed(() =>
-  interpolate(messages.value.gallery.position, { index: (current.value ?? 0) + 1, total: props.items.length })
+  interpolate(messages.value.gallery.position, {
+    index: (current.value ?? 0) + 1,
+    total: props.items.length
+  })
 );
 
 function altFor(item: OnScreenshot, index: number): string {
   if (item.caption) return item.caption;
   const label = interpolate(messages.value.gallery.item, { index: index + 1 });
-  return props.name ? `${props.name} · ${label}` : label;
+  const name = props.name?.trim();
+  return name ? `${name} · ${label}` : label;
 }
 
 async function open(index: number, event: MouseEvent) {
@@ -95,7 +101,7 @@ const navButton =
 <template>
   <section v-if="items.length" :aria-label="label ?? messages.gallery.label" class="min-w-0 font-sans">
     <ul class="-m-4px flex list-none gap-12px overflow-x-auto p-4px">
-      <li v-for="(item, index) in items" :key="`${index}-${item.src}`" class="shrink-0">
+      <li v-for="(item, index) in screenshots" :key="`${index}-${item.src}`" class="shrink-0">
         <button
           type="button"
           class="relative m-0 box-border block h-200px w-318px cursor-zoom-in overflow-hidden rounded-panel border border-solid border-line-default bg-surface-card-alt p-0 outline-none focus-visible:shadow-focus-ring"

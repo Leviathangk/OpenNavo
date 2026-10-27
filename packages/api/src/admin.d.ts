@@ -314,7 +314,7 @@ export interface paths {
         };
         /**
          * Package list
-         * @description Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial matches apps whose current build shows no non-hidden editorial notes (neither its own nor the shared note of its base version); latestBuildEditorial matches apps whose current version is one of several builds of its base version (0.1,49) and has no notes of its own. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial matches apps whose current build shows no non-hidden editorial notes (neither its own nor the shared note of its base version); latestBuildEditorial matches apps whose current version is one of several builds of its base version (0.1,49) and has no notes of its own. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false, removed=false and isFont=false define the ordinary active-app worklist. Gap totals count matching packages, can overlap other worklists, and are not a task queue. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["listAdminPackages"];
         put?: never;
@@ -7866,7 +7866,7 @@ export interface components {
          * @example catalog_sync
          * @enum {string}
          */
-        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync";
+        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync" | "links_sync" | "changelog_resolve" | "changelog_fetch" | "update-feeds_verify" | "seo_pages";
         /**
          * @example {
          *       "code": "0000",
@@ -9043,6 +9043,28 @@ export interface components {
         };
         /**
          * @example {
+         *       "name": "Visual Studio Code",
+         *       "description": null
+         *     }
+         */
+        CategoryI18nPatch: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
+            /** @example Visual Studio Code */
+            name?: string;
+            /** @example null */
+            description?: string | null;
+        };
+        /**
+         * @example {
          *       "id": 1,
          *       "parentId": null,
          *       "slug": "new-mac",
@@ -9191,6 +9213,48 @@ export interface components {
             sourceLocale: components["schemas"]["Locale"];
         };
         /**
+         * @description Partial update. Omitted fields and languages are preserved; supplied language fields are merged. A null non-source translation deletes it where supported. Idempotency hashes the submitted patch before reading current state.
+         * @example {
+         *       "parentId": null,
+         *       "slug": "new-mac",
+         *       "icon": "lucide:code-xml",
+         *       "appliesTo": "cask",
+         *       "visible": true,
+         *       "hiddenByDefault": false,
+         *       "i18n": {
+         *         "zh-CN": {
+         *           "name": "开发工具",
+         *           "description": "编辑代码、调试应用并安装扩展。"
+         *         }
+         *       },
+         *       "sourceLocale": "zh-CN"
+         *     }
+         */
+        CategoryUpdate: {
+            /** @description Optional SHA-256 digest of the object read; checked atomically after idempotency replay. */
+            expectedState?: string;
+            /**
+             * Format: int64
+             * @example null
+             */
+            parentId?: number | null;
+            /** @example new-mac */
+            slug?: string;
+            /** @example lucide:code-xml */
+            icon?: string;
+            /**
+             * @example cask
+             * @enum {string}
+             */
+            appliesTo?: "cask" | "formula" | "both";
+            /** @example true */
+            visible?: boolean;
+            /** @example false */
+            hiddenByDefault?: boolean;
+            i18n?: components["schemas"]["CategoryI18nPatchMap"];
+            sourceLocale?: components["schemas"]["Locale"];
+        };
+        /**
          * @example {
          *       "items": [
          *         {
@@ -9237,6 +9301,31 @@ export interface components {
             seoDescription?: string | null;
             /** @example Visual Studio Code */
             title: string;
+            /** @example null */
+            subtitle?: string | null;
+            /** @example null */
+            body?: string | null;
+        };
+        /**
+         * @example {
+         *       "title": "Visual Studio Code",
+         *       "subtitle": null,
+         *       "body": null
+         *     }
+         */
+        CollectionI18nPatch: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
+            /** @example Visual Studio Code */
+            title?: string;
             /** @example null */
             subtitle?: string | null;
             /** @example null */
@@ -9549,6 +9638,43 @@ export interface components {
             sourceLocale: components["schemas"]["Locale"];
         };
         /**
+         * @description Partial update. Omitted fields and languages are preserved; supplied language fields are merged. A null non-source translation deletes it where supported. Idempotency hashes the submitted patch before reading current state.
+         * @example {
+         *       "slug": "new-mac",
+         *       "sort": 0,
+         *       "unpublishAt": null,
+         *       "coverAssetId": null,
+         *       "i18n": {
+         *         "zh-CN": {
+         *           "title": "更好的工作空间",
+         *           "subtitle": "日常工作所需的应用",
+         *           "body": "找到适合你的 Mac 应用。"
+         *         }
+         *       },
+         *       "sourceLocale": "zh-CN"
+         *     }
+         */
+        CollectionUpdate: {
+            /** @description Optional SHA-256 digest of the object read; checked atomically after idempotency replay. */
+            expectedState?: string;
+            /** @example new-mac */
+            slug?: string;
+            /** @example 0 */
+            sort?: number;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            unpublishAt?: string | null;
+            /**
+             * Format: int64
+             * @example null
+             */
+            coverAssetId?: number | null;
+            i18n?: components["schemas"]["CollectionI18nPatchMap"];
+            sourceLocale?: components["schemas"]["Locale"];
+        };
+        /**
          * @example {
          *       "items": [
          *         {
@@ -9600,6 +9726,30 @@ export interface components {
             badge?: string | null;
             /** @example Visual Studio Code */
             title: string;
+            /** @example null */
+            subtitle?: string | null;
+            /**
+             * @description Only **bold** markup is allowed
+             * @example null
+             */
+            body?: string | null;
+            /** @example null */
+            ctaLabel?: string | null;
+        };
+        /**
+         * @example {
+         *       "badge": null,
+         *       "title": "Visual Studio Code",
+         *       "subtitle": null,
+         *       "body": null,
+         *       "ctaLabel": null
+         *     }
+         */
+        FeatureI18nPatch: {
+            /** @example null */
+            badge?: string | null;
+            /** @example Visual Studio Code */
+            title?: string;
             /** @example null */
             subtitle?: string | null;
             /**
@@ -9831,6 +9981,76 @@ export interface components {
             sort: number;
             i18n: components["schemas"]["FeatureI18nMap"];
             sourceLocale: components["schemas"]["Locale"];
+        };
+        /**
+         * @description Partial update. Omitted fields and languages are preserved; supplied language fields are merged. A null non-source translation deletes it where supported. Idempotency hashes the submitted patch before reading current state.
+         * @example {
+         *       "placement": "home_hero",
+         *       "categoryId": null,
+         *       "targetType": "package",
+         *       "packageId": null,
+         *       "collectionId": null,
+         *       "url": null,
+         *       "glowColor": null,
+         *       "status": "published",
+         *       "startsAt": null,
+         *       "endsAt": null,
+         *       "sort": 0,
+         *       "i18n": {
+         *         "zh-CN": {
+         *           "title": "更好的工作空间",
+         *           "subtitle": "日常工作所需的应用",
+         *           "body": "找到适合你的 Mac 应用。",
+         *           "badge": "精选",
+         *           "ctaLabel": "浏览"
+         *         }
+         *       },
+         *       "sourceLocale": "zh-CN"
+         *     }
+         */
+        FeatureUpdate: {
+            /** @description Optional SHA-256 digest of the object read; checked atomically after idempotency replay. */
+            expectedState?: string;
+            placement?: components["schemas"]["FeaturePlacement"];
+            /**
+             * Format: int64
+             * @example null
+             */
+            categoryId?: number | null;
+            /**
+             * @example package
+             * @enum {string}
+             */
+            targetType?: "package" | "collection" | "url";
+            /**
+             * Format: int64
+             * @example null
+             */
+            packageId?: number | null;
+            /**
+             * Format: int64
+             * @example null
+             */
+            collectionId?: number | null;
+            /** @example null */
+            url?: string | null;
+            /** @example null */
+            glowColor?: string | null;
+            status?: components["schemas"]["PublishStatus"];
+            /**
+             * Format: date-time
+             * @example null
+             */
+            startsAt?: string | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            endsAt?: string | null;
+            /** @example 0 */
+            sort?: number;
+            i18n?: components["schemas"]["FeatureI18nPatchMap"];
+            sourceLocale?: components["schemas"]["Locale"];
         };
         /**
          * @example {
@@ -10658,6 +10878,12 @@ export interface components {
         Synonym: components["schemas"]["AuditFields"] & {
             /**
              * Format: int64
+             * @description Management read revision to send as X-Expected-Revision for edits.
+             * @example 0
+             */
+            revision?: number;
+            /**
+             * Format: int64
              * @example 1
              */
             id: number;
@@ -10701,6 +10927,12 @@ export interface components {
          *     }
          */
         Feedback: {
+            /**
+             * Format: int64
+             * @description Management read revision to send as X-Expected-Revision for edits.
+             * @example 0
+             */
+            revision?: number;
             /**
              * Format: int64
              * @example 1
@@ -11005,6 +11237,12 @@ export interface components {
          *     }
          */
         DesktopRelease: {
+            /**
+             * Format: int64
+             * @description Management read revision to send as X-Expected-Revision for edits.
+             * @example 0
+             */
+            revision?: number;
             /**
              * Format: int64
              * @example 1
@@ -14052,6 +14290,26 @@ export interface components {
         };
         /**
          * @example {
+         *       "zh-CN": {
+         *         "name": "开发工具",
+         *         "description": "编辑代码、调试应用并安装扩展。"
+         *       }
+         *     }
+         */
+        CategoryI18nPatchMap: {
+            "en-US"?: components["schemas"]["CategoryI18nPatch"];
+            "zh-CN"?: components["schemas"]["CategoryI18nPatch"];
+            "ja-JP"?: components["schemas"]["CategoryI18nPatch"];
+            "es-ES"?: components["schemas"]["CategoryI18nPatch"];
+            "pt-BR"?: components["schemas"]["CategoryI18nPatch"];
+            "ru-RU"?: components["schemas"]["CategoryI18nPatch"];
+            "de-DE"?: components["schemas"]["CategoryI18nPatch"];
+            "fr-FR"?: components["schemas"]["CategoryI18nPatch"];
+            "it-IT"?: components["schemas"]["CategoryI18nPatch"];
+            "zh-Hant"?: components["schemas"]["CategoryI18nPatch"];
+        };
+        /**
+         * @example {
          *       "en-US": {
          *         "name": "Developer Tools",
          *         "description": "Edit code, debug applications, and add extensions.",
@@ -14185,6 +14443,28 @@ export interface components {
             "fr-FR"?: components["schemas"]["CollectionI18n"] | null;
             "it-IT"?: components["schemas"]["CollectionI18n"] | null;
             "zh-Hant"?: components["schemas"]["CollectionI18n"] | null;
+        };
+        /**
+         * @description Non-source languages may pass null to clear a translation; the source language cannot be null.
+         * @example {
+         *       "zh-CN": {
+         *         "title": "更好的工作空间",
+         *         "subtitle": "日常工作所需的应用",
+         *         "body": "找到适合你的 Mac 应用。"
+         *       }
+         *     }
+         */
+        CollectionI18nPatchMap: {
+            "en-US"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "zh-CN"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "ja-JP"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "es-ES"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "pt-BR"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "ru-RU"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "de-DE"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "fr-FR"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "it-IT"?: components["schemas"]["CollectionI18nPatch"] | null;
+            "zh-Hant"?: components["schemas"]["CollectionI18nPatch"] | null;
         };
         /**
          * @example {
@@ -14328,6 +14608,30 @@ export interface components {
             "fr-FR"?: components["schemas"]["FeatureI18n"] | null;
             "it-IT"?: components["schemas"]["FeatureI18n"] | null;
             "zh-Hant"?: components["schemas"]["FeatureI18n"] | null;
+        };
+        /**
+         * @description Non-source languages may pass null to clear a translation; the source language cannot be null.
+         * @example {
+         *       "zh-CN": {
+         *         "title": "更好的工作空间",
+         *         "subtitle": "日常工作所需的应用",
+         *         "body": "找到适合你的 Mac 应用。",
+         *         "badge": "精选",
+         *         "ctaLabel": "浏览"
+         *       }
+         *     }
+         */
+        FeatureI18nPatchMap: {
+            "en-US"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "zh-CN"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "ja-JP"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "es-ES"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "pt-BR"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "ru-RU"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "de-DE"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "fr-FR"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "it-IT"?: components["schemas"]["FeatureI18nPatch"] | null;
+            "zh-Hant"?: components["schemas"]["FeatureI18nPatch"] | null;
         };
         /**
          * @example {
@@ -16303,6 +16607,12 @@ export interface components {
         GlossaryTerm: {
             /**
              * Format: int64
+             * @description Management read revision to send as X-Expected-Revision for edits.
+             * @example 0
+             */
+            revision?: number;
+            /**
+             * Format: int64
              * @example 1
              */
             id: number;
@@ -16581,6 +16891,12 @@ export interface components {
          *     }
          */
         AnnouncementView: {
+            /**
+             * Format: int64
+             * @description Management read revision to send as X-Expected-Revision for edits.
+             * @example 0
+             */
+            revision?: number;
             /** @example true */
             enabled: boolean;
             sourceLocale: components["schemas"]["Locale"];
@@ -18183,6 +18499,12 @@ export interface components {
          *     }
          */
         ArticleAuthor: {
+            /**
+             * Format: int64
+             * @description Management read revision to send as X-Expected-Revision for edits.
+             * @example 0
+             */
+            revision?: number;
             /**
              * Format: int64
              * @example 1
@@ -23534,6 +23856,8 @@ export interface operations {
                 editorChoice?: boolean;
                 deprecated?: boolean;
                 disabled?: boolean;
+                /** @description Filter packages removed from the catalog; false keeps current listings. */
+                removed?: boolean;
                 isFont?: boolean;
                 isLibrary?: boolean;
                 sort?: "popular" | "updated" | "name" | "created";
@@ -24925,7 +25249,7 @@ export interface operations {
                  *       "sourceLocale": "zh-CN"
                  *     }
                  */
-                "application/json": components["schemas"]["CategoryUpsert"];
+                "application/json": components["schemas"]["CategoryUpdate"];
             };
         };
         responses: {
@@ -25844,7 +26168,7 @@ export interface operations {
                  *       "sourceLocale": "zh-CN"
                  *     }
                  */
-                "application/json": components["schemas"]["CollectionUpsert"];
+                "application/json": components["schemas"]["CollectionUpdate"];
             };
         };
         responses: {
@@ -26250,7 +26574,7 @@ export interface operations {
                  *       "sourceLocale": "zh-CN"
                  *     }
                  */
-                "application/json": components["schemas"]["FeatureUpsert"];
+                "application/json": components["schemas"]["FeatureUpdate"];
             };
         };
         responses: {
