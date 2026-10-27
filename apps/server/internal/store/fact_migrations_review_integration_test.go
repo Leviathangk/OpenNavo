@@ -64,8 +64,10 @@ func TestFactBackfillCommitsBoundedBatchesAndResumes(t *testing.T) {
 	require.Equal(t, "Missing source cover", after)
 	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM article_revision_i18n WHERE revision_id=1 AND locale='zh-CN' AND cover_alt IS NULL`).Scan(&n).Error)
 	require.EqualValues(t, 1, n, "source alt backfill must not invent a translation")
-	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype='c' AND NOT convalidated`).Scan(&n).Error)
-	require.Zero(t, n)
+	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype='c' AND NOT convalidated AND pg_get_constraintdef(oid) LIKE '%locale = ''zh-Hant''%'`).Scan(&n).Error)
+	require.EqualValues(t, 13, n, "derived Traditional Chinese limits remain intentionally NOT VALID")
+	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype='c' AND NOT convalidated AND pg_get_constraintdef(oid) NOT LIKE '%locale = ''zh-Hant''%'`).Scan(&n).Error)
+	require.Zero(t, n, "unexpected unvalidated constraint")
 	require.Error(t, st.DB.Exec(`INSERT INTO feedback(type,content,platform,links) VALUES('other','fixture','web','{}')`).Error)
 }
 
