@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "lockDigests": {
-    "pnpm-lock.yaml": "b827db50eb63062d2a53f0ce5f6939635a249f6a0328affb04b3b25e0be011d8",
+    "pnpm-lock.yaml": "7f5077200e9a1c31696f46b44b43ed4999900d2de39752f16448ff68d4a98368",
     "apps/server/go.mod": "16bca81a4ca7e40466341f284a329a13d62fe0f6f852b0e9f0483bc6d0ee4806",
     "apps/server/go.sum": "0aef1b3864eb8ea96a36b3b4b709abc96959d6b200584c4eef841d72ebbcb6a2",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
@@ -237,25 +237,6 @@
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [
-    {
-      "ecosystem": "Go",
-      "name": "github.com/andybalholm/cascadia",
-      "version": "v1.3.4",
-      "license": "BSD-2-Clause",
-      "url": "https://pkg.go.dev/github.com/andybalholm/cascadia@v1.3.4",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q38Qufg="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/04a8e475337d6b9959a8c47956bf713dd3362d3aadf839e74b376afb07487167.txt",
-          "sha256": "04a8e475337d6b9959a8c47956bf713dd3362d3aadf839e74b376afb07487167"
-        }
-      ]
-    },
     {
       "ecosystem": "Go",
       "name": "github.com/apapsch/go-jsonmerge/v2",
@@ -1256,25 +1237,6 @@
           "source": "NOTICE",
           "path": "licenses/600244c8052c8c1d307043fafacbc83b429c171dd8e08f5a537c0a54014585ee.txt",
           "sha256": "600244c8052c8c1d307043fafacbc83b429c171dd8e08f5a537c0a54014585ee"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
-      "name": "github.com/PuerkitoBio/goquery",
-      "version": "v1.13.0",
-      "license": "BSD-3-Clause",
-      "url": "https://pkg.go.dev/github.com/PuerkitoBio/goquery@v1.13.0",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:mqHbjD7Jmnul4DTR24LKTjo1uUmHUh072kteGV+xpFM="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/ab79785bfa235ac1c5e16f75e0f85eb7ce0402fb72f4667fffa0729e694579b8.txt",
-          "sha256": "ab79785bfa235ac1c5e16f75e0f85eb7ce0402fb72f4667fffa0729e694579b8"
         }
       ]
     },
