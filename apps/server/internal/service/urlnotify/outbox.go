@@ -396,7 +396,7 @@ func (n *Notifier) retainAnnouncement(ctx context.Context, row store.URLNotifica
 	if len(parts) == 2 && parts[0] == "apps" && parts[1] == "opennavo" {
 		return false, n.Store.SuppressURLAnnouncement(ctx, row, "noindex, follow", localePrefix(row.Locale)+"/download", n.Now())
 	}
-	if len(parts) != 3 || parts[0] != "apps" || (parts[2] != string(seo.PageTroubleshooting) && parts[2] != string(seo.PageDependencies)) {
+	if len(parts) != 3 || parts[0] != "apps" || (parts[2] != string(seo.PageTroubleshooting) && parts[2] != string(seo.PageDependencies) && parts[2] != string(seo.PageVersions)) {
 		return true, nil
 	}
 	policy, err := n.Store.IndexPolicy(ctx)
@@ -405,13 +405,22 @@ func (n *Notifier) retainAnnouncement(ctx context.Context, row store.URLNotifica
 	}
 	var index store.IndexRow
 	var found bool
-	if parts[2] == string(seo.PageDependencies) {
+	if parts[2] != string(seo.PageTroubleshooting) {
 		index, found, err = n.Store.IndexRowByToken(ctx, parts[1])
 	} else {
 		index, found, err = n.Store.TroubleshootingIndexRow(ctx, parts[1], n.Now())
 	}
 	if err != nil {
 		return false, err
+	}
+	// Notes/translations can change while a queued notification waits for budget.
+	// Recompute the same first-page evidence used by SSR before probing or sending.
+	if found && parts[2] == string(seo.PageVersions) {
+		rows := []store.IndexRow{index}
+		if err := n.Store.PopulatePageNotes(ctx, rows, 1); err != nil {
+			return false, err
+		}
+		index = rows[0]
 	}
 	f := seo.Facts{Token: parts[1], Hidden: true}
 	if found {

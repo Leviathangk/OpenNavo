@@ -20,23 +20,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Length', '0')
             self.end_headers()
             return
+        body = Path(str(sys.argv[1]) + ".invalid").read_bytes() if mode == "invalid_first" and len(requests) == 1 else payload
         start = int(self.headers.get("Range", "bytes=0-")[6:-1])
         resumed = start > 0 and mode != "changed"
         self.send_response(206 if resumed else 200)
         if not resumed:
             start = 0
-        self.send_header('ETag', '"changed"' if mode == "changed" and len(requests) > 1 else '"fixture"')
-        self.send_header('Content-Length', str(len(payload) - start))
+        if mode != "no_validator":
+            self.send_header('ETag', '"changed"' if mode == "changed" and len(requests) > 1 else '"fixture"')
+        self.send_header('Content-Length', str(len(body) - start))
         if resumed:
             actual_start = start + (1 if mode == "bad_range" else 0)
-            self.send_header('Content-Range', f'bytes {actual_start}-{len(payload) - 1}/{len(payload)}')
+            self.send_header('Content-Range', f'bytes {actual_start}-{len(body) - 1}/{len(body)}')
         self.end_headers()
-        if mode != "normal" and len(requests) == 1:
-            self.wfile.write(payload[:len(payload) // 2])
+        if mode in ("interrupt", "changed", "bad_range") and len(requests) == 1:
+            self.wfile.write(body[:len(body) // 2])
             self.wfile.flush()
             self.close_connection = True
         else:
-            self.wfile.write(payload[start:])
+            self.wfile.write(body[start:])
     def log_message(self, *args):
         pass
 

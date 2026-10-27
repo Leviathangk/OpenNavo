@@ -7,7 +7,6 @@ export function useAnalyticsConsent() {
   const settings = useSiteSettings();
   const banner = useState('analytics:banner', () => false);
   const active = useState('analytics:active', () => false);
-  const decision = useState('analytics:decision', () => 0);
   const runtime = useRuntimeConfig();
   const geoinflow = computed(() =>
     geoinflowConfig(runtime.public.geoinflowScriptUrl, runtime.public.geoinflowWebsiteId)
@@ -46,31 +45,18 @@ export function useAnalyticsConsent() {
 
   async function start() {
     if (!enabled.value) return;
-    const revision = decision.value;
-    const choice = storedChoice();
-    // Pages are cached and shared, so the visitor's region is asked for separately.
-    const requireConsent = choice
-      ? true
-      : await $fetch<{ requireConsent: boolean }>('/api/consent-region').then(
-          result => result.requireConsent,
-          () => true
-        );
-    // A choice made while the region request was in flight must not be overwritten.
-    if (revision !== decision.value) return;
-    const plan = analyticsPlan(requireConsent, storedChoice());
-    if (plan === 'load') activate();
-    else if (plan === 'ask') banner.value = true;
+    // Analytics starts in every region without a permission prompt. The footer
+    // still lets visitors opt out, and a saved opt-out remains effective.
+    if (analyticsPlan(storedChoice()) === 'load') activate();
   }
 
   function accept() {
-    decision.value++;
     remember('granted');
     banner.value = false;
     activate();
   }
 
   function decline() {
-    decision.value++;
     remember('denied');
     banner.value = false;
     active.value = false;

@@ -1242,6 +1242,10 @@ const messages: MessageSchema = {
     E_MAS_REGION: 'This app isn’t available in the current store region',
     E_MAS_RATE_LIMITED: 'Too many App Store requests. Try again in a minute',
     E_UPDATE_INTEGRITY: 'The download failed its integrity check, so the update wasn’t installed',
+    E_UPDATE_PREPARE: 'Couldn’t prepare the update files. Check disk space and access permissions, then retry',
+    E_UPDATE_ARCHIVE: 'Couldn’t read, mount or extract the update package. Check the log and retry',
+    E_UPDATE_VERSION:
+      'The package version is unexpected or isn’t newer than the installed version, so it wasn’t installed',
     E_UPDATE_TEAM_MISMATCH: 'The new version is signed by a different developer, so it wasn’t installed',
     E_UPDATE_NOT_NOTARIZED: 'The new version isn’t notarized by Apple, so it wasn’t installed',
     E_UPDATE_ARCH: 'The new version doesn’t support this Mac’s chip',

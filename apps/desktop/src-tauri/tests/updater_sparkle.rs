@@ -147,7 +147,7 @@ fn every_bundle_gate_has_a_failure_case() {
             .code,
         "E_UPDATE_ARCH"
     );
-    assert_eq!(check(&old).unwrap_err().code, "E_UPDATE_INTEGRITY");
+    assert_eq!(check(&old).unwrap_err().code, "E_UPDATE_VERSION");
 }
 #[test]
 fn eddsa_and_sha256_verify_actual_bytes_and_fail_on_mutation() {
@@ -178,14 +178,14 @@ fn marketing_versions_allow_build_counter_reset_but_never_downgrade() {
     assert!(check(&new).is_ok());
     new.marketing_version = "2.8.0".into();
     new.version = "2000".into();
-    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_INTEGRITY");
+    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_VERSION");
     new.marketing_version = "2.9.0".into();
     assert!(check(&new).is_ok());
     new.version = "1000".into();
-    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_INTEGRITY");
+    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_VERSION");
     new.marketing_version.clear();
     new.version = "1".into();
-    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_INTEGRITY");
+    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_VERSION");
 }
 
 #[test]

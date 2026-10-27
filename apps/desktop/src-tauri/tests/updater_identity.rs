@@ -111,6 +111,7 @@ fn native_codesign_verifies_literal_dr_instead_of_interpreting_it_as_a_filename(
         Duration::from_secs(15),
     )
     .unwrap();
+    let info = info.text();
     let dr = info
         .lines()
         .find_map(|line| line.strip_prefix("designated => "))

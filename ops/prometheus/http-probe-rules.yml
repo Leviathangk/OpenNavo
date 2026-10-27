@@ -1,0 +1,15 @@
+groups:
+  - name: http-availability
+    rules:
+      - alert: HTTPProbeFailed
+        expr: opennavo_http_probe_success == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: 'HTTP probe failed for {{ $labels.service }} ({{ $labels.layer }})'
+      - alert: HTTPProbeExporterDown
+        expr: up{job="http-probe"} == 0 or absent(up{job="http-probe"})
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: 'HTTP availability probe exporter is unavailable'

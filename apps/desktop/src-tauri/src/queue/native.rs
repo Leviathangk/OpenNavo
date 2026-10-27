@@ -151,7 +151,7 @@ impl TaskQueue {
             }
             error
         })?;
-        let stage = self.stage()?;
+        let stage = Arc::new(self.stage()?);
         let queue = self.clone();
         let id = task.id.clone();
         let request = download::prepare(
@@ -190,18 +190,15 @@ impl TaskQueue {
         )?;
         let (os, arch) = service::system()?;
         let validation = request.clone();
+        let validation_stage = stage.clone();
         crate::blocking(move || {
-            gate::bundles_for_source(
+            validation_stage.validate(
+                &validation,
                 &gate::NativeInspector,
-                &validation.installed,
-                &validation.prepared,
-                &validation.installed_snapshot,
                 gate::Platform {
                     os: &os,
                     arch: &arch,
                 },
-                validation.expected_team.as_deref(),
-                validation.source,
             )
         })
         .await?;
@@ -245,6 +242,9 @@ impl TaskQueue {
                 .await?,
             )
         };
+        if let Err(error) = stage.discard_download() {
+            log::warn!("Completed update cache cleanup deferred: {}", error.code);
+        }
         // Disk replacement is already committed. Auxiliary persistence or reopen
         // errors must not report an unrolled-back update as failed.
         if let Some(backup) = backup
@@ -709,7 +709,7 @@ mod m4_tests {
         let app = engine.list().unwrap().remove(0);
         assert_eq!(app.updater, Some(UpdateSource::Electron));
         let item:OutdatedItem=serde_json::from_value(serde_json::json!({"kind":"cask","token":"","name":"Fixture","source":"electron","appId":app.id,"installedVersion":"1","currentVersion":"2","autoUpdates":true,"pinned":false,"ignored":false,"dependents":0,"major":false,"requiresAdmin":false,"running":true,"relaunchPending":false,"criticalUpdate":false})).unwrap();
-        // There is deliberately no downloadable artifact; reaching download would return E_UPDATE_INTEGRITY.
+        // There is deliberately no downloadable artifact; reaching download would return E_UPDATE_FEED.
         let candidate = service::Candidate {
             item,
             app_path: path.clone(),

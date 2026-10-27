@@ -443,13 +443,32 @@ impl TaskQueue {
             .database
             .task(id)?
             .ok_or_else(|| AppError::new("E_INVALID_ARG", "unknown_task"))?;
-        let Some(path) = task.log_path else {
-            return Ok(String::new());
-        };
-        let content = match std::fs::read_to_string(path) {
-            Ok(s) => s,
+        let content = match task
+            .log_path
+            .as_ref()
+            .map(std::fs::read_to_string)
+            .transpose()
+        {
+            Ok(s) => s.unwrap_or_default(),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
             Err(e) => return Err(e.into()),
+        };
+        // Older tasks can have no process log. At least show their persisted
+        // error; new failures write the full cause in finish() before it is lost.
+        let content = if content.trim().is_empty()
+            && let Some(error) = task.error
+        {
+            format!(
+                "{}\n{}: {}\n{}",
+                content.trim_end(),
+                error.code,
+                error.message,
+                error.detail.unwrap_or_default()
+            )
+            .trim()
+            .to_owned()
+        } else {
+            content
         };
         Ok(if let Some(tail) = tail {
             content
@@ -1035,6 +1054,7 @@ impl TaskQueue {
             .iter_mut()
             .find(|t| t.id == id)
             .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task"))?;
+        let needs_error_log = result.is_err();
         match result {
             Ok(result) => {
                 task.exit_code = Some(result.code);
@@ -1073,6 +1093,17 @@ impl TaskQueue {
                 if !canceled {
                     task.error = Some(error);
                 }
+            }
+        }
+        // Process outcomes already have a log. Direct failures need their cause
+        // written here: task history only stores the code/message, not detail.
+        if needs_error_log && let Some(error) = &task.error {
+            let mut lines = vec![format!("{}: {}", error.code, error.message)];
+            if let Some(detail) = &error.detail {
+                lines.push(detail.clone());
+            }
+            if let Err(failure) = self.append_log(id, &lines) {
+                log::warn!("Task failure log could not be saved: {}", failure.code);
             }
         }
         task.finished_at = Some(chrono::Utc::now().timestamp_millis());
@@ -1601,6 +1632,47 @@ else:
         assert_eq!(terminal(&queue, &task.id).await.state, TaskState::Canceled);
         queue.shutdown();
     }
+    #[test]
+    fn native_failure_is_visible_in_history_log_even_before_process_output() {
+        let (directory, queue, _) = fixture("install_ok");
+        let task = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target("fixture")),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        let cause = AppError::new("E_UNKNOWN", "command_exit")
+            .with_detail(r#"{"exitCode":7,"stderr":"mount denied"}"#);
+        queue
+            .finish(
+                &task.id,
+                Err(cause.context("E_UPDATE_ARCHIVE", "dmg_mount_failed")),
+            )
+            .unwrap();
+        let log = queue.log(&task.id, Some(2000)).unwrap();
+        for expected in [
+            "E_UPDATE_ARCHIVE",
+            "dmg_mount_failed",
+            "command_exit",
+            "exitCode",
+            "mount denied",
+        ] {
+            assert!(log.contains(expected), "{log}");
+        }
+        drop(queue);
+        let reopened = TaskQueue::new(
+            Database::open(&directory.path().join("test.db")).unwrap(),
+            Arc::new(RwLock::new(Settings::default())),
+            directory.path().join("logs"),
+            directory.path().join("askpass"),
+            Arc::new(|_| {}),
+        )
+        .unwrap();
+        assert_eq!(reopened.log(&task.id, Some(2000)).unwrap(), log);
+    }
+
     #[tokio::test]
     async fn five_scenarios_cancel_retry_and_logs() {
         for (scenario, code) in [
@@ -2075,7 +2147,7 @@ else:
             assert_eq!(ended.state, TaskState::Failed);
             assert_eq!(ended.error.unwrap().code, "E_INVALID_ARG");
             assert_eq!(ended.exit_code, None);
-            assert!(queue.log(&task.id, None).unwrap().is_empty());
+            assert!(queue.log(&task.id, None).unwrap().contains("E_INVALID_ARG"));
             queue.shutdown();
         }
     }
@@ -2498,7 +2570,12 @@ else:
         assert_eq!(ended.state, TaskState::Canceled);
         assert_eq!(ended.error.unwrap().code, "E_APP_RUNNING");
         assert_eq!(ended.exit_code, None);
-        assert!(queue.log(&blocked.id, None).unwrap().is_empty());
+        assert!(
+            queue
+                .log(&blocked.id, None)
+                .unwrap()
+                .contains("E_APP_RUNNING")
+        );
         assert_eq!(terminal(&queue, &next.id).await.state, TaskState::Succeeded);
         assert!(apps.quits.lock().unwrap().is_empty());
         queue.shutdown();
@@ -2549,7 +2626,13 @@ else:
                 usize::from(expected == TaskState::Succeeded)
             );
             if refused {
-                assert!(queue.log(&task.id, None).unwrap().is_empty());
+                assert_eq!(ended.exit_code, None);
+                assert!(
+                    queue
+                        .log(&task.id, None)
+                        .unwrap()
+                        .contains("E_APP_QUIT_FAILED")
+                );
             }
             queue.shutdown();
         }

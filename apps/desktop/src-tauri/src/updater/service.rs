@@ -826,13 +826,27 @@ pub fn system() -> Result<(String, String), AppError> {
     // sysctl reports the hardware even when this process is running under Rosetta.
     let arm = crate::uninstall::identity::command(
         "/usr/sbin/sysctl",
-        &["-n", "hw.optional.arm64"],
+        &["-i", "-n", "hw.optional.arm64"],
         std::time::Duration::from_secs(5),
     )
-    .is_ok_and(|v| v.trim() == "1");
-    let arch = if arm { "arm64" } else { "x86_64" };
+    .map_err(|e| e.context("E_UPDATE_PREPARE", "hardware_architecture_query"))?;
+    let arch = hardware_architecture(&arm.stdout, std::env::consts::ARCH)?;
     Ok((os, arch.into()))
 }
+fn hardware_architecture(stdout: &str, process_arch: &str) -> Result<&'static str, AppError> {
+    match stdout.trim() {
+        "1" => Ok("arm64"),
+        "0" => Ok("x86_64"),
+        // On Intel macOS this optional key can be absent. -i makes that a
+        // successful empty result; a Rosetta process still reads 1 on Apple Silicon.
+        "" if process_arch == "x86_64" => Ok("x86_64"),
+        _ => Err(AppError::new(
+            "E_UPDATE_PREPARE",
+            "hardware_architecture_unknown",
+        )),
+    }
+}
+
 pub fn requires_admin(path: &Path) -> bool {
     #[cfg(unix)]
     {
@@ -893,4 +907,18 @@ pub fn cached_rules(db: &Database) -> Vec<FeedRule> {
         .and_then(|s| serde_json::from_str::<CachedFeed>(&s).ok())
         .and_then(|s| parse_rules(s.body.as_bytes()).ok())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod hardware_tests {
+    use super::hardware_architecture;
+    #[test]
+    fn arm64_native_and_rosetta_intel_and_unknown_results_are_distinct() {
+        assert_eq!(hardware_architecture("1\n", "aarch64").unwrap(), "arm64");
+        assert_eq!(hardware_architecture("1\n", "x86_64").unwrap(), "arm64");
+        assert_eq!(hardware_architecture("0\n", "x86_64").unwrap(), "x86_64");
+        assert_eq!(hardware_architecture("", "x86_64").unwrap(), "x86_64");
+        assert!(hardware_architecture("", "aarch64").is_err());
+        assert!(hardware_architecture("warning", "x86_64").is_err());
+    }
 }

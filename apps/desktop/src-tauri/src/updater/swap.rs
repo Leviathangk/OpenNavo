@@ -230,12 +230,9 @@ pub fn apply(request: &SwapRequest, context: &Context<'_>) -> Result<PathBuf, Ap
         if let Err(rollback) = context.files.exchange(&request.installed, &prepared) {
             recovery.preserve_recovery();
             return Err(
-                AppError::new("E_UNKNOWN", "update_rollback_failed").with_detail(format!(
-                    "{}; {}; recovery={}",
-                    error.code,
-                    rollback.code,
-                    recovery.previous.display()
-                )),
+                AppError::new("E_UNKNOWN", "update_rollback_failed").with_detail(
+                    serde_json::json!({"failure": error, "rollback": rollback, "recovery": recovery.previous}).to_string()
+                ),
             );
         }
         if !Snapshot::capture(&request.installed)
@@ -245,9 +242,7 @@ pub fn apply(request: &SwapRequest, context: &Context<'_>) -> Result<PathBuf, Ap
             return Err(AppError::new("E_UNKNOWN", "rollback_identity_changed")
                 .with_detail(recovery.previous.display().to_string()));
         }
-        return Err(
-            AppError::new("E_UPDATE_SWAP", "update_reverted").with_detail(error.to_string())
-        );
+        return Err(error.context("E_UPDATE_SWAP", "update_reverted"));
     }
     Ok(recovery.commit())
 }

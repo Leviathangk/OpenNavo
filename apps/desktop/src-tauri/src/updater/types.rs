@@ -112,6 +112,12 @@ pub enum UpdateIntegrity {
 /// Exported error vocabulary; AppError.code stays a string for existing errors.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 pub enum UpdateErrorCode {
+    #[serde(rename = "E_UPDATE_PREPARE")]
+    Prepare,
+    #[serde(rename = "E_UPDATE_ARCHIVE")]
+    Archive,
+    #[serde(rename = "E_UPDATE_VERSION")]
+    Version,
     #[serde(rename = "E_UPDATE_INTEGRITY")]
     Integrity,
     #[serde(rename = "E_UPDATE_TEAM_MISMATCH")]

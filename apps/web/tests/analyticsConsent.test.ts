@@ -16,8 +16,7 @@ vi.mock('../app/utils/geoinflow', () => ({
 }));
 vi.mock('../app/utils/analytics', () => ({
   CONSENT_STORAGE_KEY: 'consent',
-  analyticsPlan: (region: boolean, choice: string) =>
-    choice === 'denied' ? 'off' : choice === 'granted' || !region ? 'load' : 'ask',
+  analyticsPlan: (choice: string) => (choice === 'denied' ? 'off' : 'load'),
   loadGtag: providers.load,
   stopGtag: providers.stopGtag,
   trackPageView: providers.page
@@ -46,43 +45,35 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-it('supports GEOInflow without GA4 and waits for consent in consent regions', async () => {
-  vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ requireConsent: true }));
+it.each([true, false])('starts GEOInflow without querying region (legacy region=%s)', async region => {
+  vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ requireConsent: region }));
   const consent = useAnalyticsConsent();
   expect(consent.enabled.value).toBe(true);
   await consent.start();
-  expect(consent.banner.value).toBe(true);
-  expect(providers.start).not.toHaveBeenCalled();
-  consent.accept();
+  expect(consent.banner.value).toBe(false);
   expect(providers.start).toHaveBeenCalledOnce();
   expect(providers.load).not.toHaveBeenCalled();
+  expect($fetch).not.toHaveBeenCalled();
   consent.decline();
   expect(providers.stop).toHaveBeenCalledOnce();
   expect(consent.active.value).toBe(false);
+  await consent.start();
+  expect(providers.start).toHaveBeenCalledOnce();
 });
 
-it('does not override a refusal while the region request is pending, even without localStorage', async () => {
-  let finish!: (value: { requireConsent: boolean }) => void;
-  vi.stubGlobal(
-    '$fetch',
-    () =>
-      new Promise(resolve => {
-        finish = resolve;
-      })
-  );
+it('starts both configured providers even when storage and region lookup are unavailable', async () => {
+  vi.stubGlobal('useSiteSettings', () => ref({ analytics: { ga4Enabled: true, ga4MeasurementId: 'G-TEST' } }));
+  vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('offline')));
   vi.stubGlobal('localStorage', {
     getItem: () => {
-      throw Error();
-    },
-    setItem: () => {
       throw Error();
     }
   });
   const consent = useAnalyticsConsent();
-  const pending = consent.start();
-  consent.decline();
-  finish({ requireConsent: false });
-  await pending;
-  expect(consent.active.value).toBe(false);
-  expect(providers.start).not.toHaveBeenCalled();
+  await consent.start();
+  expect(consent.active.value).toBe(true);
+  expect(consent.banner.value).toBe(false);
+  expect(providers.start).toHaveBeenCalledOnce();
+  expect(providers.load).toHaveBeenCalledWith('G-TEST');
+  expect($fetch).not.toHaveBeenCalled();
 });

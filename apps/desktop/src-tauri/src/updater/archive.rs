@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 fn fail(message: &str) -> AppError {
-    AppError::new("E_UPDATE_INTEGRITY", message)
+    AppError::new("E_UPDATE_ARCHIVE", message)
 }
 /// Validate every zip entry before delegating extraction to ditto (which preserves
 /// macOS resource forks and framework symlinks). Symlinks are allowed only within
@@ -226,7 +226,8 @@ pub fn extract_zip_artifact(
             destination.to_str().ok_or_else(|| fail("archive_path"))?,
         ],
         Duration::from_secs(300),
-    )?;
+    )
+    .map_err(|e| e.context("E_UPDATE_ARCHIVE", "archive_extract_failed"))?;
     artifact_in(destination, package)
 }
 pub fn dmg_has_license(info: &plist::Value) -> bool {
@@ -252,8 +253,10 @@ pub fn extract_dmg_artifact(
         "/usr/bin/hdiutil",
         &["imageinfo", "-plist", archive],
         Duration::from_secs(30),
-    )?;
-    let info = plist::Value::from_reader_xml(info.as_bytes()).map_err(|_| fail("dmg_info"))?;
+    )
+    .map_err(|e| e.context("E_UPDATE_ARCHIVE", "dmg_info_command"))?;
+    let info =
+        plist::Value::from_reader_xml(info.stdout.as_bytes()).map_err(|_| fail("dmg_info"))?;
     if dmg_has_license(&info) {
         return Err(AppError::new(
             "E_UPDATE_DMG_LICENSE",
@@ -290,9 +293,7 @@ pub fn extract_dmg_artifact(
         ],
         Duration::from_secs(60),
     );
-    if mounted.is_err() {
-        return Err(AppError::new("E_UPDATE_DMG_LICENSE", "dmg_mount_refused"));
-    }
+    mounted.map_err(|e| e.context("E_UPDATE_ARCHIVE", "dmg_mount_failed"))?;
     let _detach = Detach(mount.clone());
     let app = artifact_in(&mount, package)?;
     let output = destination.join(app.file_name().ok_or_else(|| fail("dmg_app_name"))?);
@@ -305,7 +306,8 @@ pub fn extract_dmg_artifact(
             &output.to_string_lossy(),
         ],
         Duration::from_secs(300),
-    )?;
+    )
+    .map_err(|e| e.context("E_UPDATE_ARCHIVE", "archive_extract_failed"))?;
     if !package {
         validate_bundle_links(&output)?;
     }

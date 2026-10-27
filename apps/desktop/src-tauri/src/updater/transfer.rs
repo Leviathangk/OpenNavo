@@ -1,5 +1,5 @@
-//! A canceled/failed transfer keeps only a private partial file. Range replies are
-//! bound to a validator; the caller still verifies the complete EdDSA signature.
+//! Private, locked download cache. Only verified complete downloads are reusable;
+//! every task checks their digest and the source signature again before extraction.
 use super::download::ProgressSink;
 use crate::{AppError, brew::pty::Progress, model::TaskPhase};
 use reqwest::{Client, StatusCode, header};
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -18,12 +18,158 @@ use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
 const MAXIMUM: u64 = 1024 * 1024 * 1024;
 fn error(message: &str) -> AppError {
-    AppError::new("E_UPDATE_INTEGRITY", message)
+    AppError::new(
+        match message {
+            "download_length" => "E_UPDATE_INTEGRITY",
+            "download_resume_range" | "download_http_status" | "download_size_limit" => {
+                "E_DOWNLOAD"
+            }
+            _ => "E_UPDATE_PREPARE",
+        },
+        message,
+    )
 }
 #[derive(Default, Serialize, Deserialize)]
 struct Metadata {
     validator: Option<String>,
     total: Option<u64>,
+    #[serde(default)]
+    verified_sha256: Option<String>,
+}
+
+const RETAIN: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+const CACHE_BUDGET: u64 = 2 * MAXIMUM;
+
+/// Keeps the inode locked through source verification, extraction and installation.
+/// Dropping it releases the lock and retains verified bytes for a later retry.
+pub(super) struct Cache {
+    file: fs::File,
+    meta_path: PathBuf,
+    meta: Metadata,
+}
+impl Drop for Cache {
+    fn drop(&mut self) {
+        // flock follows the open file description. A duplicated/inherited read
+        // descriptor can outlive this attempt, so close alone is insufficient.
+        // fetch drains all asynchronous writes before handing the lock to Cache.
+        let _ = self.file.unlock();
+    }
+}
+impl Cache {
+    pub fn verified(&mut self, digest: String) -> Result<(), AppError> {
+        self.meta.total = Some(self.file.metadata()?.len());
+        self.meta.verified_sha256 = Some(digest);
+        self.save()
+    }
+    pub fn discard(&mut self) -> Result<(), AppError> {
+        // Keep the locked inode: unlinking it could permit a second concurrent writer.
+        self.file.set_len(0)?;
+        self.meta = Metadata::default();
+        self.save()
+    }
+    fn save(&self) -> Result<(), AppError> {
+        use std::os::unix::fs::OpenOptionsExt;
+        let pending = self
+            .meta_path
+            .with_file_name(format!("{}.json", uuid::Uuid::now_v7()));
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&pending)?;
+        let result = (|| {
+            serde_json::to_writer(&mut file, &self.meta)?;
+            file.sync_all()?;
+            fs::rename(&pending, &self.meta_path)?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = fs::remove_file(pending);
+        }
+        result
+    }
+}
+fn safe_file(file: &fs::File) -> Result<fs::Metadata, AppError> {
+    use std::os::unix::fs::MetadataExt;
+    let info = file.metadata()?;
+    if !info.is_file()
+        || info.uid() != unsafe { nix::libc::getuid() }
+        || info.mode() & 0o077 != 0
+        || info.nlink() != 1
+    {
+        return Err(error("download_cache_file"));
+    }
+    Ok(info)
+}
+fn digest(file: &fs::File) -> Result<String, AppError> {
+    use std::os::unix::fs::FileExt;
+    let mut hash = Sha256::new();
+    let mut offset = 0;
+    let mut buffer = [0; 65536];
+    loop {
+        let n = file.read_at(&mut buffer, offset)?;
+        if n == 0 {
+            break;
+        }
+        offset += n as u64;
+        if offset > MAXIMUM {
+            return Err(error("download_size_limit"));
+        }
+        hash.update(&buffer[..n]);
+    }
+    Ok(format!("{:x}", hash.finalize()))
+}
+/// Never remove locked files or follow links. Reserve one maximum-size download
+/// within the budget; failed attempts expire after a week.
+fn prune(root: &Path, keep: &Path) {
+    use std::os::unix::fs::OpenOptionsExt;
+    let Ok(entries) = fs::read_dir(root) else {
+        return;
+    };
+    let mut files = vec![];
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path == keep
+            || entry
+                .file_name()
+                .to_str()
+                .is_none_or(|s| s.len() != 64 || !s.bytes().all(|b| b.is_ascii_hexdigit()))
+            || crate::appstore::install::validate_staging(&path, unsafe { nix::libc::getuid() })
+                .is_err()
+        {
+            continue;
+        }
+        let Ok(file) = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK)
+            .open(path.join("partial"))
+        else {
+            continue;
+        };
+        let Ok(info) = safe_file(&file) else {
+            continue;
+        };
+        if info.len() == 0 {
+            continue;
+        }
+        let Ok(modified) = info.modified() else {
+            continue;
+        };
+        files.push((modified, info.len(), file));
+    }
+    files.sort_by_key(|(modified, _, _)| *modified);
+    let mut total = files.iter().map(|(_, len, _)| *len).sum::<u64>();
+    for (modified, len, file) in files {
+        if (modified.elapsed().is_ok_and(|age| age > RETAIN) || total > CACHE_BUDGET - MAXIMUM)
+            && file.try_lock().is_ok()
+        {
+            if file.set_len(0).is_ok() {
+                total = total.saturating_sub(len);
+            }
+            let _ = file.unlock();
+        }
+    }
 }
 
 fn directory(path: &Path) -> Result<(), AppError> {
@@ -54,7 +200,7 @@ fn validator(headers: &header::HeaderMap) -> Option<String> {
         .map(str::to_owned)
 }
 #[allow(clippy::too_many_arguments)]
-pub async fn fetch(
+pub(super) async fn fetch(
     client: &Client,
     url: &str,
     identity: &str,
@@ -63,8 +209,8 @@ pub async fn fetch(
     destination: &Path,
     cancel: Arc<AtomicBool>,
     progress: ProgressSink,
-) -> Result<(), AppError> {
-    use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+) -> Result<Cache, AppError> {
+    use std::os::unix::fs::OpenOptionsExt;
     if expected.is_some_and(|n| n > MAXIMUM) {
         return Err(error("download_size_limit"));
     }
@@ -72,6 +218,7 @@ pub async fn fetch(
     directory(&root)?;
     let cache = root.join(format!("{:x}", Sha256::digest(identity.as_bytes())));
     directory(&cache)?;
+    prune(&root, &cache);
     let path = cache.join("partial");
     let file = fs::OpenOptions::new()
         .read(true)
@@ -79,19 +226,22 @@ pub async fn fetch(
         .create(true)
         .truncate(false)
         .mode(0o600)
-        .custom_flags(nix::libc::O_NOFOLLOW)
+        .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK)
         .open(&path)?;
-    let info = file.metadata()?;
-    if !info.is_file()
-        || info.uid() != unsafe { nix::libc::getuid() }
-        || info.mode() & 0o077 != 0
-        || info.nlink() != 1
-    {
-        return Err(error("download_cache_file"));
-    }
     // The lock's lifetime includes the final copy, including across task/process restarts.
-    file.try_lock()
-        .map_err(|_| AppError::new("E_BUSY", "download_in_progress"))?;
+    loop {
+        match file.try_lock() {
+            Ok(()) => break,
+            Err(fs::TryLockError::WouldBlock) => {
+                return Err(AppError::new("E_BUSY", "download_in_progress"));
+            }
+            Err(fs::TryLockError::Error(e)) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(fs::TryLockError::Error(e)) => {
+                return Err(AppError::from(e).context("E_UPDATE_PREPARE", "download_cache_lock"));
+            }
+        }
+    }
+    let info = safe_file(&file)?;
     let meta_path = cache.join("metadata.json");
     let mut meta: Metadata = fs::symlink_metadata(&meta_path)
         .ok()
@@ -99,8 +249,47 @@ pub async fn fetch(
         .and_then(|_| fs::read(&meta_path).ok())
         .and_then(|v| serde_json::from_slice(&v).ok())
         .unwrap_or_default();
+    if cancel.load(Ordering::Acquire) {
+        return Err(AppError::new("E_INTERRUPTED", "update_canceled"));
+    }
+    let verified = info.len() > 0
+        && info.len() <= MAXIMUM
+        && meta.total == Some(info.len())
+        && expected.is_none_or(|n| n == info.len())
+        && info.modified()?.elapsed().is_ok_and(|age| age <= RETAIN)
+        && if let Some(expected_digest) = &meta.verified_sha256 {
+            let file = file.try_clone()?;
+            crate::blocking(move || digest(&file)).await? == *expected_digest
+        } else {
+            false
+        };
+    if verified {
+        let mut output = tokio::fs::File::from_std(file.try_clone()?);
+        let copied = copy(&mut output, destination).await;
+        let drained = output.flush().await;
+        drop(output.into_std().await);
+        let cache = Cache {
+            file,
+            meta_path,
+            meta,
+        };
+        copied?;
+        drained?;
+        progress(&Progress {
+            phase: Some(TaskPhase::Downloading),
+            percent: Some(100.0),
+            step_index: Some(1),
+            bytes: Some(info.len()),
+            total: Some(info.len()),
+            speed: None,
+            from: None,
+            to: None,
+        })?;
+        return Ok(cache);
+    }
     let mut offset = info.len();
-    if offset > MAXIMUM
+    if meta.verified_sha256.is_some()
+        || offset > MAXIMUM
         || meta.validator.is_none()
         || meta.total.is_none_or(|n| offset >= n)
         || expected.zip(meta.total).is_some_and(|(a, b)| a != b)
@@ -155,6 +344,7 @@ pub async fn fetch(
         meta = Metadata {
             validator: validator(response.headers()),
             total: expected.or(response.content_length()),
+            verified_sha256: None,
         };
         if expected
             .zip(response.content_length())
@@ -216,7 +406,23 @@ pub async fn fetch(
     if meta.total.is_some_and(|n| n != done) {
         return Err(error("download_length"));
     }
-    // A partial never becomes an install input. It first moves into the unique task stage.
+    // Only the private task copy is ever extracted or installed. Verification
+    // will mark the locked cache reusable; an interrupted verification cannot.
+    copy(&mut output, destination).await?;
+    Ok(())
+    }.await;
+    let drained = output.flush().await;
+    drop(output.into_std().await);
+    let cache = Cache {
+        file,
+        meta_path,
+        meta,
+    };
+    result?;
+    drained?;
+    Ok(cache)
+}
+async fn copy(output: &mut tokio::fs::File, destination: &Path) -> Result<(), AppError> {
     let mut target = tokio::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -224,12 +430,105 @@ pub async fn fetch(
         .open(destination)
         .await?;
     output.seek(std::io::SeekFrom::Start(0)).await?;
-    tokio::io::copy(&mut output, &mut target).await?;
+    tokio::io::copy(output, &mut target).await?;
     target.sync_all().await?;
-    output.set_len(0).await?; // Keep the locked inode; unlinking it would let another process bypass the lock.
     Ok(())
-    }.await;
-    let drained = output.flush().await;
-    drop(output.into_std().await);
-    result.and(drained.map_err(AppError::from))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt, symlink};
+
+    fn entry(root: &Path, id: u8, size: u64, age: Duration) -> (PathBuf, fs::File) {
+        let path = root.join(format!("{id:064x}"));
+        directory(&path).unwrap();
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path.join("partial"))
+            .unwrap();
+        // Sparse test files exercise the budget without allocating gigabytes.
+        file.set_len(size).unwrap();
+        file.set_times(fs::FileTimes::new().set_modified(std::time::SystemTime::now() - age))
+            .unwrap();
+        (path, file)
+    }
+
+    #[test]
+    fn pruning_expires_old_entries_reserves_space_and_keeps_active_downloads() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let (keep, current) = entry(&root, 0, MAXIMUM, Duration::ZERO);
+        let (_, expired) = entry(&root, 1, 1024, RETAIN + Duration::from_secs(1));
+        let (_, oldest) = entry(&root, 2, MAXIMUM / 2, Duration::from_secs(300));
+        let (_, newest) = entry(&root, 3, MAXIMUM / 2, Duration::from_secs(100));
+        let (_, active) = entry(&root, 4, MAXIMUM / 2, RETAIN + Duration::from_secs(1));
+        active.try_lock().unwrap();
+        let inode = oldest.metadata().unwrap().ino();
+        prune(&root, &keep);
+        assert_eq!(current.metadata().unwrap().len(), MAXIMUM);
+        assert_eq!(expired.metadata().unwrap().len(), 0);
+        assert_eq!(oldest.metadata().unwrap().len(), 0);
+        assert_eq!(oldest.metadata().unwrap().ino(), inode);
+        assert_eq!(newest.metadata().unwrap().len(), MAXIMUM / 2);
+        assert_eq!(active.metadata().unwrap().len(), MAXIMUM / 2);
+        drop(active);
+        prune(&root, &keep);
+        assert_eq!(
+            fs::metadata(root.join(format!("{:064x}/partial", 4)))
+                .unwrap()
+                .len(),
+            0
+        );
+    }
+
+    #[test]
+    fn pruning_never_follows_links_or_truncates_files_outside_its_private_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let (target, external) = entry(&root, 1, 123, RETAIN + Duration::from_secs(1));
+        let link_directory = root.join(format!("{:064x}", 2));
+        directory(&link_directory).unwrap();
+        symlink(target.join("partial"), link_directory.join("partial")).unwrap();
+        symlink(&target, root.join(format!("{:064x}", 3))).unwrap();
+        let (public, public_file) = entry(&root, 4, 123, RETAIN + Duration::from_secs(1));
+        fs::set_permissions(public.join("partial"), fs::Permissions::from_mode(0o644)).unwrap();
+        let (hardlink, linked_file) = entry(&root, 5, 123, RETAIN + Duration::from_secs(1));
+        fs::hard_link(hardlink.join("partial"), root.join("unrelated")).unwrap();
+        prune(&root, &target);
+        for file in [external, public_file, linked_file] {
+            assert_eq!(file.metadata().unwrap().len(), 123);
+        }
+    }
+
+    #[test]
+    fn completed_attempt_releases_lock_even_if_a_read_descriptor_outlives_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let (path, file) = entry(&root, 0, 123, Duration::ZERO);
+        file.try_lock().unwrap();
+        // Models a completed reader or a child between fork and exec. Both
+        // share the original flock, but neither owns the download attempt.
+        let reader = file.try_clone().unwrap();
+        let cache = Cache {
+            file,
+            meta_path: path.join("metadata.json"),
+            meta: Metadata::default(),
+        };
+        let retry = fs::File::options()
+            .read(true)
+            .write(true)
+            .open(path.join("partial"))
+            .unwrap();
+        assert!(matches!(
+            retry.try_lock(),
+            Err(fs::TryLockError::WouldBlock)
+        ));
+        drop(cache);
+        retry.try_lock().unwrap();
+        assert_eq!(reader.metadata().unwrap().len(), 123);
+    }
 }

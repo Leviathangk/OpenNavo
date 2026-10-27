@@ -1,9 +1,8 @@
 import { webRouteType } from '@opennavo/shared';
 import { trackGeoinflow } from './geoinflow';
 
-// GA4 with Consent Mode v2 (WP8). In consent regions (EU/EEA, UK, Switzerland, or an unknown region)
-// nothing loads until the visitor agrees; elsewhere GA4 loads once the page is idle. Ad signals are
-// always denied, and events carry only the page type and language, never an app token.
+// Configured analytics starts in every region after the page is idle, unless
+// the visitor has opted out. Advertising signals remain disabled.
 
 export type ConsentChoice = 'granted' | 'denied';
 export type AnalyticsEvent = 'get_app' | 'copy_install_command' | 'open_in_app' | 'download_client';
@@ -17,11 +16,9 @@ declare global {
   }
 }
 
-/** An explicit choice always wins; without one, consent regions are asked and others load. */
-export function analyticsPlan(requireConsent: boolean, choice: ConsentChoice | null): 'off' | 'load' | 'ask' {
-  if (choice === 'denied') return 'off';
-  if (choice === 'granted' || !requireConsent) return 'load';
-  return 'ask';
+/** Analytics is enabled by default; an explicit opt-out still wins. */
+export function analyticsPlan(choice: ConsentChoice | null): 'off' | 'load' {
+  return choice === 'denied' ? 'off' : 'load';
 }
 
 /** The host and each parent domain, where GA may have set its first-party _ga cookies. */

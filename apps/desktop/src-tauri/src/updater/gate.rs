@@ -43,7 +43,7 @@ impl Inspector for NativeInspector {
         let path_text = path
             .to_str()
             .ok_or_else(|| fail("E_UPDATE_INTEGRITY", "bundle_path"))?;
-        let valid = command(
+        command(
             "/usr/bin/codesign",
             &[
                 "--verify",
@@ -54,16 +54,15 @@ impl Inspector for NativeInspector {
             ],
             Duration::from_secs(60),
         )
-        .is_ok();
-        if !valid {
-            return Err(fail("E_UPDATE_INTEGRITY", "invalid_bundle_signature"));
-        }
+        .map_err(|e| e.context("E_UPDATE_INTEGRITY", "invalid_bundle_signature"))?;
+        let valid = true;
         let info = command(
             "/usr/bin/codesign",
             &["-d", "-r-", "--verbose=4", path_text],
             Duration::from_secs(15),
         )
-        .map_err(|_| fail("E_UPDATE_INTEGRITY", "signature_information"))?;
+        .map_err(|e| e.context("E_UPDATE_PREPARE", "signature_information"))?
+        .text();
         let field = |prefix: &str| {
             info.lines()
                 .find_map(|l| l.strip_prefix(prefix))
@@ -71,10 +70,10 @@ impl Inspector for NativeInspector {
                 .to_owned()
         };
         let dictionary = plist::Value::from_file(path.join("Contents/Info.plist"))
-            .map_err(|_| fail("E_UPDATE_INTEGRITY", "bundle_info"))?;
+            .map_err(|_| fail("E_UPDATE_ARCHIVE", "bundle_info"))?;
         let dict = dictionary
             .as_dictionary()
-            .ok_or_else(|| fail("E_UPDATE_INTEGRITY", "bundle_info"))?;
+            .ok_or_else(|| fail("E_UPDATE_ARCHIVE", "bundle_info"))?;
         let value = |key: &str| {
             dict.get(key)
                 .and_then(|v| v.as_string())
@@ -101,7 +100,8 @@ impl Inspector for NativeInspector {
             Duration::from_secs(60),
         );
         let notarized = assessment.is_ok_and(|v| {
-            v.lines()
+            v.stderr
+                .lines()
                 .any(|l| l.trim() == "source=Notarized Developer ID")
         });
         let minimum_os = value("LSMinimumSystemVersion");
@@ -192,7 +192,7 @@ pub fn identities_for_source(
             && (new.version.is_empty()
                 || version::compare(&new.version, &old.version) != Ordering::Greater))
     {
-        return Err(fail("E_UPDATE_INTEGRITY", "bundle_version_not_newer"));
+        return Err(fail("E_UPDATE_VERSION", "bundle_version_not_newer"));
     }
     Ok(())
 }
@@ -373,7 +373,7 @@ pub(crate) fn electron_versions(old: &Identity, new: &Identity) -> Result<(), Ap
         || (order.is_eq()
             && (new.version.is_empty() || !version::compare(&new.version, &old.version).is_gt()))
     {
-        return Err(fail("E_UPDATE_INTEGRITY", "bundle_version_not_newer"));
+        return Err(fail("E_UPDATE_VERSION", "bundle_version_not_newer"));
     }
     Ok(())
 }

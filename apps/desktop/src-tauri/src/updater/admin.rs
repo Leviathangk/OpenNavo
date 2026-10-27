@@ -466,7 +466,7 @@ pub fn validate_store_package(
         &["--payload-files", &pkg.to_string_lossy()],
         Duration::from_secs(120),
     )?;
-    let location = store_payload_scope(&fs::read(info)?, &payload, app, bundle)?;
+    let location = store_payload_scope(&fs::read(info)?, &payload.stdout, app, bundle)?;
     if let Some((distribution, component)) = distribution {
         store_distribution_scope(&distribution, &component, &location)?;
     }
@@ -546,8 +546,8 @@ fn mas_install(request: &PrivilegedInstall, work: &Path) -> Result<(), AppError>
         &["--check-signature", &pkg.to_string_lossy()],
         Duration::from_secs(60),
     )
-    .map_err(|_| AppError::new("E_MAS_ENGINE", "pkg_signature_invalid"))?;
-    if !apple_package_signature(&signature) {
+    .map_err(|e| e.context("E_MAS_ENGINE", "pkg_signature_invalid"))?;
+    if !apple_package_signature(&signature.stdout) {
         return Err(AppError::new("E_MAS_ENGINE", "pkg_not_signed_by_apple"));
     }
     validate_store_payload(&pkg, request, work)?;
@@ -559,7 +559,7 @@ fn mas_install(request: &PrivilegedInstall, work: &Path) -> Result<(), AppError>
         &["-pkg", &pkg.to_string_lossy(), "-target", "/"],
         Duration::from_secs(900),
     )
-    .map_err(|_| AppError::new("E_MAS_ENGINE", "administrator_install_failed"))?;
+    .map_err(|e| e.context("E_MAS_ENGINE", "administrator_install_failed"))?;
     if !rules::parents_safe(&request.app_path)
         || !request.app_path.is_dir()
         || fs::symlink_metadata(&request.app_path)?.is_symlink()
@@ -577,7 +577,7 @@ fn mas_install(request: &PrivilegedInstall, work: &Path) -> Result<(), AppError>
         ],
         Duration::from_secs(60),
     )
-    .map_err(|_| AppError::new("E_MAS_ENGINE", "installed_app_signature"))?;
+    .map_err(|e| e.context("E_MAS_ENGINE", "installed_app_signature"))?;
     let installed = plist::Value::from_file(request.app_path.join("Contents/Info.plist"))
         .map_err(|_| protected("installed_app_identity"))?;
     if request.bundle_id.as_deref().is_none_or(|bundle| {
@@ -620,9 +620,9 @@ fn mas_install(request: &PrivilegedInstall, work: &Path) -> Result<(), AppError>
         &["-i", &request.app_path.to_string_lossy()],
         Duration::from_secs(60),
     )
-    .map_err(|_| AppError::new("E_MAS_ENGINE", "installed_app_index"))?;
+    .map_err(|e| e.context("E_MAS_ENGINE", "installed_app_index"))?;
     swap::register(&request.app_path)
-        .map_err(|_| AppError::new("E_MAS_ENGINE", "installed_app_register"))
+        .map_err(|e| e.context("E_MAS_ENGINE", "installed_app_register"))
 }
 pub fn execute(
     requests: &[Request],

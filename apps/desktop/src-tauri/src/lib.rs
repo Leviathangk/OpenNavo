@@ -20,6 +20,7 @@ pub mod maintenance;
 pub mod mirror;
 pub mod model;
 pub mod monitor;
+pub mod native_command;
 pub mod native_i18n;
 pub mod native_menu;
 pub mod notifications;

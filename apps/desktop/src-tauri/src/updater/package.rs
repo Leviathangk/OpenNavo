@@ -26,7 +26,16 @@ pub struct Artifact {
     pub sha256: String,
 }
 fn error(message: &str) -> AppError {
-    AppError::new("E_UPDATE_INTEGRITY", message)
+    AppError::new(
+        match message {
+            "backup_verification"
+            | "installed_app_changed"
+            | "rollback_verification"
+            | "pkg_installed_path" => "E_UPDATE_INTEGRITY",
+            _ => "E_UPDATE_ARCHIVE",
+        },
+        message,
+    )
 }
 pub fn installer_signature(text: &str, team: &str) -> bool {
     team.len() == 10
@@ -52,8 +61,8 @@ pub fn verify_signature(path: &Path, team: &str) -> Result<(), AppError> {
         &["--check-signature", &path.to_string_lossy()],
         Duration::from_secs(60),
     )
-    .map_err(|_| error("pkg_signature_invalid"))?;
-    if !installer_signature(&signature, team) {
+    .map_err(|e| e.context("E_UPDATE_INTEGRITY", "pkg_signature_invalid"))?;
+    if !installer_signature(&signature.stdout, team) {
         return Err(AppError::new(
             "E_UPDATE_TEAM_MISMATCH",
             "pkg_installer_team",
@@ -71,7 +80,8 @@ pub fn verify_signature(path: &Path, team: &str) -> Result<(), AppError> {
         Duration::from_secs(60),
     );
     if !result.is_ok_and(|s| {
-        s.lines()
+        s.stderr
+            .lines()
             .any(|line| line.trim() == "source=Notarized Developer ID")
     }) {
         return Err(AppError::new(
@@ -146,7 +156,8 @@ fn extract(path: &Path, destination: &Path) -> Result<(), AppError> {
             &destination.to_string_lossy(),
         ],
         Duration::from_secs(300),
-    )?;
+    )
+    .map_err(|e| e.context("E_UPDATE_ARCHIVE", "pkg_extract_failed"))?;
     Ok(())
 }
 /// Signature/Team validation is required BEFORE invoking this native extractor.
@@ -178,10 +189,11 @@ pub fn payload(
         "/usr/bin/tar",
         &["-tf", &payload.to_string_lossy()],
         Duration::from_secs(60),
-    )?;
+    )
+    .map_err(|e| e.context("E_UPDATE_ARCHIVE", "pkg_listing_failed"))?;
     let info = fs::read(info)?;
     fixed_location_metadata(&info)?;
-    let location = admin::store_payload_scope(&info, listing.trim(), installed, bundle)?;
+    let location = admin::store_payload_scope(&info, listing.stdout.trim(), installed, bundle)?;
     let root = destination.join("files");
     extract(&payload, &root)?;
     let app = root.join(
@@ -270,7 +282,7 @@ pub fn apply(
             request.source,
         )?;
         if installed.version != expected.version {
-            return Err(error("pkg_installed_version"));
+            return Err(AppError::new("E_UPDATE_VERSION", "pkg_installed_version"));
         }
         context.files.register(&request.installed)
     })();
@@ -296,16 +308,13 @@ pub fn apply(
         if let Err(rollback) = rollback {
             recovery.preserve_recovery();
             return Err(
-                AppError::new("E_UNKNOWN", "update_rollback_failed").with_detail(format!(
-                    "{}; {}; recovery={}",
-                    failure.code,
-                    rollback.code,
-                    previous.display()
-                )),
+                AppError::new("E_UNKNOWN", "update_rollback_failed").with_detail(
+                    serde_json::json!({"failure": failure, "rollback": rollback, "recovery": previous}).to_string()
+                ),
             );
         }
         let _ = context.files.register(&request.installed);
-        return Err(AppError::new("E_UPDATE_SWAP", "update_reverted").with_detail(failure.code));
+        return Err(failure.context("E_UPDATE_SWAP", "update_reverted"));
     }
     Ok(recovery.commit())
 }
@@ -332,7 +341,7 @@ pub fn execute(request: &swap::SwapRequest, work: &Path) -> Result<PathBuf, AppE
         hash.update(&chunk[..len]);
     }
     if format!("{:x}", hash.finalize()) != artifact.sha256 {
-        return Err(error("download_sha256"));
+        return Err(AppError::new("E_UPDATE_INTEGRITY", "download_sha256"));
     }
     let old = gate::NativeInspector.inspect(&request.installed)?;
     verify_signature(&copy, &old.team_id)?;

@@ -5,11 +5,10 @@ import { requiresConsent } from '../server/utils/consent';
 const REGIONS = ['DE', 'FR', 'GB', 'CH'];
 
 describe('analytics consent rules', () => {
-  it('Asks consent regions, loads elsewhere, and always honours an explicit choice', () => {
-    expect(analyticsPlan(true, null)).toBe('ask');
-    expect(analyticsPlan(false, null)).toBe('load');
-    expect(analyticsPlan(true, 'granted')).toBe('load');
-    expect(analyticsPlan(false, 'denied')).toBe('off');
+  it('Loads by default and honours an explicit opt-out', () => {
+    expect(analyticsPlan(null)).toBe('load');
+    expect(analyticsPlan('granted')).toBe('load');
+    expect(analyticsPlan('denied')).toBe('off');
   });
 
   it('Treats unknown, Tor and listed countries as consent regions', () => {
@@ -40,7 +39,9 @@ describe('gtag loader', () => {
     title: 'Visual Studio Code · OpenNavo',
     documentElement: { lang: 'zh-CN' },
     createElement: () => ({ src: '', async: false }),
-    head: { append: (node: { src: string; async: boolean }) => appended.push(node) },
+    head: {
+      append: (node: { src: string; async: boolean }) => appended.push(node)
+    },
     get cookie() {
       return '_ga=GA1.1.1; theme=dark; _ga_ABC=GS1.1';
     },
@@ -56,11 +57,21 @@ describe('gtag loader', () => {
     trackPageView();
     expect(window.dataLayer).toBeUndefined();
     loadGtag('G-TEST1');
-    expect(appended).toEqual([{ src: 'https://www.googletagmanager.com/gtag/js?id=G-TEST1', async: true }]);
+    expect(appended).toEqual([
+      {
+        src: 'https://www.googletagmanager.com/gtag/js?id=G-TEST1',
+        async: true
+      }
+    ]);
     expect(calls()[0]).toEqual([
       'consent',
       'default',
-      { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'granted' }
+      {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'granted'
+      }
     ]);
     expect(calls()[2]).toEqual(['config', 'G-TEST1', { send_page_view: false }]);
   });

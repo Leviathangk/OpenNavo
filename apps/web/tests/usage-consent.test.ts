@@ -8,9 +8,13 @@ let settings: ReturnType<typeof ref>;
 beforeEach(() => {
   localStorage.clear();
   states = new Map();
-  settings = ref({ analytics: { usageEnabled: true, ga4Enabled: false, ga4MeasurementId: '' } });
+  settings = ref({
+    analytics: { usageEnabled: true, ga4Enabled: false, ga4MeasurementId: '' }
+  });
   vi.stubGlobal('computed', computed);
-  vi.stubGlobal('useRuntimeConfig', () => ({ public: { geoinflowScriptUrl: '', geoinflowWebsiteId: '' } }));
+  vi.stubGlobal('useRuntimeConfig', () => ({
+    public: { geoinflowScriptUrl: '', geoinflowWebsiteId: '' }
+  }));
   vi.stubGlobal('useSiteSettings', () => settings);
   vi.stubGlobal('useState', (key: string, initialize: () => unknown) => {
     if (!states.has(key)) states.set(key, ref(initialize()));
@@ -26,7 +30,7 @@ it('does not show a consent banner for automatic first-party usage alone', async
   expect(consent.banner.value).toBe(false);
   expect($fetch).not.toHaveBeenCalled();
 });
-it('honors a previously denied choice and asks when the region lookup fails', async () => {
+it('honors a previous opt-out and otherwise starts without a region lookup', async () => {
   settings.value.analytics.ga4Enabled = true;
   settings.value.analytics.ga4MeasurementId = 'G-TEST123';
   localStorage.setItem('onv:analytics-consent', 'denied');
@@ -36,8 +40,9 @@ it('honors a previously denied choice and asks when the region lookup fails', as
   localStorage.clear();
   vi.mocked($fetch).mockRejectedValueOnce(new Error('offline'));
   await consent.start();
-  expect(consent.active.value).toBe(false);
-  expect(consent.banner.value).toBe(true);
+  expect(consent.active.value).toBe(true);
+  expect(consent.banner.value).toBe(false);
+  expect($fetch).not.toHaveBeenCalled();
 });
 it('does not enable collection when both collection switches are off', async () => {
   settings.value.analytics.usageEnabled = false;

@@ -1,0 +1,31 @@
+rule_files: [http-probe-rules.yml]
+evaluation_interval: 1m
+tests:
+  - name: origin failure is detected even while edge cache succeeds
+    interval: 1m
+    input_series:
+      - series: opennavo_http_probe_success{service="web",layer="origin"}
+        values: '0+0x4'
+      - series: opennavo_http_probe_success{service="web",layer="edge"}
+        values: '1+0x4'
+      - series: up{job="http-probe"}
+        values: '1+0x4'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: HTTPProbeFailed
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: HTTPProbeFailed
+        exp_alerts:
+          - exp_labels: {service: web, layer: origin, severity: critical}
+            exp_annotations: {summary: 'HTTP probe failed for web (origin)'}
+      - eval_time: 3m
+        alertname: HTTPProbeExporterDown
+        exp_alerts: []
+  - name: missing exporter cannot silently appear healthy
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: HTTPProbeExporterDown
+        exp_alerts:
+          - exp_labels: {job: http-probe, severity: warning}
+            exp_annotations: {summary: 'HTTP availability probe exporter is unavailable'}

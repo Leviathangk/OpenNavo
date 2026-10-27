@@ -44,6 +44,12 @@ impl AppError {
         self.detail = Some(detail.into());
         self
     }
+
+    /// Add user-facing context without discarding the underlying command failure.
+    pub fn context(self, code: &str, message: &str) -> Self {
+        Self::new(code, message)
+            .with_detail(serde_json::to_string(&self).unwrap_or_else(|_| self.to_string()))
+    }
 }
 
 #[cfg(test)]

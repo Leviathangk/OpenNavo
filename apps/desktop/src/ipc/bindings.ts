@@ -2094,7 +2094,7 @@ export type UpdateCheckFailure = {
 export type UpdateCheckFailureReason = "rulesUnavailable" | "rateLimited" | "invalidUrl" | "network" | "failed";
 
 /**  Exported error vocabulary; AppError.code stays a string for existing errors. */
-export type UpdateErrorCode = "E_UPDATE_INTEGRITY" | "E_UPDATE_TEAM_MISMATCH" | "E_UPDATE_NOT_NOTARIZED" | "E_UPDATE_ARCH" | "E_UPDATE_MIN_OS" | "E_UPDATE_FEED" | "E_UPDATE_DMG_LICENSE" | "E_UPDATE_SWAP" | "E_APP_RUNNING" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
+export type UpdateErrorCode = "E_UPDATE_PREPARE" | "E_UPDATE_ARCHIVE" | "E_UPDATE_VERSION" | "E_UPDATE_INTEGRITY" | "E_UPDATE_TEAM_MISMATCH" | "E_UPDATE_NOT_NOTARIZED" | "E_UPDATE_ARCH" | "E_UPDATE_MIN_OS" | "E_UPDATE_FEED" | "E_UPDATE_DMG_LICENSE" | "E_UPDATE_SWAP" | "E_APP_RUNNING" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
 
 export type UpdateIntegrity = "eddsa" | "sha512" | "digest" | "sha256" | "team_id";
 

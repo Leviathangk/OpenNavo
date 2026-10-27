@@ -199,6 +199,7 @@ impl Commands for NativeCommands {
     }
     fn run(&self, program: &str, args: &[&str]) -> Result<String, AppError> {
         crate::uninstall::identity::command(program, args, std::time::Duration::from_secs(10))
+            .map(|output| output.stdout)
     }
 }
 pub struct Service {

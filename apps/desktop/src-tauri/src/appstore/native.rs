@@ -52,7 +52,7 @@ impl Host for NativeHost {
                 Duration::from_secs(3),
             )
             .ok()
-            .map(|value| value.trim().to_owned())
+            .map(|value| value.stdout.trim().to_owned())
         };
         let storefront = read(
             "com.apple.itunesstored",

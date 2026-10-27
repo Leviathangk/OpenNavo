@@ -461,6 +461,41 @@ fn zip_path_alias_symlink_chain_and_special_entry_guards() {
     )));
 }
 #[test]
+fn dmg_with_native_imageinfo_diagnostics_still_extracts_and_unmounts() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap();
+    let source = root.join("source");
+    let app = source.join("Fixture.app");
+    bundle(&app, "101");
+    let dmg = root.join("Fixture.dmg");
+    let output = std::process::Command::new("/usr/bin/hdiutil")
+        .args(["create", "-quiet", "-format", "UDZO", "-srcfolder"])
+        .arg(&source)
+        .arg(&dmg)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    // macOS 27 emits the imageinfo deprecation warning on stderr. This uses the
+    // real extractor so both the stream parsing and mount cleanup are covered.
+    let destination = root.join("extracted");
+    let prepared = archive::extract_dmg(&dmg, &destination).unwrap();
+    assert_eq!(
+        fs::read(prepared.join("Contents/MacOS/fixture")).unwrap(),
+        b"101"
+    );
+    assert_eq!(fs::read_dir(destination.join("mount")).unwrap().count(), 0);
+    fs::write(root.join("corrupt.dmg"), b"not a disk image").unwrap();
+    let error = archive::extract_dmg(&root.join("corrupt.dmg"), &root.join("invalid")).unwrap_err();
+    assert_eq!(error.code, "E_UPDATE_ARCHIVE");
+    assert_eq!(error.message, "dmg_info_command");
+    assert!(error.detail.unwrap().contains("exitCode"));
+}
+
+#[test]
 fn macho_reader_checks_real_header_bounds_architecture_and_minimum_os() {
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("binary");
@@ -540,7 +575,8 @@ async fn interrupted_transfer_resumes_with_validator_or_restarts_when_changed() 
         )
         .await;
         if mode == "bad_range" {
-            assert_eq!(result.unwrap_err().message, "download_resume_range");
+            let error = result.unwrap_err();
+            assert_eq!(error.message, "download_resume_range", "{error:?}");
         } else {
             result.unwrap();
         }
@@ -570,10 +606,15 @@ fn package_trust_requires_developer_id_installer_and_matching_team() {
 }
 #[test]
 fn package_payload_is_read_only_and_limited_to_the_expected_bundle() {
+    for name in ["Fixture.app", "中文应用.app"] {
+        package_payload_for_name(name);
+    }
+}
+fn package_payload_for_name(name: &str) {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().canonicalize().unwrap();
     let files = root.join("payload");
-    let app = files.join("Fixture.app");
+    let app = files.join(name);
     bundle(&app, "101");
     let mut info = plist::Value::from_file(app.join("Contents/Info.plist")).unwrap();
     info.as_dictionary_mut().unwrap().insert(
@@ -587,7 +628,7 @@ fn package_payload_is_read_only_and_limited_to_the_expected_bundle() {
     let mut component = plist::Dictionary::new();
     component.insert(
         "RootRelativeBundlePath".into(),
-        plist::Value::String("Fixture.app".into()),
+        plist::Value::String(name.into()),
     );
     component.insert("BundleIsRelocatable".into(), plist::Value::Boolean(false));
     plist::Value::Array(vec![plist::Value::Dictionary(component)])
@@ -609,7 +650,7 @@ fn package_payload_is_read_only_and_limited_to_the_expected_bundle() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let installed = root.join("Fixture.app");
+    let installed = root.join(name);
     let prepared = package::payload(
         &pkg,
         &root.join("expanded"),
@@ -640,6 +681,350 @@ fn package_payload_is_read_only_and_limited_to_the_expected_bundle() {
     // Unsigned fixture can exercise extraction only; it never passes the production gate.
     assert!(package::verify_signature(&pkg, "TESTTEAM01").is_err());
 }
+
+#[tokio::test]
+async fn vendor_retries_replace_invalid_content_without_a_publisher_digest() {
+    use opennavo_desktop_lib::updater::release::{Artifact, File};
+    use sha2::{Digest, Sha256};
+    for scenario in ["html", "zip", "plist", "version", "legacy"] {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let installed = root.join("Installed.app");
+        let source = root.join("Source.app");
+        bundle(&installed, "100");
+        bundle(&source, "101");
+        let bytes = zip_bytes(&source);
+        let (invalid, message) = match scenario {
+            "zip" => (b"PK\x03\x04truncated".to_vec(), "zip_format"),
+            "plist" => {
+                fs::write(source.join("Contents/Info.plist"), b"invalid plist").unwrap();
+                (zip_bytes(&source), "download_bundle_info")
+            }
+            "version" => {
+                bundle(&source, "102");
+                (zip_bytes(&source), "feed_bundle_version_mismatch")
+            }
+            _ => (
+                b"<html>Service temporarily unavailable</html>".to_vec(),
+                "unsupported_update_archive",
+            ),
+        };
+        let file = root.join("Fixture.zip");
+        fs::write(&file, &bytes).unwrap();
+        fs::write(file.with_extension("zip.invalid"), &invalid).unwrap();
+        let (mut server, url, client) = server(&file, "invalid_first").await;
+        let candidate = Candidate {
+            item: serde_json::from_value(serde_json::json!({
+                "kind": "link", "token": "", "name": "Fixture", "source": "vendor",
+                "appId": "fixture", "installedVersion": "100", "currentVersion": "101",
+                "autoUpdates": false, "pinned": false, "ignored": false, "dependents": 0,
+                "major": false, "requiresAdmin": false, "running": false,
+                "relaunchPending": false, "criticalUpdate": false, "expectedTeamMatch": true
+            }))
+            .unwrap(),
+            artifact: Some(Artifact {
+                file: File {
+                    url,
+                    name: "Fixture.zip".into(),
+                    size: None,
+                    architecture: None,
+                    sha256: None,
+                    sha512: None,
+                },
+                version: "101".into(),
+                version_key: "CFBundleVersion".into(),
+            }),
+            app_path: installed.clone(),
+            snapshot: Snapshot::capture(&installed).unwrap(),
+            feed_item: None,
+            public_key: None,
+            expected_team: Some("TESTTEAM01".into()),
+            checked_at: 0,
+        };
+        let staging = root.join("staging");
+        let stage = download::Stage::create(&staging).unwrap();
+        let error = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.message, message, "{scenario}");
+        assert!(!stage.path.join("verified.sha256").exists(), "{scenario}");
+        drop(stage);
+        let cache = fs::read_dir(staging.join("downloads"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let cached = cache.join("partial");
+        let metadata = cache.join("metadata.json");
+        assert_eq!(fs::metadata(&cached).unwrap().len(), 0, "{scenario}");
+        let meta: serde_json::Value =
+            serde_json::from_slice(&fs::read(&metadata).unwrap()).unwrap();
+        assert!(meta["verified_sha256"].is_null(), "{scenario}");
+        if scenario == "legacy" {
+            // Model an error page marked reusable by an older app version.
+            fs::write(&cached, &invalid).unwrap();
+            fs::write(
+                &metadata,
+                serde_json::to_vec(&serde_json::json!({
+                    "validator": "\"fixture\"", "total": invalid.len(),
+                    "verified_sha256": format!("{:x}", Sha256::digest(&invalid))
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+            let stage = download::Stage::create(&staging).unwrap();
+            assert_eq!(
+                download::prepare_with_client(
+                    &candidate,
+                    &stage,
+                    Arc::new(AtomicBool::new(false)),
+                    Arc::new(|_| Ok(())),
+                    &client,
+                )
+                .await
+                .unwrap_err()
+                .message,
+                message
+            );
+            drop(stage);
+            assert_eq!(fs::metadata(&cached).unwrap().len(), 0);
+        }
+        // The same URL now serves the real archive; retry must fetch it again.
+        let stage = download::Stage::create(&staging).unwrap();
+        let request = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            fs::read(request.prepared.join("Contents/MacOS/fixture")).unwrap(),
+            b"101",
+            "{scenario}"
+        );
+        assert!(candidate.snapshot.still(&installed));
+        assert_eq!(fs::read(&cached).unwrap(), bytes, "{scenario}");
+        drop(stage);
+        server.kill().await.unwrap();
+        server.wait().await.unwrap();
+        // Valid content remains reusable even without a remote digest or ETag check.
+        let stage = download::Stage::create(&staging).unwrap();
+        download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await
+        .unwrap();
+        let requests: Vec<serde_json::Value> =
+            serde_json::from_slice(&fs::read(file.with_extension("zip.requests")).unwrap())
+                .unwrap();
+        assert_eq!(requests.len(), 2, "{scenario}");
+        assert!(requests.iter().all(|r| r["range"].is_null()));
+    }
+}
+struct RejectedDownload {
+    reason: &'static str,
+}
+impl gate::Inspector for RejectedDownload {
+    fn inspect(&self, path: &Path) -> Result<gate::Identity, AppError> {
+        let mut identity = gate::Inspector::inspect(&Observations, path)?;
+        if fs::read(path.join("Contents/MacOS/fixture")).unwrap() == b"bad-signature" {
+            match self.reason {
+                // Exercise the actual codesign error, including its command diagnostics.
+                "codesign" => return gate::Inspector::inspect(&gate::NativeInspector, path),
+                "signature" => identity.valid = false,
+                "team" => identity.team_id = "OTHERTEAM1".into(),
+                "notarization" => identity.notarized = false,
+                "requirement" => {}
+                _ => unreachable!(),
+            }
+        }
+        Ok(identity)
+    }
+    fn satisfies(&self, path: &Path, _: &str) -> Result<bool, AppError> {
+        Ok(self.reason != "requirement"
+            || fs::read(path.join("Contents/MacOS/fixture")).unwrap() != b"bad-signature")
+    }
+}
+
+#[tokio::test]
+async fn vendor_signature_rejection_discards_cache_and_retries_the_same_url() {
+    use opennavo_desktop_lib::updater::release::{Artifact, File};
+    for (reason, code) in [
+        ("codesign", "E_UPDATE_INTEGRITY"),
+        ("signature", "E_UPDATE_INTEGRITY"),
+        ("team", "E_UPDATE_TEAM_MISMATCH"),
+        ("requirement", "E_UPDATE_TEAM_MISMATCH"),
+        ("notarization", "E_UPDATE_NOT_NOTARIZED"),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let installed = root.join("Installed.app");
+        let source = root.join("Source.app");
+        bundle(&installed, "100");
+        bundle(&source, "101");
+        let bytes = zip_bytes(&source);
+        let file = root.join("Fixture.zip");
+        fs::write(&file, &bytes).unwrap();
+        // Both responses have the expected bundle version, but the first has bad code.
+        fs::write(source.join("Contents/MacOS/fixture"), b"bad-signature").unwrap();
+        let invalid = zip_bytes(&source);
+        fs::write(file.with_extension("zip.invalid"), &invalid).unwrap();
+        let (mut server, url, client) = server(&file, "invalid_first").await;
+        let candidate = Candidate {
+            item: serde_json::from_value(serde_json::json!({
+                "kind": "link", "token": "", "name": "Fixture", "source": "vendor",
+                "appId": "fixture", "installedVersion": "100", "currentVersion": "101",
+                "autoUpdates": false, "pinned": false, "ignored": false, "dependents": 0,
+                "major": false, "requiresAdmin": false, "running": false,
+                "relaunchPending": false, "criticalUpdate": false, "expectedTeamMatch": true
+            }))
+            .unwrap(),
+            artifact: Some(Artifact {
+                file: File {
+                    url,
+                    name: "Fixture.zip".into(),
+                    size: None,
+                    architecture: None,
+                    sha256: None,
+                    sha512: None,
+                },
+                version: "101".into(),
+                version_key: "CFBundleVersion".into(),
+            }),
+            app_path: installed.clone(),
+            snapshot: Snapshot::capture(&installed).unwrap(),
+            feed_item: None,
+            public_key: None,
+            expected_team: Some("TESTTEAM01".into()),
+            checked_at: 0,
+        };
+        let inspector = RejectedDownload { reason };
+        let staging = root.join("staging");
+        let stage = download::Stage::create(&staging).unwrap();
+        let request = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await
+        .unwrap();
+        let error = stage
+            .validate(
+                &request,
+                &inspector,
+                gate::Platform {
+                    os: "15.0",
+                    arch: "arm64",
+                },
+            )
+            .unwrap_err();
+        assert_eq!(error.code, code, "{reason}");
+        if reason == "codesign" {
+            assert_eq!(error.message, "invalid_bundle_signature");
+            assert!(error.detail.is_some());
+        }
+        let cache = fs::read_dir(staging.join("downloads"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let cached = cache.join("partial");
+        assert_eq!(fs::metadata(&cached).unwrap().len(), 0, "{reason}");
+        let meta: serde_json::Value =
+            serde_json::from_slice(&fs::read(cache.join("metadata.json")).unwrap()).unwrap();
+        assert!(meta["verified_sha256"].is_null(), "{reason}");
+        assert!(candidate.snapshot.still(&installed));
+        drop(stage);
+
+        // The vendor fixes the same URL. The retry must fetch the second response.
+        let stage = download::Stage::create(&staging).unwrap();
+        let request = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await
+        .unwrap();
+        stage
+            .validate(
+                &request,
+                &inspector,
+                gate::Platform {
+                    os: "15.0",
+                    arch: "arm64",
+                },
+            )
+            .unwrap();
+        // An installation failure after passing the gate retains the good download.
+        assert_eq!(
+            swap::apply(
+                &request,
+                &swap::Context {
+                    inspector: &inspector,
+                    files: &TempFiles {
+                        fail_register: true
+                    },
+                    os: "15.0",
+                    arch: "arm64",
+                },
+            )
+            .unwrap_err()
+            .code,
+            "E_UPDATE_SWAP"
+        );
+        assert_eq!(fs::read(&cached).unwrap(), bytes, "{reason}");
+        assert!(candidate.snapshot.still(&installed));
+        drop(stage);
+        server.kill().await.unwrap();
+        server.wait().await.unwrap();
+
+        let stage = download::Stage::create(&staging).unwrap();
+        let request = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await
+        .unwrap();
+        stage
+            .validate(
+                &request,
+                &inspector,
+                gate::Platform {
+                    os: "15.0",
+                    arch: "arm64",
+                },
+            )
+            .unwrap();
+        let requests: Vec<serde_json::Value> =
+            serde_json::from_slice(&fs::read(file.with_extension("zip.requests")).unwrap())
+                .unwrap();
+        assert_eq!(requests.len(), 2, "{reason}");
+        assert!(requests.iter().all(|r| r["range"].is_null()));
+    }
+}
+
 struct TempInstaller {
     installed: PathBuf,
     prepared: PathBuf,
@@ -652,7 +1037,8 @@ impl package::Installer for TempInstaller {
         fs::remove_dir_all(&self.installed)?;
         swap::NativeFiles.copy_bundle(&self.prepared, &self.installed)?;
         if self.fail {
-            Err(AppError::new("E_UNKNOWN", "fixture_installer_exit"))
+            Err(AppError::new("E_UNKNOWN", "fixture_installer_exit")
+                .with_detail(r#"{"exitCode":7,"stderr":"fixture installer refused"}"#))
         } else {
             Ok(())
         }
@@ -695,7 +1081,11 @@ fn package_transaction_backs_up_and_restores_even_after_partial_installer_failur
             },
         );
         if fail {
-            assert_eq!(result.unwrap_err().code, "E_UPDATE_SWAP");
+            let error = result.unwrap_err();
+            assert_eq!(error.code, "E_UPDATE_SWAP");
+            let detail = error.detail.unwrap();
+            assert!(detail.contains("fixture_installer_exit"));
+            assert!(detail.contains("fixture installer refused"));
         } else {
             assert_eq!(
                 fs::read(result.unwrap().join("Contents/MacOS/fixture")).unwrap(),
@@ -907,5 +1297,189 @@ fn electron_beta_upgrades_and_stable_transition_pass_every_swap_gate() {
                 .unwrap(),
             if allowed { to } else { from }
         );
+    }
+}
+
+#[tokio::test]
+async fn verified_download_retries_recheck_trust_and_cache_lifetime() {
+    for scenario in [
+        "retry",
+        "tampered",
+        "expired",
+        "bad_signature",
+        "version_mismatch",
+        "changed_signature",
+        "no_validator",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let installed = root.join("Installed.app");
+        let source = root.join("Source.app");
+        bundle(&installed, "100");
+        bundle(&source, "101");
+        let bytes = zip_bytes(&source);
+        let file = root.join("Fixture.zip");
+        fs::write(&file, &bytes).unwrap();
+        let (mut server, url, client) = server(
+            &file,
+            if scenario == "no_validator" {
+                "no_validator"
+            } else {
+                "normal"
+            },
+        )
+        .await;
+        let key = Ed25519KeyPair::from_seed_unchecked(&[23; 32]).unwrap();
+        let signature = STANDARD.encode(key.sign(&bytes).as_ref());
+        let xml = format!(
+            r#"<rss xmlns:s="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item><s:version>101</s:version><enclosure url="{url}" length="{}" s:edSignature="{signature}"/></item></channel></rss>"#,
+            bytes.len()
+        );
+        let item = serde_json::from_value(serde_json::json!({"kind":"cask","token":"","name":"Fixture","source":"sparkle","appId":"fixture","installedVersion":"1.0","currentVersion":"2.0","autoUpdates":false,"pinned":false,"ignored":false,"dependents":0,"major":false,"requiresAdmin":false,"running":false,"relaunchPending":false,"criticalUpdate":false})).unwrap();
+        let mut candidate = Candidate {
+            artifact: None,
+            item,
+            app_path: installed.clone(),
+            snapshot: Snapshot::capture(&installed).unwrap(),
+            feed_item: Some(feed::parse(xml.as_bytes()).unwrap().remove(0)),
+            public_key: Some(STANDARD.encode(key.public_key().as_ref())),
+            expected_team: Some("TESTTEAM01".into()),
+            checked_at: 0,
+        };
+        if scenario == "bad_signature" {
+            candidate.feed_item.as_mut().unwrap().ed_signature = Some(STANDARD.encode([0; 64]));
+        }
+        if scenario == "version_mismatch" {
+            candidate.feed_item.as_mut().unwrap().version = "102".into();
+        }
+        let staging = root.join("staging");
+        let stage = download::Stage::create(&staging).unwrap();
+        let result = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await;
+        if scenario == "bad_signature" {
+            assert_eq!(result.unwrap_err().message, "eddsa_verification");
+        } else if scenario == "version_mismatch" {
+            assert_eq!(result.unwrap_err().code, "E_UPDATE_VERSION");
+        } else {
+            let request = result.unwrap();
+            // A later installation failure must not destroy the verified download.
+            assert_eq!(
+                swap::apply(
+                    &request,
+                    &swap::Context {
+                        inspector: &Observations,
+                        files: &TempFiles {
+                            fail_register: true
+                        },
+                        os: "15.0",
+                        arch: "arm64"
+                    }
+                )
+                .unwrap_err()
+                .code,
+                "E_UPDATE_SWAP"
+            );
+            let concurrent = download::Stage::create(&staging).unwrap();
+            assert_eq!(
+                download::prepare_with_client(
+                    &candidate,
+                    &concurrent,
+                    Arc::new(AtomicBool::new(false)),
+                    Arc::new(|_| Ok(())),
+                    &client
+                )
+                .await
+                .unwrap_err()
+                .code,
+                "E_BUSY"
+            );
+        }
+        let stage_path = stage.path.clone();
+        drop(stage);
+        assert!(!stage_path.exists());
+        if scenario == "retry" {
+            let canceled = download::Stage::create(&staging).unwrap();
+            assert_eq!(
+                download::prepare_with_client(
+                    &candidate,
+                    &canceled,
+                    Arc::new(AtomicBool::new(true)),
+                    Arc::new(|_| Ok(())),
+                    &client
+                )
+                .await
+                .unwrap_err()
+                .code,
+                "E_INTERRUPTED"
+            );
+            assert!(!canceled.path.join("archive").exists());
+        }
+        let cache_dir = fs::read_dir(staging.join("downloads"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let cached = cache_dir.join("partial");
+        if matches!(scenario, "bad_signature" | "version_mismatch") {
+            assert_eq!(fs::metadata(&cached).unwrap().len(), 0);
+        }
+        if scenario == "tampered" {
+            fs::write(&cached, vec![0; bytes.len()]).unwrap();
+        }
+        if scenario == "expired" {
+            fs::File::options()
+                .write(true)
+                .open(&cached)
+                .unwrap()
+                .set_times(fs::FileTimes::new().set_modified(
+                    std::time::SystemTime::now() - std::time::Duration::from_secs(8 * 86400),
+                ))
+                .unwrap();
+        }
+        if scenario == "changed_signature" {
+            candidate.feed_item.as_mut().unwrap().ed_signature = Some(STANDARD.encode([0; 64]));
+        }
+        let stage = download::Stage::create(&staging).unwrap();
+        // Even an offline retry can use a verified cached artifact.
+        let offline = matches!(scenario, "retry" | "no_validator");
+        if offline {
+            server.kill().await.unwrap();
+            server.wait().await.unwrap();
+        }
+        let result = download::prepare_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+        )
+        .await;
+        match scenario {
+            "bad_signature" | "changed_signature" => {
+                assert_eq!(result.unwrap_err().message, "eddsa_verification")
+            }
+            "version_mismatch" => assert_eq!(result.unwrap_err().code, "E_UPDATE_VERSION"),
+            _ => {
+                result.unwrap();
+                stage.discard_download().unwrap();
+                assert_eq!(fs::metadata(&cached).unwrap().len(), 0);
+            }
+        }
+        let requests: Vec<serde_json::Value> =
+            serde_json::from_slice(&fs::read(file.with_extension("zip.requests")).unwrap())
+                .unwrap();
+        assert_eq!(requests.len(), if offline { 1 } else { 2 }, "{scenario}");
+        assert!(candidate.snapshot.still(&installed));
+        if !offline {
+            server.kill().await.unwrap();
+            server.wait().await.unwrap();
+        }
     }
 }

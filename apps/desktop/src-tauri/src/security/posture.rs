@@ -144,7 +144,11 @@ pub fn check(c: &dyn Commands, home: &Path) -> Vec<PostureCheck> {
     ));
     // Modern macOS no longer persists these values in the legacy ByHost domain.
     // This status query reads effective policy and never asks for a password.
-    let screen = text(c, "/usr/sbin/sysadminctl", &["-screenLock", "status"])
+    let screen = c
+        .output("/usr/sbin/sysadminctl", &["-screenLock", "status"])
+        .ok()
+        .and_then(|o| o.success().ok())
+        .map(|o| o.text())
         .and_then(|v| screen_lock(&v))
         .or_else(|| {
             for host in [true, false] {
@@ -336,9 +340,7 @@ mod tests {
     struct StatusFixture;
     impl Commands for StatusFixture {
         fn run(&self, program: &str, args: &[&str]) -> Result<String, crate::AppError> {
-            if program.ends_with("sysadminctl") && args == ["-screenLock", "status"] {
-                Ok("sysadminctl[123] screenLock delay is immediate".into())
-            } else if args.first() == Some(&"print-disabled") {
+            if args.first() == Some(&"print-disabled") {
                 Ok("disabled services = {}".into())
             } else {
                 Missing.run(program, args)
@@ -351,6 +353,13 @@ mod tests {
         ) -> Result<super::super::command::Output, crate::AppError> {
             let (code, stdout, stderr) = if program.ends_with("spctl") {
                 (1, "assessments disabled\n".to_owned(), String::new())
+            } else if program.ends_with("sysadminctl") && args == ["-screenLock", "status"] {
+                // sysadminctl writes its successful status to stderr on macOS.
+                (
+                    0,
+                    String::new(),
+                    "sysadminctl[123] screenLock delay is immediate".into(),
+                )
             } else if args.first() == Some(&"print") {
                 let label = args[1].rsplit('/').next().unwrap();
                 (

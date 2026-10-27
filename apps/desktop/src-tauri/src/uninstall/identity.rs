@@ -3,8 +3,7 @@ use std::{
     collections::BTreeSet,
     io::Read,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -116,6 +115,7 @@ impl MetadataProbe for NativeProbe {
                 return vec![];
             };
             output
+                .stdout
                 .lines()
                 .filter_map(|line| line.trim().strip_prefix("pkgid: "))
                 .filter(|id| valid_identifier(id))
@@ -126,7 +126,7 @@ impl MetadataProbe for NativeProbe {
                         Duration::from_secs(3),
                     )
                     .ok()?;
-                    let dict = plist::Value::from_reader_xml(info.as_bytes())
+                    let dict = plist::Value::from_reader_xml(info.stdout.as_bytes())
                         .ok()?
                         .into_dictionary()?;
                     let volume = dict
@@ -144,15 +144,7 @@ impl MetadataProbe for NativeProbe {
                         Duration::from_secs(3),
                     )
                     .ok()?;
-                    let files: Vec<_> = output
-                        .lines()
-                        .filter(|line| {
-                            !Path::new(line)
-                                .components()
-                                .any(|c| matches!(c, std::path::Component::ParentDir))
-                        })
-                        .map(|p| base.join(p))
-                        .collect();
+                    let files = receipt_files(&base, &output.stdout);
                     if !files.iter().any(|p| p.starts_with(path)) {
                         return None;
                     }
@@ -194,6 +186,23 @@ impl MetadataProbe for NativeProbe {
         }
     }
 }
+fn receipt_files(base: &Path, output: &str) -> Vec<PathBuf> {
+    output
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .filter(|line| {
+            !Path::new(line).components().any(|c| {
+                matches!(
+                    c,
+                    std::path::Component::ParentDir | std::path::Component::RootDir
+                )
+            })
+        })
+        .map(|line| base.join(line))
+        .filter(|path| path != base)
+        .collect()
+}
+
 pub fn valid_identifier(id: &str) -> bool {
     !id.is_empty()
         && id.len() <= 256
@@ -214,8 +223,7 @@ pub fn generic_bundle_id(id: &str) -> bool {
     .contains(&id.to_ascii_lowercase().as_str())
 }
 pub fn user_domain() -> String {
-    let uid = command("/usr/bin/id", &["-u"], Duration::from_secs(2)).unwrap_or_default();
-    format!("gui/{}", uid.trim())
+    format!("gui/{}", unsafe { nix::libc::getuid() })
 }
 pub fn bundle(path: &Path) -> Identity {
     let mut result = Identity::default();
@@ -291,52 +299,12 @@ fn macho_arch(path: &Path) -> Option<LocalAppArch> {
     }
 }
 /// Fixed program and argument arrays, bounded output and execution time. Never invoke a shell.
-pub fn command(program: &str, args: &[&str], timeout: Duration) -> Result<String, AppError> {
-    let mut child = Command::new(program)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AppError::new("E_UNKNOWN", "command_stdout"))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| AppError::new("E_UNKNOWN", "command_stderr"))?;
-    let read = |pipe: Box<dyn Read + Send>| {
-        std::thread::spawn(move || {
-            let mut bytes = Vec::new();
-            let _ = pipe.take(4 * 1024 * 1024).read_to_end(&mut bytes);
-            bytes
-        })
-    };
-    let out = read(Box::new(stdout));
-    let err = read(Box::new(stderr));
-    let start = Instant::now();
-    let status = loop {
-        if let Some(status) = child.try_wait()? {
-            break status;
-        }
-        if start.elapsed() >= timeout {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(AppError::new("E_UNKNOWN", "command_timeout"));
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    };
-    let bytes = out.join().unwrap_or_default();
-    let error = err.join().unwrap_or_default();
-    if !status.success() {
-        return Err(AppError::new("E_UNKNOWN", "command_exit"));
-    }
-    Ok(format!(
-        "{}\n{}",
-        String::from_utf8_lossy(&bytes),
-        String::from_utf8_lossy(&error)
-    ))
+pub fn command(
+    program: &str,
+    args: &[&str],
+    timeout: Duration,
+) -> Result<crate::native_command::Output, AppError> {
+    crate::native_command::output(program, args, timeout)?.success()
 }
 
 /// App Store metadata only; never opens an app or asks Spotlight to reindex it.
@@ -538,5 +506,24 @@ pub(crate) mod native {
             };
             (date("kMDItemLastUsedDate"), date("kMDItemDateAdded"))
         })
+    }
+}
+
+#[cfg(test)]
+mod command_output_tests {
+    use super::*;
+    #[test]
+    fn receipt_files_exclude_blank_root_and_escaping_entries_without_trimming_names() {
+        let base = Path::new("/Applications");
+        assert_eq!(
+            receipt_files(
+                base,
+                "\n.\n./\n/other\n../escape\nExample.app/Contents/Info.plist\n Name.app/file \n\n"
+            ),
+            vec![
+                base.join("Example.app/Contents/Info.plist"),
+                base.join(" Name.app/file ")
+            ]
+        );
     }
 }
