@@ -5745,7 +5745,8 @@ export interface components {
          *           "scope": "new",
          *           "since": ""
          *         },
-         *         "versionsSitemap": false
+         *         "versionsSitemap": false,
+         *         "fontsSitemap": false
          *       }
          *     }
          */
@@ -5832,6 +5833,8 @@ export interface components {
                  */
                 detailsRedirect: boolean;
                 versionsSitemap: boolean;
+                /** @default false */
+                fontsSitemap: boolean;
             };
         };
         /**
@@ -5920,7 +5923,8 @@ export interface components {
          *             "scope": "new",
          *             "since": ""
          *           },
-         *           "versionsSitemap": false
+         *           "versionsSitemap": false,
+         *           "fontsSitemap": false
          *         }
          *       }
          *     }

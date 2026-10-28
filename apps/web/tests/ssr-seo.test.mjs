@@ -291,6 +291,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     pages: {
       titleTemplate: 'new',
       indexPolicy: { mode: 'enforce', scope: 'all', since: '' },
+      fontsSitemap: false,
       versionsSitemap: true
     }
   };
@@ -1341,7 +1342,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
     NUXT_METRICS_PORT: internalPort,
     NUXT_INTERNAL_SECRET: internalSecret,
-    NUXT_SITEMAP_FONTS: 'false',
     OPENNAVO_SITEMAP_WARMUP: 'false'
   };
   const child = spawn(process.execPath, ['--import', clock, entry], {
@@ -1401,7 +1401,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           PORT: comparePort,
           NITRO_PORT: comparePort,
           NUXT_METRICS_PORT: compareMetricsPort,
-          NUXT_SITEMAP_FONTS: 'false',
           OPENNAVO_SITEMAP_WARMUP: 'false'
         },
         stdio: ['ignore', 'pipe', 'pipe']
@@ -3318,7 +3317,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         NUXT_LOAD_SHED_LOW_LAG_MS: '60000',
         NUXT_LOAD_SHED_MEDIUM_LAG_MS: '60000',
         NUXT_LOAD_SHED_EXTREME_LAG_MS: '60000',
-        NUXT_SITEMAP_FONTS: 'false',
         OPENNAVO_SITEMAP_WARMUP: 'false'
       },
       stdio: ['ignore', 'pipe', 'pipe']
@@ -3669,7 +3667,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           NITRO_PORT: redisPort,
           NUXT_REDIS_URL: redis.url,
           NUXT_METRICS_PORT: '',
-          NUXT_SITEMAP_FONTS: 'false',
           OPENNAVO_SITEMAP_WARMUP: 'false'
         },
         stdio: ['ignore', 'pipe', 'pipe']

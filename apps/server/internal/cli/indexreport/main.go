@@ -51,9 +51,7 @@ func run(args []string, out, stderr io.Writer) int {
 	sqlDB.SetMaxOpenConns(1)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	// Match Web runtimeConfig.sitemapFonts; use the same NUXT_SITEMAP_FONTS value
-	// as the deployed Web process (unset means disabled).
-	report, err := (&store.Store{DB: db}).BuildIndexReport(ctx, time.Now(), os.Getenv("WEB_BASE_URL"), os.Getenv("NUXT_SITEMAP_FONTS") == "true")
+	report, err := (&store.Store{DB: db}).BuildIndexReport(ctx, time.Now(), os.Getenv("WEB_BASE_URL"))
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "index report failed (read-only transaction); inspect local database diagnostics")
 		return 1

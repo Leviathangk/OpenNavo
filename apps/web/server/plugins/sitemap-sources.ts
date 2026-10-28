@@ -7,7 +7,6 @@ import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '.
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
 import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
-import { sitemapFontsEnabled } from '../utils/sitemapFonts';
 import { createStaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
@@ -90,7 +89,7 @@ export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
-      if (group === 'fonts' && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts))
+      if (group === 'fonts' && !(await getSiteSettings()).pages.fontsSitemap)
         throw createError({ statusCode: 404, statusMessage: 'Sitemap not found' });
       if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap) return;
       const records =
@@ -121,8 +120,8 @@ export default defineNitroPlugin(nitroApp => {
   });
 });
 
-function fontPackages(): Promise<SitemapRecord[]> {
-  return sitemapFontsEnabled(useRuntimeConfig().sitemapFonts) ? cachedPackages('fonts') : Promise.resolve([]);
+async function fontPackages(): Promise<SitemapRecord[]> {
+  return (await getSiteSettings()).pages.fontsSitemap ? cachedPackages('fonts') : [];
 }
 
 function apiBase() {
@@ -517,14 +516,19 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
   // language they are shown in, so a leaf's alternates are the languages that have the same leaf page.
   browse: async () => {
     const languages = new Map<string, Locale[]>();
+    const includeFonts = (await getSiteSettings()).pages.fontsSitemap;
+    const kinds: ('apps' | 'fonts')[] = includeFonts ? ['apps', 'fonts'] : ['apps'];
     for (const locale of await openLocales())
-      for (const kind of ['apps'] as const) {
+      for (const kind of kinds) {
         const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
           query: { kind, locale }
         });
         for (const bucket of root.data.buckets)
           for (let page = 1; page <= bucket.pages; page += 1) {
-            const path = `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
+            const path =
+              kind === 'fonts'
+                ? `/browse/fonts/${bucket.key}${page > 1 ? `?page=${page}` : ''}`
+                : `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
             languages.set(path, [...(languages.get(path) ?? []), locale]);
           }
       }

@@ -4,6 +4,7 @@ package store_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -52,20 +53,25 @@ func TestIndexReportReadOnlySnapshot(t *testing.T) {
 func TestIndexReportFontSitemapSwitch(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,is_font,installs_30d,rank_30d) VALUES
- ('cask','font-report','font-report','homebrew/cask','Font','1','1','{}','fixture','Font description',true,500,1)`).Error)
-	policy, err := st.IndexPolicy(context.Background())
-	require.NoError(t, err)
+ ('cask','font-report','font-report','homebrew/cask','Font','1','1','{}','fixture','Font description',true,0,0)`).Error)
 	for _, enabled := range []bool{false, true} {
-		report, err := st.BuildIndexReport(context.Background(), time.Now(), "https://site.example", enabled)
+		require.NoError(t, st.DB.Exec(fmt.Sprintf(`UPDATE seo_settings SET settings=settings || jsonb_build_object('pages', COALESCE(settings->'pages','{}'::jsonb) || jsonb_build_object('fontsSitemap', %t)) WHERE id=true`, enabled)).Error)
+		policy, err := st.IndexPolicy(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, enabled, policy.FontsSitemap)
+		report, err := st.BuildIndexReport(context.Background(), time.Now(), "https://site.example")
 		require.NoError(t, err)
 		counted := 0
 		for _, row := range report.Rows {
 			if row.PageType == "fonts" {
 				counted += row.Count
-				// 72a38e4 makes font exclusion unconditional, even with the web switch enabled.
-				require.False(t, row.InSitemap, "sitemapFonts=%t, locale=%s", enabled, row.Locale)
+				require.Equal(t, enabled && policy.LocaleOpen(row.Locale), row.InSitemap)
 				if policy.LocaleOpen(row.Locale) {
-					require.Equal(t, "font_page", row.Decision)
+					if enabled {
+						require.Equal(t, "indexable", row.Decision)
+					} else {
+						require.Equal(t, "font_page", row.Decision)
+					}
 				} else {
 					require.Equal(t, seo.ReasonLocaleClosed, row.Decision)
 				}

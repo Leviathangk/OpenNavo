@@ -36,7 +36,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     openLocales: [...LOCALES],
     intentPagesEnabled: false,
     detailsRedirect: false,
-    versionsSitemap: false
+    versionsSitemap: false,
+    fontsSitemap: false
   }
 };
 

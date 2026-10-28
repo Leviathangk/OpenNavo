@@ -48,6 +48,7 @@ func TestSEOSettingsValidation(t *testing.T) {
 			s.Pages.TranslationMode = "enforce"
 			s.Pages.TranslationLocales = []string{"de-DE"}
 			s.Pages.DetailsRedirect = true
+			s.Pages.FontsSitemap = true
 		}, nil),
 	}
 	for _, body := range valid {
@@ -103,6 +104,13 @@ func TestSEOSettingsValidation(t *testing.T) {
 	}
 }
 
+func TestSEOSettingsFontsSitemapRequiresBoolean(t *testing.T) {
+	body := seoBody(t, nil, nil)
+	body["settings"].(map[string]any)["pages"].(map[string]any)["fontsSitemap"] = "true"
+	_, err := decodeSEOUpdate(body)
+	require.Error(t, err)
+}
+
 func TestSEOSettingsDecodeKeepsDefaultsForMissingFields(t *testing.T) {
 	settings, err := store.DecodeSEOSettings([]byte(`{"analytics":{"ga4Enabled":true,"ga4MeasurementId":"G-FIXTURE1"}}`))
 	require.NoError(t, err)
@@ -110,6 +118,7 @@ func TestSEOSettingsDecodeKeepsDefaultsForMissingFields(t *testing.T) {
 	require.Equal(t, store.ConsentRegionsDefault, settings.Analytics.ConsentRegions)
 	require.Equal(t, store.CrawlerModeLimit, settings.Crawlers.Training.Mode)
 	require.Equal(t, "shadow", settings.Pages.IndexPolicy.Mode)
+	require.False(t, settings.Pages.FontsSitemap)
 	require.True(t, validateSEOSettings(&settings))
 	defaults := store.DefaultSEOSettings()
 	require.True(t, validateSEOSettings(&defaults))

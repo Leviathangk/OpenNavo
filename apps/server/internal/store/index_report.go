@@ -67,17 +67,17 @@ func (counts reportCounts) rows() []IndexReportCount {
 
 // BuildIndexReport enforces read-only at the database transaction boundary, including every helper.
 // No Redis, HTTP, cache fills, page-state refreshes or migrations are involved.
-// sitemapFonts defaults to false, matching Web; callers must pass its deployed setting.
-func (s *Store) BuildIndexReport(ctx context.Context, now time.Time, siteURL string, sitemapFonts ...bool) (IndexReport, error) {
+// The font sitemap switch is read from the same site policy as page decisions.
+func (s *Store) BuildIndexReport(ctx context.Context, now time.Time, siteURL string) (IndexReport, error) {
 	var report IndexReport
 	err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var err error
-		report, err = (&Store{DB: tx}).buildIndexReport(domain.WithLinks(ctx, true), now, siteURL, sitemapFonts...)
+		report, err = (&Store{DB: tx}).buildIndexReport(domain.WithLinks(ctx, true), now, siteURL)
 		return err
 	}, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	return report, err
 }
-func (s *Store) buildIndexReport(ctx context.Context, now time.Time, siteURL string, sitemapFonts ...bool) (IndexReport, error) {
+func (s *Store) buildIndexReport(ctx context.Context, now time.Time, siteURL string) (IndexReport, error) {
 	out := IndexReport{GeneratedAt: now.UTC(), Scope: "Current cask/link routes (including hidden/disabled), all site locales, unfiltered versions pagination; font overview URLs are counted as fonts, not overview. Other entities and static routes count their base page only. Excludes removed/alias URLs, search/filter variants, directory pagination and A-Z bucket routes. Sitemap membership is the current generation policy, not a fetched/cached sitemap.", MachineOnlyOverview: map[string]int{}}
 	counts := reportCounts{}
 	policy, err := s.IndexPolicy(ctx)
@@ -134,9 +134,6 @@ func (s *Store) buildIndexReport(ctx context.Context, now time.Time, siteURL str
 					}
 					// Package sitemaps include subpages only when that locale's overview is listed.
 					inSitemap = inSitemap && seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageOverview, Locale: locale, Page: 1}, policy).InSitemap
-					if row.IsFont && (len(sitemapFonts) == 0 || !sitemapFonts[0]) {
-						inSitemap = false
-					}
 					name := string(kind)
 					if kind == seo.PageOverview && row.IsFont {
 						name = "fonts"

@@ -5068,7 +5068,8 @@ export interface components {
          *           "scope": "new",
          *           "since": ""
          *         },
-         *         "versionsSitemap": false
+         *         "versionsSitemap": false,
+         *         "fontsSitemap": false
          *       }
          *     }
          */
@@ -5199,7 +5200,8 @@ export interface components {
          *             "scope": "new",
          *             "since": ""
          *           },
-         *           "versionsSitemap": false
+         *           "versionsSitemap": false,
+         *           "fontsSitemap": false
          *         }
          *       }
          *     }
@@ -5305,7 +5307,8 @@ export interface components {
          *             "scope": "new",
          *             "since": ""
          *           },
-         *           "versionsSitemap": false
+         *           "versionsSitemap": false,
+         *           "fontsSitemap": false
          *         }
          *       },
          *       "indexNowKeyConfigured": false,
@@ -5438,7 +5441,8 @@ export interface components {
          *               "scope": "new",
          *               "since": ""
          *             },
-         *             "versionsSitemap": false
+         *             "versionsSitemap": false,
+         *             "fontsSitemap": false
          *           }
          *         },
          *         "indexNowKeyConfigured": false,
@@ -5559,7 +5563,8 @@ export interface components {
          *               "scope": "new",
          *               "since": ""
          *             },
-         *             "versionsSitemap": false
+         *             "versionsSitemap": false,
+         *             "fontsSitemap": false
          *           }
          *         },
          *         "indexNowKeyConfigured": false,
@@ -22418,7 +22423,8 @@ export interface components {
          *       ],
          *       "intentPagesEnabled": true,
          *       "detailsRedirect": false,
-         *       "versionsSitemap": false
+         *       "versionsSitemap": false,
+         *       "fontsSitemap": false
          *     }
          */
         SeoPageSettings: {
@@ -22481,6 +22487,8 @@ export interface components {
              */
             detailsRedirect: boolean;
             versionsSitemap: boolean;
+            /** @default false */
+            fontsSitemap: boolean;
         };
         /**
          * @description One language version a page lists in hreflang.
@@ -22644,7 +22652,8 @@ export interface components {
          *         ],
          *         "intentPagesEnabled": true,
          *         "detailsRedirect": false,
-         *         "versionsSitemap": false
+         *         "versionsSitemap": false,
+         *         "fontsSitemap": false
          *       },
          *       "crawlers": {
          *         "training": {
@@ -22739,7 +22748,8 @@ export interface components {
          *             "scope": "new",
          *             "since": ""
          *           },
-         *           "versionsSitemap": false
+         *           "versionsSitemap": false,
+         *           "fontsSitemap": false
          *         },
          *         "crawlers": {
          *           "training": {
