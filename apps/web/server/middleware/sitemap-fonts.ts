@@ -10,9 +10,7 @@ export default defineEventHandler(async event => {
   if (!group) return;
 
   const enabled =
-    group === 'fonts'
-      ? (await getSiteSettings()).pages.fontsSitemap
-      : (await getSiteSettings()).pages.versionsSitemap;
+    group === 'fonts' ? (await getSiteSettings()).pages.fontsSitemap : (await getSiteSettings()).pages.versionsSitemap;
   if (enabled) return;
 
   // H3 may send a thrown error directly without running Nitro's beforeResponse hooks.
