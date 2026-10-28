@@ -228,6 +228,8 @@ async fn replacement_persists_offline_full_mirror_and_failed_save_preserves_prev
     )
     .unwrap();
     let chosen = Settings {
+        // Keep this persistence test independent of system-language onboarding migration.
+        onboarding_completed: true,
         brew_path: Some(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("tests/fake-brew/brew")
