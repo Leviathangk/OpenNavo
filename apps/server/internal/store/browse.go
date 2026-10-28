@@ -90,7 +90,11 @@ func browseDirectory(rows []IndexRow, names map[int64]string, locale string, pol
 	out := BrowseDirectory{Buckets: []publicapi.BrowseBucket{}, Groups: map[string][]publicapi.BrowseItem{}}
 	groups := out.Groups
 	for _, row := range rows {
-		if !seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageOverview, Locale: locale, Page: 1}, policy).InSitemap {
+		// A directory remains navigable even when its font detail pages are noindex.
+		// Sitemap popularity must not remove otherwise indexed apps from browsing.
+		facts := row.Facts()
+		facts.IsFont = false
+		if !seo.DecidePage(facts, seo.PageRef{Kind: seo.PageOverview, Locale: locale, Page: 1}, policy).Announce {
 			continue
 		}
 		name := names[row.ID]

@@ -18,13 +18,13 @@ func translationImpact(rows []store.IndexRow, policy seo.Policy, current, size i
 			ref := seo.PageRef{Kind: seo.PageOverview, Locale: locale, Page: 1}
 			before := seo.DecidePage(row.Facts(), ref, policy)
 			after := seo.DecidePage(row.Facts(), ref, enforced)
-			if before.InSitemap {
+			if before.Announce {
 				nowCount++
 			}
-			if after.InSitemap {
+			if after.Announce {
 				afterCount++
 			}
-			if before.InSitemap && !after.InSitemap {
+			if before.Announce && !after.Announce {
 				losing++
 				total++
 				if total > start && len(records) < size {

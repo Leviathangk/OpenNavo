@@ -3211,6 +3211,8 @@ class SeoPageSettings(BaseModel):
     indexPolicy: IndexPolicy
     translationMode: Annotated[Literal['shadow', 'enforce'], Field(description='Published translation quality rollout; new site-only languages are always enforced.')] = 'shadow'
     translationLocales: Annotated[list[Locale] | MISSING, Field(description='Locales to enforce; empty means all locales.')] = MISSING
+    sitemapMinInstalls: Annotated[int, Field(description='Minimum installs30d for English app sitemap URLs; does not change indexing.', ge=1)] = 50
+    sitemapNonEnglishTopN: Annotated[int, Field(description='Maximum installs30d rank for non-English app sitemap URLs; unranked apps are excluded. Index overrides bypass popularity.', ge=1)] = 500
     versionsMinNotesChars: Annotated[int, Field(ge=1, le=100000)] = 300
     openLocales: Annotated[list[Locale], Field(description='Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.', validate_default=True)] = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']
     intentPagesEnabled: Annotated[bool, Field(description='Enable qualified intent pages backed by confirmed search demand and unique targets.')] = False

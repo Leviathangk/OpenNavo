@@ -4968,6 +4968,8 @@
         "page.system.seo.bots": "65a9b81cdfa03e8a90f12e8076da98f3fba6928b4a68b44020ba6a9f108632aa",
         "page.system.seo.preview": "c4034a2081694c4e8d091aeba55269f0f640dabbd0df5215e340f4b437177d72",
         "page.system.seo.previewHint": "c0cece1495c13a557e45e449afa13c6ab740b7fb48ce11935f652a9329874a5b",
+        "page.system.seo.sitemapMinInstalls": "bd7a311477c2363a889eb37d9d7a32ba88626a51077ac2a1b6088cfaa7f98979",
+        "page.system.seo.sitemapNonEnglishTopN": "6a5ebb1cc54a5bb6dabb8c65eda98dd1cf028fd584184a30ead39a54f3ee8866",
         "page.system.seo.versionsSitemap": "06e5ffc6f416949642222dcc6531ea0fb8ddd36bce8c5dee60815e61d9f9fc67",
         "page.system.seo.versionsSitemapHint": "aa5db43b4414dbde9bf88f65187f751b9bcce915096f070c826747849437846c",
         "page.system.seo.openLocales": "c9f4834aa94d5b4900ad514fe1921be72d885a18d0ee86d90a5819b2b8fd8131",

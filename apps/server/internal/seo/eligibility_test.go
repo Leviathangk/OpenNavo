@@ -10,7 +10,7 @@ import (
 func eligible() Facts {
 	return Facts{
 		Name: "Visual Studio Code", Token: "visual-studio-code", Summary: "Open-source code editor",
-		Version: "1.95.3,abc", Installs30d: 120, Override: OverrideAuto, SourceLocale: "en-US",
+		Version: "1.95.3,abc", Installs30d: 120, Rank30d: 1, Override: OverrideAuto, SourceLocale: "en-US",
 		PublishedLocales: []string{"en-US", "zh-CN", "ja-JP"}, FirstSeenAt: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC),
 	}
 }

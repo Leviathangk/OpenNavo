@@ -118,6 +118,14 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		d.Reason = ReasonLocaleClosed
 		return d
 	}
+	if f.IsFont {
+		d.Reason = "font_page"
+		return d
+	}
+	if ref.Kind == PageVersions && ref.Locale != f.SourceLocale {
+		d.Reason = "versions_source_only"
+		return d
+	}
 	entity := Decide(f, p)
 	if f.Hidden || f.Unavailable() || !entity.Indexable {
 		d.Reason = entity.Reason
@@ -141,6 +149,9 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 			continue
 		}
 		if ref.Kind == PageVersions {
+			if locale != f.SourceLocale {
+				continue
+			}
 			notes := f.NotesPages[page][locale]
 			if notes.Chars < minimum || notes.Entries < VersionsMinNoteEntries {
 				continue
@@ -156,7 +167,7 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		return d
 	}
 	d.Robots, d.Hreflang, d.Announce = IndexableRobots, locales, true
-	d.InSitemap = page == 1 && (ref.Kind != PageVersions || p.VersionsSitemap)
+	d.InSitemap = page == 1 && p.SitemapAppAllowed(f, ref.Locale) && (ref.Kind != PageVersions || p.VersionsSitemap)
 	return d
 }
 
@@ -167,7 +178,7 @@ func decideTroubleshootingPage(f Facts, ref PageRef, p Policy) PageDecision {
 		return d
 	}
 	overview := DecidePage(f, PageRef{Kind: PageOverview, Locale: ref.Locale, Page: 1}, p)
-	if !overview.InSitemap {
+	if !overview.Announce {
 		d.Reason = overview.Reason
 		return d
 	}
@@ -179,7 +190,7 @@ func decideTroubleshootingPage(f Facts, ref PageRef, p Policy) PageDecision {
 			d.Hreflang = append(d.Hreflang, locale)
 		}
 	}
-	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = IndexableRobots, "", true, true, ""
+	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = IndexableRobots, "", overview.InSitemap, true, ""
 	return d
 }
 
@@ -213,7 +224,7 @@ func decideIntentPage(f Facts, ref PageRef, p Policy) PageDecision {
 		return d
 	}
 	overview := DecidePage(f, PageRef{Kind: PageOverview, Locale: ref.Locale, Page: 1}, p)
-	if !overview.InSitemap {
+	if !overview.Announce {
 		d.Reason = overview.Reason
 		return d
 	}
@@ -226,6 +237,6 @@ func decideIntentPage(f Facts, ref PageRef, p Policy) PageDecision {
 		d.Hreflang = []string{}
 		return d
 	}
-	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = IndexableRobots, "", true, true, ""
+	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = IndexableRobots, "", overview.InSitemap, true, ""
 	return d
 }

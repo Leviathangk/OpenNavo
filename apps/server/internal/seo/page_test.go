@@ -36,6 +36,14 @@ func TestPageDecisionMatrix(t *testing.T) {
 						require.False(t, d.InSitemap)
 						return
 					}
+					if kind == PageVersions && locale != f.SourceLocale {
+						require.Equal(t, "versions_source_only", d.Reason)
+						require.Equal(t, "noindex, follow", d.Robots)
+						require.False(t, d.InSitemap)
+						require.False(t, d.Announce)
+						require.Empty(t, d.Hreflang)
+						return
+					}
 					if kind == PageDependencies {
 						// Dependency content keeps the tab's own URL, but the tab is never indexed.
 						require.Equal(t, PageDecision{Robots: "noindex, follow", Hreflang: []string{}, Reason: ReasonSupportingPage}, d)
@@ -43,7 +51,11 @@ func TestPageDecisionMatrix(t *testing.T) {
 					}
 					require.Equal(t, IndexableRobots, d.Robots)
 					require.Empty(t, d.CanonicalPath)
-					require.Equal(t, Locales, d.Hreflang)
+					if kind == PageVersions {
+						require.Equal(t, []string{f.SourceLocale}, d.Hreflang)
+					} else {
+						require.Equal(t, Locales, d.Hreflang)
+					}
 					require.Equal(t, page == 1, d.InSitemap)
 					require.True(t, d.Announce)
 					require.Empty(t, d.Reason)
@@ -64,7 +76,7 @@ func TestPageDecisionMatrix(t *testing.T) {
 				require.False(t, d.Announce)
 				require.Empty(t, d.CanonicalPath)
 				require.Empty(t, d.Hreflang)
-				require.Equal(t, "thin_notes_page", d.Reason)
+				require.Equal(t, "versions_source_only", d.Reason)
 			}
 		}
 	}
@@ -256,4 +268,93 @@ func TestBrandOverviewRedirectDecision(t *testing.T) {
 	}
 	f.NotesPages = map[int]map[string]NotesFacts{1: {"en-US": {Chars: 1000, Entries: 3}}}
 	require.True(t, DecidePage(f, PageRef{Kind: PageVersions, Locale: "en-US"}, Policy{VersionsSitemap: true}).Announce)
+}
+
+func TestSitemapPopularityOnlyChangesInclusion(t *testing.T) {
+	cases := []struct {
+		name, locale   string
+		installs, rank int
+		policy         Policy
+		override       string
+		want           bool
+	}{
+		{name: "English below default", locale: "en-US", installs: 49, want: false},
+		{name: "English at default", locale: "en-US", installs: 50, want: true},
+		{name: "English custom", locale: "en-US", installs: 99, policy: Policy{SitemapMinInstalls: 100}, want: false},
+		{name: "non-English last rank", locale: "zh-CN", rank: 500, want: true},
+		{name: "non-English outside", locale: "ja-JP", installs: 10000, rank: 501, want: false},
+		{name: "non-English unranked", locale: "es-ES", installs: 10000, want: false},
+		{name: "non-English custom", locale: "ru-RU", rank: 3, policy: Policy{SitemapNonEnglishTopN: 2}, want: false},
+		{name: "non-English custom boundary", locale: "ru-RU", rank: 2, policy: Policy{SitemapNonEnglishTopN: 2}, want: true},
+		{name: "English override", locale: "en-US", override: OverrideIndex, want: true},
+		{name: "non-English override", locale: "zh-CN", rank: 9999, override: OverrideIndex, want: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := eligible()
+			f.ReadyLocales = Locales
+			f.Installs30d, f.Rank30d, f.Override = tc.installs, tc.rank, tc.override
+			d := DecidePage(f, PageRef{Kind: PageOverview, Locale: tc.locale}, tc.policy)
+			require.Equal(t, tc.want, d.InSitemap)
+			require.Equal(t, IndexableRobots, d.Robots)
+			require.True(t, d.Announce)
+			require.Equal(t, Locales, d.Hreflang)
+		})
+	}
+}
+
+func TestFontAndTranslatedVersionsNeverAnnounce(t *testing.T) {
+	for _, override := range []string{OverrideAuto, OverrideIndex} {
+		f := eligible()
+		f.Override = override
+		f.ReadyLocales = Locales
+		f.NotesPages = map[int]map[string]NotesFacts{1: {}}
+		for _, locale := range Locales {
+			f.NotesPages[1][locale] = NotesFacts{Chars: 1000, Entries: 3}
+		}
+		policy := Policy{VersionsSitemap: true}
+		for _, locale := range Locales {
+			d := DecidePage(f, PageRef{Kind: PageVersions, Locale: locale}, policy)
+			if locale == f.SourceLocale {
+				require.True(t, d.Announce)
+				require.Equal(t, []string{f.SourceLocale}, d.Hreflang)
+			} else {
+				require.Equal(t, "versions_source_only", d.Reason)
+				require.Equal(t, "noindex, follow", d.Robots)
+				require.False(t, d.Announce)
+				require.False(t, d.InSitemap)
+				require.Empty(t, d.Hreflang)
+			}
+			for _, tokenFont := range []bool{false, true} {
+				font := f
+				font.IsFont = true
+				if tokenFont {
+					font.Token = "font-example"
+				}
+				for _, kind := range []PageKind{PageOverview, PageVersions} {
+					d = DecidePage(font, PageRef{Kind: kind, Locale: locale}, policy)
+					require.Equal(t, "font_page", d.Reason)
+					require.Equal(t, "noindex, follow", d.Robots)
+					require.False(t, d.InSitemap)
+					require.False(t, d.Announce)
+					require.Empty(t, d.Hreflang)
+				}
+			}
+		}
+	}
+}
+
+func TestPopularityDoesNotNoindexSupportingIntentPages(t *testing.T) {
+	f := eligible()
+	f.Kind = "cask"
+	f.Installs30d = 0
+	f.Rank30d = 999
+	f.IntentLocales = map[PageKind][]string{PageAlternatives: {"en-US"}, PageUninstall: {"en-US"}}
+	f.TroubleshootingIssues = map[string]int{"en-US": 3}
+	for _, kind := range []PageKind{PageAlternatives, PageUninstall, PageTroubleshooting} {
+		d := DecidePage(f, PageRef{Kind: kind, Locale: "en-US"}, Policy{IntentPagesEnabled: true})
+		require.Equal(t, IndexableRobots, d.Robots)
+		require.True(t, d.Announce)
+		require.False(t, d.InSitemap)
+	}
 }

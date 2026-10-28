@@ -1261,6 +1261,8 @@
         "bots": "Nomes dos rastreadores (User-agent)",
         "preview": "Prévia do robots.txt",
         "previewHint": "Igual à saída de produção; fora de produção o rastreamento do site inteiro fica bloqueado.",
+        "sitemapMinInstalls": "Sitemap em inglês: mínimo de instalações em 30 dias",
+        "sitemapNonEnglishTopN": "Sitemap em outros idiomas: N apps com mais instalações",
         "versionsSitemap": "Incluir as páginas de versões no sitemap",
         "versionsSitemapHint": "Quando ativado, só as páginas de versões com valor próprio entram no sitemap.",
         "openLocales": "Idiomas abertos para indexação",

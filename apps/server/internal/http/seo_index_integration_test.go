@@ -58,6 +58,8 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.NoError(t, st.ApplyCatalogBatch(ctx, mutations))
 	for _, sql := range []string{
 		`UPDATE packages SET is_font=true WHERE token='font-good'`,
+		`UPDATE packages SET installs_30d=50,rank_30d=1 WHERE token<>'no-summary'`,
+		`UPDATE packages SET rank_30d=2 WHERE token='no-summary'`,
 		`INSERT INTO package_meta(package_id,hidden) SELECT id,true FROM packages WHERE token='hidden-app'`,
 		// The 90-day rule paused both; only the deprecated one is gone from Homebrew.
 		`UPDATE packages SET stale_disabled=true WHERE token IN ('paused-app','paused-deprecated')`,
@@ -154,7 +156,7 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	}
 	require.Equal(t, "2025-03-18T10:00:00Z", lastmod["en-US"], "Homebrew commit, not the 2026-10-07 sync time")
 	require.Equal(t, "2025-04-01T00:00:00Z", lastmod["zh-CN"], "the Chinese text change")
-	require.Equal(t, []string{"font-good"}, keys(sitemap("fonts")))
+	require.Empty(t, sitemap("fonts"))
 	var good publicapi.PackageDetail
 	publicGet("/packages/cask/good-app", &good)
 	require.Equal(t, "2025-03-18T10:00:00Z", good.VersionCommittedAt.UTC().Format(time.RFC3339))

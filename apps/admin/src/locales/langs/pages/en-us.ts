@@ -912,6 +912,8 @@ const pages: PageMessages = {
       bots: 'Crawler names (User-agent)',
       preview: 'robots.txt preview',
       previewHint: 'Matches the production output; non-production sites disallow everything.',
+      sitemapMinInstalls: 'English sitemap: minimum installs in 30 days',
+      sitemapNonEnglishTopN: 'Non-English sitemap: top N apps by installs',
       versionsSitemap: 'Include version pages in the sitemap',
       versionsSitemapHint: 'When on, only version pages with standalone value are added to the sitemap.',
       openLocales: 'Languages open for indexing',

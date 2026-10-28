@@ -51,6 +51,8 @@ function blankSettings(): Settings {
       translationMode: 'shadow',
       translationLocales: [],
       versionsMinNotesChars: 300,
+      sitemapMinInstalls: 50,
+      sitemapNonEnglishTopN: 500,
       openLocales: [...LOCALES],
       intentPagesEnabled: false,
       detailsRedirect: false,
@@ -580,6 +582,26 @@ void load();
           </div>
         </NFormItem>
         <div class="grid grid-cols-1 gap-x-20px sm:grid-cols-2">
+          <NFormItem :label="text('sitemapMinInstalls')">
+            <NInputNumber
+              :value="draft.pages.sitemapMinInstalls ?? 50"
+              :min="1"
+              :precision="0"
+              class="w-160px"
+              :input-props="{ 'aria-label': text('sitemapMinInstalls') }"
+              @update:value="value => (draft.pages.sitemapMinInstalls = value ?? 50)"
+            />
+          </NFormItem>
+          <NFormItem :label="text('sitemapNonEnglishTopN')">
+            <NInputNumber
+              :value="draft.pages.sitemapNonEnglishTopN ?? 500"
+              :min="1"
+              :precision="0"
+              class="w-160px"
+              :input-props="{ 'aria-label': text('sitemapNonEnglishTopN') }"
+              @update:value="value => (draft.pages.sitemapNonEnglishTopN = value ?? 500)"
+            />
+          </NFormItem>
           <NFormItem :label="text('versionsSitemap')">
             <div>
               <NSwitch v-model:value="draft.pages.versionsSitemap" :aria-label="text('versionsSitemap')" />

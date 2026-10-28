@@ -1261,6 +1261,8 @@
         "bots": "クローラー名（User-agent）",
         "preview": "robots.txt のプレビュー",
         "previewHint": "本番環境の実際の出力と同じです。本番以外の環境ではサイト全体のクロールを禁止します。",
+        "sitemapMinInstalls": "英語サイトマップ：過去 30 日間の最低インストール数",
+        "sitemapNonEnglishTopN": "英語以外のサイトマップ：インストール数上位 N アプリ",
         "versionsSitemap": "バージョンのページを sitemap に含める",
         "versionsSitemapHint": "オンにすると、単独で価値のあるバージョンのページだけが sitemap に追加されます。",
         "openLocales": "インデックスを許可する言語",

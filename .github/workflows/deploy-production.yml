@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       sha: ${{ steps.source.outputs.sha }}
+      needed: ${{ steps.changes.outputs.needed }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -31,10 +32,15 @@ jobs:
       - run: node .github/scripts/require-ci.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      - id: changes
+        run: node .github/scripts/deployment-needed.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
   images:
     needs: source
+    if: needs.source.outputs.needed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -104,6 +110,7 @@ jobs:
           path: image-manifests/
   admin:
     needs: source
+    if: needs.source.outputs.needed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

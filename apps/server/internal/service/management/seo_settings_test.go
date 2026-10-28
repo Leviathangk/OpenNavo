@@ -156,3 +156,15 @@ func TestSEOSettingsCrawlerLocksAndDefaults(t *testing.T) {
 		require.NoError(t, err, bot)
 	}
 }
+
+func TestSitemapSettingsValidation(t *testing.T) {
+	s := store.DefaultSEOSettings()
+	s.Pages.SitemapMinInstalls, s.Pages.SitemapNonEnglishTopN = 0, 0
+	require.True(t, validateSEOSettings(&s))
+	require.Equal(t, 50, s.Pages.SitemapMinInstalls)
+	require.Equal(t, 500, s.Pages.SitemapNonEnglishTopN)
+	s.Pages.SitemapMinInstalls = -1
+	require.False(t, validateSEOSettings(&s))
+	s.Pages.SitemapMinInstalls, s.Pages.SitemapNonEnglishTopN = 10, -1
+	require.False(t, validateSEOSettings(&s))
+}

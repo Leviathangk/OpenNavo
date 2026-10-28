@@ -31,7 +31,7 @@ const GRID_FILTERED = {
 export const ROUTE_QUERY = {
   '/apps': GRID_FILTERED,
   '/categories/:slug': GRID_FILTERED,
-  '/recent': LIST,
+  '/recent': { ...LIST, noindexIf: ['page'], defaults: { page: '1' } },
   '/collections': LIST,
   '/authors/:slug': LIST,
   '/browse/:bucket': LIST,
@@ -82,7 +82,10 @@ const MATCHERS = (Object.keys(ROUTE_QUERY) as RouteQueryPattern[]).map(pattern =
 }));
 
 /** The contract of a page path (with or without a language prefix); unlisted routes take no parameters. */
-export function routeQueryRule(path: string): { pattern: RouteQueryPattern | null; rule: RouteQueryRule } {
+export function routeQueryRule(path: string): {
+  pattern: RouteQueryPattern | null;
+  rule: RouteQueryRule;
+} {
   const bare = withoutLocale(path.split('?', 1)[0] || '/');
   const match = MATCHERS.find(item => item.expression.test(bare));
   return match ? { pattern: match.pattern, rule: ROUTE_QUERY[match.pattern] } : { pattern: null, rule: NO_QUERY };

@@ -101,6 +101,15 @@ func validCrawlerRule(rule *store.SEOCrawlerRule) bool {
 // checked separately because it depends on stored ciphertexts.
 func validateSEOSettings(s *store.SEOSettings) bool {
 	// Older clients omit additive fields; preserve the safe rollout defaults.
+	if s.Pages.SitemapMinInstalls == 0 {
+		s.Pages.SitemapMinInstalls = store.DefaultSEOSettings().Pages.SitemapMinInstalls
+	}
+	if s.Pages.SitemapNonEnglishTopN == 0 {
+		s.Pages.SitemapNonEnglishTopN = store.DefaultSEOSettings().Pages.SitemapNonEnglishTopN
+	}
+	if s.Pages.SitemapMinInstalls < 1 || s.Pages.SitemapNonEnglishTopN < 1 {
+		return false
+	}
 	if s.Pages.TranslationMode == "" {
 		s.Pages.TranslationMode = "shadow"
 	}

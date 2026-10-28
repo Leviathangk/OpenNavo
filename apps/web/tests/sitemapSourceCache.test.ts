@@ -36,6 +36,7 @@ async function setup(
   vi.stubGlobal('useStorage', () => storage);
   const hooks: Record<string, Hook> = {};
   const fetch = vi.fn(async (url: string, options?: { query: { group: string; current: number; size: number } }) => {
+    if (url.endsWith('/browse')) return { data: { buckets: [{ key: 'a', pages: 2 }] } };
     if (url.endsWith('/sitemap/articles')) return { data: { articles: [], authors: [] } };
     const { group, current, size } = options!.query;
     const source = group === 'apps' ? records : fonts;
@@ -565,4 +566,15 @@ describe('sitemap storage availability', () => {
       labels.flatMap(label => LOCALES.map(locale => `${LOCALE_METADATA[locale].prefix}${labelPath(label)}`))
     );
   });
+});
+
+
+it('browse sitemap fetches only app directories and preserves pagination', async () => {
+  const { bucket, fetch } = await setup([]);
+  const urls = await bucket('browse');
+  expect(urls.some(url => url.loc.includes('/browse/a?page=2'))).toBe(true);
+  expect(urls.some(url => url.loc.includes('/browse/fonts/'))).toBe(false);
+  const calls = fetch.mock.calls.filter(([url]) => url.endsWith('/browse'));
+  expect(calls.length).toBeGreaterThan(0);
+  for (const [, options] of calls) expect(options?.query).toMatchObject({ kind: 'apps' });
 });

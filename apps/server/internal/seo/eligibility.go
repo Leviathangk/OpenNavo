@@ -54,14 +54,18 @@ type Facts struct {
 	Version               string
 	HasRequirements       bool
 	Installs30d           int
+	Rank30d               int // stable installs_30d rank; zero means unranked
+	IsFont                bool
 	Override              string
 	FirstSeenAt           time.Time
 	SourceLocale          string
 	PublishedLocales      []string // locales whose summary is published (source, machine or manual)
 }
 
-// Policy mirrors the admin settings pages.indexPolicy.
+// Policy mirrors the admin pages settings, including pages.indexPolicy.
 type Policy struct {
+	SitemapMinInstalls    int // <= 0 uses DefaultSitemapMinInstalls
+	SitemapNonEnglishTopN int // <= 0 uses DefaultSitemapNonEnglishTopN
 	IntentPagesEnabled    bool
 	TranslationLocales    []string
 	TranslationMode       string
@@ -177,4 +181,28 @@ func Decide(f Facts, p Policy) Decision {
 		d.Locales = []string{}
 	}
 	return d
+}
+
+const (
+	DefaultSitemapMinInstalls    = 50
+	DefaultSitemapNonEnglishTopN = 500
+)
+
+// SitemapAppAllowed only limits sitemap inclusion, never robots, hreflang or announcements.
+// Overrides bypass popularity, not page-level exclusions such as fonts and closed locales.
+func (p Policy) SitemapAppAllowed(f Facts, locale string) bool {
+	if f.Override == OverrideIndex {
+		return true
+	}
+	minimum, top := p.SitemapMinInstalls, p.SitemapNonEnglishTopN
+	if minimum <= 0 {
+		minimum = DefaultSitemapMinInstalls
+	}
+	if top <= 0 {
+		top = DefaultSitemapNonEnglishTopN
+	}
+	if locale == "en-US" {
+		return f.Installs30d >= minimum
+	}
+	return f.Rank30d > 0 && f.Rank30d <= top
 }

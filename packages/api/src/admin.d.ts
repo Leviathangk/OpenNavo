@@ -22446,6 +22446,16 @@ export interface components {
             translationMode: "shadow" | "enforce";
             /** @description Locales to enforce; empty means all locales. */
             translationLocales?: components["schemas"]["Locale"][];
+            /**
+             * @description Minimum installs30d for English app sitemap URLs; does not change indexing.
+             * @default 50
+             */
+            sitemapMinInstalls: number;
+            /**
+             * @description Maximum installs30d rank for non-English app sitemap URLs; unranked apps are excluded. Index overrides bypass popularity.
+             * @default 500
+             */
+            sitemapNonEnglishTopN: number;
             /** @default 300 */
             versionsMinNotesChars: number;
             /**
