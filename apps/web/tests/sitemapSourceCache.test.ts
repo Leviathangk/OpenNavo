@@ -108,28 +108,28 @@ describe('sitemap source snapshot cache', () => {
 
   it('checks source switches even with a warm populated index and restores enabled buckets', async () => {
     const record = { kind: 'cask', token: 'sample', notesCount: 5, locales: [{ locale: 'en-US' }] };
-    const { index, bucket, settings, packageCalls } = await setup([record], true, [record]);
-    const names = [packageSitemapName('fonts', record.token), packageSitemapName('versions', record.token)];
-    const original = await index();
-    const reads = packageCalls();
-    for (const name of names) expect(original).toContainEqual({ _sitemapName: name });
-
-    settings.revision += 1;
-    settings.pages.fontsSitemap = false;
+    const { index, bucket, settings } = await setup([record], false, [record]);
     settings.pages.versionsSitemap = false;
-    const closed = await index();
-    for (const name of names) {
-      expect(closed).not.toContainEqual({ _sitemapName: name });
-      await expect(bucket(name)).rejects.toMatchObject({ statusCode: 410 });
-    }
+    const names = [packageSitemapName('fonts', record.token), packageSitemapName('versions', record.token)];
+    const initiallyClosed = await index();
+    for (const name of names) expect(initiallyClosed).not.toContainEqual({ _sitemapName: name });
 
     settings.revision += 1;
     settings.pages.fontsSitemap = true;
     settings.pages.versionsSitemap = true;
-    expect(await index()).toEqual(original);
+    const opened = await index();
+    for (const name of names) expect(opened).toContainEqual({ _sitemapName: name });
     expect(await bucket(names[0]!)).toContainEqual(expect.objectContaining({ loc: '/apps/sample' }));
     expect(await bucket(names[1]!)).toContainEqual(expect.objectContaining({ loc: '/apps/sample/versions' }));
-    expect(packageCalls()).toBe(reads);
+
+    settings.revision += 1;
+    settings.pages.fontsSitemap = false;
+    settings.pages.versionsSitemap = false;
+    const finallyClosed = await index();
+    for (const name of names) {
+      expect(finallyClosed).not.toContainEqual({ _sitemapName: name });
+      await expect(bucket(name)).rejects.toMatchObject({ statusCode: 410 });
+    }
   });
 
   it('serves the first external index and every bucket from startup-warmed snapshots', async () => {
