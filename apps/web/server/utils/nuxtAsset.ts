@@ -6,7 +6,8 @@ export const NUXT_ASSET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 /** Resolve one ordinary file directly under the runtime _nuxt directory. */
 export async function resolveNuxtAsset(root: string, path: string) {
-  const match = /^\/_nuxt\/([^/]+)$/.exec(path);
+  const pathname = path.split(/[?#]/, 1)[0] ?? '';
+  const match = /^\/_nuxt\/([^/]+)$/.exec(pathname);
   const name = match?.[1];
   if (!name || !ASSET_NAME.test(name)) return null;
   const candidate = join(root, name);

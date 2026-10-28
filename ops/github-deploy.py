@@ -53,10 +53,52 @@ RELEASE_RETENTION = 5
 WEB_ASSET_RETENTION_SECONDS = 7 * 24 * 60 * 60
 
 
-def merge_web_assets(current, destination, now=None):
+def web_asset_paths(directory):
+    return sorted(path.relative_to(directory).as_posix()
+                  for path in directory.rglob('*') if path.is_file())
+
+
+def previous_web_asset_paths(destination):
+    """Read the previous release's current asset list, with a legacy fallback.
+
+    Releases created before the manifest was added mark current assets with the
+    newest mtime. That lets the first deployment after this change preserve the
+    live release while leaving older retained assets on their original deadline.
+    """
+    manifest = destination.parent / 'manifest.json'
+    try:
+        data = json.loads(manifest.read_text())
+        assets = data.get('web_assets') if isinstance(data, dict) else None
+    except (OSError, TypeError, ValueError):
+        assets = None
+    if isinstance(assets, list):
+        return {asset for asset in assets
+                if isinstance(asset, str) and asset and not PurePosixPath(asset).is_absolute()
+                and '..' not in PurePosixPath(asset).parts
+                and PurePosixPath(asset).as_posix() == asset}
+    files = list(destination.rglob('*'))
+    files = [path for path in files if path.is_file()]
+    if not files:
+        return set()
+    newest = max(path.stat().st_mtime for path in files)
+    return {path.relative_to(destination).as_posix()
+            for path in files if path.stat().st_mtime == newest}
+
+
+def merge_web_assets(current, destination, now=None, previous_current=None):
     """Keep old fingerprinted assets for seven days and mark current assets as fresh."""
     timestamp = time.time() if now is None else now
     destination.mkdir(parents=True, exist_ok=True)
+    current_paths = {source.relative_to(current).as_posix()
+                     for source in current.rglob('*') if source.is_file()}
+    if previous_current is None:
+        previous_current = previous_web_asset_paths(destination)
+    # Only the assets that were current in the release being replaced receive a
+    # new retention deadline. Older retained assets keep their original mtime.
+    for relative in set(previous_current) - current_paths:
+        target = destination / relative
+        if target.is_file():
+            os.utime(target, (timestamp, timestamp))
     for source in current.rglob('*'):
         if not source.is_file():
             continue
@@ -207,6 +249,7 @@ class Deployment:
         self.env = self.root / 'current-release.env'
         self.services = {kind: kind + '_' + self.release.replace('-', '_') for kind in ['api', 'web', 'mcp', 'admin']}
         self.aliases = {}
+        self.current_web_assets = []
 
     def compose(self, *args, candidate=True):
         directory = self.directory if candidate else self.root
@@ -294,12 +337,15 @@ class Deployment:
                     if not target.exists():
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copyfile(source, target)
-        shutil.copytree(mount_source(old_web, '/app/.output/public/_nuxt'), self.directory / 'web-assets')
+        old_web_assets = mount_source(old_web, '/app/.output/public/_nuxt')
+        shutil.copytree(old_web_assets, self.directory / 'web-assets')
         container = command(['docker', 'create', self.payload['images']['web']])
         try:
             with tempfile.TemporaryDirectory(dir=self.directory) as incoming:
                 command(['docker', 'cp', container + ':/app/.output/public/_nuxt/.', incoming])
-                merge_web_assets(Path(incoming), self.directory / 'web-assets')
+                self.current_web_assets = web_asset_paths(Path(incoming))
+                merge_web_assets(Path(incoming), self.directory / 'web-assets',
+                                 previous_current=previous_web_asset_paths(old_web_assets))
         finally:
             command(['docker', 'rm', container])
         # Release directories are private; bind-mounted public assets must be readable by container users.
@@ -525,7 +571,9 @@ class Deployment:
             raise
         previous = {key: value for key, value in self.state.items() if key != 'previous'}
         write_private(self.state_path, {'sha': self.payload['sha'], 'release': self.release, 'services': self.services, 'previous': previous})
-        write_private(self.directory / 'manifest.json', {key: value for key, value in self.payload.items() if key not in ['admin_archive', 'registry_token']})
+        manifest = {key: value for key, value in self.payload.items() if key not in ['admin_archive', 'registry_token']}
+        manifest['web_assets'] = getattr(self, 'current_web_assets', [])
+        write_private(self.directory / 'manifest.json', manifest)
         print('Production deployed and verified: ' + self.payload['sha'], flush=True)
         # Cleanup failure must not roll back a verified release; a retry resumes cleanup.
         with phase('Cleanup'):

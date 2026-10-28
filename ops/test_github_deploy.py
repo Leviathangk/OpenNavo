@@ -73,11 +73,61 @@ class DeployTests(unittest.TestCase):
             os.utime(previous / 'stale.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS - 1, now - deploy.WEB_ASSET_RETENTION_SECONDS - 1))
             shutil.copytree(previous, destination, dirs_exist_ok=True)
             (current / 'new.js').write_text('new')
-            deploy.merge_web_assets(current, destination, now=now)
+            deploy.merge_web_assets(current, destination, now=now, previous_current={'old.js'})
             self.assertTrue((destination / 'old.js').exists())
             self.assertTrue((destination / 'new.js').exists())
             self.assertFalse((destination / 'stale.js').exists())
             self.assertEqual((destination / 'new.js').stat().st_mtime, now)
+
+    def test_merge_web_assets_refreshes_the_previous_live_release_after_eight_days(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            current, destination = (root / name for name in ['current', 'destination'])
+            current.mkdir(); destination.mkdir()
+            now = deploy.WEB_ASSET_RETENTION_SECONDS * 2
+            (destination / 'previous.js').write_text('previous')
+            (destination / 'earlier.js').write_text('earlier')
+            os.utime(destination / 'previous.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS - 86400,) * 2)
+            os.utime(destination / 'earlier.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS * 2,) * 2)
+            (current / 'new.js').write_text('new')
+
+            deploy.merge_web_assets(current, destination, now=now, previous_current={'previous.js'})
+
+            self.assertTrue((destination / 'previous.js').exists())
+            self.assertEqual((destination / 'previous.js').stat().st_mtime, now)
+            self.assertTrue((destination / 'new.js').exists())
+            self.assertFalse((destination / 'earlier.js').exists())
+
+    def test_merge_web_assets_does_not_refresh_older_retained_assets(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            current, destination = (root / name for name in ['current', 'destination'])
+            current.mkdir(); destination.mkdir()
+            now = deploy.WEB_ASSET_RETENTION_SECONDS + 100
+            (destination / 'live.js').write_text('live')
+            (destination / 'retained.js').write_text('retained')
+            retained_mtime = now - deploy.WEB_ASSET_RETENTION_SECONDS - 1
+            os.utime(destination / 'live.js', (now - 86400,) * 2)
+            os.utime(destination / 'retained.js', (retained_mtime,) * 2)
+            (current / 'new.js').write_text('new')
+
+            deploy.merge_web_assets(current, destination, now=now, previous_current={'live.js'})
+
+            self.assertTrue((destination / 'live.js').exists())
+            self.assertFalse((destination / 'retained.js').exists())
+
+    def test_previous_web_asset_paths_uses_the_release_manifest(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / 'release'
+            destination = release / 'web-assets'
+            destination.mkdir(parents=True)
+            (destination / 'live.js').write_text('live')
+            (destination / 'retained.js').write_text('retained')
+            os.utime(destination / 'live.js', (1, 1))
+            os.utime(destination / 'retained.js', (2, 2))
+            (release / 'manifest.json').write_text(json.dumps({'web_assets': ['live.js']}))
+
+            self.assertEqual(deploy.previous_web_asset_paths(destination), {'live.js'})
 
     def test_prepare_moves_cache_notifier_to_new_web_and_preserves_rollback(self):
         for use_alias in [False, True]:
