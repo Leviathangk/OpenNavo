@@ -1,9 +1,10 @@
 package store
 
 import (
+	"testing"
+
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestIndexFactsCarryFontAndPopularity(t *testing.T) {

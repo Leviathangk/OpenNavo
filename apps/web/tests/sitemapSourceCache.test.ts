@@ -596,7 +596,6 @@ describe('sitemap storage availability', () => {
   });
 });
 
-
 it('browse sitemap fetches only app directories and preserves pagination', async () => {
   const { bucket, fetch } = await setup([]);
   const urls = await bucket('browse');

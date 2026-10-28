@@ -16,8 +16,9 @@ import (
 func TestGEOPageDecisionPublishedSnapshotsAndReadiness(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	ctx := context.Background()
-	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,source_locale)
- VALUES(901,'cask','geo-fixture-29','geo-fixture-29','homebrew/cask','Fixture','2.0.0','2.0.0','{}','fixture','en-US')`).Error)
+	// Qualify for both English and non-English sitemap inclusion under 72a38e4's popularity policy.
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,source_locale,installs_30d,rank_30d)
+ VALUES(901,'cask','geo-fixture-29','geo-fixture-29','homebrew/cask','Fixture','2.0.0','2.0.0','{}','fixture','en-US',50,500)`).Error)
 	for _, locale := range seo.Locales {
 		require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,source_locale,summary,description,status,source_hash,source)
  VALUES(901,?,'en-US','Useful fixture summary','Published fixture description H1','manual',repeat('a',64),'human')`, locale).Error)
@@ -60,6 +61,16 @@ func TestGEOPageDecisionPublishedSnapshotsAndReadiness(t *testing.T) {
 	require.Equal(t, "Published fixture description H1", french.Description)
 	require.Equal(t, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", french.SourceHash)
 	assertLocales(after)
+	// Falling below either popularity boundary only removes sitemap membership, preserving published snapshots.
+	require.NoError(t, st.DB.Exec(`UPDATE packages SET installs_30d=49,rank_30d=501 WHERE id=901`).Error)
+	lessPopular := read()
+	for _, locale := range seo.Locales {
+		ref := seo.PageRef{Kind: seo.PageOverview, Locale: locale}
+		want := seo.DecidePage(after, ref, policy)
+		want.InSitemap = false
+		require.Equal(t, want, seo.DecidePage(lessPopular, ref, policy), locale)
+	}
+	require.NoError(t, st.DB.Exec(`UPDATE packages SET installs_30d=50,rank_30d=500 WHERE id=901`).Error)
 
 	// New-language readiness needs a published status, both texts and a valid snapshot hash.
 	require.NoError(t, st.DB.Exec(`UPDATE package_i18n SET description='' WHERE package_id=901 AND locale='de-DE';
