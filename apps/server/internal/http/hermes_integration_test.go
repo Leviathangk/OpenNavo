@@ -139,8 +139,40 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 		proof := fixture.evidence("article:new:agent-guide")
 		articleBody, err := json.Marshal(map[string]any{"slug": "agent-guide", "sourceLocale": "en-US", "type": "tutorial", "title": "Mac application guide.", "summary": "Mac application guide.", "bodyMarkdown": "Follow these steps on your Mac.", "sources": []any{map[string]any{"title": "Vendor guide", "url": executionFixtureURL}}, "target": map[string]any{"entityKey": "topic:agent-guide", "intent": "topic"}, "claims": []any{map[string]any{"text": "Mac application guide.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}, map[string]any{"text": "Follow these steps on your Mac.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}}})
 		require.NoError(t, err)
+		articleRows := func() map[string]int64 {
+			t.Helper()
+			counts := map[string]int64{}
+			for _, table := range []string{"articles", "article_revisions", "article_events"} {
+				var count int64
+				require.NoError(t, st.DB.Table(table).Count(&count).Error)
+				counts[table] = count
+			}
+			return counts
+		}
+		beforePreview := articleRows()
+		var preview struct {
+			DryRun       bool
+			Mode         string
+			AffectedURLs []string `json:"affectedUrls"`
+			Changes      []struct {
+				Action string
+				Before any
+				After  struct{ Slug string }
+			}
+		}
+		require.NoError(t, json.Unmarshal(call("POST", "/articles?dryRun=true", string(articleBody), "0000", true), &preview))
+		require.True(t, preview.DryRun)
+		require.Equal(t, "preview", preview.Mode)
+		require.Empty(t, preview.AffectedURLs, "a new draft has no public pages")
+		require.Len(t, preview.Changes, 1)
+		require.Equal(t, "create", preview.Changes[0].Action)
+		require.Nil(t, preview.Changes[0].Before)
+		require.Equal(t, "agent-guide", preview.Changes[0].After.Slug)
+		require.Equal(t, beforePreview, articleRows(), "a preview must not persist articles, revisions or events")
+		// The same slug remains available for a real creation after previewing it.
 		raw := call("POST", "/articles", string(articleBody), "0000", true)
 		require.NoError(t, json.Unmarshal(raw, &article))
+		require.Positive(t, article.ID)
 		path := "/articles/" + strconv.FormatInt(article.ID, 10)
 		change := func(method, suffix string, fields map[string]any, expected string) json.RawMessage {
 			t.Helper()
@@ -149,6 +181,9 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			require.NoError(t, err)
 			return call(method, path+suffix, string(body), expected, true)
 		}
+		require.NoError(t, json.Unmarshal(change("PUT", "?dryRun=true", map[string]any{"title": "Preview only"}, "0000"), &preview))
+		require.True(t, preview.DryRun)
+		require.ElementsMatch(t, []string{cfg.WebBaseURL + "/articles/agent-guide", cfg.WebBaseURL + "/articles"}, preview.AffectedURLs, "existing article previews retain their affected pages")
 		raw = change("POST", "/submit", map[string]any{}, "0000")
 		require.NoError(t, json.Unmarshal(raw, &article))
 		change("POST", "/publish", map[string]any{}, "1004")

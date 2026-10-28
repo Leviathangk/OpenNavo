@@ -13,6 +13,15 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestArticlePathsMissingArticle(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	for _, id := range []int64{0, 1} {
+		paths, err := st.ArticlePaths(context.Background(), id)
+		require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+		require.Nil(t, paths)
+	}
+}
+
 func TestManualArticleContentRefreshesPages(t *testing.T) {
 	st := testutil.NewStore(t)
 	ctx := context.Background()
