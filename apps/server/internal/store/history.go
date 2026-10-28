@@ -243,6 +243,11 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 	if len(tables) == 0 {
 		return domain.RejectedDetail("history_entity_invalid", ref.Entity)
 	}
+	if ref.Entity == "release" {
+		if err := validateReleaseNotesHistory(state); err != nil {
+			return err
+		}
+	}
 	current, err := s.HistorySnapshot(ctx, ref)
 	if err != nil {
 		return err
