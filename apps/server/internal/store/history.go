@@ -247,6 +247,11 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 	if err != nil {
 		return err
 	}
+	if ref.Entity == "release" && state != nil {
+		if err := validateReleaseNotesHistory(current, state); err != nil {
+			return err
+		}
+	}
 	for i := len(tables) - 1; i >= 1; i-- {
 		t := tables[i]
 		if err := s.DB.WithContext(ctx).Exec("DELETE FROM "+t.Name+" WHERE "+t.Where, t.Args...).Error; err != nil {

@@ -111,6 +111,11 @@ func (s *Service) upsertNotes(ctx context.Context, in Input) (any, error) {
 	if in.Version == "" {
 		return nil, domain.Rejected("field_required:version")
 	}
+	if !boolean(in.Body, "clear") {
+		if err := store.ValidateReleaseNotes(in.Body); err != nil {
+			return nil, err
+		}
+	}
 	return s.write(ctx, in, "UpsertReleaseNotes", "release", func(st *store.Store) (any, error) {
 		// A full build version owns its notes; a base version writes the note its builds share.
 		// Each write and clear stays inside its own scope, so older builds keep their notes.
