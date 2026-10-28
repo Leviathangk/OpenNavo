@@ -518,13 +518,13 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
   browse: async () => {
     const languages = new Map<string, Locale[]>();
     for (const locale of await openLocales())
-      for (const kind of ['apps', 'fonts'] as const) {
+      for (const kind of ['apps'] as const) {
         const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
           query: { kind, locale }
         });
         for (const bucket of root.data.buckets)
           for (let page = 1; page <= bucket.pages; page += 1) {
-            const path = `/browse/${kind === 'fonts' ? 'fonts/' : ''}${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
+            const path = `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
             languages.set(path, [...(languages.get(path) ?? []), locale]);
           }
       }

@@ -24,7 +24,7 @@ type IndexRow struct {
 	HasSubstantiveContent, HasDependencyContent bool
 	Hidden, Disabled, HasRequirements, IsFont   bool
 	Deprecated, Stale                           bool
-	Installs30d, NotesCount                     int
+	Installs30d, NotesCount, Rank30d            int
 	FirstSeenAt, UpdatedAt                      time.Time
 	Override                                    string
 	OverrideReason                              *string
@@ -37,7 +37,7 @@ type IndexRow struct {
 	TextUpdatedAt map[string]time.Time
 }
 
-const indexOverviewColumns = `p.id,p.kind,p.token,p.name,p.version,p.source_locale,p.installs_30d,p.first_seen_at,p.updated_at,p.is_font,
+const indexOverviewColumns = `p.id,p.kind,p.token,p.name,p.version,p.source_locale,p.installs_30d AS installs30d,COALESCE(p.rank_30d,0) AS rank30d,p.first_seen_at,p.updated_at,p.is_font,
  COALESCE(NULLIF(btrim(si.summary),''),p.desc_en,'') AS summary,
  COALESCE(si.description,'') AS description,
  EXISTS(SELECT 1 FROM package_screenshots sc WHERE sc.package_id=p.id) AS has_substantive_content,
@@ -77,7 +77,7 @@ type indexRowScan struct {
 	HasSubstantiveContent, HasDependencyContent bool
 	Hidden, Disabled, HasRequirements, IsFont   bool
 	Deprecated, Stale                           bool
-	Installs30d, NotesCount                     int
+	Installs30d, NotesCount, Rank30d            int
 	FirstSeenAt, UpdatedAt                      time.Time
 	Override                                    string
 	OverrideReason                              *string
@@ -110,7 +110,7 @@ func (s *Store) indexRowsQuery(ctx context.Context, query, condition, tail strin
 			Description: row.Description, HasSubstantiveContent: row.HasSubstantiveContent, HasDependencyContent: row.HasDependencyContent,
 			SourceLocale: row.SourceLocale, Summary: row.Summary, Hidden: row.Hidden, Disabled: row.Disabled,
 			Deprecated: row.Deprecated, Stale: row.Stale,
-			HasRequirements: row.HasRequirements, IsFont: row.IsFont, Installs30d: row.Installs30d, NotesCount: row.NotesCount,
+			HasRequirements: row.HasRequirements, IsFont: row.IsFont, Installs30d: row.Installs30d, Rank30d: row.Rank30d, NotesCount: row.NotesCount,
 			FirstSeenAt: row.FirstSeenAt, UpdatedAt: row.UpdatedAt, Override: row.Override, OverrideReason: row.OverrideReason, OverrideAt: row.OverrideAt,
 			CommittedAt: row.CommittedAt, ScreenshotsAt: row.ScreenshotsAt, TextUpdatedAt: map[string]time.Time{},
 		}
@@ -137,7 +137,7 @@ func (r IndexRow) Facts() seo.Facts {
 		ReadyLocales: r.ReadyLocales, NotesPages: r.NotesPages, HasDependencyContent: r.HasDependencyContent,
 		Hidden: r.Hidden, Disabled: r.Disabled, Deprecated: r.Deprecated, Stale: r.Stale,
 		Name: r.Name, Token: r.Token, Summary: r.Summary, Version: r.Version,
-		HasRequirements: r.HasRequirements, Installs30d: r.Installs30d, Override: r.Override, FirstSeenAt: r.FirstSeenAt,
+		IsFont: r.IsFont || strings.HasPrefix(r.Token, "font-"), Rank30d: r.Rank30d, HasRequirements: r.HasRequirements, Installs30d: r.Installs30d, Override: r.Override, FirstSeenAt: r.FirstSeenAt,
 		SourceLocale: r.SourceLocale, PublishedLocales: r.PublishedLocales,
 	}
 }
@@ -214,5 +214,5 @@ func (s *Store) IndexPolicy(ctx context.Context) (seo.Policy, error) {
 	}
 	policy := row.Settings.Pages.IndexPolicy
 	since, _ := time.Parse(time.RFC3339, policy.Since)
-	return seo.Policy{IntentPagesEnabled: row.Settings.Pages.IntentPagesEnabled, Mode: policy.Mode, Scope: policy.Scope, Since: since, VersionsSitemap: row.Settings.Pages.VersionsSitemap, TranslationMode: row.Settings.Pages.TranslationMode, TranslationLocales: row.Settings.Pages.TranslationLocales, VersionsMinNotesChars: row.Settings.Pages.VersionsMinNotesChars, OpenLocales: row.Settings.Pages.OpenLocales}, nil
+	return seo.Policy{IntentPagesEnabled: row.Settings.Pages.IntentPagesEnabled, SitemapMinInstalls: row.Settings.Pages.SitemapMinInstalls, SitemapNonEnglishTopN: row.Settings.Pages.SitemapNonEnglishTopN, Mode: policy.Mode, Scope: policy.Scope, Since: since, VersionsSitemap: row.Settings.Pages.VersionsSitemap, TranslationMode: row.Settings.Pages.TranslationMode, TranslationLocales: row.Settings.Pages.TranslationLocales, VersionsMinNotesChars: row.Settings.Pages.VersionsMinNotesChars, OpenLocales: row.Settings.Pages.OpenLocales}, nil
 }

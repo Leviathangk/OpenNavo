@@ -233,3 +233,11 @@ func TestRefreshOnlyPlansNeverAnnounceAndContentOutranksBackfill(t *testing.T) {
 	require.False(t, content.Merge(backfill).BackfillURLs[url])
 	require.True(t, backfill.Merge(backfill).BackfillURLs[url])
 }
+
+func TestFontChangesRefreshButNeverAnnounce(t *testing.T) {
+	row := indexRow(1, "font-example")
+	row.IsFont = true
+	plan := BuildPlan([]store.URLChange{{PackageID: 1, Token: row.Token, Reason: "content"}}, map[int64]store.URLChange{1: {Token: row.Token}}, map[int64]store.IndexRow{1: row}, seo.Policy{}, "https://site.example")
+	require.Empty(t, plan.IndexNowURLs)
+	require.Contains(t, plan.Paths, "/apps/font-example")
+}

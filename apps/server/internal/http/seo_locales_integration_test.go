@@ -52,6 +52,7 @@ func TestClosedLocalesAndDependencyTabsStayOutOfTheIndex(t *testing.T) {
 	languages, err := json.Marshal(seo.Locales)
 	require.NoError(t, err)
 	for _, sql := range []string{
+		`UPDATE packages SET installs_30d=50,rank_30d=1`,
 		`UPDATE packages SET dependencies='{"dependsOn":{"cask":["helper-app"]}}' WHERE token='open-app'`,
 		// Ready text in every language, so only the open list keeps a language out.
 		`INSERT INTO package_i18n(package_id,locale,display_name,summary,description,status,source,source_locale,source_hash)

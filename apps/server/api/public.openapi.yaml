@@ -16099,6 +16099,16 @@ components:
               description: Locales to enforce; empty means all locales.
               items:
                 $ref: '#/components/schemas/Locale'
+            sitemapMinInstalls:
+              type: integer
+              minimum: 1
+              default: 50
+              description: Minimum installs30d for English app sitemap URLs; does not change indexing.
+            sitemapNonEnglishTopN:
+              type: integer
+              minimum: 1
+              default: 500
+              description: Maximum installs30d rank for non-English app sitemap URLs; unranked apps are excluded. Index overrides bypass popularity.
             versionsMinNotesChars:
               type: integer
               minimum: 1

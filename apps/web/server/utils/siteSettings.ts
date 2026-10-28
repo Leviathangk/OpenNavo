@@ -30,6 +30,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     indexPolicy: { mode: 'shadow', scope: 'new', since: '' },
     translationMode: 'shadow',
     versionsMinNotesChars: 300,
+    sitemapMinInstalls: 50,
+    sitemapNonEnglishTopN: 500,
     // Non-entity pages open for indexing (L1): the six app languages until the new ones are ready.
     openLocales: [...LOCALES],
     intentPagesEnabled: false,

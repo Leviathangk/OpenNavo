@@ -8,6 +8,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/seo"
 )
 
 // SEO crawler classes that admins may tune. Search engines and user-requested
@@ -63,6 +64,8 @@ type SEOSettings struct {
 			// Since is set by the server when enforcement first covers new apps (RFC 3339).
 			Since string `json:"since"`
 		} `json:"indexPolicy"`
+		SitemapMinInstalls    int      `json:"sitemapMinInstalls"`
+		SitemapNonEnglishTopN int      `json:"sitemapNonEnglishTopN"`
 		VersionsSitemap       bool     `json:"versionsSitemap"`
 		TranslationMode       string   `json:"translationMode"`
 		TranslationLocales    []string `json:"translationLocales"`
@@ -96,6 +99,8 @@ func DefaultSEOSettings() SEOSettings {
 	s.Pages.TranslationMode = "shadow"
 	s.Pages.TranslationLocales = []string{}
 	s.Pages.VersionsMinNotesChars = 300
+	s.Pages.SitemapMinInstalls = seo.DefaultSitemapMinInstalls
+	s.Pages.SitemapNonEnglishTopN = seo.DefaultSitemapNonEnglishTopN
 	s.Pages.TitleTemplate = "new"
 	s.Pages.IndexPolicy.Mode = "shadow"
 	s.Pages.IndexPolicy.Scope = "new"

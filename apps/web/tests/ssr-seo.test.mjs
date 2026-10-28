@@ -1717,6 +1717,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     }
     const payload = await fetch(`${origin}/ja/apps/plus-app%2B%2B/versions/_payload.json`);
     assert.equal(payload.status, 200);
+    assert.equal(payload.headers.get('x-robots-tag'), 'noindex');
     for (const token of ['plus-app%252B%252B', 'bad%20token', 'bad%2Ftoken', 'bad%ZZ']) {
       assert.equal((await fetch(`${origin}/apps/${token}`)).status, 404, token);
     }
@@ -2601,6 +2602,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(/aria-current="page"[^>]*href="\/recent"|href="\/recent"[^>]*aria-current="page"/.test(first.html));
     const second = await page('/zh/recent?page=2');
     assert.equal(second.status, 200);
+    assert.match(second.html, /<meta[^>]*name="robots"[^>]*content="noindex, follow"/);
     assert.match(second.html, /<title>最近更新的 Mac App · 第 2 页 · OpenNavo<\/title>/);
     assert.equal(canonical(second.html), 'https://example.test/zh/recent?page=2', 'page 2 is its own canonical');
     assert.equal(appLink(second.html).pathname, '/zh/apps/ordinary-app');
@@ -2796,9 +2798,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       );
       const target = canonical(sized.html);
       assert.equal(target, `https://example.test${path}?page=2`);
-      indexed(sized, path);
+      const checkIndexing = path.endsWith('/recent') ? unindexed : indexed;
+      checkIndexing(sized, path);
       assert.equal((await get(target.replace('https://example.test', ''))).status, 200, target);
-      indexed(await get(`${path}?page=2`), `${path}?page=2`);
+      checkIndexing(await get(`${path}?page=2`), `${path}?page=2`);
       assert.equal((await get(`${path}?page=4`)).status, 404, path);
       assert.equal((await get(`${path}?page=7&size=12`)).status, 404, path);
       const ogUrl = /<meta[^>]*property="og:url"[^>]*content="([^"]+)"/.exec(sized.html)?.[1]?.replaceAll('&amp;', '&');

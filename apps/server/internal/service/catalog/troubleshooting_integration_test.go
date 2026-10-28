@@ -24,8 +24,8 @@ func TestTroubleshootingDetailSitemapAndNotificationsAgree(t *testing.T) {
 	st := testutil.NewFactsStore(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
-	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en)
- VALUES(901,'cask','issue-fixture','issue-fixture','homebrew/cask','Issue Fixture','1','1','{}','fixture','Useful fixture application')`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,installs_30d,rank_30d)
+ VALUES(901,'cask','issue-fixture','issue-fixture','homebrew/cask','Issue Fixture','1','1','{}','fixture','Useful fixture application',50,1)`).Error)
 	// Every language open for indexing (no list), so the issue rules alone decide until the list closes some.
 	openLocales := func(list string) {
 		t.Helper()

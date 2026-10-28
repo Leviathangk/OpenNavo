@@ -865,6 +865,8 @@ const pages = {
       bots: '爬虫名称（User-agent）',
       preview: 'robots.txt 预览',
       previewHint: '与生产环境的实际输出一致；非生产环境整站禁止抓取。',
+      sitemapMinInstalls: '英文 sitemap：近 30 天最低安装量',
+      sitemapNonEnglishTopN: '非英文 sitemap：安装量排名前 N 个应用',
       versionsSitemap: '版本页进入 sitemap',
       versionsSitemapHint: '开启后，只有具备独立价值的版本页才会加入 sitemap。',
       openLocales: '开放收录的语言',

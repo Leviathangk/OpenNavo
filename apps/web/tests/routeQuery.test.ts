@@ -48,11 +48,14 @@ describe('Route query contract (S4)', () => {
     const indexed = [
       '/apps?sort=popular',
       '/apps?disabled=0',
-      '/recent?page=2',
+      '/recent?page=1',
+      '/categories/utilities?page=2',
       '/rankings?period=30d',
       '/download?sort=name'
     ];
     const variants = [
+      '/recent?page=2',
+      '/zh/recent?page=6',
       '/apps?sort=name',
       '/zh/apps?disabled=1',
       '/categories/utilities?sort=updated',
