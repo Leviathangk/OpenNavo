@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SITEMAP_WARMUP_PATHS, warmSitemaps } from '../server/utils/sitemapWarmup';
 
 beforeEach(() => {
-  vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: true } }));
+  vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: true, versionsSitemap: true } }));
   vi.stubEnv('OPENNAVO_SITEMAP_WARMUP', 'true');
   vi.stubGlobal(
     'fetch',
@@ -33,7 +33,7 @@ describe('sitemap startup warmup', () => {
     let ready = false;
     const settings = vi.fn(async () => {
       expect(ready).toBe(true);
-      return { pages: { fontsSitemap: true } };
+      return { pages: { fontsSitemap: true, versionsSitemap: true } };
     });
     vi.stubGlobal('getSiteSettings', settings);
     vi.stubGlobal(
@@ -67,7 +67,7 @@ describe('sitemap startup warmup', () => {
   });
 
   it('skips all font shards when the site setting is disabled', async () => {
-    vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: false } }));
+    vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: false, versionsSitemap: true } }));
     vi.useFakeTimers();
     vi.stubGlobal('useRuntimeConfig', () => ({
       loadShed: LOAD_SHED_DEFAULTS,
@@ -81,6 +81,21 @@ describe('sitemap startup warmup', () => {
     await vi.runAllTimersAsync();
     expect(localFetch.mock.calls.map(([path]) => path)).toEqual(
       SITEMAP_WARMUP_PATHS.filter(path => !path.includes('/fonts-bucket-'))
+    );
+    expect(localFetch).toHaveBeenCalledTimes(17);
+  });
+
+  it('skips all version shards when the versions sitemap is disabled', async () => {
+    vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: true, versionsSitemap: false } }));
+    vi.useFakeTimers();
+    const localFetch = vi.fn(async (_path: string) => ({ status: 200 }));
+    vi.stubGlobal('defineNitroPlugin', (plugin: (app: unknown) => void) =>
+      plugin({ localFetch, hooks: { hook: vi.fn() } })
+    );
+    await import('../server/plugins/sitemap-warmup');
+    await vi.runAllTimersAsync();
+    expect(localFetch.mock.calls.map(([path]) => path)).toEqual(
+      SITEMAP_WARMUP_PATHS.filter(path => !path.includes('/versions-bucket-'))
     );
     expect(localFetch).toHaveBeenCalledTimes(17);
   });

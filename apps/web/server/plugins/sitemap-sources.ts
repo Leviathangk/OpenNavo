@@ -95,14 +95,22 @@ export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
-      if (group === 'fonts' && !(await getSiteSettings()).pages.fontsSitemap)
+      const settings = await getSiteSettings();
+      if (group === 'fonts' && !settings.pages.fontsSitemap)
         throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
-      if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap)
+      if (group === 'versions' && !settings.pages.versionsSitemap)
         throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
       const records =
         group === 'versions'
-          ? (await Promise.all([cachedPackages('apps'), fontPackages()])).flat()
-          : await cachedPackages(group);
+          ? (
+              await Promise.all([
+                cachedPackages('apps', settings.revision),
+                settings.pages.fontsSitemap
+                  ? cachedPackages('fonts', settings.revision)
+                  : Promise.resolve([] as SitemapRecord[])
+              ])
+            ).flat()
+          : await cachedPackages(group, settings.revision);
       const page = group === 'versions' ? 'versions' : 'overview';
       const urls = records
         .filter(record => packageSitemapName(group, record.token) === ctx.sitemapName)
@@ -126,10 +134,6 @@ export default defineNitroPlugin(nitroApp => {
     if (load) ctx.urls.push(...(await load()));
   });
 });
-
-async function fontPackages(): Promise<SitemapRecord[]> {
-  return (await getSiteSettings()).pages.fontsSitemap ? cachedPackages('fonts') : [];
-}
 
 function apiBase() {
   const config = useRuntimeConfig();
@@ -171,8 +175,10 @@ async function populatedPackageSitemaps(): Promise<Set<string>> {
     populatedPackageSitemapsCache = createStaleCache(
       async () => {
         const [apps, fonts] = await Promise.all([
-          cachedPackages('apps'),
-          settings.pages.fontsSitemap ? cachedPackages('fonts') : Promise.resolve([] as SitemapRecord[])
+          cachedPackages('apps', settings.revision),
+          settings.pages.fontsSitemap
+            ? cachedPackages('fonts', settings.revision)
+            : Promise.resolve([] as SitemapRecord[])
         ]);
         const buckets = new Set<string>();
         const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
@@ -203,9 +209,10 @@ async function populatedPackageSitemaps(): Promise<Set<string>> {
 
 // Coalesce reads and rebuilds, including callers that observed missing chunks. Each server has
 // its own in-flight maps; shared Redis snapshots remain immutable.
-const packageReads = new Map<PackageGroup, Promise<SitemapRecord[]>>();
-const packageRebuilds = new Map<PackageGroup, Promise<SitemapRecord[]>>();
-const rebuildFailedAt = new Map<PackageGroup, number>();
+type PackageCacheKey = `${PackageGroup}:${number}`;
+const packageReads = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
+const packageRebuilds = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
+const rebuildFailedAt = new Map<PackageCacheKey, number>();
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
@@ -217,25 +224,27 @@ export async function sitemapSourcesIdle(): Promise<void> {
   while (packageRebuilds.size) await Promise.allSettled(packageRebuilds.values());
 }
 
-function manifestKey(group: PackageGroup) {
-  return `sitemap-package-manifest-v3-${PAGE_SIZE}:${group}`;
+function manifestKey(group: PackageGroup, revision: number) {
+  // A settings revision forces a fresh catalog read, so page-level sitemap decisions cannot survive a switch.
+  return `sitemap-package-manifest-v3-${PAGE_SIZE}:${revision}:${group}`;
 }
 
-function cachedPackages(group: PackageGroup): Promise<SitemapRecord[]> {
-  const pending = packageReads.get(group);
+function cachedPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
+  const cacheKey: PackageCacheKey = `${group}:${revision}`;
+  const pending = packageReads.get(cacheKey);
   if (pending) return pending;
-  const read = readPackages(group).finally(() => packageReads.delete(group));
-  packageReads.set(group, read);
+  const read = readPackages(group, revision).finally(() => packageReads.delete(cacheKey));
+  packageReads.set(cacheKey, read);
   return read;
 }
 
-async function readPackages(group: PackageGroup): Promise<SitemapRecord[]> {
+async function readPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
   // A live rebuild reads every catalog page. Do not amplify a Redis outage with that work.
   // Missing/evicted snapshots still use the existing live rebuild below.
-  const snapshot = await retrySnapshotRead(() => readSnapshot(group), group);
+  const snapshot = await retrySnapshotRead(() => readSnapshot(group, revision), group);
   // Without a complete snapshot the request waits for the catalog and fails if the API does.
-  if (!snapshot) return rebuildPackages(group);
-  if (snapshot.expires <= Date.now()) refreshPackages(group);
+  if (!snapshot) return rebuildPackages(group, revision);
+  if (snapshot.expires <= Date.now()) refreshPackages(group, revision);
   return snapshot.records;
 }
 
@@ -255,13 +264,13 @@ async function retrySnapshotRead<T>(read: () => Promise<T>, group: PackageGroup)
   }
 }
 
-async function readSnapshot(group: PackageGroup) {
+async function readSnapshot(group: PackageGroup, revision: number) {
   const storage = useStorage('cache');
   // A rebuild that publishes between reading the manifest and its chunks reclaims those chunks:
   // read the manifest once more before treating the snapshot as lost (evicted).
   let seen: string | undefined;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group));
+    const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
     if (!manifest || manifest.keys.join() === seen) return undefined;
     const chunks = await Promise.all(manifest.keys.map(key => storage.getItem<SitemapRecord[]>(key)));
     if (chunks.every(chunk => chunk !== null)) return { records: chunks.flat(), expires: manifest.expires };
@@ -270,28 +279,30 @@ async function readSnapshot(group: PackageGroup) {
   return undefined;
 }
 
-function rebuildPackages(group: PackageGroup): Promise<SitemapRecord[]> {
-  const pending = packageRebuilds.get(group);
+function rebuildPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
+  const cacheKey: PackageCacheKey = `${group}:${revision}`;
+  const pending = packageRebuilds.get(cacheKey);
   if (pending) return pending;
-  const rebuild = writeSnapshot(group).finally(() => packageRebuilds.delete(group));
-  packageRebuilds.set(group, rebuild);
+  const rebuild = writeSnapshot(group, revision).finally(() => packageRebuilds.delete(cacheKey));
+  packageRebuilds.set(cacheKey, rebuild);
   return rebuild;
 }
 
 /** Rebuilds a stale snapshot behind the response; a failure keeps the stale one for a while. */
-function refreshPackages(group: PackageGroup) {
-  const failedAt = rebuildFailedAt.get(group);
-  if (packageRebuilds.has(group) || (failedAt !== undefined && Date.now() - failedAt < SNAPSHOT_RETRY_MS)) return;
-  rebuildPackages(group).then(
-    () => rebuildFailedAt.delete(group),
+function refreshPackages(group: PackageGroup, revision: number) {
+  const cacheKey: PackageCacheKey = `${group}:${revision}`;
+  const failedAt = rebuildFailedAt.get(cacheKey);
+  if (packageRebuilds.has(cacheKey) || (failedAt !== undefined && Date.now() - failedAt < SNAPSHOT_RETRY_MS)) return;
+  rebuildPackages(group, revision).then(
+    () => rebuildFailedAt.delete(cacheKey),
     error => {
-      rebuildFailedAt.set(group, Date.now());
+      rebuildFailedAt.set(cacheKey, Date.now());
       console.error(`[opennavo] sitemap ${group} snapshot refresh failed`, error);
     }
   );
 }
 
-async function writeSnapshot(group: PackageGroup): Promise<SitemapRecord[]> {
+async function writeSnapshot(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
   const storage = useStorage('cache');
   // Reload every OFFSET page and publish only after all immutable chunks are stored.
   const pages = await loadPackagePages(group);
@@ -308,9 +319,9 @@ async function writeSnapshot(group: PackageGroup): Promise<SitemapRecord[]> {
     }
     // Read the manifest being replaced right before replacing it, so a snapshot another server
     // published in the meantime is reclaimed as well.
-    previous = await storage.getItem<PackageSnapshot>(manifestKey(group));
+    previous = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
     await storage.setItem(
-      manifestKey(group),
+      manifestKey(group, revision),
       { keys, expires: Date.now() + SNAPSHOT_FRESH_MS },
       { ttl: SNAPSHOT_TTL_SECONDS }
     );
