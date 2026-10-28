@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -42,6 +43,9 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 		return domain.Rejected("content_reference_or_locale_invalid")
 	}
 	if err := ValidateContentFields(ref.Entity, fields); err != nil {
+		if ref.Entity == "release" && !source {
+			slog.WarnContext(ctx, "release notes translation rejected", "releaseId", ref.ID, "locale", locale, "reason", err.Error())
+		}
 		return err
 	}
 	if err := s.CheckContentApp(ctx, ref); err != nil {

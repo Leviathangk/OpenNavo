@@ -45,6 +45,11 @@ func TestLinksCRUDDryRunCapabilitiesExclusionsAndAdoption(t *testing.T) {
 	public := &catalog.PublicService{Store: st}
 	sitemap, err := public.Sitemap(ctx, "apps", 1, 100)
 	require.NoError(t, err)
+	// Links have no Homebrew install counts: 72a38e4 requires an explicit index override for inclusion.
+	require.Empty(t, sitemap.Records)
+	require.NoError(t, st.DB.Exec(`UPDATE package_meta SET index_override='index' WHERE package_id=?`, id).Error)
+	sitemap, err = public.Sitemap(ctx, "apps", 1, 100)
+	require.NoError(t, err)
 	require.Len(t, sitemap.Records, 1)
 	require.Equal(t, "link", string(sitemap.Records[0].Kind))
 	f := store.PublicFilter{Current: 1, Size: 100, Locale: "en-US", IncludeFonts: true, IncludeLibraries: true}

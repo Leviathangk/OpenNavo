@@ -109,6 +109,9 @@ func validateContentFields(entity, localeSuffix string, fields map[string]any, e
 			return err
 		}
 	}
+	if entity == "release" {
+		return ValidateReleaseNotes(fields)
+	}
 	return nil
 }
 

@@ -80,6 +80,11 @@ func (s *Service) translationQueue(ctx context.Context, in Input, current, size 
 	return s.Store.AdminPage(ctx, expr, from, where+" AND p.removed_at IS NULL", order, args, current, size)
 }
 func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, error) {
+	if op == "UpdateReleaseI18n" || op == "UpdateRelease" {
+		if err := store.ValidateReleaseNotes(in.Body); err != nil {
+			return nil, err
+		}
+	}
 	result, err := s.write(ctx, in, op, "release", func(st *store.Store) (any, error) {
 		var row struct {
 			PackageID int64
