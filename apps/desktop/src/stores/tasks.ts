@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
+import { usePermissionGateStore } from './permissionGate';
 import type {
   HistoryCleared,
   RunningApp,
@@ -123,13 +124,23 @@ export const useTasksStore = defineStore('tasks', () => {
 
   let upgradeTail: Promise<unknown> = Promise.resolve();
 
-  function upgrade(
+  function requireTaskPermission(op: 'install' | 'upgrade', targets: TaskTarget[], trigger: TaskTrigger) {
+    if (trigger === 'schedule' || trigger === 'retry') return Promise.resolve(true);
+    return usePermissionGateStore().require(
+      op === 'install'
+        ? { feature: 'install', targets, resume: { op: 'install', trigger } }
+        : { feature: 'updates', targets }
+    );
+  }
+
+  async function upgrade(
     targets: TaskTarget[],
     trigger: TaskTrigger,
     options: TaskOptions,
     batch: boolean,
     known: readonly RunningApp[] = []
   ): Promise<Task[]> {
+    if (!(await requireTaskPermission('upgrade', targets, trigger))) return [];
     // Process repeated clicks in order; never replace an unanswered confirmation.
     const result = upgradeTail.then(async () => {
       const unique = [...new Map(targets.map(target => [packageKey(target.kind, target.token), target])).values()];
@@ -139,6 +150,8 @@ export const useTasksStore = defineStore('tasks', () => {
       });
       const fresh = unique.filter(target => !forPackage(target.kind, target.token));
       if (!fresh.length) return existing;
+      // Permission can change while a previous request owns the confirmation queue.
+      if (!(await requireTaskPermission('upgrade', fresh, trigger))) return existing;
       const unattended = trigger === 'schedule' || trigger === 'bundle';
       // Rust finds running Homebrew apps (casks) from their installed bundles and accepts only casks. App Store and
       // directly updated apps come with their update row's running flag (known); command-line formulae have no app to
@@ -161,6 +174,8 @@ export const useTasksStore = defineStore('tasks', () => {
       for (const target of fresh) {
         const wasRunning = runningKeys.has(packageKey(target.kind, target.token));
         if (wasRunning && choice.action === 'skip') continue;
+        // Recheck after confirmation and after each preceding enqueue, before asking Rust to quit an app.
+        if (!(await requireTaskPermission('upgrade', [target], trigger))) break;
         const quitRunning = wasRunning && choice.action === 'quit' && !unattended;
         created.push(
           await unwrap(
@@ -189,40 +204,57 @@ export const useTasksStore = defineStore('tasks', () => {
     const key = packageKey(target.kind, target.token);
     const pending = installing.get(key);
     if (pending) return pending;
-    const result = installTail.then(async () => {
-      const existing = forPackage(target.kind, target.token);
-      if (existing) return existing;
-      // App Store installs (store/security plan §11.3) have no Homebrew preflight: Apple's own checks run in the task.
-      if (target.kind === 'mas') {
-        const task = await unwrap(commands.taskEnqueue('install', target, { ...options, source: 'mas' }, trigger));
-        applyUpdate(task);
-        return task;
-      }
-      const check = await unwrap(commands.installPreflight(target));
-      if (check.status === 'managed') {
-        await useLibraryStore().refresh();
-        await useUpdatesStore().load();
-        return null;
-      }
-      // Homebrew has not reviewed third-party taps; installing from one is the user's call every time.
-      if (check.tap) {
-        if (trigger === 'schedule') return null;
-        if (!(await useTapConfirmStore().ask({ name: check.name, tap: check.tap }))) return null;
-      }
-      let adopt = false;
-      if (check.status === 'conflict' || check.status === 'blocked') {
-        if (trigger === 'schedule') return null;
-        adopt = await useInstallConfirmStore().ask(check);
-        if (!adopt) return null;
-      }
-      // Old task arguments or caller-supplied adopt cannot replace consent for this action.
-      const task = await unwrap(commands.taskEnqueue('install', target, { ...options, adopt }, trigger));
-      applyUpdate(task);
-      return task;
-    });
+    // Register before any await so a restart can recover the entire queue, not only the current target.
+    const stopTracking = usePermissionGateStore().trackInstall(target, trigger);
+    const result = requireTaskPermission('install', [target], trigger)
+      .then(allowed => {
+        if (!allowed) return null;
+        const request = installTail
+          .then(async () => {
+            const existing = forPackage(target.kind, target.token);
+            if (existing) return existing;
+            // This also guards App Store installs, which submit immediately once their queue slot is reached.
+            if (!(await requireTaskPermission('install', [target], trigger))) return null;
+            // App Store installs (store/security plan §11.3) have no Homebrew preflight: Apple's own checks run in the task.
+            if (target.kind === 'mas') {
+              const task = await unwrap(
+                commands.taskEnqueue('install', target, { ...options, source: 'mas' }, trigger)
+              );
+              applyUpdate(task);
+              return task;
+            }
+            const check = await unwrap(commands.installPreflight(target));
+            if (check.status === 'managed') {
+              await useLibraryStore().refresh();
+              await useUpdatesStore().load();
+              return null;
+            }
+            // Homebrew has not reviewed third-party taps; installing from one is the user's call every time.
+            if (check.tap) {
+              if (trigger === 'schedule') return null;
+              if (!(await useTapConfirmStore().ask({ name: check.name, tap: check.tap }))) return null;
+            }
+            let adopt = false;
+            if (check.status === 'conflict' || check.status === 'blocked') {
+              if (trigger === 'schedule') return null;
+              adopt = await useInstallConfirmStore().ask(check);
+              if (!adopt) return null;
+            }
+            // Old task arguments or caller-supplied adopt cannot replace consent for this action.
+            if (!(await requireTaskPermission('install', [target], trigger))) return null;
+            const task = await unwrap(commands.taskEnqueue('install', target, { ...options, adopt }, trigger));
+            applyUpdate(task);
+            return task;
+          })
+          .finally(stopTracking);
+        installTail = request.catch(() => undefined);
+        return request;
+      })
+      .finally(() => {
+        installing.delete(key);
+        stopTracking();
+      });
     installing.set(key, result);
-    installTail = result.catch(() => undefined);
-    void result.finally(() => installing.delete(key)).catch(() => undefined);
     return result;
   }
 
@@ -232,18 +264,32 @@ export const useTasksStore = defineStore('tasks', () => {
     trigger: TaskTrigger = 'manual',
     options: TaskOptions = {}
   ) {
+    if (
+      trigger !== 'schedule' &&
+      trigger !== 'retry' &&
+      ['reinstall', 'uninstall', 'remove_leftovers', 'rollback', 'clean'].includes(op) &&
+      !(await usePermissionGateStore().require({ feature: 'installed', targets: target ? [target] : [] }))
+    )
+      return null;
     if (op === 'install' && target) return install(target, trigger, options);
     if (op === 'upgrade' && target) return (await upgrade([target], trigger, options, false))[0] ?? null;
     return unwrap(commands.taskEnqueue(op, target, options, trigger));
   }
 
-  function enqueueMany(
+  async function enqueueMany(
     op: TaskOp,
     targets: TaskTarget[],
     trigger: TaskTrigger = 'manual',
     options: TaskOptions = {},
     known: readonly RunningApp[] = []
   ) {
+    if (
+      trigger !== 'schedule' &&
+      trigger !== 'retry' &&
+      ['reinstall', 'uninstall', 'remove_leftovers', 'rollback', 'clean'].includes(op) &&
+      !(await usePermissionGateStore().require({ feature: 'installed', targets }))
+    )
+      return [];
     if (op === 'install') {
       return Promise.all(targets.map(target => install(target, trigger, options))).then(tasks =>
         tasks.filter((task): task is Task => task !== null)

@@ -21,6 +21,7 @@ import MonitorSettings from '@/components/settings/MonitorSettings.vue';
 import MirrorSettings from '@/components/settings/MirrorSettings.vue';
 import AppUpdater from '@/components/settings/AppUpdater.vue';
 import SettingRow from '@/components/settings/SettingRow.vue';
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import RelaunchNotice from '@/components/permissions/RelaunchNotice.vue';
 import type { AppInfo } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
@@ -377,11 +378,17 @@ onMounted(async () => {
 
         <AppStoreSettings v-else-if="section === 'appstore'" />
 
-        <CleanupSettings v-else-if="section === 'cleanup'" />
+        <PermissionGate v-else-if="section === 'cleanup'" feature="cleanup" variant="section"
+          ><CleanupSettings
+        /></PermissionGate>
 
-        <MonitorSettings v-else-if="section === 'monitor'" />
+        <PermissionGate v-else-if="section === 'monitor'" feature="monitor" variant="section"
+          ><MonitorSettings
+        /></PermissionGate>
 
-        <SecuritySettings v-else-if="section === 'security'" />
+        <PermissionGate v-else-if="section === 'security'" feature="security" variant="section"
+          ><SecuritySettings
+        /></PermissionGate>
 
         <OnCard v-else-if="section === 'privacy'" padding="none">
           <SettingRow

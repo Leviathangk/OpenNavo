@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { RouterView, useRoute } from 'vue-router';
+import { RouterView, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { isTauri } from '@tauri-apps/api/core';
 import { OnAppShell, OnToastRegion, OnButton, useUiMessages } from '@opennavo/ui';
@@ -8,6 +8,9 @@ import AppSidebar from '@/components/shell/AppSidebar.vue';
 import AppToolbar from '@/components/shell/AppToolbar.vue';
 import WindowControls from '@/components/shell/WindowControls.vue';
 import CommandPalette from '@/components/palette/CommandPalette.vue';
+import PermissionGateModal from '@/components/permissions/PermissionGateModal.vue';
+import { usePermissionGateStore } from '@/stores/permissionGate';
+import { useTasksStore } from '@/stores/tasks';
 import PermissionPrompt from '@/components/shell/PermissionPrompt.vue';
 import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
@@ -28,6 +31,16 @@ import { usePageRefresh, usePageRecovery } from '@/composables/usePageRefresh';
 import { useToasts } from '@/composables/useToasts';
 
 const route = useRoute();
+const router = useRouter();
+const gate = usePermissionGateStore();
+onMounted(async () => {
+  const remembered = gate.takeRemembered();
+  if (!remembered) return;
+  await router.replace(remembered.route);
+  if (remembered.request.resume && remembered.request.targets?.length && (await gate.offer(remembered.request))) {
+    await useTasksStore().enqueueMany('install', [...remembered.request.targets], remembered.request.resume.trigger);
+  }
+});
 const { refresh, errors, loading } = usePageRefresh();
 const messages = useUiMessages();
 const { t } = useI18n();
@@ -106,6 +119,7 @@ watch(
       <CommandPalette v-model:open="paletteOpen" />
       <DeepLinkConfirm />
       <PermissionPrompt />
+      <PermissionGateModal />
       <QuitConfirm />
       <RestorePrompt />
       <RunningAppsConfirm />

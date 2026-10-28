@@ -830,6 +830,8 @@ pub enum PrivacyPane {
 pub struct Permissions {
     /// App Management: prefer system preflight; effective Full Disk Access implies granted; otherwise infer from task outcomes if preflight is unavailable.
     pub app_management: PermissionState,
+    /// System Settings switch only; unlike effective app_management, Full Disk Access never grants it.
+    pub app_management_switch: PermissionState,
     /// Full Disk Access: effective only if this process can read protected directories.
     pub full_disk_access: PermissionState,
     /// Enabled in System Settings but not yet effective; quit and reopen OpenNavo.

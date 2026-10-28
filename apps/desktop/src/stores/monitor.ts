@@ -15,9 +15,11 @@ import type {
   SystemInfo
 } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
+import type { AppSettings } from '@/ipc/client';
 import { i18n } from '@/i18n';
 import { useToasts } from '@/composables/useToasts';
 import { useSettingsStore } from './settings';
+import { usePermissionGateStore } from './permissionGate';
 
 /**
  * Computer monitoring (monitor proposal §11–§16): one sampler in Rust and three outlets here — the page,
@@ -180,13 +182,22 @@ export const useMonitorStore = defineStore('monitor', () => {
   }
 
   async function setMenuBar(module: DisplayModule, patch: Partial<MenuBarItemSetting>) {
-    if (!menuBar.value) return;
+    if (!menuBar.value) return false;
+    // Styles can be selected in a teleported menu after permissions change. Only a pure disable is exempt.
+    const disabling = patch.enabled === false && patch.style === undefined;
+    if (!disabling && !(await usePermissionGateStore().require({ feature: 'monitor' }))) return false;
     await settings.update('monitorMenuBar', current => ({
       ...current,
       [module]: { ...current[module], ...patch }
     }));
     // With this off, closing the window quits OpenNavo and every item goes with it (§12): offer to keep it running.
     if (patch.enabled && settings.value?.keepInMenuBarOnClose === false) offerKeepInMenuBar();
+    return true;
+  }
+
+  async function setMonitorSetting<K extends 'monitorIntervalMs' | 'monitorAlerts'>(key: K, entry: AppSettings[K]) {
+    if (entry !== false && !(await usePermissionGateStore().require({ feature: 'monitor' }))) return;
+    await settings.update(key, entry);
   }
 
   function offerKeepInMenuBar() {
@@ -206,7 +217,11 @@ export const useMonitorStore = defineStore('monitor', () => {
   const dismissIntro = () => settings.update('monitorMenuBarIntro', true);
   /** Which menu bar items Rust has created; visible is null where macOS gives no answer (notch, menu bar permission). */
   const menuBarStatus = () => unwrap(commands.monitorMenuBarStatus());
-  const quitApp = (pid: number) => unwrap(commands.monitorQuitApp(pid));
+  async function quitApp(pid: number) {
+    if (!(await usePermissionGateStore().require({ feature: 'monitor' }))) return false;
+    await unwrap(commands.monitorQuitApp(pid));
+    return true;
+  }
   const openActivityMonitor = () => unwrap(commands.monitorOpenActivityMonitor());
   const openMenuBarSettings = () => unwrap(commands.monitorOpenMenuBarSettings());
 
@@ -296,6 +311,7 @@ export const useMonitorStore = defineStore('monitor', () => {
     loadTrend,
     trendSeries,
     setMenuBar,
+    setMonitorSetting,
     dismissIntro,
     menuBarStatus,
     quitApp,

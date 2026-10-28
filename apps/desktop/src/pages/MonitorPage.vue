@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { usePermissionGateStore } from '@/stores/permissionGate';
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
+import { computed, nextTick, onBeforeUnmount, watch, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { OnButton, OnPageHeader } from '@opennavo/ui';
@@ -17,17 +19,19 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const store = useMonitorStore();
+const gate = usePermissionGateStore();
 const f = useMonitorFormat();
 const sort = ref<ProcessSort>('cpu');
 const processes = useTemplateRef<HTMLElement>('processes');
 
 const detail = computed<DisplayModule | null>(() => {
+  if (!gate.ready) return null;
   const value = route.query.detail;
   return typeof value === 'string' && (MODULES as readonly string[]).includes(value) ? (value as DisplayModule) : null;
 });
 const subtitle = computed(() => {
   const system = store.system;
-  if (!system) return t('monitor.subtitleLoading');
+  if (!system) return gate.ready ? t('monitor.subtitleLoading') : undefined;
   return t('monitor.subtitle', {
     model: system.modelName,
     chip: system.chip,
@@ -37,7 +41,19 @@ const subtitle = computed(() => {
   });
 });
 
-onMounted(() => void store.subscribe('page', [...MODULES]).catch(() => undefined));
+watch(
+  () => gate.ready,
+  ready => {
+    if (ready) void store.subscribe('page', [...MODULES]).catch(() => undefined);
+    // Locked: no sampling, but list this Mac's modules so the page shows what it offers (cards read 「—」).
+    else
+      void store
+        .unsubscribe('page')
+        .then(() => store.loadAvailable())
+        .catch(() => undefined);
+  },
+  { immediate: true }
+);
 onBeforeUnmount(() => void store.unsubscribe('page'));
 
 function open(module: DisplayModule) {
@@ -58,24 +74,40 @@ const cleanup = () => void router.push('/cleanup');
 
 <template>
   <div class="relative flex flex-col gap-12px">
-    <OnPageHeader :title="t('monitor.title')" :subtitle="subtitle">
-      <template #actions>
-        <OnButton variant="secondary" icon="sliders-horizontal" @click="router.push('/settings/monitor')">{{
-          t('monitor.menuBarButton', { count: store.menuBarCount }, { plural: store.menuBarCount })
-        }}</OnButton>
+    <PermissionGate feature="monitor">
+      <template #header>
+        <OnPageHeader :title="t('monitor.title')" :subtitle="subtitle">
+          <template #actions>
+            <OnButton variant="secondary" icon="sliders-horizontal" @click="router.push('/settings/monitor')">{{
+              t('monitor.menuBarButton', { count: store.menuBarCount }, { plural: store.menuBarCount })
+            }}</OnButton>
+          </template>
+        </OnPageHeader>
       </template>
-    </OnPageHeader>
+      <MonitorHealth
+        v-if="gate.ready"
+        @processes="showProcesses"
+        @cleanup="cleanup"
+        @fans="open('sensors')"
+        @disk="open('disk')"
+      />
 
-    <MonitorHealth @processes="showProcesses" @cleanup="cleanup" @fans="open('sensors')" @disk="open('disk')" />
+      <div class="grid grid-cols-2 gap-10px" data-testid="monitor-cards">
+        <MonitorCard
+          v-for="module in store.modules"
+          :key="module"
+          :module="module"
+          :preview="!gate.ready"
+          @open="open"
+          @cleanup="cleanup"
+        />
+      </div>
 
-    <div class="grid grid-cols-2 gap-10px" data-testid="monitor-cards">
-      <MonitorCard v-for="module in store.modules" :key="module" :module="module" @open="open" @cleanup="cleanup" />
-    </div>
+      <div ref="processes">
+        <MonitorProcesses v-model:sort="sort" tabs :waiting="gate.ready" />
+      </div>
 
-    <div ref="processes">
-      <MonitorProcesses v-model:sort="sort" tabs />
-    </div>
-
-    <MonitorDetailSheet :module="detail" @close="close" @cleanup="cleanup" />
+      <MonitorDetailSheet :module="detail" @close="close" @cleanup="cleanup" />
+    </PermissionGate>
   </div>
 </template>

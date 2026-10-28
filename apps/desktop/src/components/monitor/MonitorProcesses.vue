@@ -16,12 +16,22 @@ import { useProcessView } from './useProcessView';
 // network rates; only GUI apps can be quit, after confirmation, the same as ⌘Q in the app. Each row also says how
 // many cores that share is, a view can merge an app's helpers into one row, and under the CPU list the rest of the
 // machine's busy share is accounted for, so the rows are never mistaken for the whole story.
-const props = withDefaults(defineProps<{ sort?: ProcessSort; limit?: number; tabs?: boolean; compact?: boolean }>(), {
-  sort: 'cpu',
-  limit: 8,
-  tabs: false,
-  compact: false
-});
+const props = withDefaults(
+  defineProps<{
+    waiting?: boolean;
+    sort?: ProcessSort;
+    limit?: number;
+    tabs?: boolean;
+    compact?: boolean;
+  }>(),
+  {
+    waiting: true,
+    sort: 'cpu',
+    limit: 8,
+    tabs: false,
+    compact: false
+  }
+);
 /** With tabs the parent owns the order (v-model:sort), so health actions can switch it. */
 const emit = defineEmits<{ 'update:sort': [sort: ProcessSort] }>();
 
@@ -123,13 +133,14 @@ async function quit() {
   if (!entry) return;
   busy.value = true;
   try {
-    await store.quitApp(entry.pid);
+    if (!(await store.quitApp(entry.pid))) return;
     toasts.push({ tone: 'success', title: t('monitor.processes.quitDone', { name: entry.name }) });
+    quitting.value = null;
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+    quitting.value = null;
   } finally {
     busy.value = false;
-    quitting.value = null;
   }
 }
 async function activityMonitor() {
@@ -240,7 +251,7 @@ async function activityMonitor() {
       </li>
     </ul>
     <p v-if="!list.length" class="m-0 px-16px py-12px text-12px text-ink-tertiary">
-      {{ t('monitor.waiting') }}
+      {{ waiting === false ? '—' : t('monitor.waiting') }}
     </p>
     <MonitorCpuBreakdown v-if="order === 'cpu' && list.length" :rows="list" :compact="compact" />
     <OnConfirm

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatBytes, formatRelativeTime } from '@opennavo/shared';
@@ -45,22 +46,26 @@ const subtitle = computed(() => {
 
 <template>
   <div class="relative">
-    <OnPageHeader :title="t('cleanup.title')" :subtitle="subtitle">
-      <template v-if="store.stage === 'review'" #actions>
-        <OnButton variant="secondary" icon="refresh-cw" @click="store.scan()">{{ t('cleanup.rescan') }}</OnButton>
+    <PermissionGate feature="cleanup">
+      <template #header>
+        <OnPageHeader :title="t('cleanup.title')" :subtitle="subtitle">
+          <template v-if="store.stage === 'review'" #actions>
+            <OnButton variant="secondary" icon="refresh-cw" @click="store.scan()">{{ t('cleanup.rescan') }}</OnButton>
+          </template>
+        </OnPageHeader>
       </template>
-    </OnPageHeader>
 
-    <CleanupOverview v-if="store.stage === 'idle'" @scan="store.scan()" />
-    <CleanupScanning v-else-if="store.stage === 'scanning' || store.stage === 'finishing'" />
-    <CleanupReview v-else-if="store.stage === 'review' || store.stage === 'submitting'" />
-    <CleanupRunning v-else-if="store.stage === 'running'" />
-    <CleanupResult v-else-if="store.stage === 'done'" />
-    <OnErrorState
-      v-else
-      :title="t('cleanup.failed.title')"
-      :description="store.error ? errorText(store.error) : undefined"
-      @retry="store.scan()"
-    />
+      <CleanupOverview v-if="store.stage === 'idle'" @scan="store.scan()" />
+      <CleanupScanning v-else-if="store.stage === 'scanning' || store.stage === 'finishing'" data-permission-free />
+      <CleanupReview v-else-if="store.stage === 'review' || store.stage === 'submitting'" />
+      <CleanupRunning v-else-if="store.stage === 'running'" />
+      <CleanupResult v-else-if="store.stage === 'done'" />
+      <OnErrorState
+        v-else
+        :title="t('cleanup.failed.title')"
+        :description="store.error ? errorText(store.error) : undefined"
+        @retry="store.scan()"
+      />
+    </PermissionGate>
   </div>
 </template>

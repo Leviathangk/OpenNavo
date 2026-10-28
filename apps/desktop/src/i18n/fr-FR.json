@@ -965,14 +965,12 @@
       "logTitle": "Journal d’installation Homebrew"
     },
     "permissions": {
-      "title": "Autorisations",
       "required": "Requis",
       "optional": "facultative",
       "enable": "Activer",
       "waiting": "En attente d’activation…",
       "granted": "Activé",
       "confirm": "J’ai activé l’autorisation",
-      "startHint": "Activez Gestion des apps et Accès complet au disque pour commencer.",
       "appManagement": {
         "title": "Autoriser OpenNavo à gérer les apps",
         "body": "Requis pour mettre à jour et désinstaller les apps.",
@@ -1070,7 +1068,7 @@
         "view": "Voir {name}",
         "notFound": "{token} introuvable sur ce Mac",
         "notFoundBody": "L’app a peut-être déjà été désinstallée ou son mode d’installation empêche OpenNavo de l’identifier. Aucune action effectuée.",
-        "permission": "Activez Accès complet au disque pour voir l’aperçu de désinstallation de {token}."
+        "permission": "Activez Gestion des apps et Accès complet au disque pour voir l’aperçu de désinstallation de {token}."
       }
     }
   },
@@ -2911,5 +2909,15 @@
       "limitsTitle": "Portée du pare-feu",
       "limits": "Gère uniquement les connexions sortantes des apps de ce Mac. Le pare-feu intégré à macOS gère les connexions entrantes. Si OpenNavo est fermé, aucune confirmation n’est possible : les connexions sans règle sont provisoirement autorisées et enregistrées dans Connexions."
     }
+  },
+  "permissionGate": {
+    "title": "Activer les autorisations",
+    "body": "Accordez les deux autorisations pour utiliser « {feature} ».",
+    "bodyApps": "Accordez les deux autorisations pour continuer avec ces apps.",
+    "bodyInstall": "Accordez les deux autorisations pour installer des apps.",
+    "browse": "Découvrir les fonctions",
+    "continue": "Continuer",
+    "locked": "Activez Gestion des apps et Accès complet au disque pour utiliser « {feature} ».",
+    "unlock": "Activer les autorisations"
   }
 }

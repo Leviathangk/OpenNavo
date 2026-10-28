@@ -36,7 +36,9 @@ export function useUninstallUndo() {
 
   async function undo(ids?: readonly string[]) {
     try {
-      const { restored, missing } = await store.restore(ids);
+      const result = await store.restore(ids);
+      if (result === null) return false;
+      const { restored, missing } = result;
       const body = t('uninstall.toasts.undoneBody', { count: restored }, { plural: restored });
       toasts.push({
         tone: missing.length ? 'warning' : 'success',
@@ -55,6 +57,7 @@ export function useUninstallUndo() {
   async function purge(ids?: readonly string[]) {
     try {
       const freed = await store.purge(ids);
+      if (freed === null) return false;
       toasts.push({
         tone: 'success',
         title: t('uninstall.toasts.purged', { size: formatBytes(freed, { locale: appLocale.value }) })

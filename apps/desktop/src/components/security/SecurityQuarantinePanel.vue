@@ -34,6 +34,7 @@ const reasonText = (entry: QuarantineEntry) =>
 async function restore(entry: QuarantineEntry) {
   try {
     const outcome = await store.restore([entry.id]);
+    if (!outcome) return;
     requireDone(outcome, entry.id);
     toasts.push({
       tone: 'success',
@@ -47,7 +48,9 @@ async function restore(entry: QuarantineEntry) {
 async function purge(entry: QuarantineEntry) {
   deleting.value = null;
   try {
-    requireDone(await store.purge([entry.id]), entry.id);
+    const outcome = await store.purge([entry.id]);
+    if (!outcome) return;
+    requireDone(outcome, entry.id);
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   }

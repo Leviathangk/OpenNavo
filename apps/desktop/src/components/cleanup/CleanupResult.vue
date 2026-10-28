@@ -66,6 +66,7 @@ const free = computed(() =>
 async function undo() {
   try {
     const result = await store.restore();
+    if (result === null) return;
     toasts.push({
       tone: result.missing.length ? 'warning' : 'success',
       title: result.missing.length
@@ -84,6 +85,7 @@ async function undo() {
 async function purge() {
   try {
     const freed = await store.purge();
+    if (freed === null) return;
     toasts.push({
       tone: 'success',
       title: t('cleanup.toasts.purged'),

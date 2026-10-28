@@ -126,6 +126,12 @@ pub fn match_locale(languages: &[&str]) -> crate::model::Locale {
 }
 
 pub fn load(path: &Path) -> Result<Settings, AppError> {
+    load_with_locale(path, system_locale())
+}
+
+/// `load` with the Mac's language passed in. Only Simplified Chinese Macs see Welcome (it offers the mirrors), so any
+/// other language counts onboarding as completed, for new and half-finished setups alike, before the window first shows.
+pub fn load_with_locale(path: &Path, locale: crate::model::Locale) -> Result<Settings, AppError> {
     let settings = if path.is_file() {
         if std::fs::metadata(path)?.len() > 64 * 1024 {
             return Err(AppError::new("E_INVALID_ARG", "settings_size"));
@@ -133,11 +139,14 @@ pub fn load(path: &Path) -> Result<Settings, AppError> {
         serde_json::from_slice(&std::fs::read(path)?)?
     } else {
         Settings {
-            locale: system_locale(),
+            locale,
             ..Settings::default()
         }
     };
-    let settings = resolve(validate(settings)?, system_locale());
+    let mut settings = resolve(validate(settings)?, locale);
+    if locale != crate::model::Locale::ZhCn {
+        settings.onboarding_completed = true;
+    }
     save_file(path, &settings)?;
     Ok(settings)
 }
@@ -378,6 +387,26 @@ pub fn install_locale_observer(_: &tauri::AppHandle) {}
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn onboarding_follows_system_language_for_new_and_partial_setups() {
+        use crate::model::Locale;
+        for locale in [Locale::ZhCn, Locale::EnUs, Locale::ZhHant] {
+            let dir = std::env::temp_dir().join(format!("onboarding-{}", uuid::Uuid::now_v7()));
+            let path = dir.join("settings.json");
+            let settings = super::load_with_locale(&path, locale).unwrap();
+            assert_eq!(settings.onboarding_completed, locale != Locale::ZhCn);
+            let mut partial = settings;
+            partial.onboarding_completed = false;
+            super::save_file(&path, &partial).unwrap();
+            let loaded = super::load_with_locale(&path, locale).unwrap();
+            assert_eq!(loaded.onboarding_completed, locale != Locale::ZhCn);
+            let saved: super::Settings =
+                serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+            assert_eq!(saved.onboarding_completed, loaded.onboarding_completed);
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
     #[test]
     fn main_backgrounds_match_the_surface_base_token() {
         let tokens: serde_json::Value =

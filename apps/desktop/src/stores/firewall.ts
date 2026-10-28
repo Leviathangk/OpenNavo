@@ -1,3 +1,4 @@
+import { usePermissionGateStore } from './permissionGate';
 import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { commands, unwrap } from '@/ipc/client';
@@ -256,6 +257,7 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   async function lifecycle(run: () => Promise<FirewallStatus>, target: boolean | null = null) {
+    if (target === true && !(await usePermissionGateStore().require({ feature: 'firewall' }))) return;
     const job: SwitchWait | null = target === null ? null : { on: target };
     if (job) {
       stopWaiting(awaited);
@@ -322,6 +324,7 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   async function saveRule(input: FirewallRuleInput) {
+    if (!(await usePermissionGateStore().require({ feature: 'firewall' }))) return null;
     const rule = await withBusy(input.id ? [input.id] : [], () => unwrap(commands.firewallRuleSave(input)));
     for (const changes of pendingRules) changes.set(rule.id, rule);
     const index = rules.value.findIndex(item => item.id === rule.id);
@@ -330,12 +333,14 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   async function deleteRules(ids: string[]) {
+    if (!(await usePermissionGateStore().require({ feature: 'firewall' }))) return false;
     await withBusy(ids, () => unwrap(commands.firewallRuleDelete(ids)));
     for (const changes of pendingRules) {
       for (const id of ids) changes.set(id, null);
     }
     const gone = new Set(ids);
     rules.value = rules.value.filter(rule => !gone.has(rule.id));
+    return true;
   }
 
   /** Answer one waiting connection; Rust sends the shorter list (firewall:alerts) and the new rule (firewall:changed). */
@@ -346,10 +351,12 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   async function clearActivity() {
+    if (!(await usePermissionGateStore().require({ feature: 'firewall' }))) return false;
     await unwrap(commands.firewallEventsClear());
     activityRevision += 1;
     activity.value = [];
     activityMore.value = false;
+    return true;
   }
 
   function upsertBlocklist(list: FirewallBlocklist) {
@@ -360,15 +367,20 @@ export const useFirewallStore = defineStore('firewall', () => {
     return list;
   }
 
-  const addBlocklist = async (source: string) => upsertBlocklist(await unwrap(commands.firewallBlocklistAdd(source)));
+  async function addBlocklist(source: string) {
+    if (!(await usePermissionGateStore().require({ feature: 'firewall' }))) return null;
+    return upsertBlocklist(await unwrap(commands.firewallBlocklistAdd(source)));
+  }
   const setBlocklist = (id: string, enabled: boolean) =>
     withBusy([id], async () => upsertBlocklist(await unwrap(commands.firewallBlocklistSet(id, enabled))));
   const refreshBlocklist = (id: string) =>
     withBusy([id], async () => upsertBlocklist(await unwrap(commands.firewallBlocklistRefresh(id))));
   async function removeBlocklist(id: string) {
+    if (!(await usePermissionGateStore().require({ feature: 'firewall' }))) return false;
     await withBusy([id], () => unwrap(commands.firewallBlocklistRemove(id)));
     for (const changes of pendingBlocklists) changes.set(id, null);
     blocklists.value = blocklists.value.filter(item => item.id !== id);
+    return true;
   }
 
   const identifyApp = (path: string) => unwrap(commands.firewallAppIdentify(path));

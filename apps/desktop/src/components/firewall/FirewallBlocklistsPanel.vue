@@ -39,6 +39,7 @@ async function add(value = source.value.trim()) {
   adding.value = true;
   try {
     const list = await store.addBlocklist(value);
+    if (!list) return;
     source.value = '';
     toasts.push({
       tone: 'success',
@@ -69,8 +70,10 @@ async function run(action: () => Promise<unknown>) {
 
 async function confirmRemove() {
   const list = removing.value;
-  removing.value = null;
-  if (list) await run(() => store.removeBlocklist(list.id));
+  if (!list) return;
+  await run(async () => {
+    if (await store.removeBlocklist(list.id)) removing.value = null;
+  });
 }
 
 const failure = (list: FirewallBlocklist) => {

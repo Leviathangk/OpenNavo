@@ -10,6 +10,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useSettingsStore } from '@/stores';
 import { useCleanupStore } from '@/stores/cleanup';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { displayPath } from '@/utils/paths';
 import { pickFolder } from '@/utils/files';
 
@@ -29,6 +30,7 @@ const label = (rule: ProtectRule) => (rule.kind === 'path' ? displayPath(rule.va
 
 async function attempt(operation: () => Promise<unknown>) {
   try {
+    if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return;
     await operation();
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });

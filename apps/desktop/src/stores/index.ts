@@ -17,6 +17,7 @@ import { useUninstallStore } from './uninstall';
 import { useNamesStore } from './names';
 import { usePermissionPromptStore } from './permissionPrompt';
 import { usePermissionsStore } from './permissions';
+import { usePermissionGateStore } from './permissionGate';
 import { useSettingsStore } from './settings';
 import { useTasksStore } from './tasks';
 import { useUpdatesStore } from './updates';
@@ -28,6 +29,7 @@ export {
   useLocalAppsStore,
   usePermissionPromptStore,
   usePermissionsStore,
+  usePermissionGateStore,
   useSettingsStore,
   useTasksStore,
   useUpdatesStore

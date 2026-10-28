@@ -16,7 +16,7 @@ const APP_TITLE = '需要允许 OpenNavo 管理 App';
 const DISK_TITLE = '需要完全磁盘访问权限';
 
 async function open(flags = 'no-app-management') {
-  window.history.replaceState(null, '', `/?mock=${flags}`);
+  window.history.replaceState(null, '', `/?mock=${flags},no-full-disk-access`);
   const context = await setup('/updates', { tickMs: 5 });
   await startLocalState();
   mount(PermissionPrompt, {

@@ -124,6 +124,7 @@ async function addExclusion() {
     >
       <OnToggle
         :model-value="value.avKeepResident"
+        :data-permission-free="value.avKeepResident ? '' : undefined"
         aria-labelledby="setting-avKeepResident"
         @update:model-value="on => save('avKeepResident', on)"
       />
@@ -135,6 +136,7 @@ async function addExclusion() {
     >
       <OnToggle
         :model-value="value.watchDownloads"
+        :data-permission-free="value.watchDownloads ? '' : undefined"
         aria-labelledby="setting-watchDownloads"
         @update:model-value="on => save('watchDownloads', on)"
       />
@@ -146,6 +148,7 @@ async function addExclusion() {
     >
       <OnToggle
         :model-value="value.startupAlerts"
+        :data-permission-free="value.startupAlerts ? '' : undefined"
         aria-labelledby="setting-startupAlerts"
         @update:model-value="on => save('startupAlerts', on)"
       />
@@ -157,6 +160,7 @@ async function addExclusion() {
     >
       <OnToggle
         :model-value="value.avScanBeforeInstall"
+        :data-permission-free="value.avScanBeforeInstall ? '' : undefined"
         aria-labelledby="setting-avScanBeforeInstall"
         @update:model-value="on => save('avScanBeforeInstall', on)"
       />
@@ -249,6 +253,7 @@ async function addExclusion() {
     >
       <OnToggle
         :model-value="value.pasteProtection"
+        :data-permission-free="value.pasteProtection ? '' : undefined"
         aria-labelledby="setting-pasteProtection"
         @update:model-value="on => save('pasteProtection', on)"
       />
@@ -268,6 +273,7 @@ async function addExclusion() {
     >
       <OnToggle
         :model-value="value.virusTotalEnabled"
+        :data-permission-free="value.virusTotalEnabled ? '' : undefined"
         aria-labelledby="setting-virusTotalEnabled"
         @update:model-value="on => save('virusTotalEnabled', on)"
       />
@@ -282,7 +288,13 @@ async function addExclusion() {
       "
       label-id="setting-virusTotalKey"
     >
-      <OnButton v-if="security.virusTotal?.hasKey" variant="ghost" size="xs" @click="saveVirusTotalKey(null)">
+      <OnButton
+        v-if="security.virusTotal?.hasKey"
+        data-permission-free
+        variant="ghost"
+        size="xs"
+        @click="saveVirusTotalKey(null)"
+      >
         {{ t('security.settings.virusTotal.removeKey') }}
       </OnButton>
       <form v-else class="flex items-center gap-6px" @submit.prevent="saveVirusTotalKey(virusTotalKey.trim())">

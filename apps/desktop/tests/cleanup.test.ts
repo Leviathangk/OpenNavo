@@ -12,6 +12,7 @@ import { i18n } from '@/i18n';
 import type { CategoryReport, CleanupCategory, CleanupProgress } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
 import { startLocalState, usePermissionsStore, useSettingsStore } from '@/stores';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useTasksStore } from '@/stores/tasks';
 import { groupKey, useCleanupStore } from '@/stores/cleanup';
 import { useToasts } from '@/composables/useToasts';
@@ -22,7 +23,7 @@ const text = () => document.body.textContent ?? '';
 const size = (bytes: number) => formatBytes(bytes, { locale: 'zh-CN' });
 
 async function context(path = '/cleanup', mock = '') {
-  window.history.replaceState(null, '', mock ? `/?mock=${mock}` : '/');
+  window.history.replaceState(null, '', `/?mock=full_disk_access${mock ? ',' + mock : ''}`);
   const result = await setup(path, { brew: true, tickMs: 5 });
   await startLocalState();
   return result;
@@ -118,6 +119,7 @@ describe('Scanning', () => {
       .findAll('button')
       .find(button => button.text() === '开始扫描')!
       .trigger('click');
+    await flushPromises();
     expect(store.stage).toBe('scanning');
     expect(wrapper.find('[data-testid="cleanup-scanning"]').exists()).toBe(true);
     await vi.waitFor(() => expect(store.stage).toBe('review'), { timeout: 3000 });
@@ -155,7 +157,8 @@ describe('Skips and permissions', () => {
     expect(chrome.reason).toBe('running');
     expect(chrome.bytes).toBeGreaterThan(0);
     expect(store.entries.some(item => item.group.title === 'Google Chrome')).toBe(false);
-    expect(store.inUse).toBe(chrome.bytes);
+    // Full Disk Access also exposes caches held by running apps inside protected containers.
+    expect(store.inUse).toBe(2_620_000_000);
     // Personal files (backups, archives) are listed but never counted as reclaimable.
     expect(store.totals.reclaimable).toBe(
       store.entries
@@ -169,33 +172,32 @@ describe('Skips and permissions', () => {
     });
     await flushPromises();
     // Routine skips get sizes, not a notice naming every running app.
-    expect(text()).toContain(`另有 ${size(chrome.bytes!)} 正在使用`);
+    expect(text()).toContain(`另有 ${size(store.inUse)} 正在使用`);
     expect(wrapper.get('[data-category="browser_caches"]').text()).toContain(`${size(chrome.bytes!)} 正在使用`);
     expect(text()).not.toContain('相关缓存先跳过了');
     wrapper.unmount();
   });
 
-  it('Without Full Disk Access sizes are lower bounds and unchecked places are listed; granting it scans again', async () => {
+  it('A locked scan does not start until the user explicitly continues', async () => {
     const { pinia, router } = await context();
-    const store = await scanned();
-    const incomplete = store.report!.incomplete;
-    expect(incomplete.length).toBeGreaterThan(2);
-    expect(incomplete.every(item => item.reason === 'full_disk_access')).toBe(true);
-    expect(incomplete.some(item => item.path.endsWith('/Downloads'))).toBe(true);
-    expect(store.entries.some(item => item.group.title === 'Safari')).toBe(false);
-    expect(store.categories.find(category => category.key === 'app_caches')?.complete).toBe(false);
+    const permissions = usePermissionsStore();
+    permissions.apply({ ...permissions.status!, fullDiskAccess: 'denied' });
+    vi.spyOn(commands, 'permissionsGet').mockImplementation(async () => ({ status: 'ok', data: permissions.status! }));
+    const scan = vi.spyOn(commands, 'cleanupScan');
+    const store = useCleanupStore();
     const wrapper = mount(CleanupPage, {
       global: { plugins: [pinia, router, i18n] },
       attachTo: document.body
     });
+    const request = store.scan();
     await flushPromises();
-    expect(text()).toContain('完全磁盘访问权限');
-    expect(text()).toContain('至少');
-
-    const scan = vi.spyOn(commands, 'cleanupScan');
-    const permissions = usePermissionsStore();
+    expect(store.stage).toBe('idle');
+    expect(scan).not.toHaveBeenCalled();
     permissions.apply({ ...permissions.status!, fullDiskAccess: 'granted' });
     await flushPromises();
+    expect(scan).not.toHaveBeenCalled();
+    usePermissionGateStore().proceed();
+    await request;
     expect(scan).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });

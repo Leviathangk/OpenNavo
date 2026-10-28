@@ -10,6 +10,8 @@ import { startLocalState, useSettingsStore, useTasksStore } from '@/stores';
 import { useInstalledFilterStore } from '@/stores/installedFilter';
 import { isUnused, useLocalAppsStore } from '@/stores/localApps';
 import { displayPath } from '@/utils/paths';
+import { usePermissionsStore } from '@/stores/permissions';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useUninstallStore } from '@/stores/uninstall';
 import { useToasts } from '@/composables/useToasts';
 import { setup } from './helpers';
@@ -90,7 +92,7 @@ describe('Uninstall execution', () => {
       timeout: 3000
     });
 
-    const { restored } = await store.restore();
+    const { restored } = (await store.restore())!;
     expect(restored).toBeGreaterThan(0);
     expect(store.stage).toBe('idle');
     await vi.waitFor(() => expect(apps.find('local-zoom')).toBeDefined(), {
@@ -392,6 +394,7 @@ it('Discards an execute response after the session was reset', async () => {
       })
   );
   const pending = store.confirm();
+  await flushPromises();
   store.reset();
   resolve({ status: 'ok', data: [state.history[0]!] });
   await pending;
@@ -472,9 +475,9 @@ it.each(['failed', 'canceled'] as const)('Keeps partial %s outcomes available fo
   expect(restore).toHaveBeenCalledExactlyOnceWith('partial');
 });
 
-describe('Full Disk Access comes first', () => {
-  it('Installed shows the guide instead of the list, then loads once the permission is on', async () => {
-    const { pinia, router } = await context('/installed', '');
+describe('Both permissions come first', () => {
+  it('Installed previews features without scanning until both permissions are ready', async () => {
+    const { pinia, router } = await context('/installed', 'app-management-switch-off');
     const scan = vi.spyOn(commands, 'localAppsScanFootprints');
     const wrapper = mount(InstalledPage, {
       global: { plugins: [pinia, router, i18n] },
@@ -482,53 +485,64 @@ describe('Full Disk Access comes first', () => {
     });
     await vi.waitFor(() => expect(wrapper.find('[data-testid="full-disk-gate"]').exists()).toBe(true));
     expect(wrapper.find('table').exists()).toBe(false);
-    expect(text()).toContain('先开启「完全磁盘访问权限」');
+    expect(text()).not.toContain('先开启「完全磁盘访问权限」');
     expect(text()).not.toContain('重新统计占用');
-    // Nothing reads other apps' data before the permission is on.
     expect(scan).not.toHaveBeenCalled();
-    const guide = vi.spyOn(commands, 'permissionGuideOpen');
-    wrapper
-      .findAll('button')
-      .find(item => item.text() === '开启')!
-      .element.click();
-    await flushPromises();
-    expect(guide).toHaveBeenCalledWith('full_disk_access');
+    const permissions = usePermissionsStore();
+    permissions.apply({ ...permissions.status!, appManagementSwitch: 'granted', fullDiskAccess: 'granted' });
     await vi.waitFor(() => expect(wrapper.find('table').exists()).toBe(true), { timeout: 3000 });
     expect(wrapper.find('[data-testid="full-disk-gate"]').exists()).toBe(false);
     expect(scan).toHaveBeenCalled();
     wrapper.unmount();
   });
 
-  it('When macOS cannot tell, the user confirms it is on, as on Welcome', async () => {
+  it('Unknown permissions need the shared session confirmation', async () => {
     const { pinia, router } = await context('/installed', 'no-permission-check');
     const wrapper = mount(InstalledPage, {
       global: { plugins: [pinia, router, i18n] },
       attachTo: document.body
     });
-    await vi.waitFor(() => expect(text()).toContain('macOS 没能告知权限状态'));
-    wrapper
-      .findAll('button')
-      .find(item => item.text() === '我已开启')!
-      .element.click();
+    await flushPromises();
+    expect(wrapper.find('table').exists()).toBe(false);
+    usePermissionsStore().unknownConfirmed = true;
     await vi.waitFor(() => expect(wrapper.find('table').exists()).toBe(true), { timeout: 3000 });
     wrapper.unmount();
   });
 
-  it('Uninstalling from elsewhere first asks for the permission, then scans by itself', async () => {
-    const { pinia, router } = await context('/installed', '');
-    mount(UninstallDialog, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+  it('Uninstall waits for explicit Continue before planning and dismissal does nothing', async () => {
+    await context('/installed', 'app-management-switch-off');
     const plan = vi.spyOn(commands, 'uninstallPlan');
     const store = useUninstallStore();
-    await store.start(['local-zoom']);
-    expect(store.stage).toBe('permission');
+    const gate = usePermissionGateStore();
+    const first = store.start(['local-zoom']);
     await flushPromises();
-    expect(text()).toContain('先开启「完全磁盘访问权限」');
+    expect(store.stage).toBe('idle');
+    expect(gate.current?.targets).toEqual([{ kind: 'app', token: 'local-zoom' }]);
     expect(plan).not.toHaveBeenCalled();
-    [...document.body.querySelectorAll<HTMLButtonElement>('button')]
-      .find(item => item.textContent?.trim() === '开启')!
-      .click();
-    await vi.waitFor(() => expect(store.stage).toBe('review'), { timeout: 3000 });
-    expect(store.plan?.incomplete).toEqual([]);
+    gate.dismiss();
+    await first;
+    expect(store.stage).toBe('idle');
+    const second = store.start(['local-zoom']);
+    await flushPromises();
+    const permissions = usePermissionsStore();
+    permissions.apply({ ...permissions.status!, appManagementSwitch: 'granted', fullDiskAccess: 'granted' });
+    await flushPromises();
+    expect(plan).not.toHaveBeenCalled();
+    gate.proceed();
+    await second;
+    expect(store.stage).toBe('review');
+  });
+
+  it('Uninstall preview does not open an info sheet while locked', async () => {
+    const { pinia, router } = await context('/uninstall/zoom?preview=1', 'app-management-switch-off');
+    const wrapper = mount(InstalledPage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
+    await flushPromises();
+    expect(wrapper.findComponent({ name: 'AppInfoSheet' }).props('open')).toBe(false);
+    expect(text()).toContain(i18n.global.t('deeplink.preview.uninstall.permission', { token: 'zoom' }));
+    wrapper.unmount();
   });
 });
 

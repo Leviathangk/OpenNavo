@@ -85,6 +85,7 @@ async function remove() {
           size="sm"
           :loading="removing"
           :disabled="store.switching"
+          data-permission-free
           @click="confirmRemove = true"
           >{{ t('firewall.settings.removeAction') }}</OnButton
         >

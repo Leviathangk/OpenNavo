@@ -965,14 +965,12 @@
       "logTitle": "Homebrew-Installationsprotokoll"
     },
     "permissions": {
-      "title": "Berechtigungen",
       "required": "Erforderlich",
       "optional": "optional",
       "enable": "Ein",
       "waiting": "Warten auf Aktivierung…",
       "granted": "Ein",
       "confirm": "Ist aktiviert",
-      "startHint": "Aktivieren Sie „App-Verwaltung“ und „Festplattenvollzugriff“, um zu beginnen.",
       "appManagement": {
         "title": "OpenNavo darf Apps verwalten",
         "body": "Zum Aktualisieren und Deinstallieren von Apps erforderlich.",
@@ -1070,7 +1068,7 @@
         "view": "{name} ansehen",
         "notFound": "{token} auf diesem Mac nicht gefunden",
         "notFoundBody": "Die App wurde möglicherweise bereits deinstalliert oder so installiert, dass OpenNavo sie nicht zuordnen kann. Es wurde keine Aktion ausgeführt.",
-        "permission": "Aktivieren Sie Festplattenvollzugriff, um die Deinstallation von {token} anzusehen."
+        "permission": "Aktivieren Sie „App-Verwaltung“ und „Festplattenvollzugriff“, um die Deinstallation von {token} anzusehen."
       }
     }
   },
@@ -2911,5 +2909,15 @@
       "limitsTitle": "Geltungsbereich",
       "limits": "Nur ausgehende Verbindungen von Apps auf diesem Mac. Eingehende Verbindungen regelt die integrierte macOS-Firewall. Wenn OpenNavo nicht läuft, kann es nicht nachfragen. Verbindungen ohne Regel werden dann vorerst erlaubt und im Verbindungsverlauf protokolliert."
     }
+  },
+  "permissionGate": {
+    "title": "Berechtigungen aktivieren",
+    "body": "Erteilen Sie beide Berechtigungen, um „{feature}“ zu verwenden.",
+    "bodyApps": "Erteilen Sie beide Berechtigungen, um mit diesen Apps fortzufahren.",
+    "bodyInstall": "Erteilen Sie beide Berechtigungen, um Apps zu installieren.",
+    "browse": "Funktionen ansehen",
+    "continue": "Weiter",
+    "locked": "Aktivieren Sie „App-Verwaltung“ und „Festplattenvollzugriff“, um „{feature}“ zu verwenden.",
+    "unlock": "Berechtigungen aktivieren"
   }
 }

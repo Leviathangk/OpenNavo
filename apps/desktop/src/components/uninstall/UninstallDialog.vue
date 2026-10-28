@@ -14,7 +14,7 @@ import {
 } from '@opennavo/ui';
 import type { DeleteMode, LocalApp, PlanItem } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
-import FullDiskAccessGate from '@/components/permissions/FullDiskAccessGate.vue';
+import PermissionChecklist from '@/components/permissions/PermissionChecklist.vue';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
@@ -29,7 +29,7 @@ import UninstallProgress from './UninstallProgress.vue';
 import UninstallResult from './UninstallResult.vue';
 
 // Uninstall dialog for every source (proposal §03–§04), mounted once in the shell and driven by the uninstall store.
-// Without Full Disk Access it first guides the permission. Closing while tasks run keeps them going; each background
+// If permissions change during a session it shows the shared checklist. Closing while tasks run keeps them going; each background
 // run then announces its result as a toast with Undo, even when another uninstall started meanwhile.
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
@@ -195,7 +195,7 @@ watch(
 
     <!-- Full Disk Access first -->
     <div v-if="store.stage === 'permission'" class="pb-8px">
-      <FullDiskAccessGate compact />
+      <PermissionChecklist />
     </div>
 
     <!-- Scanning -->

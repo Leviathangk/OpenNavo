@@ -94,7 +94,7 @@ async function save() {
   saving.value = true;
   try {
     const known = target.value === 'app' ? app.value : null;
-    await store.saveRule({
+    const saved = await store.saveRule({
       id: props.rule?.id ?? null,
       // A program already known to the extension keeps its identity; a newly chosen one goes by its path.
       appKey: known && editing.value ? known.key : null,
@@ -103,6 +103,7 @@ async function save() {
       remote: remoteMode.value === 'some' ? remote.value.trim().toLowerCase() : null,
       port: portMode.value === 'some' ? Number(port.value) : null
     });
+    if (!saved) return;
     toasts.push({ tone: 'success', title: t(editing.value ? 'firewall.sheet.saved' : 'firewall.sheet.added') });
     emit('close');
   } catch (error) {

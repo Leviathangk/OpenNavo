@@ -234,13 +234,14 @@ export function installMockIpc(
   const persistSettings = options.persistSettings ?? import.meta.env.MODE !== 'test';
   const storageKey = 'ONV_DESKTOP_mock_settings';
   // fresh means new settings; as in Rust, old settings missing onboardingCompleted count as onboarded (06 §11).
-  const normalizeSettings = (input: Partial<AppSettings>, fresh = false): AppSettings => {
+  // load mirrors Rust settings::load: only a Simplified Chinese Mac keeps Welcome pending; later writes keep their value.
+  const normalizeSettings = (input: Partial<AppSettings>, fresh = false, load = false): AppSettings => {
     const localeMode =
       input.localeMode ?? (input.locale === undefined || input.locale === systemLocale ? 'system' : 'manual');
     return {
       ...defaultSettings(),
       ...input,
-      onboardingCompleted: input.onboardingCompleted ?? !fresh,
+      onboardingCompleted: (load && systemLocale !== 'zh-CN') || (input.onboardingCompleted ?? !fresh),
       localeMode,
       locale: localeMode === 'system' ? systemLocale : (input.locale ?? 'en-US')
     };
@@ -263,21 +264,35 @@ export function installMockIpc(
     ignored: new Map(),
     cacheBytes: storageFixture(installed).cacheBytes
   };
-  // Privacy permissions (06 §12.3, §12.6, matching Rust preflight): App Management allowed by default; Full Disk Access disabled.
-  // no-brew / first-run / no-app-management start without App Management; full_disk_access enables Full Disk Access.
+  // Privacy permissions (06 §12.3, §12.6, matching Rust preflight): both are on by default, so the permission gate is open.
+  // no-brew / first-run / no-app-management start without App Management; no-brew / first-run / no-full-disk-access
+  // without Full Disk Access (full_disk_access forces it on); app-management-switch-off keeps working Full Disk Access with
+  // the App Management switch off.
   // no-permission-check simulates unavailable preflight (unknown state); permission-relaunch follows real macOS, where a
   // permission turned on while OpenNavo runs applies only after it reopens (always so for Full Disk Access).
   let permissions: Permissions = {
+    appManagementSwitch:
+      noBrew || flags.has('first-run') || flags.has('no-app-management') || flags.has('app-management-switch-off')
+        ? 'denied'
+        : 'granted',
     appManagement: noBrew || flags.has('first-run') || flags.has('no-app-management') ? 'denied' : 'granted',
-    fullDiskAccess: flags.has('full_disk_access') ? 'granted' : 'denied',
+    fullDiskAccess:
+      flags.has('full_disk_access') || (!noBrew && !flags.has('first-run') && !flags.has('no-full-disk-access'))
+        ? 'granted'
+        : 'denied',
     relaunchRequired: false,
     appManagementPending: false,
     fullDiskAccessPending: false
   };
-  if (flags.has('full_disk_access')) permissions.appManagement = 'granted';
+  if (permissions.fullDiskAccess === 'granted') permissions.appManagement = 'granted';
+  if (flags.has('app-management-switch-off')) {
+    permissions.fullDiskAccess = 'granted';
+    permissions.appManagement = 'granted';
+  }
   if (flags.has('no-permission-check'))
     permissions = {
       appManagement: 'unknown',
+      appManagementSwitch: 'unknown',
       fullDiskAccess: 'unknown',
       relaunchRequired: false,
       appManagementPending: false,
@@ -305,7 +320,13 @@ export function installMockIpc(
       setPermissions(
         pane === 'full_disk_access'
           ? { ...permissions, relaunchRequired: true, fullDiskAccessPending: true }
-          : { ...permissions, appManagement: 'granted', relaunchRequired: true, appManagementPending: true }
+          : {
+              ...permissions,
+              appManagementSwitch: 'granted',
+              appManagement: 'granted',
+              relaunchRequired: true,
+              appManagementPending: true
+            }
       );
       return;
     }
@@ -315,7 +336,8 @@ export function installMockIpc(
         fullDiskAccess: 'granted',
         appManagement: 'granted'
       });
-    else if (pane === 'app_management') setPermissions({ ...permissions, appManagement: 'granted' });
+    else if (pane === 'app_management')
+      setPermissions({ ...permissions, appManagementSwitch: 'granted', appManagement: 'granted' });
   };
   const runningApps = new Set(
     flags.has('running-apps') || flags.has('quit-fails') ? ['ghostty', 'zed', 'google-chrome'] : []
@@ -377,11 +399,11 @@ export function installMockIpc(
     enqueue: (op, target, taskOptions, targetName) => runner.enqueue(op, target, taskOptions, 'manual', targetName)
   });
   const cleanupMock = cleanup;
-  let settings = normalizeSettings({}, true);
+  let settings = normalizeSettings({}, true, true);
   if (persist) {
     try {
       const saved: Partial<AppSettings> | null = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
-      if (saved) settings = normalizeSettings(saved);
+      if (saved) settings = normalizeSettings(saved, false, true);
     } catch {
       /* Simulated settings remain usable when browser storage is unavailable. */
     }

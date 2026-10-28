@@ -113,7 +113,8 @@ const LAYOUT: Record<OnDialogPlacement, string> = {
 
 <template>
   <Teleport v-if="rendered" to="body">
-    <Transition :name="`on-dialog-${placement}`" appear @after-leave="rendered = false">
+    <!-- Reopening while the exit transition runs makes Vue finish that leave through after-leave: keep the Teleport. -->
+    <Transition :name="`on-dialog-${placement}`" appear @after-leave="rendered = open">
       <div
         v-if="open"
         class="on-dialog fixed inset-0 z-modal box-border flex font-sans"

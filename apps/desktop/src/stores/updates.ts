@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
+import { usePermissionGateStore } from './permissionGate';
 import type {
   Kind,
   OutdatedItem,
@@ -226,6 +227,15 @@ export const useUpdatesStore = defineStore('updates', () => {
    * enqueue, so each keeps its source's options and the tasks store still asks once per batch about running apps.
    */
   async function upgrade(rows: readonly OutdatedItem[], trigger: TaskTrigger = 'manual'): Promise<Task[]> {
+    if (
+      trigger !== 'schedule' &&
+      trigger !== 'retry' &&
+      !(await usePermissionGateStore().require({
+        feature: 'updates',
+        targets: rows.map(row => updateRequest(row).target)
+      }))
+    )
+      return [];
     let chosen = [...rows];
     const majors = chosen.filter(row => row.major);
     if (majors.length && trigger === 'manual') {
@@ -254,19 +264,25 @@ export const useUpdatesStore = defineStore('updates', () => {
 
   /** Stop checking an app altogether, whatever its source (Rust's update_prefs.ignored). */
   async function ignoreApp(item: OutdatedItem, ignored = true) {
+    if (!(await usePermissionGateStore().require({ feature: 'updates' }))) return false;
     await unwrap(commands.updateIgnore(appKey(item), ignored));
     await load();
+    return true;
   }
 
   /** Skip this version (null clears a skip); a newer release brings the app back with its old skip shown. */
   async function skip(item: OutdatedItem, version: string | null) {
+    if (!(await usePermissionGateStore().require({ feature: 'updates' }))) return false;
     await unwrap(commands.updateSkip(appKey(item), version));
     await load();
+    return true;
   }
 
   async function setChannel(item: OutdatedItem, channel: UpdateChannel) {
+    if (!(await usePermissionGateStore().require({ feature: 'updates' }))) return false;
     await unwrap(commands.updateSetChannel(appKey(item), channel));
     await load();
+    return true;
   }
 
   /** Quit the app normally and open it again, so the replaced version runs; Rust never force-quits. */
@@ -289,7 +305,9 @@ export const useUpdatesStore = defineStore('updates', () => {
   }
 
   /** Queue a rollback; Rust asks a running app to quit normally first and skips the version rolled back from. */
-  async function rollback(task: Task): Promise<string> {
+  async function rollback(task: Task): Promise<string | null> {
+    if (!(await usePermissionGateStore().require({ feature: 'updates', targets: task.target ? [task.target] : [] })))
+      return null;
     const id = await unwrap(commands.updateRollback(task.id));
     rollbackable.value = new Set([...rollbackable.value].filter(other => other !== task.id));
     return id;

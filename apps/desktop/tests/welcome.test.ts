@@ -5,12 +5,11 @@ import WelcomePage from '@/pages/WelcomePage.vue';
 import { i18n } from '@/i18n';
 import { commands, unwrap } from '@/ipc/client';
 import type { Locale } from '@/ipc/bindings';
-import { startLocalState, usePermissionsStore, useSettingsStore } from '@/stores';
+import { startLocalState, useSettingsStore } from '@/stores';
 import { setup } from './helpers';
 
 // First-launch welcome (06 §13.1, 08 §10.13, owner revision 2026-10-07): two download-source cards, official and other mirrors.
-// Select the lowest-latency source by default and recommend only that source; install from the selected source. App Management and
-// Full Disk Access are both required (owner decision 2026-10-12).
+// Select the lowest-latency source; privacy permissions are requested only when using a protected feature.
 const remote = vi.hoisted(() => ({ config: null as unknown }));
 vi.mock('@/composables/useClientConfig', () => ({
   fetchClientConfig: async () => {
@@ -81,23 +80,6 @@ const button = (text: string) =>
     item => item.textContent?.trim() === text || item.getAttribute('aria-label') === text
   );
 const start = () => button('开始使用');
-
-/** Click Enable App Management and wait for it to be enabled in simulated System Settings. */
-async function grantAppManagement() {
-  button('开启 App 管理')?.click();
-  await vi.waitFor(() => expect(usePermissionsStore().appManagement).toBe('granted'), {
-    timeout: 3000
-  });
-  await flushPromises();
-}
-/** Same for Full Disk Access. */
-async function grantFullDiskAccess() {
-  button('开启完全磁盘访问权限')?.click();
-  await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), {
-    timeout: 3000
-  });
-  await flushPromises();
-}
 const text = () => document.body.textContent ?? '';
 
 beforeEach(() => {
@@ -276,11 +258,11 @@ describe('Welcome without Homebrew', () => {
     expect(checked()).toContain('其他镜像安装');
   });
 
-  it('Permissions can be enabled before install; success shows Get Started', async () => {
+  it('Installation success shows Get Started without permission guidance', async () => {
     await open();
-    expect(text()).toContain('允许 OpenNavo 管理 App');
-    expect(text()).toContain('完全磁盘访问权限');
-    expect(button('开启 App 管理')).toBeDefined();
+    expect(text()).not.toContain('允许 OpenNavo 管理 App');
+    expect(text()).not.toContain('完全磁盘访问权限');
+    expect(button('开启 App 管理')).toBeUndefined();
     button('安装 Homebrew')?.click();
     await vi.waitFor(() => expect(start()).toBeDefined(), { timeout: 3000 });
     expect(button('安装 Homebrew')).toBeUndefined();
@@ -297,55 +279,22 @@ describe('Welcome without Homebrew', () => {
 });
 
 describe('Welcome with Homebrew', () => {
-  it('Require App Management and Full Disk Access, open guidance, save source/onboarding, then enter Discover', async () => {
+  it('Saves the selected source and enters Discover without requiring permissions', async () => {
     const { router } = await open({ brew: true, flags: 'first-run' });
-    const replace = vi.spyOn(router, 'replace');
-    expect(text()).toContain('不读取终端里设置的镜像变量');
-    expect(button('安装 Homebrew')).toBeUndefined();
-    expect(start()?.disabled).toBe(true);
-    expect(text()).toContain('开启「App 管理」和「完全磁盘访问权限」后即可开始使用。');
-
-    const guide = vi.spyOn(commands, 'permissionGuideOpen');
-    await grantAppManagement();
-    expect(guide).toHaveBeenCalledWith('app_management');
-    // App Management alone is no longer enough.
-    expect(start()?.disabled).toBe(true);
-    await grantFullDiskAccess();
-    expect(guide).toHaveBeenCalledWith('full_disk_access');
     expect(start()?.disabled).toBe(false);
-    expect(text()).not.toContain('后即可开始使用。');
-
+    expect(button('开启 App 管理')).toBeUndefined();
     start()?.click();
     await flushPromises();
-    const settings = useSettingsStore().value;
-    expect(settings?.mirror).toMatchObject({
+    expect(useSettingsStore().value?.mirror).toMatchObject({
       key: 'tuna',
       brewGitRemote: `${TUNA}/git/homebrew/brew.git`
     });
-    expect(settings?.onboardingCompleted).toBe(true);
+    expect(useSettingsStore().value?.onboardingCompleted).toBe(true);
     expect(router.currentRoute.value.path).toBe('/discover');
-    expect(replace).toHaveBeenCalledWith('/discover');
-  });
-
-  it('Full Disk Access is required as well and shows Enabled after granting', async () => {
-    await open({ brew: true });
-    expect(usePermissionsStore().appManagement).toBe('granted');
-    expect(usePermissionsStore().fullDiskAccess).toBe('denied');
-    expect(text().match(/必需/g)?.length).toBe(2);
-    expect(text()).not.toContain('可选');
-    expect(start()?.disabled).toBe(true);
-    const guide = vi.spyOn(commands, 'permissionGuideOpen');
-    await grantFullDiskAccess();
-    expect(guide).toHaveBeenCalledWith('full_disk_access');
-    expect(button('开启完全磁盘访问权限')).toBeUndefined();
-    expect(text().match(/已开启/g)?.length).toBe(2);
-    expect(start()?.disabled).toBe(false);
   });
 
   it('Failed onboarding saves stay on Welcome with retryable errors', async () => {
     const { router } = await open({ brew: true, flags: 'first-run' });
-    await grantAppManagement();
-    await grantFullDiskAccess();
     const update = vi.spyOn(useSettingsStore(), 'update').mockRejectedValueOnce(new Error('save_failed'));
     start()?.click();
     await flushPromises();
@@ -358,32 +307,19 @@ describe('Welcome with Homebrew', () => {
     expect(router.currentRoute.value.path).toBe('/discover');
   });
 
-  it('Unknown system detection allows explicit I enabled it confirmation, covering both permissions', async () => {
+  it('Unknown permissions do not block welcome or expose permission controls', async () => {
     await open({ brew: true, flags: 'first-run,no-permission-check' });
-    expect(start()?.disabled).toBe(true);
-    button('我已开启')?.click();
-    await flushPromises();
     expect(start()?.disabled).toBe(false);
-    // The confirmation also lets Installed start without asking again.
-    expect(usePermissionsStore().fullDiskReady).toBe(true);
+    expect(button('我已开启')).toBeUndefined();
+    expect(button('先浏览功能')).toBeUndefined();
   });
 
-  it('Permission requiring relaunch shows notice and Reopen', async () => {
-    await open({ brew: true, flags: 'first-run,permission-relaunch' });
-    button('开启 App 管理')?.click();
-    await vi.waitFor(() => expect(text()).toContain('重新打开 OpenNavo 后生效'), { timeout: 3000 });
-    expect(button('重新打开')).toBeDefined();
-    // The row says it waits for the reopen instead of offering Enable again.
-    expect(text()).toContain('重新打开后生效');
-    expect(button('开启 App 管理')).toBeUndefined();
-  });
-
-  it('Full Disk Access turned on before a reopen keeps Start locked and offers Reopen', async () => {
-    await open({ brew: true, flags: 'first-run,permission-relaunch' });
-    button('开启完全磁盘访问权限')?.click();
-    await vi.waitFor(() => expect(text()).toContain('重新打开后生效'), { timeout: 3000 });
-    expect(button('开启完全磁盘访问权限')).toBeUndefined();
-    expect(button('重新打开')).toBeDefined();
-    expect(start()?.disabled).toBe(true);
-  });
+  it.each(['en-US', 'zh-Hant', 'ja-JP'] as const)(
+    'Completes onboarding automatically for system language %s',
+    async systemLocale => {
+      await open({ brew: true, flags: 'first-run', systemLocale });
+      expect(useSettingsStore().value?.onboardingCompleted).toBe(true);
+      expect(useSettingsStore().value?.mirror?.key).toBe('official');
+    }
+  );
 });

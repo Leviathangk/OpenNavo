@@ -965,14 +965,12 @@
       "logTitle": "Registro di installazione di Homebrew"
     },
     "permissions": {
-      "title": "Autorizzazioni",
       "required": "Obbligatoria",
       "optional": "facoltativa",
       "enable": "Attiva",
       "waiting": "In attesa dell’attivazione…",
       "granted": "Attivato",
       "confirm": "Ho attivato l’autorizzazione",
-      "startHint": "Attiva Gestione app e Accesso completo al disco per iniziare.",
       "appManagement": {
         "title": "Consenti a OpenNavo di gestire le app",
         "body": "Necessario per aggiornare e disinstallare le app.",
@@ -1070,7 +1068,7 @@
         "view": "Mostra {name}",
         "notFound": "{token} non trovato su questo Mac",
         "notFoundBody": "Potrebbe essere già disinstallato o installato in un modo che OpenNavo non riconosce. Non è stata eseguita alcuna operazione.",
-        "permission": "Attiva Accesso completo al disco per visualizzare l’anteprima della disinstallazione di {token}."
+        "permission": "Attiva Gestione app e Accesso completo al disco per visualizzare l’anteprima della disinstallazione di {token}."
       }
     }
   },
@@ -2911,5 +2909,15 @@
       "limitsTitle": "Ambito del controllo",
       "limits": "Gestisce solo le connessioni in uscita delle app su questo Mac. Quelle in ingresso sono gestite dal firewall integrato di macOS. Quando OpenNavo non è in esecuzione non può chiedere conferma: le connessioni senza regola vengono consentite per ora e registrate in Connessioni."
     }
+  },
+  "permissionGate": {
+    "title": "Attiva le autorizzazioni",
+    "body": "Concedi entrambe le autorizzazioni per usare «{feature}».",
+    "bodyApps": "Concedi entrambe le autorizzazioni per continuare con queste app.",
+    "bodyInstall": "Concedi entrambe le autorizzazioni per installare app.",
+    "browse": "Esplora le funzioni",
+    "continue": "Continua",
+    "locked": "Attiva Gestione app e Accesso completo al disco per usare «{feature}».",
+    "unlock": "Attiva autorizzazioni"
   }
 }

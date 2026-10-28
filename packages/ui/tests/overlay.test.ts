@@ -118,6 +118,25 @@ describe('OnModal', () => {
   });
 });
 
+describe('OnModal reopened while closing', () => {
+  it('Stays open when it opens again before its exit transition ends', async () => {
+    const wrapper = track(
+      mount(OnModal, {
+        props: { open: true, title: '开启权限' },
+        attachTo: document.body,
+        global: { stubs: { transition: false } }
+      })
+    );
+    await settle();
+    expect(dialog()).not.toBeNull();
+    await wrapper.setProps({ open: false });
+    await wrapper.setProps({ open: true });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await settle();
+    expect(dialog()).not.toBeNull();
+  });
+});
+
 describe('OnConfirm', () => {
   it('For ordinary confirmation, focuses confirm, delegates confirmation, and closes on cancel', async () => {
     const wrapper = track(

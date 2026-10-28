@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { useAppLocale as useFormattingLocale } from '@/composables/useAppLocale';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -11,6 +12,7 @@ import { commands, unwrap } from '@/ipc/client';
 import { usePackageState } from '@/composables/usePackageState';
 import { useLoader } from '@/composables/useLoader';
 import { useToasts } from '@/composables/useToasts';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useLibraryStore, useTasksStore } from '@/stores';
 import { useInstalledFilterStore } from '@/stores/installedFilter';
 import { useCleanupStore } from '@/stores/cleanup';
@@ -23,6 +25,7 @@ const { appLocale: formattingLocale } = useFormattingLocale();
 // and cache cards), unused apps, Brewfile backup/migration.
 const { t } = useI18n();
 const library = useLibraryStore();
+const gate = usePermissionGateStore();
 const localApps = useLocalAppsStore();
 const filters = useInstalledFilterStore();
 const cleanup = useCleanupStore();
@@ -43,7 +46,14 @@ async function attempt<T>(operation: Promise<T>): Promise<T | undefined> {
   }
 }
 
-useLoader(() => library.loadStorage(), [() => tasks.finished], undefined, []);
+useLoader(
+  async () => {
+    if (gate.ready) await library.loadStorage();
+  },
+  [() => tasks.finished, () => gate.ready],
+  undefined,
+  []
+);
 
 const storage = computed(() => library.storage);
 const format = (bytes: number) => formatBytes(bytes, { locale: formattingLocale.value });
@@ -105,78 +115,80 @@ async function restoreBrewfile() {
 </script>
 
 <template>
-  <OnRailPanel>
-    <OnRailSection
-      :title="t('library.storage.title')"
-      :subtitle="t('library.storage.total', { size: parts.length ? format(total) : '—' })"
-    >
-      <OnCard padding="md">
-        <p class="m-0 mb-12px text-26px font-600 leading-none text-ink-primary">
-          {{ parts.length ? format(total) : '—' }}
-        </p>
-        <OnStackBar v-if="parts.length" :items="parts" :caption="t('library.storage.caption')" :format="format" />
-      </OnCard>
-    </OnRailSection>
-
-    <OnCard padding="md" class="flex flex-col gap-10px" data-testid="cleanup-entry">
-      <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
-        <OnIcon name="eraser" :size="15" />{{ t('cleanup.entry.title') }}
-      </h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
-        {{ lastScan ? t('cleanup.entry.found', lastScan) : t('cleanup.entry.description') }}
-      </p>
-      <p v-if="lastScan?.active" class="m-0 text-12.5px leading-[1.55] text-status-danger">
-        {{ t('cleanup.entry.active', { count: lastScan.active }, { plural: lastScan.active }) }}
-      </p>
-      <OnButton
-        :variant="lastScan ? 'primary' : 'secondary'"
-        :icon="lastScan ? undefined : 'scan-search'"
-        @click="openCleanup"
+  <PermissionGate feature="installed" variant="rail">
+    <OnRailPanel>
+      <OnRailSection
+        :title="t('library.storage.title')"
+        :subtitle="t('library.storage.total', { size: parts.length ? format(total) : '—' })"
       >
-        {{ lastScan ? t('cleanup.entry.open') : t('cleanup.entry.scan') }}
-      </OnButton>
-    </OnCard>
+        <OnCard padding="md">
+          <p class="m-0 mb-12px text-26px font-600 leading-none text-ink-primary">
+            {{ parts.length ? format(total) : '—' }}
+          </p>
+          <OnStackBar v-if="parts.length" :items="parts" :caption="t('library.storage.caption')" :format="format" />
+        </OnCard>
+      </OnRailSection>
 
-    <OnCard v-if="localApps.loaded" padding="md" class="flex flex-col gap-10px">
-      <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
-        <OnIcon name="hourglass" :size="15" />{{ t('library.unusedCard.title') }}
-      </h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
-        {{
-          unused.length
-            ? t(
-                'library.unusedCard.description',
-                { count: unused.length, days: UNUSED_DAYS, size: format(unusedBytes) },
-                { plural: unused.length }
-              )
-            : t('library.unusedCard.none', { days: UNUSED_DAYS })
-        }}
-      </p>
-      <OnButton v-if="unused.length" variant="secondary" @click="filters.showUnused(!filters.unusedOnly)">
-        {{ filters.unusedOnly ? t('library.unusedCard.all') : t('library.unusedCard.show') }}
-      </OnButton>
-    </OnCard>
-
-    <OnCard padding="md" class="flex flex-col gap-10px">
-      <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('library.backup.title') }}</h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
-        {{ t('library.backup.description') }}
-      </p>
-      <div class="flex flex-wrap gap-8px">
+      <OnCard padding="md" class="flex flex-col gap-10px" data-testid="cleanup-entry">
+        <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
+          <OnIcon name="eraser" :size="15" />{{ t('cleanup.entry.title') }}
+        </h2>
+        <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
+          {{ lastScan ? t('cleanup.entry.found', lastScan) : t('cleanup.entry.description') }}
+        </p>
+        <p v-if="lastScan?.active" class="m-0 text-12.5px leading-[1.55] text-status-danger">
+          {{ t('cleanup.entry.active', { count: lastScan.active }, { plural: lastScan.active }) }}
+        </p>
         <OnButton
-          class="max-w-full flex-1 !h-auto min-h-34px py-6px"
-          variant="secondary"
-          icon="cloud"
-          @click="exportBrewfile"
+          :variant="lastScan ? 'primary' : 'secondary'"
+          :icon="lastScan ? undefined : 'scan-search'"
+          @click="openCleanup"
         >
-          <span class="min-w-0 whitespace-normal break-words">{{ t('library.backup.export') }}</span>
+          {{ lastScan ? t('cleanup.entry.open') : t('cleanup.entry.scan') }}
         </OnButton>
-        <OnButton class="max-w-full flex-1 !h-auto min-h-34px py-6px" variant="secondary" @click="restoreBrewfile">
-          <span class="min-w-0 whitespace-normal break-words">{{ t('library.backup.restore') }}</span>
-        </OnButton>
-      </div>
-    </OnCard>
+      </OnCard>
 
-    <BrewfileRestore v-model:open="restoreOpen" :preview="preview" />
-  </OnRailPanel>
+      <OnCard v-if="localApps.loaded" padding="md" class="flex flex-col gap-10px">
+        <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
+          <OnIcon name="hourglass" :size="15" />{{ t('library.unusedCard.title') }}
+        </h2>
+        <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
+          {{
+            unused.length
+              ? t(
+                  'library.unusedCard.description',
+                  { count: unused.length, days: UNUSED_DAYS, size: format(unusedBytes) },
+                  { plural: unused.length }
+                )
+              : t('library.unusedCard.none', { days: UNUSED_DAYS })
+          }}
+        </p>
+        <OnButton v-if="unused.length" variant="secondary" @click="filters.showUnused(!filters.unusedOnly)">
+          {{ filters.unusedOnly ? t('library.unusedCard.all') : t('library.unusedCard.show') }}
+        </OnButton>
+      </OnCard>
+
+      <OnCard padding="md" class="flex flex-col gap-10px">
+        <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('library.backup.title') }}</h2>
+        <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
+          {{ t('library.backup.description') }}
+        </p>
+        <div class="flex flex-wrap gap-8px">
+          <OnButton
+            class="max-w-full flex-1 !h-auto min-h-34px py-6px"
+            variant="secondary"
+            icon="cloud"
+            @click="exportBrewfile"
+          >
+            <span class="min-w-0 whitespace-normal break-words">{{ t('library.backup.export') }}</span>
+          </OnButton>
+          <OnButton class="max-w-full flex-1 !h-auto min-h-34px py-6px" variant="secondary" @click="restoreBrewfile">
+            <span class="min-w-0 whitespace-normal break-words">{{ t('library.backup.restore') }}</span>
+          </OnButton>
+        </div>
+      </OnCard>
+
+      <BrewfileRestore v-model:open="restoreOpen" :preview="preview" />
+    </OnRailPanel>
+  </PermissionGate>
 </template>

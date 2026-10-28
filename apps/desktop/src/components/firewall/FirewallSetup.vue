@@ -129,7 +129,13 @@ async function openApproval() {
       {{ cleanupPending ? failure : t('firewall.setup.failed', { reason: failure }) }}
     </p>
     <div class="flex flex-wrap items-center gap-12px">
-      <OnButton variant="primary" icon="brick-wall-fire" :loading="store.switching" @click="enable">
+      <OnButton
+        variant="primary"
+        icon="brick-wall-fire"
+        :loading="store.switching"
+        :data-permission-free="cleanupPending ? '' : undefined"
+        @click="enable"
+      >
         {{ cleanupPending ? t('common.retry') : failure ? t('firewall.setup.retry') : t('firewall.setup.enable') }}
       </OnButton>
       <span class="min-w-0 flex-1 text-12px leading-[1.55] text-ink-tertiary">{{ t('firewall.setup.steps') }}</span>

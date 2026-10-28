@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { useAppLocale as useFormattingLocale } from '@/composables/useAppLocale';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -296,101 +297,107 @@ useLoader(() => updates.load());
 
 <template>
   <div class="flex flex-col gap-20px">
-    <OnPageHeader :title="t('updates.title')" :subtitle="subtitle">
-      <template #actions>
-        <OnButton variant="secondary" icon="refresh-cw" :loading="updates.checking" @click="check">
-          {{ updates.checking ? t('updates.checking') : t('updates.check') }}
-        </OnButton>
-        <OnButton variant="primary" :disabled="!updates.actionable.length" @click="updateAll">{{
-          t('updates.updateAll')
-        }}</OnButton>
-      </template>
-    </OnPageHeader>
-
-    <RunningTask v-if="tasks.running && tasks.running.op !== 'cleanup'" :task="tasks.running" />
-
-    <div
-      v-if="updates.masSignedOut && masRow"
-      role="alert"
-      class="flex items-center gap-12px rounded-default bg-surface-raised p-12px"
-    >
-      <span class="flex-1 text-13px text-ink-secondary">{{ t('updates.masSignedOut') }}</span>
-      <OnButton variant="secondary" size="sm" @click="openAppStore">{{ t('updates.openAppStore') }}</OnButton>
-    </div>
-
-    <p v-if="failedText" role="status" class="m-0 flex items-center gap-6px text-12.5px text-ink-tertiary">
-      <OnIcon name="info" :size="14" class="shrink-0" />{{ failedText }}
-    </p>
-
-    <details v-if="updates.failures.length" class="text-12.5px text-ink-tertiary">
-      <summary class="cursor-pointer">{{ t('updates.checkFailures.details') }}</summary>
-      <ul>
-        <li v-for="(failure, index) in updates.failures" :key="index">
-          <template v-if="failure.appName || failure.source">
-            {{ failure.appName || t(`updates.sources.${failure.source}`) }}：
+    <PermissionGate feature="updates">
+      <template #header>
+        <OnPageHeader :title="t('updates.title')" :subtitle="subtitle">
+          <template #actions>
+            <OnButton variant="secondary" icon="refresh-cw" :loading="updates.checking" @click="check">
+              {{ updates.checking ? t('updates.checking') : t('updates.check') }}
+            </OnButton>
+            <OnButton variant="primary" :disabled="!updates.actionable.length" @click="updateAll">{{
+              t('updates.updateAll')
+            }}</OnButton>
           </template>
-          {{ t(`updates.checkFailures.${failure.reason}`) }}
-        </li>
-      </ul>
-    </details>
+        </OnPageHeader>
+      </template>
 
-    <OnSegmented
-      v-if="filterOptions.length > 2"
-      v-model="sourceFilter"
-      size="sm"
-      class="self-start"
-      :aria-label="t('updates.filter.label')"
-      :options="filterOptions"
-    />
-    <OutdatedList v-if="shownItems.length" :items="shownItems" :summaries="summaries" />
-    <OnEmpty
-      v-else-if="updates.loaded"
-      :title="t('updates.empty')"
-      :description="t('updates.emptyHint')"
-      icon="lucide:check"
-    />
+      <div v-if="tasks.running && tasks.running.op !== 'cleanup'" data-permission-free>
+        <RunningTask :task="tasks.running" />
+      </div>
 
-    <section class="mt-8px">
-      <div class="mb-12px flex flex-wrap items-baseline justify-between gap-12px">
-        <h2 class="m-0 flex items-baseline gap-10px text-headline text-ink-primary">
-          {{ t('updates.history.title') }}
-        </h2>
-        <div class="flex items-center gap-10px">
-          <OnButton variant="ghost" size="sm" icon="trash" :disabled="nothingToClear" @click="clearOpen = true">{{
-            t('history.clear')
-          }}</OnButton>
-          <OnSegmented
-            v-model="filter"
-            size="sm"
-            :aria-label="t('updates.history.filterLabel')"
-            :options="[
-              { value: 'all', label: t('updates.history.all') },
-              { value: 'succeeded', label: t('updates.history.succeeded') },
-              { value: 'failed', label: t('updates.history.failed') }
-            ]"
-          />
-        </div>
-      </div>
-      <p v-if="historyLoading && !shownHistory" role="status">{{ t('common.loading') }}</p>
-      <HistoryList v-if="historyItems.length" :tasks="historyItems" />
-      <OnEmpty v-else-if="shownHistory" :title="t('updates.history.empty')" icon="lucide:rotate-ccw-clock" />
-      <div v-if="hasMore" ref="sentinel" class="mt-16px flex justify-center">
-        <OnButton variant="secondary" :loading="loadingMore" :disabled="historyLoading" @click="loadMoreHistory">
-          {{ t('common.loadMore') }}
-        </OnButton>
-      </div>
-      <OnConfirm
-        :open="clearOpen"
-        :title="t('history.clear')"
-        :description="t('history.clearDescription')"
-        :confirm-label="t('history.clear')"
-        tone="danger"
-        :loading="clearing"
-        @confirm="clearHistory"
-        @cancel="clearOpen = false"
+      <div
+        v-if="updates.masSignedOut && masRow"
+        role="alert"
+        class="flex items-center gap-12px rounded-default bg-surface-raised p-12px"
       >
-        <p class="m-0 text-13px leading-relaxed text-ink-secondary">{{ t('history.clearNote') }}</p>
-      </OnConfirm>
-    </section>
+        <span class="flex-1 text-13px text-ink-secondary">{{ t('updates.masSignedOut') }}</span>
+        <OnButton variant="secondary" size="sm" @click="openAppStore">{{ t('updates.openAppStore') }}</OnButton>
+      </div>
+
+      <p v-if="failedText" role="status" class="m-0 flex items-center gap-6px text-12.5px text-ink-tertiary">
+        <OnIcon name="info" :size="14" class="shrink-0" />{{ failedText }}
+      </p>
+
+      <details v-if="updates.failures.length" class="text-12.5px text-ink-tertiary">
+        <summary class="cursor-pointer">{{ t('updates.checkFailures.details') }}</summary>
+        <ul>
+          <li v-for="(failure, index) in updates.failures" :key="index">
+            <template v-if="failure.appName || failure.source">
+              {{ failure.appName || t(`updates.sources.${failure.source}`) }}：
+            </template>
+            {{ t(`updates.checkFailures.${failure.reason}`) }}
+          </li>
+        </ul>
+      </details>
+
+      <OnSegmented
+        v-if="filterOptions.length > 2"
+        v-model="sourceFilter"
+        size="sm"
+        class="self-start"
+        :aria-label="t('updates.filter.label')"
+        :options="filterOptions"
+      />
+      <OutdatedList v-if="shownItems.length" :items="shownItems" :summaries="summaries" />
+      <OnEmpty
+        v-else-if="updates.loaded"
+        :title="t('updates.empty')"
+        :description="t('updates.emptyHint')"
+        icon="lucide:check"
+      />
+
+      <section class="mt-8px">
+        <div class="mb-12px flex flex-wrap items-baseline justify-between gap-12px">
+          <h2 class="m-0 flex items-baseline gap-10px text-headline text-ink-primary">
+            {{ t('updates.history.title') }}
+          </h2>
+          <div class="flex items-center gap-10px">
+            <OnButton variant="ghost" size="sm" icon="trash" :disabled="nothingToClear" @click="clearOpen = true">{{
+              t('history.clear')
+            }}</OnButton>
+            <OnSegmented
+              v-model="filter"
+              size="sm"
+              :aria-label="t('updates.history.filterLabel')"
+              :options="[
+                { value: 'all', label: t('updates.history.all') },
+                { value: 'succeeded', label: t('updates.history.succeeded') },
+                { value: 'failed', label: t('updates.history.failed') }
+              ]"
+            />
+          </div>
+        </div>
+        <p v-if="historyLoading && !shownHistory" role="status">{{ t('common.loading') }}</p>
+        <HistoryList v-if="historyItems.length" :tasks="historyItems" />
+        <OnEmpty v-else-if="shownHistory" :title="t('updates.history.empty')" icon="lucide:rotate-ccw-clock" />
+        <div v-if="hasMore" ref="sentinel" class="mt-16px flex justify-center">
+          <OnButton variant="secondary" :loading="loadingMore" :disabled="historyLoading" @click="loadMoreHistory">
+            {{ t('common.loadMore') }}
+          </OnButton>
+        </div>
+        <OnConfirm
+          :open="clearOpen"
+          :title="t('history.clear')"
+          :description="t('history.clearDescription')"
+          :confirm-label="t('history.clear')"
+          tone="danger"
+          :loading="clearing"
+          @confirm="clearHistory"
+          @cancel="clearOpen = false"
+        >
+          <p class="m-0 text-13px leading-relaxed text-ink-secondary">{{ t('history.clearNote') }}</p>
+        </OnConfirm>
+      </section>
+    </PermissionGate>
   </div>
 </template>

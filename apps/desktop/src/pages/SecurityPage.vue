@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { computed, onMounted } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -42,18 +43,22 @@ onMounted(() => void store.loadOverview().catch(() => undefined));
 
 <template>
   <div class="relative">
-    <OnPageHeader :title="t('security.title')" :subtitle="t('security.subtitle')" />
-    <OnTabs
-      class="mb-18px"
-      :model-value="tab"
-      :items="tabs"
-      :aria-label="t('security.tabs.label')"
-      :link-as="RouterLink"
-    />
-    <SecurityOverviewPanel v-if="tab === 'overview'" />
-    <SecurityScanPanel v-else-if="tab === 'scan'" :preview="scanLink" />
-    <SecurityStartupPanel v-else-if="tab === 'startup'" :preview="startupLink" />
-    <SecurityProtectionPanel v-else-if="tab === 'protection'" />
-    <SecurityQuarantinePanel v-else />
+    <PermissionGate feature="security">
+      <template #header>
+        <OnPageHeader :title="t('security.title')" :subtitle="t('security.subtitle')" />
+      </template>
+      <OnTabs
+        class="mb-18px"
+        :model-value="tab"
+        :items="tabs"
+        :aria-label="t('security.tabs.label')"
+        :link-as="RouterLink"
+      />
+      <SecurityOverviewPanel v-if="tab === 'overview'" />
+      <SecurityScanPanel v-else-if="tab === 'scan'" :preview="scanLink" />
+      <SecurityStartupPanel v-else-if="tab === 'startup'" :preview="startupLink" />
+      <SecurityProtectionPanel v-else-if="tab === 'protection'" />
+      <SecurityQuarantinePanel v-else />
+    </PermissionGate>
   </div>
 </template>

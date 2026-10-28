@@ -75,7 +75,7 @@ fn slug(pane: PrivacyPane) -> Result<&'static str, AppError> {
 
 pub fn granted(pane: PrivacyPane, permissions: &Permissions) -> bool {
     match pane {
-        PrivacyPane::AppManagement => permissions.app_management == PermissionState::Granted,
+        PrivacyPane::AppManagement => permissions.app_management_switch == PermissionState::Granted,
         PrivacyPane::FullDiskAccess => permissions.full_disk_access == PermissionState::Granted,
         PrivacyPane::Notifications => false,
     }
@@ -616,12 +616,19 @@ mod tests {
     fn only_privacy_panes_have_a_guide() {
         let permissions = Permissions {
             app_management: PermissionState::Granted,
+            app_management_switch: PermissionState::Granted,
             full_disk_access: PermissionState::Denied,
             relaunch_required: false,
             app_management_pending: false,
             full_disk_access_pending: false,
         };
         assert!(granted(PrivacyPane::AppManagement, &permissions));
+        let effective_only = Permissions {
+            app_management_switch: PermissionState::Denied,
+            full_disk_access: PermissionState::Granted,
+            ..permissions
+        };
+        assert!(!done(PrivacyPane::AppManagement, &effective_only));
         assert!(!granted(PrivacyPane::FullDiskAccess, &permissions));
         assert!(!done(PrivacyPane::FullDiskAccess, &permissions));
         assert!(!done(PrivacyPane::Notifications, &permissions));
@@ -637,6 +644,7 @@ mod tests {
     fn full_disk_access_waiting_for_a_reopen_completes_the_guide() {
         let permissions = Permissions {
             app_management: PermissionState::Denied,
+            app_management_switch: PermissionState::Denied,
             full_disk_access: PermissionState::Denied,
             relaunch_required: true,
             app_management_pending: false,

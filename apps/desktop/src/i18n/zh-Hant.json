@@ -965,14 +965,12 @@
       "logTitle": "安裝 Homebrew 的日誌"
     },
     "permissions": {
-      "title": "權限",
       "required": "必需",
       "optional": "可選",
       "enable": "開啟",
       "waiting": "等待開啟…",
       "granted": "已開啟",
       "confirm": "我已開啟",
-      "startHint": "開啟「App 管理」和「完整磁碟取用權限」後即可開始使用。",
       "appManagement": {
         "title": "允許 OpenNavo 管理 App",
         "body": "更新和解除安裝 App 時需要。",
@@ -1070,7 +1068,7 @@
         "view": "檢視 {name}",
         "notFound": "這台 Mac 上沒有找到 {token}",
         "notFoundBody": "它可能已經解除安裝了，或者安裝方式讓 OpenNavo 認不出來。沒有做任何操作。",
-        "permission": "開啟「完整磁碟取用權限」之後，才能預覽解除安裝 {token}。"
+        "permission": "開啟「App 管理」和「完整磁碟取用權限」之後，才能預覽解除安裝 {token}。"
       }
     }
   },
@@ -2911,5 +2909,15 @@
       "limitsTitle": "它管什麼",
       "limits": "只管這台 Mac 上的 App 向外發起的連線，不管別人連進來的連線，那由 macOS 自帶的防火牆負責。OpenNavo 沒有執行時沒法詢問，沒有規則的連線會先放行，並記在連線記錄裡。"
     }
+  },
+  "permissionGate": {
+    "title": "開啟權限，開始使用",
+    "body": "完成下面兩項授權後，就能使用「{feature}」。",
+    "bodyApps": "完成下面兩項授權後，就能繼續操作下面的 App。",
+    "bodyInstall": "完成下面兩項授權後，就能安裝 App。",
+    "browse": "先瀏覽功能",
+    "continue": "繼續",
+    "locked": "開啟「App 管理」和「完整磁碟取用權限」後，才能使用「{feature}」。",
+    "unlock": "開啟權限"
   }
 }

@@ -1546,6 +1546,8 @@ export type PermissionState = "granted" | "denied" | "unknown";
 export type Permissions = {
 	/**  App Management: prefer system preflight; effective Full Disk Access implies granted; otherwise infer from task outcomes if preflight is unavailable. */
 	appManagement: PermissionState,
+	/**  System Settings switch only; unlike effective app_management, Full Disk Access never grants it. */
+	appManagementSwitch: PermissionState,
 	/**  Full Disk Access: effective only if this process can read protected directories. */
 	fullDiskAccess: PermissionState,
 	/**  Enabled in System Settings but not yet effective; quit and reopen OpenNavo. */

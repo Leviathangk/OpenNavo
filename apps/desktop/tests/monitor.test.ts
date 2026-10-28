@@ -940,6 +940,8 @@ describe('Fan control', () => {
 
   it('Announces fans that Rust changed on its own, not the user’s own changes', async () => {
     const ctx = await context();
+    // The menu bar introduction is independent of fan-change notifications.
+    await useSettingsStore().update('monitorMenuBarIntro', true);
     mountWith(MonitorNotifier, ctx);
     const store = useMonitorStore();
     const fans: FanState[] = [

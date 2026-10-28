@@ -83,6 +83,7 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
         />
         <OnToggle
           :model-value="store.item(module).enabled"
+          :data-permission-free="store.item(module).enabled ? '' : undefined"
           :aria-labelledby="`monitor-setting-${module}`"
           @update:model-value="value => set(module, { enabled: value })"
         />
@@ -93,7 +94,7 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
           :options="intervals"
           size="sm"
           :aria-label="t('monitor.settings.interval')"
-          @update:model-value="value => attempt(() => settings.update('monitorIntervalMs', interval(value)))"
+          @update:model-value="value => attempt(() => store.setMonitorSetting('monitorIntervalMs', interval(value)))"
         />
       </SettingRow>
       <SettingRow
@@ -103,14 +104,19 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
       >
         <OnToggle
           :model-value="settings.value.monitorAlerts"
+          :data-permission-free="settings.value.monitorAlerts ? '' : undefined"
           aria-labelledby="monitor-setting-alerts"
-          @update:model-value="value => attempt(() => settings.update('monitorAlerts', value))"
+          @update:model-value="value => attempt(() => store.setMonitorSetting('monitorAlerts', value))"
         />
       </SettingRow>
       <SettingRow :label="t('monitor.settings.notVisible')" :hint="t('monitor.settings.notVisibleHint')">
-        <OnButton variant="secondary" size="sm" @click="attempt(() => store.openMenuBarSettings())">{{
-          t('monitor.settings.openSettings')
-        }}</OnButton>
+        <OnButton
+          data-permission-free
+          variant="secondary"
+          size="sm"
+          @click="attempt(() => store.openMenuBarSettings())"
+          >{{ t('monitor.settings.openSettings') }}</OnButton
+        >
       </SettingRow>
     </OnCard>
     <p class="m-0 mt-10px text-12px leading-[1.55] text-ink-tertiary">
@@ -136,6 +142,7 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
         >
           <OnButton
             v-if="helper?.status === 'enabled'"
+            data-permission-free
             variant="ghost"
             size="sm"
             :loading="busy"
@@ -146,9 +153,14 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
             <OnButton variant="secondary" size="sm" @click="attempt(() => store.openApproval())">{{
               t('monitor.settings.openSettings')
             }}</OnButton>
-            <OnButton variant="secondary" size="sm" :loading="busy" @click="attempt(() => store.loadHelper())">{{
-              t('monitor.fans.recheck')
-            }}</OnButton>
+            <OnButton
+              data-permission-free
+              variant="secondary"
+              size="sm"
+              :loading="busy"
+              @click="attempt(() => store.loadHelper())"
+              >{{ t('monitor.fans.recheck') }}</OnButton
+            >
           </template>
           <OnButton
             v-else-if="!fanLocked && helper?.status === 'not_installed'"

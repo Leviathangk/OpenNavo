@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -40,55 +41,58 @@ async function toggle(module: DisplayModule, enabled: boolean) {
 </script>
 
 <template>
-  <OnRailPanel>
-    <OnRailSection :title="t('monitor.rail.menuBar')" :subtitle="t('monitor.rail.menuBarSub')">
-      <OnCard padding="md" class="flex flex-col gap-4px">
-        <div
-          class="mb-8px flex min-h-30px flex-wrap items-center justify-end gap-x-2px gap-y-4px rounded-[8px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-4px"
-          data-testid="monitor-menubar-preview"
-        >
-          <MenuBarWidget v-for="module in shown" :key="module" :module="module" class="mx-6px" />
-          <span v-if="!shown.length" class="px-4px text-12px text-ink-tertiary">{{ t('monitor.rail.empty') }}</span>
-        </div>
-        <div
-          v-for="module in store.modules"
-          :key="module"
-          class="flex items-center gap-8px py-4px text-12.5px text-ink-secondary"
-        >
-          <OnIcon :name="MODULE_ICONS[module]" :size="13" class="text-ink-tertiary" />
-          <span :id="`monitor-rail-${module}`" class="flex-1">{{ t(`monitor.modules.${module}`) }}</span>
-          <OnToggle
-            :model-value="store.item(module).enabled"
-            :aria-labelledby="`monitor-rail-${module}`"
-            @update:model-value="value => toggle(module, value)"
-          />
-        </div>
-        <p v-if="crowded" class="m-0 mt-6px flex items-start gap-6px text-11.5px leading-[1.5] text-status-warning">
-          <OnIcon name="triangle-alert" :size="13" class="mt-1px shrink-0" />{{ t('monitor.rail.crowded') }}
-        </p>
-        <p class="m-0 mt-8px text-12px text-ink-tertiary">
-          {{ t('monitor.rail.refresh', { count: seconds }, { plural: seconds }) }}
+  <PermissionGate feature="monitor" variant="rail">
+    <OnRailPanel>
+      <OnRailSection :title="t('monitor.rail.menuBar')" :subtitle="t('monitor.rail.menuBarSub')">
+        <OnCard padding="md" class="flex flex-col gap-4px">
+          <div
+            class="mb-8px flex min-h-30px flex-wrap items-center justify-end gap-x-2px gap-y-4px rounded-[8px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-4px"
+            data-testid="monitor-menubar-preview"
+          >
+            <MenuBarWidget v-for="module in shown" :key="module" :module="module" class="mx-6px" />
+            <span v-if="!shown.length" class="px-4px text-12px text-ink-tertiary">{{ t('monitor.rail.empty') }}</span>
+          </div>
+          <div
+            v-for="module in store.modules"
+            :key="module"
+            class="flex items-center gap-8px py-4px text-12.5px text-ink-secondary"
+          >
+            <OnIcon :name="MODULE_ICONS[module]" :size="13" class="text-ink-tertiary" />
+            <span :id="`monitor-rail-${module}`" class="flex-1">{{ t(`monitor.modules.${module}`) }}</span>
+            <OnToggle
+              :model-value="store.item(module).enabled"
+              :data-permission-free="store.item(module).enabled ? '' : undefined"
+              :aria-labelledby="`monitor-rail-${module}`"
+              @update:model-value="value => toggle(module, value)"
+            />
+          </div>
+          <p v-if="crowded" class="m-0 mt-6px flex items-start gap-6px text-11.5px leading-[1.5] text-status-warning">
+            <OnIcon name="triangle-alert" :size="13" class="mt-1px shrink-0" />{{ t('monitor.rail.crowded') }}
+          </p>
+          <p class="m-0 mt-8px text-12px text-ink-tertiary">
+            {{ t('monitor.rail.refresh', { count: seconds }, { plural: seconds }) }}
+          </p>
+        </OnCard>
+      </OnRailSection>
+
+      <OnCard v-if="store.available.includes('fans')" padding="md" class="flex flex-col gap-10px">
+        <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
+          <OnIcon name="fan" :size="15" />{{ t('monitor.modules.fans') }}
+        </h2>
+        <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">{{ fanText }}</p>
+        <OnButton variant="secondary" @click="router.replace({ path: '/monitor', query: { detail: 'sensors' } })">{{
+          t('monitor.rail.adjustFans')
+        }}</OnButton>
+      </OnCard>
+
+      <OnCard padding="md" class="flex flex-col gap-8px">
+        <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
+          <OnIcon name="lock" :size="15" />{{ t('monitor.rail.privacy') }}
+        </h2>
+        <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
+          {{ t('monitor.rail.privacyBody') }}
         </p>
       </OnCard>
-    </OnRailSection>
-
-    <OnCard v-if="store.available.includes('fans')" padding="md" class="flex flex-col gap-10px">
-      <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
-        <OnIcon name="fan" :size="15" />{{ t('monitor.modules.fans') }}
-      </h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">{{ fanText }}</p>
-      <OnButton variant="secondary" @click="router.replace({ path: '/monitor', query: { detail: 'sensors' } })">{{
-        t('monitor.rail.adjustFans')
-      }}</OnButton>
-    </OnCard>
-
-    <OnCard padding="md" class="flex flex-col gap-8px">
-      <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
-        <OnIcon name="lock" :size="15" />{{ t('monitor.rail.privacy') }}
-      </h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
-        {{ t('monitor.rail.privacyBody') }}
-      </p>
-    </OnCard>
-  </OnRailPanel>
+    </OnRailPanel>
+  </PermissionGate>
 </template>

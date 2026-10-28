@@ -107,6 +107,7 @@ async function review() {
         </p>
       </div>
       <OnToggle
+        :data-permission-free="switchedOn ? '' : undefined"
         :model-value="switchedOn"
         :disabled="store.switching"
         :aria-label="t('firewall.status.toggle')"
@@ -178,7 +179,9 @@ async function review() {
       <span class="min-w-0 flex-1 text-12.5px text-ink-primary">{{
         t('firewall.status.pending', { count: pending }, { plural: pending })
       }}</span>
-      <OnButton size="sm" variant="primary" @click="review">{{ t('firewall.status.review') }}</OnButton>
+      <OnButton size="sm" variant="primary" data-permission-free @click="review">{{
+        t('firewall.status.review')
+      }}</OnButton>
     </div>
   </OnCard>
 </template>

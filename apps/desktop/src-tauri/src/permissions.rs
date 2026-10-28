@@ -95,6 +95,11 @@ pub fn combine(signals: Signals) -> Permissions {
         && full_disk_access != PermissionState::Granted
         && signals.app_bundles == Some(Preflight::Granted);
     Permissions {
+        app_management_switch: match signals.app_bundles {
+            Some(Preflight::Granted) => PermissionState::Granted,
+            Some(_) => PermissionState::Denied,
+            None => PermissionState::Unknown,
+        },
         app_management,
         full_disk_access,
         relaunch_required: full_disk_pending || app_management_pending,
@@ -189,6 +194,30 @@ mod tests {
             full_disk_readable: Some(false),
             inferred_app_management: PermissionState::Unknown,
             app_management_blocked_after_grant: false,
+        }
+    }
+
+    #[test]
+    fn app_management_switch_is_independent_of_effective_access() {
+        for preflight in [
+            Some(Preflight::Denied),
+            Some(Preflight::NotDetermined),
+            None,
+        ] {
+            let status = combine(Signals {
+                app_bundles: preflight,
+                full_disk_readable: Some(true),
+                ..base()
+            });
+            assert_eq!(status.app_management, PermissionState::Granted);
+            assert_eq!(
+                status.app_management_switch,
+                if preflight.is_none() {
+                    PermissionState::Unknown
+                } else {
+                    PermissionState::Denied
+                }
+            );
         }
     }
 

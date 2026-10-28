@@ -16,6 +16,7 @@ import SecuritySettings from '@/components/settings/SecuritySettings.vue';
 import HistoryList from '@/components/updates/HistoryList.vue';
 import SecurityPage from '@/pages/SecurityPage.vue';
 import { startLocalState, usePermissionsStore, useSettingsStore, useTasksStore } from '@/stores';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useSecurityStore } from '@/stores/security';
 import { useDownloadsStore } from '@/stores/downloads';
 import DownloadNotifier from '@/components/package/DownloadNotifier.vue';
@@ -524,14 +525,13 @@ describe('Startup items', () => {
     expect(config?.text()).not.toContain('在系统设置中管理');
   });
 
-  it('Reports incomplete categories and offers access when Full Disk Access is denied', async () => {
-    const { wrapper } = await mountPage('/security/startup', 'no-fda');
-    expect(wrapper.text()).toContain('未能完整检查：后台项目');
-    expect(wrapper.text()).toContain('后台项目');
+  it('Shows the permission gate instead of scanning startup items without Full Disk Access', async () => {
+    const { wrapper } = await mountPage('/security/startup', 'no-fda,no-full-disk-access');
+    expect(useSecurityStore().startup).toBeNull();
+    expect(wrapper.text()).not.toContain('未能完整检查：后台项目');
     expect(button(wrapper, '开启权限')).toBeTruthy();
-    const guide = vi.spyOn(commands, 'permissionGuideOpen');
     await button(wrapper, '开启权限')!.trigger('click');
-    expect(guide).toHaveBeenCalledWith('full_disk_access');
+    expect(usePermissionGateStore().current?.feature).toBe('security');
   });
 
   it.each(['granted', 'unknown', 'pending'] as const)(
@@ -539,6 +539,10 @@ describe('Startup items', () => {
     async state => {
       const { wrapper } = await mountPage('/security/startup');
       const permissions = usePermissionsStore();
+      vi.spyOn(commands, 'permissionsGet').mockImplementation(async () => ({
+        status: 'ok',
+        data: permissions.status!
+      }));
       permissions.apply({
         ...permissions.status!,
         fullDiskAccess: state === 'pending' ? 'denied' : state,
@@ -548,9 +552,11 @@ describe('Startup items', () => {
       const security = useSecurityStore();
       security.startup = { ...security.startup!, missing: ['dock_tiles'] };
       await flushPromises();
-      expect(wrapper.text()).toContain('未能完整检查：程序坞插件');
+      if (state === 'granted') expect(wrapper.text()).toContain('未能完整检查：程序坞插件');
+      else expect(wrapper.text()).not.toContain('未能完整检查：程序坞插件');
       expect(wrapper.text()).not.toContain('没有「完全磁盘访问权限」');
-      expect(button(wrapper, '开启权限')).toBeUndefined();
+      if (state === 'granted') expect(button(wrapper, '开启权限')).toBeUndefined();
+      else expect(button(wrapper, '开启权限')).toBeTruthy();
     }
   );
 });

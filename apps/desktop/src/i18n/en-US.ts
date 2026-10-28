@@ -980,14 +980,12 @@ const messages: MessageSchema = {
       logTitle: 'Homebrew installation log'
     },
     permissions: {
-      title: 'Permissions',
       required: 'Required',
       optional: 'Optional',
       enable: 'Turn On',
       waiting: 'Waiting…',
       granted: 'On',
       confirm: 'I’ve Turned It On',
-      startHint: 'Turn on App Management and Full Disk Access to get started.',
       appManagement: {
         title: 'Allow OpenNavo to manage apps',
         body: 'Needed to update and uninstall apps.',
@@ -1088,7 +1086,7 @@ const messages: MessageSchema = {
         notFound: '{token} isn’t on this Mac',
         notFoundBody:
           'It may already be uninstalled, or it was installed in a way OpenNavo can’t match. Nothing was done.',
-        permission: 'Turn on Full Disk Access to preview uninstalling {token}.'
+        permission: 'Turn on App Management and Full Disk Access to preview uninstalling {token}.'
       }
     }
   },
@@ -3012,6 +3010,16 @@ const messages: MessageSchema = {
       limits:
         'Only connections that apps on this Mac start. Incoming connections are the job of the firewall built into macOS. While OpenNavo isn’t running it can’t ask, so connections without a rule are allowed for now and logged under Activity.'
     }
+  },
+  permissionGate: {
+    title: 'Turn on permissions to get started',
+    body: 'Turn on both permissions below to use “{feature}”.',
+    bodyApps: 'Turn on both permissions below to continue with these apps.',
+    bodyInstall: 'Turn on both permissions below to install apps.',
+    browse: 'Explore First',
+    continue: 'Continue',
+    locked: 'Turn on App Management and Full Disk Access to use “{feature}”.',
+    unlock: 'Turn On Permissions'
   }
 };
 

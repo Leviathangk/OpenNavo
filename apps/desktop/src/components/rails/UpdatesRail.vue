@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -160,86 +161,94 @@ const nextLabel = computed(() => {
 </script>
 
 <template>
-  <OnRailPanel>
-    <OnRailSection
-      :title="t('updates.month.title')"
-      :subtitle="t('updates.month.since', { date: formatDate(monthStart, { locale: appLocale }) })"
-    >
-      <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-8px">
-        <OnStatTile
-          :label="t('updates.month.updated')"
-          :value="month ? String(stats.updated) : '—'"
-          :unit="t('updates.month.updatedUnit')"
-        />
-        <OnStatTile
-          :label="t('updates.month.successRate')"
-          :value="stats.rate === null ? '—' : formatPercent(stats.rate / 100, { locale: appLocale })"
-          :hint="month ? t('updates.month.successHint', { count: stats.failed }, { plural: stats.failed }) : undefined"
-        />
-      </div>
-    </OnRailSection>
+  <PermissionGate feature="updates" variant="rail">
+    <OnRailPanel>
+      <OnRailSection
+        :title="t('updates.month.title')"
+        :subtitle="t('updates.month.since', { date: formatDate(monthStart, { locale: appLocale }) })"
+      >
+        <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-8px">
+          <OnStatTile
+            :label="t('updates.month.updated')"
+            :value="month ? String(stats.updated) : '—'"
+            :unit="t('updates.month.updatedUnit')"
+          />
+          <OnStatTile
+            :label="t('updates.month.successRate')"
+            :value="stats.rate === null ? '—' : formatPercent(stats.rate / 100, { locale: appLocale })"
+            :hint="
+              month ? t('updates.month.successHint', { count: stats.failed }, { plural: stats.failed }) : undefined
+            "
+          />
+        </div>
+      </OnRailSection>
 
-    <OnRailSection v-if="toggles.length" :title="t('updates.auto.title')" :subtitle="t('updates.auto.subtitle')">
-      <OnCard padding="none">
-        <ul class="m-0 list-none p-0">
-          <li
-            v-for="item in toggles"
-            :key="item.key"
-            class="flex items-center gap-12px border-t border-t-solid border-line-subtle px-16px py-12px first:border-t-0"
-          >
-            <span class="min-w-0 flex-1">
-              <span :id="`auto-${item.key}`" class="block text-13.5px text-ink-primary">{{ item.label }}</span>
-              <span class="block text-12px text-ink-tertiary">{{ item.hint }}</span>
-            </span>
-            <OnToggle
-              :model-value="item.value"
-              :aria-labelledby="`auto-${item.key}`"
-              @update:model-value="value => toggle(item.key, value)"
-            />
-          </li>
-        </ul>
+      <OnRailSection v-if="toggles.length" :title="t('updates.auto.title')" :subtitle="t('updates.auto.subtitle')">
+        <OnCard padding="none">
+          <ul class="m-0 list-none p-0">
+            <li
+              v-for="item in toggles"
+              :key="item.key"
+              class="flex items-center gap-12px border-t border-t-solid border-line-subtle px-16px py-12px first:border-t-0"
+            >
+              <span class="min-w-0 flex-1">
+                <span :id="`auto-${item.key}`" class="block text-13.5px text-ink-primary">{{ item.label }}</span>
+                <span class="block text-12px text-ink-tertiary">{{ item.hint }}</span>
+              </span>
+              <OnToggle
+                :model-value="item.value"
+                :aria-labelledby="`auto-${item.key}`"
+                @update:model-value="value => toggle(item.key, value)"
+              />
+            </li>
+          </ul>
+        </OnCard>
+      </OnRailSection>
+
+      <OnRailSection
+        v-if="sources.length"
+        :title="t('updates.sources.title')"
+        :subtitle="t('updates.sources.subtitle')"
+      >
+        <OnCard padding="none">
+          <ul class="m-0 list-none p-0">
+            <li
+              v-for="item in sources"
+              :key="item.source"
+              class="flex items-center gap-12px border-t border-t-solid border-line-subtle px-16px py-12px first:border-t-0"
+            >
+              <span class="min-w-0 flex-1">
+                <span :id="`source-${item.source}`" class="block text-13.5px text-ink-primary">{{ item.label }}</span>
+                <span class="block text-12px text-ink-tertiary">{{ item.hint }}</span>
+              </span>
+              <OnToggle
+                :model-value="item.value"
+                :aria-labelledby="`source-${item.source}`"
+                @update:model-value="value => toggleSource(item.source, value)"
+              />
+            </li>
+          </ul>
+        </OnCard>
+      </OnRailSection>
+
+      <OnCard v-if="mirrorName" padding="md" class="flex items-center gap-12px">
+        <span class="min-w-0 flex-1">
+          <span class="block text-14px font-600 text-ink-primary">{{ mirrorName }}</span>
+          <span v-if="probe?.latencyMs" class="block text-12px text-ink-tertiary">{{
+            t('updates.mirror.latency', { ms: probe.latencyMs })
+          }}</span>
+        </span>
+        <OnButton variant="secondary" size="sm" href="/settings/mirrors" :link-as="RouterLink">{{
+          t('updates.mirror.switch')
+        }}</OnButton>
       </OnCard>
-    </OnRailSection>
 
-    <OnRailSection v-if="sources.length" :title="t('updates.sources.title')" :subtitle="t('updates.sources.subtitle')">
-      <OnCard padding="none">
-        <ul class="m-0 list-none p-0">
-          <li
-            v-for="item in sources"
-            :key="item.source"
-            class="flex items-center gap-12px border-t border-t-solid border-line-subtle px-16px py-12px first:border-t-0"
-          >
-            <span class="min-w-0 flex-1">
-              <span :id="`source-${item.source}`" class="block text-13.5px text-ink-primary">{{ item.label }}</span>
-              <span class="block text-12px text-ink-tertiary">{{ item.hint }}</span>
-            </span>
-            <OnToggle
-              :model-value="item.value"
-              :aria-labelledby="`source-${item.source}`"
-              @update:model-value="value => toggleSource(item.source, value)"
-            />
-          </li>
-        </ul>
+      <OnCard padding="md" class="flex flex-col gap-6px">
+        <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('updates.next.title') }}</h2>
+        <p class="m-0 text-12.5px leading-[1.6] text-ink-tertiary">
+          {{ nextLabel ? t('updates.next.text', { time: nextLabel }) : t('updates.next.off') }}
+        </p>
       </OnCard>
-    </OnRailSection>
-
-    <OnCard v-if="mirrorName" padding="md" class="flex items-center gap-12px">
-      <span class="min-w-0 flex-1">
-        <span class="block text-14px font-600 text-ink-primary">{{ mirrorName }}</span>
-        <span v-if="probe?.latencyMs" class="block text-12px text-ink-tertiary">{{
-          t('updates.mirror.latency', { ms: probe.latencyMs })
-        }}</span>
-      </span>
-      <OnButton variant="secondary" size="sm" href="/settings/mirrors" :link-as="RouterLink">{{
-        t('updates.mirror.switch')
-      }}</OnButton>
-    </OnCard>
-
-    <OnCard padding="md" class="flex flex-col gap-6px">
-      <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('updates.next.title') }}</h2>
-      <p class="m-0 text-12.5px leading-[1.6] text-ink-tertiary">
-        {{ nextLabel ? t('updates.next.text', { time: nextLabel }) : t('updates.next.off') }}
-      </p>
-    </OnCard>
-  </OnRailPanel>
+    </OnRailPanel>
+  </PermissionGate>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnConfirm, OnEmpty, OnIcon, OnSkeleton } from '@opennavo/ui';
 import PreviewNotice from '@/components/common/PreviewNotice.vue';
@@ -7,6 +7,7 @@ import type { LocalApp, StartupAction, StartupItem } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { usePermissionsStore } from '@/stores';
 import { useSecurityStore } from '@/stores/security';
 import { matchStartupItems, NO_PREVIEW } from '@/utils/deepLinkPreview';
@@ -27,6 +28,7 @@ const { t, te } = useI18n();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 const store = useSecurityStore();
+const gate = usePermissionGateStore();
 const permissions = usePermissionsStore();
 const { appLocale } = useAppLocale();
 
@@ -37,15 +39,23 @@ const othersOpen = ref(false);
 const adding = ref(false);
 const addingPath = ref<string | null>(null);
 
-onMounted(async () => {
-  try {
-    await store.loadStartup();
-  } catch (error) {
-    loadError.value = error;
-  }
-});
+watch(
+  () => gate.ready,
+  async ready => {
+    if (!ready) {
+      selectedId.value = null;
+      return;
+    }
+    try {
+      await store.loadStartup();
+    } catch (error) {
+      loadError.value = error;
+    }
+  },
+  { immediate: true }
+);
 
-const snapshot = computed(() => store.startup);
+const snapshot = computed(() => (gate.ready ? store.startup : null));
 
 const previewLabel = computed(() => (props.preview.state === 'ok' ? props.preview.value : null));
 const matches = computed(() =>
@@ -55,6 +65,7 @@ const matches = computed(() =>
 const previewState = computed(() => {
   if (props.preview.state === 'none') return null;
   if (props.preview.state === 'invalid') return 'invalid';
+  if (!gate.ready) return 'locked';
   if (matches.value.length) return 'found';
   if (!loadError.value && (!snapshot.value || store.startupRefreshing)) return 'looking';
   return 'notFound';
@@ -97,6 +108,7 @@ async function act(item: StartupItem, action: StartupAction | 'mark_reviewed') {
   removing.value = null;
   try {
     const outcome = await store.actOnStartup([item.id], action);
+    if (!outcome) return;
     const failure = outcome.failed[0];
     if (failure) {
       const key = `errors.${failure.code}`;
@@ -121,6 +133,7 @@ async function actMany(items: StartupItem[], action: 'enable' | 'disable') {
       items.map(item => item.id),
       action
     );
+    if (!outcome) return;
     const failure = outcome.failed[0];
     if (failure) {
       const key = `errors.${failure.code}`;
@@ -144,6 +157,7 @@ async function addApp(app: LocalApp) {
   addingPath.value = app.path;
   try {
     const item = await store.addLoginItem(app.path);
+    if (!item) return;
     adding.value = false;
     toasts.push({ tone: 'success', title: t('security.startup.added', { name: item.owner?.name ?? app.name }) });
   } catch (error) {
@@ -170,6 +184,7 @@ async function grant() {
       :title="t('deeplink.preview.invalid')"
       :body="t('deeplink.preview.invalidBody')"
     />
+    <PreviewNotice v-else-if="previewState === 'locked'" :title="previewLabel ?? ''" />
     <PreviewNotice
       v-else-if="previewState === 'looking'"
       :title="t('deeplink.preview.startup.looking', { label: previewLabel ?? '' })"
@@ -266,7 +281,7 @@ async function grant() {
       </section>
     </template>
     <OnEmpty
-      v-else-if="snapshot"
+      v-else-if="snapshot || !gate.ready"
       :title="t('security.startup.none')"
       :description="t('security.startup.noneHint')"
       icon="lucide:shield-check"

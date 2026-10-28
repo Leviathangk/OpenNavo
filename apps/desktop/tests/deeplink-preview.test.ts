@@ -186,10 +186,15 @@ describe('Uninstall previews', () => {
     expect(plan).not.toHaveBeenCalled();
   });
 
-  it('waits for Full Disk Access before it can show the app', async () => {
-    await mountInstalled('/uninstall/zoom?preview=1', '');
-    await vi.waitFor(() => expect(notice()).toContain('开启「完全磁盘访问权限」之后，才能预览卸载 zoom'));
-  });
+  it.each(['no-full-disk-access', 'app-management-switch-off'])(
+    'waits for both permissions before it can show the app (%s)',
+    async flags => {
+      await mountInstalled('/uninstall/zoom?preview=1', flags);
+      await vi.waitFor(() =>
+        expect(notice()).toContain('开启「App 管理」和「完全磁盘访问权限」之后，才能预览卸载 zoom')
+      );
+    }
+  );
 });
 
 describe('Deep link routing', () => {

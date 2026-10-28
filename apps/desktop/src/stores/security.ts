@@ -1,3 +1,4 @@
+import { usePermissionGateStore } from './permissionGate';
 import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { commands, unwrap } from '@/ipc/client';
@@ -83,6 +84,9 @@ export const useSecurityStore = defineStore('security', () => {
 
   // The security keys have the same types in Settings; TypeScript cannot relate the two indexed types itself.
   async function setSecuritySetting<K extends keyof SecuritySettings>(key: K, entry: SecuritySettings[K]) {
+    // Teleported menus can save outside the wrapper; disabling protection remains available while locked.
+    if (entry !== false && entry !== 'off' && !(await usePermissionGateStore().require({ feature: 'security' })))
+      return;
     if (!settings.value) await settings.load();
     await settings.update(key, entry as AppSettings[K]);
   }
@@ -143,6 +147,7 @@ export const useSecurityStore = defineStore('security', () => {
   }
   /** Opens an app at login; it is listed at once. */
   async function addLoginItem(path: string) {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return;
     ++startupRevision;
     const item = await unwrap(commands.startupLoginAdd(path));
     await reloadStartup();
@@ -160,16 +165,19 @@ export const useSecurityStore = defineStore('security', () => {
 
   /** First download needs consent: the database is about 113 MB and the engine about 1.6 GB of memory while scanning. */
   async function consentAndDownload() {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return;
     await setSecuritySetting('avConsent', true);
     await updateDatabase();
   }
 
   async function updateDatabase() {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return;
     await unwrap(commands.avDbUpdate());
     await loadOverview();
   }
 
   async function startScan(kind: AvScanKind, paths: string[] | null = null, force = false) {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return;
     const revision = ++scanRevision;
     const previousTarget = scanTarget;
     scanTarget = 'starting';
@@ -245,6 +253,7 @@ export const useSecurityStore = defineStore('security', () => {
   }
 
   async function actOnFindings(ids: string[], action: 'quarantine' | 'delete' | 'trust' | 'reveal') {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return null;
     const current = scan.value;
     if (!current) return null;
     return withBusy(ids, async () => {
@@ -256,6 +265,7 @@ export const useSecurityStore = defineStore('security', () => {
   }
 
   async function actOnStartup(ids: string[], action: StartupAction | 'mark_reviewed') {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return null;
     return withBusy(ids, async () => {
       ++startupRevision;
       const outcome = await unwrap(commands.startupItemAct(ids, action));
@@ -279,6 +289,7 @@ export const useSecurityStore = defineStore('security', () => {
   }
 
   async function restore(ids: string[]) {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return null;
     return withBusy(ids, async () => {
       const outcome = await unwrap(commands.quarantineRestore(ids));
       await Promise.all([loadQuarantine(), reloadScan()]);
@@ -287,6 +298,7 @@ export const useSecurityStore = defineStore('security', () => {
   }
 
   async function purge(ids: string[]) {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return null;
     return withBusy(ids, async () => {
       const outcome = await unwrap(commands.quarantineDelete(ids));
       await Promise.all([loadQuarantine(), reloadScan()]);
@@ -325,6 +337,7 @@ export const useSecurityStore = defineStore('security', () => {
 
   /** Check every installed app's signature now; read-only, it may take a while on a large Applications folder. */
   async function checkSignatures() {
+    if (!(await usePermissionGateStore().require({ feature: 'security' }))) return;
     checkingSignatures.value = true;
     try {
       signatures.value = await unwrap(commands.appSignatureCheck());

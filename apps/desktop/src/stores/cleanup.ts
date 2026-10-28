@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
+import { usePermissionGateStore } from './permissionGate';
 import type {
   CategoryReport,
   CleanupCategory,
@@ -183,6 +184,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
   const latestProgress = (): CleanupProgress | null => progress.value;
 
   async function scan() {
+    if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return;
     const id = crypto.randomUUID();
     requestId.value = id;
     pending.value = null;
@@ -285,6 +287,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
   }
 
   async function confirm() {
+    if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return;
     const current = report.value;
     if (!current || stage.value !== 'review' || !chosen.value.length) return;
     // Rust rejects stale reports too; rescanning first avoids a round trip and a confusing error.
@@ -340,6 +343,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
   );
 
   async function restore() {
+    if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return null;
     if (!taskId.value) return { restored: 0, missing: [] as string[] };
     const result = await unwrap(commands.uninstallRestore(taskId.value));
     restored.value = result.missing.length === 0;
@@ -348,6 +352,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
   }
 
   async function purge() {
+    if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return null;
     if (!taskId.value) return 0;
     const freed = await unwrap(commands.uninstallPurge(taskId.value));
     restored.value = true;

@@ -146,7 +146,7 @@ async function ruleFor(event: FirewallEvent) {
     const target = targetOf(event);
     const key = keyOf(event, target);
     const action = opposite(event);
-    await store.saveRule({
+    const saved = await store.saveRule({
       id: null,
       appKey: event.app.key,
       appPath: null,
@@ -154,6 +154,7 @@ async function ruleFor(event: FirewallEvent) {
       remote: target?.remote ?? null,
       port: target?.port ?? null
     });
+    if (!saved) return;
     ruled.value = new Map(ruled.value).set(key, action);
     toasts.push({
       tone: 'success',
@@ -180,7 +181,7 @@ async function ruleFor(event: FirewallEvent) {
 async function clear() {
   clearing.value = true;
   try {
-    await store.clearActivity();
+    if (!(await store.clearActivity())) return;
     confirmClear.value = false;
   } catch (error) {
     toasts.push({

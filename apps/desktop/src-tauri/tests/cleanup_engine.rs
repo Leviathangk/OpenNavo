@@ -170,6 +170,7 @@ fn permissions(granted: bool) -> Permissions {
             PermissionState::Denied
         },
         app_management: PermissionState::Granted,
+        app_management_switch: PermissionState::Granted,
         relaunch_required: false,
         app_management_pending: false,
         full_disk_access_pending: false,

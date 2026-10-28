@@ -8,7 +8,18 @@ export type GuidePane = Extract<PrivacyPane, 'app_management' | 'full_disk_acces
 
 export function paneState(pane: GuidePane, status: Permissions | null): PermissionState {
   if (!status) return 'unknown';
-  return pane === 'app_management' ? status.appManagement : status.fullDiskAccess;
+  return pane === 'app_management' ? status.appManagementSwitch : status.fullDiskAccess;
+}
+
+/** Gate readiness follows §1.1: App Management uses the System Settings switch; unknown states require this-session confirmation. */
+export function gateReady(status: Permissions | null, unknownConfirmed: boolean): boolean {
+  if (!status || status.relaunchRequired) return false;
+  const app = status.appManagementSwitch;
+  const disk = status.fullDiskAccess;
+  return (
+    (app === 'granted' || (app === 'unknown' && unknownConfirmed)) &&
+    (disk === 'granted' || (disk === 'unknown' && unknownConfirmed))
+  );
 }
 
 /** On in System Settings, but OpenNavo gets it only after reopening (Full Disk Access always does). */
@@ -29,8 +40,7 @@ export function paneDone(pane: GuidePane, status: Permissions | null): boolean {
 export const usePermissionsStore = defineStore('permissions', () => {
   const status = ref<Permissions | null>(null);
   const guiding = ref<GuidePane | null>(null);
-  /** The user said Full Disk Access is on although macOS could not tell (this session only, like Welcome). */
-  const fullDiskConfirmed = ref(false);
+  const unknownConfirmed = ref(false);
   let requestSequence = 0;
   let eventVersion = 0;
 
@@ -39,13 +49,6 @@ export const usePermissionsStore = defineStore('permissions', () => {
   const relaunchRequired = computed(() => status.value?.relaunchRequired ?? false);
   const appManagementPending = computed(() => panePending('app_management', status.value));
   const fullDiskAccessPending = computed(() => panePending('full_disk_access', status.value));
-  /**
-   * Installed and uninstalling start only with Full Disk Access (2026-10-12): without it app data in other apps'
-   * containers cannot be measured or found, and the Trash cannot be read back for Undo.
-   */
-  const fullDiskReady = computed(
-    () => fullDiskAccess.value === 'granted' || (fullDiskAccess.value === 'unknown' && fullDiskConfirmed.value)
-  );
 
   function setStatus(next: Permissions) {
     status.value = next;
@@ -90,10 +93,9 @@ export const usePermissionsStore = defineStore('permissions', () => {
   return {
     status,
     guiding,
-    fullDiskConfirmed,
+    unknownConfirmed,
     appManagement,
     fullDiskAccess,
-    fullDiskReady,
     relaunchRequired,
     appManagementPending,
     fullDiskAccessPending,

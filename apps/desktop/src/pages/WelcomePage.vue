@@ -8,7 +8,6 @@ import WindowControls from '@/components/shell/WindowControls.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import RunningTask from '@/components/updates/RunningTask.vue';
 import SourceCards from '@/components/welcome/SourceCards.vue';
-import PermissionChecklist from '@/components/permissions/PermissionChecklist.vue';
 import type { Locale, Task } from '@/ipc/bindings';
 import { IpcError, commands, unwrap } from '@/ipc/client';
 import { sameMirrorChoice, toMirrorChoice, useMirrorOptions } from '@/composables/useMirrorOptions';
@@ -16,20 +15,20 @@ import type { MirrorOption } from '@/composables/useMirrorOptions';
 import { resumeDeepLink } from '@/composables/useDeepLink';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
-import { useEnvStore, usePermissionsStore, useSettingsStore, useTasksStore } from '@/stores';
+import { useEnvStore, useSettingsStore, useTasksStore } from '@/stores';
 // Use the native app icon file (src-tauri/icons) so Welcome reflects icon changes.
 import appIcon from '../../src-tauri/icons/128x128@2x.png';
 
-// First launch (06 §13.1, 08 §10.13, owner revisions 2026-10-07 and 2026-10-12): environment check → source (official / mirror cards,
-// lowest latency selected), then permissions (App Management and Full Disk Access both required; can enable before Homebrew), then
-// install Homebrew or start using the app.
+// First launch (06 §13.1, 08 §10.13, owner revisions 2026-10-07, 2026-10-12 and 2026-10-28): environment check → source
+// (official / mirror cards, lowest latency selected) → install Homebrew or start using the app. Only Simplified Chinese
+// Macs open here on first launch (Rust settings::load); elsewhere Install opens it when Homebrew is missing. Permissions
+// are asked for where they are needed (permission gate), not here.
 // Save the download source only when Install Homebrew or Get Started is clicked.
 const { t, te } = useI18n();
 const router = useRouter();
 const env = useEnvStore();
 const settings = useSettingsStore();
 const tasks = useTasksStore();
-const permissions = usePermissionsStore();
 const toasts = useToasts();
 const inBrowser = !isTauri();
 const { errorText } = usePackageState();
@@ -51,7 +50,6 @@ const {
 );
 
 onMounted(async () => {
-  void permissions.refresh().catch(() => undefined);
   systemLocale.value = await unwrap(commands.systemLocaleGet()).catch(() => 'en-US' as const);
   await load();
   await probe();
@@ -226,25 +224,9 @@ async function install() {
   }
 }
 
-// Permissions: require App Management and Full Disk Access before entering the app (Installed and uninstalling read other
-// apps' data); if system detection is unavailable, allow user confirmation, which then covers both.
-const confirmedUnknown = ref(false);
-const unknownPermission = computed(
-  () => permissions.appManagement === 'unknown' || permissions.fullDiskAccess === 'unknown'
-);
-const permissionReady = computed(
-  () =>
-    (permissions.appManagement === 'granted' || (permissions.appManagement === 'unknown' && confirmedUnknown.value)) &&
-    permissions.fullDiskReady
-);
-function confirmUnknown() {
-  confirmedUnknown.value = true;
-  permissions.fullDiskConfirmed = true;
-}
-
-/** Enter only when the environment is ready, App Management is enabled, and settings save succeeds; remain on Welcome to retry failed saves. */
+/** Enter only when the environment is ready and settings save succeeds; remain on Welcome to retry failed saves. */
 async function leave() {
-  if (locked.value || !env.hasBrew || !permissionReady.value || !selectedKey.value) return;
+  if (locked.value || !env.hasBrew || !selectedKey.value) return;
   saving.value = true;
   try {
     await saveSelection();
@@ -352,39 +334,11 @@ async function viewLog(task: Task) {
           </p>
         </section>
 
-        <!-- Permissions do not depend on Homebrew: enable them beforehand or while installation runs. -->
-        <section v-if="env.info" class="mt-24px flex flex-col gap-10px" aria-labelledby="welcome-permissions">
-          <h2 id="welcome-permissions" class="m-0 text-14px font-600 text-ink-primary">
-            {{ t('welcome.permissions.title') }}
-          </h2>
-          <PermissionChecklist />
-        </section>
-
         <template v-if="env.hasBrew">
           <footer class="mt-auto flex flex-col gap-8px pt-24px">
-            <OnButton
-              variant="accent"
-              size="lg"
-              block
-              :loading="saving"
-              :disabled="!permissionReady || !selectedKey"
-              @click="leave"
-              >{{ t('welcome.done') }}</OnButton
-            >
-            <p
-              v-if="!permissionReady"
-              class="m-0 flex items-center justify-center gap-6px text-12.5px text-ink-tertiary"
-            >
-              {{ t('welcome.permissions.startHint') }}
-              <button
-                v-if="unknownPermission"
-                type="button"
-                class="m-0 cursor-pointer border-none bg-transparent p-0 font-sans text-12.5px text-ink-secondary underline underline-offset-2 hover:text-ink-primary"
-                @click="confirmUnknown"
-              >
-                {{ t('welcome.permissions.confirm') }}
-              </button>
-            </p>
+            <OnButton variant="accent" size="lg" block :loading="saving" :disabled="!selectedKey" @click="leave()">{{
+              t('welcome.done')
+            }}</OnButton>
           </footer>
         </template>
 

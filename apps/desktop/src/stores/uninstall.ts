@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
+import { usePermissionGateStore } from './permissionGate';
 import type { AppPlan, DeleteMode, LocalApp, PlanItem, ScanProgress, Task, UninstallPlan } from '@/ipc/bindings';
 import { IpcError, commands, unwrap } from '@/ipc/client';
 import { useLocalAppsStore } from './localApps';
@@ -96,6 +97,7 @@ export const useUninstallStore = defineStore('uninstall', () => {
   const tasks = useTasksStore();
   const settings = useSettingsStore();
   const permissions = usePermissionsStore();
+  const gate = usePermissionGateStore();
 
   const stage = ref<UninstallStage>('idle');
   const appIds = ref<string[]>([]);
@@ -174,7 +176,7 @@ export const useUninstallStore = defineStore('uninstall', () => {
   }
 
   async function scan() {
-    if (!permissions.fullDiskReady) {
+    if (!gate.ready) {
       stage.value = 'permission';
       return;
     }
@@ -201,13 +203,14 @@ export const useUninstallStore = defineStore('uninstall', () => {
   }
 
   /**
-   * Start a session; runs in the background keep reporting on their own. Without Full Disk Access the dialog first
-   * guides the permission and scans once it is on.
+   * Start a session; runs in the background keep reporting on their own. The shared gate waits for both
+   * permissions and explicit consent before planning.
    * One Homebrew cask can install several apps and brew removes them together, so keep one app per cask
    * (Rust rejects duplicates); the review lists the siblings that go with it.
    */
   async function start(ids: string[]) {
     if (!ids.length) return;
+    if (!(await gate.require({ feature: 'installed', targets: ids.map(token => ({ kind: 'app', token })) }))) return;
     reset();
     const localApps = useLocalAppsStore();
     const casks = new Set<string>();
@@ -287,6 +290,8 @@ export const useUninstallStore = defineStore('uninstall', () => {
   }
 
   async function confirm() {
+    if (!(await gate.require({ feature: 'installed', targets: appIds.value.map(token => ({ kind: 'app', token })) })))
+      return;
     const current = plan.value;
     if (!current || stage.value !== 'review' || !included.value.length || blocked.value) return;
     // Rust also rejects stale plans; rescanning first avoids a round trip and a confusing error.
@@ -409,7 +414,7 @@ export const useUninstallStore = defineStore('uninstall', () => {
 
   // The permission arrived while the dialog waited for it: scan now.
   watch(
-    () => permissions.fullDiskReady,
+    () => gate.ready,
     ready => {
       if (ready && stage.value === 'permission') void scan();
     }
@@ -454,6 +459,7 @@ export const useUninstallStore = defineStore('uninstall', () => {
   }
 
   async function restore(ids: readonly string[] = taskIds.value) {
+    if (!(await gate.require({ feature: 'installed' }))) return null;
     const epoch = session;
     const own = ids === taskIds.value;
     let restored = 0;
@@ -488,6 +494,7 @@ export const useUninstallStore = defineStore('uninstall', () => {
   }
 
   async function purge(ids: readonly string[] = taskIds.value) {
+    if (!(await gate.require({ feature: 'installed' }))) return null;
     const epoch = session;
     const own = ids === taskIds.value;
     let freed = 0;

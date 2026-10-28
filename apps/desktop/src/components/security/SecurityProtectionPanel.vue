@@ -135,6 +135,7 @@ function eventText(event: ProtectionEvent): string {
           <OnToggle
             class="mt-2px"
             :model-value="Boolean(store.securitySettings[item.key]) && !item.disabled"
+            :data-permission-free="Boolean(store.securitySettings[item.key]) && !item.disabled ? '' : undefined"
             :disabled="item.disabled"
             :aria-label="item.title"
             @update:model-value="(on: boolean) => toggle(item.key, on)"

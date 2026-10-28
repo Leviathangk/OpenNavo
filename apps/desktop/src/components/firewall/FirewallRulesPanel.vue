@@ -99,7 +99,7 @@ async function confirmDelete() {
   const rule = deleting.value;
   if (!rule) return;
   try {
-    await store.deleteRules([rule.id]);
+    if (!(await store.deleteRules([rule.id]))) return;
     deleting.value = null;
     toasts.push({ tone: 'success', title: t('firewall.rules.deleted') });
   } catch (error) {

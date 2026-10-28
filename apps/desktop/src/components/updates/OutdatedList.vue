@@ -111,7 +111,7 @@ function menu(item: OutdatedItem): OnMenuItem[] {
 
 async function run(action: () => Promise<unknown>, done?: string) {
   try {
-    await action();
+    if ((await action()) === false) return;
     if (done) toasts.push({ tone: 'info', title: done });
   } catch (error) {
     toasts.push({

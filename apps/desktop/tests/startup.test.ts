@@ -16,7 +16,8 @@ describe('Startup route', () => {
   });
 
   it('Cold-start links arriving before state wait for onboarding before opening targets', async () => {
-    const context = await setup('/discover', { brew: false, tickMs: 1000 });
+    // Only a Simplified Chinese Mac starts on Welcome (Rust settings::load).
+    const context = await setup('/discover', { brew: false, tickMs: 1000, systemLocale: 'zh-CN' });
     expect(deepLinkOpened()).toBe(false);
     const ready = startLocalState();
     await startDeepLinks(context.router, ready);
@@ -40,6 +41,22 @@ describe('Startup route', () => {
     expect(useDeepLinkStore().pending?.route).toBe('/package/cask/zed');
     await useSettingsStore().update('onboardingCompleted', true);
     expect(await resumeDeepLink(context.router)).toBe(true);
+    expect(context.router.currentRoute.value.path).toBe('/package/cask/zed');
+    expect(useDeepLinkStore().pending).toBeNull();
+  });
+
+  it('Other languages skip Welcome, so cold-start links open their targets at once', async () => {
+    const context = await setup('/discover', { brew: false, tickMs: 1000, systemLocale: 'en-US' });
+    const ready = startLocalState();
+    await startDeepLinks(context.router, ready);
+    await events.deeplinkReceived.emit({
+      url: 'opennavo://package/cask/zed',
+      route: '/package/cask/zed',
+      action: null
+    });
+    await ready;
+    await flushPromises();
+    expect(useSettingsStore().value?.onboardingCompleted).toBe(true);
     expect(context.router.currentRoute.value.path).toBe('/package/cask/zed');
     expect(useDeepLinkStore().pending).toBeNull();
   });

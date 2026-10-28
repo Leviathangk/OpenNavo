@@ -965,14 +965,12 @@
       "logTitle": "Registro de instalación de Homebrew"
     },
     "permissions": {
-      "title": "Permisos",
       "required": "Obligatorio",
       "optional": "Opcional",
       "enable": "Activar",
       "waiting": "Esperando…",
       "granted": "Activado",
       "confirm": "Ya lo he activado",
-      "startHint": "Activa Gestión de apps y el acceso total al disco para empezar.",
       "appManagement": {
         "title": "Permite que OpenNavo gestione apps",
         "body": "Necesaria para actualizar y desinstalar apps.",
@@ -1070,7 +1068,7 @@
         "view": "Ver {name}",
         "notFound": "{token} no está en este Mac",
         "notFoundBody": "Puede que ya esté desinstalada o que se instalara de una forma que OpenNavo no reconoce. No se ha hecho nada.",
-        "permission": "Activa el acceso total al disco para ver la vista previa de la desinstalación de {token}."
+        "permission": "Activa Gestión de apps y el acceso total al disco para ver la vista previa de la desinstalación de {token}."
       }
     }
   },
@@ -2911,5 +2909,15 @@
       "limitsTitle": "Qué cubre",
       "limits": "Solo las conexiones que inician las apps de este Mac. De las conexiones entrantes se encarga el cortafuegos integrado en macOS. Mientras OpenNavo no está abierto no puede preguntar, así que las conexiones sin regla se permiten de momento y se registran en Actividad."
     }
+  },
+  "permissionGate": {
+    "title": "Activa los permisos",
+    "body": "Concede ambos permisos para usar «{feature}».",
+    "bodyApps": "Concede ambos permisos para continuar con estas apps.",
+    "bodyInstall": "Concede ambos permisos para instalar apps.",
+    "browse": "Explorar funciones",
+    "continue": "Continuar",
+    "locked": "Activa Gestión de apps y Acceso total al disco para usar «{feature}».",
+    "unlock": "Activar permisos"
   }
 }

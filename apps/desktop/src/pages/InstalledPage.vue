@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { useToasts } from '@/composables/useToasts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -28,6 +29,7 @@ import type { LocalApp } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { useLocalAppMenu } from '@/composables/useLocalAppMenu';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useLibraryStore, usePermissionsStore, useTasksStore, useUpdatesStore } from '@/stores';
 import { UNUSED_DAYS, isUnused, matchesSource, useLocalAppsStore } from '@/stores/localApps';
 import { useInstalledFilterStore } from '@/stores/installedFilter';
@@ -36,7 +38,7 @@ import { matchLocalApps, NO_PREVIEW, uninstallPreview } from '@/utils/deepLinkPr
 
 // Installed (proposal §03, §05): every removable app on this Mac — Homebrew, App Store, drag-installed and .pkg —
 // with source filter, unused filter, multi-select uninstall and an info sheet. System apps are not listed.
-// The page starts with Full Disk Access (2026-10-12): until it is on, it shows the guide instead of the list.
+// The installed list is measured only after both permissions are ready.
 const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
 const router = useRouter();
@@ -50,7 +52,8 @@ const { localApp } = usePackageIdentity();
 const menu = useLocalAppMenu();
 const toasts = useToasts();
 const permissions = usePermissionsStore();
-const ready = computed(() => permissions.fullDiskReady);
+const gate = usePermissionGateStore();
+const ready = computed(() => gate.ready);
 
 const footprintError = (id: string) => {
   const error = localApps.footprintErrors[id];
@@ -329,9 +332,14 @@ const previewState = computed(() => {
 });
 let previewed: string | null = null;
 watch(
-  [previewToken, previewApps],
+  [previewToken, previewApps, ready],
   ([token, apps]) => {
     if (!token) {
+      previewed = null;
+      return;
+    }
+    if (!ready.value) {
+      sheetId.value = null;
       previewed = null;
       return;
     }
@@ -344,7 +352,7 @@ watch(
 );
 
 if (!permissions.status) void permissions.refresh().catch(() => undefined);
-// Measuring starts only once Full Disk Access is on (reading other apps' containers without it would be incomplete).
+// Measuring starts only once both permissions are ready.
 watch(
   ready,
   now => {
@@ -364,247 +372,253 @@ async function refreshInstalled() {
 
 <template>
   <div class="relative">
-    <OnPageHeader
-      :title="t('library.title')"
-      :subtitle="
-        ready && localApps.loaded
-          ? t(
-              'library.summary',
-              { count: localApps.items.length, size: format(totalBytes) },
-              { plural: localApps.items.length }
-            )
-          : undefined
-      "
-    >
-      <template v-if="ready" #actions>
-        <OnButton variant="secondary" icon="refresh-cw" :loading="localApps.refreshing" @click="refreshInstalled">
-          {{ t('library.recalculate') }}
-        </OnButton>
+    <PermissionGate feature="installed">
+      <template #header>
+        <OnPageHeader
+          :title="t('library.title')"
+          :subtitle="
+            ready && localApps.loaded
+              ? t(
+                  'library.summary',
+                  { count: localApps.items.length, size: format(totalBytes) },
+                  { plural: localApps.items.length }
+                )
+              : undefined
+          "
+        >
+          <template v-if="ready" #actions>
+            <OnButton variant="secondary" icon="refresh-cw" :loading="localApps.refreshing" @click="refreshInstalled">
+              {{ t('library.recalculate') }}
+            </OnButton>
+          </template>
+        </OnPageHeader>
       </template>
-    </OnPageHeader>
 
-    <!-- F1: what an uninstall preview link asked for; the info sheet and the uninstall dialog do the rest. -->
-    <PreviewNotice
-      v-if="previewState === 'invalid'"
-      class="mb-16px"
-      tone="warning"
-      :title="t('deeplink.preview.invalid')"
-      :body="t('deeplink.preview.invalidBody')"
-    />
-    <PreviewNotice
-      v-else-if="previewState === 'permission'"
-      class="mb-16px"
-      :title="t('deeplink.preview.uninstall.permission', { token: previewToken ?? '' })"
-    />
-    <PreviewNotice
-      v-else-if="previewState === 'found'"
-      class="mb-16px"
-      :title="t('deeplink.preview.uninstall.title', { name: previewName })"
-      :body="
-        previewApps.length > 1
-          ? t('deeplink.preview.uninstall.several', { count: previewApps.length, token: previewToken ?? '' })
-          : t('deeplink.preview.uninstall.body')
-      "
-    >
-      <div v-if="previewApps.length > 1" class="flex flex-wrap gap-6px">
-        <OnButton v-for="app in previewApps" :key="app.id" size="xs" variant="secondary" @click="sheetId = app.id">{{
-          t('deeplink.preview.uninstall.view', { name: `${nameOf(app)} (${app.path})` })
-        }}</OnButton>
-      </div>
-    </PreviewNotice>
-    <PreviewNotice
-      v-else-if="previewState === 'notFound'"
-      class="mb-16px"
-      :title="t('deeplink.preview.uninstall.notFound', { token: previewToken ?? '' })"
-      :body="t('deeplink.preview.uninstall.notFoundBody')"
-    />
-
-    <!-- Homebrew's cache cleanup reports here whatever the permission. -->
-    <RunningTask v-if="tasks.running?.op === 'cleanup'" :task="tasks.running" class="mb-20px" />
-
-    <FullDiskAccessGate v-if="permissions.status && !ready" />
-    <template v-else-if="ready">
-      <div class="mb-14px flex flex-wrap items-center gap-10px">
-        <OnSegmented v-model="filters.source" :options="sources" :aria-label="t('library.sourceFilter')" />
-        <OnButton
-          variant="ghost"
-          size="sm"
-          icon="hourglass"
-          :class="filters.unusedOnly ? '!border-brand-coral !bg-accent-coral-subtle !text-ink-accent' : ''"
-          :aria-pressed="filters.unusedOnly"
-          :title="t('library.unusedHint', { days: UNUSED_DAYS })"
-          @click="filters.showUnused(!filters.unusedOnly)"
-        >
-          {{ t('library.unused') }}
-          <span class="tabular-nums opacity-80">{{ unusedCount }}</span>
-        </OnButton>
-        <OnSearchField
-          v-model="filters.query"
-          class="ml-auto w-220px"
-          :placeholder="t('library.filterPlaceholder')"
-          clearable
-        />
-      </div>
-
-      <FootprintScanProgress v-if="showProgress && localApps.scanProgress" :progress="localApps.scanProgress" />
-
-      <OnTable
-        v-if="rows.length"
-        v-model:sort="sort"
-        v-model:selected="selected"
-        layout="fixed"
-        selectable
-        :columns="columns"
-        :rows="rows"
-        :row-key="app => app.id"
-        :can-select="app => app.removable && !taskFor(app)"
-        :select-all-label="t('library.selectAll')"
-        :select-row-label="app => t('library.selectRow', { name: nameOf(app) })"
-        :dimmed="app => !app.removable"
-        :caption="t('library.title')"
-        @row-click="(_, app) => (sheetId = app.id)"
-      >
-        <template #cell-name="{ row }">
-          <span class="flex min-w-0 items-center gap-10px">
-            <OnAppIcon v-bind="localApp(row).icon" :size="32" />
-            <span class="min-w-0">
-              <button
-                type="button"
-                class="m-0 block max-w-full cursor-pointer truncate rounded-tiny border-none bg-transparent p-0 text-left font-sans text-13px font-600 text-ink-primary outline-none transition-colors duration-fast ease-standard underline-offset-3 hover:text-ink-accent hover:underline focus-visible:text-ink-accent focus-visible:shadow-focus-ring"
-                @click.stop="sheetId = row.id"
-              >
-                {{ nameOf(row) }}
-              </button>
-              <span class="flex min-w-0 items-center gap-4px text-11.5px text-ink-tertiary">
-                <template v-if="row.running">
-                  <span class="inline-flex shrink-0 items-center gap-4px text-status-success">
-                    <span class="h-6px w-6px rounded-full bg-status-success" aria-hidden="true"></span>
-                    {{ t('library.running') }}
-                  </span>
-                  <span aria-hidden="true">·</span>
-                </template>
-                <span class="inline-flex shrink-0 items-center gap-5px">
-                  <span class="h-6px w-6px rounded-[2px]" :class="SOURCE_DOT[row.source]" aria-hidden="true"></span>
-                  {{ t(`library.sources.${row.source}`) }}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span class="truncate">{{
-                  row.protectedReason === 'self' ? t('library.self') : (row.cask ?? row.bundleId ?? row.path)
-                }}</span>
-              </span>
-            </span>
-          </span>
-        </template>
-        <template #cell-version="{ row }">
-          <span class="block truncate" :title="row.version ?? undefined">{{
-            row.version ? formatVersion(row.version) : '—'
-          }}</span>
-        </template>
-        <template #cell-size="{ row }">
-          <span class="inline-flex max-w-full items-center justify-end gap-4px">
-            <!-- A failed refresh keeps the last value; the warning offers to measure again. -->
-            <span
-              v-if="localApps.occupiedBytes(row.id) !== null"
-              class="truncate"
-              :title="incomplete(row.id) ? partialNote : undefined"
-              >{{ incomplete(row.id) ? '≈ ' : '' }}{{ format(localApps.occupiedBytes(row.id)!) }}</span
-            >
-            <span v-else-if="!localApps.footprintErrors[row.id]">—</span>
-            <OnTooltip
-              v-if="localApps.footprintErrors[row.id]"
-              :content="`${footprintError(row.id)} · ${t('library.retryFootprint')}`"
-            >
-              <button
-                type="button"
-                class="inline-flex max-w-104px cursor-pointer items-center truncate border-none bg-transparent p-0 text-11px text-status-warning hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-coral"
-                :aria-label="`${footprintError(row.id)} · ${t('library.retryFootprint')}`"
-                data-testid="retry-footprint"
-                @click.stop="retryFootprint(row.id)"
-              >
-                <template v-if="localApps.occupiedBytes(row.id) === null">{{ footprintError(row.id) }}</template>
-                <OnIcon v-else name="triangle-alert" :size="12" />
-              </button>
-            </OnTooltip>
-          </span>
-        </template>
-        <template #cell-lastUsed="{ row }">
-          <span
-            :class="isUnused(row) ? 'text-status-warning' : ''"
-            :title="row.lastUsedAt === null ? undefined : formatDate(row.lastUsedAt, { locale: appLocale })"
-            >{{ lastUsed(row) }}</span
-          >
-        </template>
-        <template #cell-status="{ row }">
-          <!-- Long labels in some languages clip inside the cell instead of covering the menu column. -->
-          <span class="block overflow-hidden">
-            <OnChip
-              v-if="statusOf(row)"
-              :tone="statusOf(row)!.tone"
-              :icon="statusOf(row)!.icon"
-              :dot="!statusOf(row)!.icon && statusOf(row)!.tone !== 'info'"
-              :title="statusOf(row)!.title ?? statusOf(row)!.label"
-              >{{ statusOf(row)!.label }}</OnChip
-            >
-            <span v-else class="text-ink-disabled">—</span>
-          </span>
-        </template>
-        <template #cell-actions="{ row }">
-          <span @click.stop>
-            <OnMenu
-              :items="menu.itemsFor(row)"
-              :label="t('package.actions.label')"
-              variant="ghost"
-              size="sm"
-              @select="key => select(row, key)"
-            />
-          </span>
-        </template>
-      </OnTable>
-      <OnEmpty
-        v-else-if="localApps.loaded"
-        :title="localApps.items.length ? t('library.emptyFiltered') : t('library.empty')"
-        icon="lucide:package"
+      <!-- F1: what an uninstall preview link asked for; the info sheet and the uninstall dialog do the rest. -->
+      <PreviewNotice
+        v-if="previewState === 'invalid'"
+        class="mb-16px"
+        tone="warning"
+        :title="t('deeplink.preview.invalid')"
+        :body="t('deeplink.preview.invalidBody')"
       />
-      <div v-else class="flex flex-col gap-8px" role="status" :aria-label="t('common.loading')">
-        <OnSkeleton v-for="line in 8" :key="line" height="48px" radius="default" />
-      </div>
-
-      <p class="m-0 mt-12px flex items-center gap-6px text-12px text-ink-disabled">
-        <OnIcon name="lock" :size="12" />{{ t('library.systemNote') }}
-      </p>
-
-      <div v-if="chosen.length" class="sticky bottom-12px z-sticky mt-14px">
-        <div
-          class="flex items-center gap-12px rounded-big border border-solid border-line-default bg-component-toast-bg px-12px py-10px shadow-toast backdrop-blur-[20px]"
-          role="region"
-          :aria-label="t('library.batch.selected', { count: chosen.length }, { plural: chosen.length })"
-        >
-          <span
-            class="grid h-26px min-w-26px place-items-center rounded-small bg-brand-coral px-6px text-13px font-700 text-ink-on-accent"
-            >{{ chosen.length }}</span
-          >
-          <span class="min-w-0 flex-1">
-            <span class="block text-13px font-600 text-ink-primary">{{
-              t('library.batch.selected', { count: chosen.length }, { plural: chosen.length })
-            }}</span>
-            <span class="block truncate text-12px text-ink-tertiary">{{
-              t('library.batch.size', { size: format(chosenBytes) })
-            }}</span>
-          </span>
-          <OnButton variant="ghost" size="sm" @click="selected = []">{{ t('library.batch.clear') }}</OnButton>
-          <OnButton variant="danger" size="sm" icon="trash" @click="uninstallSelected">{{
-            t('library.batch.uninstall', { count: chosen.length }, { plural: chosen.length })
+      <PreviewNotice
+        v-else-if="previewState === 'permission'"
+        class="mb-16px"
+        :title="t('deeplink.preview.uninstall.permission', { token: previewToken ?? '' })"
+      />
+      <PreviewNotice
+        v-else-if="previewState === 'found'"
+        class="mb-16px"
+        :title="t('deeplink.preview.uninstall.title', { name: previewName })"
+        :body="
+          previewApps.length > 1
+            ? t('deeplink.preview.uninstall.several', { count: previewApps.length, token: previewToken ?? '' })
+            : t('deeplink.preview.uninstall.body')
+        "
+      >
+        <div v-if="previewApps.length > 1" class="flex flex-wrap gap-6px">
+          <OnButton v-for="app in previewApps" :key="app.id" size="xs" variant="secondary" @click="sheetId = app.id">{{
+            t('deeplink.preview.uninstall.view', { name: `${nameOf(app)} (${app.path})` })
           }}</OnButton>
         </div>
-      </div>
-    </template>
+      </PreviewNotice>
+      <PreviewNotice
+        v-else-if="previewState === 'notFound'"
+        class="mb-16px"
+        :title="t('deeplink.preview.uninstall.notFound', { token: previewToken ?? '' })"
+        :body="t('deeplink.preview.uninstall.notFoundBody')"
+      />
 
-    <AppInfoSheet
-      v-model:open="sheetOpen"
-      :app="sheetApp"
-      @uninstall="uninstallFromSheet"
-      @detail="openDetail"
-      @app-store="openAppStore"
-    />
+      <!-- Homebrew's cache cleanup reports here whatever the permission. -->
+      <div v-if="tasks.running?.op === 'cleanup'" data-permission-free class="mb-20px">
+        <RunningTask :task="tasks.running" />
+      </div>
+
+      <FullDiskAccessGate v-if="permissions.status && !ready" />
+      <template v-else-if="ready">
+        <div class="mb-14px flex flex-wrap items-center gap-10px">
+          <OnSegmented v-model="filters.source" :options="sources" :aria-label="t('library.sourceFilter')" />
+          <OnButton
+            variant="ghost"
+            size="sm"
+            icon="hourglass"
+            :class="filters.unusedOnly ? '!border-brand-coral !bg-accent-coral-subtle !text-ink-accent' : ''"
+            :aria-pressed="filters.unusedOnly"
+            :title="t('library.unusedHint', { days: UNUSED_DAYS })"
+            @click="filters.showUnused(!filters.unusedOnly)"
+          >
+            {{ t('library.unused') }}
+            <span class="tabular-nums opacity-80">{{ unusedCount }}</span>
+          </OnButton>
+          <OnSearchField
+            v-model="filters.query"
+            class="ml-auto w-220px"
+            :placeholder="t('library.filterPlaceholder')"
+            clearable
+          />
+        </div>
+
+        <FootprintScanProgress v-if="showProgress && localApps.scanProgress" :progress="localApps.scanProgress" />
+
+        <OnTable
+          v-if="rows.length"
+          v-model:sort="sort"
+          v-model:selected="selected"
+          layout="fixed"
+          selectable
+          :columns="columns"
+          :rows="rows"
+          :row-key="app => app.id"
+          :can-select="app => app.removable && !taskFor(app)"
+          :select-all-label="t('library.selectAll')"
+          :select-row-label="app => t('library.selectRow', { name: nameOf(app) })"
+          :dimmed="app => !app.removable"
+          :caption="t('library.title')"
+          @row-click="(_, app) => (sheetId = app.id)"
+        >
+          <template #cell-name="{ row }">
+            <span class="flex min-w-0 items-center gap-10px">
+              <OnAppIcon v-bind="localApp(row).icon" :size="32" />
+              <span class="min-w-0">
+                <button
+                  type="button"
+                  class="m-0 block max-w-full cursor-pointer truncate rounded-tiny border-none bg-transparent p-0 text-left font-sans text-13px font-600 text-ink-primary outline-none transition-colors duration-fast ease-standard underline-offset-3 hover:text-ink-accent hover:underline focus-visible:text-ink-accent focus-visible:shadow-focus-ring"
+                  @click.stop="sheetId = row.id"
+                >
+                  {{ nameOf(row) }}
+                </button>
+                <span class="flex min-w-0 items-center gap-4px text-11.5px text-ink-tertiary">
+                  <template v-if="row.running">
+                    <span class="inline-flex shrink-0 items-center gap-4px text-status-success">
+                      <span class="h-6px w-6px rounded-full bg-status-success" aria-hidden="true"></span>
+                      {{ t('library.running') }}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                  </template>
+                  <span class="inline-flex shrink-0 items-center gap-5px">
+                    <span class="h-6px w-6px rounded-[2px]" :class="SOURCE_DOT[row.source]" aria-hidden="true"></span>
+                    {{ t(`library.sources.${row.source}`) }}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span class="truncate">{{
+                    row.protectedReason === 'self' ? t('library.self') : (row.cask ?? row.bundleId ?? row.path)
+                  }}</span>
+                </span>
+              </span>
+            </span>
+          </template>
+          <template #cell-version="{ row }">
+            <span class="block truncate" :title="row.version ?? undefined">{{
+              row.version ? formatVersion(row.version) : '—'
+            }}</span>
+          </template>
+          <template #cell-size="{ row }">
+            <span class="inline-flex max-w-full items-center justify-end gap-4px">
+              <!-- A failed refresh keeps the last value; the warning offers to measure again. -->
+              <span
+                v-if="localApps.occupiedBytes(row.id) !== null"
+                class="truncate"
+                :title="incomplete(row.id) ? partialNote : undefined"
+                >{{ incomplete(row.id) ? '≈ ' : '' }}{{ format(localApps.occupiedBytes(row.id)!) }}</span
+              >
+              <span v-else-if="!localApps.footprintErrors[row.id]">—</span>
+              <OnTooltip
+                v-if="localApps.footprintErrors[row.id]"
+                :content="`${footprintError(row.id)} · ${t('library.retryFootprint')}`"
+              >
+                <button
+                  type="button"
+                  class="inline-flex max-w-104px cursor-pointer items-center truncate border-none bg-transparent p-0 text-11px text-status-warning hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-coral"
+                  :aria-label="`${footprintError(row.id)} · ${t('library.retryFootprint')}`"
+                  data-testid="retry-footprint"
+                  @click.stop="retryFootprint(row.id)"
+                >
+                  <template v-if="localApps.occupiedBytes(row.id) === null">{{ footprintError(row.id) }}</template>
+                  <OnIcon v-else name="triangle-alert" :size="12" />
+                </button>
+              </OnTooltip>
+            </span>
+          </template>
+          <template #cell-lastUsed="{ row }">
+            <span
+              :class="isUnused(row) ? 'text-status-warning' : ''"
+              :title="row.lastUsedAt === null ? undefined : formatDate(row.lastUsedAt, { locale: appLocale })"
+              >{{ lastUsed(row) }}</span
+            >
+          </template>
+          <template #cell-status="{ row }">
+            <!-- Long labels in some languages clip inside the cell instead of covering the menu column. -->
+            <span class="block overflow-hidden">
+              <OnChip
+                v-if="statusOf(row)"
+                :tone="statusOf(row)!.tone"
+                :icon="statusOf(row)!.icon"
+                :dot="!statusOf(row)!.icon && statusOf(row)!.tone !== 'info'"
+                :title="statusOf(row)!.title ?? statusOf(row)!.label"
+                >{{ statusOf(row)!.label }}</OnChip
+              >
+              <span v-else class="text-ink-disabled">—</span>
+            </span>
+          </template>
+          <template #cell-actions="{ row }">
+            <span @click.stop>
+              <OnMenu
+                :items="menu.itemsFor(row)"
+                :label="t('package.actions.label')"
+                variant="ghost"
+                size="sm"
+                @select="key => select(row, key)"
+              />
+            </span>
+          </template>
+        </OnTable>
+        <OnEmpty
+          v-else-if="localApps.loaded"
+          :title="localApps.items.length ? t('library.emptyFiltered') : t('library.empty')"
+          icon="lucide:package"
+        />
+        <div v-else class="flex flex-col gap-8px" role="status" :aria-label="t('common.loading')">
+          <OnSkeleton v-for="line in 8" :key="line" height="48px" radius="default" />
+        </div>
+
+        <p class="m-0 mt-12px flex items-center gap-6px text-12px text-ink-disabled">
+          <OnIcon name="lock" :size="12" />{{ t('library.systemNote') }}
+        </p>
+
+        <div v-if="chosen.length" class="sticky bottom-12px z-sticky mt-14px">
+          <div
+            class="flex items-center gap-12px rounded-big border border-solid border-line-default bg-component-toast-bg px-12px py-10px shadow-toast backdrop-blur-[20px]"
+            role="region"
+            :aria-label="t('library.batch.selected', { count: chosen.length }, { plural: chosen.length })"
+          >
+            <span
+              class="grid h-26px min-w-26px place-items-center rounded-small bg-brand-coral px-6px text-13px font-700 text-ink-on-accent"
+              >{{ chosen.length }}</span
+            >
+            <span class="min-w-0 flex-1">
+              <span class="block text-13px font-600 text-ink-primary">{{
+                t('library.batch.selected', { count: chosen.length }, { plural: chosen.length })
+              }}</span>
+              <span class="block truncate text-12px text-ink-tertiary">{{
+                t('library.batch.size', { size: format(chosenBytes) })
+              }}</span>
+            </span>
+            <OnButton variant="ghost" size="sm" @click="selected = []">{{ t('library.batch.clear') }}</OnButton>
+            <OnButton variant="danger" size="sm" icon="trash" @click="uninstallSelected">{{
+              t('library.batch.uninstall', { count: chosen.length }, { plural: chosen.length })
+            }}</OnButton>
+          </div>
+        </div>
+      </template>
+
+      <AppInfoSheet
+        v-model:open="sheetOpen"
+        :app="sheetApp"
+        @uninstall="uninstallFromSheet"
+        @detail="openDetail"
+        @app-store="openAppStore"
+      />
+    </PermissionGate>
   </div>
 </template>

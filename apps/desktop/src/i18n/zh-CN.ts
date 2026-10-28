@@ -959,14 +959,12 @@ export default {
       logTitle: '安装 Homebrew 的日志'
     },
     permissions: {
-      title: '权限',
       required: '必需',
       optional: '可选',
       enable: '开启',
       waiting: '等待开启…',
       granted: '已开启',
       confirm: '我已开启',
-      startHint: '开启「App 管理」和「完全磁盘访问权限」后即可开始使用。',
       appManagement: {
         title: '允许 OpenNavo 管理 App',
         body: '更新和卸载 App 时需要。',
@@ -1065,7 +1063,7 @@ export default {
         view: '查看 {name}',
         notFound: '这台 Mac 上没有找到 {token}',
         notFoundBody: '它可能已经卸载了，或者安装方式让 OpenNavo 认不出来。没有做任何操作。',
-        permission: '开启「完全磁盘访问权限」之后，才能预览卸载 {token}。'
+        permission: '开启「App 管理」和「完全磁盘访问权限」之后，才能预览卸载 {token}。'
       }
     }
   },
@@ -2914,5 +2912,15 @@ export default {
       limits:
         '只管这台 Mac 上的 App 向外发起的连接，不管别人连进来的连接，那由 macOS 自带的防火墙负责。OpenNavo 没有运行时没法询问，没有规则的连接会先放行，并记在连接记录里。'
     }
+  },
+  permissionGate: {
+    title: '开启权限，开始使用',
+    body: '完成下面两项授权后，就能使用「{feature}」。',
+    bodyApps: '完成下面两项授权后，就能继续操作下面的 App。',
+    bodyInstall: '完成下面两项授权后，就能安装 App。',
+    browse: '先浏览功能',
+    continue: '继续',
+    locked: '开启「App 管理」和「完全磁盘访问权限」后，才能使用「{feature}」。',
+    unlock: '开启权限'
   }
 };

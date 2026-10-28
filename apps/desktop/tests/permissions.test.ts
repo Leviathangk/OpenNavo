@@ -1,6 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import UninstallDialog from '@/components/uninstall/UninstallDialog.vue';
+import PermissionGateModal from '@/components/permissions/PermissionGateModal.vue';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import PermissionGuidePage from '@/pages/PermissionGuidePage.vue';
 import SettingsPage from '@/pages/SettingsPage.vue';
 import { i18n } from '@/i18n';
@@ -18,7 +20,7 @@ const button = (label: string) =>
     item => item.textContent?.trim() === label || item.getAttribute('aria-label') === label
   );
 
-async function context(path: string, flags = '') {
+async function context(path: string, flags = 'no-full-disk-access') {
   window.history.replaceState(null, '', flags ? `/?mock=${flags}` : '/');
   return setup(path, { brew: true, tickMs: 5 });
 }
@@ -27,6 +29,7 @@ afterEach(() => {
   document.body.innerHTML = '';
   window.history.replaceState(null, '', '/');
   useToasts().clear();
+  localStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -35,6 +38,7 @@ describe('Uninstall: Full Disk Access comes first', () => {
     const { pinia, router } = await context('/installed');
     await startLocalState();
     mount(UninstallDialog, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+    mount(PermissionGateModal, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
     await flushPromises();
   }
 
@@ -43,9 +47,9 @@ describe('Uninstall: Full Disk Access comes first', () => {
     expect(usePermissionsStore().fullDiskAccess).toBe('denied');
     const store = useUninstallStore();
     void store.start(['cask-wechat']);
-    await vi.waitFor(() => expect(store.stage).toBe('permission'), { timeout: 3000 });
+    await vi.waitFor(() => expect(usePermissionGateStore().current).not.toBeNull(), { timeout: 3000 });
     await flushPromises();
-    expect(text()).toContain('先开启「完全磁盘访问权限」');
+    expect(text()).toContain('开启权限，开始使用');
 
     const guide = vi.spyOn(commands, 'permissionGuideOpen');
     button('开启')?.click();
@@ -54,6 +58,7 @@ describe('Uninstall: Full Disk Access comes first', () => {
     await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), {
       timeout: 3000
     });
+    button('继续')?.click();
     await vi.waitFor(() => expect(store.stage).toBe('review'), { timeout: 3000 });
     await flushPromises();
     expect(store.plan?.incomplete).toEqual([]);
@@ -97,6 +102,7 @@ describe('Permission guidance overlay', () => {
     expect(text()).toContain('App 管理');
     usePermissionsStore().apply({
       appManagement: 'granted',
+      appManagementSwitch: 'granted',
       fullDiskAccess: 'denied',
       relaunchRequired: false,
       appManagementPending: false,
@@ -113,6 +119,7 @@ describe('Permission guidance overlay', () => {
     await mountGuide('full_disk_access');
     usePermissionsStore().apply({
       appManagement: 'denied',
+      appManagementSwitch: 'denied',
       fullDiskAccess: 'denied',
       relaunchRequired: true,
       appManagementPending: false,
@@ -172,7 +179,7 @@ describe('Settings: Privacy', () => {
   });
 
   async function mountSettings(flags: string) {
-    const { pinia, router } = await context('/settings/privacy', flags);
+    const { pinia, router } = await context('/settings/privacy', `${flags},no-full-disk-access`);
     await startLocalState();
     mount(SettingsPage, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
     await flushPromises();
@@ -221,6 +228,7 @@ describe('Settings: Privacy', () => {
 describe('Permission response ordering', () => {
   const oldStatus: Permissions = {
     appManagement: 'denied',
+    appManagementSwitch: 'denied',
     fullDiskAccess: 'denied',
     relaunchRequired: false,
     appManagementPending: false,
@@ -228,6 +236,7 @@ describe('Permission response ordering', () => {
   };
   const newStatus: Permissions = {
     appManagement: 'granted',
+    appManagementSwitch: 'granted',
     fullDiskAccess: 'granted',
     relaunchRequired: true,
     appManagementPending: true,
@@ -288,4 +297,89 @@ describe('Permission response ordering', () => {
       expect(store.status).toEqual(newStatus);
     }
   );
+});
+
+describe('Shared permission checklist', () => {
+  async function openGate(flags: string) {
+    const { pinia, router } = await context('/installed', flags);
+    await startLocalState();
+    mount(PermissionGateModal, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+    await usePermissionsStore().refresh();
+    usePermissionGateStore().show('installed');
+    await flushPromises();
+  }
+  it.each(['app-management-switch-off', 'no-full-disk-access'])(
+    'saves the pending install before opening system guidance (%s)',
+    async flags => {
+      await openGate(flags);
+      const gate = usePermissionGateStore();
+      const request = {
+        feature: 'install' as const,
+        targets: [{ kind: 'cask' as const, token: 'firefox' }],
+        resume: { op: 'install' as const, trigger: 'manual' as const }
+      };
+      void gate.require(request);
+      let remembered: ReturnType<typeof gate.takeRemembered> = null;
+      const guide = vi.spyOn(commands, 'permissionGuideOpen').mockImplementation(async () => {
+        // macOS may quit this process as soon as its panel opens, without the in-app restart button.
+        remembered = gate.takeRemembered();
+        return { status: 'ok', data: null };
+      });
+      await flushPromises();
+      button('开启')!.click();
+      await flushPromises();
+      expect(guide).toHaveBeenCalledOnce();
+      expect(remembered).toEqual({ route: '/installed', request });
+      gate.dismiss();
+    }
+  );
+
+  it('does not recover an install canceled after a busy restart refusal', async () => {
+    await openGate('no-full-disk-access');
+    const gate = usePermissionGateStore();
+    const pending = gate.require({
+      feature: 'install',
+      targets: [{ kind: 'cask', token: 'firefox' }],
+      resume: { op: 'install', trigger: 'manual' }
+    });
+    const permissions = usePermissionsStore();
+    permissions.apply({ ...permissions.status!, relaunchRequired: true, fullDiskAccessPending: true });
+    const internals = (
+      window as unknown as { __TAURI_INTERNALS__: { invoke: (...args: unknown[]) => Promise<unknown> } }
+    )['__TAURI_INTERNALS__'];
+    const invoke = internals.invoke;
+    vi.spyOn(internals, 'invoke').mockImplementation((command, ...rest) =>
+      command === 'plugin:process|restart' ? Promise.reject('active_tasks') : invoke(command, ...rest)
+    );
+    await flushPromises();
+    button('重新打开')!.click();
+    await flushPromises();
+    expect(useToasts().items.value.map(item => item.title)).toContain('有任务正在进行，完成后再重新打开');
+    expect(localStorage.getItem('opennavo.permissionGate.resume')).not.toBeNull();
+    button(i18n.global.t('permissionGate.browse'))!.click();
+    await flushPromises();
+    expect(await pending).toBe(false);
+    expect(gate.takeRemembered()).toBeNull();
+  });
+  it('keeps App Management required when Full Disk Access grants effective access', async () => {
+    await openGate('app-management-switch-off');
+    expect(usePermissionsStore().status?.appManagement).toBe('granted');
+    expect(usePermissionGateStore().ready).toBe(false);
+    const guide = vi.spyOn(commands, 'permissionGuideOpen');
+    button('开启 App 管理')?.click();
+    await vi.waitFor(() => expect(usePermissionGateStore().ready).toBe(true));
+    expect(guide).toHaveBeenCalledWith('app_management');
+    expect(usePermissionGateStore().current).not.toBeNull();
+    button('开始使用')?.click();
+    await flushPromises();
+    expect(usePermissionGateStore().current).toBeNull();
+  });
+  it('offers session confirmation inside the checklist when detection is unavailable', async () => {
+    await openGate('no-permission-check');
+    expect(usePermissionGateStore().ready).toBe(false);
+    button('我已开启')?.click();
+    await flushPromises();
+    expect(usePermissionsStore().unknownConfirmed).toBe(true);
+    expect(usePermissionGateStore().ready).toBe(true);
+  });
 });

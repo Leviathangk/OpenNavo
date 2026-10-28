@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useI18n } from 'vue-i18n';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { OnButton, OnIcon } from '@opennavo/ui';
@@ -11,11 +13,14 @@ const { t } = useI18n();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 const restarting = ref(false);
+const route = useRoute();
+const gate = usePermissionGateStore();
 
 async function restart() {
   restarting.value = true;
   try {
     // Rust refuses while tasks run or wait (active_tasks) instead of interrupting them; it also refuses during another quit.
+    gate.rememberForRelaunch(route.fullPath);
     await relaunch();
   } catch (error) {
     const reason = String(error);

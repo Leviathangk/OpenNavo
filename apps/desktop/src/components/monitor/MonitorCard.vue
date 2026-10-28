@@ -9,7 +9,8 @@ import { MODULE_ICONS } from './meta';
 import { useModuleView } from './useModuleView';
 
 // One card of the overview (§12): current value, last minute, a few numbers; the whole card opens its detail.
-const props = defineProps<{ module: DisplayModule }>();
+// preview (permission gate locked): only what the module is, no readings even when the menu bar keeps sampling.
+const props = defineProps<{ module: DisplayModule; preview?: boolean }>();
 const emit = defineEmits<{ open: [module: DisplayModule]; cleanup: [] }>();
 
 const { t } = useI18n();
@@ -45,8 +46,8 @@ const { view } = useModuleView(
       >
       <span
         class="ml-auto whitespace-nowrap text-20px font-600 tabular-nums tracking-[-0.01em]"
-        :class="view?.warn ? 'text-status-warning' : 'text-ink-primary'"
-        >{{ view?.value ?? '—' }}</span
+        :class="!preview && view?.warn ? 'text-status-warning' : 'text-ink-primary'"
+        >{{ (!preview && view?.value) || '—' }}</span
       >
       <OnIcon
         name="chevron-right"
@@ -54,6 +55,6 @@ const { view } = useModuleView(
         class="-ml-4px shrink-0 text-ink-tertiary opacity-55 transition-opacity duration-fast group-hover:opacity-100"
       />
     </header>
-    <MonitorModuleBody :module="module" variant="card" @cleanup="emit('cleanup')" />
+    <MonitorModuleBody v-if="!preview" :module="module" variant="card" @cleanup="emit('cleanup')" />
   </article>
 </template>

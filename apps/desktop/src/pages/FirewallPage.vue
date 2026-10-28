@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -61,28 +62,32 @@ watch(
 
 <template>
   <div class="relative">
-    <OnPageHeader :title="t('firewall.title')" :subtitle="t('firewall.subtitle')" />
-    <OnErrorState v-if="loadError" :description="errorText(loadError)" @retry="load" />
-    <div v-if="phase === 'loading' && !loadError" class="flex flex-col gap-12px" aria-hidden="true">
-      <OnSkeleton height="120px" radius="default" />
-      <OnSkeleton height="240px" radius="default" />
-    </div>
-    <FirewallSetup v-else-if="phase !== 'loading' && phase !== 'ready'" />
-    <div v-else-if="phase === 'ready'" class="flex flex-col gap-18px">
-      <FirewallStatusCard />
-      <div>
-        <OnTabs
-          class="mb-16px"
-          :model-value="tab"
-          :items="tabs"
-          :aria-label="t('firewall.tabs.label')"
-          :link-as="RouterLink"
-        />
-        <FirewallRulesPanel v-if="tab === 'rules'" />
-        <FirewallActivityPanel v-else-if="tab === 'activity'" />
-        <FirewallBlocklistsPanel v-else-if="tab === 'blocklists'" />
-        <FirewallSettingsPanel v-else />
+    <PermissionGate feature="firewall">
+      <template #header>
+        <OnPageHeader :title="t('firewall.title')" :subtitle="t('firewall.subtitle')" />
+      </template>
+      <OnErrorState v-if="loadError" :description="errorText(loadError)" @retry="load" />
+      <div v-if="phase === 'loading' && !loadError" class="flex flex-col gap-12px" aria-hidden="true">
+        <OnSkeleton height="120px" radius="default" />
+        <OnSkeleton height="240px" radius="default" />
       </div>
-    </div>
+      <FirewallSetup v-else-if="phase !== 'loading' && phase !== 'ready'" />
+      <div v-else-if="phase === 'ready'" class="flex flex-col gap-18px">
+        <FirewallStatusCard />
+        <div>
+          <OnTabs
+            class="mb-16px"
+            :model-value="tab"
+            :items="tabs"
+            :aria-label="t('firewall.tabs.label')"
+            :link-as="RouterLink"
+          />
+          <FirewallRulesPanel v-if="tab === 'rules'" />
+          <FirewallActivityPanel v-else-if="tab === 'activity'" />
+          <FirewallBlocklistsPanel v-else-if="tab === 'blocklists'" />
+          <FirewallSettingsPanel v-else />
+        </div>
+      </div>
+    </PermissionGate>
   </div>
 </template>

@@ -4,6 +4,7 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import type { RouteRecordRaw, Router } from 'vue-router';
 import { defineComponent, h } from 'vue';
 import { i18n } from '@/i18n';
+import type { Locale } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { installMockIpc } from '@/ipc/mock';
 import type { MockState } from '@/ipc/mock-data/runner';
@@ -141,7 +142,7 @@ export interface TestContext {
 /** Install simulated IPC, Pinia, and memory-history routing; tickMs controls simulated task progression. */
 export async function setup(
   path = '/discover',
-  options: { tickMs?: number; brew?: boolean } = {}
+  options: { tickMs?: number; brew?: boolean; systemLocale?: Locale } = {}
 ): Promise<TestContext> {
   const state = installMockIpc(options);
   // Existing interaction cases explicitly use Chinese so the product's English default does not affect them.

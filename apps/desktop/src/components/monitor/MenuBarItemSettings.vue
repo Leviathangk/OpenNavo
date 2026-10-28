@@ -23,7 +23,7 @@ const item = computed(() => store.item(props.module));
 
 async function update(patch: { enabled?: boolean; style?: MenuBarStyle }) {
   try {
-    await store.setMenuBar(props.module, patch);
+    if (!(await store.setMenuBar(props.module, patch))) return;
     if (patch.enabled != null)
       toasts.push({
         tone: 'success',

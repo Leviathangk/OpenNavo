@@ -8,6 +8,7 @@ import type { MasApp } from '@/ipc/bindings';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useLocalAppsStore, useTasksStore, useUpdatesStore } from '@/stores';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useMasStore } from '@/stores/mas';
 
 // App Store Get button (store/security plan §5, §11.3). With the bundled helper (engine `ok`), free apps install
@@ -69,12 +70,14 @@ async function act() {
       return;
     }
     if (acceptedApp.price > 0) {
+      if (!(await usePermissionGateStore().require({ feature: 'install', targets: [acceptedTarget] }))) return;
       await mas.openStore(acceptedApp.adamId);
       return;
     }
     const status = await mas.ensureStatus();
     if (status.engine === 'ok') await tasks.enqueue('install', acceptedTarget);
-    else await mas.openStore(acceptedApp.adamId);
+    else if (await usePermissionGateStore().require({ feature: 'install', targets: [acceptedTarget] }))
+      await mas.openStore(acceptedApp.adamId);
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   } finally {

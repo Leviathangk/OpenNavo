@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { usePermissionGateStore } from './permissionGate';
 import type { LinkOpenTarget } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import type { LocalItem } from '@/ipc/client';
@@ -82,6 +83,11 @@ export const useLinksStore = defineStore('links', () => {
   }
 
   async function open(token: string, destination?: LinkOpenTarget) {
+    if (
+      destination !== 'homepage' &&
+      !(await usePermissionGateStore().require({ feature: 'install', targets: [{ kind: 'link', token }] }))
+    )
+      return;
     const chosen = destination ?? target(await load(token));
     if (!chosen) throw new Error(`No download address for ${token}`);
     await unwrap(commands.linkOpen(token, chosen));

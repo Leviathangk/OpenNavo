@@ -13,6 +13,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useVirusTotal } from '@/composables/useVirusTotal';
 import { useLocalAppsStore } from '@/stores/localApps';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useSecurityStore } from '@/stores/security';
 import { matchLocalApps, NO_PREVIEW } from '@/utils/deepLinkPreview';
 import type { Preview } from '@/utils/deepLinkPreview';
@@ -32,6 +33,7 @@ const { appLocale } = useAppLocale();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 const store = useSecurityStore();
+const gate = usePermissionGateStore();
 const virusTotal = useVirusTotal();
 
 const engine = computed(() => store.overview?.engine ?? null);
@@ -47,8 +49,9 @@ const { localApp } = usePackageIdentity();
 const previewToken = computed(() => (props.preview.state === 'ok' ? props.preview.value : null));
 const appsLoading = ref(false);
 watch(
-  previewToken,
-  async token => {
+  [previewToken, () => gate.ready],
+  async ([token, allowed]) => {
+    if (!allowed) return;
     if (!token || localApps.loaded || appsLoading.value) return;
     appsLoading.value = true;
     try {
@@ -65,6 +68,7 @@ const previewApps = computed(() => (previewToken.value ? matchLocalApps(localApp
 const previewState = computed(() => {
   if (props.preview.state === 'none') return null;
   if (props.preview.state === 'invalid') return 'invalid';
+  if (!gate.ready) return 'locked';
   if (previewApps.value.length) return 'found';
   return appsLoading.value || !localApps.loaded ? 'looking' : 'notFound';
 });
@@ -127,6 +131,7 @@ function choose(finding: AvFinding, key: MenuKey) {
 async function act(finding: AvFinding, action: 'quarantine' | 'delete' | 'trust' | 'reveal') {
   try {
     const outcome = await store.actOnFindings([finding.id], action);
+    if (!outcome) return;
     requireDone(outcome, finding.id);
     if (action === 'quarantine')
       toasts.push({
@@ -208,6 +213,7 @@ const skippedText = computed(() => {
       :title="t('deeplink.preview.invalid')"
       :body="t('deeplink.preview.invalidBody')"
     />
+    <PreviewNotice v-else-if="previewState === 'locked'" :title="previewToken ?? ''" />
     <PreviewNotice
       v-else-if="previewState === 'looking'"
       :title="t('deeplink.preview.scan.looking', { token: previewToken ?? '' })"
@@ -316,7 +322,13 @@ const skippedText = computed(() => {
                 })
           }}
         </h2>
-        <OnButton v-if="scan.state === 'running'" variant="ghost" size="sm" @click="store.cancelScan()">
+        <OnButton
+          v-if="scan.state === 'running'"
+          data-permission-free
+          variant="ghost"
+          size="sm"
+          @click="store.cancelScan()"
+        >
           {{ t('common.cancel') }}
         </OnButton>
       </div>

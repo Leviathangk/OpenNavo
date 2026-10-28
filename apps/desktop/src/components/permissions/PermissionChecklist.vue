@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import { OnButton, OnChip, OnIcon } from '@opennavo/ui';
 import type { GuidePane } from '@/stores/permissions';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { usePermissionsStore } from '@/stores';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import RelaunchNotice from './RelaunchNotice.vue';
 
-// Welcome permissions (06 §12.3, §12.6; owner decision 2026-10-12): App Management and Full Disk Access are both required.
-// Enable opens System Settings and the draggable OpenNavo icon overlay; state updates live.
-// Installed shows only the Full Disk Access row, with its own explanation.
+// App Management and Full Disk Access (06 §12.3, §12.6; owner decisions 2026-10-12 and 2026-10-28): both are required by the
+// permission gate and the uninstall dialog. Enable opens System Settings and the draggable OpenNavo icon overlay; state
+// updates live.
 const props = withDefaults(
   defineProps<{
     panes?: readonly GuidePane[];
@@ -26,6 +28,8 @@ const props = withDefaults(
 );
 const { t } = useI18n();
 const permissions = usePermissionsStore();
+const gate = usePermissionGateStore();
+const route = useRoute();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
@@ -50,6 +54,8 @@ const rows = computed(() =>
 
 async function enable(pane: GuidePane) {
   try {
+    // macOS may quit and reopen us directly from System Settings before the in-app restart is used.
+    gate.rememberForRelaunch(route.fullPath);
     await permissions.guide(pane);
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
@@ -118,6 +124,15 @@ async function enable(pane: GuidePane) {
         >
       </li>
     </ul>
+    <p
+      v-if="!permissions.unknownConfirmed && rows.some(row => row.state === 'unknown')"
+      class="m-0 text-12.5px text-ink-secondary"
+    >
+      {{ t('fullDiskGate.unknown') }}
+      <OnButton variant="ghost" size="xs" @click="permissions.unknownConfirmed = true">{{
+        t('welcome.permissions.confirm')
+      }}</OnButton>
+    </p>
     <RelaunchNotice v-if="permissions.relaunchRequired" />
   </div>
 </template>
