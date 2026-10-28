@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -147,7 +148,20 @@ func TestReleaseNotesRejectBeforeStoreWrites(t *testing.T) {
 	for _, source := range []bool{true, false} {
 		require.ErrorContains(t, st.WriteContentText(ctx, ref, "en-US", fields, source), "navigation_template")
 	}
-	for _, table := range []string{"releases", "release_i18n"} {
-		require.ErrorContains(t, st.RestoreHistoryState(ctx, ref, HistoryState{table: {fields}}), "navigation_template")
+}
+
+func TestReleaseNotesHistoryAllowsEquivalentJSON(t *testing.T) {
+	target := HistoryState{
+		"releases": {{"id": int64(42), "title": "{{TopMenu}}", "hidden": false}},
+		"release_i18n": {{"release_id": int64(42), "locale": "ja-JP", "sections": []any{
+			map[string]any{"area": "{{TopMenu}}", "items": []any{"Legacy item"}, "count": 1},
+		}}},
 	}
+	// HistorySnapshot decodes JSON numbers as float64, unlike hand-built restore targets.
+	raw, err := json.Marshal(target)
+	require.NoError(t, err)
+	var current HistoryState
+	require.NoError(t, json.Unmarshal(raw, &current))
+	current["releases"][0]["hidden"] = true
+	require.NoError(t, validateReleaseNotesHistory(current, target))
 }

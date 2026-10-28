@@ -110,10 +110,19 @@ func ValidateReleaseNotes(fields map[string]any) error {
 	return nil
 }
 
-func validateReleaseNotesHistory(state HistoryState) error {
+func validateReleaseNotesHistory(current, target HistoryState) error {
 	for _, table := range []string{"releases", "release_i18n"} {
-		for _, row := range state[table] {
-			if err := ValidateReleaseNotes(row); err != nil {
+		currentRows := historyRows(current[table])
+		for key, row := range historyRows(target[table]) {
+			currentRow := currentRows[key]
+			changed := map[string]any{}
+			for _, field := range []string{"title", "summary", "sections", "body_markdown", "bodyMarkdown"} {
+				// JSON comparison ignores Go container and numeric types in otherwise identical snapshots.
+				if currentRow == nil || jsonText(currentRow[field]) != jsonText(row[field]) {
+					changed[field] = row[field]
+				}
+			}
+			if err := ValidateReleaseNotes(changed); err != nil {
 				return err
 			}
 		}
