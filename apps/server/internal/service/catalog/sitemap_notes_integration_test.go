@@ -92,10 +92,10 @@ func TestSitemapCacheFollowsFontSwitchOffOnOff(t *testing.T) {
 	svc := &catalog.PublicService{Store: st, Cache: cache.Redis{Client: st.Redis}}
 	setFonts := func(enabled bool) {
 		t.Helper()
-		require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=settings || jsonb_build_object('pages', COALESCE(settings->'pages','{}'::jsonb) || jsonb_build_object('fontsSitemap', ?)) WHERE id=true`, enabled).Error)
+		require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=settings || jsonb_build_object('pages', COALESCE(settings->'pages','{}'::jsonb) || jsonb_build_object('fontsSitemap', ?::boolean)) WHERE id=true`, enabled).Error)
 		require.NoError(t, store.QueueCacheInvalidation(ctx, st.DB, "font-switch-test", "c:pkg:sitemap:*"))
 		require.NoError(t, st.DispatchCacheInvalidations(ctx))
-		require.NoError(t, cache.Invalidate(ctx, st.Redis, "c:pkg:sitemap:*"))
+		require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{"c:pkg:sitemap:*"}))
 	}
 	read := func(want bool) {
 		t.Helper()
