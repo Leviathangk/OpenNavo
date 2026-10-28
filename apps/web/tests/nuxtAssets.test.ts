@@ -66,6 +66,26 @@ it('serves old assets for GET and HEAD with matching immutable headers and MIME 
   }
 });
 
+it('marks missing old assets as no-store', async () => {
+  const root = join(tmpdir(), `nuxt-assets-${Date.now()}-${Math.random()}`);
+  const assetRoot = join(root, '.output/public/_nuxt');
+  roots.push(root);
+  await mkdir(assetRoot, { recursive: true });
+  const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+  const socket = new Socket();
+  const req = new IncomingMessage(socket);
+  req.method = 'GET';
+  req.url = '/_nuxt/missing.js';
+  try {
+    const event = createEvent(req, new ServerResponse(req));
+    await expect(assetRoute(event)).rejects.toMatchObject({ statusCode: 404 });
+    expect(getResponseHeader(event, 'cache-control')).toBe('no-store');
+  } finally {
+    socket.destroy();
+    cwd.mockRestore();
+  }
+});
+
 it.each([
   ['jpg', 'image/jpeg'],
   ['jpeg', 'image/jpeg'],

@@ -116,6 +116,29 @@ class DeployTests(unittest.TestCase):
             self.assertTrue((destination / 'live.js').exists())
             self.assertFalse((destination / 'retained.js').exists())
 
+    def test_merge_web_assets_refreshes_all_files_when_legacy_manifest_is_missing(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            current, destination = (root / name for name in ['current', 'release/web-assets'])
+            current.mkdir(); destination.mkdir(parents=True)
+            now = deploy.WEB_ASSET_RETENTION_SECONDS + 100
+            for index, name in enumerate(['old-a.js', 'old-b.js', 'old-c.js']):
+                path = destination / name
+                path.write_text(name)
+                # Keep each file on a different whole-second timestamp, all
+                # older than the retention window.
+                mtime = now - deploy.WEB_ASSET_RETENTION_SECONDS - 10 - index
+                os.utime(path, (mtime, mtime))
+            (current / 'new.js').write_text('new')
+
+            deploy.merge_web_assets(current, destination, now=now)
+
+            for name in ['old-a.js', 'old-b.js', 'old-c.js']:
+                path = destination / name
+                self.assertTrue(path.exists())
+                self.assertEqual(path.stat().st_mtime, now)
+            self.assertTrue((destination / 'new.js').exists())
+
     def test_previous_web_asset_paths_uses_the_release_manifest(self):
         with tempfile.TemporaryDirectory() as root:
             release = Path(root) / 'release'
@@ -333,6 +356,28 @@ scrape_configs:
         self.assertEqual(obj.services, obj.state['services'])
         self.assertEqual(events, ['verify', 'monitoring', ('cleanup', previous), ('prune', previous)])
 
+    def test_retry_rebuilds_a_missing_live_manifest_without_sensitive_fields(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            release = root / 'releases/live'
+            (release / 'web-assets').mkdir(parents=True)
+            (release / 'web-assets/live.js').write_text('live')
+            obj = object.__new__(deploy.Deployment)
+            obj.root = root
+            obj.payload = {**payload(), 'registry_token': 'secret-token', 'admin_archive': 'secret-archive'}
+            obj.state = {'sha': obj.payload['sha'], 'release': 'live', 'services': {'api': 'api_live'}}
+            obj.verify = lambda: None
+            obj.update_monitoring = lambda services: None
+            obj.cleanup = lambda state: None
+            obj.prune = lambda state: None
+
+            obj.apply(archive())
+
+            manifest = json.loads((release / 'manifest.json').read_text())
+            self.assertEqual(manifest['web_assets'], ['live.js'])
+            self.assertNotIn('registry_token', manifest)
+            self.assertNotIn('admin_archive', manifest)
+
     def test_prune_keeps_recent_live_previous_and_mounted_release_snapshots(self):
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
             releases = Path(root) / 'releases'
@@ -507,6 +552,7 @@ scrape_configs:
             obj.state_path = directory / 'state.json'
             obj.release = 'test'
             obj.services = {k: k + '_new' for k in ['api', 'web', 'admin', 'mcp']}
+            obj.current_web_assets = ['legacy.js']
             obj.live_caddy = directory / 'live'
             obj.env = directory / 'env'
             obj.rolling = directory / 'rolling'
@@ -530,6 +576,8 @@ scrape_configs:
                 return ''
             with patch.object(deploy, 'command', side_effect=cmd), self.assertRaises(RuntimeError):
                 obj.apply(archive())
+            manifest = json.loads((directory / 'manifest.json').read_text())
+            self.assertEqual(manifest['web_assets'], ['legacy.js'])
             self.assertEqual(obj.live_caddy.read_text(), 'old')
             self.assertEqual(obj.env.read_text(), 'old')
             self.assertEqual(obj.rolling.read_text(), 'old')
@@ -565,6 +613,8 @@ scrape_configs:
             obj.cleanup = cleanup
             with patch.object(deploy, 'command', side_effect=cmd):
                 obj.apply(archive())
+            manifest = json.loads((directory / 'manifest.json').read_text())
+            self.assertEqual(manifest['web_assets'], ['legacy.js'])
             self.assertEqual(events.count('verify'), 2)
             self.assertEqual(events[-2:], ['cleanup', 'prune'])
             self.assertLess(events.index(('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker')), len(events) - 1)
