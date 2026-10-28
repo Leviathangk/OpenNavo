@@ -11,8 +11,14 @@ export async function resolveNuxtAsset(root: string, path: string) {
   if (!name || !ASSET_NAME.test(name)) return null;
   const candidate = join(root, name);
   try {
-    const [realRoot, realCandidate, details] = await Promise.all([realpath(root), realpath(candidate), stat(candidate)]);
-    return details.isFile() && (realCandidate === realRoot || realCandidate.startsWith(`${realRoot}/`)) ? candidate : null;
+    const [realRoot, realCandidate, details] = await Promise.all([
+      realpath(root),
+      realpath(candidate),
+      stat(candidate)
+    ]);
+    return details.isFile() && (realCandidate === realRoot || realCandidate.startsWith(`${realRoot}/`))
+      ? candidate
+      : null;
   } catch {
     return null;
   }
