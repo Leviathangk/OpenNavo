@@ -19,8 +19,10 @@ import (
 func TestSitemapUsesStoredNotesFactsAndWaitsForMissingOnes(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	ctx := context.Background()
-	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en)
- VALUES(902,'cask','notes-sitemap','notes-sitemap','homebrew/cask','Notes Sitemap','3','3','{}','fixture','Useful fixture application')`).Error)
+	// Meet 72a38e4's popularity gate so this test continues to isolate stored notes readiness.
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,installs_30d,rank_30d)
+ VALUES(902,'cask','notes-sitemap','notes-sitemap','homebrew/cask','Notes Sitemap','3','3','{}','fixture','Useful fixture application',50,1);
+ UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}','{"versionsSitemap":true}')`).Error)
 	for _, locale := range seo.Locales {
 		require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,source_locale,summary,description,status,source_hash,source)
  VALUES(902,?,'en-US','Useful fixture application','Complete fixture description','machine',repeat('a',64),'rule')`, locale).Error)
@@ -44,18 +46,24 @@ func TestSitemapUsesStoredNotesFactsAndWaitsForMissingOnes(t *testing.T) {
 		t.Fatal("English is not listed")
 		return publicapi.PageDecision{}
 	}
-	require.Equal(t, "noindex, follow", string(versions().Robots), "no facts are stored before the job runs")
+	missing := versions()
+	require.Equal(t, "noindex, follow", string(missing.Robots), "no facts are stored before the job runs")
+	require.False(t, missing.InSitemap)
 	count, err := st.RefreshPackagePageStates(ctx, 100)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 	stored := versions()
 	require.Equal(t, seo.IndexableRobots, string(stored.Robots), "English notes pass the thin-page rule")
+	require.True(t, stored.InSitemap)
+	require.True(t, stored.Announce)
 	// With facts stored, the sitemap does not recount: blanking the notes changes nothing until the job runs.
 	require.NoError(t, st.DB.Exec("UPDATE releases SET body_markdown='' WHERE package_id=902").Error)
 	require.Equal(t, stored, versions())
 	// Facts reset by a migration leave the page out instead of being counted live.
 	require.NoError(t, st.DB.Exec("UPDATE package_page_state SET notes_entries=NULL WHERE package_id=902").Error)
-	require.Equal(t, "noindex, follow", string(versions().Robots))
+	reset := versions()
+	require.Equal(t, "noindex, follow", string(reset.Robots))
+	require.False(t, reset.InSitemap)
 	// The backfill stores the current facts, which see the blank notes.
 	filled, err := st.BackfillPageNotes(ctx, 10)
 	require.NoError(t, err)
@@ -63,6 +71,8 @@ func TestSitemapUsesStoredNotesFactsAndWaitsForMissingOnes(t *testing.T) {
 	thin := versions()
 	require.Equal(t, "noindex, follow", string(thin.Robots))
 	require.Equal(t, "thin_notes_page", string(thin.Reason))
+	require.False(t, thin.InSitemap)
+	require.False(t, thin.Announce)
 }
 
 // Pages above SitemapPageSize are rejected rather than computed.
