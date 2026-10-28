@@ -191,7 +191,10 @@ func TestSiteIndexEndpointsFollowTheContract(t *testing.T) {
 	require.Equal(t, []any{map[string]any{"locale": "en-US", "url": base + "/apps/lookup-app"}, map[string]any{"locale": "zh-CN", "url": base + "/zh/apps/lookup-app"}}, overview["hreflang"])
 	require.Equal(t, map[string]any{"type": "package", "id": float64(app), "key": "lookup-app", "packageKind": "cask"}, overview["entity"])
 	for _, tc := range []struct{ path, kind, reason, canonical string }{
-		{"/zh/apps/lookup-app/versions?page=2", "app_versions", "thin_notes_page", "/zh/apps/lookup-app/versions?page=2"},
+		{"/apps/lookup-app/versions?page=2", "app_versions", "thin_notes_page", "/apps/lookup-app/versions?page=2"},
+		// 72a38e4 noindexes non-source versions regardless of notes or page number.
+		{"/zh/apps/lookup-app/versions", "app_versions", "versions_source_only", "/zh/apps/lookup-app/versions"},
+		{"/zh/apps/lookup-app/versions?page=2", "app_versions", "versions_source_only", "/zh/apps/lookup-app/versions?page=2"},
 		{"/apps/lookup-app/versions?notes=1", "app_versions", "filtered_view", "/apps/lookup-app/versions?notes=1"},
 		{"/apps/lookup-app/details", "app_details", "consolidated", "/apps/lookup-app"},
 		{"/apps/lookup-app/alternatives", "app_alternatives", "intent_not_eligible", "/apps/lookup-app"},

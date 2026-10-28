@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -50,21 +51,26 @@ func TestIndexReportReadOnlySnapshot(t *testing.T) {
 
 func TestIndexReportFontSitemapSwitch(t *testing.T) {
 	st := testutil.NewSEOStore(t)
-	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,is_font) VALUES
- ('cask','font-report','font-report','homebrew/cask','Font','1','1','{}','fixture','Font description',true)`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,is_font,installs_30d,rank_30d) VALUES
+ ('cask','font-report','font-report','homebrew/cask','Font','1','1','{}','fixture','Font description',true,500,1)`).Error)
+	policy, err := st.IndexPolicy(context.Background())
+	require.NoError(t, err)
 	for _, enabled := range []bool{false, true} {
 		report, err := st.BuildIndexReport(context.Background(), time.Now(), "https://site.example", enabled)
 		require.NoError(t, err)
-		listed := 0
+		counted := 0
 		for _, row := range report.Rows {
-			if row.PageType == "fonts" && row.InSitemap {
-				listed += row.Count
+			if row.PageType == "fonts" {
+				counted += row.Count
+				// 72a38e4 makes font exclusion unconditional, even with the web switch enabled.
+				require.False(t, row.InSitemap, "sitemapFonts=%t, locale=%s", enabled, row.Locale)
+				if policy.LocaleOpen(row.Locale) {
+					require.Equal(t, "font_page", row.Decision)
+				} else {
+					require.Equal(t, seo.ReasonLocaleClosed, row.Decision)
+				}
 			}
 		}
-		if enabled {
-			require.Positive(t, listed)
-		} else {
-			require.Zero(t, listed)
-		}
+		require.Equal(t, len(seo.Locales), counted, "excluded font URLs must still appear in the report")
 	}
 }
