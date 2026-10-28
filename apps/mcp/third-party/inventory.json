@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "lockDigests": {
     "pnpm-lock.yaml": "7f5077200e9a1c31696f46b44b43ed4999900d2de39752f16448ff68d4a98368",
-    "apps/server/go.mod": "16bca81a4ca7e40466341f284a329a13d62fe0f6f852b0e9f0483bc6d0ee4806",
-    "apps/server/go.sum": "0aef1b3864eb8ea96a36b3b4b709abc96959d6b200584c4eef841d72ebbcb6a2",
+    "apps/server/go.mod": "c709a8153cea115e70132c1887dbc10e7d3bf1f61d465f50d107b1627bca72ae",
+    "apps/server/go.sum": "f435b6582a31c4569095a98bfc084855b2aad610255acc66caa9eeb71066a1ee",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
     "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
