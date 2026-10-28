@@ -1532,35 +1532,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(response.status, 200, `invalidate ${paths.join(', ')}\n${logs}`);
     return response.json();
   };
+  const fontBucketPath = `/__sitemap__/${packageSitemapName('fonts', 'font-sample')}.xml`;
   const setFontsSitemap = async enabled => {
     siteSettings.pages.fontsSitemap = enabled;
     siteSettings.revision += 1;
-    const result = await invalidatePaths(['/'], true);
+    const result = await invalidatePaths(['/', '/apps/font-sample', '/sitemap_index.xml', fontBucketPath], true);
     assert.equal(result.settingsCleared, true);
   };
-  await t.test('font detail pages stay out of indexing when the font sitemap switch is off', async () => {
-    await setFontsSitemap(false);
-    const response = await fetch(`${origin}/apps/font-sample`, { headers: { accept: 'text/html' } });
-    const html = await response.text();
-    assert.equal(response.status, 200, logs);
-    assert.match(html, /name="robots" content="noindex, follow/);
-    const bucket = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
-    assert.equal(bucket.status, 410, logs);
-    assert.equal(bucket.headers.get('cache-control'), 'no-store');
-  });
-  await t.test('font detail pages and font buckets are indexable when the switch is on', async () => {
-    await setFontsSitemap(true);
-    const response = await fetch(`${origin}/apps/font-sample`, { headers: { accept: 'text/html' } });
-    const html = await response.text();
-    assert.equal(response.status, 200, logs);
-    assert.match(html, /name="robots" content="index, follow/);
-    const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
-    assert.match(index, /\/__sitemap__\/fonts-bucket-0\.xml/);
-    const bucket = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
-    assert.equal(bucket.status, 200, logs);
-    assert.match(await bucket.text(), /\/apps\/font-sample/);
-    await setFontsSitemap(false);
-  });
   await t.test(
     'SSR images keep descriptive alternatives and explicitly decorative empty alt in both languages',
     async () => {
@@ -2200,8 +2178,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     }
   });
   await t.test('sitemaps fail loudly and list grouped URLs with per-language lastmod', async () => {
+    await invalidatePaths(['/__sitemap__/apps-bucket-0.xml']);
     sitemapState = 'error';
-    const failed = await fetch(`${origin}/__sitemap__/apps-bucket-0.xml`);
+    const failed = await fetch(`${origin}/__sitemap__/apps-bucket-0.xml?error-check=1`);
     assert.ok(failed.status >= 500, `a failed API must not render an empty sitemap (${failed.status})`);
     assert.equal(failed.status, 503);
     assert.equal(failed.headers.get('retry-after'), '120');
@@ -2302,6 +2281,29 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(warm.status, 200);
     assert.ok((await warm.text()).includes('/__sitemap__/apps-bucket-'));
     assert.equal(sitemapPackageRequests, reads, 'a warm index answers from its cached result');
+  });
+  await t.test('font detail pages stay out of indexing when the font sitemap switch is off', async () => {
+    await setFontsSitemap(false);
+    const response = await fetch(`${origin}/apps/font-sample`, { headers: { accept: 'text/html' } });
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    assert.match(html, /name="robots" content="noindex, follow/);
+    const bucket = await fetch(`${origin}${fontBucketPath}`);
+    assert.equal(bucket.status, 410, logs);
+    assert.equal(bucket.headers.get('cache-control'), 'no-store');
+  });
+  await t.test('font detail pages and font buckets are indexable when the switch is on', async () => {
+    await setFontsSitemap(true);
+    const response = await fetch(`${origin}/apps/font-sample`, { headers: { accept: 'text/html' } });
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    assert.match(html, /name="robots" content="index, follow/);
+    const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+    assert.match(index, /\/__sitemap__\/fonts-bucket-\d+\.xml/);
+    const bucket = await fetch(`${origin}${fontBucketPath}`);
+    assert.equal(bucket.status, 200, logs);
+    assert.match(await bucket.text(), /\/apps\/font-sample/);
+    await setFontsSitemap(false);
   });
   await t.test('renamed, removed and unavailable apps get 301, 410 and 503', async () => {
     const moved = await fetch(`${origin}/apps/old-token`, { redirect: 'manual' });
