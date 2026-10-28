@@ -56,7 +56,8 @@ function blankSettings(): Settings {
       openLocales: [...LOCALES],
       intentPagesEnabled: false,
       detailsRedirect: false,
-      versionsSitemap: false
+      versionsSitemap: false,
+      fontsSitemap: false
     }
   };
 }
@@ -606,6 +607,12 @@ void load();
             <div>
               <NSwitch v-model:value="draft.pages.versionsSitemap" :aria-label="text('versionsSitemap')" />
               <NText depth="3" class="mt-8px block">{{ text('versionsSitemapHint') }}</NText>
+            </div>
+          </NFormItem>
+          <NFormItem :label="text('fontsSitemap')">
+            <div>
+              <NSwitch v-model:value="draft.pages.fontsSitemap" :aria-label="text('fontsSitemap')" />
+              <NText depth="3" class="mt-8px block">{{ text('fontsSitemapHint') }}</NText>
             </div>
           </NFormItem>
           <NFormItem :label="text('versionsMinNotesChars')" path="versionsMinNotesChars">

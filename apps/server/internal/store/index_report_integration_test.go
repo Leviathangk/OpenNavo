@@ -4,9 +4,11 @@ package store_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -50,21 +52,31 @@ func TestIndexReportReadOnlySnapshot(t *testing.T) {
 
 func TestIndexReportFontSitemapSwitch(t *testing.T) {
 	st := testutil.NewSEOStore(t)
-	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,is_font) VALUES
- ('cask','font-report','font-report','homebrew/cask','Font','1','1','{}','fixture','Font description',true)`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en,is_font,installs_30d,rank_30d) VALUES
+ ('cask','font-report','font-report','homebrew/cask','Font','1','1','{}','fixture','Font description',true,0,0)`).Error)
 	for _, enabled := range []bool{false, true} {
-		report, err := st.BuildIndexReport(context.Background(), time.Now(), "https://site.example", enabled)
+		require.NoError(t, st.DB.Exec(fmt.Sprintf(`UPDATE seo_settings SET settings=settings || jsonb_build_object('pages', COALESCE(settings->'pages','{}'::jsonb) || jsonb_build_object('fontsSitemap', %t)) WHERE id=true`, enabled)).Error)
+		policy, err := st.IndexPolicy(context.Background())
 		require.NoError(t, err)
-		listed := 0
+		require.Equal(t, enabled, policy.FontsSitemap)
+		report, err := st.BuildIndexReport(context.Background(), time.Now(), "https://site.example")
+		require.NoError(t, err)
+		counted := 0
 		for _, row := range report.Rows {
-			if row.PageType == "fonts" && row.InSitemap {
-				listed += row.Count
+			if row.PageType == "fonts" {
+				counted += row.Count
+				require.Equal(t, enabled && policy.LocaleOpen(row.Locale), row.InSitemap)
+				if policy.LocaleOpen(row.Locale) {
+					if enabled {
+						require.Equal(t, "indexable", row.Decision)
+					} else {
+						require.Equal(t, "font_page", row.Decision)
+					}
+				} else {
+					require.Equal(t, seo.ReasonLocaleClosed, row.Decision)
+				}
 			}
 		}
-		if enabled {
-			require.Positive(t, listed)
-		} else {
-			require.Zero(t, listed)
-		}
+		require.Equal(t, len(seo.Locales), counted, "excluded font URLs must still appear in the report")
 	}
 }

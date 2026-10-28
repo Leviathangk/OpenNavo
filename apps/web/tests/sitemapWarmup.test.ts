@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SITEMAP_WARMUP_PATHS, warmSitemaps } from '../server/utils/sitemapWarmup';
 
 beforeEach(() => {
+  vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: true } }));
   vi.stubEnv('OPENNAVO_SITEMAP_WARMUP', 'true');
   vi.stubGlobal(
     'fetch',
@@ -14,7 +15,6 @@ beforeEach(() => {
   vi.spyOn(console, 'info').mockImplementation(() => {});
   vi.stubGlobal('useRuntimeConfig', () => ({
     loadShed: LOAD_SHED_DEFAULTS,
-    sitemapFonts: true,
     apiBaseInternal: 'http://api.example.test/api/v1'
   }));
 });
@@ -28,6 +28,31 @@ afterEach(() => {
 });
 
 describe('sitemap startup warmup', () => {
+  it('loads the font setting only after API readiness', async () => {
+    vi.useFakeTimers();
+    let ready = false;
+    const settings = vi.fn(async () => {
+      expect(ready).toBe(true);
+      return { pages: { fontsSitemap: true } };
+    });
+    vi.stubGlobal('getSiteSettings', settings);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        ready = true;
+        return { status: 200 };
+      })
+    );
+    const localFetch = vi.fn(async () => ({ status: 200 }));
+    vi.stubGlobal('defineNitroPlugin', (plugin: (app: unknown) => void) =>
+      plugin({ localFetch, hooks: { hook: vi.fn() } })
+    );
+    await import('../server/plugins/sitemap-warmup');
+    await vi.runAllTimersAsync();
+    expect(settings).toHaveBeenCalledOnce();
+    expect(localFetch).toHaveBeenCalledTimes(25);
+  });
+
   it('defers work until plugin registration finishes and warms index plus all 24 children', async () => {
     vi.useFakeTimers();
     const localFetch = vi.fn(async () => ({ status: 200 }));
@@ -41,11 +66,11 @@ describe('sitemap startup warmup', () => {
     expect(hook).toHaveBeenCalledWith('close', expect.any(Function));
   });
 
-  it('skips all font shards when the font experiment is disabled', async () => {
+  it('skips all font shards when the site setting is disabled', async () => {
+    vi.stubGlobal('getSiteSettings', async () => ({ pages: { fontsSitemap: false } }));
     vi.useFakeTimers();
     vi.stubGlobal('useRuntimeConfig', () => ({
       loadShed: LOAD_SHED_DEFAULTS,
-      sitemapFonts: false,
       apiBaseInternal: 'http://api.example.test/api/v1'
     }));
     const localFetch = vi.fn(async (_path: string) => ({ status: 200 }));

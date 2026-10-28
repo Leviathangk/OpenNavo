@@ -1265,6 +1265,8 @@
         "sitemapNonEnglishTopN": "Sitemap em outros idiomas: N apps com mais instalações",
         "versionsSitemap": "Incluir as páginas de versões no sitemap",
         "versionsSitemapHint": "Quando ativado, só as páginas de versões com valor próprio entram no sitemap.",
+        "fontsSitemap": "Incluir páginas de fontes no sitemap",
+        "fontsSitemapHint": "Quando ativado, páginas e diretórios de fontes elegíveis entram no sitemap, e as páginas de detalhes de fontes também participam da decisão de indexação.",
         "openLocales": "Idiomas abertos para indexação",
         "openLocalesHint": "Os idiomas desmarcados continuam sendo exibidos, mas nenhuma das suas páginas é indexada: a página inicial, as listas, as categorias, as páginas estáticas e as de apps recebem noindex e ficam fora do hreflang, dos sitemaps e do IndexNow. Nos idiomas marcados, as páginas de apps continuam sendo avaliadas pela qualidade da própria tradução. O inglês é o idioma padrão e fica sempre aberto.",
         "versionsMinNotesChars": "Tamanho mínimo das notas de versão",

@@ -118,7 +118,7 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		d.Reason = ReasonLocaleClosed
 		return d
 	}
-	if f.IsFont {
+	if f.IsFont && !p.FontsSitemap {
 		d.Reason = "font_page"
 		return d
 	}

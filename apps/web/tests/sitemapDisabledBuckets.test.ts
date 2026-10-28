@@ -3,7 +3,7 @@ import { Socket } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEvent, getResponseHeader } from 'h3';
 
-type RuntimeState = {
+type SettingsState = {
   fonts: boolean;
   versions: boolean;
 };
@@ -11,14 +11,15 @@ type RuntimeState = {
 const { getSiteSettingsMock } = vi.hoisted(() => ({ getSiteSettingsMock: vi.fn() }));
 vi.mock('../server/utils/siteSettings', () => ({ getSiteSettings: getSiteSettingsMock }));
 
-const state: RuntimeState = { fonts: false, versions: false };
+const state: SettingsState = { fonts: false, versions: false };
 const sockets: Socket[] = [];
 
 beforeEach(() => {
   state.fonts = false;
   state.versions = false;
-  vi.stubGlobal('useRuntimeConfig', () => ({ sitemapFonts: state.fonts }));
-  getSiteSettingsMock.mockImplementation(async () => ({ pages: { versionsSitemap: state.versions } }));
+  getSiteSettingsMock.mockImplementation(async () => ({
+    pages: { versionsSitemap: state.versions, fontsSitemap: state.fonts }
+  }));
 });
 
 afterEach(() => {

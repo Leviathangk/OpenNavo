@@ -1,5 +1,4 @@
 import { createError, defineEventHandler, setHeader } from 'h3';
-import { sitemapFontsEnabled } from '../utils/sitemapFonts';
 import { getSiteSettings } from '../utils/siteSettings';
 
 const DISABLED_BUCKET = /^\/__sitemap__\/(fonts|versions)-bucket-\d+\.xml$/;
@@ -12,7 +11,7 @@ export default defineEventHandler(async event => {
 
   const enabled =
     group === 'fonts'
-      ? sitemapFontsEnabled(useRuntimeConfig(event).sitemapFonts)
+      ? (await getSiteSettings()).pages.fontsSitemap
       : (await getSiteSettings()).pages.versionsSitemap;
   if (enabled) return;
 

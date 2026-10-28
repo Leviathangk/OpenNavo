@@ -278,7 +278,7 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.Len(t, settingJobs, 1, "repeated settings writes coalesce without losing the invalidation")
 	var patterns []string
 	require.NoError(t, json.Unmarshal(settingJobs[0].Payload, &patterns))
-	require.ElementsMatch(t, []string{cache.PackageDetailPrefix + "*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:art:*", "c:browse:*", "c:site:*"}, patterns)
+	require.ElementsMatch(t, []string{cache.PackageDetailPrefix + "*", "c:pkg:sitemap:*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:art:*", "c:browse:*", "c:site:*"}, patterns)
 	var settingsRefresh int
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes WHERE '/'=ANY(paths) AND purge_sections AND NOT announce").Scan(&settingsRefresh).Error)
 	require.Equal(t, 2, settingsRefresh, "only the two effective policy changes queue settings/HTML refreshes")

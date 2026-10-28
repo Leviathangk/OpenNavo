@@ -92,7 +92,7 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
  FROM unnest(ARRAY['zh-CN','en-US','ja-JP']) locale`, id).Error)
 			// A versions page needs notes on seo.VersionsMinNoteEntries releases. Older releases give every test
 			// language two notes besides this version's (English counts the 0.9 note below as one of them), so
-			// the page decision still turns on whether this version's notes count in the requested language.
+			// the notes facts distinguish whether this version's notes count in the requested language.
 			japanese := strings.Repeat("ウインドウの復元とファイルの保存を改善しました。", 30)
 			for i, older := range []string{"1.138.0", "1.139.0"} {
 				olderID := releaseID + 5 + int64(i)
@@ -184,7 +184,17 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 					require.Equal(t, translated, *entry.BodyMarkdown)
 				}
 			}
-			require.Equal(t, tc.localized, seo.DecisionRobots(string(page.Data.Indexing.Robots)).Index)
+			// 72a38e4 restricts indexing to the package's source locale; localized notes still render and count.
+			wantIndex := tc.localized && tc.locale == "zh-CN"
+			require.Equal(t, wantIndex, seo.DecisionRobots(string(page.Data.Indexing.Robots)).Index)
+			require.Equal(t, wantIndex, page.Data.Indexing.Announce)
+			if tc.locale != "zh-CN" {
+				require.Equal(t, "versions_source_only", page.Data.Indexing.Reason)
+				require.False(t, page.Data.Indexing.InSitemap)
+				require.Empty(t, page.Data.Indexing.Hreflang)
+			} else {
+				require.Equal(t, []publicapi.Locale{"zh-CN"}, page.Data.Indexing.Hreflang)
+			}
 			var detail publicapi.PackageDetailResponse
 			require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/"+token+"?locale="+tc.locale, ""), &detail))
 			require.NotNil(t, detail.Data.LatestRelease)
@@ -196,8 +206,8 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 			if tc.locale != "zh-CN" {
 				require.NotContains(t, string(lookup), "中文摘要")
 			}
-			// H9 rollout never relaxes the per-language version-note threshold: this version's notes are the
-			// third release with notes in the requested language only when they count in that language.
+			// Source-only indexing still preserves per-language notes facts: this version is the third release
+			// with notes in the requested language only when its notes count in that language.
 			row, found, err := st.IndexRowByID(ctx, id)
 			require.NoError(t, err)
 			require.True(t, found)
@@ -208,7 +218,13 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 			for _, mode := range []string{"shadow", "enforce"} {
 				policy := seo.Policy{Mode: "shadow", TranslationMode: mode, TranslationLocales: []string{"en-US"}, VersionsMinNotesChars: 300}
 				decision := seo.DecidePage(rows[0].Facts(), seo.PageRef{Kind: seo.PageVersions, Locale: tc.locale, Page: 1}, policy)
-				require.Equal(t, tc.localized, seo.DecisionRobots(string(decision.Robots)).Index, mode)
+				require.Equal(t, wantIndex, seo.DecisionRobots(string(decision.Robots)).Index, mode)
+				require.Equal(t, wantIndex, decision.Announce, mode)
+				if tc.locale != row.SourceLocale {
+					require.Equal(t, "versions_source_only", decision.Reason, mode)
+					require.False(t, decision.InSitemap, mode)
+					require.Empty(t, decision.Hreflang, mode)
+				}
 			}
 		})
 	}

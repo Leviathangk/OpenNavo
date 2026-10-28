@@ -7,8 +7,7 @@ import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '.
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
 import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
-import { sitemapFontsEnabled } from '../utils/sitemapFonts';
-import { createStaleCache } from '../utils/staleCache';
+import { createStaleCache, type StaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
 type SitemapLocale = PublicComponents['schemas']['SitemapLocale'];
@@ -64,7 +63,7 @@ export default defineNitroPlugin(nitroApp => {
       .filter(({ _sitemapName: sitemapName }) => {
         if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) {
           // A cached catalog may still contain a bucket whose source was just switched off.
-          if (sitemapName.startsWith('fonts-') && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts)) return false;
+          if (sitemapName.startsWith('fonts-') && !settings.pages.fontsSitemap) return false;
           if (sitemapName.startsWith('versions-') && !settings.pages.versionsSitemap) return false;
           return populated.has(sitemapName);
         }
@@ -96,7 +95,7 @@ export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
-      if (group === 'fonts' && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts))
+      if (group === 'fonts' && !(await getSiteSettings()).pages.fontsSitemap)
         throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
       if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap)
         throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
@@ -128,8 +127,8 @@ export default defineNitroPlugin(nitroApp => {
   });
 });
 
-function fontPackages(): Promise<SitemapRecord[]> {
-  return sitemapFontsEnabled(useRuntimeConfig().sitemapFonts) ? cachedPackages('fonts') : Promise.resolve([]);
+async function fontPackages(): Promise<SitemapRecord[]> {
+  return (await getSiteSettings()).pages.fontsSitemap ? cachedPackages('fonts') : [];
 }
 
 function apiBase() {
@@ -160,27 +159,47 @@ interface PackageSnapshot {
 }
 
 /** Populated buckets are cached to avoid reading the entire catalog on every index request. */
-const populatedPackageSitemaps = createStaleCache(
-  async () => {
-    const [apps, fonts, settings] = await Promise.all([cachedPackages('apps'), fontPackages(), getSiteSettings()]);
-    const buckets = new Set<string>();
-    const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
-      const entries = listedLocales(record, page);
-      if (entries?.length === 0) return;
-      const name = packageSitemapName(group, record.token);
-      buckets.add(name);
-    };
-    for (const record of apps) add('apps', record, 'overview');
-    for (const record of fonts) add('fonts', record, 'overview');
-    if (settings.pages.versionsSitemap) for (const record of [...apps, ...fonts]) add('versions', record, 'versions');
-    return buckets;
-  },
-  {
-    freshMs: SNAPSHOT_FRESH_MS,
-    retryMs: SNAPSHOT_RETRY_MS,
-    onError: error => console.error('[opennavo] sitemap index refresh failed', error)
+let populatedPackageSitemapsRevision: number | undefined;
+let populatedPackageSitemapsCache: StaleCache<Set<string>> | undefined;
+const populatedPackageSitemapsCaches = new Set<StaleCache<Set<string>>>();
+
+async function populatedPackageSitemaps(): Promise<Set<string>> {
+  const settings = await getSiteSettings();
+  if (!populatedPackageSitemapsCache || populatedPackageSitemapsRevision !== settings.revision) {
+    const previous = populatedPackageSitemapsCache;
+    populatedPackageSitemapsRevision = settings.revision;
+    populatedPackageSitemapsCache = createStaleCache(
+      async () => {
+        const [apps, fonts] = await Promise.all([
+          cachedPackages('apps'),
+          settings.pages.fontsSitemap ? cachedPackages('fonts') : Promise.resolve([] as SitemapRecord[])
+        ]);
+        const buckets = new Set<string>();
+        const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
+          const entries = listedLocales(record, page);
+          if (entries?.length === 0) return;
+          const name = packageSitemapName(group, record.token);
+          buckets.add(name);
+        };
+        for (const record of apps) add('apps', record, 'overview');
+        for (const record of fonts) add('fonts', record, 'overview');
+        if (settings.pages.versionsSitemap)
+          for (const record of [...apps, ...fonts]) add('versions', record, 'versions');
+        return buckets;
+      },
+      {
+        freshMs: SNAPSHOT_FRESH_MS,
+        retryMs: SNAPSHOT_RETRY_MS,
+        onError: error => console.error('[opennavo] sitemap index refresh failed', error)
+      }
+    );
+    populatedPackageSitemapsCaches.add(populatedPackageSitemapsCache);
+    if (previous) {
+      void previous.idle().then(() => populatedPackageSitemapsCaches.delete(previous));
+    }
   }
-);
+  return populatedPackageSitemapsCache();
+}
 
 // Coalesce reads and rebuilds, including callers that observed missing chunks. Each server has
 // its own in-flight maps; shared Redis snapshots remain immutable.
@@ -190,7 +209,11 @@ const rebuildFailedAt = new Map<PackageGroup, number>();
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
-  await Promise.all([populatedPackageSitemaps.idle(), backgroundItemEntries.idle(), backgroundListLocales.idle()]);
+  await Promise.all([
+    ...[...populatedPackageSitemapsCaches].map(cache => cache.idle()),
+    backgroundItemEntries.idle(),
+    backgroundListLocales.idle()
+  ]);
   while (packageRebuilds.size) await Promise.allSettled(packageRebuilds.values());
 }
 
@@ -524,14 +547,19 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
   // language they are shown in, so a leaf's alternates are the languages that have the same leaf page.
   browse: async () => {
     const languages = new Map<string, Locale[]>();
+    const includeFonts = (await getSiteSettings()).pages.fontsSitemap;
+    const kinds: ('apps' | 'fonts')[] = includeFonts ? ['apps', 'fonts'] : ['apps'];
     for (const locale of await openLocales())
-      for (const kind of ['apps'] as const) {
+      for (const kind of kinds) {
         const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
           query: { kind, locale }
         });
         for (const bucket of root.data.buckets)
           for (let page = 1; page <= bucket.pages; page += 1) {
-            const path = `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
+            const path =
+              kind === 'fonts'
+                ? `/browse/fonts/${bucket.key}${page > 1 ? `?page=${page}` : ''}`
+                : `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
             languages.set(path, [...(languages.get(path) ?? []), locale]);
           }
       }

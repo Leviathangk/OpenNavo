@@ -213,8 +213,17 @@ const localePrefixes = {
   'it-IT': '/it'
 };
 const INDEX_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
-function pageDecisions(token, locale, locales, notesCount = 0, hasDependencyContent = false) {
+function pageDecisions(
+  token,
+  locale,
+  locales,
+  notesCount = 0,
+  hasDependencyContent = false,
+  isFont = false,
+  fontsSitemap = true
+) {
   const indexable = locales.includes(locale);
+  const fontIndexable = !isFont || fontsSitemap;
   const decision = (allowed, hreflang = [], canonicalPath = '', reason = '') => ({
     robots: allowed ? INDEX_ROBOTS : 'noindex, follow',
     canonicalPath,
@@ -223,10 +232,20 @@ function pageDecisions(token, locale, locales, notesCount = 0, hasDependencyCont
     announce: allowed && !canonicalPath,
     reason
   });
-  const overview = decision(indexable, indexable ? locales : [], '', indexable ? '' : 'locale_not_ready');
+  const overview = decision(
+    indexable && fontIndexable,
+    indexable && fontIndexable ? locales : [],
+    '',
+    !fontIndexable ? 'font_page' : indexable ? '' : 'locale_not_ready'
+  );
   return {
     overview,
-    versions: decision(indexable && notesCount >= 3, indexable && notesCount >= 3 ? locales : []),
+    versions: decision(
+      indexable && fontIndexable && notesCount >= 3,
+      indexable && fontIndexable && notesCount >= 3 ? locales : [],
+      '',
+      !fontIndexable ? 'font_page' : ''
+    ),
     // Mirror seo.DecidePage: empty dependencies and details consolidate even in an unpublished locale, and a
     // dependencies tab with content supports the overview: its own canonical, but noindex in every language.
     dependencies: hasDependencyContent
@@ -291,6 +310,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     pages: {
       titleTemplate: 'new',
       indexPolicy: { mode: 'enforce', scope: 'all', since: '' },
+      fontsSitemap: false,
       versionsSitemap: true
     }
   };
@@ -1245,7 +1265,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           query.get('locale') ?? req.headers['accept-language'] ?? 'en-US',
           data.indexing.locales,
           data.indexing.notesCount,
-          ['dependency-content-app', 'reverse-dependency-app'].includes(data.token)
+          ['dependency-content-app', 'reverse-dependency-app'].includes(data.token),
+          data.isFont,
+          siteSettings.pages.fontsSitemap
         );
       if (data.token === 'variant-app@beta') {
         // Three verified known issues open the troubleshooting page; the other intent pages follow the overview.
@@ -1280,7 +1302,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             record.token,
             localized.locale,
             record.locales.map(item => item.locale),
-            record.notesCount
+            record.notesCount,
+            false,
+            record.isFont,
+            siteSettings.pages.fontsSitemap
           );
           localized.pageLastmod = {
             overview: localized.lastmod,
@@ -1341,7 +1366,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
     NUXT_METRICS_PORT: internalPort,
     NUXT_INTERNAL_SECRET: internalSecret,
-    NUXT_SITEMAP_FONTS: 'false',
     OPENNAVO_SITEMAP_WARMUP: 'false'
   };
   const child = spawn(process.execPath, ['--import', clock, entry], {
@@ -1401,7 +1425,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           PORT: comparePort,
           NITRO_PORT: comparePort,
           NUXT_METRICS_PORT: compareMetricsPort,
-          NUXT_SITEMAP_FONTS: 'false',
           OPENNAVO_SITEMAP_WARMUP: 'false'
         },
         stdio: ['ignore', 'pipe', 'pipe']
@@ -1509,6 +1532,35 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(response.status, 200, `invalidate ${paths.join(', ')}\n${logs}`);
     return response.json();
   };
+  const setFontsSitemap = async enabled => {
+    siteSettings.pages.fontsSitemap = enabled;
+    siteSettings.revision += 1;
+    const result = await invalidatePaths(['/'], true);
+    assert.equal(result.settingsCleared, true);
+  };
+  await t.test('font detail pages stay out of indexing when the font sitemap switch is off', async () => {
+    await setFontsSitemap(false);
+    const response = await fetch(`${origin}/apps/font-sample`, { headers: { accept: 'text/html' } });
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    assert.match(html, /name="robots" content="noindex, follow/);
+    const bucket = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
+    assert.equal(bucket.status, 410, logs);
+    assert.equal(bucket.headers.get('cache-control'), 'no-store');
+  });
+  await t.test('font detail pages and font buckets are indexable when the switch is on', async () => {
+    await setFontsSitemap(true);
+    const response = await fetch(`${origin}/apps/font-sample`, { headers: { accept: 'text/html' } });
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    assert.match(html, /name="robots" content="index, follow/);
+    const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+    assert.match(index, /\/__sitemap__\/fonts-bucket-0\.xml/);
+    const bucket = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
+    assert.equal(bucket.status, 200, logs);
+    assert.match(await bucket.text(), /\/apps\/font-sample/);
+    await setFontsSitemap(false);
+  });
   await t.test(
     'SSR images keep descriptive alternatives and explicitly decorative empty alt in both languages',
     async () => {
@@ -2166,7 +2218,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const fontPage = await fetch(`${origin}/apps/font-sample`);
     assert.equal(fontPage.status, 200);
     const fontHtml = await fontPage.text();
-    assert.match(fontHtml, /name="robots" content="index, follow/);
+    assert.match(fontHtml, /name="robots" content="noindex, follow/);
     assert.match(fontHtml, /rel="canonical" href="https:\/\/example.test\/apps\/font-sample"/);
     assert.ok(!index.includes('<lastmod>'), 'index cannot claim dates across independent snapshots');
     // static is split per language by the i18n integration; the large groups shard.
@@ -3345,7 +3397,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         NUXT_LOAD_SHED_LOW_LAG_MS: '60000',
         NUXT_LOAD_SHED_MEDIUM_LAG_MS: '60000',
         NUXT_LOAD_SHED_EXTREME_LAG_MS: '60000',
-        NUXT_SITEMAP_FONTS: 'false',
         OPENNAVO_SITEMAP_WARMUP: 'false'
       },
       stdio: ['ignore', 'pipe', 'pipe']
@@ -3696,7 +3747,6 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           NITRO_PORT: redisPort,
           NUXT_REDIS_URL: redis.url,
           NUXT_METRICS_PORT: '',
-          NUXT_SITEMAP_FONTS: 'false',
           OPENNAVO_SITEMAP_WARMUP: 'false'
         },
         stdio: ['ignore', 'pipe', 'pipe']
