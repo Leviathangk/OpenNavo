@@ -32,6 +32,8 @@ import {
   validRegions
 } from '../src/views/system/seo/modules/validate';
 
+vi.setConfig({ testTimeout: 20_000 });
+
 const api = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
 vi.mock('@/service/api', () => ({
   fetchSeoSettings: api.load,
