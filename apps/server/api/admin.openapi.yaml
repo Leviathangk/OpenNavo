@@ -17262,6 +17262,7 @@ components:
             scope: new
             since: ''
           versionsSitemap: false
+          fontsSitemap: false
     SeoSettingsUpdate:
       type: object
       additionalProperties: false
@@ -17358,6 +17359,7 @@ components:
               scope: new
               since: ''
             versionsSitemap: false
+            fontsSitemap: false
     SeoSettingsView:
       type: object
       additionalProperties: false
@@ -17454,6 +17456,7 @@ components:
               scope: new
               since: ''
             versionsSitemap: false
+            fontsSitemap: false
         indexNowKeyConfigured: false
         cloudflareTokenConfigured: false
         updatedAt: 2026-10-13T08:00:00Z
@@ -17554,6 +17557,7 @@ components:
                 scope: new
                 since: ''
               versionsSitemap: false
+              fontsSitemap: false
           indexNowKeyConfigured: false
           cloudflareTokenConfigured: false
           updatedAt: 2026-10-13T08:00:00Z
@@ -17648,6 +17652,7 @@ components:
                 scope: new
                 since: ''
               versionsSitemap: false
+              fontsSitemap: false
           indexNowKeyConfigured: false
           cloudflareTokenConfigured: false
           updatedAt: 2026-10-13T08:00:00Z
@@ -36258,7 +36263,7 @@ components:
       description: 'Page indexing policy (pages in the site settings).'
       type: object
       additionalProperties: false
-      required: [titleTemplate, indexPolicy, versionsSitemap]
+      required: [titleTemplate, indexPolicy, versionsSitemap, fontsSitemap]
       properties:
         titleTemplate:
           type: string
@@ -36323,6 +36328,9 @@ components:
           description: Enable details redirects after migrated overview content has been verified.
         versionsSitemap:
           type: boolean
+        fontsSitemap:
+          type: boolean
+          default: false
       example:
         titleTemplate: new
         indexPolicy:
@@ -36336,6 +36344,7 @@ components:
         intentPagesEnabled: true
         detailsRedirect: false
         versionsSitemap: false
+        fontsSitemap: false
     PageAlternate:
       type: object
       additionalProperties: false
@@ -36568,6 +36577,7 @@ components:
           intentPagesEnabled: true
           detailsRedirect: false
           versionsSitemap: false
+          fontsSitemap: false
         crawlers:
           training:
             mode: limit
@@ -36622,6 +36632,7 @@ components:
               scope: new
               since: ''
             versionsSitemap: false
+            fontsSitemap: false
           crawlers:
             training:
               mode: limit
@@ -37543,6 +37554,7 @@ components:
                 scope: new
                 since: ''
               versionsSitemap: false
+              fontsSitemap: false
           indexNowKeyConfigured: false
           cloudflareTokenConfigured: false
           updatedAt: 2026-10-13T08:00:00Z
@@ -40534,6 +40546,7 @@ components:
             intentPagesEnabled: true
             detailsRedirect: false
             versionsSitemap: false
+            fontsSitemap: false
           crawlers:
             training:
               mode: limit

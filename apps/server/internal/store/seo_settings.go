@@ -67,6 +67,7 @@ type SEOSettings struct {
 		SitemapMinInstalls    int      `json:"sitemapMinInstalls"`
 		SitemapNonEnglishTopN int      `json:"sitemapNonEnglishTopN"`
 		VersionsSitemap       bool     `json:"versionsSitemap"`
+		FontsSitemap          bool     `json:"fontsSitemap"`
 		TranslationMode       string   `json:"translationMode"`
 		TranslationLocales    []string `json:"translationLocales"`
 		VersionsMinNotesChars int      `json:"versionsMinNotesChars"`

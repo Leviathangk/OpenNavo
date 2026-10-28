@@ -358,3 +358,40 @@ func TestPopularityDoesNotNoindexSupportingIntentPages(t *testing.T) {
 		require.False(t, d.InSitemap)
 	}
 }
+
+func TestFontsAndLinksWithoutPopularity(t *testing.T) {
+	for _, font := range []bool{false, true} {
+		f := eligible()
+		f.Kind = "link"
+		if font {
+			f.Kind = "cask"
+		}
+		f.IsFont = font
+		f.Installs30d, f.Rank30d = 0, 0
+		f.ReadyLocales = Locales
+		p := Policy{Mode: "enforce", Scope: "all", FontsSitemap: true}
+		for _, locale := range []string{"en-US", "zh-CN"} {
+			d := DecidePage(f, PageRef{Kind: PageOverview, Locale: locale}, p)
+			require.Equal(t, IndexableRobots, d.Robots)
+			require.True(t, d.InSitemap)
+		}
+		for _, change := range []func(*Facts){
+			func(f *Facts) { f.Override = OverrideNoindex },
+			func(f *Facts) { f.Hidden = true },
+			func(f *Facts) { f.Disabled = true },
+			func(f *Facts) { f.Summary = "" },
+		} {
+			excluded := f
+			change(&excluded)
+			d := DecidePage(excluded, PageRef{Kind: PageOverview, Locale: "en-US"}, p)
+			require.False(t, d.InSitemap)
+			require.Equal(t, "noindex, follow", d.Robots)
+		}
+		p.OpenLocales = []string{"en-US"}
+		require.Equal(t, ReasonLocaleClosed, DecidePage(f, PageRef{Kind: PageOverview, Locale: "zh-CN"}, p).Reason)
+		p.OpenLocales = nil
+		p.TranslationMode = "enforce"
+		f.ReadyLocales = nil
+		require.False(t, DecidePage(f, PageRef{Kind: PageOverview, Locale: "zh-CN"}, p).InSitemap)
+	}
+}

@@ -1265,6 +1265,8 @@
         "sitemapNonEnglishTopN": "英語以外のサイトマップ：インストール数上位 N アプリ",
         "versionsSitemap": "バージョンのページを sitemap に含める",
         "versionsSitemapHint": "オンにすると、単独で価値のあるバージョンのページだけが sitemap に追加されます。",
+        "fontsSitemap": "フォントのページを sitemap に含める",
+        "fontsSitemapHint": "オンにすると、対象のフォントページとディレクトリが sitemap に追加されます。",
         "openLocales": "インデックスを許可する言語",
         "openLocalesHint": "チェックしていない言語もページは表示されますが、どのページもインデックスされません。ホーム、一覧、カテゴリ、静的ページ、App のページはすべて noindex になり、hreflang、sitemap、IndexNow にも含まれません。チェックした言語では、App のページは引き続きそれぞれの翻訳品質で個別に判定します。英語は既定の言語のため、常に許可されます。",
         "versionsMinNotesChars": "リリースノートの最小文字数",

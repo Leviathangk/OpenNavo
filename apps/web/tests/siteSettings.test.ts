@@ -16,6 +16,7 @@ describe('site settings cache', () => {
   it('defaults keep the crawler policy that predates the settings page', () => {
     expect(DEFAULT_SITE_SETTINGS.crawlers).toEqual(DEFAULT_CRAWLER_POLICY);
     expect(DEFAULT_SITE_SETTINGS.analytics.ga4Enabled).toBe(false);
+    expect(DEFAULT_SITE_SETTINGS.pages.fontsSitemap).toBe(false);
   });
 
   it('loads once per TTL and serves the stale copy while refreshing', async () => {

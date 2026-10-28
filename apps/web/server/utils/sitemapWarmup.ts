@@ -61,12 +61,12 @@ export async function warmSitemaps(
   fetch: (path: string, signal?: AbortSignal) => Promise<{ status: number }>,
   stopped: () => boolean = () => false,
   hasCapacity: () => boolean = () => true,
-  includeFonts = true,
+  includeFonts: boolean | (() => Promise<boolean>) = true,
   options: WarmupOptions = {}
 ): Promise<void> {
   const signal = options.signal ?? new AbortController().signal;
   const started = Date.now();
-  const paths = SITEMAP_WARMUP_PATHS.filter(path => includeFonts || !path.includes('/fonts-bucket-'));
+  let paths = SITEMAP_WARMUP_PATHS;
   let success = 0;
   let failed = 0;
   let outcome = 'complete';
@@ -93,10 +93,16 @@ export async function warmSitemaps(
       }
       if (!ready && !cancelled()) {
         outcome = 'readiness_timeout';
-        failed = paths.length;
+        failed =
+          typeof includeFonts === 'boolean' && !includeFonts
+            ? paths.filter(path => !path.includes('/fonts-bucket-')).length
+            : paths.length;
         return;
       }
     }
+    if (cancelled()) return;
+    const fontsEnabled = typeof includeFonts === 'function' ? await cancellable(includeFonts(), signal) : includeFonts;
+    paths = paths.filter(path => fontsEnabled || !path.includes('/fonts-bucket-'));
     for (const path of paths) {
       if (cancelled()) return;
       let ok = false;
