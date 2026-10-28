@@ -26,6 +26,16 @@ jobs:
         with:
           ref: ${{ inputs.revision }}
           fetch-depth: 0
+      # Run the gate from the workflow commit, not inputs.revision, so rolling back to a
+      # commit that predates deployment-needed.mjs still works.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            .github/scripts/deployment-needed.mjs
+            .github/scripts/ship.mjs
+          sparse-checkout-cone-mode: false
+          path: .workflow-ci
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -33,7 +43,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - id: changes
-        run: node .github/scripts/deployment-needed.mjs
+        run: node .workflow-ci/.github/scripts/deployment-needed.mjs
+        working-directory: ${{ github.workspace }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - id: source
