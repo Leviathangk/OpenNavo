@@ -221,6 +221,22 @@ jobs:
           python3 apps/desktop/scripts/prepare-firewall.py --verify-bundle-permissions apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
           python3 apps/desktop/scripts/prepare-firewall.py --verify-bundle-services apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
 
+      - name: Attach and verify application ticket before packaging
+        if: github.event_name == 'push' || steps.signing.outputs.apple == 'true'
+        run: |
+          bundle="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
+          codesign --verify --deep --strict "$bundle/macos/OpenNavo.app"
+          python3 apps/desktop/scripts/staple-and-validate.py "$bundle/macos/OpenNavo.app"
+          codesign --verify --deep --strict "$bundle/macos/OpenNavo.app"
+          # Tauri may return after stapling without a usable ticket. Rebuild the
+          # updater archive from the verified app, then sign those exact bytes.
+          if [ "${{ matrix.artifact }}" != dmg-universal ]; then
+            COPYFILE_DISABLE=1 tar -czf "$bundle/macos/OpenNavo.app.tar.gz" -C "$bundle/macos" OpenNavo.app
+            if [ "${{ steps.signing.outputs.updater }}" = true ]; then
+              pnpm --filter @opennavo/desktop exec tauri signer sign --app-version "$VERSION" "$(pwd)/$bundle/macos/OpenNavo.app.tar.gz"
+            fi
+          fi
+
       - name: Sign updater artifacts separately
         if: matrix.artifact != 'dmg-universal' && steps.signing.outputs.apple != 'true' && steps.signing.outputs.updater == 'true'
         run: |
@@ -247,12 +263,10 @@ jobs:
         run: |
           bundle="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
           codesign --verify --deep --strict "$bundle/macos/OpenNavo.app"
-          xcrun stapler validate "$bundle/macos/OpenNavo.app"
           if [ "${{ matrix.artifact }}" = dmg-universal ]; then
             for dmg in "$bundle"/dmg/*.dmg; do
               xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" --wait
-              xcrun stapler staple "$dmg"
-              xcrun stapler validate "$dmg"
+              python3 apps/desktop/scripts/staple-and-validate.py "$dmg"
               hdiutil verify "$dmg"
             done
           fi
