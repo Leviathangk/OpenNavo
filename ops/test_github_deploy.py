@@ -151,13 +151,14 @@ scrape_configs:
 """
         after = deploy.monitoring_targets(source, {'api': 'api_new', 'web': 'web_new'})
         self.assertIn("targets: ['api_new:9090']", after)
-        self.assertIn("targets: ['web_new:9091']", after)
+        self.assertIn('dns_sd_configs:', after)
+        self.assertIn('names: [web_new]', after)
         self.assertIn("targets: ['custom:1234']\n        labels: {purpose: custom}", after)
         self.assertEqual(after.count('job_name: web'), 1)
         self.assertEqual(deploy.monitoring_targets(after, {'api': 'api_new', 'web': 'web_new'}), after)
         restored = deploy.monitoring_targets(after, {'api': 'api_old', 'web': 'web_old'})
         self.assertNotIn('api_new', restored)
-        self.assertIn("targets: ['web_old:9091']", restored)
+        self.assertIn('names: [web_old]', restored)
         with self.assertRaises(ValueError):
             deploy.monitoring_targets(source.replace('    static_configs:', '    relabel_configs:', 1), {'api': 'a', 'web': 'b'})
         with self.assertRaises(ValueError):
@@ -195,6 +196,43 @@ scrape_configs:
                                         capture_output=True, text=True, timeout=10)
                 self.assertEqual(result.returncode, expected, result.stderr)
 
+    def test_candidate_warmup_records_retired_statuses_but_rejects_server_failures(self):
+        prelude = """
+let calls = 0;
+globalThis.fetch = async () => {
+  calls += 1;
+  const status = calls <= 2 ? (calls === 1 ? 404 : 410) : 200;
+  return { status, arrayBuffer: async () => new ArrayBuffer(0) };
+};
+globalThis.setTimeout = callback => { callback(); };
+"""
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', prelude + deploy.WARM_SCRIPT,
+             json.dumps(['/apps/retired']), deploy.WARM_ORIGIN, deploy.WARM_HOST, deploy.WARM_INTERNAL_ORIGIN],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('status=404', result.stdout)
+        self.assertIn('status=410', result.stdout)
+        failure = subprocess.run(
+            ['node', '--input-type=module', '-e',
+             "globalThis.fetch = async () => ({status: 503, arrayBuffer: async () => new ArrayBuffer(0)});" + deploy.WARM_SCRIPT,
+             json.dumps(['/apps/broken']), deploy.WARM_ORIGIN, deploy.WARM_HOST, deploy.WARM_INTERNAL_ORIGIN],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(failure.returncode, 1)
+
+    def test_drain_script_falls_back_to_the_existing_load_shed_metric(self):
+        script = """
+globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_web_in_flight\\nopennavo_web_in_flight 0\\n' });
+""" + deploy.DRAIN_SCRIPT
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', script, deploy.WARM_INTERNAL_ORIGIN],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), '0')
+
     def test_monitoring_default_dns_config_release_and_rollback(self):
         source = Path(__file__).with_name('prometheus').joinpath('prometheus.yml').read_text()
         after = deploy.monitoring_targets(source, {'api': 'api_new', 'web': 'web_new'})
@@ -218,7 +256,7 @@ scrape_configs:
                     if args[1] == 'inspect':
                         return json.dumps([{'Mounts': [{'Source': str(config), 'Destination': '/etc/prometheus/prometheus.yml', 'Type': 'bind'}]}])
                     if 'promtool' in args:
-                        self.assertIn('web_new:9091', config.read_text())
+                        self.assertIn('names: [web_new]', config.read_text())
                         if failure == 'validate': raise RuntimeError('validation failed')
                     if 'node' in args and failure == 'scrape': raise RuntimeError('scrape failed')
                     return ''
@@ -229,7 +267,7 @@ scrape_configs:
                         self.assertEqual(config.read_text(), original)
                     else:
                         obj.update_monitoring({'api': 'api_new', 'web': 'web_new'})
-                        self.assertIn('web_new:9091', config.read_text())
+                        self.assertIn('names: [web_new]', config.read_text())
                         self.assertTrue(any('node' in call.args[0] for call in run.call_args_list))
                     self.assertEqual(config.stat().st_ino, inode)
                     self.assertEqual((directory / 'before-prometheus.yml').read_text(), original)
@@ -251,12 +289,13 @@ scrape_configs:
         def cmd(args):
             if args[1] == 'ps': return '\n'.join(c['Id'] for c in containers)
             if args[1] == 'inspect': return json.dumps(containers)
+            if args[1] == 'exec': return '0'
             return ''
         with patch.object(deploy, 'command', side_effect=cmd) as run:
             obj.cleanup(previous)
         mutations = [call.args[0] for call in run.call_args_list if call.args[0][1] in ['stop', 'rm']]
         self.assertEqual(mutations, [
-            ['docker', 'stop', '--timeout', '30', *previous['services'].values(), 'api_older', 'api'],
+            ['docker', 'stop', '--timeout', '90', *previous['services'].values(), 'api_older', 'api'],
             ['docker', 'rm', 'api_older', 'web_ancient', 'api']])
 
     def test_cleanup_does_not_remove_containers_if_stop_fails(self):
@@ -268,6 +307,94 @@ scrape_configs:
         with patch.object(deploy, 'command', side_effect=['old', json.dumps(containers), RuntimeError('stop failed')]) as run:
             with self.assertRaises(RuntimeError): obj.cleanup({})
         self.assertFalse(any(call.args[0][1] == 'rm' for call in run.call_args_list))
+
+    def test_cleanup_stops_undrained_containers_by_default(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'project': 'example-prod'}
+        obj.services = {'api': 'api_new', 'web': 'web_new', 'mcp': 'mcp_new', 'admin': 'admin_new'}
+        containers = [{
+            'Id': 'web_old', 'State': {'Running': True},
+            'Config': {'Labels': {'com.docker.compose.project': 'example-prod', 'com.docker.compose.service': 'web_old'}}
+        }]
+        def command(args):
+            if args[1] == 'ps': return 'web_old'
+            if args[1] == 'inspect': return json.dumps(containers)
+            if args[1] == 'exec': raise RuntimeError('old metric unavailable')
+            return ''
+        with patch.object(deploy, 'command', side_effect=command) as run, contextlib.redirect_stdout(io.StringIO()) as output:
+            obj.cleanup({})
+        self.assertTrue(any(call.args[0] == ['docker', 'stop', '--timeout', '90', 'web_old']
+                            for call in run.call_args_list))
+        self.assertIn('stopping retired containers', output.getvalue())
+
+    def test_cleanup_can_retain_undrained_containers_only_when_explicitly_configured(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'project': 'example-prod', 'retain_undrained_containers': True}
+        obj.services = {'api': 'api_new', 'web': 'web_new', 'mcp': 'mcp_new', 'admin': 'admin_new'}
+        containers = [{
+            'Id': 'web_old', 'State': {'Running': True},
+            'Config': {'Labels': {'com.docker.compose.project': 'example-prod', 'com.docker.compose.service': 'web_old'}}
+        }]
+        def command(args):
+            if args[1] == 'ps': return 'web_old'
+            if args[1] == 'inspect': return json.dumps(containers)
+            if args[1] == 'exec': raise RuntimeError('old metric unavailable')
+            return ''
+        with patch.object(deploy, 'command', side_effect=command) as run:
+            obj.cleanup({})
+        self.assertFalse(any(call.args[0][1] in ('stop', 'rm') for call in run.call_args_list))
+
+    def test_rollback_stops_undrained_candidates_by_default(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            obj = object.__new__(deploy.Deployment)
+            obj.config = {'project': 'example-prod'}
+            obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
+            obj.services = {k: k + '_new' for k in ['api', 'web', 'admin', 'mcp']}
+            obj.directory = directory
+            obj.live_caddy = directory / 'live'
+            obj.env = directory / 'env'
+            obj.rolling = directory / 'rolling'
+            obj.live_caddy.write_text('candidate')
+            for name in ['before-caddy', 'before-release.env', 'before-rolling.json']:
+                (directory / name).write_text('old')
+            events = []
+            obj.compose = lambda *args, **kwargs: events.append(args)
+            obj.reload = lambda: events.append('reload')
+            obj.verify = lambda expected=None: events.append(('verify', expected))
+            obj.update_monitoring = lambda services: events.append('monitoring')
+            obj.drain_retired = lambda *args, **kwargs: False
+            with patch.object(deploy, 'command', return_value='candidate'):
+                obj.rollback()
+            self.assertIn(('stop', '--timeout', '90', *obj.services.values()), events)
+
+    def test_same_sha_short_circuit_skips_capacity_gate(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.payload = payload()
+        obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live', 'web': 'web_live'}}
+        events = []
+        obj.verify = lambda: events.append('verify')
+        obj.update_monitoring = lambda services: events.append('monitoring')
+        obj.cleanup = lambda previous: events.append('cleanup')
+        obj.prune = lambda previous: events.append('prune')
+        obj.capacity_gate = lambda: (_ for _ in ()).throw(AssertionError('short circuit must skip capacity'))
+        obj.apply(archive())
+        self.assertEqual(events, ['verify', 'monitoring', 'cleanup', 'prune'])
+
+    def test_drain_timeout_warns_and_reports_failure(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'project': 'example-prod'}
+        obj.switch_at = None
+        containers = [{
+            'Id': 'old-web', 'State': {'Running': True},
+            'Config': {'Labels': {'com.docker.compose.service': 'web_old'}}
+        }]
+        with patch.object(deploy, 'command', return_value='1'), \
+                patch.object(deploy.time, 'monotonic', side_effect=[0, 0, 3]), \
+                patch.object(deploy.time, 'sleep'), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertFalse(obj.drain_retired(containers, timeout=2))
+        self.assertIn('drain timed out', output.getvalue())
 
     def test_retry_verifies_existing_release_before_resuming_cleanup(self):
         obj = object.__new__(deploy.Deployment)
@@ -450,7 +577,7 @@ scrape_configs:
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)
             obj = object.__new__(deploy.Deployment)
-            obj.config = {}
+            obj.config = {'project': 'fixture'}
             obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
             obj.payload = payload()
             obj.directory = directory
@@ -469,11 +596,16 @@ scrape_configs:
             obj.backup = lambda: events.append('backup')
             obj.compose = lambda *args, **kwargs: events.append(args)
             obj.reload = lambda: events.append('reload')
+            obj.capacity_gate = lambda: None
+            obj.warm_candidates = lambda: events.append('warm')
             obj.update_monitoring = lambda services: events.append(('monitoring', services))
             obj.cleanup = lambda _: events.append('cleanup')
             obj.prune = lambda _: events.append('prune')
-            def fail(): raise RuntimeError('route check failed')
-            obj.verify = fail
+            def verify(expected=None):
+                if expected is None:
+                    raise RuntimeError('route check failed')
+                events.append(('verify', expected))
+            obj.verify = verify
             def cmd(args, output=None):
                 if args[:3] == ['docker', 'image', 'inspect']:
                     return json.dumps({'org.opencontainers.image.revision': 'a' * 40})
@@ -484,19 +616,22 @@ scrape_configs:
             self.assertEqual(obj.env.read_text(), 'old')
             self.assertEqual(obj.rolling.read_text(), 'old')
             self.assertLess(events.index('backup'), events.index(('run', '--rm', '--no-deps', 'migrate', 'up')))
-            self.assertIn(('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker'), events)
+            old_up = ('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                      'api_previous', 'web_previous', 'admin_previous', 'mcp_previous', 'worker')
+            self.assertIn(old_up, events)
+            self.assertLess(events.index(old_up), len(events) - 1 - events[::-1].index('reload'))
             self.assertFalse(obj.state_path.exists())
             self.assertNotIn('down', str(events))
             self.assertNotIn('cleanup', events)
             self.assertNotIn('prune', events)
 
-            # Even if monitoring cannot recover, rollback must stop failed candidates.
+            # If monitoring cannot recover, rollback leaves candidate containers for inspection.
             events.clear()
             def fail_monitoring(_): raise RuntimeError('monitoring unavailable')
             obj.update_monitoring = fail_monitoring
             with self.assertRaisesRegex(RuntimeError, 'monitoring unavailable'):
                 obj.rollback()
-            self.assertIn(('stop', *obj.services.values()), events)
+            self.assertFalse(any(event and event[0] == 'stop' for event in events if isinstance(event, tuple)))
             self.assertEqual(obj.live_caddy.read_text(), 'old')
 
             # A successful retry must persist the verified release before cleanup.
@@ -504,7 +639,8 @@ scrape_configs:
             (directory / 'release.env').write_text('new-env')
             (directory / 'rolling.compose.json').write_text('{}')
             events.clear()
-            obj.verify = lambda: events.append('verify')
+            obj.verify = lambda expected=None: events.append('verify')
+            obj.warm_candidates = lambda: events.append('warm')
             obj.update_monitoring = lambda services: events.append('monitoring')
             def cleanup(previous):
                 state = json.loads(obj.state_path.read_text())

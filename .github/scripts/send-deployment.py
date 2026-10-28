@@ -7,7 +7,35 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
+
+
+DEFAULT_WARM_PATHS = [
+    '/', '/zh', '/ja', '/es', '/ru', '/download', '/zh/download', '/ja/download',
+    '/es/download', '/ru/download', '/apps', '/recent', '/ru/apps', '/es/recent',
+    '/apps/airbuild', '/apps/agentide'
+]
+PUBLIC_WARM_PATH_RE = re.compile(r'/[A-Za-z0-9/_@+.,~:-]*\Z')
+PRIVATE_WARM_PREFIXES = ('/api', '/admin', '/agent-api', '/auth', '/oauth', '/login', '/reset', '/callback',
+                        '/.', '/_', '/assets', '/icons', '/screenshots', '/sitemap', '/robots')
+
+
+def load_warm_paths(path=Path('deployment/warm-paths.json')):
+    try:
+        value = json.loads(path.read_text())
+        paths = value.get('paths')
+        if not isinstance(paths, list) or any(not isinstance(item, str) for item in paths):
+            raise ValueError('paths must be a list of strings')
+        if any(not PUBLIC_WARM_PATH_RE.fullmatch(item) or '//' in item or '..' in item or
+               re.sub(r'^/(?:zh|zh-hant|ja|es|ru|de|fr|it|pt)(?=/|$)', '', item).startswith(PRIVATE_WARM_PREFIXES) or
+               re.search(r'\.(?:ico|png|svg|webp|jpe?g|js|css|xml|txt|json|map|woff2?|ttf)$', item, re.I)
+               for item in paths):
+            raise ValueError('paths contain a non-public entry')
+        return list(dict.fromkeys([*DEFAULT_WARM_PATHS, *paths]))[:66]
+    except Exception as error:
+        print(f'Warning: warm-paths.json unavailable ({type(error).__name__}); using fixed public paths.', file=sys.stderr)
+        return DEFAULT_WARM_PATHS
 
 
 def main():
@@ -29,6 +57,9 @@ def main():
                    'images': images, 'admin_sha256': hashlib.sha256(archive).hexdigest(),
                    'admin_archive': base64.b64encode(archive).decode(),
                    'registry_token': os.environ['REGISTRY_TOKEN'], 'registry_username': os.environ['REGISTRY_USERNAME']}
+    if not args.desktop_version:
+        # `warm_paths` is optional: an older installed receiver ignores this unknown JSON key.
+        payload['warm_paths'] = load_warm_paths()
     with tempfile.TemporaryDirectory() as directory:
         key, known = Path(directory) / 'key', Path(directory) / 'known_hosts'
         key.write_text(os.environ['DEPLOY_SSH_KEY'] + '\n')

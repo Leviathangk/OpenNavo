@@ -166,6 +166,23 @@ jobs:
         with:
           name: production-admin
           path: deployment
+      - name: Read public top paths from Cloudflare analytics
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_ANALYTICS_READ_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+        run: |
+          if ! python3 ops/cf-readonly.py top --minutes 1440 > deployment/warm-paths.json; then
+            echo '::warning::Cloudflare analytics unavailable; using fixed public warm paths.'
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('deployment/warm-paths.json').write_text(json.dumps({'paths': [
+              '/', '/zh', '/ja', '/es', '/ru', '/download', '/zh/download', '/ja/download',
+              '/es/download', '/ru/download', '/apps', '/recent', '/ru/apps', '/es/recent',
+              '/apps/airbuild', '/apps/agentide'
+          ]}) + '\n')
+          PY
+          fi
       - name: Deploy immutable images and verify production
         env:
           RELEASE_SHA: ${{ needs.source.outputs.sha }}
@@ -176,3 +193,9 @@ jobs:
           REGISTRY_TOKEN: ${{ github.token }}
           REGISTRY_USERNAME: ${{ github.actor }}
         run: python3 .github/scripts/send-deployment.py
+      - name: Warm approved public HTML at the edge after deployment
+        continue-on-error: true
+        run: |
+          if ! python3 ops/warm-edge.py deployment/warm-paths.json; then
+            echo '::warning::Edge warmup failed after the deployment; the release remains successful.'
+          fi

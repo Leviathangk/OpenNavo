@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage } from 'node:http';
+import { getHeapStatistics } from 'node:v8';
 import { RequestCounter, countResponse } from '../utils/crawlerMetrics';
+import { InFlightCounter, localReadinessStatus, readCgroupMemoryLimit } from '../utils/internalHealth';
 import { loadShedState } from '../utils/loadShed';
 import { cacheBuildIdentity } from './cache-storage';
 
@@ -35,22 +37,61 @@ function readJSON(request: IncomingMessage): Promise<unknown> {
 // authenticated with NUXT_INTERNAL_SECRET.
 export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('close', () => loadShedState.stop());
-  nitroApp.hooks.hook('afterResponse', event => event.context.releaseLoadShed?.());
+  nitroApp.hooks.hook('afterResponse', event => {
+    event.context.releaseLoadShed?.();
+    event.context.releaseInternalHTTP?.();
+  });
   const config = useRuntimeConfig();
   const port = Number(config.metricsPort);
   if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
+  const activeHTTP = new InFlightCounter();
+  nitroApp.hooks.hook('request', event => {
+    const response = event.node.res;
+    const release = activeHTTP.acquire();
+    const finish = () => {
+      release();
+      response.removeListener('close', close);
+    };
+    const close = () => {
+      release();
+      response.removeListener('finish', finish);
+    };
+    event.context.releaseInternalHTTP = () => {
+      release();
+      response.removeListener('finish', finish);
+      response.removeListener('close', close);
+    };
+    response.once('finish', finish);
+    response.once('close', close);
+  });
   const counter = new RequestCounter();
   nitroApp.hooks.hook('afterResponse', event => {
     countResponse(counter, event);
   });
   const server = createServer(async (request, response) => {
     const reply = (status: number, body?: unknown) => {
-      response.writeHead(status, { 'Content-Type': body === undefined ? 'text/plain' : 'application/json' });
+      response.writeHead(status, {
+        'Content-Type': body === undefined ? 'text/plain' : 'application/json'
+      });
       response.end(body === undefined ? '' : JSON.stringify(body));
     };
+    if (request.method === 'GET' && request.url === '/healthz') return reply(200);
+    if (request.method === 'GET' && request.url === '/readyz') {
+      const memory = process.memoryUsage();
+      const heap = getHeapStatistics();
+      return reply(
+        localReadinessStatus({
+          rss: memory.rss,
+          heapUsed: memory.heapUsed,
+          heapLimit: heap.heap_size_limit,
+          lagMs: loadShedState.lagMs,
+          cgroupLimit: readCgroupMemoryLimit()
+        })
+      );
+    }
     if (request.method === 'GET' && request.url === '/metrics') {
       response.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
-      response.end(counter.render() + loadShedState.render());
+      response.end(counter.render() + loadShedState.render() + `opennavo_web_http_in_flight ${activeHTTP.value}\n`);
       return;
     }
     if (request.method === 'GET' && request.url === '/cache/build') {
