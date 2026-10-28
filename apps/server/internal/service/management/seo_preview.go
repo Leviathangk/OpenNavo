@@ -47,6 +47,10 @@ func (s *Service) agentAffectedURLs(ctx context.Context, object string, in Input
 	if base != "" {
 		switch object {
 		case "article":
+			// New article previews have no persisted article whose paths can be resolved.
+			if in.ID == 0 {
+				break
+			}
 			paths, err := s.Store.ArticlePaths(ctx, in.ID)
 			if err != nil {
 				return nil, err

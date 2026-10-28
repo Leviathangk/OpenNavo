@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -365,7 +364,7 @@ func (s *Store) ArticlePaths(ctx context.Context, articleID int64, extra ...stri
 		return nil, err
 	}
 	if row.Slug == "" {
-		return nil, errors.New("article not found")
+		return nil, gorm.ErrRecordNotFound
 	}
 	out := []string{"/articles/" + row.Slug, "/articles"}
 	if row.AuthorSlug != nil {
