@@ -827,7 +827,7 @@ export function installMockIpc(
     },
     permission_guide_close: () => null,
     permission_guide_fit: () => null,
-    permission_guide_info: () => ({ draggable: true }),
+    permission_guide_info: () => ({ draggable: true, ownerName: null, ownerIcon: null }),
     permission_guide_drag: () => null,
     // Self-update (a new version exists with ?mock=update); downloads emit no progress.
     'plugin:updater|check': () =>

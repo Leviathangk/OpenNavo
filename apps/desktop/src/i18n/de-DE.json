@@ -998,10 +998,10 @@
     "guide": {
       "appManagement": "App-Verwaltung",
       "fullDiskAccess": "Festplattenvollzugriff",
-      "dragTitle": "Ziehen Sie OpenNavo in die Liste oben",
-      "plusTitle": "Klicken Sie unter der Liste auf „+“ und wählen Sie OpenNavo",
-      "toggleHint": "Ist OpenNavo bereits aufgeführt, aktivieren Sie einfach den Schalter daneben.",
-      "dragLabel": "OpenNavo-Symbol ziehen",
+      "dragTitle": "Ziehen Sie {name} in die Liste oben",
+      "plusTitle": "Klicken Sie unter der Liste auf „+“ und wählen Sie {name}",
+      "toggleHint": "Ist {name} bereits aufgeführt, aktivieren Sie einfach den Schalter daneben.",
+      "dragLabel": "{name}-Symbol ziehen",
       "close": "Schließen",
       "done": {
         "appManagement": "OpenNavo darf jetzt Apps verwalten",

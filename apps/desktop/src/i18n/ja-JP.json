@@ -998,10 +998,10 @@
     "guide": {
       "appManagement": "アプリ管理",
       "fullDiskAccess": "フルディスクアクセス",
-      "dragTitle": "OpenNavoを上のリストにドラッグ",
-      "plusTitle": "リストの下にある「+」をクリックして、OpenNavoを選択",
-      "toggleHint": "リストにOpenNavoがすでにある場合は、スイッチをオンにしてください。",
-      "dragLabel": "OpenNavoのアイコンをドラッグ",
+      "dragTitle": "{name}を上のリストにドラッグ",
+      "plusTitle": "リストの下にある「+」をクリックして、{name}を選択",
+      "toggleHint": "リストに{name}がすでにある場合は、スイッチをオンにしてください。",
+      "dragLabel": "{name}のアイコンをドラッグ",
       "close": "閉じる",
       "done": {
         "appManagement": "OpenNavoによるアプリ管理が許可されました",

@@ -842,11 +842,16 @@ pub struct Permissions {
     pub full_disk_access_pending: bool,
 }
 
-/// Permission overlay capability (§12.7): development builds are not .app bundles and cannot drag an icon.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+/// Permission overlay (§12.7): the app to drag or choose is the one macOS checks OpenNavo's permissions against.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionGuideInfo {
+    /// That app is an .app bundle, so its icon can be dragged into the list.
     pub draggable: bool,
+    /// Set when that app is not OpenNavo: a development build is checked as the app it was started from, such as a terminal.
+    pub owner_name: Option<String>,
+    /// PNG of that app's icon, for the asset protocol.
+    pub owner_icon: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]

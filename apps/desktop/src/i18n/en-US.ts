@@ -1013,10 +1013,10 @@ const messages: MessageSchema = {
     guide: {
       appManagement: 'App Management',
       fullDiskAccess: 'Full Disk Access',
-      dragTitle: 'Drag OpenNavo into the list above',
-      plusTitle: 'Click + below the list and choose OpenNavo',
-      toggleHint: 'If OpenNavo is already in the list, just turn on its switch.',
-      dragLabel: 'Drag the OpenNavo icon',
+      dragTitle: 'Drag {name} into the list above',
+      plusTitle: 'Click + below the list and choose {name}',
+      toggleHint: 'If {name} is already in the list, just turn on its switch.',
+      dragLabel: 'Drag the {name} icon',
       close: 'Close',
       done: {
         appManagement: 'OpenNavo can now manage apps',

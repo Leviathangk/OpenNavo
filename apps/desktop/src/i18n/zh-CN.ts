@@ -992,10 +992,10 @@ export default {
     guide: {
       appManagement: 'App 管理',
       fullDiskAccess: '完全磁盘访问权限',
-      dragTitle: '把 OpenNavo 拖到上方的列表',
-      plusTitle: '点按列表下方的「+」，选择 OpenNavo',
-      toggleHint: '列表里已有 OpenNavo 时，打开它旁边的开关即可。',
-      dragLabel: '拖动 OpenNavo 图标',
+      dragTitle: '把 {name} 拖到上方的列表',
+      plusTitle: '点按列表下方的「+」，选择 {name}',
+      toggleHint: '列表里已有 {name} 时，打开它旁边的开关即可。',
+      dragLabel: '拖动 {name} 图标',
       close: '关闭',
       done: {
         appManagement: '已允许 OpenNavo 管理 App',

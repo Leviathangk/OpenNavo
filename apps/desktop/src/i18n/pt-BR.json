@@ -998,10 +998,10 @@
     "guide": {
       "appManagement": "Gerenciamento de apps",
       "fullDiskAccess": "Acesso Total ao Disco",
-      "dragTitle": "Arraste o OpenNavo para a lista acima",
-      "plusTitle": "Clique em + abaixo da lista e selecione OpenNavo",
-      "toggleHint": "Se o OpenNavo já estiver na lista, basta ativar a chave ao lado dele.",
-      "dragLabel": "Arraste o ícone do OpenNavo",
+      "dragTitle": "Arraste o {name} para a lista acima",
+      "plusTitle": "Clique em + abaixo da lista e selecione {name}",
+      "toggleHint": "Se o {name} já estiver na lista, basta ativar a chave ao lado dele.",
+      "dragLabel": "Arraste o ícone do {name}",
       "close": "Fechar",
       "done": {
         "appManagement": "O OpenNavo agora pode gerenciar apps",

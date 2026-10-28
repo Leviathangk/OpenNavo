@@ -998,10 +998,10 @@
     "guide": {
       "appManagement": "App 管理",
       "fullDiskAccess": "完整磁碟取用權限",
-      "dragTitle": "把 OpenNavo 拖到上方的列表",
-      "plusTitle": "點按列表下方的「+」，選擇 OpenNavo",
-      "toggleHint": "列表裡已有 OpenNavo 時，開啟它旁邊的開關即可。",
-      "dragLabel": "拖動 OpenNavo 圖示",
+      "dragTitle": "把 {name} 拖到上方的列表",
+      "plusTitle": "點按列表下方的「+」，選擇 {name}",
+      "toggleHint": "列表裡已有 {name} 時，開啟它旁邊的開關即可。",
+      "dragLabel": "拖動 {name} 圖示",
       "close": "關閉",
       "done": {
         "appManagement": "已允許 OpenNavo 管理 App",

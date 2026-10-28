@@ -219,7 +219,10 @@ export const commands = {
 	/**  Size the overlay to the height its page needs: longer translations wrap onto more lines. */
 	permissionGuideFit: (height: number) => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_fit", { height })),
 	permissionGuideInfo: () => typedError<PermissionGuideInfo, AppError>(__TAURI_INVOKE("permission_guide_info")),
-	/**  Drag OpenNavo's icon from the overlay. This synchronous command runs on the main thread while the current event is still mouse-down. */
+	/**
+	 *  Drag the owner app's icon (usually OpenNavo's) from the overlay. This synchronous command runs on the main thread while
+	 *  the current event is still mouse-down.
+	 */
 	permissionGuideDrag: () => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_drag")),
 };
 
@@ -1535,9 +1538,14 @@ export type PasteProtectionStatus = {
 	listening: boolean,
 };
 
-/**  Permission overlay capability (§12.7): development builds are not .app bundles and cannot drag an icon. */
+/**  Permission overlay (§12.7): the app to drag or choose is the one macOS checks OpenNavo's permissions against. */
 export type PermissionGuideInfo = {
+	/**  That app is an .app bundle, so its icon can be dragged into the list. */
 	draggable: boolean,
+	/**  Set when that app is not OpenNavo: a development build is checked as the app it was started from, such as a terminal. */
+	ownerName: string | null,
+	/**  PNG of that app's icon, for the asset protocol. */
+	ownerIcon: string | null,
 };
 
 export type PermissionState = "granted" | "denied" | "unknown";

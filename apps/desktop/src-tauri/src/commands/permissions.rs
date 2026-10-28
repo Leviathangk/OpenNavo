@@ -36,13 +36,28 @@ pub async fn permission_guide_fit(app: tauri::AppHandle, height: u32) -> Result<
 
 #[tauri::command]
 #[specta::specta]
-pub async fn permission_guide_info() -> Result<PermissionGuideInfo, AppError> {
-    Ok(PermissionGuideInfo {
-        draggable: crate::guide::bundle_path().is_some(),
+pub async fn permission_guide_info(
+    state: State<'_, Arc<DesktopCore>>,
+) -> Result<PermissionGuideInfo, AppError> {
+    let core = state.inner().clone();
+    crate::blocking(move || {
+        let foreign = crate::guide::foreign_owner();
+        // OpenNavo's own icon ships with the page; another owner's comes from the local app icon cache.
+        let owner_icon = foreign.as_ref().and_then(|(_, bundle)| {
+            let cache = core.data_dir.join("logs/local-app-icons");
+            crate::library::files::icon(&core.database, bundle, &cache).ok()
+        });
+        Ok(PermissionGuideInfo {
+            draggable: crate::guide::owner_bundle().is_some(),
+            owner_name: foreign.map(|(name, _)| name),
+            owner_icon,
+        })
     })
+    .await
 }
 
-/// Drag OpenNavo's icon from the overlay. This synchronous command runs on the main thread while the current event is still mouse-down.
+/// Drag the owner app's icon (usually OpenNavo's) from the overlay. This synchronous command runs on the main thread while
+/// the current event is still mouse-down.
 #[tauri::command]
 #[specta::specta]
 pub fn permission_guide_drag(window: tauri::WebviewWindow) -> Result<(), AppError> {

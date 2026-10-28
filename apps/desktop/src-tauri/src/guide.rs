@@ -1,5 +1,6 @@
 //! Permission overlay (06 §12.7): after opening System Settings, show a small overlay beneath its window,
 //! with a draggable OpenNavo icon and instructions; poll permissions, then show completion and close automatically.
+//! The overlay never activates OpenNavo, so System Settings stays the front app.
 use crate::{AppError, core::DesktopCore, events::PermissionsChanged, model::*};
 use std::{
     path::{Path, PathBuf},
@@ -127,12 +128,30 @@ pub fn fitted_height(height: u32) -> f64 {
     f64::from(height).clamp(MIN_HEIGHT, MAX_HEIGHT)
 }
 
-/// Running .app bundle; development builds are not draggable .app bundles.
-pub fn bundle_path() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    exe.ancestors()
+/// Innermost .app bundle containing an executable.
+pub fn app_bundle(executable: &Path) -> Option<PathBuf> {
+    executable
+        .ancestors()
         .find(|path| path.extension().is_some_and(|extension| extension == "app"))
         .map(Path::to_path_buf)
+}
+
+/// The app that belongs in the list: macOS checks privacy permissions against the process responsible for this one.
+/// That is OpenNavo.app when it was opened normally. A development build is a bare binary started from a terminal,
+/// so macOS checks the app it was started from (Paseo, Terminal…) instead. `None` if that is not an app bundle.
+pub fn owner_bundle() -> Option<PathBuf> {
+    responsible_executable()
+        .or_else(|| std::env::current_exe().ok())
+        .and_then(|executable| app_bundle(&executable))
+}
+
+/// Name of the owner app when it is not OpenNavo itself, as for a development build; the overlay then names that app.
+pub fn foreign_owner() -> Option<(String, PathBuf)> {
+    let owner = owner_bundle()?;
+    let own = std::env::current_exe()
+        .ok()
+        .and_then(|executable| app_bundle(&executable));
+    (own.as_deref() != Some(owner.as_path())).then(|| (display_name(&owner), owner))
 }
 
 fn error(error: impl std::fmt::Display) -> AppError {
@@ -141,7 +160,20 @@ fn error(error: impl std::fmt::Display) -> AppError {
 
 pub async fn open(app: &tauri::AppHandle, pane: PrivacyPane) -> Result<(), AppError> {
     let slug = slug(pane)?;
-    crate::system::open(&[crate::system::privacy_url(pane, &app.config().identifier)?]).await?;
+    let url = crate::system::privacy_url(pane, &app.config().identifier)?;
+    // Create the overlay before System Settings opens: wry activates OpenNavo whenever it creates a webview, and doing that
+    // right after the open cancels the activation macOS is handing to System Settings, leaving OpenNavo's window on top.
+    let generation = prepare(app, slug)?;
+    if let Err(error) = crate::system::open(&[url]).await {
+        close(app);
+        return Err(error);
+    }
+    watch(app.clone(), pane, generation);
+    Ok(())
+}
+
+/// Create the hidden overlay, or point an open one at another pane; returns the generation its polling thread runs under.
+fn prepare(app: &tauri::AppHandle, slug: &str) -> Result<u64, AppError> {
     let guide = app.state::<Arc<Guide>>();
     let generation = guide.generation.fetch_add(1, Ordering::AcqRel) + 1;
     match app.get_webview_window(LABEL) {
@@ -183,8 +215,7 @@ pub async fn open(app: &tauri::AppHandle, pane: PrivacyPane) -> Result<(), AppEr
             }
         }
     }
-    watch(app.clone(), pane, generation);
-    Ok(())
+    Ok(generation)
 }
 
 /// The page's text wraps differently in each language: it reports the height it needs and polling resizes the window.
@@ -288,7 +319,7 @@ fn watch(app: tauri::AppHandle, pane: PrivacyPane, generation: u64) {
                 && !shown
                 && (fitted.is_some() || now.duration_since(started) > FIT_WAIT)
             {
-                let _ = window.show();
+                present(&window);
                 shown = true;
             }
             if tick.is_multiple_of(STATUS_EVERY)
@@ -386,20 +417,66 @@ fn settings_frame() -> Option<Frame> {
 
 #[cfg(target_os = "macos")]
 fn is_system_settings(pid: i32) -> bool {
+    process_path(pid).is_some_and(|path| {
+        path.ends_with("System Settings.app/Contents/MacOS/System Settings")
+            || path.ends_with("System Preferences.app/Contents/MacOS/System Preferences")
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn process_path(pid: i32) -> Option<PathBuf> {
+    use std::os::unix::ffi::OsStrExt;
     unsafe extern "C" {
         fn proc_pidpath(pid: i32, buffer: *mut std::ffi::c_void, size: u32) -> i32;
     }
     let mut buffer = [0u8; 4096];
     // SAFETY: buffer size is PROC_PIDPATHINFO_MAXSIZE; read only the returned length.
     let length = unsafe { proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
-    usize::try_from(length)
-        .ok()
-        .filter(|length| *length > 0)
-        .and_then(|length| std::str::from_utf8(&buffer[..length]).ok())
-        .is_some_and(|path| {
-            path.ends_with("/System Settings.app/Contents/MacOS/System Settings")
-                || path.ends_with("/System Preferences.app/Contents/MacOS/System Preferences")
-        })
+    let length = usize::try_from(length).ok().filter(|length| *length > 0)?;
+    Some(PathBuf::from(std::ffi::OsStr::from_bytes(
+        buffer.get(..length)?,
+    )))
+}
+
+/// Executable of the process macOS holds responsible for this one: this process when opened from Finder or the Dock,
+/// otherwise the app it was started from. The libsystem call is private, so it is looked up at run time.
+#[cfg(target_os = "macos")]
+fn responsible_executable() -> Option<PathBuf> {
+    use std::ffi::{c_char, c_void};
+    unsafe extern "C" {
+        fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+    }
+    const RTLD_DEFAULT: *mut c_void = -2_isize as *mut c_void;
+    // SAFETY: dlsym only looks the NUL-terminated name up in the loaded images.
+    let symbol = unsafe {
+        dlsym(
+            RTLD_DEFAULT,
+            c"responsibility_get_pid_responsible_for_pid".as_ptr(),
+        )
+    };
+    if symbol.is_null() {
+        return None;
+    }
+    // SAFETY: the symbol is `pid_t responsibility_get_pid_responsible_for_pid(pid_t)`, unchanged since macOS 10.14.
+    let responsible: unsafe extern "C" fn(i32) -> i32 = unsafe { std::mem::transmute(symbol) };
+    let pid = i32::try_from(std::process::id()).ok()?;
+    // SAFETY: takes and returns a plain pid; a failure returns -1.
+    let pid = unsafe { responsible(pid) };
+    (pid > 0).then(|| process_path(pid)).flatten()
+}
+
+/// The name Finder and System Settings show for an app bundle.
+#[cfg(target_os = "macos")]
+fn display_name(bundle: &Path) -> String {
+    let path = objc2_foundation::NSString::from_str(&bundle.to_string_lossy());
+    let name = objc2_foundation::NSFileManager::defaultManager()
+        .displayNameAtPath(&path)
+        .to_string();
+    // With "Show all filename extensions" on, Finder's name keeps ".app"; System Settings never shows it.
+    match name.strip_suffix(".app") {
+        Some(stem) if !stem.is_empty() => stem.to_owned(),
+        _ => name,
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -407,7 +484,38 @@ fn settings_frame() -> Option<Frame> {
     None
 }
 
-/// Drag OpenNavo.app from the overlay into System Settings privacy lists; call on the main thread while the mouse is down.
+#[cfg(not(target_os = "macos"))]
+fn responsible_executable() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
+fn display_name(bundle: &Path) -> String {
+    bundle
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// Show the overlay without making OpenNavo the active app, so System Settings stays in front.
+#[cfg(target_os = "macos")]
+fn present(window: &tauri::WebviewWindow) {
+    let overlay = window.clone();
+    if window
+        .run_on_main_thread(move || native::present(&overlay))
+        .is_err()
+    {
+        let _ = window.show();
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn present(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+}
+
+/// Drag the owner app (`owner_bundle`) from the overlay into System Settings privacy lists; call on the main thread while
+/// the mouse is down.
 #[cfg(target_os = "macos")]
 pub fn drag(window: &tauri::WebviewWindow) -> Result<(), AppError> {
     native::begin(window)
@@ -460,6 +568,18 @@ mod native {
         }
     }
 
+    /// Tao's `show` is `makeKeyAndOrderFront:`. Like the menu-bar panels and the firewall alert, order the overlay in
+    /// without touching the key window or the active app.
+    pub fn present(window: &tauri::WebviewWindow) {
+        let Ok(pointer) = window.ns_window() else {
+            return;
+        };
+        // SAFETY: Tauri supplies this window's NSWindow pointer, alive as long as the WebviewWindow; this runs on the main thread.
+        if let Some(ns_window) = unsafe { pointer.cast::<NSWindow>().as_ref() } {
+            ns_window.orderFrontRegardless();
+        }
+    }
+
     define_class!(
         // SAFETY: NSObject imposes no subclassing requirements; DragSource does not implement Drop.
         #[unsafe(super = NSObject)]
@@ -500,7 +620,7 @@ mod native {
     pub fn begin(window: &tauri::WebviewWindow) -> Result<(), AppError> {
         let fail = |reason: &str| AppError::new("E_UNKNOWN", reason);
         let mtm = MainThreadMarker::new().ok_or_else(|| fail("guide_drag_thread"))?;
-        let bundle = super::bundle_path().ok_or_else(|| fail("guide_drag_bundle"))?;
+        let bundle = super::owner_bundle().ok_or_else(|| fail("guide_drag_bundle"))?;
         let event = NSApplication::sharedApplication(mtm)
             .currentEvent()
             .ok_or_else(|| fail("guide_drag_event"))?;
@@ -610,6 +730,50 @@ mod tests {
             assert!(frame.width >= 320. && frame.height >= 240.);
         }
         assert!(!is_system_settings(std::process::id() as i32));
+    }
+
+    #[test]
+    fn the_owner_is_the_innermost_app_bundle() {
+        assert_eq!(
+            app_bundle(Path::new(
+                "/Applications/OpenNavo.app/Contents/MacOS/opennavo-desktop"
+            )),
+            Some(PathBuf::from("/Applications/OpenNavo.app"))
+        );
+        assert_eq!(
+            app_bundle(Path::new(
+                "/Applications/Host.app/Contents/Library/LoginItems/Helper.app/Contents/MacOS/Helper"
+            )),
+            Some(PathBuf::from(
+                "/Applications/Host.app/Contents/Library/LoginItems/Helper.app"
+            ))
+        );
+        // A development build: a bare binary has no bundle of its own.
+        assert_eq!(
+            app_bundle(Path::new(
+                "/src/apps/desktop/src-tauri/target/debug/opennavo-desktop"
+            )),
+            None
+        );
+    }
+
+    /// Test binaries are bare executables started from a terminal, like a development build: when the terminal is an app,
+    /// it is the owner, and it is named.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_bare_binary_is_owned_by_the_app_it_was_started_from() {
+        assert!(responsible_executable().is_some());
+        if let Some(bundle) = owner_bundle() {
+            assert!(
+                bundle
+                    .extension()
+                    .is_some_and(|extension| extension == "app")
+            );
+            let (name, foreign) =
+                foreign_owner().expect("a test binary is not inside the owner app");
+            assert_eq!(foreign, bundle);
+            assert!(!name.is_empty() && !name.ends_with(".app"));
+        }
     }
 
     #[test]

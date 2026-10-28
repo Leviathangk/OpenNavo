@@ -998,10 +998,10 @@
     "guide": {
       "appManagement": "Gestione app",
       "fullDiskAccess": "Accesso completo al disco",
-      "dragTitle": "Trascina OpenNavo nell’elenco qui sopra",
-      "plusTitle": "Fai clic su “+” sotto l’elenco e scegli OpenNavo",
-      "toggleHint": "Se OpenNavo è già nell’elenco, attiva l’interruttore accanto al suo nome.",
-      "dragLabel": "Trascina l’icona di OpenNavo",
+      "dragTitle": "Trascina {name} nell’elenco qui sopra",
+      "plusTitle": "Fai clic su “+” sotto l’elenco e scegli {name}",
+      "toggleHint": "Se {name} è già nell’elenco, attiva l’interruttore accanto al suo nome.",
+      "dragLabel": "Trascina l’icona di {name}",
       "close": "Chiudi",
       "done": {
         "appManagement": "OpenNavo ora può gestire le app",

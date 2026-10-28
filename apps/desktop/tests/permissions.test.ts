@@ -139,16 +139,30 @@ describe('Permission guidance overlay', () => {
     expect(fit).toHaveBeenCalledTimes(1);
   });
 
-  it('Development builds that cannot drag instruct using + instead', async () => {
+  it('Without an app bundle to drag, instruct using + instead', async () => {
     vi.spyOn(commands, 'permissionGuideInfo').mockResolvedValue({
       status: 'ok',
-      data: { draggable: false }
+      data: { draggable: false, ownerName: null, ownerIcon: null }
     });
     await mountGuide('full_disk_access');
     expect(text()).toContain('点按列表下方的「+」，选择 OpenNavo');
     const drag = vi.spyOn(commands, 'permissionGuideDrag');
     button('拖动 OpenNavo 图标')?.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
     expect(drag).not.toHaveBeenCalled();
+  });
+
+  // macOS checks a development build as the app it was started from, so that app is the one to drag and turn on.
+  it('Names and drags the app macOS checks when it is not OpenNavo', async () => {
+    vi.spyOn(commands, 'permissionGuideInfo').mockResolvedValue({
+      status: 'ok',
+      data: { draggable: true, ownerName: 'Paseo', ownerIcon: null }
+    });
+    await mountGuide('full_disk_access');
+    expect(text()).toContain('把 Paseo 拖到上方的列表');
+    expect(text()).toContain('列表里已有 Paseo 时，打开它旁边的开关即可。');
+    const drag = vi.spyOn(commands, 'permissionGuideDrag');
+    button('拖动 Paseo 图标')?.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
+    expect(drag).toHaveBeenCalledTimes(1);
   });
 });
 

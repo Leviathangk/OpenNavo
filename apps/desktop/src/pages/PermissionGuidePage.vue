@@ -2,7 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { convertFileSrc, isTauri } from '@tauri-apps/api/core';
 import { OnIcon } from '@opennavo/ui';
+import type { PermissionGuideInfo } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { paneDone } from '@/stores/permissions';
 import type { GuidePane } from '@/stores/permissions';
@@ -10,13 +12,19 @@ import { usePermissionsStore } from '@/stores';
 import appIcon from '../../src-tauri/icons/128x128@2x.png';
 
 // Permission overlay (06 §12.7): appears below System Settings. Drag the icon into the list above to add OpenNavo.
-// Development builds are not .app bundles, so instruct users to select with + instead. Show completion once the switch is on;
-// Full Disk Access applies only after OpenNavo reopens, so "on, awaiting a reopen" completes too. Rust closes the window shortly afterward.
+// macOS checks a development build as the app it was started from (a terminal such as Paseo), so the overlay names and
+// drags that app; when it is not an .app bundle, instruct users to select with + instead. Show completion once the switch
+// is on; Full Disk Access applies only after OpenNavo reopens, so "on, awaiting a reopen" completes too. Rust closes the
+// window shortly afterward.
 const { t } = useI18n();
 const route = useRoute();
 const permissions = usePermissionsStore();
-const draggable = ref(false);
+const info = ref<PermissionGuideInfo | null>(null);
 const frame = ref<HTMLElement | null>(null);
+
+const draggable = computed(() => info.value?.draggable ?? false);
+const owner = computed(() => info.value?.ownerName ?? 'OpenNavo');
+const icon = computed(() => (info.value?.ownerIcon && isTauri() ? convertFileSrc(info.value.ownerIcon) : appIcon));
 
 const pane = computed<GuidePane>(() =>
   route.params.pane === 'app_management' ? 'app_management' : 'full_disk_access'
@@ -37,7 +45,7 @@ const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserv
 onMounted(async () => {
   if (frame.value) observer?.observe(frame.value);
   fit();
-  draggable.value = (await unwrap(commands.permissionGuideInfo()).catch(() => null))?.draggable ?? false;
+  info.value = await unwrap(commands.permissionGuideInfo()).catch(() => null);
 });
 onBeforeUnmount(() => observer?.disconnect());
 
@@ -70,11 +78,11 @@ function close() {
         type="button"
         class="group relative m-0 grid h-60px w-60px shrink-0 place-items-center rounded-big border-none bg-transparent p-0 outline-none focus-visible:shadow-focus-ring"
         :class="draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'"
-        :aria-label="t('permission.guide.dragLabel')"
+        :aria-label="t('permission.guide.dragLabel', { name: owner })"
         @mousedown="drag"
       >
         <img
-          :src="appIcon"
+          :src="icon"
           alt=""
           class="h-64px w-64px select-none transition-transform duration-fast ease-standard"
           :class="draggable ? 'group-hover:-translate-y-2px' : ''"
@@ -97,12 +105,12 @@ function close() {
             done
               ? t(`permission.guide.done.${name}`)
               : draggable
-                ? t('permission.guide.dragTitle')
-                : t('permission.guide.plusTitle')
+                ? t('permission.guide.dragTitle', { name: owner })
+                : t('permission.guide.plusTitle', { name: owner })
           }}
         </p>
         <p class="m-0 mt-3px text-12px leading-[1.45] text-ink-tertiary">
-          {{ done ? t('permission.guide.doneHint') : t('permission.guide.toggleHint') }}
+          {{ done ? t('permission.guide.doneHint') : t('permission.guide.toggleHint', { name: owner }) }}
         </p>
       </div>
       <button
