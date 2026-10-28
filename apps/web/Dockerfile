@@ -27,7 +27,10 @@ FROM node:24.19.0-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06
 RUN apk upgrade --no-cache && rm -rf /usr/local/lib/node_modules /opt/yarn-* && \
     rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+# Keep a deterministic V8 cap slightly above the current default while leaving about 200 MiB of the
+# 768 MiB production cgroup ceiling for native image/WASM allocations, Buffers, and the process itself.
+# This bounds capacity; it is not a leak fix. Eight MiB semi-spaces reduce short-lived SSR bursts.
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 NODE_OPTIONS="--max-old-space-size=448 --max-semi-space-size=8"
 COPY --from=build --chown=node:node /repo/apps/web/.output ./.output
 COPY --chown=node:node docs/legal/third-party/ /usr/share/licenses/opennavo/
 USER node

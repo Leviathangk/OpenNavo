@@ -3,6 +3,7 @@ import { createEvent } from 'h3';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
 import {
+  MAX_REQUEST_COUNTER_SERIES,
   RequestCounter,
   agentLabel,
   routeLabel,
@@ -79,6 +80,18 @@ describe('crawler request counters', () => {
       'opennavo_web_requests_total{agent="gptbot",route="app",status="404",verification="ua_only",verification_basis="none"} 1'
     );
     expect(text.endsWith('\n')).toBe(true);
+  });
+
+  it('caps unexpected route cardinality and preserves an overflow count', () => {
+    const counter = new RequestCounter();
+    for (let index = 0; index < MAX_REQUEST_COUNTER_SERIES + 100; index += 1)
+      counter.add('browser', `untrusted-route-${index}`, '200');
+    const series = counter
+      .render()
+      .split('\n')
+      .filter(line => line.startsWith('opennavo_web_requests_total{'));
+    expect(series).toHaveLength(MAX_REQUEST_COUNTER_SERIES + 1);
+    expect(counter.render()).toContain('route="overflow"');
   });
 });
 

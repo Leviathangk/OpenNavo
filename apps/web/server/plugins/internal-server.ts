@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import { RequestCounter, countResponse } from '../utils/crawlerMetrics';
 import { loadShedState } from '../utils/loadShed';
+import { renderMemoryMetrics } from '../utils/memoryMetrics';
 import { cacheBuildIdentity } from './cache-storage';
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -50,7 +51,7 @@ export default defineNitroPlugin(nitroApp => {
     };
     if (request.method === 'GET' && request.url === '/metrics') {
       response.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
-      response.end(counter.render() + loadShedState.render());
+      response.end(counter.render() + loadShedState.render() + renderMemoryMetrics());
       return;
     }
     if (request.method === 'GET' && request.url === '/cache/build') {

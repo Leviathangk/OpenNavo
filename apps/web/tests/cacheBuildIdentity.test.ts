@@ -84,3 +84,17 @@ it('mounts image buffers in a separate Redis process while retaining the build i
     })
   );
 });
+
+it('uses bounded LRU pools when Redis is not configured', () => {
+  const runtime = config();
+  const mount = vi.fn();
+  vi.stubGlobal('useRuntimeConfig', () => runtime);
+  vi.stubGlobal('useStorage', () => ({ mount }));
+  mountCache({} as never);
+  const page = mount.mock.calls.find(([path]) => path === 'cache')?.[1] as { options?: Record<string, unknown> };
+  const images = mount.mock.calls.find(([path]) => path === 'cache:nuxt-og-image')?.[1] as {
+    options?: Record<string, unknown>;
+  };
+  expect(page.options).toMatchObject({ max: 128, maxSize: 32 * 1024 * 1024, ttl: 86400 * 1000, ttlAutopurge: true });
+  expect(images.options).toMatchObject({ max: 32, maxSize: 16 * 1024 * 1024, ttl: 21600 * 1000, ttlAutopurge: true });
+});
