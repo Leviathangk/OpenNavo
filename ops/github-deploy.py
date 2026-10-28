@@ -188,9 +188,10 @@ def web_asset_paths(directory):
 def previous_web_asset_paths(destination):
     """Read the previous release's current asset list, with a legacy fallback.
 
-    Releases created before the manifest was added mark current assets with the
-    newest mtime. That lets the first deployment after this change preserve the
-    live release while leaving older retained assets on their original deadline.
+    Releases created before the manifest was added have no reliable way to
+    distinguish current assets from retained assets. Treat every existing file
+    as current once so the first deployment after this change gives the whole
+    legacy release a fresh retention deadline.
     """
     manifest = destination.parent / 'manifest.json'
     try:
@@ -203,13 +204,15 @@ def previous_web_asset_paths(destination):
                 if isinstance(asset, str) and asset and not PurePosixPath(asset).is_absolute()
                 and '..' not in PurePosixPath(asset).parts
                 and PurePosixPath(asset).as_posix() == asset}
-    files = list(destination.rglob('*'))
-    files = [path for path in files if path.is_file()]
-    if not files:
-        return set()
-    newest = max(path.stat().st_mtime for path in files)
     return {path.relative_to(destination).as_posix()
-            for path in files if path.stat().st_mtime == newest}
+            for path in destination.rglob('*') if path.is_file()}
+
+
+def release_manifest(payload, web_assets):
+    manifest = {key: value for key, value in payload.items()
+                if key not in ['admin_archive', 'registry_token']}
+    manifest['web_assets'] = web_assets
+    return manifest
 
 
 def merge_web_assets(current, destination, now=None, previous_current=None):
@@ -404,6 +407,27 @@ class Deployment:
                         '-f', str(self.root / self.config['compose_file']),
                         '-f', str(self.directory / 'rolling.compose.json' if candidate else self.rolling),
                         '--profile', 'ops', '--profile', 'automation', *args])
+
+    def write_manifest(self, directory=None):
+        target = self.directory if directory is None else Path(directory)
+        write_private(target / 'manifest.json', release_manifest(
+            self.payload, getattr(self, 'current_web_assets', [])))
+
+    def ensure_live_manifest(self):
+        release = self.state.get('release')
+        if not release:
+            return
+        directory = self.root / 'releases' / release
+        manifest = directory / 'manifest.json'
+        try:
+            data = json.loads(manifest.read_text())
+            if isinstance(data, dict) and isinstance(data.get('web_assets'), list):
+                return
+        except (OSError, TypeError, ValueError):
+            pass
+        assets = directory / 'web-assets'
+        self.current_web_assets = web_asset_paths(assets) if assets.is_dir() else []
+        self.write_manifest(directory)
 
     def prepare(self, archive):
         self.directory.mkdir(mode=0o700)
@@ -819,6 +843,7 @@ class Deployment:
     def apply(self, archive):
         if self.state.get('sha') == self.payload['sha']:
             self.services = self.state['services']
+            self.ensure_live_manifest()
             self.verify()
             self.update_monitoring(self.services)
             self.cleanup(self.state.get('previous', {}))
@@ -843,6 +868,9 @@ class Deployment:
                     pulled.result()
         with phase('Preparing the release'):
             self.prepare(archive)
+            # A verified release must already carry its asset manifest before
+            # routes or deployment state can point at it.
+            self.write_manifest()
         with phase('Database backup'):
             self.backup()
         print('Applying migrations and starting isolated candidates.', flush=True)
@@ -877,9 +905,6 @@ class Deployment:
             raise
         previous = {key: value for key, value in self.state.items() if key != 'previous'}
         write_private(self.state_path, {'sha': self.payload['sha'], 'release': self.release, 'services': self.services, 'previous': previous})
-        manifest = {key: value for key, value in self.payload.items() if key not in ['admin_archive', 'registry_token']}
-        manifest['web_assets'] = getattr(self, 'current_web_assets', [])
-        write_private(self.directory / 'manifest.json', manifest)
         print('Production deployed and verified: ' + self.payload['sha'], flush=True)
         # Cleanup failure must not roll back a verified release; a retry resumes cleanup.
         with phase('Cleanup'):
