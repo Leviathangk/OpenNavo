@@ -271,17 +271,20 @@ class Deployment:
         release = self.state.get('release')
         if not release:
             return
-        directory = self.root / 'releases' / release
-        manifest = directory / 'manifest.json'
         try:
-            data = json.loads(manifest.read_text())
-            if isinstance(data, dict) and isinstance(data.get('web_assets'), list):
-                return
-        except (OSError, TypeError, ValueError):
-            pass
-        assets = directory / 'web-assets'
-        self.current_web_assets = web_asset_paths(assets) if assets.is_dir() else []
-        self.write_manifest(directory)
+            directory = self.root / 'releases' / release
+            manifest = directory / 'manifest.json'
+            try:
+                data = json.loads(manifest.read_text())
+                if isinstance(data, dict) and isinstance(data.get('web_assets'), list):
+                    return
+            except (OSError, TypeError, ValueError):
+                pass
+            assets = directory / 'web-assets'
+            self.current_web_assets = web_asset_paths(assets) if assets.is_dir() else []
+            self.write_manifest(directory)
+        except OSError:
+            print('Live release manifest repair skipped; continuing deployment.', flush=True)
 
     def prepare(self, archive):
         self.directory.mkdir(mode=0o700)

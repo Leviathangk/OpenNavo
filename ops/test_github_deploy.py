@@ -356,6 +356,29 @@ scrape_configs:
         self.assertEqual(obj.services, obj.state['services'])
         self.assertEqual(events, ['verify', 'monitoring', ('cleanup', previous), ('prune', previous)])
 
+    def test_retry_continues_when_live_release_directory_is_missing(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj = object.__new__(deploy.Deployment)
+            obj.root = Path(root)
+            obj.payload = payload()
+            previous = {'services': {'api': 'api_previous'}}
+            obj.state = {
+                'sha': obj.payload['sha'],
+                'release': 'missing-release',
+                'services': {'api': 'api_live'},
+                'previous': previous,
+            }
+            events = []
+            obj.verify = lambda: events.append('verify')
+            obj.update_monitoring = lambda services: events.append('monitoring')
+            obj.cleanup = lambda state: events.append(('cleanup', state))
+            obj.prune = lambda state: events.append(('prune', state))
+            with patch('builtins.print') as output:
+                obj.apply(archive())
+
+            self.assertEqual(events, ['verify', 'monitoring', ('cleanup', previous), ('prune', previous)])
+            output.assert_any_call('Live release manifest repair skipped; continuing deployment.', flush=True)
+
     def test_retry_rebuilds_a_missing_live_manifest_without_sensitive_fields(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)
