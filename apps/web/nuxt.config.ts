@@ -301,6 +301,11 @@ export default defineNuxtConfig({
     // 307 during module setup, over anything in routeRules; crawlers that guess the address should
     // see a permanent move.
     'nitro:config'(nitroConfig) {
+      // Let the runtime _nuxt fallback route serve retained assets that are not in this build's
+      // manifest. Current build assets remain handled by Nitro's manifest-backed static handler.
+      nitroConfig.publicAssets = nitroConfig.publicAssets?.map(asset =>
+        asset && asset.baseURL === '/_nuxt/' ? { ...asset, fallthrough: true } : asset
+      );
       // Bundle only this build's CSS as server assets; no runtime reads of another release.
       nitroConfig.serverAssets ||= [];
       nitroConfig.serverAssets.push({

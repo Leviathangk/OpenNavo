@@ -50,6 +50,24 @@ MAX_ARCHIVE = 40 * 1024 * 1024
 RELEASE_NAME = re.compile(r'gh-[0-9a-f]{12}-[0-9]{1,20}-[0-9]{1,4}')
 # Each release snapshot holds that deployment's pre-migration database dump.
 RELEASE_RETENTION = 5
+WEB_ASSET_RETENTION_SECONDS = 7 * 24 * 60 * 60
+
+
+def merge_web_assets(current, destination, now=None):
+    """Keep old fingerprinted assets for seven days and mark current assets as fresh."""
+    timestamp = time.time() if now is None else now
+    destination.mkdir(parents=True, exist_ok=True)
+    for source in current.rglob('*'):
+        if not source.is_file():
+            continue
+        target = destination / source.relative_to(current)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        os.utime(target, (timestamp, timestamp))
+    cutoff = timestamp - WEB_ASSET_RETENTION_SECONDS
+    for path in destination.rglob('*'):
+        if path.is_file() and path.stat().st_mtime < cutoff:
+            path.unlink()
 
 
 def validate(payload, registry):
@@ -279,7 +297,9 @@ class Deployment:
         shutil.copytree(mount_source(old_web, '/app/.output/public/_nuxt'), self.directory / 'web-assets')
         container = command(['docker', 'create', self.payload['images']['web']])
         try:
-            command(['docker', 'cp', container + ':/app/.output/public/_nuxt/.', str(self.directory / 'web-assets')])
+            with tempfile.TemporaryDirectory(dir=self.directory) as incoming:
+                command(['docker', 'cp', container + ':/app/.output/public/_nuxt/.', incoming])
+                merge_web_assets(Path(incoming), self.directory / 'web-assets')
         finally:
             command(['docker', 'rm', container])
         # Release directories are private; bind-mounted public assets must be readable by container users.

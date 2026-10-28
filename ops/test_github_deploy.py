@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -60,6 +61,24 @@ def prepare_on_host(root, api_environment):
 
 
 class DeployTests(unittest.TestCase):
+    def test_merge_web_assets_keeps_recent_old_files_and_expires_stale_files(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            previous, current, destination = (root / name for name in ['previous', 'current', 'destination'])
+            previous.mkdir(); current.mkdir(); destination.mkdir()
+            now = deploy.WEB_ASSET_RETENTION_SECONDS + 100
+            (previous / 'old.js').write_text('old')
+            (previous / 'stale.js').write_text('stale')
+            os.utime(previous / 'old.js', (now - 86400, now - 86400))
+            os.utime(previous / 'stale.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS - 1, now - deploy.WEB_ASSET_RETENTION_SECONDS - 1))
+            shutil.copytree(previous, destination, dirs_exist_ok=True)
+            (current / 'new.js').write_text('new')
+            deploy.merge_web_assets(current, destination, now=now)
+            self.assertTrue((destination / 'old.js').exists())
+            self.assertTrue((destination / 'new.js').exists())
+            self.assertFalse((destination / 'stale.js').exists())
+            self.assertEqual((destination / 'new.js').stat().st_mtime, now)
+
     def test_prepare_moves_cache_notifier_to_new_web_and_preserves_rollback(self):
         for use_alias in [False, True]:
             with self.subTest(use_alias=use_alias), tempfile.TemporaryDirectory() as root:
