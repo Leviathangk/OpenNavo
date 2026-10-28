@@ -51,17 +51,23 @@ export default defineNitroPlugin(nitroApp => {
     // Let API failures propagate when nothing is cached yet: an outage must not look like removed
     // content. The article check is one small request and follows publishing at once; the
     // populated buckets come from the cached catalog (populatedPackageSitemaps).
-    const [{ articles, authors }, populated, open] = await Promise.all([
+    const [{ articles, authors }, populated, open, settings] = await Promise.all([
       articleSitemap(),
       populatedPackageSitemaps(),
-      openLocales()
+      openLocales(),
+      getSiteSettings()
     ]);
     // The label list takes hundreds of API pages to load after a restart, so the index reads it without waiting
     // and leaves the group out until it is known.
     const backgroundItems = backgroundItemEntries.peek();
     ctx.sitemaps = ctx.sitemaps
       .filter(({ _sitemapName: sitemapName }) => {
-        if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
+        if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) {
+          // A cached catalog may still contain a bucket whose source was just switched off.
+          if (sitemapName.startsWith('fonts-') && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts)) return false;
+          if (sitemapName.startsWith('versions-') && !settings.pages.versionsSitemap) return false;
+          return populated.has(sitemapName);
+        }
         if (sitemapName === 'articles') return articles.length > 0;
         if (sitemapName === 'authors') return authors.length > 0;
         // An empty urlset in the index reads as a broken sitemap to Search Console.
@@ -91,8 +97,9 @@ export default defineNitroPlugin(nitroApp => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
       if (group === 'fonts' && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts))
-        throw createError({ statusCode: 404, statusMessage: 'Sitemap not found' });
-      if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap) return;
+        throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
+      if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap)
+        throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
       const records =
         group === 'versions'
           ? (await Promise.all([cachedPackages('apps'), fontPackages()])).flat()

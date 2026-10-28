@@ -2159,7 +2159,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(!index.includes('/__sitemap__/fonts-bucket-'), 'font buckets are excluded');
     for (let bucket = 0; bucket < 8; bucket++) {
       const fontMap = await fetch(`${origin}/__sitemap__/fonts-bucket-${bucket}.xml`);
-      assert.equal(fontMap.status, 404);
+      assert.equal(fontMap.status, 410);
+      assert.equal(fontMap.headers.get('cache-control'), 'no-store');
       assert.ok(!(await fontMap.text()).includes('<urlset'));
     }
     const fontPage = await fetch(`${origin}/apps/font-sample`);
@@ -2216,6 +2217,32 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       });
       await response.text();
       assert.equal(response.status, 200, `${loc} answers without a redirect\n${logs}`);
+    }
+    const versionsBucket = `/__sitemap__/${packageSitemapName('versions', 'ordinary-app')}.xml`;
+    try {
+      siteSettings.pages.versionsSitemap = false;
+      await invalidatePaths(['/'], true);
+      const closedVersions = await fetch(`${origin}${versionsBucket}`);
+      assert.equal(closedVersions.status, 410);
+      for (const header of ['cache-control', 'cdn-cache-control', 'cloudflare-cdn-cache-control'])
+        assert.equal(closedVersions.headers.get(header), 'no-store', header);
+      assert.ok(!(await closedVersions.text()).includes('<urlset'));
+      const closedIndex = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+      assert.ok(!closedIndex.includes('/__sitemap__/versions-bucket-'));
+
+      siteSettings.pages.versionsSitemap = true;
+      await invalidatePaths(['/'], true);
+      const reopenedVersions = await fetch(`${origin}${versionsBucket}`);
+      assert.equal(reopenedVersions.status, 200);
+      assert.ok((await reopenedVersions.text()).includes('/apps/ordinary-app/versions'));
+      for (const group of ['apps', 'versions']) {
+        const unknown = await fetch(`${origin}/__sitemap__/${group}-bucket-99.xml`);
+        assert.equal(unknown.status, 404, group);
+        await unknown.text();
+      }
+    } finally {
+      siteSettings.pages.versionsSitemap = true;
+      await invalidatePaths(['/'], true);
     }
     // The index keeps its list of populated buckets: a warm request reads no catalog.
     const reads = sitemapPackageRequests;

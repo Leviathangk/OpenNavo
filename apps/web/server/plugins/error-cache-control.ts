@@ -19,8 +19,8 @@ export default defineNitroPlugin(nitro => {
   // H3 can send thrown JSON errors directly, bypassing beforeResponse. Set the headers before
   // its error handler sends them, and also cover responses whose status was set while rendering.
   nitro.hooks.hook('error', (error, { event }) => {
-    if (event && (error as { statusCode?: number }).statusCode === 503 && isSitemapError(event))
-      errorCacheHeaders(event, 503);
+    const status = (error as { statusCode?: number }).statusCode;
+    if (event && (status === 410 || status === 503) && isSitemapError(event)) errorCacheHeaders(event, status);
   });
   nitro.hooks.hook('beforeResponse', event => errorCacheHeaders(event, event.node.res.statusCode));
 });
