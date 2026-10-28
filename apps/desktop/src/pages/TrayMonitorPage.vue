@@ -66,7 +66,7 @@ const openInMain = (target: 'detail' | 'settings') =>
 <template>
   <div ref="content" class="w-332px max-w-full bg-transparent p-6px">
     <section
-      class="flex flex-col gap-10px rounded-panel border border-solid border-line-default bg-surface-overlay p-14px text-ink-primary shadow-popover backdrop-blur-[20px]"
+      class="flex flex-col gap-10px rounded-panel border border-solid border-line-default bg-surface-overlay p-14px text-ink-primary backdrop-blur-[20px]"
       data-testid="monitor-popover"
     >
       <header class="flex items-center gap-8px">
