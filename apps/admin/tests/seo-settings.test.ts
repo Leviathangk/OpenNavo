@@ -62,6 +62,7 @@ function settings() {
       openLocales: ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'],
       intentPagesEnabled: false,
       detailsRedirect: false,
+      fontsSitemap: false,
       versionsSitemap: false
     }
   };
@@ -145,6 +146,22 @@ beforeEach(() => {
 });
 
 describe('SEO settings page', () => {
+  it('saves the font sitemap site setting', async () => {
+    const wrapper = page();
+    await flushPromises();
+    const toggle = wrapper.find('[role="switch"][aria-label="page.system.seo.fontsSitemap"]');
+    expect(toggle.attributes('aria-checked')).toBe('false');
+    await toggle.trigger('click');
+    await button(wrapper, 'page.system.seo.save').trigger('click');
+    await flushPromises();
+    expect(api.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        settings: expect.objectContaining({ pages: expect.objectContaining({ fontsSitemap: true }) })
+      })
+    );
+    wrapper.unmount();
+  });
+
   it('Refreshes the impact report after reload and save', async () => {
     const wrapper = page();
     await flushPromises();

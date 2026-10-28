@@ -1,5 +1,4 @@
 import { loadShedConfig, loadShedState } from '../utils/loadShed';
-import { sitemapFontsEnabled } from '../utils/sitemapFonts';
 import { warmSitemaps } from '../utils/sitemapWarmup';
 
 export default defineNitroPlugin(nitroApp => {
@@ -15,7 +14,7 @@ export default defineNitroPlugin(nitroApp => {
         nitroApp.localFetch(path, { headers: { accept: 'application/xml' }, redirect: 'manual', signal }),
       () => stopped,
       () => loadShedState.inFlight === 0 && loadShedState.lagMs < capacity.lowLagMs,
-      sitemapFontsEnabled(config.sitemapFonts),
+      async () => (await getSiteSettings()).pages.fontsSitemap,
       {
         signal: controller.signal,
         ready: async signal => {
