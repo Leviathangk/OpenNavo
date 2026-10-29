@@ -165,6 +165,37 @@ describe('article links', () => {
   it('does not reuse a previous render’s locale or resolver', () => {
     const source = '[tool](https://opennavo.com/apps/tool)';
     expect(articleHtml(source, { locale: 'ja', localizePath: path => `/ja${path}` })).toContain('href="/ja/apps/tool"');
-    expect(articleHtml(source)).toContain('<a href="/apps/tool">');
+    expect(articleHtml(source)).toContain(
+      '<a href="https://opennavo.com/apps/tool" target="_blank" rel="noopener noreferrer">'
+    );
+  });
+
+  it.each([
+    { host: 'desktop', options: { images: [image], title: 'Desktop article' } },
+    { host: 'admin preview', options: { images: [], title: 'Admin preview' } },
+    { host: 'locale-only', options: { locale: 'ja' } }
+  ])('preserves base link behavior for $host calls without localizePath', ({ options }) => {
+    const externalHrefs = [
+      'https://opennavo.com/apps/tool?x=1#install',
+      'https://www.opennavo.com/articles/feed.xml?x=1#part',
+      'https://opennavo.com/feed.xml',
+      'https://opennavo.com?x=1#part',
+      'https://OPENNAVO.COM:443/apps/tool',
+      '//opennavo.com/apps/tool',
+      'https://vendor.example/apps/tool',
+      'mailto:reader@example.test'
+    ];
+    const hrefs = [...externalHrefs, '/apps/tool?x=1#install', '#install'];
+    const html = articleHtml(hrefs.map(href => `[link](${href})`).join('\n\n'), options);
+    const links = Array.from(new DOMParser().parseFromString(html, 'text/html').querySelectorAll('a'));
+    expect(links.map(link => link.getAttribute('href'))).toEqual(hrefs);
+    for (const link of links.slice(0, externalHrefs.length)) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    }
+    for (const link of links.slice(externalHrefs.length)) {
+      expect(link.hasAttribute('target')).toBe(false);
+      expect(link.hasAttribute('rel')).toBe(false);
+    }
   });
 });

@@ -129,24 +129,29 @@ md.core.ruler.push('article_tables', state => {
   }
 });
 
-// Site links stay in the tab; other links open a new one without opener access.
+// Root-relative links stay in the tab; web article pages may also localize canonical site links. Other
+// links open a new one without opener access.
 md.core.ruler.push('article_links', state => {
   const env = state.env as ArticleEnv;
+  const localizePath = env.localizePath;
   for (const block of state.tokens) {
     for (const token of block.children ?? []) {
       if (token.type !== 'link_open') continue;
       const href = String(token.attrGet('href') ?? '');
-      const siteOrigin = /^https:\/\/(?:www\.)?opennavo\.com(?::443)?(?=\/|[?#]|$)/i.exec(href)?.[0];
-      const sitePath = siteOrigin ? href.slice(siteOrigin.length) : href;
-      const path = siteOrigin && !sitePath.startsWith('/') ? `/${sitePath}` : sitePath;
-      if (path.startsWith('/') && !path.startsWith('//')) {
-        const suffixAt = path.search(/[?#]/);
-        const pathname = suffixAt < 0 ? path : path.slice(0, suffixAt);
-        const suffix = suffixAt < 0 ? '' : path.slice(suffixAt);
-        const localized = env.locale && env.localizePath ? env.localizePath(pathname, env.locale) : pathname;
-        token.attrSet('href', `${localized}${suffix}`);
-        continue;
+      if (localizePath) {
+        const siteOrigin = /^https:\/\/(?:www\.)?opennavo\.com(?::443)?(?=\/|[?#]|$)/i.exec(href)?.[0];
+        const sitePath = siteOrigin ? href.slice(siteOrigin.length) : href;
+        const path = siteOrigin && !sitePath.startsWith('/') ? `/${sitePath}` : sitePath;
+        if (path.startsWith('/') && !path.startsWith('//')) {
+          const suffixAt = path.search(/[?#]/);
+          const pathname = suffixAt < 0 ? path : path.slice(0, suffixAt);
+          const suffix = suffixAt < 0 ? '' : path.slice(suffixAt);
+          const localized = env.locale ? localizePath(pathname, env.locale) : pathname;
+          token.attrSet('href', `${localized}${suffix}`);
+          continue;
+        }
       }
+      if (href.startsWith('/') && !href.startsWith('//')) continue;
       if (href.startsWith('#')) continue;
       token.attrSet('target', '_blank');
       token.attrSet('rel', 'noopener noreferrer');
