@@ -2,10 +2,10 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { h } from 'vue';
 import type { ReleaseEntry } from '@opennavo/api';
-import { formatDate } from '@opennavo/shared';
+import { formatDate, SITE_LOCALES } from '@opennavo/shared';
 import OnVersionEntry from '../src/components/OnVersionEntry.vue';
 import OnVersionTimeline from '../src/components/OnVersionTimeline.vue';
-import { isMachineTranslated, isPatchVersion, parseInline } from '../src/utils/version';
+import { isPatchVersion, parseInline } from '../src/utils/version';
 import { withLocale } from './helpers';
 
 function entry(version: string, patch: Partial<ReleaseEntry> = {}): ReleaseEntry {
@@ -44,14 +44,6 @@ describe('Release highlights and version numbers', () => {
     expect(isPatchVersion('1.140.0')).toBe(false);
     expect(isPatchVersion('143.0')).toBe(false);
     expect(isPatchVersion('2026.1.2-beta')).toBe(false);
-  });
-
-  it('Labels displayed machine translations but not human corrections, originals, or source fallbacks', () => {
-    expect(isMachineTranslated({ translation: { status: 'machine' } })).toBe(true);
-    expect(isMachineTranslated({ translation: { status: 'pending', machineTranslated: true } })).toBe(true);
-    expect(isMachineTranslated({ translation: { status: 'manual' } })).toBe(false);
-    expect(isMachineTranslated({ translation: { status: 'source' } })).toBe(false);
-    expect(isMachineTranslated({ translation: { status: 'machine', machineTranslated: false } })).toBe(false);
   });
 });
 
@@ -111,24 +103,34 @@ describe('OnVersionEntry', () => {
     expect(wrapper.text()).toContain('最新');
     expect(wrapper.text()).toContain('官网更新页');
     expect(wrapper.text()).toContain('Homebrew 收录');
-    expect(wrapper.text()).toContain('AI 翻译');
+    expect(wrapper.text()).not.toContain('AI 翻译');
     expect(wrapper.find('strong').text()).toBe('委派给远程 Agent 主机');
     expect(wrapper.find('code').text()).toBe('.mcp.json');
     expect(wrapper.find('a').attributes('href')).toBe('https://code.visualstudio.com/updates/v1.140.0');
   });
 
-  it('Omits the AI translation label in source mode and provides an original link when body content is missing', async () => {
+  it('Keeps the upstream source link when body content is missing', async () => {
     const wrapper = mount(OnVersionEntry, {
       props: {
-        entry: entry('1.139.0', { hasNotes: false, sections: [], translation: { status: 'machine', locale: 'zh-CN' } }),
-        showOriginal: true
+        entry: entry('1.139.0', { hasNotes: false, sections: [], translation: { status: 'machine', locale: 'zh-CN' } })
       },
       global: withLocale('zh-CN')
     });
     expect(wrapper.text()).not.toContain('AI 翻译');
+    expect(wrapper.text()).not.toContain('查看原文');
     expect(wrapper.text()).toContain('此版本没有单独的更新说明');
     await wrapper.find('a[href$="1.139.0"]').trigger('click');
     expect(wrapper.emitted('openSource')).toHaveLength(1);
+  });
+
+  it.each(SITE_LOCALES)('Renders the same notes regardless of provenance in %s', async locale => {
+    const value = entry('1.140.0', { translation: { status: 'machine', locale, machineTranslated: true } });
+    const wrapper = mount(OnVersionEntry, { props: { entry: value }, global: withLocale(locale) });
+    const html = wrapper.html();
+    await wrapper.setProps({
+      entry: { ...value, translation: { status: 'manual', locale, machineTranslated: false } }
+    });
+    expect(wrapper.html()).toBe(html);
   });
 
   it('Delegates Markdown-only bodies to the markdown slot and places the local installation marker in the notice bar', () => {

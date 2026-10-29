@@ -1,22 +1,17 @@
 import { CONSENT_STORAGE_KEY, analyticsPlan, loadGtag, stopGtag, trackPageView } from '~/utils/analytics';
 import type { ConsentChoice } from '~/utils/analytics';
-import { geoinflowConfig, startGeoinflow, stopGeoinflow } from '~/utils/geoinflow';
 
-// Both providers share the banner, footer settings and stored choice.
+// GA4 uses the banner, footer settings and stored choice.
 export function useAnalyticsConsent() {
   const settings = useSiteSettings();
   const banner = useState('analytics:banner', () => false);
   const active = useState('analytics:active', () => false);
-  const runtime = useRuntimeConfig();
-  const geoinflow = computed(() =>
-    geoinflowConfig(runtime.public.geoinflowScriptUrl, runtime.public.geoinflowWebsiteId)
-  );
   const measurementId = computed(() => {
     const analytics = settings.value?.analytics;
     return analytics?.ga4Enabled && analytics.ga4MeasurementId ? analytics.ga4MeasurementId : '';
   });
 
-  const enabled = computed(() => Boolean(measurementId.value || geoinflow.value));
+  const enabled = computed(() => Boolean(measurementId.value));
 
   function storedChoice(): ConsentChoice | null {
     try {
@@ -38,7 +33,6 @@ export function useAnalyticsConsent() {
   function activate() {
     if (!enabled.value) return;
     if (measurementId.value) loadGtag(measurementId.value);
-    if (geoinflow.value) startGeoinflow(geoinflow.value);
     active.value = true;
     trackPageView();
   }
@@ -60,7 +54,6 @@ export function useAnalyticsConsent() {
     remember('denied');
     banner.value = false;
     active.value = false;
-    stopGeoinflow();
     if (measurementId.value) stopGtag(measurementId.value);
   }
 

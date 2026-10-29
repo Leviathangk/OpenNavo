@@ -33,7 +33,6 @@ const props = defineProps<{ kind: PackageKind }>();
 const { t, locale } = useI18n();
 const api = useApi();
 const localePath = useLocalePath();
-const switchLocalePath = useSwitchLocalePath();
 const toasts = useToasts();
 const NuxtLink = resolveComponent('NuxtLink');
 
@@ -71,14 +70,6 @@ const shots = computed(() =>
 
 // Introduction is Markdown (03 §5 packages.description, 05 §11.3), falling back to summary.
 const description = computed(() => pkg.value?.description ?? pkg.value?.summary ?? '');
-
-// View original navigates to this page's source-language version.
-const originalHref = computed(() => {
-  const source = pkg.value?.sourceLocale;
-  if (!source || !pkg.value?.machineTranslated) return undefined;
-  const code = toRouteLocale(source);
-  return code && code !== locale.value ? switchLocalePath(code) : undefined;
-});
 
 const relatedItems = computed<OnRelatedPackage[]>(() =>
   (related.value ?? []).map(item => ({
@@ -219,8 +210,6 @@ usePageSeo({
       :screenshots-label="t('package.screenshots')"
       :screenshots-name="pkg.displayName"
       :has-about="Boolean(description)"
-      :about-machine-translated="Boolean(pkg.machineTranslated)"
-      :about-original-href="originalHref"
       :command="can.homebrew ? pkg.installCommand : undefined"
       :info="info"
       :related="relatedItems"

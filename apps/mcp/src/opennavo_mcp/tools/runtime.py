@@ -167,6 +167,12 @@ USAGE = {
         " Supplying id reads one release; list filters do not apply to that mode."
     ),
     "translations_write": (
+        " For articles, prefer article_id (API articleId): read with mode=read,"
+        " entity=article and article_id; write with ref.entity=article and article_id."
+        " The server resolves the published revision. If id (read) or ref.id (write)"
+        " is also supplied, it must match article_get published.id. Without article_id,"
+        " use that published.id as id/ref.id; ambiguous article IDs are rejected."
+        " Publish drafts first; draft translations are unsupported."
         " For writes, omit ref.secondaryId except for collection_item, where it is the"
         " positive package ID (ref.id is the collection ID). Never send null or zero."
     ),

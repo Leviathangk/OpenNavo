@@ -1,26 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { Component } from 'vue';
-import OnChip from './OnChip.vue';
 import { useUiMessages } from '../composables/locale';
 
 // Overview introduction (05 §11.3, 12 D3, ADR-017): heading plus host-rendered Markdown body via default slot; renderer lives in
-// @opennavo/ui/markdown. Collapse beyond twelve lines with expansion; machine translations show AI translated / View original beside heading.
+// @opennavo/ui/markdown. Collapse beyond twelve lines with expansion.
 // Informational only, without review or reading restrictions.
 export interface OnAboutSectionProps {
-  /** Displayed text is machine-translated (PackageDetail.machineTranslated). */
-  machineTranslated?: boolean;
-  /** Source-language page URL; without one, show badge only. */
-  originalHref?: string;
-  linkAs?: string | Component;
   /** Collapsed line count at 14 px / 1.75 line height. */
   lines?: number;
   headingLevel?: 2 | 3;
 }
 
 const props = withDefaults(defineProps<OnAboutSectionProps>(), {
-  machineTranslated: false,
-  linkAs: 'a',
   lines: 12,
   headingLevel: 2
 });
@@ -29,7 +20,6 @@ defineSlots<{ default?: () => unknown }>();
 
 const messages = useUiMessages();
 const heading = computed(() => `h${props.headingLevel}`);
-const linkAttrs = computed(() => (props.linkAs === 'a' ? { href: props.originalHref } : { to: props.originalHref }));
 
 const body = ref<HTMLElement>();
 const inner = ref<HTMLElement>();
@@ -59,17 +49,6 @@ onBeforeUnmount(() => observer?.disconnect());
   <section class="flex flex-col gap-10px">
     <header class="flex flex-wrap items-center gap-8px">
       <component :is="heading" class="m-0 text-headline text-ink-primary">{{ messages.about.title }}</component>
-      <span v-if="machineTranslated" class="inline-flex items-center gap-6px text-12px text-ink-tertiary">
-        <OnChip tone="outline">{{ messages.about.machineTranslated }}</OnChip>
-        <component
-          :is="linkAs"
-          v-if="originalHref"
-          v-bind="linkAttrs"
-          class="rounded-tiny text-ink-secondary underline underline-offset-2 outline-none hover:text-ink-primary focus-visible:shadow-focus-ring"
-        >
-          {{ messages.about.viewOriginal }}
-        </component>
-      </span>
     </header>
     <div
       ref="body"

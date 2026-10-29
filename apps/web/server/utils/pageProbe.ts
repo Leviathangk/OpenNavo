@@ -80,6 +80,8 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
       ? Math.min(retryCap, PROBE_RETRY_AFTER_LIMIT_SECONDS) * 1000
       : PROBE_MAX_RETRY_AFTER_SECONDS * 1000;
   let active = 0;
+  // Allow one replacement per stuck slot, then wait for the unfinished work to settle.
+  let unfinished = 0;
   let cooldownUntil = 0;
   return async (
     paths: string[],
@@ -90,8 +92,10 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
       pause: ms => new Promise(resolve => setTimeout(resolve, ms))
     }
   ) => {
-    if (active >= limit) throw new ProbeBusyError('temporary probe capacity failure');
+    if (active >= limit || unfinished >= 2 * limit) throw new ProbeBusyError('temporary probe capacity failure');
     active++;
+    unfinished++;
+    const controller = new AbortController();
     let pendingRequests = 0;
     let finished = false;
     let released = false;
@@ -102,16 +106,23 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
       clearTimeout(slotTimer);
     };
     const slotTimer = setTimeout(() => {
-      console.warn('page probe slot exceeded its hard deadline; releasing capacity');
+      console.warn('page probe slot exceeded its hard deadline; aborting requests and releasing capacity');
+      controller.abort();
       release();
     }, PROBE_SLOT_MAX_MS);
+    const settle = () => {
+      if (finished && pendingRequests === 0) {
+        unfinished--;
+        release();
+      }
+    };
     const trackedFetch = async (path: string, signal: AbortSignal) => {
       pendingRequests++;
       try {
-        return await fetch(path, signal);
+        return await fetch(path, AbortSignal.any([signal, controller.signal]));
       } finally {
         pendingRequests--;
-        if (finished && pendingRequests === 0) release();
+        settle();
       }
     };
     const statuses: Record<string, number> = {};
@@ -129,7 +140,7 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
         }
         for (let attempt = 0; attempt < PROBE_MAX_ATTEMPTS; attempt++) {
           const remaining = deadline - clock.now();
-          if (remaining <= 0) break;
+          if (remaining <= 0 || controller.signal.aborted) break;
           try {
             const response = await fetchWithinBudget(trackedFetch, path, remaining);
             statuses[path] = response.status;
@@ -148,7 +159,7 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
             statuses[path] = 503;
             retryAt = clock.now() + probeRetryDelay(null, attempt, clock.now(), clock.random());
           }
-          if (attempt + 1 >= PROBE_MAX_ATTEMPTS || retryAt >= deadline) break;
+          if (controller.signal.aborted || attempt + 1 >= PROBE_MAX_ATTEMPTS || retryAt >= deadline) break;
           await clock.pause(Math.max(0, retryAt - clock.now()));
         }
         if (statuses[path] === 503 || statuses[path] === 429) {
@@ -161,9 +172,9 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
       }
       return { statuses, temporaryFailures };
     } finally {
-      // Keep cancelled Nitro work counted until it settles or the hard slot deadline expires.
+      // Reclaim capacity at the hard deadline, but keep unfinished Nitro work bounded until it settles.
       finished = true;
-      if (pendingRequests === 0) release();
+      settle();
     }
   };
 }

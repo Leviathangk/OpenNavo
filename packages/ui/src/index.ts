@@ -168,7 +168,7 @@ export type { HighlightPart } from './utils/highlight';
 export { paginationRange } from './utils/pagination';
 export { imageSrcset } from './utils/image';
 export type { OnImageVariant } from './utils/image';
-export { isMachineTranslated, isPatchVersion, parseInline } from './utils/version';
+export { isPatchVersion, parseInline } from './utils/version';
 export type { InlineSegment } from './utils/version';
 export type { PaginationItem } from './utils/pagination';
 

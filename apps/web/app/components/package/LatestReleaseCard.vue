@@ -26,16 +26,7 @@ const rows = computed(() =>
     .slice(0, 3)
 );
 
-const meta = computed(() =>
-  [
-    t(`package.release.source.${props.release.source}`),
-    props.release.translation.status === 'machine' || props.release.translation.status === 'manual'
-      ? t('package.release.translated')
-      : null
-  ]
-    .filter(Boolean)
-    .join(' · ')
-);
+const meta = computed(() => t(`package.release.source.${props.release.source}`));
 </script>
 
 <template>

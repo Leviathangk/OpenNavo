@@ -4,7 +4,7 @@ import { RouterLink, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ApiError, unwrap } from '@opennavo/api';
 import { formatDate } from '@opennavo/shared';
-import { OnBreadcrumb, OnButton, OnEmpty, OnMarkdownView, OnSkeleton } from '@opennavo/ui';
+import { OnBreadcrumb, OnEmpty, OnMarkdownView, OnSkeleton } from '@opennavo/ui';
 import { renderArticle } from '@opennavo/ui/markdown';
 import ArticleCard from '@/components/article/ArticleCard.vue';
 import PackageCard from '@/components/package/PackageCard.vue';
@@ -22,15 +22,7 @@ const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const router = useRouter();
 const toasts = useToasts();
-const original = ref(false);
 const root = ref<HTMLElement>();
-watch(
-  [() => props.slug, appLocale],
-  () => {
-    original.value = false;
-  },
-  { flush: 'sync' }
-);
 // Re-read on every visit and refresh: publication/withdrawal state must not stay in a session cache.
 const { data, error, loading } = useLoader(async () => {
   let slug = props.slug;
@@ -46,26 +38,8 @@ const { data, error, loading } = useLoader(async () => {
 watch(data, value => {
   if (value && value.slug !== props.slug) void router.replace({ path: `/articles/${value.slug}` });
 });
-const translated = computed(() => (data.value?.state === 'published' ? data.value.article : undefined));
-const {
-  data: source,
-  error: sourceError,
-  loading: sourceLoading
-} = useLoader(async () => {
-  const value = translated.value;
-  if (!original.value || !value) return undefined;
-  return unwrap(
-    api.GET('/articles/{slug}', {
-      params: { path: { slug: value.slug }, query: { locale: value.sourceLocale } }
-    })
-  );
-}, [original, translated]);
-const article = computed(() =>
-  original.value && source.value?.state === 'published' ? source.value.article : translated.value
-);
-const withdrawn = computed(
-  () => data.value?.state === 'withdrawn' || (original.value && source.value?.state === 'withdrawn')
-);
+const article = computed(() => (data.value?.state === 'published' ? data.value.article : undefined));
+const withdrawn = computed(() => data.value?.state === 'withdrawn');
 const body = computed(() =>
   renderArticle(article.value?.bodyMarkdown ?? '', { images: article.value?.images ?? [], title: article.value?.title })
 );
@@ -170,17 +144,7 @@ async function followLink(event: MouseEvent) {
             >{{ t('articles.updated', { date: formatDate(article.updatedAt, { locale: appLocale }) }) }}</time
           >
           <span>{{ t('articles.readingTime', { minutes: article.readingMinutes }) }}</span>
-          <span v-if="article.machineTranslated">{{ t('articles.machineTranslated') }}</span>
-          <OnButton
-            v-if="translated?.machineTranslated"
-            size="sm"
-            variant="ghost"
-            :loading="sourceLoading"
-            @click="original = !original"
-            >{{ t(original ? 'articles.viewTranslation' : 'articles.viewOriginal') }}</OnButton
-          >
         </div>
-        <RequestError v-if="sourceError" :error="sourceError" />
         <p
           v-if="sourceText"
           :lang="appLocale"

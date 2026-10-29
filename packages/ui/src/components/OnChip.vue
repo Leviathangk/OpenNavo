@@ -5,7 +5,7 @@ import OnIcon from './OnIcon.vue';
 export type OnChipTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'coral' | 'outline';
 
 export interface OnChipProps {
-  /** accent salmon for updates, coral for progress, outline neutral for machine translation/patch badges. */
+  /** accent salmon for updates, coral for progress, outline neutral for patch badges. */
   tone?: OnChipTone;
   /** Outline combinable with status colors, e.g. disabled = danger + outline. */
   outline?: boolean;

@@ -1,9 +1,9 @@
 import { defineComponent, h, ref } from 'vue';
-import type { Locale } from '@opennavo/shared';
+import type { SiteLocale } from '@opennavo/shared';
 import { ON_UI_LOCALE } from '../src/composables/locale';
 
 /** mount global options for an explicitly selected locale. */
-export function withLocale(locale: Locale) {
+export function withLocale(locale: SiteLocale) {
   return { provide: { [ON_UI_LOCALE as symbol]: ref(locale) } };
 }
 

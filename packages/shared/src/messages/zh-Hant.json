@@ -69,8 +69,6 @@
   },
   "about": {
     "title": "介紹",
-    "machineTranslated": "AI 翻譯",
-    "viewOriginal": "檢視原文",
     "expand": "展開全文",
     "collapse": "收起"
   },
@@ -149,9 +147,7 @@
     "installed": "當前安裝",
     "patch": "補丁",
     "prerelease": "預釋出",
-    "machineTranslation": "AI 翻譯",
     "noNotes": "此版本沒有單獨的更新說明",
-    "viewOriginal": "檢視原文",
     "expand": "展開",
     "collapse": "收起",
     "updateTo": "更新到此版本",

@@ -101,7 +101,8 @@ interface Status {
 }
 
 function taskFor(app: LocalApp) {
-  const token = app.catalogToken ?? app.cask;
+  const installed = app.cask ? library.find('cask', app.cask) : undefined;
+  const token = app.catalogToken ?? installed?.token ?? app.cask;
   return (
     tasks.forPackage('app', app.id) ??
     (token && app.source === 'homebrew'
@@ -141,7 +142,8 @@ function statusOf(app: LocalApp): Status | null {
         tone: 'neutral',
         icon: 'pin'
       };
-    if (app.catalogToken && updates.find('cask', app.catalogToken))
+    const updateToken = app.catalogToken ?? item?.token;
+    if (updateToken && updates.find('cask', updateToken))
       return { label: t('library.status.outdated'), tone: 'accent' };
     if (item?.status === 'unknown') return { label: t('library.status.unknown'), tone: 'neutral' };
     return { label: t('library.status.latest'), tone: 'success' };

@@ -1,6 +1,5 @@
 export default {
   articles: {
-    viewTranslation: '查看译文',
     title: '文章',
     subtitle: 'Mac 软件推荐、评测、教程和合集',
     all: '全部',
@@ -18,8 +17,6 @@ export default {
     published: '{date} 发布',
     updated: '{date} 更新',
     editorial: 'OpenNavo 编辑部',
-    machineTranslated: 'AI 翻译',
-    viewOriginal: '查看原文',
     sourceText: '这篇文章还没有当前语言的版本，下面显示的是原文。',
     testNote: '测试环境：',
     toc: '目录',
@@ -354,7 +351,6 @@ export default {
     release: {
       new: '新版本',
       title: '{version} 更新内容',
-      translated: '已译为中文',
       source: {
         github_release: '来自 GitHub Release',
         sparkle: '来自应用内更新源',

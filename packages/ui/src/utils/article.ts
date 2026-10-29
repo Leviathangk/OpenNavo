@@ -71,7 +71,21 @@ export interface RenderedArticle {
   toc: ArticleHeading[];
 }
 
-type ArticleEnv = { images: Map<string, ArticleImageInfo>; ids: Set<string>; toc: ArticleHeading[] };
+export interface RenderArticleOptions {
+  images?: readonly ArticleImageInfo[];
+  title?: string;
+  locale?: string;
+  /** The host decides which paths have localized routes; query strings and hashes stay untouched. */
+  localizePath?: (path: string, locale: string) => string;
+}
+
+type ArticleEnv = {
+  images: Map<string, ArticleImageInfo>;
+  ids: Set<string>;
+  toc: ArticleHeading[];
+  locale?: string;
+  localizePath?: RenderArticleOptions['localizePath'];
+};
 
 const md = new MarkdownIt({ html: false, linkify: true });
 cjkFriendlyEmphasis(md);
@@ -115,12 +129,28 @@ md.core.ruler.push('article_tables', state => {
   }
 });
 
-// Site links stay in the tab; other links open a new one without opener access.
+// Root-relative links stay in the tab; web article pages may also localize canonical site links. Other
+// links open a new one without opener access.
 md.core.ruler.push('article_links', state => {
+  const env = state.env as ArticleEnv;
+  const localizePath = env.localizePath;
   for (const block of state.tokens) {
     for (const token of block.children ?? []) {
       if (token.type !== 'link_open') continue;
       const href = String(token.attrGet('href') ?? '');
+      if (localizePath) {
+        const siteOrigin = /^https:\/\/(?:www\.)?opennavo\.com(?::443)?(?=\/|[?#]|$)/i.exec(href)?.[0];
+        const sitePath = siteOrigin ? href.slice(siteOrigin.length) : href;
+        const path = siteOrigin && !sitePath.startsWith('/') ? `/${sitePath}` : sitePath;
+        if (path.startsWith('/') && !path.startsWith('//')) {
+          const suffixAt = path.search(/[?#]/);
+          const pathname = suffixAt < 0 ? path : path.slice(0, suffixAt);
+          const suffix = suffixAt < 0 ? '' : path.slice(suffixAt);
+          const localized = env.locale ? localizePath(pathname, env.locale) : pathname;
+          token.attrSet('href', `${localized}${suffix}`);
+          continue;
+        }
+      }
       if (href.startsWith('/') && !href.startsWith('//')) continue;
       if (href.startsWith('#')) continue;
       token.attrSet('target', '_blank');
@@ -156,14 +186,13 @@ const plain = (text: string) => text.normalize('NFKC').replace(/\s+/g, ' ').trim
  * title as its only h1, so a body opening with a heading of the same words leaves that heading out: it
  * would repeat the title and lead the table of contents.
  */
-export function renderArticle(
-  source: string,
-  options: { images?: readonly ArticleImageInfo[]; title?: string } = {}
-): RenderedArticle {
+export function renderArticle(source: string, options: RenderArticleOptions = {}): RenderedArticle {
   const env: ArticleEnv = {
     images: new Map((options.images ?? []).map(image => [image.url, image])),
     ids: new Set(),
-    toc: []
+    toc: [],
+    locale: options.locale,
+    localizePath: options.localizePath
   };
   const segments: ArticleSegment[] = [];
   let chunk: string[] = [];

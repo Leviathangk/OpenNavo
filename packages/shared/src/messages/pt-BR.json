@@ -69,8 +69,6 @@
   },
   "about": {
     "title": "Descrição",
-    "machineTranslated": "Tradução por IA",
-    "viewOriginal": "Ver original",
     "expand": "Expandir texto completo",
     "collapse": "Recolher"
   },
@@ -149,9 +147,7 @@
     "installed": "Instalação atual",
     "patch": "Correções",
     "prerelease": "Pré-lançamento",
-    "machineTranslation": "Tradução por IA",
     "noNotes": "Esta versão não tem notas de atualização próprias",
-    "viewOriginal": "Ver original",
     "expand": "Expandir",
     "collapse": "Recolher",
     "updateTo": "Atualizar para esta versão",

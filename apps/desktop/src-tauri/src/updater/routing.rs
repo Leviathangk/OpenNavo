@@ -51,12 +51,16 @@ pub fn select(
     if app.source == AppSource::AppStore {
         return Ok(enabled(UpdateSource::Mas).then_some(UpdateSource::Mas));
     }
-    let cask = app
-        .catalog_token
-        .as_ref()
-        .map(|token| crate::catalog::get(db, Kind::Cask, token))
-        .transpose()?
-        .flatten();
+    let cask = match (app.catalog_token.as_deref(), app.cask.as_deref()) {
+        (Some(token), _) => crate::catalog::get(db, Kind::Cask, token)?,
+        (None, Some(identity)) => {
+            // Cached app observations can predate catalog sync. Match the installed
+            // tap before using catalog policy, even while the navigation hint is absent.
+            let (tap, upstream) = crate::brew::args::split_cask_token(identity)?;
+            crate::catalog::get_brew_cask(db, upstream, Some(tap.unwrap_or("homebrew/cask")))?
+        }
+        (None, None) => None,
+    };
     if app.cask.is_some()
         && !cask.as_ref().is_some_and(|c| c.auto_updates)
         && enabled(UpdateSource::Homebrew)

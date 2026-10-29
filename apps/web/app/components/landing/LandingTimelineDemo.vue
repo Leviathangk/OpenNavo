@@ -68,9 +68,6 @@ const latest = computed(() => entries.value[0]);
           <span :key="latest.token" class="truncate text-13px font-600 text-ink-primary">{{ latest.name }}</span>
         </Transition>
         <OnChip tone="accent">{{ messages.version.sources.editorial }}</OnChip>
-        <span class="ml-auto text-11.5px text-ink-tertiary"
-          >{{ messages.version.machineTranslation }} · {{ messages.version.viewOriginal }}</span
-        >
       </div>
       <div class="mt-12px flex flex-col gap-8px">
         <span class="landing-skeleton h-8px w-11/12 rounded-full"></span>
