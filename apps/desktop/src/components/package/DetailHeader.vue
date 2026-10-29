@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PackageDetail } from '@opennavo/api';
-import { formatDate, isThirdPartyTap } from '@opennavo/shared';
+import { formatDate, isThirdPartyTap, packageInstallState } from '@opennavo/shared';
 import { displayUrl, OnButton, OnIcon, OnMenu, OnPackageHeader, toPackageRepoSignals } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import PackageGetButton from './PackageGetButton.vue';
@@ -47,7 +47,8 @@ const repoSignals = computed(() => toPackageRepoSignals(props.detail));
 
 const installed = computed(() => library.find(props.kind, props.token));
 const outdated = computed(() => updates.find(props.kind, props.token));
-const state = computed(() => stateOf(props.kind, props.token, Boolean(props.detail?.disable ?? props.local?.disabled)));
+const unavailable = computed(() => packageInstallState(props.detail ?? props.local ?? {}) === 'disabled');
+const state = computed(() => stateOf(props.kind, props.token, unavailable.value));
 const latest = computed(() => outdated.value?.currentVersion ?? props.detail?.version ?? props.local?.version ?? '');
 
 const installedChip = computed(() => {
@@ -80,8 +81,7 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (installedChip.value) list.push({ key: 'installed', label: installedChip.value, tone: 'success', dot: true });
   if (installed.value?.pinned) list.push({ key: 'pinned', label: t('package.pinned') });
-  if (props.detail?.disable ?? props.local?.disabled)
-    list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
+  if (unavailable.value) list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
   else if (props.detail?.deprecation ?? props.local?.deprecated)
     list.push({
       key: 'deprecated',
@@ -129,8 +129,13 @@ async function openHomepage() {
 }
 
 const menu = usePackageMenu();
-const menuItems = computed(() => menu.itemsFor(props.kind, props.token));
-const onSelect = (key: string) => menu.select(props.kind, props.token, name.value, key, props.detail?.installCommand);
+const menuItems = computed(() =>
+  menu.itemsFor(props.kind, props.token).filter(item => !unavailable.value || item.key !== 'copy')
+);
+const onSelect = (key: string) => {
+  if (unavailable.value && key === 'copy') return;
+  return menu.select(props.kind, props.token, name.value, key, props.detail?.installCommand);
+};
 </script>
 
 <template>
@@ -157,7 +162,7 @@ const onSelect = (key: string) => menu.select(props.kind, props.token, name.valu
         appearance="button"
         :kind="kind"
         :token="token"
-        :disabled="Boolean(detail?.disable ?? local?.disabled)"
+        :disabled="unavailable"
         :label="state.state === 'update' ? t('package.updateTo', { version: latest }) : undefined"
       />
       <OnButton

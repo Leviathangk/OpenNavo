@@ -17,7 +17,8 @@ const t = (key: string, named: Record<string, unknown> = {}) => {
     'package.spec.yes': 'Yes',
     'package.spec.no': 'No',
     'package.repo.stars': '★',
-    'package.repo.updated': `Updated ${named.days ?? 0} days ago`
+    'package.repo.updated': `Updated ${named.days ?? 0} days ago`,
+    'package.faq.openSourceChecked': `Repository data checked ${named.date}.`
   };
   return values[key] ?? key;
 };
@@ -76,16 +77,25 @@ describe('package specification repository rows', () => {
       t,
       'en-US'
     );
-    expect(result.rows.find(row => row.key === 'openSource')?.value).toContain('Open source · MIT · ★12.3K');
+    const repoRow = result.rows.find(row => row.key === 'openSource')!;
+    expect(repoRow.value).toContain('Open source · MIT · Updated');
+    expect(repoRow.value).not.toContain('★');
+    expect(repoRow.stars).toMatchObject({ label: '★12.3K', href: 'https://github.com/acme/osi' });
+    expect(repoRow.stars?.checked).toMatch(/Repository data checked.*2026/);
+    expect(result.checkedAt).toBeNull();
   });
 
   it('renders a public repository without claiming an OSI license', () => {
     const result = packageSpec(
-      page({ repository: { url: 'https://github.com/acme/public-only', stars: 1000, archived: false } }),
+      page({
+        repository: { url: 'https://github.com/acme/public-only', stars: 1000, archived: false }
+      }),
       t,
       'en-US'
     );
-    expect(result.rows.find(row => row.key === 'openSource')?.value).toContain('GitHub repository · ★1.0K');
+    const repoRow = result.rows.find(row => row.key === 'openSource')!;
+    expect(repoRow.value).toBe('GitHub repository');
+    expect(repoRow.stars).toMatchObject({ label: '★1.0K', checked: undefined });
   });
 
   it('hides the repository row when neither repository nor OSI data exists', () => {

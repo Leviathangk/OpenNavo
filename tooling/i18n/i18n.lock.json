@@ -1816,6 +1816,7 @@
         "package.spec.yes": "b5141d3d19e9a04855acdb2dd5218b0924254b73d3cb663557ed0f9f73403750",
         "package.spec.no": "0c70665b6eb65f1aebf3b59f684ce52ed3473b2443ed4b4e0b815e2e9d66b8c2",
         "package.repo.stars": "9913aea1a832728f86bbb5f9eea8ff841482a5da3cbf9687540732fef56c61fe",
+        "package.repo.checked": "0457f3eb460f16bcfffa0c6897ab20878f4662b112378eac1037aee025757960",
         "package.repo.updated": "43d0026df9130c365729591eee81ffe8d0b582f181fe2d0a8bb8f69cc0cdc0cb",
         "package.repo.unmaintained": "a32a619faecd819d2d6f2bccf896bd0b7412a59aea8b55883c206407a8382513",
         "package.repo.archived": "82395d423099a07ae94b5d220ca6cf86468b3754bc153aaad5a1ec273c13a92e",

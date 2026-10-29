@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 import OnChip from './OnChip.vue';
+import OnIcon from './OnIcon.vue';
+import OnTooltip from './OnTooltip.vue';
 
 export interface OnPackageSpecRow {
   key: string;
@@ -8,6 +10,7 @@ export interface OnPackageSpecRow {
   value?: string | null;
   href?: string;
   mono?: boolean;
+  stars?: { label: string; href?: string; checked?: string };
   badge?: { label: string; tone?: 'neutral' | 'info' | 'success' | 'warning' | 'danger' };
 }
 
@@ -56,6 +59,25 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
             {{ row.value }}
           </component>
           <template v-else>{{ row.value }}</template>
+          <span v-if="row.stars" class="inline-flex items-center gap-4px">
+            <span aria-hidden="true"> · </span>
+            <a
+              v-if="row.stars.href"
+              :href="row.stars.href"
+              class="text-ink-primary underline-offset-2 hover:underline"
+              >{{ row.stars.label }}</a
+            >
+            <span v-else>{{ row.stars.label }}</span>
+            <OnTooltip v-if="row.stars.checked" :content="row.stars.checked" toggle-on-click>
+              <button
+                type="button"
+                :aria-label="checkedLabel"
+                class="inline-flex cursor-pointer items-center rounded-tiny border-none bg-transparent p-2px text-ink-tertiary outline-none hover:text-ink-primary focus-visible:shadow-focus-ring"
+              >
+                <OnIcon name="info" :size="13" />
+              </button>
+            </OnTooltip>
+          </span>
           <OnChip v-if="row.badge" class="ml-6px align-middle" size="sm" :tone="row.badge.tone">
             {{ row.badge.label }}
           </OnChip>

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
-import { withRecentReturn } from '@opennavo/shared';
+import { packageInstallState, withRecentReturn } from '@opennavo/shared';
 import { catalogInstallCommand } from '@/utils/brew';
 import { OnPackageOverview, OnPackageSpecCard } from '@opennavo/ui';
 import type { OnRelatedPackage } from '@opennavo/ui';
@@ -63,6 +63,24 @@ const command = computed(() => {
     ? ''
     : (detail.value?.installCommand ?? catalogInstallCommand(value, token.value, local.value));
 });
+const installNotice = computed(() => {
+  const value = detail.value ?? local.value;
+  if (!value || kind.value === 'link') return undefined;
+  const state = packageInstallState(value);
+  if (state === 'active') return undefined;
+  const key =
+    state === 'disabled'
+      ? 'package.disabledNotice'
+      : state === 'deprecated'
+        ? 'package.deprecatedNotice'
+        : 'package.staleNotice';
+  const remote = detail.value;
+  const reason =
+    (state === 'deprecated' ? remote?.deprecation?.reason : remote?.disable?.reason) ??
+    remote?.homebrewStatus?.reason ??
+    t('package.noReason');
+  return { text: t(key, { reason }), disabled: state === 'disabled' };
+});
 
 const installed = computed(() => library.find(kind.value, token.value));
 const spec = computed(() =>
@@ -120,6 +138,7 @@ function onCopied(text: string) {
     :caveats="detail?.caveats"
     :caveats-title="t('package.caveats')"
     :command="command"
+    :install-notice="installNotice"
     :info="[]"
     :related="relatedItems"
     :related-title="t('package.related')"

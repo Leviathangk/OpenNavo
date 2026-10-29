@@ -480,6 +480,7 @@ const messages: MessageSchema = {
     },
     repo: {
       stars: 'Stars',
+      checked: 'Repository data checked {date}.',
       updated: 'Updated {days} days ago',
       unmaintained: 'May no longer be maintained',
       archived: 'Archived'

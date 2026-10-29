@@ -472,6 +472,7 @@
     },
     "repo": {
       "stars": "星標數",
+      "checked": "倉庫資料核查於 {date}。",
       "updated": "{days} 天前更新",
       "unmaintained": "可能已停止維護",
       "archived": "已歸檔"

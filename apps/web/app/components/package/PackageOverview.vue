@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
-import { formatCount, formatList, formatVersion } from '@opennavo/shared';
+import { formatCount, formatList, formatVersion, packageInstallState } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { imageSrcset, OnPackageOverview, OnPackageSpecCard } from '@opennavo/ui';
 import type { OnRelatedPackage } from '@opennavo/ui';
@@ -86,6 +86,23 @@ const relatedItems = computed<OnRelatedPackage[]>(() =>
 );
 
 const spec = computed(() => packageSpec(pkg.value!, t, toAppLocale(locale.value)));
+const installNotice = computed(() => {
+  const value = pkg.value;
+  if (!value || value.kind === 'link') return undefined;
+  const state = packageInstallState(value);
+  if (state === 'active') return undefined;
+  const key =
+    state === 'disabled'
+      ? 'package.disabledNotice'
+      : state === 'deprecated'
+        ? 'package.deprecatedNotice'
+        : 'package.staleNotice';
+  const reason =
+    (state === 'deprecated' ? value.deprecation?.reason : value.disable?.reason) ??
+    value.homebrewStatus?.reason ??
+    t('package.noReason');
+  return { text: t(key, { reason }), disabled: state === 'disabled' };
+});
 
 function onCopied(command: string) {
   toasts.push({ tone: 'success', title: t('toast.copied'), description: command });
@@ -170,6 +187,7 @@ usePageSeo({
       :screenshots-name="pkg.displayName"
       :has-about="Boolean(description)"
       :command="can.homebrew ? pkg.installCommand : undefined"
+      :install-notice="installNotice"
       :info="[]"
       :related="relatedItems"
       :related-title="t(pkg.isFont ? 'package.relatedFonts' : 'package.related')"

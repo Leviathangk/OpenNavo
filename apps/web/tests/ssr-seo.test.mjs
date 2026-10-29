@@ -907,6 +907,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'cleanmymac',
         'repair-empty',
         'repair-disabled',
+        'install-paused',
+        'install-deprecated',
         'guard-app',
         'variant-app@beta',
         'opennavo'
@@ -1001,6 +1003,21 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                 }
               : {}),
             ...(token === 'ordinary-app' ? { articles: [roundupCard(false)] } : {}),
+            ...(token === 'install-paused'
+              ? {
+                  disabled: true,
+                  recommendationPaused: true,
+                  homebrewStatus: { state: 'active' },
+                  disable: { reason: 'stale' }
+                }
+              : {}),
+            ...(token === 'install-deprecated'
+              ? {
+                  deprecated: true,
+                  homebrewStatus: { state: 'deprecated', reason: 'unmaintained' },
+                  deprecation: { reason: 'unmaintained' }
+                }
+              : {}),
             ...(token === 'facts-app' || token === 'seo-uninstall' ? factsApp : {}),
             ...(token.startsWith('seo-') ? { displayName: 'SEO App', names: ['SEO App'] } : {}),
             ...(token === 'seo-disabled'
@@ -1651,6 +1668,29 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       }
       assert.ok(contentImages > 0, 'screenshots, article covers and body images are exercised');
       assert.ok(decorations > 0, 'app icons and repeated brand images are exercised');
+    }
+  );
+  await t.test(
+    'disabled installation has an explanation; deprecated and paused commands retain a warning',
+    async () => {
+      const disabled = JSDOM.fragment(await (await fetch(`${origin}/apps/repair-disabled`)).text());
+      const blocked = disabled.querySelector('[data-testid="package-install-command"]');
+      assert.ok(blocked?.textContent.includes('Homebrew has disabled this package: discontinued'));
+      assert.equal(blocked.querySelector('code, button'), null, 'no command or copy control for a disabled app');
+      for (const token of ['install-paused', 'install-deprecated']) {
+        const doc = JSDOM.fragment(await (await fetch(`${origin}/apps/${token}`)).text());
+        const card = doc.querySelector('[data-testid="package-install-command"]');
+        const warning = card?.querySelector('[role="note"]');
+        const command = card?.querySelector('code');
+        assert.ok(
+          warning?.textContent.includes(
+            token === 'install-paused' ? 'Homebrew still offers this app' : 'Homebrew has deprecated'
+          )
+        );
+        assert.equal(command?.textContent.trim(), `brew install --cask ${token}`);
+        assert.ok(warning.compareDocumentPosition(command) & 4, 'warning precedes command');
+        assert.ok(!card.className.includes('hidden'), 'same command is available at mobile widths');
+      }
     }
   );
   for (const prefix of ['', '/zh', '/ja', '/es', '/pt', '/ru']) {
@@ -4100,6 +4140,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'font-sample',
       'guard-app',
       'image-alt-app',
+      'install-deprecated',
+      'install-paused',
       'ordinary-app',
       'plus-app++',
       'reverse-dependency-app',

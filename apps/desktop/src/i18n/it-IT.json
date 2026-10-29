@@ -474,7 +474,8 @@
       "stars": "★",
       "updated": "Aggiornato {days} giorni fa",
       "unmaintained": "La manutenzione potrebbe essere terminata",
-      "archived": "Archiviato"
+      "archived": "Archiviato",
+      "checked": "Dati del repository verificati il {date}."
     },
     "deps": {
       "macos": "Requisiti",

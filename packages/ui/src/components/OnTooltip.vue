@@ -7,6 +7,8 @@ export interface OnTooltipProps {
   /** Show delay in milliseconds (08 §8.24: 400). */
   delay?: number;
   disabled?: boolean;
+  /** Allow a button trigger to reveal the tooltip on touch and keyboard activation. */
+  toggleOnClick?: boolean;
   /**
    * Render the description only once the trigger is used, for decorative triggers whose information is on
    * the page anyway (chart bars with a hidden table). It then never reaches the server-rendered HTML, where
@@ -90,6 +92,17 @@ function hide() {
   listen(false);
 }
 
+function toggle() {
+  if (!props.toggleOnClick || props.disabled || !props.content) return;
+  clearTimeout(timer);
+  if (open.value) return hide();
+  used.value = true;
+  positioned.value = false;
+  open.value = true;
+  listen(true);
+  void place();
+}
+
 function onKeydown(event: KeyboardEvent) {
   // WCAG 1.4.13: Escape dismisses tooltips.
   if (event.key === 'Escape' && open.value) hide();
@@ -130,6 +143,7 @@ onBeforeUnmount(hide);
     @mouseleave="hide"
     @focusin="show"
     @focusout="hide"
+    @click="toggle"
   >
     <slot />
   </span>

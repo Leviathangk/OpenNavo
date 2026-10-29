@@ -466,6 +466,7 @@ export default {
     },
     repo: {
       stars: '星标数',
+      checked: '仓库数据核查于 {date}。',
       updated: '{days} 天前更新',
       unmaintained: '可能已停止维护',
       archived: '已归档'

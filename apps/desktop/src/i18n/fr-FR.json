@@ -474,7 +474,8 @@
       "stars": "★",
       "updated": "Mis à jour il y a {days} jours",
       "unmaintained": "La maintenance a peut-être cessé",
-      "archived": "Archivé"
+      "archived": "Archivé",
+      "checked": "Données du dépôt vérifiées le {date}."
     },
     "deps": {
       "macos": "Configuration requise",

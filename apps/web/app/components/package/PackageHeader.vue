@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { disabledByHomebrew } from '@opennavo/shared';
+import { packageInstallState } from '@opennavo/shared';
 import { OnButton, OnIcon, OnPackageHeader, toPackageRepoSignals, useUiMessages } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
@@ -32,7 +32,7 @@ const meta = computed(() => {
 
 const subtitle = computed(() => [props.pkg.developer, props.pkg.summary].filter(Boolean).join(' · '));
 const repoSignals = computed(() => toPackageRepoSignals(props.pkg));
-const unavailable = computed(() => Boolean(props.pkg.disable));
+const unavailable = computed(() => packageInstallState(props.pkg) === 'disabled');
 
 const chips = computed<OnPackageHeaderChip[]>(() => {
   const kind = isLink.value
@@ -58,8 +58,7 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   if (props.pkg.autoUpdates) list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
   if (repoSignals.value?.archived)
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
-  if (disabledByHomebrew(props.pkg))
-    list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
+  if (unavailable.value) list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
   else if (pausedByOpenNavo(props.pkg))
     list.push({ key: 'paused', label: t('package.paused'), tone: 'warning', outline: true });
   else if (props.pkg.deprecation)

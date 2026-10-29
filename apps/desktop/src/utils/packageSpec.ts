@@ -21,7 +21,7 @@ type Translate = (key: string, named?: Record<string, unknown>) => string;
 
 function repoSummary(signals: PackageRepoSignals | null, t: Translate) {
   if (!signals) return { value: '', badge: undefined };
-  const values = signals.stars === undefined ? [] : [`★${formatRepoStars(signals.stars)}`];
+  const values: string[] = [];
   const days = repoSignalDays(signals);
   const status = repoMaintenanceStatus(signals);
   if (days !== null && status !== 'archived') values.push(t('package.repo.updated', { days }));
@@ -76,6 +76,16 @@ export function packageSpec(
         .filter(Boolean)
         .join(' · '),
       href: repository?.url ?? osi?.url,
+      stars:
+        signals?.stars === undefined
+          ? undefined
+          : {
+              label: `★${formatRepoStars(signals.stars)}`,
+              href: repository?.url ?? undefined,
+              checked: signals.checkedAt
+                ? t('package.repo.checked', { date: formatDate(signals.checkedAt, { locale }) })
+                : undefined
+            },
       badge: summary.badge
     });
   }
@@ -98,7 +108,15 @@ export function packageSpec(
   const location = installed?.appPaths?.filter(Boolean).join(' · ');
   if (location) rows.push({ key: 'location', label: t('package.spec.installLocation'), value: location, mono: true });
 
-  const checked = signals?.checkedAt ?? null;
+  const evidence = [
+    ...(detail.facts?.requirements ?? []).map(row => row.evidence),
+    ...(detail.facts?.prices ?? []).map(row => row.evidence),
+    ...(detail.facts?.security?.identities ?? []).map(row => row.evidence)
+  ];
+  const checked = evidence
+    .filter(item => item && ['verified', 'stale'].includes(item.status) && item.checkedAt)
+    .map(item => item.checkedAt!)
+    .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
   return {
     rows,
     checkedAt: checked ? { iso: checked.slice(0, 10), label: formatDate(checked, { locale }) } : null,

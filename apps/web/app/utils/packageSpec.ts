@@ -27,14 +27,13 @@ export interface PackageSpecModel {
 function repoText(
   signals: PackageRepoSignals | null,
   labels: {
-    stars: string;
     updated: (days: number) => string;
     unmaintained: string;
     archived: string;
   }
 ): { value: string; badge?: OnPackageSpecRow['badge'] } {
   if (!signals) return { value: '' };
-  const parts = [signals.stars === undefined ? '' : `${labels.stars}${formatRepoStars(signals.stars)}`];
+  const parts: string[] = [];
   const age = repoSignalDays(signals);
   const maintenance = repoMaintenanceStatus(signals);
   if (age !== null && maintenance !== 'archived') parts.push(labels.updated(age));
@@ -80,7 +79,6 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
   const osi = pkg.openSource;
   if (osi || repository) {
     const repo = repoText(signals, {
-      stars: t('package.repo.stars'),
       updated: days => t('package.repo.updated', { days }),
       unmaintained: t('package.repo.unmaintained'),
       archived: t('package.repo.archived')
@@ -92,6 +90,16 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
         .filter(Boolean)
         .join(' · '),
       href: repository?.url ?? osi?.url,
+      stars:
+        signals?.stars === undefined
+          ? undefined
+          : {
+              label: `★${formatRepoStars(signals.stars)}`,
+              href: repository?.url ?? undefined,
+              checked: signals.checkedAt
+                ? t('package.faq.openSourceChecked', { date: formatDate(signals.checkedAt, { locale }) })
+                : undefined
+            },
       badge: repo.badge
     });
   }
@@ -107,9 +115,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
     ...prices.map(item => item.evidence),
     ...verifiedIdentities(pkg).map(item => item.evidence)
   ];
-  const checkedAt = [oldestCheck(factCheckDates), signals?.checkedAt]
-    .filter((value): value is string => Boolean(value))
-    .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+  const checkedAt = oldestCheck(factCheckDates);
   return {
     rows,
     checkedAt: checkedAt ? { iso: checkedAt.slice(0, 10), label: formatDate(checkedAt, { locale }) } : null,
