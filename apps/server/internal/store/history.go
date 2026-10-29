@@ -23,7 +23,7 @@ type historyTable struct {
 	Args                 []any
 }
 
-func historyTables(ref content.Ref) []historyTable {
+func historyTables(ref content.Ref, includePackageLifecycle bool) []historyTable {
 	spec, ok := content.Registry[ref.Entity]
 	if !ok {
 		table := map[string]string{"synonym": "search_synonyms", "glossary": "i18n_glossary", "feedback": "feedback", "asset": "assets"}[ref.Entity]
@@ -36,6 +36,9 @@ func historyTables(ref content.Ref) []historyTable {
 	cols := ""
 	if ref.Entity == "package" {
 		cols = "id,source_locale,download_size"
+		if includePackageLifecycle {
+			cols += ",disabled,stale_disabled,disable_date,disable_reason,disable_replacement,disabled_override_at,disabled_override_date,disabled_override_reason,disabled_override_replacement,disabled_override_stale"
+		}
 	}
 	if ref.Entity == "desktop_release" {
 		cols = "id,source_locale"
@@ -59,7 +62,17 @@ func historyTables(ref content.Ref) []historyTable {
 	return out
 }
 func (s *Store) HistorySnapshot(ctx context.Context, ref content.Ref) (HistoryState, error) {
-	tables := historyTables(ref)
+	return s.historySnapshot(ctx, ref, false)
+}
+
+// HistorySnapshotWithPackageLifecycle includes upstream disabled state for the
+// explicit clear-disabled operation. Normal package history remains unchanged.
+func (s *Store) HistorySnapshotWithPackageLifecycle(ctx context.Context, ref content.Ref) (HistoryState, error) {
+	return s.historySnapshot(ctx, ref, true)
+}
+
+func (s *Store) historySnapshot(ctx context.Context, ref content.Ref, includePackageLifecycle bool) (HistoryState, error) {
+	tables := historyTables(ref, includePackageLifecycle)
 	if len(tables) == 0 {
 		return nil, nil
 	}
@@ -85,6 +98,9 @@ func (s *Store) HistorySnapshot(ctx context.Context, ref content.Ref) (HistorySt
 			var row map[string]any
 			if err := json.Unmarshal(raw, &row); err != nil {
 				return nil, err
+			}
+			if includePackageLifecycle && ref.Entity == "package" && i == 0 && row["stale_disabled"] == true && row["disable_reason"] == nil {
+				row["disable_reason"] = "stale_version"
 			}
 			out[t.Name] = append(out[t.Name], row)
 		}
@@ -231,7 +247,7 @@ func HistoryRef(entity, key string) (content.Ref, error) {
 			return r, domain.Rejected("object_key_invalid")
 		}
 	}
-	if len(historyTables(r)) == 0 {
+	if len(historyTables(r, false)) == 0 {
 		return r, domain.RejectedDetail("history_entity_invalid", entity)
 	}
 	return r, nil
@@ -239,7 +255,7 @@ func HistoryRef(entity, key string) (content.Ref, error) {
 
 // Restore snapshots only for the server's fixed table list; never use request-provided SQL identifiers.
 func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state HistoryState) error {
-	tables := historyTables(ref)
+	tables := historyTables(ref, false)
 	if len(tables) == 0 {
 		return domain.RejectedDetail("history_entity_invalid", ref.Entity)
 	}

@@ -104,6 +104,23 @@ func (s *Store) VisitOutdatedCasks(ctx context.Context, version string, consume 
 // OfficialTapSQL matches packages owned by the official Homebrew sync (alias p); third-party taps are tracked in tap_casks.
 const OfficialTapSQL = "p.tap LIKE 'homebrew/%'"
 
+// A manual disabled clear applies only to the upstream definition it cleared.
+// A later definition with a different disable signature is authoritative again.
+const disabledOverrideMatchSQL = `(packages.disabled_override_at IS NOT NULL
+ AND EXCLUDED.disabled
+ AND packages.disabled_override_date IS NOT DISTINCT FROM EXCLUDED.disable_date
+ AND packages.disabled_override_reason IS NOT DISTINCT FROM EXCLUDED.disable_reason
+ AND packages.disabled_override_replacement IS NOT DISTINCT FROM EXCLUDED.disable_replacement)`
+
+const staleDisabledOverrideMatchSQL = `(packages.disabled_override_at IS NOT NULL
+ AND packages.disabled_override_stale
+ AND NOT EXCLUDED.disabled
+ AND packages.disabled_override_date IS NOT DISTINCT FROM EXCLUDED.disable_date
+ AND packages.disabled_override_reason IS NOT DISTINCT FROM EXCLUDED.disable_reason
+ AND packages.disabled_override_replacement IS NOT DISTINCT FROM EXCLUDED.disable_replacement)`
+
+const disabledOverrideKeepSQL = "(" + disabledOverrideMatchSQL + " OR " + staleDisabledOverrideMatchSQL + ")"
+
 var catalogColumns = []string{"kind", "token", "full_token", "tap", "name", "names", "desc_en", "homepage", "version", "version_base", "license", "auto_updates", "deprecated", "deprecation_date", "deprecation_reason", "deprecation_replacement", "disabled", "disable_date", "disable_reason", "disable_replacement", "download_url", "artifacts", "dependencies", "conflicts_with", "caveats", "min_macos", "supports_arm64", "supports_x86_64", "keg_only", "ruby_source_path", "tap_git_head", "generated_date", "is_font", "raw", "raw_hash"}
 
 func nullable(value string) any {
@@ -169,11 +186,27 @@ func (s *Store) ApplyCatalogBatchWithLifecycle(ctx context.Context, mutations []
 			case "raw", "artifacts", "dependencies", "conflicts_with":
 				placeholders[i] = "?::jsonb"
 			}
-			if column != "kind" && column != "token" {
-				updates = append(updates, column+"=EXCLUDED."+column)
+			if column == "kind" || column == "token" {
+				continue
 			}
+			update := column + "=EXCLUDED." + column
+			switch column {
+			case "disabled":
+				update = "disabled=CASE WHEN " + disabledOverrideMatchSQL + " THEN false ELSE EXCLUDED.disabled END"
+			case "disable_date", "disable_reason", "disable_replacement":
+				update = column + "=CASE WHEN " + disabledOverrideKeepSQL + " THEN packages." + column + " ELSE EXCLUDED." + column + " END"
+			}
+			updates = append(updates, update)
 		}
-		updates = append(updates, "version_changed_at=CASE WHEN packages.version IS DISTINCT FROM EXCLUDED.version THEN now() ELSE packages.version_changed_at END", "download_size=CASE WHEN packages.version IS DISTINCT FROM EXCLUDED.version THEN NULL ELSE packages.download_size END", "removed_at=NULL", "updated_at=now()")
+		updates = append(updates,
+			"disabled_override_at=CASE WHEN "+disabledOverrideKeepSQL+" THEN packages.disabled_override_at ELSE NULL END",
+			"disabled_override_date=CASE WHEN "+disabledOverrideKeepSQL+" THEN packages.disabled_override_date ELSE NULL END",
+			"disabled_override_reason=CASE WHEN "+disabledOverrideKeepSQL+" THEN packages.disabled_override_reason ELSE NULL END",
+			"disabled_override_replacement=CASE WHEN "+disabledOverrideKeepSQL+" THEN packages.disabled_override_replacement ELSE NULL END",
+			"disabled_override_stale=CASE WHEN "+disabledOverrideKeepSQL+" THEN packages.disabled_override_stale ELSE false END",
+			"version_changed_at=CASE WHEN packages.version IS DISTINCT FROM EXCLUDED.version THEN now() ELSE packages.version_changed_at END",
+			"download_size=CASE WHEN packages.version IS DISTINCT FROM EXCLUDED.version THEN NULL ELSE packages.download_size END",
+			"removed_at=NULL", "updated_at=now()")
 		groups := make([]string, 0, len(mutations))
 		arguments := make([]any, 0, len(mutations)*len(catalogColumns))
 		for _, mutation := range mutations {

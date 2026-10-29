@@ -56,7 +56,8 @@ func refreshStalePackages(ctx context.Context, tx *gorm.DB, now time.Time, ids [
   AND v.brew_committed_at<=? AND isfinite(v.brew_committed_at),false) version_date_known,
  COALESCE(NOT p.is_font AND p.version<>'latest'
   AND v.brew_committed_at>'0001-01-01T00:00:00Z'::timestamptz
-  AND v.brew_committed_at<?,false) should_disable
+  AND v.brew_committed_at<?,false)
+  AND NOT COALESCE(p.disabled_override_at IS NOT NULL AND p.disabled_override_stale,false) should_disable
  FROM packages p LEFT JOIN package_versions v ON v.package_id=p.id AND v.version=p.version
  WHERE p.kind='cask' AND p.removed_at IS NULL`
 	args := []any{now, now.Add(-StalePackageAge)}
