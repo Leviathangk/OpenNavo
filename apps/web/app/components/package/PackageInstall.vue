@@ -15,6 +15,7 @@ const { t } = useI18n();
 const note = computed(() => installNote(props.pkg));
 const download = computed(() => downloadChoice(props.pkg));
 const caveats = computed(() => props.pkg.facts.overview.caveats);
+const sha256 = computed(() => props.pkg.facts.overview.sha256);
 </script>
 
 <template>
@@ -65,6 +66,9 @@ const caveats = computed(() => props.pkg.facts.overview.caveats);
             <OnIcon name="arrow-up-right" :size="13" />
           </a>
         </template>
+      </p>
+      <p v-if="download.kind !== 'official' && sha256" class="m-0 mt-4px text-12px text-ink-tertiary">
+        {{ t('package.guide.sha') }}
       </p>
     </div>
   </section>

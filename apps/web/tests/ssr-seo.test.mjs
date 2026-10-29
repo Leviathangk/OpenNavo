@@ -3310,9 +3310,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const guide = section('package-install');
     assert.ok(guide.includes('Homebrew installs the app in your Applications folder.'), guide);
     assert.ok(guide.includes('href="https://vendor.example/FactsApp.dmg"'));
+    const checksumDisclaimer = 'SHA-256 only checks that the download is complete; it is not a security certification.';
+    assert.ok(guide.includes(checksumDisclaimer), 'download instructions retain the checksum limitation');
+    assert.equal(document.querySelector('main')?.textContent.split(checksumDisclaimer).length - 1, 1);
     assert.ok(
       section('package-safety').includes('This is not a safety certification.'),
-      'the safety section retains the disclaimer instead of repeating it in the install guide'
+      'the safety section retains its broader security-facts disclaimer'
     );
     assert.ok(
       section('package-uninstall').includes('data-testid="package-zap"'),
