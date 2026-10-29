@@ -68,11 +68,11 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 				}
 			}
 			if lifecycleTable {
-				// A clear-disabled revision deliberately captures the complete
-				// package lifecycle. Restore that snapshot as a unit so the
-				// corresponding undo cannot leave stale or override columns behind.
+				// A clear-disabled revision captures the complete package lifecycle,
+				// but an undo must only restore lifecycle fields changed by that
+				// revision. Upstream may have changed an untouched field since then.
 				for _, field := range packageLifecycleFields {
-					if value, exists := desired[field]; exists {
+					if value, exists := desired[field]; exists && !reflect.DeepEqual(previous[field], next[field]) {
 						currentByKey[key][field] = value
 					}
 				}

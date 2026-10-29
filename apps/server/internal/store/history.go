@@ -271,18 +271,11 @@ func HistoryRef(entity, key string) (content.Ref, error) {
 
 // Restore snapshots only for the server's fixed table list; never use request-provided SQL identifiers.
 func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state HistoryState) error {
-	includePackageLifecycle := ref.Entity == "package" && HistoryStateIncludesPackageLifecycle(state)
-	tables := historyTables(ref, includePackageLifecycle)
+	tables := historyTables(ref, false)
 	if len(tables) == 0 {
 		return domain.RejectedDetail("history_entity_invalid", ref.Entity)
 	}
-	var current HistoryState
-	var err error
-	if includePackageLifecycle {
-		current, err = s.HistorySnapshotWithPackageLifecycle(ctx, ref)
-	} else {
-		current, err = s.HistorySnapshot(ctx, ref)
-	}
+	current, err := s.HistorySnapshot(ctx, ref)
 	if err != nil {
 		return err
 	}

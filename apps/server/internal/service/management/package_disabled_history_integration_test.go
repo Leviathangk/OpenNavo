@@ -36,9 +36,10 @@ INSERT INTO package_meta(package_id) VALUES(801)`).Error)
 	require.NoError(t, st.DB.Raw("SELECT disabled_override_version FROM packages WHERE id=801").Scan(&version).Error)
 	require.Equal(t, "1", version.String)
 
-	// Simulate later catalog lifecycle data so restoring the explicit clear must
-	// put back every lifecycle column captured by that revision.
-	require.NoError(t, st.DB.Exec(`UPDATE packages SET disabled=true,stale_disabled=true,disable_date='2026-02-02',disable_reason='later',disable_replacement='cask:later',disabled_override_at=NULL,disabled_override_date=NULL,disabled_override_reason=NULL,disabled_override_replacement=NULL,disabled_override_stale=false,disabled_override_version=NULL WHERE id=801`).Error)
+	// Simulate later lifecycle data for fields changed by the explicit clear.
+	// Fields the clear left untouched remain at their captured values so this
+	// test focuses on restoring the changed portion of the snapshot.
+	require.NoError(t, st.DB.Exec(`UPDATE packages SET disabled=true,disabled_override_at=NULL,disabled_override_date=NULL,disabled_override_reason=NULL,disabled_override_replacement=NULL,disabled_override_stale=false,disabled_override_version=NULL WHERE id=801`).Error)
 	_, err = svc.Execute(ctx, "RestoreRevision", Input{ID: revisionID, Body: map[string]any{}})
 	require.NoError(t, err)
 
@@ -80,4 +81,45 @@ INSERT INTO package_meta(package_id) VALUES(801)`).Error)
 	require.Equal(t, "cask:replacement", *lifecycle.DisableReplacement)
 	require.False(t, lifecycle.OverrideAt.Valid)
 	require.False(t, lifecycle.OverrideVersion.Valid)
+}
+
+func TestActivePackageUndoDoesNotRestoreUnchangedLifecycle(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	actorID := int64(802)
+	require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(802,'active-history-fixture','isolated-test-only');
+INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,download_size,disabled,stale_disabled)
+VALUES(802,'cask','active-history','active-history','homebrew/cask','Active history','1','1','{}','fixture',100,false,false);
+INSERT INTO package_meta(package_id) VALUES(802)`).Error)
+	svc := &Service{Store: st}
+	requestID := uuid.NewString()
+	op := &domain.Operation{RequestID: requestID, Name: "updatePackageMeta", ActorID: &actorID, Permissions: []string{"catalog:package:edit"}, RequiredPermissions: []string{"catalog:package:edit"}, AllowDelete: true}
+	in := Input{ID: 802, Body: map[string]any{"downloadSize": int64(200), "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
+	_, err := svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
+	require.NoError(t, err)
+
+	// The active package still has a full lifecycle snapshot because the clear
+	// request asked for it, even though none of those fields changed.
+	var disabled bool
+	var downloadSize int64
+	require.NoError(t, st.DB.Raw("SELECT disabled,download_size FROM packages WHERE id=802").Row().Scan(&disabled, &downloadSize))
+	require.False(t, disabled)
+	require.Equal(t, int64(200), downloadSize)
+
+	// Simulate a later upstream disable, including the fields catalog sync would
+	// clear when the upstream signature becomes authoritative again.
+	require.NoError(t, st.DB.Exec(`UPDATE packages
+SET disabled=true,stale_disabled=false,disable_date='2026-02-02',disable_reason='later',disable_replacement='cask:later',disabled_override_at=NULL,disabled_override_date=NULL,disabled_override_reason=NULL,disabled_override_replacement=NULL,disabled_override_stale=false,disabled_override_version=NULL
+WHERE id=802`).Error)
+
+	var revisionID int64
+	require.NoError(t, st.DB.Raw("SELECT id FROM content_revisions WHERE request_id=? AND entity='package' ORDER BY id DESC LIMIT 1", requestID).Scan(&revisionID).Error)
+	require.Positive(t, revisionID)
+	// Restoring the captured revision must leave lifecycle fields that the
+	// revision did not change under the later upstream disable.
+	_, err = svc.Execute(ctx, "RestoreRevision", Input{ID: revisionID, Body: map[string]any{}})
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Raw("SELECT disabled,download_size FROM packages WHERE id=802").Row().Scan(&disabled, &downloadSize))
+	require.True(t, disabled)
+	require.Equal(t, int64(200), downloadSize)
 }
