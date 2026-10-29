@@ -22,6 +22,11 @@ const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
 });
 
 describe('HTML edge cache switch', () => {
+  it('keeps Accept-negotiated HTML at the origin because Cloudflare does not reliably vary on Accept', () => {
+    expect(edgeCacheHeader(page({ path: '/', markdownNegotiated: true }))).toBe('no-store');
+    expect(edgeCacheHeader(page({ path: '/apps/iterm2', markdownNegotiated: true }))).toBe('no-store');
+  });
+
   it('Keeps purged pages for two days and lists for ten minutes, serving either while the origin errs', () => {
     expect(LONG_EDGE_CACHE_VALUE).toBe('max-age=172800, stale-while-revalidate=604800, stale-if-error=604800');
     expect(SHORT_EDGE_CACHE_VALUE).toBe('max-age=600, stale-while-revalidate=86400, stale-if-error=86400');

@@ -62,8 +62,39 @@ it('sets COOP on HTML responses, including cache hits, without changing JSON or 
     }
   } as never);
   for (const type of ['text/html;charset=utf-8', 'application/json', 'text/css', 'text/html']) {
-    respond({ node: { res: { getHeader: () => type } } });
+    respond({
+      path: '/',
+      node: {
+        res: { getHeader: (name: string) => (name === 'content-type' ? type : undefined), getHeaderNames: () => [] }
+      }
+    });
   }
-  expect(setHeader).toHaveBeenCalledTimes(2);
+  expect(setHeader).toHaveBeenCalledTimes(6);
   expect(setHeader).toHaveBeenCalledWith(expect.anything(), 'Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  expect(setHeader).toHaveBeenCalledWith(expect.anything(), 'Link', '</llms.txt>; rel="describedby"');
+});
+
+it('adds the Markdown alternate, Vary and describedby links to an app overview', () => {
+  let respond = (_event: unknown) => {};
+  const setHeader = vi.fn();
+  vi.stubGlobal('setHeader', setHeader);
+  vi.stubGlobal('getResponseHeader', () => undefined);
+  htmlHeaders({
+    hooks: {
+      hook: (_name: string, callback: typeof respond) => {
+        respond = callback;
+      }
+    }
+  } as never);
+  respond({
+    path: '/zh/apps/iterm2',
+    node: { res: { getHeader: (name: string) => (name === 'content-type' ? 'text/html; charset=utf-8' : undefined) } }
+  });
+  expect(setHeader).toHaveBeenCalledWith(expect.anything(), 'Vary', 'Accept');
+  expect(setHeader).toHaveBeenCalledWith(expect.anything(), 'Link', '</llms.txt>; rel="describedby"');
+  expect(setHeader).toHaveBeenCalledWith(
+    expect.anything(),
+    'Link',
+    '</zh/apps/iterm2.md>; rel="alternate"; type="text/markdown"'
+  );
 });

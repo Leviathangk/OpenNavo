@@ -70,6 +70,9 @@ export const ROBOTS_LIMITED_PATHS = [
   '/*?'
 ];
 
+/** Signals the allowed uses of the site's public content (contentsignals.org). */
+export const ROBOTS_CONTENT_SIGNAL = 'Content-Signal: search=yes, ai-input=yes, ai-train=yes';
+
 /**
  * Prefixes of the site languages closed for indexing, whose pages are all noindex: rate-limited
  * crawlers skip them too. The default language has no prefix and is always open.
@@ -111,6 +114,8 @@ export interface RobotsTxtOptions {
   openLocales: readonly SiteLocaleCode[];
   /** Absolute sitemap index URL. */
   sitemap?: string;
+  /** Contentsignals.org policy line in the default group. */
+  contentSignal?: string;
 }
 
 const LOCKED = new Set<string>([...LOCKED_CRAWLERS.map(bot => bot.toLowerCase()), '*']);
@@ -119,11 +124,17 @@ function group(agents: string[], rules: string[]) {
   return [...agents.map(agent => `User-agent: ${agent}`), ...rules].join('\n');
 }
 
-export function buildRobotsTxt({ crawlers, indexable, openLocales, sitemap }: RobotsTxtOptions): string {
+export function buildRobotsTxt({
+  crawlers,
+  indexable,
+  openLocales,
+  sitemap,
+  contentSignal = ROBOTS_CONTENT_SIGNAL
+}: RobotsTxtOptions): string {
   if (!indexable) return 'User-agent: *\nDisallow: /\n';
   const privateRules = ROBOTS_PRIVATE_PATHS.map(path => `Disallow: ${path}`);
   const limitedRules = [...ROBOTS_LIMITED_PATHS, ...closedLocalePaths(openLocales)].map(path => `Disallow: ${path}`);
-  const groups = [group(['*'], privateRules)];
+  const groups = [group(['*'], [contentSignal, ...privateRules])];
   // SEO tools first, then training crawlers: the order used before runtime generation.
   for (const rule of [crawlers.seoTools, crawlers.training]) {
     const bots = [...new Set(rule.bots.filter(bot => !LOCKED.has(bot.toLowerCase())))];

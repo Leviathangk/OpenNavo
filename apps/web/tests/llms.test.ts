@@ -75,7 +75,7 @@ describe('G6 short English llms', () => {
     try {
       const { default: config } = await import('../nuxt.config');
       expect(config.runtimeConfig?.llmsEnabled).toBe(true);
-      expect(config.runtimeConfig?.public?.markdownAlternates).toBe(false);
+      expect(config.runtimeConfig?.public?.markdownAlternates).toBe(true);
       expect(config.routeRules?.['/llms.txt']).toEqual({ cache: false, headers: { 'cache-control': 'no-store' } });
       expect(config.sitemap?.exclude).toContain('/llms.txt');
       // No discovery header is emitted when disabled, and no robots entry can dangle.

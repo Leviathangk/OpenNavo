@@ -3151,7 +3151,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const text = await response.text();
     assert.equal(response.status, 200, logs);
     assert.match(response.headers.get('content-type') ?? '', /^text\/plain/);
-    assert.ok(text.startsWith('User-agent: *\nDisallow: /search\nDisallow: /brewfile\n'), text);
+    assert.ok(
+      text.startsWith(
+        'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nDisallow: /search\nDisallow: /brewfile\n'
+      ),
+      text
+    );
     assert.ok(text.includes('\n\nUser-agent: AhrefsBot\nCrawl-delay: 20\nDisallow: /search\n'), text);
     assert.ok(text.includes('\n\nUser-agent: GPTBot\nUser-agent: ClaudeBot\nDisallow: /\n'), text);
     assert.ok(text.endsWith('\nSitemap: https://example.test/sitemap_index.xml\n'), text);
