@@ -73,6 +73,10 @@ func TestCleanupReferencesVariantsRetentionAndMetrics(t *testing.T) {
 	require.NoError(t, st.DB.Exec("INSERT INTO translation_metrics(entity,status,requests,tokens) VALUES('package','succeeded',1,150),('package','failed',1,0)").Error)
 	st.ObserveGitHubQuota(ctx, 321)
 	require.NoError(t, st.DB.Exec("INSERT INTO agent_write_controls(owner,idempotency_key,operation,request_hash,result,created_at) VALUES('agent:1:1','expired-key','UpdatePackageMeta',repeat('a',64),'{}',?),('agent:1:1','recent-key','UpdatePackageMeta',repeat('b',64),'{}',?)", now.AddDate(0, 0, -31), now.AddDate(0, 0, -29)).Error)
+	for _, daysAgo := range []int{91, 90, 89} {
+		at := now.AddDate(0, 0, -daysAgo)
+		require.NoError(t, st.RecordUsage(ctx, store.UsageActivity{AnonymousID: "2a77e45e-1ac2-4d72-b9c2-aaf2a42f8234", Platform: "desktop", OccurredAt: at, Version: "0.1.3", Locale: "en-US"}, at))
+	}
 	d := &deletions{}
 	svc := &maintenance.Service{Store: st, Objects: d, Now: func() time.Time { return now }}
 	stats, err := svc.Run(ctx)
@@ -80,6 +84,11 @@ func TestCleanupReferencesVariantsRetentionAndMetrics(t *testing.T) {
 	require.Equal(t, int64(1), stats["assets"])
 	require.Equal(t, int64(1), stats["syncRuns"])
 	require.Equal(t, int64(1), stats["agentWriteControls"])
+	var usageRows, identities int64
+	require.NoError(t, st.DB.Table("usage_daily").Count(&usageRows).Error)
+	require.EqualValues(t, 2, usageRows, "scheduled cleanup retains the 90-day boundary and newer daily details")
+	require.NoError(t, st.DB.Table("usage_identities").Count(&identities).Error)
+	require.EqualValues(t, 1, identities)
 	var keys []string
 	require.NoError(t, st.DB.Raw("SELECT idempotency_key FROM agent_write_controls").Scan(&keys).Error)
 	require.Equal(t, []string{"recent-key"}, keys)

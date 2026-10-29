@@ -21,9 +21,36 @@ const day = (date: string, desktop: number, web: number, newDesktop = 0, newWeb 
 });
 const mountCard = (usage: Schemas['UsageOverview']) => mount(UsageCard, { props: { usage }, global: { components } });
 
+it('shows the cumulative client total independently of web totals and daily activity and refreshes it', async () => {
+  const usage: Schemas['UsageOverview'] = {
+    timeZone: 'Asia/Shanghai',
+    asOf: '2026-10-24T08:00:00Z',
+    desktopTotal: 12345,
+    webTotal: 98765,
+    days: [day('2026-10-23', 12, 40, 3, 9), day('2026-10-24', 15, 50, 2, 6)],
+    versions: []
+  };
+  const wrapper = mountCard(usage);
+  const total = () => wrapper.get('[data-metric="desktopTotal"]');
+  expect(total().get('dt').text()).toBe('page.dashboard.usage.desktopTotal');
+  expect(
+    total()
+      .findAll('dd')
+      .map(item => item.text())
+  ).toEqual(['12,345', 'page.dashboard.usage.desktopTotalHint']);
+  expect(wrapper.get('[data-metric="desktop"]').text()).toContain('page.dashboard.usage.yesterday(12)');
+  expect(wrapper.get('[data-metric="newDesktop"]').text()).toContain('page.dashboard.usage.yesterday(3)');
+
+  await wrapper.setProps({ usage: { ...usage, desktopTotal: 12346 } });
+  expect(total().findAll('dd')[0].text()).toBe('12,346');
+  wrapper.unmount();
+});
+
 it('keeps platforms separate, shows today and provides chart data as an accessible table', () => {
   const wrapper = mountCard({
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-22T08:00:00Z',
     days: [day('2026-10-21', 12, 40, 3, 9), day('2026-10-22', 15, 50, 2, 6)],
     countries: [
@@ -65,6 +92,8 @@ it('shows the top five countries and opens the complete sorted list without chan
   const original = structuredClone(countries);
   const usage: Schemas['UsageOverview'] = {
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-24T08:00:00Z',
     days: [day('2026-10-24', 63, 86)],
     countries,
@@ -116,6 +145,8 @@ it('shows the top five countries and opens the complete sorted list without chan
 it('does not show a country panel when there are no countries', () => {
   const wrapper = mountCard({
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-24T08:00:00Z',
     days: [day('2026-10-24', 1, 1)],
     countries: [],
@@ -129,6 +160,8 @@ it('does not show a country panel when there are no countries', () => {
 it('starts the trend at the first reported day instead of drawing the collection gap as zero', async () => {
   const wrapper = mountCard({
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-23T08:00:00Z',
     days: [
       day('2026-10-20', 0, 0),
@@ -157,6 +190,8 @@ it('starts the trend at the first reported day instead of drawing the collection
 it('keeps the selected day across refreshes and drops it once the day is gone', async () => {
   const usage = (days: ReturnType<typeof day>[]): Schemas['UsageOverview'] => ({
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-23T08:00:00Z',
     days,
     versions: []
@@ -181,6 +216,8 @@ it('keeps the selected day across refreshes and drops it once the day is gone', 
 it('marks yesterday as unknown on the first reported day', () => {
   const wrapper = mountCard({
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-22T08:00:00Z',
     days: [day('2026-10-21', 0, 0), day('2026-10-22', 5, 91, 5, 91)],
     versions: []
@@ -192,11 +229,14 @@ it('marks yesterday as unknown on the first reported day', () => {
 it('shows an honest empty state rather than an invented trend', () => {
   const wrapper = mountCard({
     timeZone: 'Asia/Shanghai',
+    desktopTotal: 0,
+    webTotal: 0,
     asOf: '2026-10-22T08:00:00Z',
     days: [day('2026-10-22', 0, 0)],
     versions: []
   });
   expect(wrapper.text()).toContain('page.dashboard.usage.empty');
+  expect(wrapper.get('[data-metric="desktopTotal"]').findAll('dd')[0].text()).toBe('0');
   expect(wrapper.find('svg[role="img"]').exists()).toBe(false);
   expect(wrapper.find('summary').exists()).toBe(false);
   wrapper.unmount();

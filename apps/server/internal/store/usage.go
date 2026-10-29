@@ -86,17 +86,24 @@ type UsageCountry struct {
 	Desktop int64  `json:"desktop"`
 }
 type UsageOverview struct {
-	Countries []UsageCountry `json:"countries"`
-	TimeZone  string         `json:"timeZone"`
-	AsOf      time.Time      `json:"asOf"`
-	Days      []UsageDay     `json:"days"`
-	Versions  []UsageVersion `json:"versions"`
+	Countries    []UsageCountry `json:"countries"`
+	TimeZone     string         `json:"timeZone"`
+	AsOf         time.Time      `json:"asOf"`
+	DesktopTotal int64          `json:"desktopTotal"`
+	WebTotal     int64          `json:"webTotal"`
+	Days         []UsageDay     `json:"days"`
+	Versions     []UsageVersion `json:"versions"`
 }
 
 func (s *Store) UsageOverview(ctx context.Context, now time.Time) (UsageOverview, error) {
 	today := now.In(usageZone).Format("2006-01-02")
 	result := UsageOverview{TimeZone: "Asia/Shanghai", AsOf: now.UTC(), Days: []UsageDay{}, Versions: []UsageVersion{}, Countries: []UsageCountry{}}
-	err := s.DB.WithContext(ctx).Raw(`WITH days AS (SELECT generate_series(?::date-29,?::date,interval '1 day')::date AS day),
+	// Identities are kept permanently, so daily-detail cleanup cannot reduce cumulative totals.
+	err := s.DB.WithContext(ctx).Raw(`SELECT count(*) FILTER(WHERE platform='desktop'),count(*) FILTER(WHERE platform='web') FROM usage_identities`).Row().Scan(&result.DesktopTotal, &result.WebTotal)
+	if err != nil {
+		return result, err
+	}
+	err = s.DB.WithContext(ctx).Raw(`WITH days AS (SELECT generate_series(?::date-29,?::date,interval '1 day')::date AS day),
  active AS (SELECT day,count(*) FILTER(WHERE platform='web') web,count(*) FILTER(WHERE platform='desktop') desktop FROM usage_daily WHERE day BETWEEN ?::date-29 AND ?::date GROUP BY day),
  fresh AS (SELECT (first_seen_at AT TIME ZONE 'Asia/Shanghai')::date AS day,count(*) FILTER(WHERE platform='web') new_web,count(*) FILTER(WHERE platform='desktop') new_desktop FROM usage_identities WHERE first_seen_at >= ((?::date-29)::timestamp AT TIME ZONE 'Asia/Shanghai') AND first_seen_at < ((?::date+1)::timestamp AT TIME ZONE 'Asia/Shanghai') GROUP BY 1)
  SELECT to_char(d.day,'YYYY-MM-DD') AS date,COALESCE(a.web,0) web,COALESCE(a.desktop,0) desktop,COALESCE(f.new_web,0) new_web,COALESCE(f.new_desktop,0) new_desktop FROM days d LEFT JOIN active a USING(day) LEFT JOIN fresh f USING(day) ORDER BY d.day`, today, today, today, today, today, today).Scan(&result.Days).Error
