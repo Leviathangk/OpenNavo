@@ -6208,6 +6208,9 @@ export interface components {
          *       "url": "https://github.com/gnachman/iTerm2",
          *       "license": "GPL-2.0",
          *       "archived": false,
+         *       "stars": 12345,
+         *       "pushedAt": "2026-10-13T08:00:00Z",
+         *       "signalsCheckedAt": "2026-10-14T03:35:00Z",
          *       "checkedAt": "2026-10-14T03:35:00Z"
          *     }
          */
@@ -6223,6 +6226,24 @@ export interface components {
             license: string;
             /** @example false */
             archived: boolean;
+            /**
+             * Format: int64
+             * @description GitHub stargazers_count from the repository response; omitted when the signal has not been stored.
+             * @example 12345
+             */
+            stars?: number | null;
+            /**
+             * Format: date-time
+             * @description GitHub pushed_at from the repository response; omitted when GitHub has no last push time.
+             * @example 2026-10-13T08:00:00Z
+             */
+            pushedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description When the daily GitHub stars and pushedAt signals were last checked; omitted before the first signal refresh.
+             * @example 2026-10-14T03:35:00Z
+             */
+            signalsCheckedAt?: string | null;
             /**
              * Format: date-time
              * @example 2026-10-14T03:35:00Z

@@ -16598,6 +16598,24 @@ components:
         archived:
           type: boolean
           example: false
+        stars:
+          type: integer
+          format: int64
+          nullable: true
+          description: 'GitHub stargazers_count from the repository response; omitted when the signal has not been stored.'
+          example: 12345
+        pushedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'GitHub pushed_at from the repository response; omitted when GitHub has no last push time.'
+          example: 2026-10-13T08:00:00Z
+        signalsCheckedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'When the daily GitHub stars and pushedAt signals were last checked; omitted before the first signal refresh.'
+          example: 2026-10-14T03:35:00Z
         checkedAt:
           type: string
           format: date-time
@@ -16607,6 +16625,9 @@ components:
         url: https://github.com/gnachman/iTerm2
         license: GPL-2.0
         archived: false
+        stars: 12345
+        pushedAt: 2026-10-13T08:00:00Z
+        signalsCheckedAt: 2026-10-14T03:35:00Z
         checkedAt: 2026-10-14T03:35:00Z
     AppStoreListing:
       type: object

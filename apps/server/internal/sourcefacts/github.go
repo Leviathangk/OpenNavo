@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ErrRateLimited stops a batch: the source refused more requests for now.
@@ -16,10 +17,12 @@ var ErrRateLimited = errors.New("source rate limited")
 
 // OpenSource is the published license fact for an app.
 type OpenSource struct {
-	Repo     string `json:"repo"`
-	URL      string `json:"url"`
-	License  string `json:"license"`
-	Archived bool   `json:"archived"`
+	Repo     string     `json:"repo"`
+	URL      string     `json:"url"`
+	License  string     `json:"license"`
+	Archived bool       `json:"archived"`
+	Stars    *int64     `json:"stars,omitempty"`
+	PushedAt *time.Time `json:"pushedAt,omitempty"`
 }
 
 // Repository is the part of GitHub's repository response the decision needs.
@@ -29,7 +32,11 @@ type Repository struct {
 	Private  bool    `json:"private"`
 	Archived bool    `json:"archived"`
 	Language *string `json:"language"`
-	License  *struct {
+	// StargazersCount and PushedAt are read from the same repository response as the license.
+	// PushedAt is nullable in GitHub's API for repositories with no commits.
+	StargazersCount *int64     `json:"stargazers_count"`
+	PushedAt        *time.Time `json:"pushed_at"`
+	License         *struct {
 		SPDXID string `json:"spdx_id"`
 	} `json:"license"`
 }
@@ -56,7 +63,24 @@ func (r Repository) OpenSource() (OpenSource, bool) {
 	if githubRepo(r.HTMLURL) == "" || !strings.EqualFold(githubRepo(r.HTMLURL), r.FullName) {
 		return OpenSource{}, false
 	}
-	return OpenSource{Repo: r.FullName, URL: "https://github.com/" + r.FullName, License: r.License.SPDXID, Archived: r.Archived}, true
+	return OpenSource{Repo: r.FullName, URL: "https://github.com/" + r.FullName, License: r.License.SPDXID, Archived: r.Archived,
+		Stars: cloneInt64(r.StargazersCount), PushedAt: cloneTime(r.PushedAt)}, true
+}
+
+func cloneInt64(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	out := *value
+	return &out
+}
+
+func cloneTime(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	out := value.UTC()
+	return &out
 }
 
 // Getter is the changelog GitHub client: token, quota tracking and no redirects.
@@ -75,6 +99,8 @@ type RepoResult struct {
 	ETag        string
 	NotModified bool
 	NotFound    bool
+	// Requests is the number of HTTP requests made, including a permitted rename redirect.
+	Requests int
 	// Remaining and Limit describe the primary quota after the request, or -1 when GitHub did not say.
 	Remaining, Limit int64
 }
@@ -89,16 +115,18 @@ func (g *GitHub) Repo(ctx context.Context, repo, etag string) (RepoResult, error
 		base = "https://api.github.com"
 	}
 	target := base + "/repos/" + repo
+	requests := 0
 	for redirects := 0; ; redirects++ {
+		requests++
 		headers := http.Header{}
 		if etag != "" {
 			headers.Set("If-None-Match", etag)
 		}
 		body, status, header, err := g.HTTP.Get(ctx, target, 1<<20, headers)
 		if err != nil {
-			return RepoResult{Remaining: -1, Limit: -1}, err
+			return RepoResult{Requests: requests, Remaining: -1, Limit: -1}, err
 		}
-		result := RepoResult{Remaining: quota(header, "X-Ratelimit-Remaining"), Limit: quota(header, "X-Ratelimit-Limit"), ETag: header.Get("ETag")}
+		result := RepoResult{Requests: requests, Remaining: quota(header, "X-Ratelimit-Remaining"), Limit: quota(header, "X-Ratelimit-Limit"), ETag: header.Get("ETag")}
 		switch {
 		case status == http.StatusOK:
 			if err := json.Unmarshal(body, &result.Repository); err != nil {

@@ -43,7 +43,7 @@ var pageFields = map[string][]string{
 	// package_source_facts found rows: the Mac App Store listing and the GitHub repository.
 	"source":           {"source", "data"},
 	"source:app_store": {"name", "url", "languages", "price", "currency", "region"},
-	"source:github":    {"repo", "url", "license", "archived"},
+	"source:github":    {"repo", "url", "license", "archived", "stars", "pushedAt"},
 	// package_alternatives, with each alternative's name, version and facts.
 	"alternative": {"relation", "name", "token", "version", "disabled", "facts", "records"},
 	"relation":    {"alternative_id", "sort", "reasons", "limits", "best_for", "note"},

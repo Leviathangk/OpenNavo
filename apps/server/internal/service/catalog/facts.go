@@ -90,7 +90,20 @@ func (s *PublicService) sourceFacts(ctx context.Context, d *publicapi.PackageDet
 			if json.Unmarshal(row.Data, &open) != nil || open.Repo == "" || open.License == "" {
 				continue
 			}
-			d.OpenSource = &publicapi.OpenSourceFact{Repo: open.Repo, Url: open.URL, License: open.License, Archived: open.Archived, CheckedAt: row.CheckedAt}
+			fact := &publicapi.OpenSourceFact{Repo: open.Repo, Url: open.URL, License: open.License, Archived: open.Archived, CheckedAt: row.CheckedAt}
+			if open.Stars != nil {
+				stars := *open.Stars
+				fact.Stars = &stars
+			}
+			if open.PushedAt != nil {
+				pushedAt := open.PushedAt.UTC()
+				fact.PushedAt = &pushedAt
+			}
+			if row.SignalsCheckedAt != nil {
+				signalsCheckedAt := row.SignalsCheckedAt.UTC()
+				fact.SignalsCheckedAt = &signalsCheckedAt
+			}
+			d.OpenSource = fact
 		case "app_store":
 			var listing sources.Listing
 			if json.Unmarshal(row.Data, &listing) != nil || listing.Name == "" || listing.URL == "" || listing.Currency == "" {

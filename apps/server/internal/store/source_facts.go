@@ -25,16 +25,19 @@ type SourceFactPackage struct {
 
 // SourceFact is one row of package_source_facts.
 type SourceFact struct {
-	PackageID   int64
-	Source      string
-	Input       string // Candidates from the latest attempt, including failed attempts.
-	Subject     string
-	Status      string
-	Data        json.RawMessage
-	ETag        *string `gorm:"column:etag"`
-	CheckedAt   time.Time
-	NextCheckAt time.Time
-	FailCount   int
+	PackageID          int64
+	Source             string
+	Input              string // Candidates from the latest attempt, including failed attempts.
+	Subject            string
+	Status             string
+	Data               json.RawMessage
+	ETag               *string `gorm:"column:etag"`
+	CheckedAt          time.Time
+	NextCheckAt        time.Time
+	FailCount          int
+	SignalsCheckedAt   *time.Time `gorm:"column:signals_checked_at"`
+	SignalsNextCheckAt *time.Time `gorm:"column:signals_next_check_at"`
+	SignalsFailCount   int
 }
 
 // SourceFactKey identifies a row.
@@ -77,7 +80,7 @@ func (s *Store) SourceFactPackages(ctx context.Context) ([]SourceFactPackage, er
 // SourceFacts loads every row, for scheduling.
 func (s *Store) SourceFacts(ctx context.Context) (map[SourceFactKey]SourceFact, error) {
 	var rows []SourceFact
-	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count FROM package_source_facts`).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count FROM package_source_facts`).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query source facts: %w", err)
 	}
 	out := make(map[SourceFactKey]SourceFact, len(rows))
@@ -90,7 +93,7 @@ func (s *Store) SourceFacts(ctx context.Context) (map[SourceFactKey]SourceFact, 
 // PublicSourceFacts returns the facts a page may show for one app.
 func (s *Store) PublicSourceFacts(ctx context.Context, packageID int64) ([]SourceFact, error) {
 	var rows []SourceFact
-	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count FROM package_source_facts WHERE package_id=? AND status='found' ORDER BY source`, packageID).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count FROM package_source_facts WHERE package_id=? AND status='found' ORDER BY source`, packageID).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query public source facts: %w", err)
 	}
 	return rows, nil
@@ -104,16 +107,26 @@ func (s *Store) SaveSourceFact(ctx context.Context, fact SourceFact, token strin
 		data = json.RawMessage(`{}`)
 	}
 	return s.WithTx(ctx, func(tx *gorm.DB) error {
-		err := tx.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count)
- VALUES(?,?,?,?,?,?::jsonb,?,?,?,?)
+		err := tx.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count)
+ VALUES(?,?,?,?,?,?::jsonb,?,?,?,?,?,?,?)
  ON CONFLICT(package_id,source) DO UPDATE SET input=EXCLUDED.input,subject=EXCLUDED.subject,status=EXCLUDED.status,data=EXCLUDED.data,
- etag=EXCLUDED.etag,checked_at=EXCLUDED.checked_at,next_check_at=EXCLUDED.next_check_at,fail_count=EXCLUDED.fail_count`,
-			fact.PackageID, fact.Source, fact.Input, fact.Subject, fact.Status, string(data), fact.ETag, fact.CheckedAt, fact.NextCheckAt, fact.FailCount).Error
+	 etag=EXCLUDED.etag,checked_at=EXCLUDED.checked_at,next_check_at=EXCLUDED.next_check_at,fail_count=EXCLUDED.fail_count,
+ signals_checked_at=EXCLUDED.signals_checked_at,signals_next_check_at=EXCLUDED.signals_next_check_at,signals_fail_count=EXCLUDED.signals_fail_count`,
+			fact.PackageID, fact.Source, fact.Input, fact.Subject, fact.Status, string(data), fact.ETag, fact.CheckedAt, fact.NextCheckAt, fact.FailCount,
+			fact.SignalsCheckedAt, fact.SignalsNextCheckAt, fact.SignalsFailCount).Error
 		if err != nil || !publicChanged {
 			return err
 		}
 		return sourceFactInvalidation(ctx, tx, fact.PackageID, token)
 	})
+}
+
+// RecordSourceFactSignalFailure backs off a daily GitHub signal refresh while preserving the
+// successful license fact and its 30-day schedule.
+func (s *Store) RecordSourceFactSignalFailure(ctx context.Context, key SourceFactKey, next time.Time) error {
+	return s.DB.WithContext(ctx).Exec(`UPDATE package_source_facts
+ SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1
+ WHERE package_id=? AND source=? AND status='found'`, next, key.PackageID, key.Source).Error
 }
 
 // RecordSourceFactFailure keeps the successful facts and their check time, but records the

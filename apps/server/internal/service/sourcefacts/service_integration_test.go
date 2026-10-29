@@ -47,7 +47,9 @@ func addCask(t *testing.T, st *store.Store, raw string) {
 
 func mitRepo(name string) sources.RepoResult {
 	language := "Swift"
-	repo := sources.Repository{FullName: name, HTMLURL: "https://github.com/" + name, Language: &language}
+	stars := int64(1234)
+	pushed := time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC)
+	repo := sources.Repository{FullName: name, HTMLURL: "https://github.com/" + name, Language: &language, StargazersCount: &stars, PushedAt: &pushed}
 	repo.License = &struct {
 		SPDXID string `json:"spdx_id"`
 	}{SPDXID: "MIT"}
@@ -111,6 +113,9 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "MIT", detail.OpenSource.License)
 	require.Equal(t, "https://github.com/acme/alpha", detail.OpenSource.Url)
+	require.Equal(t, int64(1234), *detail.OpenSource.Stars)
+	require.Equal(t, time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC), *detail.OpenSource.PushedAt)
+	require.Equal(t, now, *detail.OpenSource.SignalsCheckedAt)
 	require.Nil(t, detail.AppStore)
 	require.Equal(t, "active", string(detail.HomebrewStatus.State))
 	detail, err = (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "beta", "zh-CN")
@@ -138,6 +143,15 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"", `W/"e1"`}, github.etags)
 	require.EqualValues(t, 0, stats["changed"])
+	require.EqualValues(t, 1, stats["githubRequests"])
+	require.EqualValues(t, 1, stats["githubNotModified"])
+	require.EqualValues(t, 4000, stats["githubRemaining"])
+	rows, err = st.SourceFacts(ctx)
+	require.NoError(t, err)
+	var open sources.OpenSource
+	require.NoError(t, json.Unmarshal(rows[store.SourceFactKey{PackageID: 1, Source: GitHub}].Data, &open))
+	require.Equal(t, int64(1234), *open.Stars)
+	require.Equal(t, time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC), *open.PushedAt)
 	require.Empty(t, invalidations(t, st))
 
 	// The definition no longer points at an App Store identifier: the row goes and so does the page fact.
@@ -146,6 +160,56 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, stats["removed"])
 	require.Equal(t, []string{"cache:invalidate:seo-content:pkg:2"}, invalidations(t, st))
+}
+
+func TestSourceFactsSignalsRefreshOnlyFoundAppsDaily(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	addCask(t, st, `{"token":"open","name":["Open"],"version":"1","homepage":"https://github.com/acme/open","url":"https://example.test/open.dmg","artifacts":[{"app":["Open.app"]}]}`)
+	addCask(t, st, `{"token":"closed","name":["Closed"],"version":"1","homepage":"https://github.com/acme/closed","url":"https://example.test/closed.dmg","artifacts":[{"app":["Closed.app"]}]}`)
+	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+	var calls []string
+	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+		calls = append(calls, repo+" "+etag)
+		if repo == "acme/open" && etag != "" {
+			stars := int64(2000)
+			pushed := now.Add(24 * time.Hour)
+			result := mitRepo(repo)
+			result.Repository.StargazersCount = &stars
+			result.Repository.PushedAt = &pushed
+			return result, nil
+		}
+		if repo == "acme/closed" {
+			language := "Swift"
+			return sources.RepoResult{Repository: sources.Repository{FullName: repo, HTMLURL: "https://github.com/" + repo, Language: &language}, Remaining: 4000, Limit: 5000}, nil
+		}
+		return mitRepo(repo), nil
+	}}
+	svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"acme/open ", "acme/closed "}, calls)
+	calls = nil
+	now = now.Add(25 * time.Hour)
+	stats, err := svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"acme/open W/\"e1\""}, calls)
+	require.EqualValues(t, 1, stats["githubRequests"])
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	open := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	closed := rows[store.SourceFactKey{PackageID: 2, Source: GitHub}]
+	require.Equal(t, int64(2000), openStars(t, open))
+	require.WithinDuration(t, now, *open.SignalsCheckedAt, time.Second)
+	require.Nil(t, closed.SignalsCheckedAt)
+}
+
+func openStars(t *testing.T, row store.SourceFact) int64 {
+	t.Helper()
+	var open sources.OpenSource
+	require.NoError(t, json.Unmarshal(row.Data, &open))
+	require.NotNil(t, open.Stars)
+	return *open.Stars
 }
 
 func TestSourceFactsJobStopsOnRateLimitsAndBacksOffOnErrors(t *testing.T) {

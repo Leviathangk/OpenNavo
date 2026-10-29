@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"reflect"
 	"strings"
 	"time"
@@ -21,9 +22,10 @@ const (
 	GitHub   = "github"
 	AppStore = "app_store"
 
-	recheck      = 30 * 24 * time.Hour
-	priceRecheck = 24 * time.Hour
-	maxBackoff   = 7 * 24 * time.Hour
+	recheck       = 30 * 24 * time.Hour
+	signalRecheck = 24 * time.Hour
+	priceRecheck  = 24 * time.Hour
+	maxBackoff    = 7 * 24 * time.Hour
 )
 
 type GitHubSource interface {
@@ -40,6 +42,7 @@ type Service struct {
 	AppStore AppStoreSource
 	Now      func() time.Time
 	Sleep    func(context.Context, time.Duration) error
+	Logger   *slog.Logger
 	// Budget bounds one run (default 10 minutes; the job timeout is 20). GitHub gets the first half.
 	Budget time.Duration
 	// GitHubPause and AppStorePause space requests; Apple allows roughly 20 lookups a minute.
@@ -47,27 +50,34 @@ type Service struct {
 }
 
 type pending struct {
-	pkg   store.SourceFactPackage
-	input string
-	items []string
-	row   *store.SourceFact
+	pkg         store.SourceFactPackage
+	input       string
+	items       []string
+	row         *store.SourceFact
+	signalsOnly bool
 }
 
 type Stats struct {
-	Due      map[string]int    `json:"due"`
-	Checked  map[string]int    `json:"checked"`
-	Found    map[string]int    `json:"found"`
-	Failed   map[string]int    `json:"failed"`
-	Changed  int               `json:"changed"`
-	Removed  int               `json:"removed"`
-	Lookups  int               `json:"lookups"`
-	Stopped  map[string]string `json:"stopped,omitempty"`
-	Reserved bool              `json:"githubQuotaReserved,omitempty"`
+	Due               map[string]int    `json:"due"`
+	Checked           map[string]int    `json:"checked"`
+	Found             map[string]int    `json:"found"`
+	Failed            map[string]int    `json:"failed"`
+	Changed           int               `json:"changed"`
+	Removed           int               `json:"removed"`
+	Lookups           int               `json:"lookups"`
+	GitHubRequests    int               `json:"githubRequests"`
+	GitHubNotModified int               `json:"githubNotModified"`
+	GitHubRemaining   int64             `json:"githubRemaining"`
+	Stopped           map[string]string `json:"stopped,omitempty"`
+	Reserved          bool              `json:"githubQuotaReserved,omitempty"`
 }
 
 func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	start := s.now()
-	stats := &Stats{Due: map[string]int{}, Checked: map[string]int{}, Found: map[string]int{}, Failed: map[string]int{}, Stopped: map[string]string{}}
+	stats := &Stats{Due: map[string]int{}, Checked: map[string]int{}, Found: map[string]int{}, Failed: map[string]int{}, Stopped: map[string]string{}, GitHubRemaining: -1}
+	defer func() {
+		s.logger().InfoContext(ctx, "source facts GitHub refresh", "requests", stats.GitHubRequests, "notModified", stats.GitHubNotModified, "remaining", stats.GitHubRemaining)
+	}()
 	packages, err := s.Store.SourceFactPackages(ctx)
 	if err != nil {
 		return nil, err
@@ -92,10 +102,11 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 				}
 				continue
 			}
-			if exists && row.Input == input && row.NextCheckAt.After(start) {
+			signalsOnly := source == GitHub && exists && row.Input == input && row.Status == "found" && row.FailCount == 0 && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
+			if exists && row.Input == input && row.NextCheckAt.After(start) && !signalsOnly {
 				continue
 			}
-			item := pending{pkg: p, input: input, items: items}
+			item := pending{pkg: p, input: input, items: items, signalsOnly: signalsOnly}
 			if exists {
 				item.row = &row
 			}
@@ -148,7 +159,7 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 				return err
 			}
 		}
-		fact, low, err := s.checkGitHub(ctx, item)
+		fact, low, err := s.checkGitHub(ctx, item, stats)
 		if errors.Is(err, sources.ErrRateLimited) {
 			stats.Stopped[GitHub] = "rate_limited"
 			return nil
@@ -158,7 +169,11 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 				return ctx.Err()
 			}
 			stats.Failed[GitHub]++
-			if err := s.fail(ctx, item, GitHub); err != nil {
+			if item.signalsOnly {
+				if err := s.failSignals(ctx, item); err != nil {
+					return err
+				}
+			} else if err := s.fail(ctx, item, GitHub); err != nil {
 				return err
 			}
 		} else if err := s.save(ctx, item, fact, stats); err != nil {
@@ -175,9 +190,14 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 // checkGitHub tries the repositories in order until one publishes a license. A 304 for the
 // repository already found keeps it without spending quota. low reports that the quota is down
 // to its last tenth, which the changelog pipeline keeps; the caller stops after this app.
-func (s *Service) checkGitHub(ctx context.Context, item pending) (store.SourceFact, bool, error) {
+func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (store.SourceFact, bool, error) {
 	now := s.now()
+	fullCheck := !item.signalsOnly
 	fact := store.SourceFact{PackageID: item.pkg.ID, Source: GitHub, Input: item.input, Status: "none", CheckedAt: now, NextCheckAt: next(now, recheck, item.pkg.ID)}
+	if item.signalsOnly && item.row != nil {
+		fact = *item.row
+		fact.Input = item.input
+	}
 	low := false
 	for _, repo := range item.items {
 		etag := ""
@@ -185,6 +205,17 @@ func (s *Service) checkGitHub(ctx context.Context, item pending) (store.SourceFa
 			etag = *item.row.ETag
 		}
 		result, err := s.GitHub.Repo(ctx, repo, etag)
+		requests := result.Requests
+		if requests <= 0 {
+			requests = 1
+		}
+		stats.GitHubRequests += requests
+		if result.NotModified {
+			stats.GitHubNotModified++
+		}
+		if result.Remaining >= 0 && (stats.GitHubRemaining < 0 || result.Remaining < stats.GitHubRemaining) {
+			stats.GitHubRemaining = result.Remaining
+		}
 		if result.Remaining >= 0 && result.Limit > 0 && result.Remaining*10 <= result.Limit {
 			low = true
 		}
@@ -192,23 +223,84 @@ func (s *Service) checkGitHub(ctx context.Context, item pending) (store.SourceFa
 			return fact, low, err
 		}
 		if result.NotModified && etag != "" {
-			fact.Status, fact.Subject, fact.Data, fact.ETag = "found", item.row.Subject, item.row.Data, item.row.ETag
+			if item.row == nil || item.row.Status != "found" {
+				continue
+			}
+			fact = *item.row
+			fact.Input = item.input
+			fact.Status, fact.Subject = "found", item.row.Subject
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
+			if fullCheck {
+				fact.CheckedAt = now
+				fact.NextCheckAt = next(now, recheck, item.pkg.ID)
+			}
 			return fact, low, nil
 		}
 		if result.NotFound {
 			continue
 		}
 		if open, ok := result.Repository.OpenSource(); ok {
-			data, err := json.Marshal(open)
-			if err != nil {
-				return fact, low, err
+			var data []byte
+			if !fullCheck {
+				data, err = mergeGitHubSignals(item.row.Data, result.Repository)
+				if err != nil {
+					return fact, low, err
+				}
+			} else {
+				open.Stars = cloneInt64(result.Repository.StargazersCount)
+				open.PushedAt = cloneTime(result.Repository.PushedAt)
+				data, err = json.Marshal(open)
+				if err != nil {
+					return fact, low, err
+				}
 			}
 			fact.Status, fact.Subject, fact.Data = "found", open.Repo, data
+			if !fullCheck {
+				fact.Subject = item.row.Subject
+				fact.CheckedAt = item.row.CheckedAt
+				fact.NextCheckAt = item.row.NextCheckAt
+			}
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
 			if result.ETag != "" {
 				fact.ETag = &result.ETag
+			} else if !fullCheck {
+				fact.ETag = item.row.ETag
 			}
 			return fact, low, nil
 		}
+		if !fullCheck {
+			// A daily signal refresh must not discard the successful license judgment if GitHub
+			// changes or temporarily omits license metadata. The 30-day check owns that decision.
+			data, mergeErr := mergeGitHubSignals(item.row.Data, result.Repository)
+			if mergeErr != nil {
+				return fact, low, mergeErr
+			}
+			fact.Status, fact.Subject, fact.Data = "found", item.row.Subject, data
+			fact.CheckedAt = item.row.CheckedAt
+			fact.NextCheckAt = item.row.NextCheckAt
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
+			if result.ETag != "" {
+				fact.ETag = &result.ETag
+			} else {
+				fact.ETag = item.row.ETag
+			}
+			return fact, low, nil
+		}
+	}
+	if !fullCheck && item.row != nil && item.row.Status == "found" {
+		// A deleted candidate during a signal-only pass does not invalidate the 30-day fact.
+		fact = *item.row
+		fact.Input = item.input
+		fact.SignalsCheckedAt = timePointer(now)
+		fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+		fact.SignalsFailCount = 0
+		return fact, low, nil
 	}
 	// Every candidate was read (at most three requests), so "none" is a complete answer even when
 	// the quota turned low on the way; the run stops after this app.
@@ -296,6 +388,61 @@ func (s *Service) fail(ctx context.Context, item pending, source string) error {
 	wait := time.Hour << min(failures, 8)
 	now := s.now()
 	return s.Store.RecordSourceFactFailure(ctx, store.SourceFactKey{PackageID: item.pkg.ID, Source: source}, item.input, now, now.Add(min(wait, maxBackoff)))
+}
+
+func (s *Service) failSignals(ctx context.Context, item pending) error {
+	failures := 0
+	if item.row != nil {
+		failures = item.row.SignalsFailCount
+	}
+	wait := time.Hour << min(failures, 8)
+	now := s.now()
+	return s.Store.RecordSourceFactSignalFailure(ctx, store.SourceFactKey{PackageID: item.pkg.ID, Source: GitHub}, now.Add(min(wait, maxBackoff)))
+}
+
+func (s *Service) logger() *slog.Logger {
+	if s.Logger != nil {
+		return s.Logger
+	}
+	return slog.Default()
+}
+
+func githubSignalsDue(row store.SourceFact, now time.Time) bool {
+	return row.Status == "found" && (row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now))
+}
+
+func mergeGitHubSignals(data json.RawMessage, repository sources.Repository) ([]byte, error) {
+	var open sources.OpenSource
+	if err := json.Unmarshal(data, &open); err != nil || open.Repo == "" || open.License == "" {
+		if err == nil {
+			err = errors.New("github source fact has no open-source identity")
+		}
+		return nil, err
+	}
+	open.Stars = cloneInt64(repository.StargazersCount)
+	open.PushedAt = cloneTime(repository.PushedAt)
+	return json.Marshal(open)
+}
+
+func cloneInt64(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	out := *value
+	return &out
+}
+
+func cloneTime(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	out := value.UTC()
+	return &out
+}
+
+func timePointer(value time.Time) *time.Time {
+	value = value.UTC()
+	return &value
 }
 
 // samePublic compares what a page would show: nothing unless found, else the subject and data.
