@@ -215,7 +215,14 @@ let stopPreviousMock: (() => void) | undefined;
 let currentFirewall: ReturnType<typeof createFirewallMock> | undefined;
 /** The running firewall simulation, so component tests can make a new connection ask. */
 export const firewallMock = () => currentFirewall;
-import.meta.hot?.dispose(() => stopPreviousMock?.());
+
+/** Stop this mock session before replacing it or tearing down its browser environment. */
+export function disposeMockIpc() {
+  stopPreviousMock?.();
+  stopPreviousMock = undefined;
+  currentFirewall = undefined;
+}
+import.meta.hot?.dispose(disposeMockIpc);
 
 export function installMockIpc(
   options: {
@@ -225,7 +232,15 @@ export function installMockIpc(
     persistSettings?: boolean;
   } = {}
 ) {
-  stopPreviousMock?.();
+  disposeMockIpc();
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const later = (run: () => void, ms: number) => {
+    const timer = setTimeout(() => {
+      timers.delete(timer);
+      run();
+    }, ms);
+    timers.add(timer);
+  };
   const params = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
   const systemLocale =
     options.systemLocale ??
@@ -463,6 +478,9 @@ export function installMockIpc(
   currentFirewall = firewall;
   // Reinstalling the simulator must not let the previous session emit into the new stores.
   stopPreviousMock = () => {
+    runner.stop();
+    for (const timer of timers) clearTimeout(timer);
+    timers.clear();
     window.removeEventListener('storage', onStorage);
     monitor.stop();
     securityMock.stop();
@@ -552,11 +570,11 @@ export function installMockIpc(
         const path = `/Users/mock/Downloads/${file}`;
         const tick = options.tickMs ?? 250;
         const mismatch = flags.has('download-mismatch');
-        setTimeout(() => {
+        later(() => {
           downloads.add(path);
           void events.downloadDetected.emit({ token, path });
         }, tick * 2);
-        setTimeout(
+        later(
           () =>
             void events.downloadVerified.emit({
               path,
@@ -822,7 +840,7 @@ export function installMockIpc(
     permissions_get: () => permissions,
     permission_guide_open: args => {
       const pane = args.pane as PrivacyPane;
-      setTimeout(() => grant(pane), guideDelayMs);
+      later(() => grant(pane), guideDelayMs);
       return null;
     },
     permission_guide_close: () => null,

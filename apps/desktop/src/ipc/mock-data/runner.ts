@@ -202,6 +202,16 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
 
 export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks = {}) {
   let running: Task | undefined;
+  let stopped = false;
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const later = (advance: () => void) => {
+    if (stopped) return;
+    const timer = setTimeout(() => {
+      timers.delete(timer);
+      advance();
+    }, tickMs);
+    timers.add(timer);
+  };
 
   const emitTask = (task: Task) => void events.taskUpdated.emit({ ...task });
   const log = (task: Task, lines: string[]) => {
@@ -349,7 +359,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     plan[0]?.enter?.();
 
     const advance = () => {
-      if (task.state === 'canceled') return;
+      if (stopped || task.state === 'canceled') return;
       const step = plan[stepIndex];
       if (!step) {
         finish(task, 'succeeded');
@@ -397,14 +407,14 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
           next.enter?.();
         }
       }
-      setTimeout(advance, tickMs);
+      later(advance);
     };
     emitTask(task);
-    setTimeout(advance, tickMs);
+    later(advance);
   }
 
   function schedule() {
-    if (running) return;
+    if (stopped || running) return;
     const next = [...state.active]
       .filter(task => task.state === 'queued')
       .sort((a, b) => PRIORITY[a.trigger] - PRIORITY[b.trigger] || a.createdAt - b.createdAt)[0];
@@ -468,5 +478,12 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     finish(task, 'canceled');
   }
 
-  return { enqueue, cancel, outdated };
+  /** Retire this session without emitting task results or starting any queued work. */
+  function stop() {
+    stopped = true;
+    for (const timer of timers) clearTimeout(timer);
+    timers.clear();
+  }
+
+  return { enqueue, cancel, outdated, stop };
 }

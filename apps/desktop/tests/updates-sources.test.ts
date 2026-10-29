@@ -6,6 +6,7 @@ import { createOnUi } from '@opennavo/ui';
 import { i18n } from '@/i18n';
 import type { OutdatedItem, Task } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
+import { disposeMockIpc } from '@/ipc/mock';
 import RunningAppsConfirm from '@/components/shell/RunningAppsConfirm.vue';
 import MajorConfirm from '@/components/updates/MajorConfirm.vue';
 import OutdatedList from '@/components/updates/OutdatedList.vue';
@@ -31,10 +32,8 @@ beforeEach(() => {
     }
   );
 });
-afterEach(async () => {
-  // The simulated runner keeps emitting task events until queued updates finish; drain them so they never reach the
-  // next test's stores.
-  await vi.waitFor(() => expect(activeContext?.state.active ?? []).toHaveLength(0), { timeout: 5000 });
+afterEach(() => {
+  disposeMockIpc();
   activeContext = undefined;
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
   vi.unstubAllGlobals();
