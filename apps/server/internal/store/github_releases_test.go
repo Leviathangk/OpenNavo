@@ -66,6 +66,38 @@ func TestGitHubReleaseDailyRules(t *testing.T) {
 	require.Nil(t, initial.Updates.Today)
 }
 
+func TestGitHubReleaseAssetReplacementAndRename(t *testing.T) {
+	const dmg = "OpenNavo_0.1.3_universal.dmg"
+	const updater = "OpenNavo_aarch64.app.tar.gz"
+	for _, tc := range []struct {
+		name                         string
+		previousName, currentName    string
+		currentID, currentCount      int64
+		downloads, updates           int64
+		downloadsTotal, updatesTotal int64
+	}{
+		{"re-upload with same name and new ID", dmg, dmg, 2, 7, 7, 0, 7, 0},
+		{"rename within category", dmg, "OpenNavo_renamed_universal.dmg", 1, 107, 7, 0, 107, 0},
+		{"rename into another category", dmg, updater, 1, 107, 0, 7, 0, 107},
+		{"rename into excluded signature", updater, updater + ".sig", 1, 107, 0, 0, 0, 0},
+		{"rename from excluded signature", updater + ".sig", updater, 1, 107, 0, 7, 0, 107},
+		{"rename with unchanged counter", dmg, updater, 1, 100, 0, 0, 0, 100},
+		{"rename with reset counter", dmg, updater, 1, 7, 0, 0, 0, 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := []githubReleaseSnapshot{
+				releaseSnapshot("2026-10-28", 1, 100, tc.previousName),
+				releaseSnapshot("2026-10-29", tc.currentID, tc.currentCount, tc.currentName),
+			}
+			report := githubReleaseOverview(rows, []string{"2026-10-28", "2026-10-29"}, time.Date(2026, 10, 29, 9, 0, 0, 0, time.UTC))
+			require.Equal(t, &tc.downloads, report.Downloads.Today)
+			require.Equal(t, &tc.updates, report.Updates.Today)
+			require.Equal(t, &tc.downloadsTotal, report.Downloads.Total)
+			require.Equal(t, &tc.updatesTotal, report.Updates.Total)
+		})
+	}
+}
+
 func TestGitHubReleaseOverviewBeijingBoundaryAndNoSnapshots(t *testing.T) {
 	before := time.Date(2026, 10, 29, 15, 59, 59, 0, time.UTC)
 	rows := []githubReleaseSnapshot{

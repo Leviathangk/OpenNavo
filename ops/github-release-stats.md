@@ -33,6 +33,24 @@ has cumulative totals only, including after further hourly runs that day.
 `dailyStartDate` is the second distinct snapshot day. A missed day has null daily
 values; its increase belongs to the next successful snapshot day.
 
+Asset identity is GitHub's `asset_id`, never the filename. Each day's category is
+determined by the name stored in that day's last complete snapshot:
+
+| Asset change | Daily behavior on a later snapshot day | Latest cumulative total |
+| --- | --- | --- |
+| Delete and re-upload the same name with a new ID, count 110 → 7 | The replacement has previous count zero, so it contributes 7. The deleted ID contributes nothing. | 7; the deleted asset's 110 is no longer included. |
+| Rename the same ID within a category, count 100 → 107 | Contributes 7 using the same ID's previous counter. | 107 in the current category. |
+| Rename the same ID from DMG to updater, count 100 → 107 | Contributes 7 updates and zero downloads. | 107 updates and zero downloads. |
+| Rename the same ID to `.sig`, count 100 → 107 | Excluded from both categories, even though the counter increased. | Excluded from both categories. |
+| Rename the same ID from `.sig` back to updater, count 100 → 107 | Contributes 7 updates; excluded assets still retain their counter baseline. | 107 updates. |
+| Rename the same ID with an unchanged or reset counter, count 100 → 100 or 7 | Contributes zero; each negative difference is clamped before summing. The next day compares with 100 or 7 respectively. | The current count in the category selected by the new name. |
+
+Renames and deletions do not rewrite earlier days. A same-day rename replaces that
+day's saved name and counter, so it can change the day's category and cumulative
+total. Daily counts still compare with the preceding snapshot **day**, rather than
+an earlier hourly observation. Totals can fall after deletion, exclusion or a
+counter reset; they are current cumulative counters, not a sum of daily values.
+
 All asset pages must succeed before any snapshot rows change. Missing credentials,
 invalid responses and API failures fail the job and are logged by the job runner.
 The dashboard keeps the last successful totals and `lastSnapshotAt`. A newer
@@ -47,9 +65,12 @@ and a daily data table.
 
 ## Local verification
 
-Unit and integration cases cover classification, initial/new assets, resets,
-missed days, Beijing midnight, atomic concurrent upserts, saved-token rotation,
-failure retention, migration up/down and the dashboard OpenAPI response.
+Unit and integration cases cover classification, initial/new assets, deletion and
+re-upload with the same name and a new ID, same-ID renames within/across categories
+and to/from `.sig`, unchanged/reset counters and their next-day baseline, preserved
+historical daily values, missed days, Beijing midnight, atomic concurrent upserts,
+saved-token rotation, failure retention, migration 00123 up/down/reapply and the
+dashboard OpenAPI response.
 
 The opt-in `TestLiveGitHubReleaseSnapshot` (`integration,live` build tags) always
 creates disposable local PostgreSQL/Redis containers. Supply the credential in

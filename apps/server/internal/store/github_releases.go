@@ -140,6 +140,8 @@ func githubReleaseOverview(rows []githubReleaseSnapshot, firstDays []string, now
 		totals := map[string]int64{"downloads": 0, "updates": 0}
 		next := make(map[int64]int64, len(byDay[date]))
 		for _, row := range byDay[date] {
+			// Identity and baselines survive renames, including excluded names;
+			// only the current snapshot's name determines its category.
 			next[row.AssetID] = row.DownloadCount
 			if category := GitHubReleaseCategory(row.AssetName); category != "" {
 				counts[category] += max(0, row.DownloadCount-previous[row.AssetID])
