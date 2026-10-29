@@ -76,6 +76,7 @@ var Permissions = map[string]string{
 	"PUT /admin-api/profile":                                   "",
 	"PUT /admin-api/profile/password":                          "",
 	"GET /admin-api/dashboard/overview":                        "dashboard:view",
+	"GET /admin-api/dashboard/usage/intraday":                  "dashboard:view",
 	"GET /admin-api/packages":                                  "catalog:package:view",
 	"GET /admin-api/packages/:id":                              "catalog:package:view",
 	"PUT /admin-api/packages/:id/meta":                         "catalog:package:edit",

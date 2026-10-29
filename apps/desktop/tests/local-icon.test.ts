@@ -38,6 +38,7 @@ it('Installed apps prefer normalized native icons and keep catalog names; catalo
     const app = {
       ...sample,
       cask: 'visual-studio-code',
+      catalogToken: 'visual-studio-code',
       iconPath: '/icons/native-normalized-v1.png'
     };
     expect(identity.localApp(app).icon.src).toBe('asset:///icons/native-normalized-v1.png');

@@ -52,7 +52,7 @@ function meta(app: AppPlan) {
 }
 const iconOf = (app: AppPlan) => {
   const local = localApps.find(app.appId);
-  return local?.cask ? icon('cask', local.cask, app.name) : icon('app', app.appId, app.name);
+  return local ? localApp(local).icon : icon('app', app.appId, app.name);
 };
 </script>
 

@@ -101,7 +101,14 @@ interface Status {
 }
 
 function taskFor(app: LocalApp) {
-  return app.cask ? tasks.forPackage('cask', app.cask) : tasks.forPackage('app', app.id);
+  const installed = app.cask ? library.find('cask', app.cask) : undefined;
+  const token = app.catalogToken ?? installed?.token ?? app.cask;
+  return (
+    tasks.forPackage('app', app.id) ??
+    (token && app.source === 'homebrew'
+      ? (tasks.forPackage('cask', token) ?? (app.cask ? tasks.forPackage('cask', app.cask) : undefined))
+      : undefined)
+  );
 }
 
 function statusOf(app: LocalApp): Status | null {
@@ -127,15 +134,17 @@ function statusOf(app: LocalApp): Status | null {
       tone: 'neutral',
       icon: 'lock'
     };
-  if (app.cask) {
-    const item = library.find('cask', app.cask);
+  if (app.source === 'homebrew') {
+    const item = library.find('cask', app.catalogToken ?? app.cask ?? '');
     if (item?.pinned)
       return {
         label: t('library.status.pinned'),
         tone: 'neutral',
         icon: 'pin'
       };
-    if (updates.find('cask', app.cask)) return { label: t('library.status.outdated'), tone: 'accent' };
+    const updateToken = app.catalogToken ?? item?.token;
+    if (updateToken && updates.find('cask', updateToken))
+      return { label: t('library.status.outdated'), tone: 'accent' };
     if (item?.status === 'unknown') return { label: t('library.status.unknown'), tone: 'neutral' };
     return { label: t('library.status.latest'), tone: 'success' };
   }

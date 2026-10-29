@@ -145,7 +145,7 @@ watch(
   { immediate: true }
 );
 
-const catalogToken = computed(() => props.app?.cask ?? props.app?.catalogToken ?? null);
+const catalogToken = computed(() => props.app?.catalogToken ?? null);
 // Rust names the matching cask only for copies Homebrew does not manage yet (LocalApp.homebrewCask); an App Store copy
 // stays with the App Store (Homebrew would replace its build).
 const adoptable = computed(() =>

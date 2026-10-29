@@ -766,6 +766,8 @@ class Version1(BaseModel):
 class UsageOverview(BaseModel):
     timeZone: Literal['Asia/Shanghai']
     asOf: AwareDatetime
+    desktopTotal: Annotated[int, Field(description='Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Identities are deduplicated by a locally persisted client installation UUID; upgrades and app-bundle reinstalls reuse it while app data remains. Clearing app data (including Homebrew zap) can create a new identity. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.', ge=0)]
+    webTotal: Annotated[int, Field(description='Cumulative web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.', ge=0)]
     days: list[Day]
     countries: Annotated[list[Country] | MISSING, Field(description="Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.")] = MISSING
     versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]
@@ -790,6 +792,27 @@ class GitHubReleaseOverview(BaseModel):
     timeZone: Literal['Asia/Shanghai']
     lastSnapshotAt: Annotated[AwareDatetime | None, Field(...)]
     dailyStartDate: Annotated[date_aliased | None, Field(description='First snapshot day with an earlier snapshot day; null until a second distinct snapshot day exists.')]
+
+
+class UsageIntradayHour(BaseModel):
+    hour: Annotated[int, Field(description='Hour in Asia/Shanghai; the current hour is partial.', ge=0, le=23)]
+    web: Annotated[int | None, Field(description='Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    desktop: Annotated[int | None, Field(description='Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    cumulativeWeb: Annotated[int | None, Field(description='Total active browsers from midnight through this hour; null for a future hour.', ge=0)]
+    cumulativeDesktop: Annotated[int | None, Field(description='Total active desktop installations from midnight through this hour; null for a future hour.', ge=0)]
+
+
+class UsageIntraday(BaseModel):
+    date: Annotated[date_aliased, Field(description="Today's calendar date in Asia/Shanghai.")]
+    timeZone: Literal['Asia/Shanghai']
+    asOf: AwareDatetime
+    hours: Annotated[list[UsageIntradayHour], Field(max_length=24, min_length=24)]
+
+
+class UsageIntradayResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: UsageIntraday | None | MISSING = MISSING
 
 
 class Packages(BaseModel):
@@ -1029,8 +1052,8 @@ class TapPackage(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(description='Package ID', examples=[1])]
-    token: Annotated[str, Field(examples=['swiftvm'])]
-    fullToken: Annotated[str, Field(description='Name brew installs, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'])]
+    token: Annotated[str, Field(description='Site/catalog token; may differ from the upstream cask token.', examples=['swiftvm'])]
+    fullToken: Annotated[str, Field(description='Upstream name brew installs, <owner>/<tap>/<cask-token>, independent of the site token', examples=['swiftvm-app/tap/swiftvm'])]
     tap: Annotated[str, Field(examples=['swiftvm-app/tap'])]
     name: Annotated[str, Field(examples=['SwiftVM'])]
     version: Annotated[str, Field(examples=['1.3.0'])]
@@ -1054,6 +1077,7 @@ class TapPackageAdd(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    siteToken: Annotated[str | MISSING, Field(description='Optional unique site/catalog token, for example stablyai-orca. Defaults to the upstream cask token. Does not change the upstream cask name, tap, sync source or install target. An explicit token must be unused, including removed packages.', examples=['stablyai-orca'], max_length=128, min_length=1, pattern='^[a-z0-9][a-z0-9+_.@-]*$')] = MISSING
     cask: Annotated[str, Field(description='Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'], max_length=300, min_length=5, pattern='^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9+_.@-]*$')]
 
 

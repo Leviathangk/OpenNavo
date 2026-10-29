@@ -9,10 +9,11 @@ import { $t } from '@/locales';
 import { USAGE_SERIES_COLORS } from './usage-series';
 import UsageTrend from './usage-trend.vue';
 import UsageCountryTable from './usage-country-table.vue';
+import UsageIntraday from './usage-intraday.vue';
 
 defineOptions({ name: 'UsageCard' });
 
-const props = defineProps<{ usage: Schemas['UsageOverview'] }>();
+const props = defineProps<{ usage: Schemas['UsageOverview']; refreshAt?: Date | null }>();
 const theme = useThemeVars();
 const appStore = useAppStore();
 const themeStore = useThemeStore();
@@ -30,14 +31,20 @@ const days = computed(() => {
 });
 const today = computed(() => props.usage.days.at(-1));
 const yesterday = computed(() => (days.value.length > 1 ? days.value.at(-2) : undefined));
-const metrics = computed(() =>
-  (['desktop', 'web', 'newDesktop', 'newWeb'] as const).map(key => ({
+const metrics = computed(() => [
+  {
+    key: 'desktopTotal' as const,
+    color: colors.value.desktop,
+    value: count(props.usage.desktopTotal),
+    description: text('desktopTotalHint')
+  },
+  ...(['desktop', 'web', 'newDesktop', 'newWeb'] as const).map(key => ({
     key,
     color: key === 'desktop' || key === 'web' ? colors.value[key] : null,
     value: count(today.value?.[key] ?? 0),
-    previous: text('yesterday', { value: yesterday.value ? count(yesterday.value[key]) : '—' })
+    description: text('yesterday', { value: yesterday.value ? count(yesterday.value[key]) : '—' })
   }))
-);
+]);
 const trendTitle = computed(() =>
   text('trend', { start: day(days.value[0]?.date ?? ''), end: day(days.value.at(-1)?.date ?? '') })
 );
@@ -59,12 +66,13 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
       <NText depth="3" class="text-12px">{{ asOf }}</NText>
     </template>
     <div class="flex-col gap-16px">
-      <dl class="m-0 grid grid-cols-2 gap-12px lg:grid-cols-4">
+      <dl class="m-0 grid grid-cols-2 gap-12px lg:grid-cols-6">
         <div
           v-for="metric in metrics"
           :key="metric.key"
           :data-metric="metric.key"
           class="rounded-8px px-14px py-12px"
+          :class="{ 'col-span-2': metric.key === 'desktopTotal' }"
           :style="{ background: theme.actionColor }"
         >
           <dt class="flex items-center gap-6px text-13px" :style="{ color: theme.textColor2 }">
@@ -74,7 +82,7 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
           <dd class="m-0 mt-4px text-26px font-600 leading-32px" :style="{ color: theme.textColor1 }">
             {{ metric.value }}
           </dd>
-          <dd class="m-0 mt-2px text-12px" :style="{ color: theme.textColor3 }">{{ metric.previous }}</dd>
+          <dd class="m-0 mt-2px text-12px" :style="{ color: theme.textColor3 }">{{ metric.description }}</dd>
         </div>
       </dl>
       <NEmpty v-if="!days.length" :description="text('empty')" />
@@ -132,6 +140,7 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
           </section>
         </div>
       </div>
+      <UsageIntraday :refresh-at="refreshAt" />
       <details v-if="days.length">
         <summary class="cursor-pointer rounded py-4px text-13px focus-visible:outline-solid">
           {{ text('details') }}

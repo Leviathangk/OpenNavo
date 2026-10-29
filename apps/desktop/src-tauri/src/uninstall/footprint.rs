@@ -404,12 +404,8 @@ impl Engine {
             .filter(|record| {
                 (target.kind == TaskKind::App && record.app.id == target.token)
                     || (target.kind == TaskKind::Cask
-                        && record
-                            .app
-                            .cask
-                            .as_ref()
-                            .or(record.app.catalog_token.as_ref())
-                            == Some(&target.token))
+                        && (record.app.cask.as_ref() == Some(&target.token)
+                            || record.app.catalog_token.as_ref() == Some(&target.token)))
             })
             .map(|record| record.app.id.clone())
             .collect();
