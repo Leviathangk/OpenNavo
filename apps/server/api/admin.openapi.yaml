@@ -18819,6 +18819,43 @@ components:
         code: '0000'
         msg: ok
         data:
+          githubReleases:
+            timeZone: Asia/Shanghai
+            downloads: { today: 12, yesterday: 9, total: 953 }
+            updates: { today: 8, yesterday: 6, total: 582 }
+            lastSnapshotAt: "2026-10-22T08:10:00Z"
+            dailyStartDate: "2026-10-21"
+            days:
+              - { date: "2026-09-23", downloads: null, updates: null }
+              - { date: "2026-09-24", downloads: null, updates: null }
+              - { date: "2026-09-25", downloads: null, updates: null }
+              - { date: "2026-09-26", downloads: null, updates: null }
+              - { date: "2026-09-27", downloads: null, updates: null }
+              - { date: "2026-09-28", downloads: null, updates: null }
+              - { date: "2026-09-29", downloads: null, updates: null }
+              - { date: "2026-09-30", downloads: null, updates: null }
+              - { date: "2026-10-01", downloads: null, updates: null }
+              - { date: "2026-10-02", downloads: null, updates: null }
+              - { date: "2026-10-03", downloads: null, updates: null }
+              - { date: "2026-10-04", downloads: null, updates: null }
+              - { date: "2026-10-05", downloads: null, updates: null }
+              - { date: "2026-10-06", downloads: null, updates: null }
+              - { date: "2026-10-07", downloads: null, updates: null }
+              - { date: "2026-10-08", downloads: null, updates: null }
+              - { date: "2026-10-09", downloads: null, updates: null }
+              - { date: "2026-10-10", downloads: null, updates: null }
+              - { date: "2026-10-11", downloads: null, updates: null }
+              - { date: "2026-10-12", downloads: null, updates: null }
+              - { date: "2026-10-13", downloads: null, updates: null }
+              - { date: "2026-10-14", downloads: null, updates: null }
+              - { date: "2026-10-15", downloads: null, updates: null }
+              - { date: "2026-10-16", downloads: null, updates: null }
+              - { date: "2026-10-17", downloads: null, updates: null }
+              - { date: "2026-10-18", downloads: null, updates: null }
+              - { date: "2026-10-19", downloads: null, updates: null }
+              - { date: "2026-10-20", downloads: null, updates: null }
+              - { date: "2026-10-21", downloads: 9, updates: 6 }
+              - { date: "2026-10-22", downloads: 12, updates: 8 }
           packages:
             casks: 40
             formulae: 0
@@ -19808,6 +19845,7 @@ components:
         - catalog_sync
         - analytics_sync
         - snapshot_build
+        - github-release_snapshot
         - changelog_schedule
         - assets_download-size
         - cleanup
@@ -19820,6 +19858,7 @@ components:
         - catalog_sync
         - analytics_sync
         - snapshot_build
+        - github-release_snapshot
         - enrich_schedule
         - translate_schedule
         - changelog_schedule
@@ -20195,6 +20234,119 @@ components:
               count:
                 type: integer
                 format: int64
+    GitHubReleaseCounts:
+      type: object
+      example: { today: 12, yesterday: 9, total: 953 }
+      required: [today, yesterday, total]
+      properties:
+        today:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Increase on the current Beijing calendar day; null without a snapshot or on the first snapshot day.
+        yesterday:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Increase on the previous Beijing calendar day; null without a snapshot or on the first snapshot day.
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Sum of cumulative counts in the latest complete snapshot; null before the first successful snapshot.
+    GitHubReleaseDay:
+      type: object
+      example: { date: "2026-10-22", downloads: 12, updates: 8 }
+      required: [date, downloads, updates]
+      properties:
+        date:
+          type: string
+          format: date
+        downloads:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        updates:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+    GitHubReleaseOverview:
+      type: object
+      example:
+        timeZone: Asia/Shanghai
+        downloads: { today: 12, yesterday: 9, total: 953 }
+        updates: { today: 8, yesterday: 6, total: 582 }
+        lastSnapshotAt: "2026-10-22T08:10:00Z"
+        dailyStartDate: "2026-10-21"
+        days:
+          - { date: "2026-09-23", downloads: null, updates: null }
+          - { date: "2026-09-24", downloads: null, updates: null }
+          - { date: "2026-09-25", downloads: null, updates: null }
+          - { date: "2026-09-26", downloads: null, updates: null }
+          - { date: "2026-09-27", downloads: null, updates: null }
+          - { date: "2026-09-28", downloads: null, updates: null }
+          - { date: "2026-09-29", downloads: null, updates: null }
+          - { date: "2026-09-30", downloads: null, updates: null }
+          - { date: "2026-10-01", downloads: null, updates: null }
+          - { date: "2026-10-02", downloads: null, updates: null }
+          - { date: "2026-10-03", downloads: null, updates: null }
+          - { date: "2026-10-04", downloads: null, updates: null }
+          - { date: "2026-10-05", downloads: null, updates: null }
+          - { date: "2026-10-06", downloads: null, updates: null }
+          - { date: "2026-10-07", downloads: null, updates: null }
+          - { date: "2026-10-08", downloads: null, updates: null }
+          - { date: "2026-10-09", downloads: null, updates: null }
+          - { date: "2026-10-10", downloads: null, updates: null }
+          - { date: "2026-10-11", downloads: null, updates: null }
+          - { date: "2026-10-12", downloads: null, updates: null }
+          - { date: "2026-10-13", downloads: null, updates: null }
+          - { date: "2026-10-14", downloads: null, updates: null }
+          - { date: "2026-10-15", downloads: null, updates: null }
+          - { date: "2026-10-16", downloads: null, updates: null }
+          - { date: "2026-10-17", downloads: null, updates: null }
+          - { date: "2026-10-18", downloads: null, updates: null }
+          - { date: "2026-10-19", downloads: null, updates: null }
+          - { date: "2026-10-20", downloads: null, updates: null }
+          - { date: "2026-10-21", downloads: 9, updates: 6 }
+          - { date: "2026-10-22", downloads: 12, updates: 8 }
+      description: >-
+        Totals across all desktop-v* releases of opennavo/OpenNavo, sampled hourly.
+        Downloads count only *_universal.dmg, including Homebrew install and upgrade.
+        Updates count only *.app.tar.gz across both architectures; transfers, not people.
+        Daily increases sum nonnegative per-asset differences from the previous snapshot day.
+        New assets use zero as their previous count. The first snapshot day has cumulative data only.
+        Missing days are null and their increases fall into the next snapshot day. No historical backfill.
+        Failed snapshots preserve the last successful values and timestamp.
+      required: [downloads, updates, days, timeZone, lastSnapshotAt, dailyStartDate]
+      properties:
+        downloads:
+          $ref: "#/components/schemas/GitHubReleaseCounts"
+        updates:
+          $ref: "#/components/schemas/GitHubReleaseCounts"
+        days:
+          description: The last 30 Beijing calendar days, oldest first. Null counts mean daily data is unavailable.
+          type: array
+          minItems: 30
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/GitHubReleaseDay"
+        timeZone:
+          type: string
+          enum: [Asia/Shanghai]
+        lastSnapshotAt:
+          type: string
+          format: date-time
+          nullable: true
+        dailyStartDate:
+          type: string
+          format: date
+          nullable: true
+          description: First snapshot day with an earlier snapshot day; null until a second distinct snapshot day exists.
     DashboardOverview:
       type: object
       required:
@@ -20203,7 +20355,10 @@ components:
         - feedbackOpen
         - jobs
         - snapshot
+        - githubReleases
       properties:
+        githubReleases:
+          $ref: '#/components/schemas/GitHubReleaseOverview'
         usage:
           $ref: '#/components/schemas/UsageOverview'
         packages:
@@ -20312,6 +20467,43 @@ components:
         hermes:
           $ref: '#/components/schemas/HermesDaily'
       example:
+        githubReleases:
+          timeZone: Asia/Shanghai
+          downloads: { today: 12, yesterday: 9, total: 953 }
+          updates: { today: 8, yesterday: 6, total: 582 }
+          lastSnapshotAt: "2026-10-22T08:10:00Z"
+          dailyStartDate: "2026-10-21"
+          days:
+            - { date: "2026-09-23", downloads: null, updates: null }
+            - { date: "2026-09-24", downloads: null, updates: null }
+            - { date: "2026-09-25", downloads: null, updates: null }
+            - { date: "2026-09-26", downloads: null, updates: null }
+            - { date: "2026-09-27", downloads: null, updates: null }
+            - { date: "2026-09-28", downloads: null, updates: null }
+            - { date: "2026-09-29", downloads: null, updates: null }
+            - { date: "2026-09-30", downloads: null, updates: null }
+            - { date: "2026-10-01", downloads: null, updates: null }
+            - { date: "2026-10-02", downloads: null, updates: null }
+            - { date: "2026-10-03", downloads: null, updates: null }
+            - { date: "2026-10-04", downloads: null, updates: null }
+            - { date: "2026-10-05", downloads: null, updates: null }
+            - { date: "2026-10-06", downloads: null, updates: null }
+            - { date: "2026-10-07", downloads: null, updates: null }
+            - { date: "2026-10-08", downloads: null, updates: null }
+            - { date: "2026-10-09", downloads: null, updates: null }
+            - { date: "2026-10-10", downloads: null, updates: null }
+            - { date: "2026-10-11", downloads: null, updates: null }
+            - { date: "2026-10-12", downloads: null, updates: null }
+            - { date: "2026-10-13", downloads: null, updates: null }
+            - { date: "2026-10-14", downloads: null, updates: null }
+            - { date: "2026-10-15", downloads: null, updates: null }
+            - { date: "2026-10-16", downloads: null, updates: null }
+            - { date: "2026-10-17", downloads: null, updates: null }
+            - { date: "2026-10-18", downloads: null, updates: null }
+            - { date: "2026-10-19", downloads: null, updates: null }
+            - { date: "2026-10-20", downloads: null, updates: null }
+            - { date: "2026-10-21", downloads: 9, updates: 6 }
+            - { date: "2026-10-22", downloads: 12, updates: 8 }
         packages:
           casks: 40
           formulae: 0
@@ -24627,6 +24819,43 @@ components:
         code: '0000'
         msg: ok
         data:
+          githubReleases:
+            timeZone: Asia/Shanghai
+            downloads: { today: 12, yesterday: 9, total: 953 }
+            updates: { today: 8, yesterday: 6, total: 582 }
+            lastSnapshotAt: "2026-10-22T08:10:00Z"
+            dailyStartDate: "2026-10-21"
+            days:
+              - { date: "2026-09-23", downloads: null, updates: null }
+              - { date: "2026-09-24", downloads: null, updates: null }
+              - { date: "2026-09-25", downloads: null, updates: null }
+              - { date: "2026-09-26", downloads: null, updates: null }
+              - { date: "2026-09-27", downloads: null, updates: null }
+              - { date: "2026-09-28", downloads: null, updates: null }
+              - { date: "2026-09-29", downloads: null, updates: null }
+              - { date: "2026-09-30", downloads: null, updates: null }
+              - { date: "2026-10-01", downloads: null, updates: null }
+              - { date: "2026-10-02", downloads: null, updates: null }
+              - { date: "2026-10-03", downloads: null, updates: null }
+              - { date: "2026-10-04", downloads: null, updates: null }
+              - { date: "2026-10-05", downloads: null, updates: null }
+              - { date: "2026-10-06", downloads: null, updates: null }
+              - { date: "2026-10-07", downloads: null, updates: null }
+              - { date: "2026-10-08", downloads: null, updates: null }
+              - { date: "2026-10-09", downloads: null, updates: null }
+              - { date: "2026-10-10", downloads: null, updates: null }
+              - { date: "2026-10-11", downloads: null, updates: null }
+              - { date: "2026-10-12", downloads: null, updates: null }
+              - { date: "2026-10-13", downloads: null, updates: null }
+              - { date: "2026-10-14", downloads: null, updates: null }
+              - { date: "2026-10-15", downloads: null, updates: null }
+              - { date: "2026-10-16", downloads: null, updates: null }
+              - { date: "2026-10-17", downloads: null, updates: null }
+              - { date: "2026-10-18", downloads: null, updates: null }
+              - { date: "2026-10-19", downloads: null, updates: null }
+              - { date: "2026-10-20", downloads: null, updates: null }
+              - { date: "2026-10-21", downloads: 9, updates: 6 }
+              - { date: "2026-10-22", downloads: 12, updates: 8 }
           packages:
             casks: 40
             formulae: 0
@@ -37753,6 +37982,43 @@ components:
         code: '0000'
         msg: ok
         data:
+          githubReleases:
+            timeZone: Asia/Shanghai
+            downloads: { today: 12, yesterday: 9, total: 953 }
+            updates: { today: 8, yesterday: 6, total: 582 }
+            lastSnapshotAt: "2026-10-22T08:10:00Z"
+            dailyStartDate: "2026-10-21"
+            days:
+              - { date: "2026-09-23", downloads: null, updates: null }
+              - { date: "2026-09-24", downloads: null, updates: null }
+              - { date: "2026-09-25", downloads: null, updates: null }
+              - { date: "2026-09-26", downloads: null, updates: null }
+              - { date: "2026-09-27", downloads: null, updates: null }
+              - { date: "2026-09-28", downloads: null, updates: null }
+              - { date: "2026-09-29", downloads: null, updates: null }
+              - { date: "2026-09-30", downloads: null, updates: null }
+              - { date: "2026-10-01", downloads: null, updates: null }
+              - { date: "2026-10-02", downloads: null, updates: null }
+              - { date: "2026-10-03", downloads: null, updates: null }
+              - { date: "2026-10-04", downloads: null, updates: null }
+              - { date: "2026-10-05", downloads: null, updates: null }
+              - { date: "2026-10-06", downloads: null, updates: null }
+              - { date: "2026-10-07", downloads: null, updates: null }
+              - { date: "2026-10-08", downloads: null, updates: null }
+              - { date: "2026-10-09", downloads: null, updates: null }
+              - { date: "2026-10-10", downloads: null, updates: null }
+              - { date: "2026-10-11", downloads: null, updates: null }
+              - { date: "2026-10-12", downloads: null, updates: null }
+              - { date: "2026-10-13", downloads: null, updates: null }
+              - { date: "2026-10-14", downloads: null, updates: null }
+              - { date: "2026-10-15", downloads: null, updates: null }
+              - { date: "2026-10-16", downloads: null, updates: null }
+              - { date: "2026-10-17", downloads: null, updates: null }
+              - { date: "2026-10-18", downloads: null, updates: null }
+              - { date: "2026-10-19", downloads: null, updates: null }
+              - { date: "2026-10-20", downloads: null, updates: null }
+              - { date: "2026-10-21", downloads: 9, updates: 6 }
+              - { date: "2026-10-22", downloads: 12, updates: 8 }
           usage:
             timeZone: Asia/Shanghai
             asOf: '2026-10-22T08:00:00Z'

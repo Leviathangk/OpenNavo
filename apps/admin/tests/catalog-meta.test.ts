@@ -131,6 +131,7 @@ describe('Job center: types', () => {
       'catalog_sync',
       'analytics_sync',
       'snapshot_build',
+      'github-release_snapshot',
       'changelog_schedule',
       'assets_download-size',
       'cleanup',
@@ -147,6 +148,7 @@ describe('Job center: types', () => {
     expect(jobLabel('assets:download-size')).toBe('page.ops.job.types.assets_download-size');
     expect(jobLabel('catalog:sync')).toBe('page.ops.job.types.catalog_sync');
     expect(jobLabel('taps:sync')).toBe('page.ops.job.types.taps_sync');
+    expect(jobLabel('github-release:snapshot')).toBe('page.ops.job.types.github-release_snapshot');
     expect(jobLabel('enrich:package')).toBe('enrich:package');
   });
 });

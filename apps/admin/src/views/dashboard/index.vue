@@ -7,6 +7,7 @@ import type { DataOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 import AgentCard from './modules/agent-card.vue';
 import CoverageCard from './modules/coverage-card.vue';
+import GitHubReleaseCard from './modules/github-release-card.vue';
 import StatCard from './modules/stat-card.vue';
 import SyncCard from './modules/sync-card.vue';
 import TodoCard from './modules/todo-card.vue';
@@ -72,6 +73,7 @@ const stats = computed(() => {
         <NButton :loading="loading" @click="load">{{ $t('page.dashboard.retry') }}</NButton>
       </NAlert>
       <UsageCard v-if="overview?.usage" :usage="overview.usage" />
+      <GitHubReleaseCard v-if="overview?.githubReleases" :stats="overview.githubReleases" />
       <div v-if="overview" class="grid grid-cols-1 gap-16px lg:grid-cols-3">
         <CoverageCard :coverage="overview.coverage" class="lg:col-span-2" />
         <SyncCard :jobs="overview.jobs" :snapshot="overview.snapshot" />

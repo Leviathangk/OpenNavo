@@ -23,6 +23,7 @@ var Definitions = []Definition{
 	{Type: "catalog:sync", Queue: "critical", Cron: "*/15 * * * *", Retries: 3},
 	{Type: "analytics:sync", Queue: "default", Cron: "0 3 * * *", Retries: 5},
 	{Type: "snapshot:build", Queue: "critical", Cron: "5 * * * *", Retries: 3},
+	{Type: "github-release:snapshot", Queue: "default", Cron: "10 * * * *", Retries: 3},
 
 	{Type: "changelog:schedule", Queue: "default", Cron: "*/10 * * * *", Retries: 3},
 	{Type: "changelog:resolve", Queue: "changelog", Retries: 3, Ref: "package"},

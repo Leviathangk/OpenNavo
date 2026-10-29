@@ -219,10 +219,10 @@
     }
   },
   "route": {
-    "oauth-consent": "Conectar con OpenNavo",
     "403": "Sin permisos",
     "404": "Página no encontrada",
     "500": "Error del servidor",
+    "oauth-consent": "Conectar con OpenNavo",
     "login": "Iniciar sesión",
     "iframe-page": "Iframe",
     "dashboard": "Panel de control",
@@ -389,6 +389,25 @@
         "allCountries": "Ver todos los países / regiones",
         "country": "País",
         "unknownCountry": "Desconocido"
+      },
+      "githubReleases": {
+        "title": "Descargas / actualizaciones de GitHub",
+        "downloads": "Descargas",
+        "updates": "Actualizaciones",
+        "total": "Total de todas las versiones",
+        "today": "Hoy {value}",
+        "yesterday": "Ayer {value}",
+        "snapshot": "Última captura {time} · Asia/Shanghai · Cada hora",
+        "never": "Aún no hay capturas correctas · Asia/Shanghai · Cada hora",
+        "trend": "Descargas / actualizaciones diarias · Últimos 30 días",
+        "details": "Cifras diarias",
+        "date": "Fecha",
+        "empty": "Esperando la primera captura de GitHub. Configura el token de GitHub en los ajustes del sistema.",
+        "pending": "Las cifras diarias aparecen tras una captura en otro día natural de Pekín.",
+        "dailyStart": "Los datos diarios comienzan el {date}.",
+        "downloadsHint": "Las descargas cuentan las transferencias del DMG universal de todas las versiones de escritorio, incluidas las instalaciones y actualizaciones con Homebrew.",
+        "updatesHint": "Las actualizaciones suman las transferencias de .app.tar.gz para Apple Silicon e Intel. Son descargas, no personas.",
+        "dailyHint": "Los días siguen la hora de Pekín. — indica que no hay datos diarios. Los días sin captura se acumulan en el siguiente día con una captura correcta; no se reconstruye el historial."
       }
     },
     "catalog": {
@@ -872,7 +891,8 @@
           "assets_download-size": "Detección del tamaño de descarga",
           "cleanup": "Limpieza",
           "facts_sources": "Licencias y datos de App Store",
-          "taps_sync": "Sincronización de repositorios de terceros"
+          "taps_sync": "Sincronización de repositorios de terceros",
+          "github-release_snapshot": "Captura de descargas de versiones de GitHub"
         },
         "triggers": {
           "schedule": "Programada",

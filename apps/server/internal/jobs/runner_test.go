@@ -87,19 +87,20 @@ func TestDefinitionsSchedulesAndRetryOptions(t *testing.T) {
 	expected := map[string]time.Time{
 		"update-feeds:verify": time.Date(2026, 10, 6, 2, 15, 0, 0, location),
 		"catalog:sync":        time.Date(2026, 10, 5, 3, 0, 0, 0, location), "analytics:sync": time.Date(2026, 10, 5, 3, 0, 0, 0, location),
-		"snapshot:build":       time.Date(2026, 10, 5, 3, 5, 0, 0, location),
-		"changelog:schedule":   time.Date(2026, 10, 5, 3, 0, 0, 0, location),
-		"assets:download-size": time.Date(2026, 10, 5, 5, 0, 0, 0, location), "cleanup": time.Date(2026, 10, 5, 4, 0, 0, 0, location),
+		"snapshot:build":          time.Date(2026, 10, 5, 3, 5, 0, 0, location),
+		"github-release:snapshot": time.Date(2026, 10, 5, 3, 10, 0, 0, location),
+		"changelog:schedule":      time.Date(2026, 10, 5, 3, 0, 0, 0, location),
+		"assets:download-size":    time.Date(2026, 10, 5, 5, 0, 0, 0, location), "cleanup": time.Date(2026, 10, 5, 4, 0, 0, 0, location),
 		"facts:sources": time.Date(2026, 10, 5, 3, 35, 0, 0, location),
 		"links:sync":    time.Date(2026, 10, 5, 3, 40, 0, 0, location),
 		"taps:sync":     time.Date(2026, 10, 5, 3, 20, 0, 0, location),
 	}
-	require.Len(t, Definitions, 13)
+	require.Len(t, Definitions, 14)
 	var types []string
 	for _, definition := range Definitions {
 		types = append(types, definition.Type)
 	}
-	require.ElementsMatch(t, []string{"catalog:sync", "analytics:sync", "snapshot:build", "changelog:schedule", "changelog:resolve", "changelog:fetch", "assets:download-size", "cleanup", "facts:sources", "taps:sync", "links:sync", "update-feeds:verify", "seo:pages"}, types)
+	require.ElementsMatch(t, []string{"catalog:sync", "analytics:sync", "snapshot:build", "github-release:snapshot", "changelog:schedule", "changelog:resolve", "changelog:fetch", "assets:download-size", "cleanup", "facts:sources", "taps:sync", "links:sync", "update-feeds:verify", "seo:pages"}, types)
 	for taskType, want := range expected {
 		next, err := NextSchedule(taskType, now, location)
 		require.NoError(t, err)
