@@ -144,6 +144,36 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
     })
 }
 
+/// Keep only unique deep links that pass the same validation used by the router.
+pub fn validated_links<I, S>(inputs: I) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut links = Vec::new();
+    for input in inputs {
+        let input = input.as_ref();
+        if parse(input).is_some() && !links.iter().any(|link| link == input) {
+            links.push(input.to_owned());
+        }
+    }
+    links
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn startup_links(app: &tauri::AppHandle) -> Vec<String> {
+    let current = app
+        .try_state::<tauri_plugin_deep_link::DeepLink<tauri::Wry>>()
+        .and_then(|plugin| plugin.get_current().ok().flatten())
+        .unwrap_or_default();
+    validated_links(
+        current
+            .into_iter()
+            .map(|url| url.to_string())
+            .chain(std::env::args()),
+    )
+}
+
 struct State {
     ready: bool,
     pending: VecDeque<DeepLinkEvent>,
@@ -354,7 +384,7 @@ pub fn show_main<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         let _ = window.set_focus();
     }
 }
-pub fn install(app: &tauri::AppHandle, sink: EventSink) {
+pub fn install(app: &tauri::AppHandle, sink: EventSink, relaunch_links: Vec<String>) {
     use tauri_plugin_deep_link::DeepLinkExt;
     let handle = app.clone();
     let router = Router::new(sink, Arc::new(move || show_main(&handle)));
@@ -365,6 +395,9 @@ pub fn install(app: &tauri::AppHandle, sink: EventSink) {
             incoming.receive(url.as_str());
         }
     });
+    for link in relaunch_links {
+        router.receive(&link);
+    }
     if let Ok(Some(urls)) = app.deep_link().get_current() {
         for url in urls {
             router.receive(url.as_str());

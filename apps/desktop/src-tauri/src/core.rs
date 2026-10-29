@@ -10,7 +10,7 @@ use crate::{
 use std::{
     path::PathBuf,
     sync::{
-        Arc, RwLock,
+        Arc, Mutex, RwLock,
         atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering},
     },
 };
@@ -26,6 +26,7 @@ pub struct DesktopCore {
     pub data_dir: PathBuf,
     pub cache_dir: PathBuf,
     pub relaunch_fresh: bool,
+    relaunch_links: Mutex<Vec<String>>,
     pub startup_full_disk_pending: bool,
     relaunch_ineffective: AtomicBool,
     pub sink: EventSink,
@@ -57,13 +58,20 @@ fn poisoned<T>(_: T) -> AppError {
 }
 pub type PermissionSignals = fn(PermissionState, bool) -> crate::permissions::Signals;
 impl DesktopCore {
+    pub(crate) fn take_relaunch_links(&self) -> Vec<String> {
+        self.relaunch_links
+            .lock()
+            .map(|mut links| std::mem::take(&mut *links))
+            .unwrap_or_default()
+    }
+
     pub fn open(
         data_dir: PathBuf,
         cache_dir: PathBuf,
         askpass: PathBuf,
         sink: EventSink,
     ) -> Result<Arc<Self>, AppError> {
-        let relaunch_fresh = crate::relaunch::consume(&data_dir);
+        let (relaunch_fresh, relaunch_links) = crate::relaunch::consume_startup(&data_dir);
         let startup_full_disk_pending = crate::permissions::combine(crate::permissions::signals(
             PermissionState::Unknown,
             false,
@@ -110,6 +118,7 @@ impl DesktopCore {
             data_dir,
             cache_dir,
             relaunch_fresh,
+            relaunch_links: Mutex::new(relaunch_links),
             startup_full_disk_pending,
             relaunch_ineffective: AtomicBool::new(relaunch_fresh && startup_full_disk_pending),
             sink,

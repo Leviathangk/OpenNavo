@@ -416,7 +416,7 @@ pub fn run() {
             if relaunch::self_heal(app.handle(), &core, hidden) {
                 return Ok(());
             }
-            deeplink::install(app.handle(), sink);
+            deeplink::install(app.handle(), sink, core.take_relaunch_links());
             let app_handle = app.handle().clone();
             let store_path = core.data_dir.join("settings.json");
             let save = tauri::async_runtime::block_on(blocking(move || {
