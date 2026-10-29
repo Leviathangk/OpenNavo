@@ -59,7 +59,10 @@ const arch = computed(() =>
     : ''
 );
 const repoSignals = computed(() =>
-  toPackageRepoSignals(props.detail, props.detail?.openSource?.url ?? props.detail?.repoUrl)
+  toPackageRepoSignals(props.detail, {
+    repoUrl: props.detail?.openSource?.url ?? props.detail?.repoUrl,
+    archived: props.detail?.openSource?.archived
+  })
 );
 
 const installed = computed(() => library.find(props.kind, props.token));

@@ -467,6 +467,8 @@ const messages: MessageSchema = {
       chip: 'Chip',
       autoUpdates: 'Auto-updates',
       openSource: 'Open source',
+      repository: 'Repository',
+      githubRepository: 'GitHub repository',
       developer: 'Developer',
       homepage: 'Homepage',
       token: 'Token',

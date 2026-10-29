@@ -36,7 +36,12 @@ const arch = computed(() =>
     .map(item => t(`package.arch.${item}`))
     .join(' · ')
 );
-const repoSignals = computed(() => toPackageRepoSignals(props.pkg, props.pkg.openSource?.url ?? props.pkg.repoUrl));
+const repoSignals = computed(() =>
+  toPackageRepoSignals(props.pkg, {
+    repoUrl: props.pkg.openSource?.url ?? props.pkg.repoUrl,
+    archived: props.pkg.openSource?.archived
+  })
+);
 const unavailable = computed(() => Boolean(props.pkg.disable));
 
 const chips = computed<OnPackageHeaderChip[]>(() => {

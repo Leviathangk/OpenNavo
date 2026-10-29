@@ -335,22 +335,77 @@ describe('App questions', () => {
   it('Publishes the license GitHub reports, with archived repositories marked', () => {
     const items = faqItems(
       pageOf(
-        docker({
-          openSource: {
-            repo: 'gnachman/iTerm2',
-            url: 'https://github.com/gnachman/iTerm2',
-            license: 'GPL-2.0',
-            archived: false,
-            checkedAt: '2025-12-01T08:00:00Z'
+        Object.assign(
+          docker({
+            openSource: {
+              repo: 'gnachman/iTerm2',
+              url: 'https://github.com/gnachman/iTerm2',
+              license: 'GPL-2.0',
+              archived: false,
+              checkedAt: '2025-12-01T08:00:00Z'
+            }
+          }),
+          {
+            repository: {
+              url: 'https://github.com/gnachman/iTerm2',
+              stars: 12345,
+              pushedAt: '2026-10-01T00:00:00Z',
+              archived: false,
+              signalsCheckedAt: '2026-10-02T00:00:00Z'
+            }
+          }
+        )
+      ),
+      translator('en-US'),
+      'en-US'
+    );
+    expect(items.find(item => item.key === 'openSource')!.answer).toBe(
+      'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license. Repository stars: ★12.3K. Repository data checked Oct 2, 2026.'
+    );
+  });
+
+  it('distinguishes OSI repositories, public repositories without an OSI fact, and no repository', () => {
+    const osi = faqItems(
+      pageOf(
+        Object.assign(
+          docker({
+            openSource: {
+              repo: 'acme/osi',
+              url: 'https://github.com/acme/osi',
+              license: 'MIT',
+              archived: false,
+              checkedAt: '2025-12-01T08:00:00Z'
+            }
+          }),
+          { repository: { url: 'https://github.com/acme/osi', stars: 999, archived: false } }
+        )
+      ),
+      translator('en-US'),
+      'en-US'
+    );
+    expect(osi.find(item => item.key === 'openSource')!.answer).toContain('★999');
+
+    const publicOnly = faqItems(
+      pageOf(
+        Object.assign(docker({ openSource: null }), {
+          repository: {
+            url: 'https://github.com/acme/public-only',
+            stars: 1000,
+            archived: true,
+            signalsCheckedAt: '2026-10-02T00:00:00Z'
           }
         })
       ),
       translator('en-US'),
       'en-US'
     );
-    expect(items.find(item => item.key === 'openSource')!.answer).toBe(
-      'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license. Repository data checked Dec 1, 2025.'
+    expect(publicOnly.find(item => item.key === 'openSource')!.answer).toContain(
+      'has a public GitHub repository (https://github.com/acme/public-only), but OpenNavo has not verified an OSI license.'
     );
+    expect(publicOnly.find(item => item.key === 'openSource')!.answer).toContain('repository is archived');
+
+    const neither = faqItems(pageOf(docker({ openSource: null })), translator('en-US'), 'en-US');
+    expect(neither.some(item => item.key === 'openSource')).toBe(false);
   });
 
   it('Leaves out questions without facts, and fonts skip chips and extras', () => {

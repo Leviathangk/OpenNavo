@@ -7,7 +7,7 @@ import {
   repoSignalDays,
   toPackageRepoSignals
 } from '@opennavo/ui';
-import type { OnPackageSpecRow, PackageRepoSignals } from '@opennavo/ui';
+import type { OnPackageSpecRow, PackageRepoSignals, PackageRepositoryInput } from '@opennavo/ui';
 import type { PackageDetail } from '@opennavo/api';
 import type { LocalItem } from '@/ipc/client';
 
@@ -20,8 +20,9 @@ export interface DesktopPackageSpec {
 type Translate = (key: string, named?: Record<string, unknown>) => string;
 
 function repoSignals(detail: PackageDetail): PackageRepoSignals | null {
-  const fallback = detail.openSource?.url ?? detail.repoUrl;
-  const value = toPackageRepoSignals(detail, fallback);
+  const repository = (detail as PackageDetail & { repository?: PackageRepositoryInput }).repository;
+  const fallback = repository?.url ?? detail.openSource?.url ?? detail.repoUrl;
+  const value = toPackageRepoSignals(detail, { repoUrl: fallback, archived: detail.openSource?.archived });
   if (!value && detail.openSource)
     return {
       repoUrl: fallback ?? undefined,
@@ -29,14 +30,12 @@ function repoSignals(detail: PackageDetail): PackageRepoSignals | null {
       checkedAt: detail.openSource.checkedAt
     };
   if (!value) return null;
-  return detail.openSource?.archived && value.archived !== true
-    ? { ...value, archived: true, checkedAt: value.checkedAt ?? detail.openSource.checkedAt }
-    : { ...value, checkedAt: value.checkedAt ?? detail.openSource?.checkedAt };
+  return value;
 }
 
 function repoSummary(signals: PackageRepoSignals | null, t: Translate) {
   if (!signals) return { value: '', badge: undefined };
-  const values = signals.stars === undefined ? [] : [`★ ${formatRepoStars(signals.stars)}`];
+  const values = signals.stars === undefined ? [] : [`★${formatRepoStars(signals.stars)}`];
   const days = repoSignalDays(signals);
   const status = repoMaintenanceStatus(signals);
   if (days !== null && status !== 'archived') values.push(t('package.repo.updated', { days }));
@@ -80,14 +79,17 @@ export function packageSpec(
       value: t(detail.autoUpdates ? 'package.spec.yes' : 'package.spec.no')
     });
 
-  const repository = detail.openSource;
-  if (repository) {
+  const repository = (detail as PackageDetail & { repository?: PackageRepositoryInput }).repository;
+  const osi = detail.openSource;
+  if (repository || osi) {
     const summary = repoSummary(signals, t);
     rows.push({
       key: 'openSource',
-      label: t('package.spec.openSource'),
-      value: [t('package.spec.yes'), repository.license, summary.value].filter(Boolean).join(' · '),
-      href: repository.url,
+      label: t('package.spec.repository'),
+      value: [osi ? t('package.spec.openSource') : t('package.spec.githubRepository'), osi?.license, summary.value]
+        .filter(Boolean)
+        .join(' · '),
+      href: repository?.url ?? osi?.url,
       badge: summary.badge
     });
   }

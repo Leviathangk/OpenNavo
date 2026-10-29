@@ -161,6 +161,7 @@ export {
   toPackageRepoSignals
 } from './utils/repoSignals';
 export type { PackageRepoSignals } from './utils/repoSignals';
+export type { PackageRepositoryInput } from './utils/repoSignals';
 export { commandBreak } from './utils/command';
 export { heroGlowGradient } from './utils/glow';
 export {

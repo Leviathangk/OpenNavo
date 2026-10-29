@@ -12,20 +12,40 @@ describe('repository signals', () => {
     expect(formatRepoStars(stars)).toBe(expected);
   });
 
-  it('adapts optional snake_case API fields and tolerates missing data', () => {
+  it('reads only the optional repository object and ignores legacy field spellings', () => {
     expect(
       toPackageRepoSignals(
-        { stargazers_count: 12345, pushed_at: '2026-10-01T00:00:00Z', archived: false },
-        'https://github.com/example/app'
+        {
+          stargazers_count: 999,
+          pushed_at: '2020-01-01T00:00:00Z',
+          repository: {
+            url: 'https://github.com/example/app',
+            stars: 12345,
+            pushedAt: '2026-10-01T00:00:00Z',
+            archived: false,
+            signalsCheckedAt: '2026-10-02T00:00:00Z'
+          }
+        },
+        { archived: true }
       )
     ).toEqual({
       stars: 12345,
       pushedAt: '2026-10-01T00:00:00Z',
-      checkedAt: undefined,
+      checkedAt: '2026-10-02T00:00:00Z',
       archived: false,
       repoUrl: 'https://github.com/example/app'
     });
     expect(toPackageRepoSignals({}, null)).toBeNull();
+  });
+
+  it('uses open-source archived status only as the explicit archived fallback', () => {
+    expect(toPackageRepoSignals({}, { repoUrl: 'https://github.com/example/app', archived: true })).toEqual({
+      stars: undefined,
+      pushedAt: undefined,
+      checkedAt: undefined,
+      archived: true,
+      repoUrl: 'https://github.com/example/app'
+    });
   });
 
   it('uses the strict greater-than 365 day threshold', () => {

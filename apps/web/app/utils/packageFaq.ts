@@ -21,7 +21,6 @@ import {
   priceAmount,
   priceEdition,
   priceRegionName,
-  verifiedIdentities,
   verifiedPrices
 } from './packageFacts';
 import type { PackagePage } from './packageFacts';
@@ -305,29 +304,37 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
     );
   }
 
-  // Is it open source? An OSI license GitHub recognized for a repository with code, still verified.
-  const repository = pkg.openSource;
-  const openIdentity = verifiedIdentities(pkg).some(
-    identity => identity.openSource === 'yes' && identity.repositoryUrl === repository?.url
-  );
-  if (repository && openIdentity)
+  // Is it open source? OSI facts remain separate from the optional repository signals.
+  const repository = pkg.repository;
+  const openSource = pkg.openSource;
+  const repoSignals = toPackageRepoSignals(pkg, {
+    repoUrl: repository?.url ?? openSource?.url,
+    archived: openSource?.archived
+  });
+  if (openSource)
     add(
       'openSource',
       t('package.faq.openSourceQ', { name }),
       sentences([
-        t('package.faq.openSourceA', { name, repo: repository.repo, license: repository.license }),
-        (() => {
-          const signals = toPackageRepoSignals(pkg, repository.url);
-          return signals?.stars === undefined
-            ? undefined
-            : t('package.faq.openSourceStars', { stars: `★ ${formatRepoStars(signals.stars)}` });
-        })(),
-        (() => {
-          const signals = toPackageRepoSignals(pkg, repository.url);
-          const checkedAt = signals?.checkedAt ?? repository.checkedAt;
-          return checkedAt ? t('package.faq.openSourceChecked', { date: date(checkedAt) }) : undefined;
-        })(),
-        repository.archived && t('package.faq.openSourceArchived')
+        t('package.faq.openSourceA', { name, repo: openSource.repo, license: openSource.license }),
+        repoSignals?.stars === undefined
+          ? undefined
+          : t('package.faq.openSourceStars', { stars: `★${formatRepoStars(repoSignals.stars)}` }),
+        repoSignals?.checkedAt ? t('package.faq.openSourceChecked', { date: date(repoSignals.checkedAt) }) : undefined,
+        (repoSignals?.archived ?? openSource.archived) && t('package.faq.openSourceArchived')
+      ])
+    );
+  else if (repository)
+    add(
+      'openSource',
+      t('package.faq.openSourceQ', { name }),
+      sentences([
+        t('package.faq.openSourceNoLicenseA', { name, repo: repository.url ?? '' }),
+        repoSignals?.stars === undefined
+          ? undefined
+          : t('package.faq.openSourceStars', { stars: `★${formatRepoStars(repoSignals.stars)}` }),
+        repoSignals?.checkedAt ? t('package.faq.openSourceChecked', { date: date(repoSignals.checkedAt) }) : undefined,
+        repoSignals?.archived && t('package.faq.openSourceArchived')
       ])
     );
 

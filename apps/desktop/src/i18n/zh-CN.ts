@@ -453,6 +453,8 @@ export default {
       chip: '芯片',
       autoUpdates: '自动更新',
       openSource: '开源',
+      repository: '仓库',
+      githubRepository: 'GitHub 仓库',
       developer: '开发者',
       homepage: '主页',
       token: 'Token',

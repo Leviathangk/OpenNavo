@@ -4,7 +4,7 @@ import { formatDate } from './packageDate';
 // of the page can state what another contradicts. Evidence decides the wording: a verified fact is
 // stated with its check date, a stale one only "as of" its date and never as current, and anything
 // pending review or without a dated source is left out.
-import type { PackageDetail, PublicComponents } from '@opennavo/api';
+import type { PackageDetail, PackageRepository, PublicComponents } from '@opennavo/api';
 import { disabledByHomebrew, formatVersion, isThirdPartyTap } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { httpsUrl, linkSource } from './linkApp';
@@ -47,10 +47,12 @@ const DROPPED = [
 /** The detail as app pages keep it: slimmed, and always with a facts model. */
 export type PackagePage = Omit<PackageDetail, (typeof DROPPED)[number] | 'facts'> & {
   facts: AppFacts;
+  /** Optional repository signals from the follow-up public API contract. */
+  repository?: PackageRepository;
 };
 
 /** useAsyncData transform for the detail payload (T6). */
-export function slimPackage(detail: PackageDetail): PackagePage {
+export function slimPackage(detail: PackageDetail & { repository?: PackageRepository }): PackagePage {
   const facts: AppFacts = { ...(detail.facts ?? fallbackFacts(detail)) };
   // The legacy price object lives on in facts.prices, which the blocks, questions and JSON-LD read.
   delete facts.price;

@@ -2,8 +2,8 @@
  * Optional repository metadata used by the package detail spec card.
  *
  * The public API will add these fields independently of the UI rollout, so the
- * adapter deliberately accepts unknown input and supports both snake_case and
- * camelCase spellings. Keeping this view model in the UI package means web and
+ * adapter deliberately accepts unknown input and reads only the `repository`
+ * object from the package payload. Keeping this view model in the UI package means web and
  * desktop can render the same data without coupling to an API response shape.
  */
 export interface PackageRepoSignals {
@@ -14,20 +14,19 @@ export interface PackageRepoSignals {
   repoUrl?: string;
 }
 
+/** Hand-written shape for the optional `data.repository` API object. */
+export interface PackageRepositoryInput {
+  url?: string | null;
+  stars?: number | null;
+  pushedAt?: string | null;
+  archived?: boolean;
+  signalsCheckedAt?: string | null;
+}
+
 type UnknownRecord = Record<string, unknown>;
 
 function record(value: unknown): UnknownRecord | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : null;
-}
-
-function firstRecord(value: UnknownRecord): UnknownRecord {
-  return (
-    record(value.repoSignals) ??
-    record(value.repositorySignals) ??
-    record(value.githubSignals) ??
-    record(value.github) ??
-    value
-  );
 }
 
 function numberValue(value: unknown): number | undefined {
@@ -46,16 +45,18 @@ function stringValue(value: unknown): string | undefined {
  * Missing or malformed optional fields are ignored; a null result means the
  * page has no repository signal to show yet.
  */
-export function toPackageRepoSignals(input: unknown, fallbackRepoUrl?: string | null): PackageRepoSignals | null {
+export function toPackageRepoSignals(
+  input: unknown,
+  fallback?: { repoUrl?: string | null; archived?: boolean } | null
+): PackageRepoSignals | null {
   const source = record(input);
-  if (!source) return null;
-  const value = firstRecord(source);
+  const value = source ? record(source.repository) : null;
   const signals: PackageRepoSignals = {
-    stars: numberValue(value.stargazers_count ?? value.stargazersCount ?? value.stars),
-    pushedAt: stringValue(value.pushed_at ?? value.pushedAt),
-    checkedAt: stringValue(value.signals_checked_at ?? value.signalsCheckedAt ?? value.checked_at ?? value.checkedAt),
-    archived: typeof value.archived === 'boolean' ? value.archived : undefined,
-    repoUrl: stringValue(value.repo_url ?? value.repoUrl) ?? stringValue(fallbackRepoUrl)
+    stars: numberValue(value?.stars),
+    pushedAt: stringValue(value?.pushedAt),
+    checkedAt: stringValue(value?.signalsCheckedAt),
+    archived: typeof value?.archived === 'boolean' ? value.archived : fallback?.archived,
+    repoUrl: stringValue(value?.url) ?? stringValue(fallback?.repoUrl)
   };
   const hasSignal =
     signals.stars !== undefined ||
