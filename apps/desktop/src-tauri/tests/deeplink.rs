@@ -69,6 +69,16 @@ fn routes_actions_encoding_and_bounded_query() {
     assert!(deeplink::parse(&format!("opennavo://package/cask/{}", "a".repeat(129))).is_none());
     assert!(deeplink::parse(&format!("opennavo://collection/{}", "a".repeat(65))).is_none());
 }
+
+#[test]
+fn relaunch_carries_unique_valid_links_and_drops_invalid_or_missing_links() {
+    let valid = "opennavo://package/cask/ghostty?action=install";
+    let links =
+        deeplink::validated_links(["OpenNavo", valid, "opennavo://updates?action=remove", valid]);
+    assert_eq!(links, vec![valid]);
+    assert!(deeplink::validated_links(["OpenNavo", "--hidden"]).is_empty());
+}
+
 #[test]
 fn cold_launch_forwarding_buffer_duplicate_and_invalid_only_show_window() {
     let events = Arc::new(Mutex::new(Vec::new()));

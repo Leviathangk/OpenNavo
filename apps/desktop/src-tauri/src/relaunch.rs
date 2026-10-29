@@ -5,6 +5,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+#[cfg(any(target_os = "macos", test))]
+use std::{fs::OpenOptions, io::Write};
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Reason {
@@ -53,7 +56,25 @@ pub fn consume(data_dir: &Path) -> bool {
 #[cfg(any(target_os = "macos", test))]
 fn write_at(data_dir: &Path, reason: Reason, at: u64) -> std::io::Result<()> {
     let bytes = serde_json::to_vec(&Marker { at, reason }).map_err(std::io::Error::other)?;
-    std::fs::write(data_dir.join("relaunch.json"), bytes)
+    let path = data_dir.join("relaunch.json");
+    let temporary = data_dir.join(format!(".relaunch-{}.tmp", uuid::Uuid::now_v7()));
+    let mut created = false;
+    let result = (|| {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        created = true;
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+        drop(file);
+        // Replacing the path itself also replaces a pre-existing symlink, without following it.
+        std::fs::rename(&temporary, &path)
+    })();
+    if result.is_err() && created {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    result
 }
 
 #[cfg(target_os = "macos")]
@@ -73,16 +94,22 @@ while kill -0 "$1" 2>/dev/null && [ "$i" -lt 300 ]; do
     sleep 0.1
     i=$((i + 1))
 done
-exec /usr/bin/open -n "$2""#;
+bundle="$2"
+shift 2
+if [ "$#" -gt 0 ]; then
+    exec /usr/bin/open -n "$bundle" --args "$@"
+fi
+exec /usr/bin/open -n "$bundle""#;
 
 #[cfg(target_os = "macos")]
-fn helper(pid: u32, bundle: &Path) -> Command {
+fn helper(pid: u32, bundle: &Path, links: &[String]) -> Command {
     let mut command = Command::new("/bin/sh");
-    // Keep paths out of shell source and never forward argv (including login's --hidden).
+    // Keep paths and URLs out of shell source; only already-validated links are forwarded.
     command
         .args(["-c", WAIT_SCRIPT, "sh"])
         .arg(pid.to_string())
         .arg(bundle)
+        .args(links)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -96,7 +123,7 @@ pub fn reopen(data_dir: &Path, reason: Reason) -> std::io::Result<bool> {
         return Ok(false);
     };
     write(data_dir, reason)?;
-    helper(std::process::id(), &bundle).spawn()?;
+    helper(std::process::id(), &bundle, &[]).spawn()?;
     Ok(true)
 }
 
@@ -113,7 +140,12 @@ fn should_self_heal(
 
 /// Return before any window or background service starts when a one-time repair is requested.
 #[cfg(target_os = "macos")]
-pub fn self_heal(app: &tauri::AppHandle, core: &crate::core::DesktopCore, hidden: bool) -> bool {
+pub fn self_heal(
+    app: &tauri::AppHandle,
+    core: &crate::core::DesktopCore,
+    hidden: bool,
+    links: &[String],
+) -> bool {
     use tauri::Manager;
     let bundle = std::env::current_exe()
         .ok()
@@ -135,7 +167,8 @@ pub fn self_heal(app: &tauri::AppHandle, core: &crate::core::DesktopCore, hidden
     let lifecycle = std::sync::Arc::new(crate::lifecycle::Lifecycle::default());
     lifecycle.ready();
     app.manage(lifecycle);
-    match helper(std::process::id(), &bundle.unwrap()).spawn() {
+    let links = crate::deeplink::validated_links(links);
+    match helper(std::process::id(), &bundle.unwrap(), &links).spawn() {
         Ok(_) => app.exit(0),
         Err(error) => {
             log::warn!("LaunchServices startup relaunch failed: {error}");
@@ -153,7 +186,7 @@ mod tests {
     #[test]
     fn helper_passes_only_pid_and_bundle_as_positional_arguments() {
         let path = Path::new("/tmp/Space ' quote \" $(touch nope) `whoami` 中文.app");
-        let command = helper(1234, path);
+        let command = helper(1234, path, &[]);
         assert_eq!(command.get_program(), OsStr::new("/bin/sh"));
         assert_eq!(
             command.get_args().collect::<Vec<_>>(),
@@ -166,11 +199,29 @@ mod tests {
             ]
         );
         assert!(!WAIT_SCRIPT.contains(path.to_str().unwrap()));
-        assert!(!WAIT_SCRIPT.contains("--args"));
+        assert!(WAIT_SCRIPT.contains("--args"));
         assert!(
             !command
                 .get_args()
                 .any(|arg| arg == crate::lifecycle::LOGIN_ARG)
+        );
+    }
+
+    #[test]
+    fn helper_forwards_only_the_validated_links_as_arguments() {
+        let path = Path::new("/tmp/OpenNavo.app");
+        let links = vec!["opennavo://updates".to_owned()];
+        let command = helper(1234, path, &links);
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            vec![
+                OsStr::new("-c"),
+                OsStr::new(WAIT_SCRIPT),
+                OsStr::new("sh"),
+                OsStr::new("1234"),
+                path.as_os_str(),
+                OsStr::new("opennavo://updates"),
+            ]
         );
     }
 }
@@ -236,5 +287,47 @@ mod marker_tests {
             assert!(!consume_at(dir.path(), now));
             assert!(!path.exists());
         }
+    }
+
+    #[test]
+    fn normal_write_creates_a_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        write_at(dir.path(), Reason::SelfHeal, 1000).unwrap();
+        assert!(fresh(
+            &std::fs::read(dir.path().join("relaunch.json")).unwrap(),
+            1000
+        ));
+    }
+
+    #[test]
+    fn existing_regular_marker_is_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("relaunch.json");
+        std::fs::write(&path, br#"{"at":1,"reason":"user"}"#).unwrap();
+        write_at(dir.path(), Reason::SelfHeal, 1000).unwrap();
+        assert!(fresh(&std::fs::read(&path).unwrap(), 1000));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preexisting_symlink_is_replaced_without_touching_its_target() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("relaunch.json");
+        let target = dir.path().join("target.json");
+        std::fs::write(&target, b"keep me").unwrap();
+        symlink(&target, &path).unwrap();
+
+        write_at(dir.path(), Reason::SelfHeal, 1000).unwrap();
+
+        assert_eq!(std::fs::read(&target).unwrap(), b"keep me");
+        assert!(
+            !std::fs::symlink_metadata(&path)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert!(fresh(&std::fs::read(&path).unwrap(), 1000));
     }
 }

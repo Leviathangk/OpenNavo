@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.config_mut().identifier = "com.opennavo.relaunchprobe.restart20261029".into();
     let app = tauri::Builder::default()
         .setup(move |app| {
-            let healing = relaunch::self_heal(app.handle(), &core, hidden);
+            let healing = relaunch::self_heal(app.handle(), &core, hidden, &[]);
             if healing != (mode == "self_heal" && !fresh && !hidden) {
                 return Err("unexpected automatic relaunch decision".into());
             }

@@ -144,6 +144,22 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
     })
 }
 
+/// Keep only unique deep links that pass the same validation used by the router.
+pub fn validated_links<I, S>(inputs: I) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut links = Vec::new();
+    for input in inputs {
+        let input = input.as_ref();
+        if parse(input).is_some() && !links.iter().any(|link| link == input) {
+            links.push(input.to_owned());
+        }
+    }
+    links
+}
+
 struct State {
     ready: bool,
     pending: VecDeque<DeepLinkEvent>,
