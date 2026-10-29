@@ -46,6 +46,28 @@ describe('robots.txt generation', () => {
     expect(text.match(new RegExp(ROBOTS_CONTENT_SIGNAL, 'g'))).toHaveLength(1);
   });
 
+  it('uses only known directives and keeps the exact Content-Signal in the default group', () => {
+    const text = buildRobotsTxt({
+      crawlers: DEFAULT_CRAWLER_POLICY,
+      indexable: true,
+      ...open,
+      sitemap: 'https://opennavo.example/sitemap_index.xml'
+    });
+    const knownDirectives = new Set(['user-agent', 'allow', 'disallow', 'sitemap', 'content-signal', 'crawl-delay']);
+
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const colon = trimmed.indexOf(':');
+      expect(colon, trimmed).toBeGreaterThan(0);
+      expect(knownDirectives, trimmed).toContain(trimmed.slice(0, colon).toLowerCase());
+    }
+
+    const [everyone] = text.split('\n\n');
+    expect(everyone).toContain('User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\n');
+    expect(text.match(/Content-Signal: .*/g)).toEqual(['Content-Signal: search=yes, ai-input=yes, ai-train=yes']);
+  });
+
   it('Search, user-fetch and existing diagnostic tokens cannot be blocked or limited', () => {
     const expected = [
       'Googlebot',
