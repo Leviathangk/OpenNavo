@@ -29,7 +29,7 @@ const (
 	// Cloudflare takes up to 100 prefixes per purge request, and on the Free plan 5 requests a minute
 	// (bursts of 25) for the whole account.
 	purgeChunk    = 100
-	purgeInterval = 12 * time.Second
+	purgeInterval = store.URLPurgeInterval
 	// Above this backlog size, coalesce work into one purge of the long-cached sections.
 	maxPurgePrefixes = 1000
 	indexNowChunk    = 10000

@@ -201,6 +201,9 @@ func (s *Store) PendingContentURLChanges(ctx context.Context, cursor int64, befo
 	return out, nil
 }
 
+// URLPurgeInterval spaces account-wide purge requests at five per minute.
+const URLPurgeInterval = 12 * time.Second
+
 // ReserveURLPurge shares a durable request interval between release and content purges.
 // Reserve before sending, so failed requests and process restarts also consume allowance.
 func (s *Store) ReserveURLPurge(ctx context.Context, now time.Time, interval time.Duration) (bool, error) {
@@ -210,17 +213,18 @@ func (s *Store) ReserveURLPurge(ctx context.Context, now time.Time, interval tim
 
 func (s *Store) URLPurgeReadyAt(ctx context.Context, now time.Time, maxRetryAfter time.Duration) (time.Time, error) {
 	var due time.Time
+	cap := max(config.ProbeRetryAfterCap(maxRetryAfter), URLPurgeInterval)
 	// Persist the bound so repeated reads and restarts cannot move it forward.
 	err := s.DB.WithContext(ctx).Raw(`UPDATE url_notify_state SET next_purge_at=least(coalesce(next_purge_at,'epoch'::timestamptz),?)
- WHERE id=true RETURNING next_purge_at`, now.Add(config.ProbeRetryAfterCap(maxRetryAfter))).Scan(&due).Error
+ WHERE id=true RETURNING next_purge_at`, now.Add(cap)).Scan(&due).Error
 	return due, err
 }
 
 // Account-level throttling may outlive our own interval. Persist the cooldown
 // so release purges, other workers and restarts all honor the same deadline.
 func (s *Store) DelayURLPurge(ctx context.Context, now, due time.Time, maxRetryAfter time.Duration) error {
-	capAt := now.Add(config.ProbeRetryAfterCap(maxRetryAfter))
-	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=greatest(least(next_purge_at,?),least(?::timestamptz,?)) WHERE id=true", capAt, due, capAt).Error
+	capAt := now.Add(max(config.ProbeRetryAfterCap(maxRetryAfter), URLPurgeInterval))
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=greatest(least(coalesce(next_purge_at,'epoch'::timestamptz),?),least(?::timestamptz,?)) WHERE id=true", capAt, due, capAt).Error
 }
 
 // URLProbeReadyAt persists overload cooldown across notifier restarts.
@@ -235,10 +239,10 @@ func (s *Store) URLProbeReadyAt(ctx context.Context, now time.Time, maxRetryAfte
 func (s *Store) RecordURLProbe(ctx context.Context, now, retryAt time.Time, overloaded bool, maxRetryAfter time.Duration) error {
 	capAt := now.Add(config.ProbeRetryAfterCap(maxRetryAfter))
 	if !overloaded {
-		return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET probe_failures=0,probe_ready_at=least(probe_ready_at,?) WHERE id=true", capAt).Error
+		return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET probe_failures=0,probe_ready_at=least(coalesce(probe_ready_at,'epoch'::timestamptz),?) WHERE id=true", capAt).Error
 	}
 	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_state SET
- probe_ready_at=greatest(least(probe_ready_at,?),least(?::timestamptz,?),
+ probe_ready_at=greatest(least(coalesce(probe_ready_at,'epoch'::timestamptz),?),least(?::timestamptz,?),
  least(?::timestamptz + make_interval(secs => 30 * power(2, least(probe_failures, 6))::int),?)),
  probe_failures=least(probe_failures+1, 7) WHERE id=true`, capAt, retryAt, capAt, now, capAt).Error
 }
