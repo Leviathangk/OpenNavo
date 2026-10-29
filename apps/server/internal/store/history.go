@@ -88,6 +88,24 @@ func HistoryStateIncludesPackageLifecycle(state HistoryState) bool {
 	return false
 }
 
+// HistoryMergeBefore preserves the earlier snapshot while carrying lifecycle
+// fields from the earliest later revision that captured them. Missing fields
+// mean uncaptured, so only explicit values (including false and null) are copied.
+func HistoryMergeBefore(earlier, later HistoryState) HistoryState {
+	laterRows := historyRows(later["packages"])
+	for key, row := range historyRows(earlier["packages"]) {
+		for _, field := range packageLifecycleFields {
+			if _, exists := row[field]; exists {
+				continue
+			}
+			if value, exists := laterRows[key][field]; exists {
+				row[field] = value
+			}
+		}
+	}
+	return earlier
+}
+
 func (s *Store) historySnapshot(ctx context.Context, ref content.Ref, includePackageLifecycle bool) (HistoryState, error) {
 	tables := historyTables(ref, includePackageLifecycle)
 	if len(tables) == 0 {

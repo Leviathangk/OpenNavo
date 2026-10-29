@@ -233,6 +233,20 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 						}
 					}
 					merged[i].RequiredPermissions, _ = json.Marshal(a)
+					if row.Entity == "package" {
+						earlier, err := revisionState(row.BeforeData)
+						if err != nil {
+							return err
+						}
+						later, err := revisionState(merged[i].BeforeData)
+						if err != nil {
+							return err
+						}
+						row.BeforeData, err = json.Marshal(store.HistoryMergeBefore(earlier, later))
+						if err != nil {
+							return err
+						}
+					}
 					merged[i].BeforeData = row.BeforeData
 				} else {
 					indices[key] = len(merged)

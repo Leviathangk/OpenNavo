@@ -8,11 +8,87 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRevertRequestNormalEditThenClearDisabled(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		disabled      bool
+		staleDisabled bool
+		repeatClear   bool
+	}{
+		{name: "upstream_disabled", disabled: true},
+		{name: "stale_disabled", staleDisabled: true},
+		{name: "earliest_clear_snapshot", disabled: true, staleDisabled: true, repeatClear: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			st := testutil.NewSEOStore(t)
+			actorID := int64(804)
+			require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(804,'merged-history-fixture','isolated-test-only');
+INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,download_size,disable_date,disable_reason,disable_replacement)
+VALUES(804,'cask','merged-history','merged-history','homebrew/cask','Merged history','1','1','{}','fixture',100,'2026-01-01','unsafe','cask:replacement');
+INSERT INTO package_meta(package_id) VALUES(804)`).Error)
+			require.NoError(t, st.DB.Exec("UPDATE packages SET disabled=?,stale_disabled=? WHERE id=804", tc.disabled, tc.staleDisabled).Error)
+			ref := content.Ref{Entity: "package", ID: 804}
+			before, err := st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			require.NoError(t, err)
+			svc := &Service{Store: st}
+			requestID := uuid.NewString()
+			op := &domain.Operation{RequestID: requestID, Name: "updatePackageMeta", ActorID: &actorID, Permissions: []string{"catalog:package:edit"}, RequiredPermissions: []string{"catalog:package:edit"}, AllowDelete: true}
+			requestCtx := domain.WithOperation(ctx, op)
+			write := func(body map[string]any) {
+				t.Helper()
+				_, err := svc.Execute(requestCtx, "UpdatePackageMeta", Input{ID: 804, Body: body, Actor: store.AuditActor{ID: &actorID}})
+				require.NoError(t, err)
+			}
+
+			// Both real service writes retain the same operation request ID.
+			// The normal edit deliberately captures no lifecycle fields.
+			write(map[string]any{"hidden": true, "downloadSize": int64(200)})
+			write(map[string]any{"clearDisabled": true})
+			if tc.repeatClear {
+				// A later clear captures the already-cleared lifecycle. Revert
+				// must use the first clear's before, not the latest clear's before.
+				write(map[string]any{"clearDisabled": true, "downloadSize": int64(300)})
+			}
+
+			var revisions []revisionRow
+			require.NoError(t, st.DB.Raw("SELECT before_data,after_data FROM content_revisions WHERE request_id=? AND entity='package' ORDER BY id", requestID).Scan(&revisions).Error)
+			count := 2
+			if tc.repeatClear {
+				count++
+			}
+			require.Len(t, revisions, count)
+			normalBefore, err := revisionState(revisions[0].BeforeData)
+			require.NoError(t, err)
+			require.False(t, store.HistoryStateIncludesPackageLifecycle(normalBefore))
+			clearBefore, err := revisionState(revisions[1].BeforeData)
+			require.NoError(t, err)
+			require.True(t, store.HistoryStateIncludesPackageLifecycle(clearBefore))
+			require.Equal(t, tc.disabled, clearBefore["packages"][0]["disabled"])
+			cleared, err := st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			require.NoError(t, err)
+			require.Equal(t, false, cleared["packages"][0]["disabled"])
+			require.NotNil(t, cleared["packages"][0]["disabled_override_at"])
+			t.Logf("shared request has %d revisions; normal before omits lifecycle, first clear before disabled=%v", count, tc.disabled)
+
+			_, err = svc.Execute(ctx, "RevertRequest", Input{RequestID: requestID, Body: map[string]any{}})
+			require.NoError(t, err)
+			after, err := st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			require.NoError(t, err)
+			var hidden bool
+			require.NoError(t, st.DB.Raw("SELECT hidden FROM package_meta WHERE package_id=804").Scan(&hidden).Error)
+			require.False(t, hidden, "the normal edit must also be reverted")
+			require.Equal(t, before["packages"], after["packages"], "restore lifecycle booleans, the complete override group, and the original download size")
+		})
+	}
+}
 
 func TestClearDisabledRevisionRestoresPackageLifecycle(t *testing.T) {
 	ctx := context.Background()
