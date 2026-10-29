@@ -89,6 +89,17 @@ func (s *Service) Read(ctx context.Context, row store.LinkApp) (*domain.GithubRe
 			delete(state, source)
 			continue
 		}
+		if source == "github_release" && row.HasGithubFilters() {
+			release, notes, err := s.filteredGithub(ctx, row)
+			if err != nil {
+				return nil, "", "", "", err
+			}
+			// Filtered lists are intentionally fetched without conditional cache
+			// validators. Keep their cache identity separate from /releases/latest.
+			state[source] = cachedSource{URL: strings.TrimSuffix(target, "/latest"), Release: release, Body: notes}
+			latest, selected, body = release, source, notes
+			continue
+		}
 		cached := state[source]
 		if cached.URL != target {
 			cached = cachedSource{URL: target}

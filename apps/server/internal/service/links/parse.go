@@ -61,27 +61,38 @@ func asset(name, target string, size int64, rules map[string]string) (domain.Rel
 	}
 	return a, nil
 }
+
+type githubRelease struct {
+	Tag        string    `json:"tag_name"`
+	Published  time.Time `json:"published_at"`
+	URL        string    `json:"html_url"`
+	Body       string    `json:"body"`
+	Draft      bool      `json:"draft"`
+	Prerelease bool      `json:"prerelease"`
+	Assets     []struct {
+		Name   string `json:"name"`
+		URL    string `json:"browser_download_url"`
+		Size   int64  `json:"size"`
+		Digest string `json:"digest"`
+	} `json:"assets"`
+}
+
 func parseGitHub(data []byte, rules map[string]string) (*domain.GithubRelease, string, error) {
-	var release struct {
-		Tag        string    `json:"tag_name"`
-		Published  time.Time `json:"published_at"`
-		URL        string    `json:"html_url"`
-		Body       string    `json:"body"`
-		Draft      bool      `json:"draft"`
-		Prerelease bool      `json:"prerelease"`
-		Assets     []struct {
-			Name   string `json:"name"`
-			URL    string `json:"browser_download_url"`
-			Size   int64  `json:"size"`
-			Digest string `json:"digest"`
-		} `json:"assets"`
-	}
+	var release githubRelease
 	if err := json.Unmarshal(data, &release); err != nil {
 		return nil, "", err
 	}
-	version := releaseVersion(release.Tag)
-	if release.Draft || release.Prerelease || version == "" || len(version) > 256 || release.Published.IsZero() || !domain.LinkHTTPS(release.URL) || len(release.Assets) > 500 {
-		return nil, "", errors.New("invalid stable GitHub release")
+	return parseGithubRelease(release, rules, false, nil)
+}
+
+func parseGithubRelease(release githubRelease, rules map[string]string, includePrereleases bool, prefix *string) (*domain.GithubRelease, string, error) {
+	tag := release.Tag
+	if prefix != nil {
+		tag = strings.TrimPrefix(tag, *prefix)
+	}
+	version := releaseVersion(tag)
+	if release.Draft || (release.Prerelease && !includePrereleases) || version == "" || len(version) > 256 || release.Published.IsZero() || !domain.LinkHTTPS(release.URL) || len(release.Assets) > 500 {
+		return nil, "", errors.New("invalid GitHub release")
 	}
 	result := &domain.GithubRelease{Tag: release.Tag, Version: version, PublishedAt: release.Published, URL: release.URL, Assets: []domain.ReleaseAsset{}}
 	for _, input := range release.Assets {
