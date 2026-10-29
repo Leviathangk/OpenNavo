@@ -224,6 +224,47 @@ func TestSourceFactsSignalsRefreshOnlyFoundAppsDaily(t *testing.T) {
 	require.Nil(t, detail.Repository.Stars, "GitHub omitted stargazers_count in this response")
 }
 
+func TestSourceFactsSignalRefreshUsesSignalsUpdate(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	addCask(t, st, `{"token":"signals-update","name":["Signals Update"],"version":"1","homepage":"https://github.com/acme/signals-update","url":"https://example.test/signals-update.dmg","artifacts":[{"app":["Signals Update.app"]}]}`)
+	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+		result := mitRepo(repo)
+		if etag != "" {
+			stars := int64(2000)
+			result.Repository.StargazersCount = &stars
+		}
+		return result, nil
+	}}
+	svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	initial := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.NoError(t, st.DB.Exec(`UPDATE package_source_facts SET fail_count=2 WHERE package_id=? AND source='github'`, initial.PackageID).Error)
+
+	t.Cleanup(func() {
+		_ = st.DB.Exec(`DROP TRIGGER IF EXISTS reject_source_fact_insert ON package_source_facts`).Error
+		_ = st.DB.Exec(`DROP FUNCTION IF EXISTS reject_source_fact_insert()`).Error
+	})
+	require.NoError(t, st.DB.Exec(`CREATE FUNCTION reject_source_fact_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'signal refresh must use UPDATE'; END $$`).Error)
+	require.NoError(t, st.DB.Exec(`CREATE TRIGGER reject_source_fact_insert BEFORE INSERT ON package_source_facts FOR EACH ROW EXECUTE FUNCTION reject_source_fact_insert()`).Error)
+
+	now = now.Add(25 * time.Hour)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	rows, err = st.SourceFacts(ctx)
+	require.NoError(t, err)
+	refreshed := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.Equal(t, initial.CheckedAt, refreshed.CheckedAt)
+	require.Equal(t, initial.NextCheckAt, refreshed.NextCheckAt)
+	require.Equal(t, 2, refreshed.FailCount)
+	require.Equal(t, int64(2000), openStars(t, refreshed))
+	require.Zero(t, refreshed.SignalsUnavailableCount)
+}
+
 func openStars(t *testing.T, row store.SourceFact) int64 {
 	t.Helper()
 	var github sources.GitHubFact
@@ -239,7 +280,9 @@ func TestSourceFactsUnavailableRepositoryBacksOffAndClearsAfterThreeFailures(t *
 	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
 	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
 		if etag == "" {
-			return mitRepo(repo), nil
+			result := mitRepo(repo)
+			result.Repository.Archived = true
+			return result, nil
 		}
 		return sources.RepoResult{NotFound: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
 	}}
@@ -276,19 +319,132 @@ func TestSourceFactsUnavailableRepositoryBacksOffAndClearsAfterThreeFailures(t *
 			require.WithinDuration(t, now.Add(time.Duration(1<<(attempt-1))*time.Hour), *row.SignalsNextCheckAt, time.Second)
 		case 3:
 			require.Empty(t, row.Subject)
-			require.Equal(t, "none", row.Status)
-			require.JSONEq(t, `{}`, string(row.Data))
+			require.Equal(t, "found", row.Status)
+			require.JSONEq(t, `{"license":"MIT","repo":"acme/gone","url":"https://github.com/acme/gone"}`, string(row.Data))
 			require.Nil(t, row.ETag)
+			require.Equal(t, 3, row.SignalsUnavailableCount)
 		}
 	}
 	public, err := st.PublicSourceFacts(ctx, 1)
 	require.NoError(t, err)
-	require.Empty(t, public)
+	require.Len(t, public, 1)
 	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "gone", "en-US")
 	require.NoError(t, err)
-	require.Nil(t, detail.Repository)
-	require.Nil(t, detail.OpenSource)
+	require.NotNil(t, detail.Repository)
+	require.Equal(t, "https://github.com/acme/gone", detail.Repository.Url)
+	require.Nil(t, detail.Repository.Stars)
+	require.Nil(t, detail.Repository.PushedAt)
+	require.False(t, detail.Repository.Archived)
+	require.NotNil(t, detail.OpenSource)
+	require.Equal(t, "MIT", detail.OpenSource.License)
 	require.Equal(t, []string{"cache:invalidate:seo-content:pkg:1"}, invalidations(t, st))
+}
+
+func TestSourceFactsClearedRepositoryRetriesAndRecoversWithinSignalBackoff(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	addCask(t, st, `{"token":"recover","name":["Recover"],"version":"1","homepage":"https://github.com/acme/gone","url":"https://github.com/acme/recovered/releases/download/v1/Recover.dmg","artifacts":[{"app":["Recover.app"]}]}`)
+	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+	signalCalls := 0
+	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+		if repo == "acme/gone" && signalCalls > 0 {
+			signalCalls++
+			return sources.RepoResult{NotFound: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+		}
+		if repo == "acme/gone" && etag != "" {
+			signalCalls++
+			return sources.RepoResult{NotFound: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+		}
+		return mitRepo(repo), nil
+	}}
+	svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	initial := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	for attempt := 0; attempt < 3; attempt++ {
+		now = initial.SignalsNextCheckAt.UTC()
+		if attempt > 0 {
+			rows, err = st.SourceFacts(ctx)
+			require.NoError(t, err)
+			now = rows[store.SourceFactKey{PackageID: 1, Source: GitHub}].SignalsNextCheckAt.UTC()
+		}
+		_, err = svc.Run(ctx)
+		require.NoError(t, err)
+	}
+	rows, err = st.SourceFacts(ctx)
+	require.NoError(t, err)
+	cleared := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.Empty(t, cleared.Subject)
+	require.Equal(t, "found", cleared.Status)
+	require.NotNil(t, cleared.SignalsNextCheckAt)
+	require.Equal(t, 3, cleared.SignalsUnavailableCount)
+	licenseCheckedAt, licenseNext := cleared.CheckedAt, cleared.NextCheckAt
+
+	now = cleared.SignalsNextCheckAt.UTC()
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	rows, err = st.SourceFacts(ctx)
+	require.NoError(t, err)
+	recovered := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.Equal(t, "acme/recovered", recovered.Subject)
+	require.Equal(t, licenseCheckedAt, recovered.CheckedAt)
+	require.Equal(t, licenseNext, recovered.NextCheckAt)
+	require.Zero(t, recovered.SignalsFailCount)
+	require.Zero(t, recovered.SignalsUnavailableCount)
+	require.Equal(t, []string{"acme/gone", "acme/gone", "acme/gone", "acme/gone", "acme/gone", "acme/recovered"}, github.calls)
+	require.Equal(t, int64(1234), openStars(t, recovered))
+	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "recover", "en-US")
+	require.NoError(t, err)
+	require.Equal(t, "MIT", detail.OpenSource.License)
+	require.Equal(t, "https://github.com/acme/recovered", detail.Repository.Url)
+}
+
+func TestSourceFactsMixedSignalFailuresDoNotClearAfterOneUnavailableResponse(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	addCask(t, st, `{"token":"mixed","name":["Mixed"],"version":"1","homepage":"https://github.com/acme/mixed","url":"https://example.test/mixed.dmg","artifacts":[{"app":["Mixed.app"]}]}`)
+	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+	signalCalls := 0
+	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+		if etag == "" {
+			return mitRepo(repo), nil
+		}
+		signalCalls++
+		switch signalCalls {
+		case 1, 2:
+			return sources.RepoResult{Requests: 1, Remaining: 4000, Limit: 5000}, errors.New("github repository status 500")
+		case 3:
+			return sources.RepoResult{NotFound: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+		default:
+			return mitRepo(repo), nil
+		}
+	}}
+	svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	for attempt := 0; attempt < 3; attempt++ {
+		rows, queryErr := st.SourceFacts(ctx)
+		require.NoError(t, queryErr)
+		now = rows[store.SourceFactKey{PackageID: 1, Source: GitHub}].SignalsNextCheckAt.UTC()
+		_, err = svc.Run(ctx)
+		require.NoError(t, err)
+	}
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	row := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.Equal(t, 3, signalCalls)
+	require.Equal(t, "acme/mixed", row.Subject)
+	require.Equal(t, "found", row.Status)
+	require.Equal(t, 3, row.SignalsFailCount)
+	require.Equal(t, 1, row.SignalsUnavailableCount)
+	require.NotNil(t, row.SignalsNextCheckAt)
+	require.Equal(t, int64(1234), openStars(t, row))
+	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "mixed", "en-US")
+	require.NoError(t, err)
+	require.NotNil(t, detail.OpenSource)
+	require.NotNil(t, detail.Repository)
 }
 
 func mustJSON(t *testing.T, value any) []byte {

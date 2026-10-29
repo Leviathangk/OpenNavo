@@ -34,6 +34,7 @@ const (
 var (
 	errGitHubRequestCap            = errors.New("github request cap reached without rate-limit headers")
 	errGitHubRepositoryUnavailable = errors.New("github repository unavailable during signal refresh")
+	errGitHubSignalRefreshFailed   = errors.New("github signal refresh failed")
 )
 
 type GitHubSource interface {
@@ -111,14 +112,19 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 				}
 				continue
 			}
-			signalsOnly := source == GitHub && exists && row.Input == input && row.Subject != "" && contains(items, row.Subject) && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
+			signalsScheduled := exists && ((row.Subject != "" && contains(items, row.Subject)) || (row.Subject == "" && row.SignalsNextCheckAt != nil))
+			signalsOnly := source == GitHub && signalsScheduled && row.Input == input && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
 			if exists && row.Input == input && row.NextCheckAt.After(start) && !signalsOnly {
 				continue
 			}
 			if signalsOnly {
-				// The stored subject is the repository whose ETag was checked. A daily
-				// refresh must spend one request on that repository only.
-				items = []string{row.Subject}
+				// A stored subject identifies the repository whose ETag was checked. A daily
+				// refresh spends one request on that repository. After it is cleared following
+				// repeated unavailability, try every current candidate so a recovered repository
+				// can return within the signal backoff window.
+				if row.Subject != "" && contains(items, row.Subject) {
+					items = []string{row.Subject}
+				}
 			}
 			item := pending{pkg: p, input: input, items: items, signalsOnly: signalsOnly}
 			if exists {
@@ -225,6 +231,8 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	var first sources.GitHubFact
 	var firstETag string
 	haveFirst := false
+	sawUnavailable := false
+	sawSignalFailure := false
 	for _, repo := range item.items {
 		if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
 			return fact, low, errGitHubRequestCap
@@ -267,6 +275,7 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
+			fact.SignalsUnavailableCount = 0
 			if fullCheck {
 				fact.FailCount = 0
 				fact.CheckedAt = now
@@ -276,14 +285,18 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		}
 		if result.NotFound {
 			if !fullCheck {
-				return fact, low, errGitHubRepositoryUnavailable
+				sawUnavailable = true
 			}
 			continue
 		}
 		current, public := result.Repository.GitHubFact()
 		if !public {
 			if !fullCheck {
-				return fact, low, errGitHubRepositoryUnavailable
+				if result.Repository.Private {
+					sawUnavailable = true
+				} else {
+					sawSignalFailure = true
+				}
 			}
 			continue
 		}
@@ -304,6 +317,7 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
+			fact.SignalsUnavailableCount = 0
 			if result.ETag != "" {
 				fact.ETag = &result.ETag
 			} else {
@@ -321,6 +335,7 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
+			fact.SignalsUnavailableCount = 0
 			fact.FailCount = 0
 			if result.ETag != "" {
 				fact.ETag = &result.ETag
@@ -328,8 +343,14 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			return fact, low, nil
 		}
 	}
-	if !fullCheck && item.row != nil && hasGitHubRepository(*item.row) {
-		return fact, low, errGitHubRepositoryUnavailable
+	if !fullCheck && item.row != nil {
+		if sawSignalFailure {
+			return fact, low, errGitHubSignalRefreshFailed
+		}
+		if sawUnavailable || len(item.items) == 0 {
+			return fact, low, errGitHubRepositoryUnavailable
+		}
+		return fact, low, errGitHubSignalRefreshFailed
 	}
 	if haveFirst {
 		fact.Status, fact.Subject = "none", first.Repo
@@ -341,6 +362,7 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		fact.SignalsCheckedAt = timePointer(now)
 		fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 		fact.SignalsFailCount = 0
+		fact.SignalsUnavailableCount = 0
 		fact.FailCount = 0
 		if firstETag != "" {
 			fact.ETag = &firstETag
@@ -421,6 +443,9 @@ func (s *Service) save(ctx context.Context, item pending, fact store.SourceFact,
 	if changed {
 		stats.Changed++
 	}
+	if item.signalsOnly {
+		return s.Store.UpdateSourceFactSignals(ctx, fact, item.pkg.Token, changed)
+	}
 	return s.Store.SaveSourceFact(ctx, fact, item.pkg.Token, changed)
 }
 
@@ -457,7 +482,7 @@ func (s *Service) logger() *slog.Logger {
 }
 
 func githubSignalsDue(row store.SourceFact, now time.Time) bool {
-	return row.Subject != "" && (row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now))
+	return row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now)
 }
 
 func mergeGitHubSignals(data json.RawMessage, repository sources.Repository) ([]byte, error) {

@@ -27,19 +27,20 @@ type SourceFactPackage struct {
 
 // SourceFact is one row of package_source_facts.
 type SourceFact struct {
-	PackageID          int64
-	Source             string
-	Input              string // Candidates from the latest attempt, including failed attempts.
-	Subject            string
-	Status             string
-	Data               json.RawMessage
-	ETag               *string `gorm:"column:etag"`
-	CheckedAt          time.Time
-	NextCheckAt        time.Time
-	FailCount          int
-	SignalsCheckedAt   *time.Time `gorm:"column:signals_checked_at"`
-	SignalsNextCheckAt *time.Time `gorm:"column:signals_next_check_at"`
-	SignalsFailCount   int
+	PackageID               int64
+	Source                  string
+	Input                   string // Candidates from the latest attempt, including failed attempts.
+	Subject                 string
+	Status                  string
+	Data                    json.RawMessage
+	ETag                    *string `gorm:"column:etag"`
+	CheckedAt               time.Time
+	NextCheckAt             time.Time
+	FailCount               int
+	SignalsCheckedAt        *time.Time `gorm:"column:signals_checked_at"`
+	SignalsNextCheckAt      *time.Time `gorm:"column:signals_next_check_at"`
+	SignalsFailCount        int
+	SignalsUnavailableCount int `gorm:"column:signals_unavailable_count"`
 }
 
 // SourceFactKey identifies a row.
@@ -82,7 +83,7 @@ func (s *Store) SourceFactPackages(ctx context.Context) ([]SourceFactPackage, er
 // SourceFacts loads every row, for scheduling.
 func (s *Store) SourceFacts(ctx context.Context) (map[SourceFactKey]SourceFact, error) {
 	var rows []SourceFact
-	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count FROM package_source_facts`).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count,signals_unavailable_count FROM package_source_facts`).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query source facts: %w", err)
 	}
 	out := make(map[SourceFactKey]SourceFact, len(rows))
@@ -95,7 +96,7 @@ func (s *Store) SourceFacts(ctx context.Context) (map[SourceFactKey]SourceFact, 
 // PublicSourceFacts returns the facts a page may show for one app.
 func (s *Store) PublicSourceFacts(ctx context.Context, packageID int64) ([]SourceFact, error) {
 	var rows []SourceFact
-	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count FROM package_source_facts WHERE package_id=? AND (status='found' OR (source='github' AND subject<>'')) ORDER BY source`, packageID).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count,signals_unavailable_count FROM package_source_facts WHERE package_id=? AND (status='found' OR (source='github' AND subject<>'')) ORDER BY source`, packageID).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query public source facts: %w", err)
 	}
 	return rows, nil
@@ -109,13 +110,14 @@ func (s *Store) SaveSourceFact(ctx context.Context, fact SourceFact, token strin
 		data = json.RawMessage(`{}`)
 	}
 	return s.WithTx(ctx, func(tx *gorm.DB) error {
-		err := tx.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count)
- VALUES(?,?,?,?,?,?::jsonb,?,?,?,?,?,?,?)
+		err := tx.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count,signals_unavailable_count)
+ VALUES(?,?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?)
  ON CONFLICT(package_id,source) DO UPDATE SET input=EXCLUDED.input,subject=EXCLUDED.subject,status=EXCLUDED.status,data=EXCLUDED.data,
 	 etag=EXCLUDED.etag,checked_at=EXCLUDED.checked_at,next_check_at=EXCLUDED.next_check_at,fail_count=EXCLUDED.fail_count,
- signals_checked_at=EXCLUDED.signals_checked_at,signals_next_check_at=EXCLUDED.signals_next_check_at,signals_fail_count=EXCLUDED.signals_fail_count`,
+	 signals_checked_at=EXCLUDED.signals_checked_at,signals_next_check_at=EXCLUDED.signals_next_check_at,signals_fail_count=EXCLUDED.signals_fail_count,
+	 signals_unavailable_count=EXCLUDED.signals_unavailable_count`,
 			fact.PackageID, fact.Source, fact.Input, fact.Subject, fact.Status, string(data), fact.ETag, fact.CheckedAt, fact.NextCheckAt, fact.FailCount,
-			fact.SignalsCheckedAt, fact.SignalsNextCheckAt, fact.SignalsFailCount).Error
+			fact.SignalsCheckedAt, fact.SignalsNextCheckAt, fact.SignalsFailCount, fact.SignalsUnavailableCount).Error
 		if err != nil || !publicChanged {
 			return err
 		}
@@ -127,27 +129,52 @@ func (s *Store) SaveSourceFact(ctx context.Context, fact SourceFact, token strin
 // successful license fact and its 30-day schedule.
 func (s *Store) RecordSourceFactSignalFailure(ctx context.Context, key SourceFactKey, next time.Time) error {
 	return s.DB.WithContext(ctx).Exec(`UPDATE package_source_facts
- SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1
- WHERE package_id=? AND source=? AND subject<>''`, next, key.PackageID, key.Source).Error
+	 SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1,signals_unavailable_count=0
+	 WHERE package_id=? AND source=?`, next, key.PackageID, key.Source).Error
+}
+
+// UpdateSourceFactSignals stores a successful daily refresh without rewriting the license
+// check, its schedule, or the source input failure state.
+func (s *Store) UpdateSourceFactSignals(ctx context.Context, fact SourceFact, token string, publicChanged bool) error {
+	data := fact.Data
+	if len(data) == 0 {
+		data = json.RawMessage(`{}`)
+	}
+	return s.WithTx(ctx, func(tx *gorm.DB) error {
+		result := tx.WithContext(ctx).Exec(`UPDATE package_source_facts
+ SET subject=?,data=?::jsonb,etag=?,signals_checked_at=?,signals_next_check_at=?,signals_fail_count=?,signals_unavailable_count=?
+ WHERE package_id=? AND source=?`,
+			fact.Subject, string(data), fact.ETag, fact.SignalsCheckedAt, fact.SignalsNextCheckAt, fact.SignalsFailCount, fact.SignalsUnavailableCount,
+			fact.PackageID, fact.Source)
+		if result.Error != nil || !publicChanged {
+			return result.Error
+		}
+		return sourceFactInvalidation(ctx, tx, fact.PackageID, token)
+	})
 }
 
 // RecordSourceFactRepositoryUnavailable backs off a daily GitHub signal refresh. Three
 // consecutive unavailable responses clear the public repository fact and invalidate its page.
 func (s *Store) RecordSourceFactRepositoryUnavailable(ctx context.Context, key SourceFactKey, token string, next time.Time) error {
 	return s.WithTx(ctx, func(tx *gorm.DB) error {
-		var failures int
-		if err := tx.WithContext(ctx).Raw(`SELECT signals_fail_count FROM package_source_facts WHERE package_id=? AND source=? AND subject<>'' FOR UPDATE`, key.PackageID, key.Source).Scan(&failures).Error; err != nil {
+		var state struct {
+			Subject                 string `gorm:"column:subject"`
+			SignalsFailCount        int    `gorm:"column:signals_fail_count"`
+			SignalsUnavailableCount int    `gorm:"column:signals_unavailable_count"`
+		}
+		if err := tx.WithContext(ctx).Raw(`SELECT subject,signals_fail_count,signals_unavailable_count FROM package_source_facts WHERE package_id=? AND source=? FOR UPDATE`, key.PackageID, key.Source).Scan(&state).Error; err != nil {
 			return err
 		}
-		failures++
-		if failures < sourceFactSignalClearAfter {
+		state.SignalsFailCount++
+		state.SignalsUnavailableCount++
+		if state.Subject == "" || state.SignalsUnavailableCount < sourceFactSignalClearAfter {
 			return tx.WithContext(ctx).Exec(`UPDATE package_source_facts
- SET signals_next_check_at=?,signals_fail_count=?
- WHERE package_id=? AND source=? AND subject<>''`, next, failures, key.PackageID, key.Source).Error
+	 SET signals_next_check_at=?,signals_fail_count=?,signals_unavailable_count=?
+	 WHERE package_id=? AND source=?`, next, state.SignalsFailCount, state.SignalsUnavailableCount, key.PackageID, key.Source).Error
 		}
 		if err := tx.WithContext(ctx).Exec(`UPDATE package_source_facts
- SET subject='',status='none',data='{}'::jsonb,etag=NULL,signals_next_check_at=?,signals_fail_count=?
- WHERE package_id=? AND source=? AND subject<>''`, next, failures, key.PackageID, key.Source).Error; err != nil {
+	 SET subject='',data=data-'stars'-'pushedAt'-'archived',etag=NULL,signals_next_check_at=?,signals_fail_count=?,signals_unavailable_count=?
+	 WHERE package_id=? AND source=? AND subject<>''`, next, state.SignalsFailCount, state.SignalsUnavailableCount, key.PackageID, key.Source).Error; err != nil {
 			return err
 		}
 		return sourceFactInvalidation(ctx, tx, key.PackageID, token)
