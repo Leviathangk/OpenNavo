@@ -19,6 +19,15 @@ use tokio::sync::oneshot;
 const DIALOG_TIMEOUT: Duration = Duration::from_secs(60);
 const GRANT_TTL: Duration = Duration::from_secs(30);
 
+// tauri-plugin-dialog's async `MessageDialogBuilder::show` returns no dialog handle (rfd exposes only `show`), so
+// a timeout can invalidate the grant but cannot programmatically dismiss the native dialog. A late click is ignored.
+
+/// Digest the exact ordered target list that a collection confirmation will enqueue.
+pub fn ordered_targets_digest(targets: &[crate::model::TaskTarget]) -> String {
+    let canonical = serde_json::to_vec(targets).expect("task targets are serializable");
+    format!("{:x}", Sha256::digest(canonical))
+}
+
 /// A write request presented to the user. plan_digest is used by uninstall/cleanup callers and is part of
 /// the request digest even when the caller also passes it separately to consume.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +37,14 @@ pub struct ConfirmationRequest {
     pub action: String,
     pub target: String,
     pub plan_digest: Option<String>,
+}
+
+/// One row in a collection confirmation. The native dialog owns the complete list so the user approves the
+/// same ordered collection that the guarded command will enqueue.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfirmationListItem {
+    pub name: String,
+    pub disabled: bool,
 }
 
 impl ConfirmationRequest {
@@ -52,6 +69,23 @@ impl ConfirmationRequest {
             display_value(&self.action),
             display_value(&self.target),
         )
+    }
+
+    fn collection_message(&self, items: &[ConfirmationListItem]) -> String {
+        let mut message = format!(
+            "OpenNavo received a request to install {} apps from this collection.\n\n",
+            items.len()
+        );
+        for item in items {
+            message.push_str("• ");
+            message.push_str(&display_value(&item.name));
+            if item.disabled {
+                message.push_str(" (disabled)");
+            }
+            message.push('\n');
+        }
+        message.push_str("\nOnly enabled apps in this reviewed list will be installed.");
+        message
     }
 }
 
@@ -136,6 +170,50 @@ impl ConfirmationService {
         }
     }
 
+    /// Show one native dialog for a collection. The request's plan digest binds the displayed plan to the
+    /// ordered targets that the caller enqueues after the grant is consumed.
+    pub async fn confirm_collection<R: Runtime>(
+        self: &std::sync::Arc<Self>,
+        app: &tauri::AppHandle<R>,
+        request: ConfirmationRequest,
+        items: Vec<ConfirmationListItem>,
+    ) -> Result<ConfirmationGrant, AppError> {
+        let pending = self.begin(request.clone())?;
+        let (sender, receiver) = oneshot::channel();
+        let service = std::sync::Arc::clone(self);
+        let dialog_id = pending.id;
+        app.dialog()
+            .message(request.collection_message(&items))
+            .title("OpenNavo confirmation")
+            .kind(MessageDialogKind::Warning)
+            .buttons(MessageDialogButtons::OkCancelCustom(
+                "Install All".into(),
+                "Cancel".into(),
+            ))
+            .show(move |allowed| {
+                let result = service.finish(dialog_id, allowed);
+                let _ = sender.send(result);
+            });
+
+        match tokio::time::timeout(DIALOG_TIMEOUT, receiver).await {
+            Ok(Ok(result)) => result,
+            Ok(Err(_)) => {
+                self.expire(dialog_id);
+                Err(AppError::new(
+                    "E_CONFIRMATION_DENIED",
+                    "confirmation_denied",
+                ))
+            }
+            Err(_) => {
+                self.expire(dialog_id);
+                Err(AppError::new(
+                    "E_CONFIRMATION_TIMEOUT",
+                    "confirmation_timeout",
+                ))
+            }
+        }
+    }
+
     fn begin(&self, request: ConfirmationRequest) -> Result<PendingConfirmation, AppError> {
         let mut state = self
             .state
@@ -164,18 +242,16 @@ impl ConfirmationService {
             .state
             .lock()
             .map_err(|_| AppError::new("E_UNKNOWN", "confirmation_state"))?;
-        let Some(active) = state.active.take() else {
-            return Err(AppError::new(
-                "E_CONFIRMATION_TIMEOUT",
-                "confirmation_expired",
-            ));
-        };
-        if active.id != id {
+        if state.active.as_ref().is_none_or(|active| active.id != id) {
             return Err(AppError::new(
                 "E_CONFIRMATION_TIMEOUT",
                 "confirmation_expired",
             ));
         }
+        let active = state
+            .active
+            .take()
+            .expect("active confirmation id was checked above");
         if !allowed {
             return Err(AppError::new(
                 "E_CONFIRMATION_DENIED",
@@ -319,6 +395,66 @@ mod tests {
         ] {
             assert!(prompt.contains(value), "missing {value}");
         }
+    }
+
+    #[test]
+    fn stale_dialog_callback_does_not_clear_a_new_confirmation() {
+        let service = ConfirmationService::default();
+        let first = service.test_begin(request("cask/ghostty")).unwrap();
+        service.test_expire(first.id);
+        let second = service.test_begin(request("cask/zed")).unwrap();
+
+        assert_eq!(
+            service.test_finish(first.id, true).unwrap_err().code,
+            "E_CONFIRMATION_TIMEOUT"
+        );
+        assert!(service.test_finish(second.id, true).is_ok());
+    }
+
+    #[test]
+    fn collection_prompt_lists_every_app_and_marks_disabled_rows() {
+        let request = request("collection/dev-setup");
+        let message = request.collection_message(&[
+            ConfirmationListItem {
+                name: "Ghostty".into(),
+                disabled: false,
+            },
+            ConfirmationListItem {
+                name: "Legacy app".into(),
+                disabled: true,
+            },
+        ]);
+        assert!(message.contains("install 2 apps"));
+        assert!(message.contains("Ghostty"));
+        assert!(message.contains("Legacy app (disabled)"));
+    }
+
+    #[test]
+    fn collection_grant_binds_the_exact_ordered_target_list() {
+        let targets = vec![
+            crate::model::TaskTarget {
+                kind: crate::model::TaskKind::Cask,
+                token: "zed".into(),
+            },
+            crate::model::TaskTarget {
+                kind: crate::model::TaskKind::Cask,
+                token: "ghostty".into(),
+            },
+        ];
+        let mut original = request("collection/dev-setup");
+        original.action = "install collection".into();
+        original.plan_digest = Some(ordered_targets_digest(&targets));
+        let service = ConfirmationService::default();
+        let pending = service.test_begin(original.clone()).unwrap();
+        let grant = service.test_finish(pending.id, true).unwrap();
+        let mut reordered = original.clone();
+        reordered.plan_digest = Some(ordered_targets_digest(
+            &targets.into_iter().rev().collect::<Vec<_>>(),
+        ));
+        assert_eq!(
+            service.consume(&grant, &reordered).unwrap_err().code,
+            "E_CONFIRMATION_MISMATCH"
+        );
     }
 
     #[test]

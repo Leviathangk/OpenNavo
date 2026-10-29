@@ -14,7 +14,7 @@ fn routes_actions_encoding_and_bounded_query() {
         (
             "opennavo://package/formula/ripgrep?action=install",
             "/package/formula/ripgrep",
-            true,
+            false,
         ),
         (
             "opennavo://collection/new-mac",
@@ -77,6 +77,40 @@ fn relaunch_carries_unique_valid_links_and_drops_invalid_or_missing_links() {
         deeplink::validated_links(["OpenNavo", valid, "opennavo://updates?action=remove", valid]);
     assert_eq!(links, vec![valid]);
     assert!(deeplink::validated_links(["OpenNavo", "--hidden"]).is_empty());
+}
+
+#[test]
+fn formula_install_links_are_read_only_and_install_intents_evict_oldest_first() {
+    let formula = deeplink::parse("opennavo://package/formula/ripgrep?action=install").unwrap();
+    assert!(formula.action.is_none());
+
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let saved = events.clone();
+    let router = deeplink::Router::new(
+        Arc::new(move |event| saved.lock().unwrap().push(event)),
+        Arc::new(|| {}),
+    );
+    router.ready();
+    for index in 0..33 {
+        router.receive(&format!(
+            "opennavo://package/cask/app-{index}?action=install"
+        ));
+    }
+    let events = events.lock().unwrap();
+    let first = match &events[0] {
+        CoreEvent::Deeplink(event) => event.pending_id.clone().unwrap(),
+        _ => panic!("expected deep link"),
+    };
+    let second = match &events[1] {
+        CoreEvent::Deeplink(event) => event.pending_id.clone().unwrap(),
+        _ => panic!("expected deep link"),
+    };
+    drop(events);
+    assert_eq!(
+        router.begin_install(&first).unwrap_err().code,
+        "E_INVALID_ARG"
+    );
+    assert!(router.begin_install(&second).is_ok());
 }
 
 #[test]

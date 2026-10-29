@@ -1,20 +1,23 @@
 use crate::{
     AppError,
-    confirmation::{ConfirmationRequest, ConfirmationService},
+    confirmation::{
+        ConfirmationListItem, ConfirmationRequest, ConfirmationService, ordered_targets_digest,
+    },
     core::DesktopCore,
-    deeplink::{InstallStep, InstallTarget, Router},
-    model::{Task, TaskKind, TaskTarget, TaskTrigger},
+    deeplink::{CollectionInstallItem, CollectionInstallPlan, InstallStep, InstallTarget, Router},
+    model::{InstalledItem, Task, TaskKind, TaskTarget, TaskTrigger},
 };
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::Deserialize;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 
+const MAX_COLLECTION_ITEMS: usize = 30;
+
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DeepLinkInstallResult {
-    pub task: Task,
-    pub remaining: u32,
+    pub tasks: Vec<Task>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,9 +37,12 @@ struct CollectionItem {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CollectionPackage {
     kind: String,
     token: String,
+    name: String,
+    display_name: String,
     disabled: bool,
 }
 
@@ -54,31 +60,70 @@ pub async fn deeplink_install_confirm(
 
     let step = match router.begin_install(&pending_id)? {
         InstallStep::ResolveCollection { slug, .. } => {
-            let targets = load_collection_targets(&state, &slug).await;
-            match targets {
-                Ok(targets) => {
-                    router.set_collection_targets(&pending_id, targets)?;
+            let plan = load_collection_plan(&state, &slug).await;
+            match plan {
+                Ok(plan) => {
+                    router.set_collection_plan(&pending_id, plan)?;
                     router.begin_install(&pending_id)?
                 }
                 Err(error) => {
-                    router.release_install(&pending_id);
+                    router.cancel_install(&pending_id);
                     return Err(error);
                 }
             }
         }
         step => step,
     };
-    let InstallStep::Target(InstallTarget {
-        source,
-        target,
-        index: _,
-        total: _,
-    }) = step
-    else {
-        router.cancel_install(&pending_id);
-        return Err(AppError::new("E_INVALID_ARG", "deeplink_collection_empty"));
-    };
 
+    match step {
+        InstallStep::Target(InstallTarget {
+            source,
+            target,
+            index: _,
+            total: _,
+        }) => {
+            let context = InstallContext {
+                app: &app,
+                state: state.inner(),
+                confirmation: confirmation.inner(),
+                router: &router,
+                pending_id: &pending_id,
+            };
+            confirm_single(&context, source, target).await
+        }
+        InstallStep::Collection { source, slug, plan } => {
+            let context = InstallContext {
+                app: &app,
+                state: state.inner(),
+                confirmation: confirmation.inner(),
+                router: &router,
+                pending_id: &pending_id,
+            };
+            confirm_collection(&context, source, slug, plan).await
+        }
+        InstallStep::ResolveCollection { .. } => {
+            router.cancel_install(&pending_id);
+            Err(AppError::new(
+                "E_INVALID_ARG",
+                "deeplink_collection_unresolved",
+            ))
+        }
+    }
+}
+
+struct InstallContext<'a> {
+    app: &'a AppHandle,
+    state: &'a DesktopCore,
+    confirmation: &'a Arc<ConfirmationService>,
+    router: &'a Router,
+    pending_id: &'a str,
+}
+
+async fn confirm_single(
+    context: &InstallContext<'_>,
+    source: String,
+    target: TaskTarget,
+) -> Result<DeepLinkInstallResult, AppError> {
     let request = ConfirmationRequest {
         caller: "deep link".into(),
         source,
@@ -86,28 +131,31 @@ pub async fn deeplink_install_confirm(
         target: format!("{}/{}", target.kind.as_str(), target.token),
         plan_digest: None,
     };
-    let grant = match confirmation.confirm(&app, request.clone()).await {
+    let grant = match context
+        .confirmation
+        .confirm(context.app, request.clone())
+        .await
+    {
         Ok(grant) => grant,
         Err(error) => {
             if error.code == "E_BUSY" {
-                router.release_install(&pending_id);
+                context.router.release_install(context.pending_id);
             } else {
-                router.cancel_install(&pending_id);
+                context.router.cancel_install(context.pending_id);
             }
             return Err(error);
         }
     };
-    if let Err(error) = confirmation.consume(&grant, &request) {
-        router.cancel_install(&pending_id);
+    if let Err(error) = context.confirmation.consume(&grant, &request) {
+        context.router.cancel_install(context.pending_id);
         return Err(error);
     }
 
-    let queue = state.queue.clone();
-    let queue_target = target;
+    let queue = context.state.queue.clone();
     let task = match crate::blocking(move || {
         queue.enqueue(
             crate::model::TaskOp::Install,
-            Some(queue_target),
+            Some(target),
             crate::model::TaskOptions::default(),
             TaskTrigger::Deeplink,
         )
@@ -116,27 +164,87 @@ pub async fn deeplink_install_confirm(
     {
         Ok(task) => task,
         Err(error) => {
-            router.cancel_install(&pending_id);
+            context.router.cancel_install(context.pending_id);
             return Err(error);
         }
     };
-    let remaining = match router.finish_install(&pending_id) {
-        Ok(remaining) => remaining,
-        Err(error) => {
-            router.cancel_install(&pending_id);
-            return Err(error);
-        }
-    };
-    Ok(DeepLinkInstallResult {
-        task,
-        remaining: remaining as u32,
-    })
+    if let Err(error) = context.router.finish_install(context.pending_id) {
+        context.router.cancel_install(context.pending_id);
+        return Err(error);
+    }
+    Ok(DeepLinkInstallResult { tasks: vec![task] })
 }
 
-async fn load_collection_targets(
+async fn confirm_collection(
+    context: &InstallContext<'_>,
+    source: String,
+    slug: String,
+    plan: CollectionInstallPlan,
+) -> Result<DeepLinkInstallResult, AppError> {
+    let request = ConfirmationRequest {
+        caller: "deep link".into(),
+        source,
+        action: "install collection".into(),
+        target: format!("collection/{slug}"),
+        plan_digest: Some(ordered_targets_digest(&plan.targets)),
+    };
+    let items = plan
+        .items
+        .iter()
+        .map(|item| ConfirmationListItem {
+            name: item.name.clone(),
+            disabled: item.disabled,
+        })
+        .collect();
+    let grant = match context
+        .confirmation
+        .confirm_collection(context.app, request.clone(), items)
+        .await
+    {
+        Ok(grant) => grant,
+        Err(error) => {
+            if error.code == "E_BUSY" {
+                context.router.release_install(context.pending_id);
+            } else {
+                context.router.cancel_install(context.pending_id);
+            }
+            return Err(error);
+        }
+    };
+    if let Err(error) = context.confirmation.consume(&grant, &request) {
+        context.router.cancel_install(context.pending_id);
+        return Err(error);
+    }
+
+    let queue = context.state.queue.clone();
+    let targets = plan.targets;
+    let tasks = match crate::blocking(move || {
+        queue.enqueue_many(
+            crate::model::TaskOp::Install,
+            targets,
+            crate::model::TaskOptions::default(),
+            TaskTrigger::Deeplink,
+        )
+    })
+    .await
+    {
+        Ok(tasks) => tasks,
+        Err(error) => {
+            context.router.cancel_install(context.pending_id);
+            return Err(error);
+        }
+    };
+    if let Err(error) = context.router.finish_install(context.pending_id) {
+        context.router.cancel_install(context.pending_id);
+        return Err(error);
+    }
+    Ok(DeepLinkInstallResult { tasks })
+}
+
+async fn load_collection_plan(
     state: &DesktopCore,
     slug: &str,
-) -> Result<Vec<TaskTarget>, AppError> {
+) -> Result<CollectionInstallPlan, AppError> {
     let base = crate::catalog::sync::configured_base()
         .trim_end_matches('/')
         .to_owned();
@@ -144,7 +252,7 @@ async fn load_collection_targets(
     let parsed =
         reqwest::Url::parse(&url).map_err(|_| AppError::new("E_NETWORK", "catalog_url"))?;
     if !matches!(parsed.scheme(), "http" | "https")
-        || parsed.username() != ""
+        || !parsed.username().is_empty()
         || parsed.password().is_some()
     {
         return Err(AppError::new("E_NETWORK", "catalog_url"));
@@ -183,59 +291,121 @@ async fn load_collection_targets(
         .library
         .read()
         .map_err(|_| AppError::new("E_UNKNOWN", "library_state"))?;
+    build_collection_plan(detail, &installed)
+}
+
+fn build_collection_plan(
+    detail: CollectionDetail,
+    installed: &[InstalledItem],
+) -> Result<CollectionInstallPlan, AppError> {
+    if detail.items.len() > MAX_COLLECTION_ITEMS {
+        return Err(AppError::new(
+            "E_INVALID_ARG",
+            "This collection has more than 30 apps. Open the collection in OpenNavo to review and install it.",
+        ));
+    }
+    let mut items = Vec::with_capacity(detail.items.len());
     let mut targets = Vec::new();
     for item in detail.items {
-        if item.package.disabled {
-            continue;
-        }
-        let kind = match item.package.kind.as_str() {
-            "cask" => TaskKind::Cask,
-            "formula" => TaskKind::Formula,
-            // Link packages are external downloads and are deliberately excluded from installs.
-            "link" => continue,
+        let package = item.package;
+        let name = if package.display_name.trim().is_empty() {
+            if package.name.trim().is_empty() {
+                package.token.clone()
+            } else {
+                package.name.clone()
+            }
+        } else {
+            package.display_name.clone()
+        };
+        let installable_kind = match package.kind.as_str() {
+            "cask" => Some(TaskKind::Cask),
+            // Formulae and link packages remain visible in the reviewed collection, but ADR-018 keeps them out of
+            // the desktop install queue.
+            "formula" | "link" => None,
             _ => return Err(AppError::new("E_NETWORK", "collection_package_kind")),
         };
-        crate::brew::args::validate_token(&item.package.token)?;
-        if installed
-            .iter()
-            .any(|entry| entry.kind == kind && entry.matches_token(&item.package.token))
-        {
-            continue;
+        let mut installable = false;
+        if let Some(kind) = installable_kind {
+            crate::brew::args::validate_token(&package.token)?;
+            installable = !package.disabled
+                && !installed
+                    .iter()
+                    .any(|entry| entry.kind == kind && entry.matches_token(&package.token));
+            if installable {
+                let target = TaskTarget {
+                    kind,
+                    token: package.token,
+                };
+                if !targets.contains(&target) {
+                    targets.push(target);
+                } else {
+                    installable = false;
+                }
+            }
         }
-        let target = TaskTarget {
-            kind,
-            token: item.package.token,
-        };
-        if !targets.contains(&target) {
-            targets.push(target);
-        }
+        items.push(CollectionInstallItem {
+            name,
+            disabled: package.disabled,
+            installable,
+        });
     }
-    Ok(targets)
+    Ok(CollectionInstallPlan { items, targets })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn package(kind: &str, token: &str, name: &str, disabled: bool) -> CollectionItem {
+        CollectionItem {
+            package: CollectionPackage {
+                kind: kind.into(),
+                token: token.into(),
+                name: name.into(),
+                display_name: name.into(),
+                disabled,
+            },
+        }
+    }
+
     #[test]
-    fn collection_payload_only_accepts_installable_kinds() {
-        let body: CollectionResponse = serde_json::from_str(
-            r#"{"code":"0000","data":{"items":[
-              {"package":{"kind":"cask","token":"zed","disabled":false}},
-              {"package":{"kind":"link","token":"external","disabled":false}},
-              {"package":{"kind":"formula","token":"ripgrep","disabled":false}},
-              {"package":{"kind":"cask","token":"disabled","disabled":true}}
-            ]}}"#,
-        )
-        .unwrap();
-        let kinds = body
-            .data
-            .unwrap()
-            .items
-            .into_iter()
-            .filter(|item| !item.package.disabled && item.package.kind != "link")
-            .map(|item| item.package.kind)
-            .collect::<Vec<_>>();
-        assert_eq!(kinds, ["cask", "formula"]);
+    fn collection_plan_preserves_display_order_and_excludes_disabled_or_non_casks() {
+        let detail = CollectionDetail {
+            items: vec![
+                package("cask", "zed", "Zed", false),
+                package("cask", "disabled", "Disabled App", true),
+                package("formula", "ripgrep", "ripgrep", false),
+                package("link", "external", "External App", false),
+            ],
+        };
+        let plan = build_collection_plan(detail, &[]).unwrap();
+        assert_eq!(
+            plan.items
+                .iter()
+                .map(|item| item.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Zed", "Disabled App", "ripgrep", "External App"]
+        );
+        assert_eq!(
+            plan.targets,
+            vec![TaskTarget {
+                kind: TaskKind::Cask,
+                token: "zed".into()
+            }]
+        );
+        assert!(plan.items[1].disabled);
+        assert!(!plan.items[1].installable);
+    }
+
+    #[test]
+    fn collections_over_thirty_items_are_refused_before_confirmation() {
+        let detail = CollectionDetail {
+            items: (0..31)
+                .map(|index| package("cask", &format!("app-{index}"), "App", false))
+                .collect(),
+        };
+        let error = build_collection_plan(detail, &[]).unwrap_err();
+        assert_eq!(error.code, "E_INVALID_ARG");
+        assert!(error.message.contains("Open the collection in OpenNavo"));
     }
 }

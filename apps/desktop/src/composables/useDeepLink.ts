@@ -100,8 +100,8 @@ export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: 
     return;
   }
   const target = PACKAGE_ROUTE.exec(event.route);
-  // Keep the existing cask-only notice for legacy/read-only formula links. Rust-issued install ids are authoritative.
-  if (target?.[1] === 'formula' && !(event.action === 'install' && event.pendingId)) {
+  // Cask-only catalog (ADR-018): formula links open the read-only Discover notice and never install.
+  if (target?.[1] === 'formula') {
     await router.push('/discover');
     useToasts().push({ tone: 'warning', title: i18n.global.t('deeplink.formulaUnsupported') });
     return;
@@ -112,11 +112,7 @@ export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: 
 
 async function confirmDeepLink(pendingId: string) {
   try {
-    let remaining = 1;
-    while (remaining > 0) {
-      const result = await unwrap(commands.deeplinkInstallConfirm(pendingId));
-      remaining = result.remaining;
-    }
+    await unwrap(commands.deeplinkInstallConfirm(pendingId));
   } catch (cause) {
     const toasts = useToasts();
     toasts.push({

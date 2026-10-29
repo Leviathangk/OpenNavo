@@ -60,7 +60,7 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
             {
                 return None;
             }
-            if segments[0] == "link" {
+            if matches!(segments[0], "formula" | "link") {
                 action = None;
             }
             format!("/package/{}/{}", segments[0], segments[1])
@@ -182,6 +182,7 @@ struct State {
     pending: VecDeque<DeepLinkEvent>,
     recent: VecDeque<(String, Instant)>,
     installs: HashMap<String, PendingInstallState>,
+    install_order: VecDeque<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -191,8 +192,7 @@ enum PendingInstallKind {
     },
     Collection {
         slug: String,
-        targets: Option<Vec<TaskTarget>>,
-        index: usize,
+        plan: Option<CollectionInstallPlan>,
         resolving: bool,
     },
 }
@@ -205,6 +205,19 @@ struct PendingInstallState {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CollectionInstallItem {
+    pub name: String,
+    pub disabled: bool,
+    pub installable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CollectionInstallPlan {
+    pub items: Vec<CollectionInstallItem>,
+    pub targets: Vec<TaskTarget>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct InstallTarget {
     pub source: String,
     pub target: TaskTarget,
@@ -214,7 +227,15 @@ pub struct InstallTarget {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InstallStep {
-    ResolveCollection { source: String, slug: String },
+    ResolveCollection {
+        source: String,
+        slug: String,
+    },
+    Collection {
+        source: String,
+        slug: String,
+        plan: CollectionInstallPlan,
+    },
     Target(InstallTarget),
 }
 
@@ -231,6 +252,7 @@ impl Router {
                 pending: VecDeque::new(),
                 recent: VecDeque::new(),
                 installs: HashMap::new(),
+                install_order: VecDeque::new(),
             }),
             sink,
             show,
@@ -259,13 +281,15 @@ impl Router {
             let Some(install) = pending_install(&event) else {
                 return;
             };
-            if state.installs.len() >= 32
-                && let Some(oldest) = state.installs.keys().next().cloned()
-            {
+            while state.installs.len() >= 32 {
+                let Some(oldest) = state.install_order.pop_front() else {
+                    break;
+                };
                 state.installs.remove(&oldest);
             }
             let pending_id = Uuid::new_v4().to_string();
             state.installs.insert(pending_id.clone(), install);
+            state.install_order.push_back(pending_id.clone());
             event.pending_id = Some(pending_id);
         }
         if state.ready {
@@ -354,11 +378,10 @@ impl Router {
             }
             PendingInstallKind::Collection {
                 slug,
-                targets,
-                index,
+                plan,
                 resolving,
             } => {
-                let Some(targets) = targets.as_ref() else {
+                let Some(plan) = plan.as_ref() else {
                     if *resolving {
                         return Err(AppError::new("E_BUSY", "confirmation_busy"));
                     }
@@ -368,25 +391,20 @@ impl Router {
                         slug: slug.clone(),
                     });
                 };
-                if *index >= targets.len() {
-                    state.installs.remove(pending_id);
-                    return Err(AppError::new("E_CONFIRMATION_REUSED", "deeplink_consumed"));
-                }
                 pending.current = true;
-                Ok(InstallStep::Target(InstallTarget {
+                Ok(InstallStep::Collection {
                     source: pending.source.clone(),
-                    target: targets[*index].clone(),
-                    index: *index,
-                    total: targets.len(),
-                }))
+                    slug: slug.clone(),
+                    plan: plan.clone(),
+                })
             }
         }
     }
 
-    pub fn set_collection_targets(
+    pub fn set_collection_plan(
         &self,
         pending_id: &str,
-        targets: Vec<TaskTarget>,
+        plan: CollectionInstallPlan,
     ) -> Result<(), AppError> {
         let mut state = self
             .state
@@ -398,11 +416,11 @@ impl Router {
             .ok_or_else(|| AppError::new("E_INVALID_ARG", "deeplink_pending_missing"))?;
         match &mut pending.kind {
             PendingInstallKind::Collection {
-                targets: stored,
+                plan: stored,
                 resolving,
                 ..
             } => {
-                *stored = Some(targets);
+                *stored = Some(plan);
                 *resolving = false;
                 Ok(())
             }
@@ -437,27 +455,20 @@ impl Router {
             return Err(AppError::new("E_INVALID_ARG", "deeplink_not_reserved"));
         }
         pending.current = false;
-        match &mut pending.kind {
-            PendingInstallKind::Single { .. } => {
-                state.installs.remove(pending_id);
-                Ok(0)
-            }
-            PendingInstallKind::Collection { targets, index, .. } => {
-                *index += 1;
-                let remaining = targets
-                    .as_ref()
-                    .map_or(0, |items| items.len().saturating_sub(*index));
-                if remaining == 0 {
-                    state.installs.remove(pending_id);
-                }
-                Ok(remaining)
-            }
-        }
+        Self::remove_install(&mut state, pending_id);
+        Ok(0)
     }
 
     pub fn cancel_install(&self, pending_id: &str) {
         if let Ok(mut state) = self.state.lock() {
-            state.installs.remove(pending_id);
+            Self::remove_install(&mut state, pending_id);
+        }
+    }
+
+    fn remove_install(state: &mut State, pending_id: &str) {
+        state.installs.remove(pending_id);
+        if let Some(position) = state.install_order.iter().position(|id| id == pending_id) {
+            state.install_order.remove(position);
         }
     }
 }
@@ -473,8 +484,7 @@ fn pending_install(event: &DeepLinkEvent) -> Option<PendingInstallState> {
                 current: false,
                 kind: PendingInstallKind::Collection {
                     slug: (*slug).into(),
-                    targets: None,
-                    index: 0,
+                    plan: None,
                     resolving: false,
                 },
             });
@@ -762,7 +772,7 @@ mod install_request_tests {
     }
 
     #[test]
-    fn collection_install_reserves_each_item_individually() {
+    fn collection_install_reserves_one_ordered_plan() {
         let events = Arc::new(Mutex::new(Vec::new()));
         let router = router(events.clone());
         router.ready();
@@ -777,29 +787,27 @@ mod install_request_tests {
             InstallStep::ResolveCollection { .. }
         ));
         router
-            .set_collection_targets(
+            .set_collection_plan(
                 &pending_id,
-                vec![
-                    TaskTarget {
+                CollectionInstallPlan {
+                    items: vec![CollectionInstallItem {
+                        name: "Zed".into(),
+                        disabled: false,
+                        installable: true,
+                    }],
+                    targets: vec![TaskTarget {
                         kind: TaskKind::Cask,
                         token: "zed".into(),
-                    },
-                    TaskTarget {
-                        kind: TaskKind::Formula,
-                        token: "ripgrep".into(),
-                    },
-                ],
+                    }],
+                },
             )
             .unwrap();
-        let InstallStep::Target(first) = router.begin_install(&pending_id).unwrap() else {
-            panic!("first item must be ready");
+        let InstallStep::Collection { plan, slug, .. } = router.begin_install(&pending_id).unwrap()
+        else {
+            panic!("collection plan must be ready");
         };
-        assert_eq!(first.index, 0);
-        assert_eq!(router.finish_install(&pending_id).unwrap(), 1);
-        let InstallStep::Target(second) = router.begin_install(&pending_id).unwrap() else {
-            panic!("second item must be ready");
-        };
-        assert_eq!(second.index, 1);
+        assert_eq!(slug, "dev-setup");
+        assert_eq!(plan.targets.len(), 1);
         assert_eq!(router.finish_install(&pending_id).unwrap(), 0);
         assert_eq!(
             router.begin_install(&pending_id).unwrap_err().code,

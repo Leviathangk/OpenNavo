@@ -7,9 +7,9 @@ import { startLocalState, useSettingsStore } from '@/stores';
 import { setup } from './helpers';
 
 type ConfirmResult = Awaited<ReturnType<typeof commands.deeplinkInstallConfirm>>;
-const confirmed = (remaining: number): ConfirmResult => ({
+const confirmed = (): ConfirmResult => ({
   status: 'ok',
-  data: { task: {} as never, remaining }
+  data: { tasks: [] }
 });
 
 afterEach(() => {
@@ -39,7 +39,7 @@ describe('Deep links', () => {
       action: 'install' as const,
       pendingId: 'pending-1'
     };
-    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockResolvedValue(confirmed(0));
+    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockResolvedValue(confirmed());
     await openDeepLink(first.router, event);
     expect(first.router.currentRoute.value.path).toBe('/welcome');
     expect(JSON.parse(localStorage.getItem('opennavo.pendingDeepLink')!)).toEqual(event);
@@ -64,7 +64,7 @@ describe('Deep links', () => {
     await startDeepLinks(context.router, ready);
     await ready;
     await useSettingsStore().update('onboardingCompleted', true);
-    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockResolvedValue(confirmed(0));
+    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockResolvedValue(confirmed());
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
 
     await events.deeplinkReceived.emit({
@@ -79,14 +79,11 @@ describe('Deep links', () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('collection links confirm each Rust-owned item one at a time', async () => {
+  it('collection links use one Rust-owned confirmation for the whole plan', async () => {
     const context = await setup('/discover');
     await startLocalState();
     await useSettingsStore().update('onboardingCompleted', true);
-    const confirm = vi
-      .spyOn(commands, 'deeplinkInstallConfirm')
-      .mockResolvedValueOnce(confirmed(1))
-      .mockResolvedValueOnce(confirmed(0));
+    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockResolvedValue(confirmed());
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
 
     await openDeepLink(context.router, {
@@ -96,35 +93,37 @@ describe('Deep links', () => {
       pendingId: 'pending-collection'
     });
     expect(context.router.currentRoute.value.path).toBe('/collections/dev-setup');
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(confirm).toHaveBeenNthCalledWith(1, 'pending-collection');
-    expect(confirm).toHaveBeenNthCalledWith(2, 'pending-collection');
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith('pending-collection');
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it.each(['E_CONFIRMATION_DENIED', 'E_CONFIRMATION_TIMEOUT', 'E_BUSY', 'E_CONFIRMATION_REUSED', 'E_CONFIRMATION_MISMATCH'])(
-    'does not enqueue when Rust denies a deep-link grant (%s)',
-    async code => {
-      const context = await setup('/discover');
-      await startLocalState();
-      await useSettingsStore().update('onboardingCompleted', true);
-      const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue({
-        code,
-        message: code,
-        detail: null
-      });
-      const enqueue = vi.spyOn(commands, 'taskEnqueue');
-      await openDeepLink(context.router, {
-        url: 'opennavo://package/cask/zed?action=install',
-        route: '/package/cask/zed',
-        action: 'install',
-        pendingId: 'pending-denied'
-      });
-      expect(confirm).toHaveBeenCalledWith('pending-denied');
-      expect(enqueue).not.toHaveBeenCalled();
-      expect(useToasts().items.value.at(-1)?.tone).toBe('danger');
-    }
-  );
+  it.each([
+    'E_CONFIRMATION_DENIED',
+    'E_CONFIRMATION_TIMEOUT',
+    'E_BUSY',
+    'E_CONFIRMATION_REUSED',
+    'E_CONFIRMATION_MISMATCH'
+  ])('does not enqueue when Rust denies a deep-link grant (%s)', async code => {
+    const context = await setup('/discover');
+    await startLocalState();
+    await useSettingsStore().update('onboardingCompleted', true);
+    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue({
+      code,
+      message: code,
+      detail: null
+    });
+    const enqueue = vi.spyOn(commands, 'taskEnqueue');
+    await openDeepLink(context.router, {
+      url: 'opennavo://package/cask/zed?action=install',
+      route: '/package/cask/zed',
+      action: 'install',
+      pendingId: 'pending-denied'
+    });
+    expect(confirm).toHaveBeenCalledWith('pending-denied');
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(useToasts().items.value.at(-1)?.tone).toBe('danger');
+  });
 
   it('read-only and legacy links never invoke the confirmation command', async () => {
     const context = await setup('/discover');

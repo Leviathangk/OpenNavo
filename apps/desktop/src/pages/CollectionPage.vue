@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { computed, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
 import { catalogInstallCommand } from '@/utils/brew';
@@ -25,8 +25,6 @@ const props = defineProps<{ slug: string }>();
 
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
-const route = useRoute();
-const router = useRouter();
 const library = useLibraryStore();
 const tasks = useTasksStore();
 const names = useNamesStore();
@@ -81,18 +79,6 @@ const entries = computed<OnCollectionEntry[]>(() =>
 const disabledOf = (token: string) => data.value?.items.find(item => item.package.token === token)?.package.disabled;
 const confirmOpen = ref(false);
 const queueing = ref(false);
-
-watch(
-  [() => route.query.install, data],
-  ([install, collection]) => {
-    if (install === '1' && collection) {
-      if (pending.value.length) confirmOpen.value = true;
-      else toasts.push({ tone: 'success', title: t('collections.allInstalled') });
-      void router.replace({ query: {} });
-    }
-  },
-  { immediate: true }
-);
 
 async function installAll() {
   queueing.value = true;

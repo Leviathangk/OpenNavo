@@ -774,8 +774,7 @@ export type DeepLinkEvent_Serialize = {
 };
 
 export type DeepLinkInstallResult = {
-	task: Task,
-	remaining: number,
+	tasks: Task[],
 };
 
 export type DeeplinkReceived = DeeplinkReceived_Serialize | DeeplinkReceived_Deserialize;

@@ -710,7 +710,9 @@ export function installMockIpc(
               args.trigger as Task['trigger']
             )
           ),
+    // The approve switch is intentionally compile-time dev-only: Vite removes this branch from release bundles.
     deeplink_install_confirm: () => {
+      if (import.meta.env.DEV && flags.has('deeplink-approve')) return { tasks: [] };
       throw { code: 'E_CONFIRMATION_DENIED', message: 'confirmation_denied', detail: null };
     },
     task_cancel: args => {
