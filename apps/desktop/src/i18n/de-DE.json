@@ -1000,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo wurde aktualisiert. Öffnen Sie es erneut, um diese Funktionen weiter zu nutzen.",
+      "ineffective": "Auch nach erneutem Öffnen noch nicht wirksam. Schalten Sie OpenNavo unter „Festplattenvollzugriff“ aus und wieder ein und öffnen Sie OpenNavo anschließend erneut.",
+      "openSettings": "Systemeinstellungen öffnen",
       "body": "In den Systemeinstellungen aktiviert. Öffnen Sie OpenNavo erneut, damit die Änderung wirksam wird.",
       "action": "Erneut öffnen",
       "pending": "Nach erneutem Öffnen wirksam",

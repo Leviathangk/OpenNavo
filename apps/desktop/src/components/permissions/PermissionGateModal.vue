@@ -1,11 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
+import { useRelaunch } from '@/composables/useRelaunch';
+import { paneDone, paneState, usePermissionsStore } from '@/stores/permissions';
 import { OnAppIcon, OnButton, OnModal } from '@opennavo/ui';
 import PermissionChecklist from './PermissionChecklist.vue';
 import { usePermissionGateStore } from '@/stores/permissionGate';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
 const gate = usePermissionGateStore();
+const permissions = usePermissionsStore();
+const route = useRoute();
+const { restarting, restart } = useRelaunch(() => route.fullPath);
+// Reopening is the next step only once both switches are on; with one still off it would unlock nothing yet.
+const reopenNext = computed(() => {
+  const status = permissions.status;
+  return (
+    Boolean(status?.relaunchRequired && !status.relaunchIneffective) &&
+    (['app_management', 'full_disk_access'] as const).every(
+      pane => paneDone(pane, status) || (paneState(pane, status) === 'unknown' && permissions.unknownConfirmed)
+    )
+  );
+});
 const { t } = useI18n();
 const { displayName, icon } = usePackageIdentity();
 const open = computed({
@@ -40,7 +56,10 @@ const description = computed(() =>
     <PermissionChecklist />
     <template #footer>
       <OnButton variant="ghost" @click="gate.dismiss">{{ t('permissionGate.browse') }}</OnButton>
-      <OnButton variant="primary" :disabled="!gate.ready" @click="gate.proceed">{{
+      <OnButton v-if="reopenNext" variant="primary" :loading="restarting" @click="restart">{{
+        t('permission.relaunch.action')
+      }}</OnButton>
+      <OnButton v-else variant="primary" :disabled="!gate.ready" @click="gate.proceed">{{
         gate.current?.targets?.length || gate.current?.feature === 'install'
           ? t('permissionGate.continue')
           : t('welcome.done')

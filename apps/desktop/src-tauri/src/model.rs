@@ -842,6 +842,8 @@ pub struct Permissions {
     pub full_disk_access: PermissionState,
     /// Enabled in System Settings but not yet effective; quit and reopen OpenNavo.
     pub relaunch_required: bool,
+    /// Full Disk Access was still pending after our relaunch; toggle its System Settings switch.
+    pub relaunch_ineffective: bool,
     /// App Management is on in System Settings, but this process is still blocked until it reopens.
     pub app_management_pending: bool,
     /// Full Disk Access is on in System Settings, but macOS applies it only after OpenNavo reopens.

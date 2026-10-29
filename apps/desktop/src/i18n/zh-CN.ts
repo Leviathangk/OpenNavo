@@ -994,6 +994,9 @@ export default {
   },
   permission: {
     relaunch: {
+      updated: 'OpenNavo 已更新，重新打开后即可继续使用。',
+      ineffective: '重新打开后仍未生效。请在「完全磁盘访问权限」里关闭 OpenNavo 再重新开启，然后重新打开 OpenNavo。',
+      openSettings: '打开系统设置',
       body: '已在系统设置中开启，重新打开 OpenNavo 后生效。',
       action: '重新打开',
       pending: '重新打开后生效',

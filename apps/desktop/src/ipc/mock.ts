@@ -248,7 +248,7 @@ export function installMockIpc(
   };
   // Comma-separated ?mock= switches: no-brew, first-run (fresh settings), slow-official / official-down (slow/failed official probe), slow-mirrors (mirrors slower than official),
   // brew-install-fail-download / brew-install-fail-sudo (Homebrew install failures), no-app-management (permission denied for app update/uninstall),
-  // full_disk_access / no-permission-check / permission-relaunch (privacy permissions, below), restore, update.
+  // full_disk_access / no-permission-check / permission-relaunch / permission-relaunch-ineffective (privacy, below), restore, update.
   const flags = new Set(
     typeof location !== 'undefined' ? (new URLSearchParams(location.search).get('mock') ?? '').split(',') : []
   );
@@ -281,6 +281,7 @@ export function installMockIpc(
         ? 'granted'
         : 'denied',
     relaunchRequired: false,
+    relaunchIneffective: false,
     appManagementPending: false,
     fullDiskAccessPending: false
   };
@@ -295,8 +296,17 @@ export function installMockIpc(
       appManagementSwitch: 'unknown',
       fullDiskAccess: 'unknown',
       relaunchRequired: false,
+      relaunchIneffective: false,
       appManagementPending: false,
       fullDiskAccessPending: false
+    };
+  if (flags.has('permission-relaunch-ineffective'))
+    permissions = {
+      ...permissions,
+      fullDiskAccess: 'denied',
+      relaunchRequired: true,
+      relaunchIneffective: true,
+      fullDiskAccessPending: true
     };
   let env: EnvInfo = {
     ...envFixture(),
@@ -325,6 +335,7 @@ export function installMockIpc(
               appManagementSwitch: 'granted',
               appManagement: 'granted',
               relaunchRequired: true,
+              relaunchIneffective: false,
               appManagementPending: true
             }
       );
@@ -825,6 +836,7 @@ export function installMockIpc(
       setTimeout(() => grant(pane), guideDelayMs);
       return null;
     },
+    permission_settings_open: () => null,
     permission_guide_close: () => null,
     permission_guide_fit: () => null,
     permission_guide_info: () => ({ draggable: true, ownerName: null, ownerIcon: null }),

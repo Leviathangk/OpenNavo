@@ -20,7 +20,7 @@ commands.allow = [
   "install_preflight", "apps_running", "task_enqueue", "task_enqueue_many", "task_cancel", "task_list_active", "task_log", "history_list", "history_clear", "history_export_csv",
   "locale_get", "system_locale_get", "settings_get", "settings_set", "mirror_probe", "brewfile_export", "brewfile_preview", "brewfile_install", "doctor_run",
   "app_open", "app_reveal", "system_open_privacy", "app_quit", "app_cancel_quit",
-  "permissions_get", "permission_guide_open", "permission_guide_close"
+  "permissions_get", "permission_settings_open", "permission_guide_open", "permission_guide_close"
 ]
 
 [[permission]]

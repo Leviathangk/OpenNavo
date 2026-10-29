@@ -1000,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo è stato aggiornato. Riaprilo per continuare a usare queste funzionalità.",
+      "ineffective": "Ancora non attivo dopo la riapertura. In Accesso completo al disco, disattiva e riattiva OpenNavo, quindi riapri OpenNavo.",
+      "openSettings": "Apri Impostazioni di Sistema",
       "body": "Attivato nelle Impostazioni di Sistema. Riapri OpenNavo per applicare la modifica.",
       "action": "Riapri",
       "pending": "Riapri per applicare",

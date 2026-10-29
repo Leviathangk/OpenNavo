@@ -1000,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo が更新されました。これらの機能を引き続き使うには、開き直してください。",
+      "ineffective": "開き直してもまだ反映されていません。「フルディスクアクセス」で OpenNavo をオフにしてからオンに戻し、OpenNavo をもう一度開き直してください。",
+      "openSettings": "システム設定を開く",
       "body": "システム設定でオンにしました。設定を適用するには、OpenNavoを再度開いてください。",
       "action": "再度開く",
       "pending": "再度開くと有効",

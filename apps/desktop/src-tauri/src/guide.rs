@@ -783,6 +783,7 @@ mod tests {
             app_management_switch: PermissionState::Granted,
             full_disk_access: PermissionState::Denied,
             relaunch_required: false,
+            relaunch_ineffective: false,
             app_management_pending: false,
             full_disk_access_pending: false,
         };
@@ -811,6 +812,7 @@ mod tests {
             app_management_switch: PermissionState::Denied,
             full_disk_access: PermissionState::Denied,
             relaunch_required: true,
+            relaunch_ineffective: false,
             app_management_pending: false,
             full_disk_access_pending: true,
         };

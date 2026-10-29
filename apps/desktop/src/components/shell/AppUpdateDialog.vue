@@ -97,17 +97,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', observeOverlays);
 });
 
-async function restart() {
-  try {
-    await updater.restart();
-  } catch (error) {
-    toasts.push({
-      tone: 'warning',
-      title: String(error).includes('active_tasks') ? t('updater.busy') : t('errors.actionFailed')
-    });
-  }
-}
-
 async function releaseNotes() {
   const version = updater.update?.version;
   if (!version) return;
@@ -223,7 +212,7 @@ function install() {
           variant="primary"
           :disabled="updater.busy"
           :loading="updater.restarting"
-          @click="restart"
+          @click="updater.restart"
           >{{ t('updater.restart') }}</OnButton
         >
         <OnButton

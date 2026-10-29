@@ -1000,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo a été mis à jour. Rouvrez-le pour continuer à utiliser ces fonctionnalités.",
+      "ineffective": "Toujours sans effet après la réouverture. Dans Accès complet au disque, désactivez puis réactivez OpenNavo, puis rouvrez OpenNavo.",
+      "openSettings": "Ouvrir les Réglages Système",
       "body": "Activé dans les Réglages Système. Rouvrez OpenNavo pour appliquer ce changement.",
       "action": "Rouvrir",
       "pending": "Rouvrez pour appliquer",
