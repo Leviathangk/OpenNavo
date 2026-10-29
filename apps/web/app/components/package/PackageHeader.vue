@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { disabledByHomebrew } from '@opennavo/shared';
-import { architectures, OnButton, OnIcon, OnPackageHeader, toPackageRepoSignals, useUiMessages } from '@opennavo/ui';
+import { OnButton, OnIcon, OnPackageHeader, toPackageRepoSignals, useUiMessages } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { httpsUrl, linkDownloadUrl, linkSource } from '~/utils/linkApp';
@@ -31,11 +31,6 @@ const meta = computed(() => {
 });
 
 const subtitle = computed(() => [props.pkg.developer, props.pkg.summary].filter(Boolean).join(' · '));
-const arch = computed(() =>
-  architectures(props.pkg.supports)
-    .map(item => t(`package.arch.${item}`))
-    .join(' · ')
-);
 const repoSignals = computed(() => toPackageRepoSignals(props.pkg));
 const unavailable = computed(() => Boolean(props.pkg.disable));
 
@@ -61,7 +56,6 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   if (link.value && link.value.pricing !== 'unknown')
     list.push({ key: 'pricing', label: t(`package.link.pricing.${link.value.pricing}`) });
   if (props.pkg.autoUpdates) list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
-  if (arch.value) list.push({ key: 'arch', label: arch.value });
   if (repoSignals.value?.archived)
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (disabledByHomebrew(props.pkg))

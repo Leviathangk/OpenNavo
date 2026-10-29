@@ -3,15 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PackageDetail } from '@opennavo/api';
 import { formatDate, isThirdPartyTap } from '@opennavo/shared';
-import {
-  architectures,
-  displayUrl,
-  OnButton,
-  OnIcon,
-  OnMenu,
-  OnPackageHeader,
-  toPackageRepoSignals
-} from '@opennavo/ui';
+import { displayUrl, OnButton, OnIcon, OnMenu, OnPackageHeader, toPackageRepoSignals } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import PackageGetButton from './PackageGetButton.vue';
 import type { Kind } from '@/ipc/bindings';
@@ -51,13 +43,6 @@ const summary = computed(
 const subtitle = computed(() => [props.detail?.developer, summary.value].filter(Boolean).join(' · '));
 const iconUrl = computed(() => props.detail?.iconUrl ?? props.local?.iconUrl ?? null);
 const accent = computed(() => props.detail?.accentColor ?? props.local?.accentColor ?? null);
-const arch = computed(() =>
-  props.detail
-    ? architectures(props.detail.supports)
-        .map(item => t(`package.arch.${item}`))
-        .join(' · ')
-    : ''
-);
 const repoSignals = computed(() => toPackageRepoSignals(props.detail));
 
 const installed = computed(() => library.find(props.kind, props.token));
@@ -91,7 +76,6 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
     list.push({ key: 'tap', label: t('package.thirdPartyTap'), tone: 'warning', outline: true });
   if (props.detail?.autoUpdates ?? props.local?.autoUpdates)
     list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
-  if (arch.value) list.push({ key: 'arch', label: arch.value });
   if (repoSignals.value?.archived)
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (installedChip.value) list.push({ key: 'installed', label: installedChip.value, tone: 'success', dot: true });
