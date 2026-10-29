@@ -494,7 +494,34 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   };
   const roundup = zh => ({
     ...roundupCard(zh),
-    bodyMarkdown: `## ${zh ? '怎么选' : 'What to compare'}\n\nPick by task.\n\n::app[ordinary-app]\n\n## ${zh ? '对比' : 'Side by side'}\n\n| App | Price |\n| --- | --- |\n| A | Free |\n\n::app[facts-app]\n\n::app[missing-app]`,
+    bodyMarkdown: [
+      `## ${zh ? '怎么选' : 'What to compare'}`,
+      'Pick by task.',
+      '::app[ordinary-app]',
+      `## ${zh ? '对比' : 'Side by side'}`,
+      '| App | Price |\n| --- | --- |\n| A | Free |',
+      '::app[facts-app]',
+      '::app[missing-app]',
+      '[Relative app](/apps/ordinary-app?notes=1&original=1#install)',
+      '[Absolute app](https://opennavo.com/es/apps/ordinary-app#install)',
+      '[WWW app](https://www.opennavo.com/ru/apps/ordinary-app)',
+      '[Traditional app](/zh-hant/apps/ordinary-app)',
+      '[Simplified app](/zh/apps/ordinary-app)',
+      '[Dotted app](/apps/tool.app)',
+      '[Dotted label](/background-items/com.Example.js)',
+      '[Article feed](/articles/feed.xml)',
+      '[App feed](/es/apps/ordinary-app/feed.xml)',
+      '[Collection feed](/collections/picks/feed.xml)',
+      '[API](/api/v1/articles?raw=1#data)',
+      '[Asset](https://opennavo.com/_og/article.png)',
+      '[Other feed](/articles/feed.json)',
+      '[External](https://vendor.example/docs)',
+      '[Anchor](#install)',
+      '[Email](mailto:reader@example.test)',
+      '```md\n[Block](/zh/apps/ordinary-app)\n```',
+      '`[Inline](/zh-hant/apps/ordinary-app)`',
+      '![Article capture](/images/article-capture.png)'
+    ].join('\n\n'),
     testNote: 'MacBook Pro (M4), macOS 26.',
     seoTitle: null,
     seoDescription: null,
@@ -503,7 +530,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     author,
     sources: [{ title: 'Vendor docs', url: 'https://vendor.example/docs' }],
     packages: [appSummary('ordinary-app', 'Ordinary App'), appSummary('facts-app', 'Facts App')],
-    images: [],
+    images: [{ url: '/images/article-capture.png', width: 1280, height: 800 }],
     related: [tutorialCard],
     revision: 2
   });
@@ -3573,6 +3600,45 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const app = await (await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } })).text();
     assert.ok(/data-testid="package-articles"[\s\S]*href="\/articles\/choose-a-screenshot-app"/.test(app));
     assert.ok(app.includes('"@id":"https://example.test/apps/ordinary-app#app"'));
+  });
+  await t.test('article body links follow the page locale, including fallback text and cached responses', async () => {
+    // Each request has the same article revision; the body payload key already separates locales.
+    for (const prefix of ['/zh', '/ja', '/zh-hant', '/es', '/ru', '', '/zh']) {
+      const response = await fetch(`${origin}${prefix}/articles/choose-a-screenshot-app`);
+      const html = await response.text();
+      assert.equal(response.status, 200, logs);
+      const document = new JSDOM(html).window.document;
+      const body = document.querySelector('[data-testid="article-body"]');
+      const links = new Map([...body.querySelectorAll('a')].map(link => [link.textContent, link]));
+      const expected = {
+        'Relative app': `${prefix}/apps/ordinary-app?notes=1&original=1#install`,
+        'Absolute app': `${prefix}/apps/ordinary-app#install`,
+        'WWW app': `${prefix}/apps/ordinary-app`,
+        'Traditional app': `${prefix}/apps/ordinary-app`,
+        'Simplified app': `${prefix}/apps/ordinary-app`,
+        'Dotted app': `${prefix}/apps/tool.app`,
+        'Dotted label': `${prefix}/background-items/com.Example.js`,
+        'Article feed': `${prefix}/articles/feed.xml`,
+        'App feed': `${prefix}/apps/ordinary-app/feed.xml`,
+        'Collection feed': `${prefix}/collections/picks/feed.xml`,
+        API: '/api/v1/articles?raw=1#data',
+        Asset: '/_og/article.png',
+        'Other feed': '/articles/feed.json',
+        External: 'https://vendor.example/docs',
+        Anchor: '#install',
+        Email: 'mailto:reader@example.test'
+      };
+      for (const [label, href] of Object.entries(expected)) {
+        assert.equal(links.get(label)?.getAttribute('href'), href, `${prefix || 'English'}: ${label}`);
+        if (href.startsWith('/') || href.startsWith('#'))
+          assert.equal(links.get(label)?.hasAttribute('target'), false, `${label} stays in this tab`);
+      }
+      assert.equal(links.get('External').getAttribute('target'), '_blank');
+      assert.equal(body.querySelector('pre code').textContent, '[Block](/zh/apps/ordinary-app)\n');
+      assert.equal(body.querySelector('p code').textContent, '[Inline](/zh-hant/apps/ordinary-app)');
+      assert.equal(body.querySelector('img').getAttribute('src'), '/images/article-capture.png');
+      assert.ok(html.includes(`article-body:choose-a-screenshot-app:${prefix.slice(1) || 'en'}:2`));
+    }
   });
   await t.test('article languages closed for indexing are noindex and absent from hreflang', async () => {
     const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
