@@ -224,13 +224,14 @@ scrape_configs:
 """
         after = deploy.monitoring_targets(source, {'api': 'api_new', 'web': 'web_new'})
         self.assertIn("targets: ['api_new:9090']", after)
-        self.assertIn("targets: ['web_new:9091']", after)
+        self.assertIn('dns_sd_configs:', after)
+        self.assertIn('names: [web_new]', after)
         self.assertIn("targets: ['custom:1234']\n        labels: {purpose: custom}", after)
         self.assertEqual(after.count('job_name: web'), 1)
         self.assertEqual(deploy.monitoring_targets(after, {'api': 'api_new', 'web': 'web_new'}), after)
         restored = deploy.monitoring_targets(after, {'api': 'api_old', 'web': 'web_old'})
         self.assertNotIn('api_new', restored)
-        self.assertIn("targets: ['web_old:9091']", restored)
+        self.assertIn('names: [web_old]', restored)
         with self.assertRaises(ValueError):
             deploy.monitoring_targets(source.replace('    static_configs:', '    relabel_configs:', 1), {'api': 'a', 'web': 'b'})
         with self.assertRaises(ValueError):
@@ -268,6 +269,43 @@ scrape_configs:
                                         capture_output=True, text=True, timeout=10)
                 self.assertEqual(result.returncode, expected, result.stderr)
 
+    def test_candidate_warmup_records_retired_statuses_but_rejects_server_failures(self):
+        prelude = """
+let calls = 0;
+globalThis.fetch = async () => {
+  calls += 1;
+  const status = calls <= 2 ? (calls === 1 ? 404 : 410) : 200;
+  return { status, arrayBuffer: async () => new ArrayBuffer(0) };
+};
+globalThis.setTimeout = callback => { callback(); };
+"""
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', prelude + deploy.WARM_SCRIPT,
+             json.dumps(['/apps/retired']), deploy.WARM_ORIGIN, deploy.WARM_HOST, deploy.WARM_INTERNAL_ORIGIN],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('status=404', result.stdout)
+        self.assertIn('status=410', result.stdout)
+        failure = subprocess.run(
+            ['node', '--input-type=module', '-e',
+             "globalThis.fetch = async () => ({status: 503, arrayBuffer: async () => new ArrayBuffer(0)});" + deploy.WARM_SCRIPT,
+             json.dumps(['/apps/broken']), deploy.WARM_ORIGIN, deploy.WARM_HOST, deploy.WARM_INTERNAL_ORIGIN],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(failure.returncode, 1)
+
+    def test_drain_script_falls_back_to_the_existing_load_shed_metric(self):
+        script = """
+globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_web_in_flight\\nopennavo_web_in_flight 0\\n' });
+""" + deploy.DRAIN_SCRIPT
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', script, deploy.WARM_INTERNAL_ORIGIN],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), '0')
+
     def test_monitoring_default_dns_config_release_and_rollback(self):
         source = Path(__file__).with_name('prometheus').joinpath('prometheus.yml').read_text()
         after = deploy.monitoring_targets(source, {'api': 'api_new', 'web': 'web_new'})
@@ -291,7 +329,7 @@ scrape_configs:
                     if args[1] == 'inspect':
                         return json.dumps([{'Mounts': [{'Source': str(config), 'Destination': '/etc/prometheus/prometheus.yml', 'Type': 'bind'}]}])
                     if 'promtool' in args:
-                        self.assertIn('web_new:9091', config.read_text())
+                        self.assertIn('names: [web_new]', config.read_text())
                         if failure == 'validate': raise RuntimeError('validation failed')
                     if 'node' in args and failure == 'scrape': raise RuntimeError('scrape failed')
                     return ''
@@ -302,7 +340,7 @@ scrape_configs:
                         self.assertEqual(config.read_text(), original)
                     else:
                         obj.update_monitoring({'api': 'api_new', 'web': 'web_new'})
-                        self.assertIn('web_new:9091', config.read_text())
+                        self.assertIn('names: [web_new]', config.read_text())
                         self.assertTrue(any('node' in call.args[0] for call in run.call_args_list))
                     self.assertEqual(config.stat().st_ino, inode)
                     self.assertEqual((directory / 'before-prometheus.yml').read_text(), original)
@@ -324,12 +362,13 @@ scrape_configs:
         def cmd(args):
             if args[1] == 'ps': return '\n'.join(c['Id'] for c in containers)
             if args[1] == 'inspect': return json.dumps(containers)
+            if args[1] == 'exec': return '0'
             return ''
         with patch.object(deploy, 'command', side_effect=cmd) as run:
             obj.cleanup(previous)
         mutations = [call.args[0] for call in run.call_args_list if call.args[0][1] in ['stop', 'rm']]
         self.assertEqual(mutations, [
-            ['docker', 'stop', '--timeout', '30', *previous['services'].values(), 'api_older', 'api'],
+            ['docker', 'stop', '--timeout', '90', *previous['services'].values(), 'api_older', 'api'],
             ['docker', 'rm', 'api_older', 'web_ancient', 'api']])
 
     def test_cleanup_does_not_remove_containers_if_stop_fails(self):
@@ -342,8 +381,347 @@ scrape_configs:
             with self.assertRaises(RuntimeError): obj.cleanup({})
         self.assertFalse(any(call.args[0][1] == 'rm' for call in run.call_args_list))
 
+    def test_cleanup_stops_undrained_containers_by_default(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'project': 'example-prod'}
+        obj.services = {'api': 'api_new', 'web': 'web_new', 'mcp': 'mcp_new', 'admin': 'admin_new'}
+        containers = [{
+            'Id': 'web_old', 'State': {'Running': True},
+            'Config': {'Labels': {'com.docker.compose.project': 'example-prod', 'com.docker.compose.service': 'web_old'}}
+        }]
+        def command(args):
+            if args[1] == 'ps': return 'web_old'
+            if args[1] == 'inspect': return json.dumps(containers)
+            if args[1] == 'exec': raise RuntimeError('old metric unavailable')
+            return ''
+        with patch.object(deploy, 'command', side_effect=command) as run, contextlib.redirect_stdout(io.StringIO()) as output:
+            obj.cleanup({})
+        self.assertTrue(any(call.args[0] == ['docker', 'stop', '--timeout', '90', 'web_old']
+                            for call in run.call_args_list))
+        self.assertIn('stopping retired containers', output.getvalue())
+
+    def test_cleanup_can_retain_undrained_containers_only_when_explicitly_configured(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'project': 'example-prod', 'retain_undrained_containers': True}
+        obj.services = {'api': 'api_new', 'web': 'web_new', 'mcp': 'mcp_new', 'admin': 'admin_new'}
+        containers = [{
+            'Id': 'web_old', 'State': {'Running': True},
+            'Config': {'Labels': {'com.docker.compose.project': 'example-prod', 'com.docker.compose.service': 'web_old'}}
+        }]
+        def command(args):
+            if args[1] == 'ps': return 'web_old'
+            if args[1] == 'inspect': return json.dumps(containers)
+            if args[1] == 'exec': raise RuntimeError('old metric unavailable')
+            return ''
+        with patch.object(deploy, 'command', side_effect=command) as run:
+            obj.cleanup({})
+        self.assertFalse(any(call.args[0][1] in ('stop', 'rm') for call in run.call_args_list))
+
+    def test_rollback_stops_undrained_candidates_by_default(self):
+        for sha in ['c' * 40, None]:
+            with self.subTest(sha=sha):
+                self.check_rollback_stops_undrained_candidates(sha)
+
+    def check_rollback_stops_undrained_candidates(self, sha):
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            obj = object.__new__(deploy.Deployment)
+            obj.config = {'project': 'example-prod'}
+            obj.state = {'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
+            if sha is not None:
+                obj.state['sha'] = sha
+            obj.services = {k: k + '_new' for k in ['api', 'web', 'admin', 'mcp']}
+            obj.directory = directory
+            obj.live_caddy = directory / 'live'
+            obj.env = directory / 'env'
+            obj.rolling = directory / 'rolling'
+            obj.live_caddy.write_text('candidate')
+            for name in ['before-caddy', 'before-release.env', 'before-rolling.json']:
+                (directory / name).write_text('old')
+            events = []
+            obj.compose = lambda *args, **kwargs: events.append(args)
+            obj.reload = lambda: events.append('reload')
+            obj.verify = lambda expected=None: events.append(('verify', expected))
+            obj.update_monitoring = lambda services: events.append('monitoring')
+            obj.drain_retired = lambda *args, **kwargs: False
+            with patch.object(deploy, 'command', return_value='candidate'):
+                obj.rollback()
+            self.assertIn(('verify', sha[:12] if sha else ''), events)
+            self.assertIn(('stop', '--timeout', '90', *obj.services.values()), events)
+
+    def test_failed_old_service_start_restores_candidate_config_and_reports_degraded(self):
+        for promoted in [False, True]:
+            with self.subTest(promoted=promoted), tempfile.TemporaryDirectory() as root:
+                obj, _ = prepare_on_host(root, {})
+                candidate_env = (obj.directory / 'release.env').read_bytes()
+                candidate_rolling = (obj.directory / 'rolling.compose.json').read_bytes()
+                if promoted:
+                    obj.env.write_bytes(candidate_env)
+                    obj.rolling.write_bytes(candidate_rolling)
+                obj.live_caddy.write_text('candidate route')
+                before_state = obj.state_path.read_bytes()
+
+                def fail_old_start(*args, **kwargs):
+                    self.assertEqual(obj.env.read_bytes(), (obj.directory / 'before-release.env').read_bytes())
+                    self.assertEqual(obj.rolling.read_bytes(), (obj.directory / 'before-rolling.json').read_bytes())
+                    self.assertFalse(kwargs['candidate'])
+                    raise RuntimeError('old services unavailable')
+
+                obj.compose = unittest.mock.Mock(side_effect=fail_old_start)
+                obj.reload = unittest.mock.Mock()
+                obj.verify = unittest.mock.Mock()
+                obj.update_monitoring = unittest.mock.Mock()
+                obj.drain_retired = unittest.mock.Mock()
+                with contextlib.redirect_stdout(io.StringIO()) as output, \
+                        patch.object(deploy, 'command') as run, \
+                        self.assertRaisesRegex(RuntimeError, 'degraded rollback'):
+                    obj.rollback()
+
+                self.assertEqual(obj.env.read_bytes(), candidate_env)
+                self.assertEqual(obj.rolling.read_bytes(), candidate_rolling)
+                self.assertEqual(obj.live_caddy.read_text(), 'candidate route')
+                self.assertEqual(obj.state_path.read_bytes(), before_state)
+                self.assertIn('DEGRADED', output.getvalue())
+                self.assertIn('routing unconfirmed', output.getvalue())
+                self.assertNotIn('Caddy still routes to the candidate', output.getvalue())
+                marker = json.loads(obj.degraded_path.read_text())
+                self.assertEqual(marker['release'], obj.release)
+                self.assertEqual(marker['sha'], obj.payload['sha'])
+                self.assertIn('previous services failed to start', marker['reason'])
+                self.assertEqual(obj.degraded_path.stat().st_mode & 0o777, 0o600)
+                obj.compose.assert_called_once_with(
+                    'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                    *obj.state['services'].values(), 'worker', candidate=False)
+                for mock in [obj.reload, obj.verify, obj.update_monitoring, obj.drain_retired, run]:
+                    mock.assert_not_called()
+
+                # A new receiver process must reject the next deployment without touching Docker.
+                retry = deploy.Deployment(obj.config, payload())
+                with patch.object(deploy, 'command') as run, \
+                        self.assertRaisesRegex(RuntimeError, 'Manual intervention required') as failure:
+                    retry.apply(archive())
+                self.assertIn(f'remove {obj.degraded_path}', str(failure.exception))
+                run.assert_not_called()
+
+    def test_degraded_marker_blocks_new_deploys_and_same_sha_retries_until_manually_removed(self):
+        for same_sha in [False, True]:
+            for content in ['', 'not valid JSON', '{"reason":"routing unconfirmed"}']:
+                with self.subTest(same_sha=same_sha, content=content), tempfile.TemporaryDirectory() as root:
+                    obj, _ = prepare_on_host(root, {})
+                    if same_sha:
+                        obj.state['sha'] = obj.payload['sha']
+                        deploy.write_private(obj.state_path, obj.state)
+                    obj.degraded_path.write_text(content)
+                    retry = deploy.Deployment(obj.config, payload())
+                    with patch.object(retry, 'capacity_gate', side_effect=RuntimeError('deployment resumed')) as capacity, \
+                            patch.object(retry, 'verify', side_effect=RuntimeError('deployment resumed')) as verify, \
+                            patch.object(retry, 'prepare') as prepare, \
+                            patch.object(retry, 'cleanup') as cleanup, \
+                            patch.object(deploy, 'command') as run:
+                        with self.assertRaisesRegex(RuntimeError, 'Manual intervention required') as failure:
+                            retry.apply(archive())
+                        self.assertIn(f'remove {obj.degraded_path}', str(failure.exception))
+                        self.assertEqual(obj.degraded_path.read_text(), content)
+                        for mock in [capacity, verify, prepare, cleanup, run]:
+                            mock.assert_not_called()
+                        obj.degraded_path.unlink()
+                        with self.assertRaisesRegex(RuntimeError, 'deployment resumed'):
+                            retry.apply(archive())
+                        (verify if same_sha else capacity).assert_called_once_with()
+
+    def test_caddy_reload_failure_marks_routing_unconfirmed_and_blocks_next_deploy(self):
+        for fail_validation in [False, True]:
+            with self.subTest(fail_validation=fail_validation), tempfile.TemporaryDirectory() as root:
+                obj, _ = prepare_on_host(root, {})
+                obj.config['caddy_container'] = 'fixture-caddy'
+                error = RuntimeError('fixture Caddy failure')
+                commands = [error] if fail_validation else ['', error]
+                with patch.object(deploy, 'command', side_effect=commands), \
+                        contextlib.redirect_stdout(io.StringIO()) as output, \
+                        self.assertRaisesRegex(RuntimeError, 'fixture Caddy failure'):
+                    obj.reload()
+                self.assertIn('routing unconfirmed', output.getvalue())
+                self.assertNotIn('Caddy still routes to the candidate', output.getvalue())
+                self.assertFalse(hasattr(obj, 'switch_at'))
+                self.assertEqual(json.loads(obj.degraded_path.read_text())['reason'],
+                                 'Caddy reload failed; routing unconfirmed')
+                retry = deploy.Deployment(obj.config, payload())
+                with patch.object(deploy, 'command') as run, \
+                        self.assertRaisesRegex(RuntimeError, 'Manual intervention required'):
+                    retry.apply(archive())
+                run.assert_not_called()
+
+    def test_rollback_caddy_reload_failure_retains_candidates_and_requires_manual_recovery(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = prepare_on_host(root, {})
+            obj.config['caddy_container'] = 'fixture-caddy'
+            obj.compose = unittest.mock.Mock()
+            obj.verify = unittest.mock.Mock()
+            obj.update_monitoring = unittest.mock.Mock()
+            obj.drain_retired = unittest.mock.Mock()
+            with patch.object(deploy, 'command', side_effect=['', RuntimeError('fixture Caddy failure')]), \
+                    contextlib.redirect_stdout(io.StringIO()) as output, \
+                    self.assertRaisesRegex(RuntimeError, 'fixture Caddy failure'):
+                obj.rollback()
+            self.assertIn('routing unconfirmed', output.getvalue())
+            self.assertTrue(obj.degraded_path.exists())
+            obj.compose.assert_called_once_with(
+                'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                *obj.state['services'].values(), 'worker', candidate=False)
+            for mock in [obj.verify, obj.update_monitoring, obj.drain_retired]:
+                mock.assert_not_called()
+
+    def test_failed_forward_reload_allows_next_deploy_after_verified_rollback(self):
+        for forward_failure in ['validate', 'signal']:
+            with self.subTest(forward_failure=forward_failure):
+                self.check_forward_reload_recovery(forward_failure)
+
+    def test_failed_forward_reload_keeps_marker_when_rollback_cannot_confirm_recovery(self):
+        for forward_failure in ['validate', 'signal']:
+            for rollback_failure in ['validate', 'signal', 'verify']:
+                with self.subTest(forward_failure=forward_failure, rollback_failure=rollback_failure):
+                    self.check_forward_reload_recovery(forward_failure, rollback_failure)
+
+    def check_forward_reload_recovery(self, forward_failure, rollback_failure=None):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = prepare_on_host(root, {})
+            obj.config['caddy_container'] = 'fixture-caddy'
+            obj.state['sha'] = 'c' * 40
+            deploy.write_private(obj.state_path, obj.state)
+            before_state = obj.state_path.read_bytes()
+            before_caddy = (obj.directory / 'before-caddy').read_bytes()
+            (obj.directory / 'Caddyfile.next').write_text('candidate route')
+
+            def stub_host_steps(target):
+                for name in ['capacity_gate', 'backup', 'compose', 'warm_candidates', 'verify',
+                             'update_monitoring', 'cleanup', 'prune']:
+                    setattr(target, name, unittest.mock.Mock())
+                target.drain_retired = unittest.mock.Mock(return_value=True)
+
+            stub_host_steps(obj)
+            # The fixture has already prepared this run's release and rollback snapshots.
+            obj.prepare = unittest.mock.Mock()
+
+            def verify_rollback(expected=None):
+                self.assertEqual(expected, obj.state['sha'][:12])
+                self.assertEqual(obj.live_caddy.read_bytes(), before_caddy)
+                self.assertTrue(obj.degraded_path.exists())
+                if rollback_failure == 'verify':
+                    raise RuntimeError('rollback verify failed')
+
+            obj.verify.side_effect = verify_rollback
+            reload_attempt = 0
+
+            def command(args):
+                nonlocal reload_attempt
+                if args[:3] == ['docker', 'image', 'inspect']:
+                    return json.dumps({'org.opencontainers.image.revision': obj.payload['sha']})
+                if args[:2] == ['docker', 'create']:
+                    return 'fixture-container'
+                step = None
+                if 'validate' in args:
+                    reload_attempt += 1
+                    step = 'validate'
+                    if reload_attempt == 2:
+                        self.assertEqual(obj.live_caddy.read_bytes(), before_caddy)
+                        self.assertTrue(obj.degraded_path.exists())
+                        obj.compose.assert_called_with(
+                            'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                            *obj.state['services'].values(), 'worker', candidate=False)
+                elif '--signal=USR1' in args:
+                    step = 'signal'
+                if step and reload_attempt == 1 and step == forward_failure:
+                    raise RuntimeError('forward ' + step + ' failed')
+                if step and reload_attempt == 2 and step == rollback_failure:
+                    raise RuntimeError('rollback ' + step + ' failed')
+                return ''
+
+            with patch.object(deploy, 'command', side_effect=command), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                failure = 'rollback ' + rollback_failure if rollback_failure else 'forward ' + forward_failure
+                with self.assertRaisesRegex(RuntimeError, failure + ' failed'):
+                    obj.apply(archive())
+                self.assertEqual(reload_attempt, 2)
+                self.assertEqual(obj.state_path.read_bytes(), before_state)
+                self.assertEqual(obj.live_caddy.read_bytes(), before_caddy)
+                obj.cleanup.assert_not_called()
+                obj.prune.assert_not_called()
+
+                next_payload = {**payload(), 'run_id': '124'}
+                retry = deploy.Deployment(obj.config, next_payload)
+                stub_host_steps(retry)
+                if rollback_failure:
+                    self.assertTrue(obj.degraded_path.exists())
+                    obj.drain_retired.assert_not_called()
+                    with self.assertRaisesRegex(RuntimeError, 'Manual intervention required'):
+                        retry.apply(archive())
+                    retry.capacity_gate.assert_not_called()
+                    retry.compose.assert_not_called()
+                else:
+                    self.assertFalse(obj.degraded_path.exists())
+                    obj.verify.assert_called_once_with(expected=obj.state['sha'][:12])
+                    obj.update_monitoring.assert_called_once_with(obj.state['services'])
+                    retry.apply(archive())
+                    self.assertEqual(reload_attempt, 3)
+                    self.assertEqual(json.loads(retry.state_path.read_text())['release'], retry.release)
+                    retry.capacity_gate.assert_called_once_with()
+                    retry.cleanup.assert_called_once()
+                    retry.prune.assert_called_once()
+
+    def test_verify_checks_legacy_routes_without_sha_and_requires_known_release_headers(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.payload = payload()
+        obj.config = {'local_origin': 'https://example.org', 'checks': [{'path': '/', 'host': 'example.org'}]}
+        cases = [('', 200, '', True), ('', 503, '', False),
+                 (None, 200, 'a' * 12, True), (None, 200, '', False),
+                 ('c' * 12, 200, 'a' * 12, False)]
+        for expected, status, header, success in cases:
+            with self.subTest(expected=expected, status=status, header=header):
+                def response(*args, **kwargs):
+                    body = io.BytesIO(b'healthy route')
+                    body.status = status
+                    body.headers = {'X-OpenNavo-Release': header}
+                    return body
+                with patch.object(deploy.urllib.request, 'urlopen', side_effect=response), \
+                        patch.object(deploy.time, 'sleep'):
+                    if success:
+                        obj.verify(expected=expected)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, 'post-deployment route checks failed'):
+                            obj.verify(expected=expected)
+
+    def test_same_sha_short_circuit_skips_capacity_gate(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.root = Path('/fixture')
+        obj.payload = payload()
+        obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live', 'web': 'web_live'}}
+        events = []
+        obj.verify = lambda: events.append('verify')
+        obj.update_monitoring = lambda services: events.append('monitoring')
+        obj.cleanup = lambda previous: events.append('cleanup')
+        obj.prune = lambda previous: events.append('prune')
+        obj.capacity_gate = lambda: (_ for _ in ()).throw(AssertionError('short circuit must skip capacity'))
+        obj.apply(archive())
+        self.assertEqual(events, ['verify', 'monitoring', 'cleanup', 'prune'])
+
+    def test_drain_timeout_warns_and_reports_failure(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'project': 'example-prod'}
+        obj.switch_at = None
+        containers = [{
+            'Id': 'old-web', 'State': {'Running': True},
+            'Config': {'Labels': {'com.docker.compose.service': 'web_old'}}
+        }]
+        with patch.object(deploy, 'command', return_value='1'), \
+                patch.object(deploy.time, 'monotonic', side_effect=[0, 0, 3]), \
+                patch.object(deploy.time, 'sleep'), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertFalse(obj.drain_retired(containers, timeout=2))
+        self.assertIn('drain timed out', output.getvalue())
+
     def test_retry_verifies_existing_release_before_resuming_cleanup(self):
         obj = object.__new__(deploy.Deployment)
+        obj.root = Path('/fixture')
         obj.payload = payload()
         previous = {'services': {'api': 'api_previous'}}
         obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live'}, 'previous': previous}
@@ -514,8 +892,9 @@ scrape_configs:
 
     def test_pulls_every_image_and_rejects_a_foreign_revision_before_preparing(self):
         for revision in ['a' * 40, 'f' * 40]:
-            with self.subTest(revision=revision):
+            with self.subTest(revision=revision), tempfile.TemporaryDirectory() as root:
                 obj = object.__new__(deploy.Deployment)
+                obj.root = Path(root)
                 obj.payload, obj.state = payload(), {}
                 events = []
                 def stop(_):
@@ -568,7 +947,8 @@ scrape_configs:
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)
             obj = object.__new__(deploy.Deployment)
-            obj.config = {}
+            obj.root = directory
+            obj.config = {'project': 'fixture'}
             obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
             obj.payload = payload()
             obj.directory = directory
@@ -588,11 +968,16 @@ scrape_configs:
             obj.backup = lambda: events.append('backup')
             obj.compose = lambda *args, **kwargs: events.append(args)
             obj.reload = lambda: events.append('reload')
+            obj.capacity_gate = lambda: None
+            obj.warm_candidates = lambda: events.append('warm')
             obj.update_monitoring = lambda services: events.append(('monitoring', services))
             obj.cleanup = lambda _: events.append('cleanup')
             obj.prune = lambda _: events.append('prune')
-            def fail(): raise RuntimeError('route check failed')
-            obj.verify = fail
+            def verify(expected=None):
+                if expected is None:
+                    raise RuntimeError('route check failed')
+                events.append(('verify', expected))
+            obj.verify = verify
             def cmd(args, output=None):
                 if args[:3] == ['docker', 'image', 'inspect']:
                     return json.dumps({'org.opencontainers.image.revision': 'a' * 40})
@@ -605,19 +990,22 @@ scrape_configs:
             self.assertEqual(obj.env.read_text(), 'old')
             self.assertEqual(obj.rolling.read_text(), 'old')
             self.assertLess(events.index('backup'), events.index(('run', '--rm', '--no-deps', 'migrate', 'up')))
-            self.assertIn(('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker'), events)
+            old_up = ('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                      'api_previous', 'web_previous', 'admin_previous', 'mcp_previous', 'worker')
+            self.assertIn(old_up, events)
+            self.assertLess(events.index(old_up), len(events) - 1 - events[::-1].index('reload'))
             self.assertFalse(obj.state_path.exists())
             self.assertNotIn('down', str(events))
             self.assertNotIn('cleanup', events)
             self.assertNotIn('prune', events)
 
-            # Even if monitoring cannot recover, rollback must stop failed candidates.
+            # If monitoring cannot recover, rollback leaves candidate containers for inspection.
             events.clear()
             def fail_monitoring(_): raise RuntimeError('monitoring unavailable')
             obj.update_monitoring = fail_monitoring
             with self.assertRaisesRegex(RuntimeError, 'monitoring unavailable'):
                 obj.rollback()
-            self.assertIn(('stop', *obj.services.values()), events)
+            self.assertFalse(any(event and event[0] == 'stop' for event in events if isinstance(event, tuple)))
             self.assertEqual(obj.live_caddy.read_text(), 'old')
 
             # A successful retry must persist the verified release before cleanup.
@@ -625,7 +1013,8 @@ scrape_configs:
             (directory / 'release.env').write_text('new-env')
             (directory / 'rolling.compose.json').write_text('{}')
             events.clear()
-            obj.verify = lambda: events.append('verify')
+            obj.verify = lambda expected=None: events.append('verify')
+            obj.warm_candidates = lambda: events.append('warm')
             obj.update_monitoring = lambda services: events.append('monitoring')
             def cleanup(previous):
                 state = json.loads(obj.state_path.read_text())
