@@ -66,7 +66,7 @@ it('serves old assets for GET and HEAD with matching immutable headers and MIME 
   }
 });
 
-it('marks missing old assets as no-store', async () => {
+it('rejects missing old assets', async () => {
   const root = join(tmpdir(), `nuxt-assets-${Date.now()}-${Math.random()}`);
   const assetRoot = join(root, '.output/public/_nuxt');
   roots.push(root);
@@ -79,7 +79,6 @@ it('marks missing old assets as no-store', async () => {
   try {
     const event = createEvent(req, new ServerResponse(req));
     await expect(assetRoute(event)).rejects.toMatchObject({ statusCode: 404 });
-    expect(getResponseHeader(event, 'cache-control')).toBe('no-store');
   } finally {
     socket.destroy();
     cwd.mockRestore();

@@ -7,8 +7,7 @@ import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '.
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
 import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
-import { sitemapFontsEnabled } from '../utils/sitemapFonts';
-import { createStaleCache } from '../utils/staleCache';
+import { createStaleCache, type StaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
 type SitemapLocale = PublicComponents['schemas']['SitemapLocale'];
@@ -51,17 +50,23 @@ export default defineNitroPlugin(nitroApp => {
     // Let API failures propagate when nothing is cached yet: an outage must not look like removed
     // content. The article check is one small request and follows publishing at once; the
     // populated buckets come from the cached catalog (populatedPackageSitemaps).
-    const [{ articles, authors }, populated, open] = await Promise.all([
+    const [{ articles, authors }, populated, open, settings] = await Promise.all([
       articleSitemap(),
       populatedPackageSitemaps(),
-      openLocales()
+      openLocales(),
+      getSiteSettings()
     ]);
     // The label list takes hundreds of API pages to load after a restart, so the index reads it without waiting
     // and leaves the group out until it is known.
     const backgroundItems = backgroundItemEntries.peek();
     ctx.sitemaps = ctx.sitemaps
       .filter(({ _sitemapName: sitemapName }) => {
-        if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
+        if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) {
+          // A cached catalog may still contain a bucket whose source was just switched off.
+          if (sitemapName.startsWith('fonts-') && !settings.pages.fontsSitemap) return false;
+          if (sitemapName.startsWith('versions-') && !settings.pages.versionsSitemap) return false;
+          return populated.has(sitemapName);
+        }
         if (sitemapName === 'articles') return articles.length > 0;
         if (sitemapName === 'authors') return authors.length > 0;
         // An empty urlset in the index reads as a broken sitemap to Search Console.
@@ -90,13 +95,22 @@ export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
-      if (group === 'fonts' && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts))
-        throw createError({ statusCode: 404, statusMessage: 'Sitemap not found' });
-      if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap) return;
+      const settings = await getSiteSettings();
+      if (group === 'fonts' && !settings.pages.fontsSitemap)
+        throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
+      if (group === 'versions' && !settings.pages.versionsSitemap)
+        throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
       const records =
         group === 'versions'
-          ? (await Promise.all([cachedPackages('apps'), fontPackages()])).flat()
-          : await cachedPackages(group);
+          ? (
+              await Promise.all([
+                cachedPackages('apps', settings.revision),
+                settings.pages.fontsSitemap
+                  ? cachedPackages('fonts', settings.revision)
+                  : Promise.resolve([] as SitemapRecord[])
+              ])
+            ).flat()
+          : await cachedPackages(group, settings.revision);
       const page = group === 'versions' ? 'versions' : 'overview';
       const urls = records
         .filter(record => packageSitemapName(group, record.token) === ctx.sitemapName)
@@ -120,10 +134,6 @@ export default defineNitroPlugin(nitroApp => {
     if (load) ctx.urls.push(...(await load()));
   });
 });
-
-function fontPackages(): Promise<SitemapRecord[]> {
-  return sitemapFontsEnabled(useRuntimeConfig().sitemapFonts) ? cachedPackages('fonts') : Promise.resolve([]);
-}
 
 function apiBase() {
   const config = useRuntimeConfig();
@@ -153,59 +163,88 @@ interface PackageSnapshot {
 }
 
 /** Populated buckets are cached to avoid reading the entire catalog on every index request. */
-const populatedPackageSitemaps = createStaleCache(
-  async () => {
-    const [apps, fonts, settings] = await Promise.all([cachedPackages('apps'), fontPackages(), getSiteSettings()]);
-    const buckets = new Set<string>();
-    const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
-      const entries = listedLocales(record, page);
-      if (entries?.length === 0) return;
-      const name = packageSitemapName(group, record.token);
-      buckets.add(name);
-    };
-    for (const record of apps) add('apps', record, 'overview');
-    for (const record of fonts) add('fonts', record, 'overview');
-    if (settings.pages.versionsSitemap) for (const record of [...apps, ...fonts]) add('versions', record, 'versions');
-    return buckets;
-  },
-  {
-    freshMs: SNAPSHOT_FRESH_MS,
-    retryMs: SNAPSHOT_RETRY_MS,
-    onError: error => console.error('[opennavo] sitemap index refresh failed', error)
+let populatedPackageSitemapsRevision: number | undefined;
+let populatedPackageSitemapsCache: StaleCache<Set<string>> | undefined;
+const populatedPackageSitemapsCaches = new Set<StaleCache<Set<string>>>();
+
+async function populatedPackageSitemaps(): Promise<Set<string>> {
+  const settings = await getSiteSettings();
+  if (!populatedPackageSitemapsCache || populatedPackageSitemapsRevision !== settings.revision) {
+    const previous = populatedPackageSitemapsCache;
+    populatedPackageSitemapsRevision = settings.revision;
+    populatedPackageSitemapsCache = createStaleCache(
+      async () => {
+        const [apps, fonts] = await Promise.all([
+          cachedPackages('apps', settings.revision),
+          settings.pages.fontsSitemap
+            ? cachedPackages('fonts', settings.revision)
+            : Promise.resolve([] as SitemapRecord[])
+        ]);
+        const buckets = new Set<string>();
+        const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
+          const entries = listedLocales(record, page);
+          if (entries?.length === 0) return;
+          const name = packageSitemapName(group, record.token);
+          buckets.add(name);
+        };
+        for (const record of apps) add('apps', record, 'overview');
+        for (const record of fonts) add('fonts', record, 'overview');
+        if (settings.pages.versionsSitemap)
+          for (const record of [...apps, ...fonts]) add('versions', record, 'versions');
+        return buckets;
+      },
+      {
+        freshMs: SNAPSHOT_FRESH_MS,
+        retryMs: SNAPSHOT_RETRY_MS,
+        onError: error => console.error('[opennavo] sitemap index refresh failed', error)
+      }
+    );
+    populatedPackageSitemapsCaches.add(populatedPackageSitemapsCache);
+    if (previous) {
+      void previous.idle().then(() => populatedPackageSitemapsCaches.delete(previous));
+    }
   }
-);
+  return populatedPackageSitemapsCache();
+}
 
 // Coalesce reads and rebuilds, including callers that observed missing chunks. Each server has
 // its own in-flight maps; shared Redis snapshots remain immutable.
-const packageReads = new Map<PackageGroup, Promise<SitemapRecord[]>>();
-const packageRebuilds = new Map<PackageGroup, Promise<SitemapRecord[]>>();
-const rebuildFailedAt = new Map<PackageGroup, number>();
+type PackageCacheKey = `${PackageGroup}:${number}`;
+const packageReads = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
+const packageRebuilds = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
+const rebuildFailedAt = new Map<PackageCacheKey, number>();
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
-  await Promise.all([populatedPackageSitemaps.idle(), backgroundItemEntries.idle(), backgroundListLocales.idle()]);
+  await Promise.all([
+    ...[...populatedPackageSitemapsCaches].map(cache => cache.idle()),
+    backgroundItemEntries.idle(),
+    backgroundListLocales.idle()
+  ]);
   while (packageRebuilds.size) await Promise.allSettled(packageRebuilds.values());
 }
 
-function manifestKey(group: PackageGroup) {
-  return `sitemap-package-manifest-v3-${PAGE_SIZE}:${group}`;
+function manifestKey(group: PackageGroup, revision: number) {
+  // A settings revision forces a fresh catalog read, so page-level sitemap decisions cannot survive a switch.
+  return `sitemap-package-manifest-v3-${PAGE_SIZE}:${revision}:${group}`;
 }
 
-function cachedPackages(group: PackageGroup): Promise<SitemapRecord[]> {
-  const pending = packageReads.get(group);
+function cachedPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
+  const cacheKey: PackageCacheKey = `${group}:${revision}`;
+  const pending = packageReads.get(cacheKey);
   if (pending) return pending;
-  const read = readPackages(group).finally(() => packageReads.delete(group));
-  packageReads.set(group, read);
+  const read = readPackages(group, revision).finally(() => packageReads.delete(cacheKey));
+  packageReads.set(cacheKey, read);
   return read;
 }
 
-async function readPackages(group: PackageGroup): Promise<SitemapRecord[]> {
+async function readPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
   // A live rebuild reads every catalog page. Do not amplify a Redis outage with that work.
   // Missing/evicted snapshots still use the existing live rebuild below.
-  const snapshot = await retrySnapshotRead(() => readSnapshot(group), group);
+  const snapshot = await retrySnapshotRead(() => readSnapshot(group, revision), group);
   // Without a complete snapshot the request waits for the catalog and fails if the API does.
-  if (!snapshot) return rebuildPackages(group);
-  if (snapshot.expires <= Date.now()) refreshPackages(group);
+  if (!snapshot) return rebuildPackages(group, revision);
+  if (snapshot.expires <= Date.now()) refreshPackages(group, revision);
   return snapshot.records;
 }
 
@@ -225,13 +264,13 @@ async function retrySnapshotRead<T>(read: () => Promise<T>, group: PackageGroup)
   }
 }
 
-async function readSnapshot(group: PackageGroup) {
+async function readSnapshot(group: PackageGroup, revision: number) {
   const storage = useStorage('cache');
   // A rebuild that publishes between reading the manifest and its chunks reclaims those chunks:
   // read the manifest once more before treating the snapshot as lost (evicted).
   let seen: string | undefined;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group));
+    const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
     if (!manifest || manifest.keys.join() === seen) return undefined;
     const chunks = await Promise.all(manifest.keys.map(key => storage.getItem<SitemapRecord[]>(key)));
     if (chunks.every(chunk => chunk !== null)) return { records: chunks.flat(), expires: manifest.expires };
@@ -240,28 +279,30 @@ async function readSnapshot(group: PackageGroup) {
   return undefined;
 }
 
-function rebuildPackages(group: PackageGroup): Promise<SitemapRecord[]> {
-  const pending = packageRebuilds.get(group);
+function rebuildPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
+  const cacheKey: PackageCacheKey = `${group}:${revision}`;
+  const pending = packageRebuilds.get(cacheKey);
   if (pending) return pending;
-  const rebuild = writeSnapshot(group).finally(() => packageRebuilds.delete(group));
-  packageRebuilds.set(group, rebuild);
+  const rebuild = writeSnapshot(group, revision).finally(() => packageRebuilds.delete(cacheKey));
+  packageRebuilds.set(cacheKey, rebuild);
   return rebuild;
 }
 
 /** Rebuilds a stale snapshot behind the response; a failure keeps the stale one for a while. */
-function refreshPackages(group: PackageGroup) {
-  const failedAt = rebuildFailedAt.get(group);
-  if (packageRebuilds.has(group) || (failedAt !== undefined && Date.now() - failedAt < SNAPSHOT_RETRY_MS)) return;
-  rebuildPackages(group).then(
-    () => rebuildFailedAt.delete(group),
+function refreshPackages(group: PackageGroup, revision: number) {
+  const cacheKey: PackageCacheKey = `${group}:${revision}`;
+  const failedAt = rebuildFailedAt.get(cacheKey);
+  if (packageRebuilds.has(cacheKey) || (failedAt !== undefined && Date.now() - failedAt < SNAPSHOT_RETRY_MS)) return;
+  rebuildPackages(group, revision).then(
+    () => rebuildFailedAt.delete(cacheKey),
     error => {
-      rebuildFailedAt.set(group, Date.now());
+      rebuildFailedAt.set(cacheKey, Date.now());
       console.error(`[opennavo] sitemap ${group} snapshot refresh failed`, error);
     }
   );
 }
 
-async function writeSnapshot(group: PackageGroup): Promise<SitemapRecord[]> {
+async function writeSnapshot(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
   const storage = useStorage('cache');
   // Reload every OFFSET page and publish only after all immutable chunks are stored.
   const pages = await loadPackagePages(group);
@@ -278,9 +319,9 @@ async function writeSnapshot(group: PackageGroup): Promise<SitemapRecord[]> {
     }
     // Read the manifest being replaced right before replacing it, so a snapshot another server
     // published in the meantime is reclaimed as well.
-    previous = await storage.getItem<PackageSnapshot>(manifestKey(group));
+    previous = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
     await storage.setItem(
-      manifestKey(group),
+      manifestKey(group, revision),
       { keys, expires: Date.now() + SNAPSHOT_FRESH_MS },
       { ttl: SNAPSHOT_TTL_SECONDS }
     );
@@ -517,14 +558,19 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
   // language they are shown in, so a leaf's alternates are the languages that have the same leaf page.
   browse: async () => {
     const languages = new Map<string, Locale[]>();
+    const includeFonts = (await getSiteSettings()).pages.fontsSitemap;
+    const kinds: ('apps' | 'fonts')[] = includeFonts ? ['apps', 'fonts'] : ['apps'];
     for (const locale of await openLocales())
-      for (const kind of ['apps'] as const) {
+      for (const kind of kinds) {
         const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
           query: { kind, locale }
         });
         for (const bucket of root.data.buckets)
           for (let page = 1; page <= bucket.pages; page += 1) {
-            const path = `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
+            const path =
+              kind === 'fonts'
+                ? `/browse/fonts/${bucket.key}${page > 1 ? `?page=${page}` : ''}`
+                : `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
             languages.set(path, [...(languages.get(path) ?? []), locale]);
           }
       }

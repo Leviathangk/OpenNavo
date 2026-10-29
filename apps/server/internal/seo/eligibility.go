@@ -71,6 +71,7 @@ type Policy struct {
 	TranslationMode       string
 	VersionsMinNotesChars int
 	VersionsSitemap       bool
+	FontsSitemap          bool
 	Mode                  string // off | shadow | enforce
 	Scope                 string // new | all
 	Since                 time.Time
@@ -189,10 +190,13 @@ const (
 )
 
 // SitemapAppAllowed only limits sitemap inclusion, never robots, hreflang or announcements.
-// Overrides bypass popularity, not page-level exclusions such as fonts and closed locales.
+// Links and fonts have no install analytics. Page-level exclusions still apply.
 func (p Policy) SitemapAppAllowed(f Facts, locale string) bool {
 	if f.Override == OverrideIndex {
 		return true
+	}
+	if f.Kind == "link" || f.IsFont {
+		return f.Override != OverrideNoindex
 	}
 	minimum, top := p.SitemapMinInstalls, p.SitemapNonEnglishTopN
 	if minimum <= 0 {

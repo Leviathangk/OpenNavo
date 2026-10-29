@@ -8,6 +8,7 @@ export const SITEMAP_WARMUP_PATHS = [
 export interface WarmupOptions {
   signal?: AbortSignal;
   ready?: (signal: AbortSignal) => Promise<boolean>;
+  includeVersions?: boolean | (() => Promise<boolean>);
 }
 
 /** Abort both waits and our ownership of in-flight work, even if a transport ignores cancellation. */
@@ -40,12 +41,12 @@ export async function warmSitemaps(
   fetch: (path: string, signal?: AbortSignal) => Promise<{ status: number }>,
   stopped: () => boolean = () => false,
   hasCapacity: () => boolean = () => true,
-  includeFonts = true,
+  includeFonts: boolean | (() => Promise<boolean>) = true,
   options: WarmupOptions = {}
 ): Promise<void> {
   const signal = options.signal ?? new AbortController().signal;
   const started = Date.now();
-  const paths = SITEMAP_WARMUP_PATHS.filter(path => includeFonts || !path.includes('/fonts-bucket-'));
+  let paths = SITEMAP_WARMUP_PATHS;
   let success = 0;
   let failed = 0;
   let outcome = 'complete';
@@ -72,10 +73,27 @@ export async function warmSitemaps(
       }
       if (!ready && !cancelled()) {
         outcome = 'readiness_timeout';
-        failed = paths.length;
+        const versionsEnabled = typeof options.includeVersions !== 'boolean' || options.includeVersions;
+        failed = paths.filter(
+          path =>
+            (typeof includeFonts !== 'boolean' || includeFonts || !path.includes('/fonts-bucket-')) &&
+            (versionsEnabled || !path.includes('/versions-bucket-'))
+        ).length;
         return;
       }
     }
+    if (cancelled()) return;
+    const fontsEnabled = typeof includeFonts === 'function' ? await cancellable(includeFonts(), signal) : includeFonts;
+    const versionsEnabled =
+      options.includeVersions === undefined
+        ? true
+        : typeof options.includeVersions === 'function'
+          ? await cancellable(options.includeVersions(), signal)
+          : options.includeVersions;
+    paths = paths.filter(
+      path =>
+        (fontsEnabled || !path.includes('/fonts-bucket-')) && (versionsEnabled || !path.includes('/versions-bucket-'))
+    );
     for (const path of paths) {
       if (cancelled()) return;
       let ok = false;

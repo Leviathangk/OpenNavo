@@ -40,8 +40,8 @@ func TestIntentSwitchEvidenceAndCollectionInvalidation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, cards["example"])
 	require.NoError(t, st.DB.Exec(`UPDATE packages SET source_locale='en-US',desc_en='An independently useful application',version='1' WHERE id=?`, id).Error)
-	// Links have no install analytics; explicitly include this one under 72a38e4's sitemap policy.
-	require.NoError(t, st.DB.Exec(`INSERT INTO package_meta(package_id,index_override) VALUES(?,'index')`, id).Error)
+	// Links need no popularity override.
+	require.NoError(t, st.DB.Exec(`INSERT INTO package_meta(package_id,index_override) VALUES(?,'auto')`, id).Error)
 	for n := 0; n < 3; n++ {
 		var target int64
 		require.NoError(t, st.DB.Raw(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES('cask',?,?,'homebrew/cask','Alternative','1','1','{}','fixture') RETURNING id`, fmt.Sprint("alt-", n), fmt.Sprint("alt-", n)).Scan(&target).Error)
@@ -67,10 +67,10 @@ func TestIntentSwitchEvidenceAndCollectionInvalidation(t *testing.T) {
 	require.False(t, decide().Announce, "an index override cannot bypass the evidence gate")
 	require.NoError(t, st.DB.Exec(`UPDATE package_fact_records SET evidence=jsonb_set(evidence,'{status}','"verified"')`).Error)
 	require.True(t, decide().InSitemap)
-	// Popularity only controls sitemap inclusion; it must not undo the verified editorial decision.
+	// A link without analytics still follows the verified editorial decision.
 	require.NoError(t, st.DB.Exec(`UPDATE package_meta SET index_override='auto' WHERE package_id=?`, id).Error)
 	lessPopular := decide()
-	require.False(t, lessPopular.InSitemap)
+	require.True(t, lessPopular.InSitemap)
 	require.True(t, lessPopular.Announce)
 	require.Equal(t, seo.IndexableRobots, lessPopular.Robots)
 	require.NoError(t, st.DB.Exec(`UPDATE package_meta SET index_override='index' WHERE package_id=?`, id).Error)

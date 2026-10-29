@@ -8976,6 +8976,7 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                        fontsSitemap: false
                 zh-CN:
                   summary: zh-CN
                   value:
@@ -9047,6 +9048,7 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                        fontsSitemap: false
                 ja-JP:
                   summary: ja-JP
                   value:
@@ -9118,6 +9120,7 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                        fontsSitemap: false
                 es-ES:
                   summary: es-ES
                   value:
@@ -9189,6 +9192,7 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                        fontsSitemap: false
                 pt-BR:
                   summary: pt-BR
                   value:
@@ -9260,6 +9264,7 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                        fontsSitemap: false
                 ru-RU:
                   summary: ru-RU
                   value:
@@ -9331,6 +9336,7 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                        fontsSitemap: false
                 de-DE:
                   $ref: '#/paths/~1site~1settings/get/responses/200/content/application~1json/examples/en-US'
                 fr-FR:
@@ -16071,7 +16077,7 @@ components:
               $ref: '#/components/schemas/SiteCrawlerRule'
         pages:
           type: object
-          required: [titleTemplate, indexPolicy, versionsSitemap]
+          required: [titleTemplate, indexPolicy, versionsSitemap, fontsSitemap]
           properties:
             titleTemplate:
               type: string
@@ -16131,6 +16137,9 @@ components:
               description: Enable details redirects after migrated overview content has been verified.
             versionsSitemap:
               type: boolean
+            fontsSitemap:
+              type: boolean
+              default: false
       example:
         revision: 1
         identity:
@@ -16197,6 +16206,7 @@ components:
             scope: new
             since: ''
           versionsSitemap: false
+          fontsSitemap: false
     SiteSettingsResponse:
       type: object
       required: [code, msg, data]
@@ -16277,6 +16287,7 @@ components:
               scope: new
               since: ''
             versionsSitemap: false
+            fontsSitemap: false
     IndexNowKeyResponse:
       type: object
       required: [code, msg, data]

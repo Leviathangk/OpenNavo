@@ -32,12 +32,10 @@ export default defineEventHandler(async (event: H3Event) => {
   }
   const asset = await resolveNuxtAsset(`${process.cwd()}/.output/public/_nuxt`, event.path);
   if (!asset) {
-    setHeader(event, 'Cache-Control', 'no-store');
     throw createError({ statusCode: 404, statusMessage: 'Asset not found' });
   }
   const details = await stat(asset).catch(() => null);
   if (!details?.isFile()) {
-    setHeader(event, 'Cache-Control', 'no-store');
     throw createError({ statusCode: 404, statusMessage: 'Asset not found' });
   }
   setHeader(event, 'Cache-Control', NUXT_ASSET_CACHE_CONTROL);

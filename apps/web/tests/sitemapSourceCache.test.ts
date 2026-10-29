@@ -20,11 +20,7 @@ type HookContext = {
   urls: { loc: string }[];
 };
 type Hook = (ctx: HookContext) => Promise<void>;
-async function setup(
-  records: Record<string, unknown>[],
-  sitemapFonts: unknown = true,
-  fonts: Record<string, unknown>[] = []
-) {
+async function setup(records: Record<string, unknown>[], fontsSitemap = true, fonts: Record<string, unknown>[] = []) {
   const sizes: number[] = [];
   const inner = memoryDriver();
   const write = inner.setItem!;
@@ -35,15 +31,17 @@ async function setup(
   const storage = createStorage({ driver: boundedCache(inner) });
   vi.stubGlobal('useStorage', () => storage);
   const hooks: Record<string, Hook> = {};
-  const fetch = vi.fn(async (url: string, options?: { query: { group: string; current: number; size: number } }) => {
-    if (url.endsWith('/browse')) return { data: { buckets: [{ key: 'a', pages: 2 }] } };
-    if (url.endsWith('/sitemap/articles')) return { data: { articles: [], authors: [] } };
-    const { group, current, size } = options!.query;
-    const source = group === 'apps' ? records : fonts;
-    return {
-      data: { total: source.length, records: source.slice((current - 1) * size, current * size) }
-    };
-  });
+  const fetch = vi.fn(
+    async (url: string, options?: { query: { group: string; current: number; size: number; kind?: string } }) => {
+      if (url.endsWith('/browse')) return { data: { buckets: [{ key: 'a', pages: 2 }] } };
+      if (url.endsWith('/sitemap/articles')) return { data: { articles: [], authors: [] } };
+      const { group, current, size } = options!.query;
+      const source = group === 'apps' ? records : fonts;
+      return {
+        data: { total: source.length, records: source.slice((current - 1) * size, current * size) }
+      };
+    }
+  );
   vi.stubGlobal(
     'defineNitroPlugin',
     (plugin: (app: { hooks: { hook: (name: string, handler: Hook) => void } }) => void) =>
@@ -55,12 +53,9 @@ async function setup(
         }
       })
   );
-  vi.stubGlobal('useRuntimeConfig', () => ({
-    apiBaseInternal: 'https://example.test',
-    sitemapFonts,
-    public: {}
-  }));
-  vi.stubGlobal('getSiteSettings', async () => ({ pages: { versionsSitemap: true } }));
+  vi.stubGlobal('useRuntimeConfig', () => ({ apiBaseInternal: 'https://example.test', public: {} }));
+  const settings = { revision: 1, pages: { versionsSitemap: true, fontsSitemap } };
+  vi.stubGlobal('getSiteSettings', async () => settings);
   vi.stubGlobal('$fetch', fetch);
   const plugin = await import('../server/plugins/sitemap-sources');
   const index = async (sitemaps = Object.keys(packageSitemaps).map(_sitemapName => ({ _sitemapName }))) => {
@@ -82,6 +77,7 @@ async function setup(
     fetch,
     storage,
     packageCalls,
+    settings,
     idle: plugin.sitemapSourcesIdle,
     // Past these the snapshot is stale, or a failed refresh may be retried.
     stale: () => vi.setSystemTime(Date.now() + plugin.SNAPSHOT_FRESH_MS + 1000),
@@ -94,7 +90,7 @@ const catalog = (count: number) =>
   Array.from({ length: count }, (_, i) => ({ kind: 'cask', token: `app-${i}`, locales: [{ locale: 'en-US' }] }));
 
 describe('sitemap source snapshot cache', () => {
-  it.each([false, true, 'true'])('controls font buckets and font versions with sitemapFonts=%s', async enabled => {
+  it.each([false, true])('controls font buckets and font versions with fontsSitemap=%s', async enabled => {
     const font = { kind: 'cask', token: 'font-sample', notesCount: 5, locales: [{ locale: 'en-US' }] };
     const { index, bucket, fetch } = await setup(catalog(1), enabled, [font]);
     const entries = await index();
@@ -105,9 +101,44 @@ describe('sitemap source snapshot cache', () => {
     expect(versions.some(entry => entry.loc === '/apps/font-sample/versions')).toBe(Boolean(enabled));
     if (enabled) expect(await bucket(fontName)).toContainEqual(expect.objectContaining({ loc: '/apps/font-sample' }));
     else {
-      await expect(bucket(fontName)).rejects.toMatchObject({ statusCode: 404 });
+      await expect(bucket(fontName)).rejects.toMatchObject({ statusCode: 410 });
       expect(fetch.mock.calls.some(([, options]) => options?.query?.group === 'fonts')).toBe(false);
     }
+  });
+
+  it('checks source switches even with a warm populated index and restores enabled buckets', async () => {
+    const record = {
+      kind: 'cask',
+      token: 'sample',
+      notesCount: 5,
+      locales: [
+        {
+          locale: 'en-US',
+          pages: {
+            overview: { inSitemap: false },
+            versions: { inSitemap: false }
+          }
+        }
+      ]
+    };
+    const { index, bucket, settings } = await setup([record], true, [record]);
+    const names = [packageSitemapName('fonts', record.token), packageSitemapName('versions', record.token)];
+    expect((await index()).some(entry => names.includes(entry['_sitemapName']))).toBe(false);
+
+    settings.revision += 1;
+    settings.pages.fontsSitemap = false;
+    settings.pages.versionsSitemap = false;
+    expect((await index()).some(entry => names.includes(entry['_sitemapName']))).toBe(false);
+
+    record.locales[0]!.pages.overview.inSitemap = true;
+    record.locales[0]!.pages.versions.inSitemap = true;
+    settings.revision += 1;
+    settings.pages.fontsSitemap = true;
+    settings.pages.versionsSitemap = true;
+    const opened = await index();
+    for (const name of names) expect(opened).toContainEqual({ _sitemapName: name });
+    expect(await bucket(names[0]!)).toContainEqual(expect.objectContaining({ loc: '/apps/sample' }));
+    expect(await bucket(names[1]!)).toContainEqual(expect.objectContaining({ loc: '/apps/sample/versions' }));
   });
 
   it('serves the first external index and every bucket from startup-warmed snapshots', async () => {
@@ -568,12 +599,12 @@ describe('sitemap storage availability', () => {
   });
 });
 
-it('browse sitemap fetches only app directories and preserves pagination', async () => {
-  const { bucket, fetch } = await setup([]);
+it.each([false, true])('browse sitemap follows fontsSitemap=%s and preserves pagination', async enabled => {
+  const { bucket, fetch } = await setup([], enabled);
   const urls = await bucket('browse');
   expect(urls.some(url => url.loc.includes('/browse/a?page=2'))).toBe(true);
-  expect(urls.some(url => url.loc.includes('/browse/fonts/'))).toBe(false);
+  expect(urls.some(url => url.loc.includes('/browse/fonts/a?page=2'))).toBe(enabled);
   const calls = fetch.mock.calls.filter(([url]) => url.endsWith('/browse'));
   expect(calls.length).toBeGreaterThan(0);
-  for (const [, options] of calls) expect(options?.query).toMatchObject({ kind: 'apps' });
+  expect(calls.some(([, options]) => options?.query?.kind === 'fonts')).toBe(enabled);
 });

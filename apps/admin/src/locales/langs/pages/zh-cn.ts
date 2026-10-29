@@ -869,6 +869,8 @@ const pages = {
       sitemapNonEnglishTopN: '非英文 sitemap：安装量排名前 N 个应用',
       versionsSitemap: '版本页进入 sitemap',
       versionsSitemapHint: '开启后，只有具备独立价值的版本页才会加入 sitemap。',
+      fontsSitemap: '字体页进入 sitemap',
+      fontsSitemapHint: '开启后，符合条件的字体页和字体目录会加入 sitemap，字体详情页也会参与收录判断。',
       openLocales: '开放收录的语言',
       openLocalesHint:
         '未勾选的语言照常显示，但所有页面都不收录：首页、列表、分类、静态页和 App 页都设为 noindex，也不出现在 hreflang、sitemap 和 IndexNow 推送中。勾选的语言里，App 页仍按各自的译文质量单独判断。英文是默认语言，始终开放。',
