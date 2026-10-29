@@ -673,7 +673,7 @@
       "githubRepository": "Repositorio de GitHub",
       "developer": "Desarrollador",
       "homepage": "Sitio web",
-      "token": "Token",
+      "token": "Identificador",
       "yes": "Sí",
       "no": "No",
       "checked": "Comprobado"

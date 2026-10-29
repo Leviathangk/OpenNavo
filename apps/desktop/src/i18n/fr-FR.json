@@ -463,9 +463,9 @@
       "githubRepository": "Dépôt GitHub",
       "developer": "Développeur",
       "homepage": "Site web",
-      "token": "Token",
-      "installedVersion": "Installed version",
-      "installLocation": "Install location",
+      "token": "Identifiant",
+      "installedVersion": "Version installée",
+      "installLocation": "Emplacement d’installation",
       "yes": "Oui",
       "no": "Non",
       "checked": "Vérifié le"

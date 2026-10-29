@@ -458,14 +458,14 @@ export default {
       checked: '核查日期',
       developer: '开发者',
       homepage: '主页',
-      token: 'Token',
+      token: '软件包标识符',
       installedVersion: '已安装版本',
       installLocation: '安装位置',
       yes: '是',
       no: '否'
     },
     repo: {
-      stars: 'Stars',
+      stars: '星标数',
       updated: '{days} 天前更新',
       unmaintained: '可能已停止维护',
       archived: '已归档'

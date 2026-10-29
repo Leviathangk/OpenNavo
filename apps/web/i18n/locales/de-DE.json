@@ -673,7 +673,7 @@
       "githubRepository": "GitHub-Repository",
       "developer": "Entwickler",
       "homepage": "Website",
-      "token": "Token",
+      "token": "Paketkennung",
       "yes": "Ja",
       "no": "Nein",
       "checked": "Geprüft"

@@ -673,7 +673,7 @@
       "githubRepository": "Репозиторий GitHub",
       "developer": "Разработчик",
       "homepage": "Сайт",
-      "token": "Token",
+      "token": "Идентификатор",
       "yes": "Да",
       "no": "Нет",
       "checked": "Проверено"

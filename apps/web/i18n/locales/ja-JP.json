@@ -673,7 +673,7 @@
       "githubRepository": "GitHub リポジトリ",
       "developer": "開発元",
       "homepage": "ホームページ",
-      "token": "Token",
+      "token": "パッケージ識別子",
       "yes": "はい",
       "no": "いいえ",
       "checked": "確認日"

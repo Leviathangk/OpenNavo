@@ -464,14 +464,14 @@
       "checked": "核查日期",
       "developer": "開發者",
       "homepage": "主頁",
-      "token": "Token",
+      "token": "套件識別碼",
       "installedVersion": "已安裝版本",
       "installLocation": "安裝位置",
       "yes": "是",
       "no": "否"
     },
     "repo": {
-      "stars": "Stars",
+      "stars": "星標數",
       "updated": "{days} 天前更新",
       "unmaintained": "可能已停止維護",
       "archived": "已歸檔"

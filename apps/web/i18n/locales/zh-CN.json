@@ -583,7 +583,7 @@
       "openSourceA": "{name} 的源代码公开在 GitHub 上（{repo}），使用 {license} 许可证。",
       "openSourceNoLicenseA": "{name} 有公开的 GitHub 仓库（{repo}），但 OpenNavo 尚未核实其 OSI 许可证。",
       "openSourceArchived": "这个仓库已经归档，不再更新。",
-      "openSourceStars": "仓库 Stars：{stars}。",
+      "openSourceStars": "仓库星标数：{stars}。",
       "openSourceChecked": "仓库数据核查于 {date}。",
       "uninstallQ": "怎样在 Mac 上彻底卸载 {name}？",
       "uninstallRun": "运行 `brew uninstall --cask {token}`。",
@@ -673,7 +673,7 @@
       "githubRepository": "GitHub 仓库",
       "developer": "开发者",
       "homepage": "主页",
-      "token": "Token",
+      "token": "软件包标识符",
       "yes": "是",
       "no": "否",
       "checked": "核查日期"

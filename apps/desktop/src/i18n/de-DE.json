@@ -463,9 +463,9 @@
       "githubRepository": "GitHub-Repository",
       "developer": "Entwickler",
       "homepage": "Website",
-      "token": "Token",
-      "installedVersion": "Installed version",
-      "installLocation": "Install location",
+      "token": "Paketkennung",
+      "installedVersion": "Installierte Version",
+      "installLocation": "Installationsort",
       "yes": "Ja",
       "no": "Nein",
       "checked": "Geprüft"
