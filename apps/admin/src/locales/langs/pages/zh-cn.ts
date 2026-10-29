@@ -36,7 +36,7 @@ const pages = {
     intraday: {
       title: '当天活跃趋势',
       description: '每台设备/浏览器每天只计一次，计在当天首次活跃的小时；不是在线人数',
-      asOf: '北京时间 · {date} 截至 {time}',
+      asOf: '数据截至 {date} {time} (北京时间)',
       measure: '活跃统计方式',
       hourly: '每小时首次活跃',
       cumulative: '今日累计活跃',

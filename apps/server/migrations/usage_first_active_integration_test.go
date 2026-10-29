@@ -34,6 +34,15 @@ func TestUsageFirstActiveMigration(t *testing.T) {
 	require.True(t, read("2026-10-29").Equal(at))
 	require.NoError(t, st.DB.Exec("UPDATE usage_daily SET last_active_at=?,first_active_at=?", at.Add(time.Hour), at.Add(time.Hour)).Error)
 	require.True(t, read("2026-10-29").Equal(at))
+	// A missing value must not erase the earliest non-null observation.
+	require.NoError(t, st.DB.Exec("UPDATE usage_daily SET first_active_at=NULL").Error)
+	require.True(t, read("2026-10-29").Equal(at))
+	// Offline observations may move the first time earlier, but never later again.
+	earlier := at.Add(-time.Hour)
+	require.NoError(t, st.DB.Exec("UPDATE usage_daily SET first_active_at=?", earlier).Error)
+	require.True(t, read("2026-10-29").Equal(earlier))
+	require.NoError(t, st.DB.Exec("UPDATE usage_daily SET first_active_at=?", at).Error)
+	require.True(t, read("2026-10-29").Equal(earlier))
 	// An old server can still insert without knowing about the new column.
 	require.NoError(t, st.DB.Exec(insert, "2026-10-30", id, at.Add(24*time.Hour)).Error)
 	require.True(t, read("2026-10-30").Equal(at.Add(24*time.Hour)))

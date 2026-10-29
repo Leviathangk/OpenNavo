@@ -773,8 +773,8 @@ class UsageOverview(BaseModel):
 
 class UsageIntradayHour(BaseModel):
     hour: Annotated[int, Field(description='Hour in Asia/Shanghai; the current hour is partial.', ge=0, le=23)]
-    web: Annotated[int | None, Field(description='Browsers whose immutable first_active_at falls in this hour; null for a future hour.', ge=0)]
-    desktop: Annotated[int | None, Field(description='Desktop installations whose immutable first_active_at falls in this hour; null for a future hour.', ge=0)]
+    web: Annotated[int | None, Field(description='Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    desktop: Annotated[int | None, Field(description='Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
     cumulativeWeb: Annotated[int | None, Field(description='Total active browsers from midnight through this hour; null for a future hour.', ge=0)]
     cumulativeDesktop: Annotated[int | None, Field(description='Total active desktop installations from midnight through this hour; null for a future hour.', ge=0)]
 

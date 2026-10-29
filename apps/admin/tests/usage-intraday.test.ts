@@ -1,16 +1,28 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { NAlert, NButton, NEmpty, NRadioButton, NRadioGroup, NSkeleton, NTable, NText } from 'naive-ui';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { createI18n } from 'vue-i18n';
+import enPages from '../src/locales/langs/pages/en-us';
+import zhPages from '../src/locales/langs/pages/zh-cn';
 import type { Schemas } from '../src/typings/api/opennavo';
 import UsageIntraday from '../src/views/dashboard/modules/usage-intraday.vue';
 
-const { fetchIntraday } = vi.hoisted(() => ({ fetchIntraday: vi.fn() }));
+const { fetchIntraday, appState } = vi.hoisted(() => ({ fetchIntraday: vi.fn(), appState: { locale: 'en-US' } }));
 vi.mock('@/service/api/dashboard', () => ({ fetchDashboardUsageIntraday: fetchIntraday }));
 vi.mock('@/locales', () => ({
-  $t: (key: string, values: Record<string, unknown> = {}) =>
-    Object.keys(values).length ? `${key}(${Object.values(values).join(',')})` : key
+  $t: (key: string, values: Record<string, unknown> = {}) => {
+    if (key === 'page.dashboard.intraday.asOf') {
+      const i18n = createI18n({
+        legacy: false,
+        locale: appState.locale,
+        messages: { 'en-US': { page: enPages }, 'zh-CN': { page: zhPages } }
+      });
+      return i18n.global.t(key, values);
+    }
+    return Object.keys(values).length ? `${key}(${Object.values(values).join(',')})` : key;
+  }
 }));
-vi.mock('@/store/modules/app', () => ({ useAppStore: () => ({ locale: 'en-US' }) }));
+vi.mock('@/store/modules/app', () => ({ useAppStore: () => appState }));
 vi.mock('@/store/modules/theme', () => ({ useThemeStore: () => ({ darkMode: false }) }));
 const components = { NAlert, NButton, NEmpty, NRadioButton, NRadioGroup, NSkeleton, NTable, NText };
 
@@ -39,6 +51,7 @@ function report(date = '2026-10-29', lastHour = 2): Schemas['UsageIntraday'] {
 }
 
 beforeEach(() => {
+  appState.locale = 'en-US';
   fetchIntraday.mockReset();
   fetchIntraday.mockResolvedValue({ data: report(), error: null });
 });
@@ -51,7 +64,7 @@ it('shows first activity by platform, leaves future hours blank, and exposes hou
   await flushPromises();
   expect(wrapper.text()).toContain('page.dashboard.intraday.title');
   expect(wrapper.text()).toContain('page.dashboard.intraday.description');
-  expect(wrapper.text()).toContain('page.dashboard.intraday.asOf(2026-10-29,02:30)');
+  expect(wrapper.get('[data-testid="intraday-as-of"]').text()).toBe('As of 2026-10-29 02:30 (Beijing time)');
   expect(wrapper.findAll('rect[data-series="desktop"]')).toHaveLength(3);
   expect(wrapper.find('rect[data-hour="3"]').exists()).toBe(false);
   expect(wrapper.findAll('tbody tr')).toHaveLength(24);
@@ -68,6 +81,62 @@ it('shows first activity by platform, leaves future hours blank, and exposes hou
   expect(wrapper.findAll('rect[data-series]')).toHaveLength(0);
   expect(wrapper.findAll('polyline')).toHaveLength(2);
   expect(wrapper.get('polyline[data-series="web"]').attributes('points')!.split(' ')).toHaveLength(3);
+  wrapper.unmount();
+});
+
+it.each([
+  ['zh-CN', '数据截至 2026-10-29 02:07 (北京时间)'],
+  ['en-US', 'As of 2026-10-29 02:07 (Beijing time)']
+])('shows the sample timestamp in Beijing time for %s', async (locale, expected) => {
+  appState.locale = locale;
+  const data = { ...report(), asOf: '2026-10-28T18:07:00Z' };
+  fetchIntraday.mockResolvedValueOnce({ data, error: null });
+  const wrapper = mountTrend();
+  await flushPromises();
+  const timestamp = wrapper.get('time[data-testid="intraday-as-of"]');
+  expect(timestamp.text()).toBe(expected);
+  expect(timestamp.attributes('datetime')).toBe(data.asOf);
+  wrapper.unmount();
+});
+
+it('plots exactly 24 hourly samples per cumulative series using straight, unstepped segments', async () => {
+  fetchIntraday.mockResolvedValueOnce({ data: report('2026-10-29', 23), error: null });
+  const wrapper = mountTrend();
+  await flushPromises();
+  await wrapper.findAllComponents(NRadioButton)[1]!.get('input').setValue(true);
+  const lines = wrapper.findAll('polyline[data-series]');
+  expect(lines).toHaveLength(2);
+  expect(wrapper.find('path[d]').exists()).toBe(false);
+  for (const line of lines) {
+    const points = line
+      .attributes('points')!
+      .split(' ')
+      .map(point => point.split(',').map(Number));
+    expect(points).toHaveLength(24);
+    expect(points.flat().every(Number.isFinite)).toBe(true);
+    for (let hour = 1; hour < points.length; hour += 1) {
+      expect(points[hour]![0]).toBeGreaterThan(points[hour - 1]![0]!);
+      expect(points[hour]![1]).toBeLessThanOrEqual(points[hour - 1]![1]!);
+    }
+    // Zero-activity hours retain their real plateau instead of adding interpolated samples.
+    expect(points[0]![1]).toBe(points[1]![1]);
+    expect(new Set(points.slice(2).map(point => point[1])).size).toBe(1);
+    if (line.attributes('data-series') === 'web') {
+      expect(points[2]![1]).toBeLessThan(points[1]![1]!);
+    } else {
+      expect(new Set(points.map(point => point[1])).size).toBe(1);
+    }
+  }
+  for (let hour = 0; hour < 24; hour += 1) {
+    await wrapper.get(`[data-hover-hour="${hour}"]`).trigger('pointerenter');
+    expect(wrapper.get('[role="status"]').text()).toContain(`${String(hour).padStart(2, '0')}:00`);
+    expect(
+      wrapper
+        .get('[role="status"]')
+        .findAll('strong')
+        .map(value => value.text())
+    ).toEqual(['3', hour < 2 ? '0' : '5']);
+  }
   wrapper.unmount();
 });
 
@@ -122,7 +191,7 @@ it('retains the last successful sample with its timestamp when a refresh fails',
   await wrapper.setProps({ refreshAt: new Date(60_000) });
   await flushPromises();
   expect(wrapper.find('[role="alert"]').exists()).toBe(true);
-  expect(wrapper.text()).toContain('page.dashboard.intraday.asOf(2026-10-29,02:30)');
+  expect(wrapper.get('[data-testid="intraday-as-of"]').text()).toBe('As of 2026-10-29 02:30 (Beijing time)');
   expect(wrapper.findAll('rect[data-series="desktop"]')).toHaveLength(3);
   wrapper.unmount();
 });

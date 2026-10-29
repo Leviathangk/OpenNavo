@@ -57,7 +57,7 @@ const asOf = computed(() =>
   data.value
     ? text('asOf', {
         date: data.value.date,
-        time: formatTime(data.value.asOf, { timeZone: data.value.timeZone })
+        time: formatTime(data.value.asOf, { timeZone: 'Asia/Shanghai' })
       })
     : ''
 );
@@ -126,7 +126,9 @@ const tooltipStyle = computed(() => {
   <section aria-labelledby="usage-intraday-title" data-testid="usage-intraday" class="min-w-0">
     <div class="mb-8px flex flex-wrap items-center justify-between gap-8px">
       <h3 id="usage-intraday-title" class="m-0 text-14px font-600">{{ text('title') }}</h3>
-      <NText v-if="data" depth="3" class="text-12px">{{ asOf }}</NText>
+      <NText v-if="data" depth="3" class="text-12px">
+        <time :datetime="data.asOf" data-testid="intraday-as-of">{{ asOf }}</time>
+      </NText>
     </div>
     <p class="mb-12px mt-0 text-12px" :style="{ color: theme.textColor3 }">{{ text('description') }}</p>
     <NAlert v-if="failed" type="error" role="alert" :title="text('loadFailed')" class="mb-12px">

@@ -26,8 +26,8 @@ type usageHourCount struct {
 }
 
 // UsageIntraday uses exactly the daily rows counted by UsageOverview's active
-// series. Each (day, platform, anonymous_id) contributes once, at its immutable
-// first observation; last_active_at and version upgrades do not move it.
+// series. Each (day, platform, anonymous_id) contributes once, at its earliest
+// observation; offline events may move it earlier, while later activity cannot.
 func (s *Store) UsageIntraday(ctx context.Context, now time.Time) (UsageIntraday, error) {
 	today := now.In(usageZone).Format("2006-01-02")
 	var counts []usageHourCount

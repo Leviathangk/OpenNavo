@@ -64,8 +64,13 @@ func (s *Store) RecordUsage(ctx context.Context, a UsageActivity, now time.Time)
 			return err
 		}
 		return tx.Exec(`INSERT INTO usage_daily(day,platform,anonymous_id,first_active_at,last_active_at,version,locale,country) VALUES(?::date,?,?,?,?,?,?,?)
-   ON CONFLICT(day,platform,anonymous_id) DO UPDATE SET last_active_at=EXCLUDED.last_active_at,version=EXCLUDED.version,locale=EXCLUDED.locale,country=EXCLUDED.country
-   WHERE EXCLUDED.last_active_at>usage_daily.last_active_at`, at.In(usageZone).Format("2006-01-02"), a.Platform, a.AnonymousID, at, at, a.Version, a.Locale, a.Country).Error
+   ON CONFLICT(day,platform,anonymous_id) DO UPDATE SET
+   first_active_at=LEAST(COALESCE(usage_daily.first_active_at,EXCLUDED.first_active_at),COALESCE(EXCLUDED.first_active_at,usage_daily.first_active_at)),
+   last_active_at=GREATEST(usage_daily.last_active_at,EXCLUDED.last_active_at),
+   version=CASE WHEN EXCLUDED.last_active_at>usage_daily.last_active_at THEN EXCLUDED.version ELSE usage_daily.version END,
+   locale=CASE WHEN EXCLUDED.last_active_at>usage_daily.last_active_at THEN EXCLUDED.locale ELSE usage_daily.locale END,
+   country=CASE WHEN EXCLUDED.last_active_at>usage_daily.last_active_at THEN EXCLUDED.country ELSE usage_daily.country END
+   WHERE EXCLUDED.last_active_at>usage_daily.last_active_at OR usage_daily.first_active_at IS NULL OR EXCLUDED.first_active_at<usage_daily.first_active_at`, at.In(usageZone).Format("2006-01-02"), a.Platform, a.AnonymousID, at, at, a.Version, a.Locale, a.Country).Error
 	})
 }
 

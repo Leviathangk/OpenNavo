@@ -8242,12 +8242,12 @@ export interface components {
             hour: number;
             /**
              * Format: int64
-             * @description Browsers whose immutable first_active_at falls in this hour; null for a future hour.
+             * @description Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
              */
             web: number | null;
             /**
              * Format: int64
-             * @description Desktop installations whose immutable first_active_at falls in this hour; null for a future hour.
+             * @description Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
              */
             desktop: number | null;
             /**

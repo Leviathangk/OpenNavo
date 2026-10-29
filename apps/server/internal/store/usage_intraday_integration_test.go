@@ -76,3 +76,79 @@ func TestUsageIntradayFirstActivityAndDailyTotals(t *testing.T) {
 	require.Zero(t, *report.Hours[0].CumulativeWeb)
 	require.Zero(t, *report.Hours[0].CumulativeDesktop)
 }
+
+func TestUsageIntradayOfflineOutOfOrderActivityMovesFirstHourEarlier(t *testing.T) {
+	st := testutil.NewStore(t)
+	ctx := context.Background()
+	zone := time.FixedZone("Asia/Shanghai", 8*60*60)
+	midnight := time.Date(2026, 10, 29, 0, 0, 0, 0, zone)
+	earlier := midnight.Add(2*time.Hour + 15*time.Minute)
+	later := midnight.Add(9*time.Hour + 30*time.Minute)
+	now := midnight.Add(12 * time.Hour)
+	for _, platform := range []string{"desktop", "web"} {
+		t.Run(platform, func(t *testing.T) {
+			activity := store.UsageActivity{AnonymousID: uuid.NewString(), Platform: platform, OccurredAt: later, Version: "1.1.0", Locale: "en-US", Country: "US"}
+			require.NoError(t, st.RecordUsage(ctx, activity, now))
+			before, err := st.UsageIntraday(ctx, now)
+			require.NoError(t, err)
+			if platform == "desktop" {
+				require.EqualValues(t, 1, *before.Hours[9].Desktop)
+			} else {
+				require.EqualValues(t, 1, *before.Hours[9].Web)
+			}
+			// The earlier offline event arrives after the later one, with older metadata.
+			activity.OccurredAt, activity.Version, activity.Locale, activity.Country = earlier, "1.0.0", "zh-CN", "CN"
+			require.NoError(t, st.RecordUsage(ctx, activity, now))
+			// Replaying the later event must not move the first observation forward again.
+			activity.OccurredAt, activity.Version, activity.Locale, activity.Country = later, "1.1.0", "en-US", "US"
+			require.NoError(t, st.RecordUsage(ctx, activity, now))
+			var row struct {
+				FirstActiveAt, LastActiveAt time.Time
+				Version, Locale, Country    string
+			}
+			require.NoError(t, st.DB.Table("usage_daily").Where("platform=? AND anonymous_id=?", platform, activity.AnonymousID).Take(&row).Error)
+			require.True(t, row.FirstActiveAt.Equal(earlier), "first activity must use the earliest event time")
+			require.True(t, row.LastActiveAt.Equal(later))
+			require.Equal(t, "1.1.0", row.Version)
+			require.Equal(t, "en-US", row.Locale)
+			require.Equal(t, "US", row.Country)
+			// Newer activity must still advance the last time and its metadata.
+			newest := midnight.Add(11 * time.Hour)
+			activity.OccurredAt, activity.Version, activity.Locale, activity.Country = newest, "1.2.0", "en-GB", "GB"
+			require.NoError(t, st.RecordUsage(ctx, activity, now))
+			require.NoError(t, st.DB.Table("usage_daily").Where("platform=? AND anonymous_id=?", platform, activity.AnonymousID).Take(&row).Error)
+			require.True(t, row.FirstActiveAt.Equal(earlier))
+			require.True(t, row.LastActiveAt.Equal(newest))
+			require.Equal(t, "1.2.0", row.Version)
+			require.Equal(t, "en-GB", row.Locale)
+			require.Equal(t, "GB", row.Country)
+			report, err := st.UsageIntraday(ctx, now)
+			require.NoError(t, err)
+			overview, err := st.UsageOverview(ctx, now)
+			require.NoError(t, err)
+			today := overview.Days[len(overview.Days)-1]
+			for hour, entry := range report.Hours {
+				if hour > now.In(zone).Hour() {
+					require.Nil(t, entry.Desktop)
+					require.Nil(t, entry.Web)
+					continue
+				}
+				count, cumulative, dailyTotal := entry.Desktop, entry.CumulativeDesktop, today.Desktop
+				if platform == "web" {
+					count, cumulative, dailyTotal = entry.Web, entry.CumulativeWeb, today.Web
+				}
+				if hour == earlier.In(zone).Hour() {
+					require.EqualValues(t, 1, *count)
+				} else {
+					require.Zero(t, *count)
+				}
+				if hour < earlier.In(zone).Hour() {
+					require.Zero(t, *cumulative)
+				} else {
+					require.EqualValues(t, 1, *cumulative)
+					require.Equal(t, dailyTotal, *cumulative)
+				}
+			}
+		})
+	}
+}

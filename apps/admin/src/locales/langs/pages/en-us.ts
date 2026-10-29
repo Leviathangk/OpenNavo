@@ -48,7 +48,7 @@ const pages: PageMessages = {
       title: 'Intraday active trend',
       description:
         'Each device/browser is counted once per day, in the hour of its first activity; these are not online users.',
-      asOf: 'Beijing time · {date} through {time}',
+      asOf: 'As of {date} {time} (Beijing time)',
       measure: 'Activity measure',
       hourly: 'First active this hour',
       cumulative: 'Cumulative today',
