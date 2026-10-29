@@ -1,6 +1,5 @@
 {
   "articles": {
-    "viewTranslation": "Voir la traduction",
     "title": "Articles",
     "subtitle": "Recommandations, tests, tutoriels et sélections d’apps Mac",
     "all": "Toutes",
@@ -18,8 +17,6 @@
     "published": "Publié le {date}",
     "updated": "Mise à jour le {date}",
     "editorial": "Rédaction OpenNavo",
-    "machineTranslated": "Traduit par IA",
-    "viewOriginal": "Voir l’original",
     "sourceText": "Cet article n’est pas encore disponible dans votre langue : la version originale s’affiche ci-dessous.",
     "testNote": "Conditions de test :",
     "toc": "Sommaire",
@@ -354,7 +351,6 @@
     "release": {
       "new": "Nouveau",
       "title": "Nouveautés de la version {version}",
-      "translated": "Traduit en chinois",
       "source": {
         "github_release": "Depuis GitHub Releases",
         "sparkle": "Depuis le flux de mise à jour de l’app",

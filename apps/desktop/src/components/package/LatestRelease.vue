@@ -24,10 +24,7 @@ const rows = computed(() =>
 const meta = computed(() =>
   [
     props.release.publishedAt ? formatDate(props.release.publishedAt, { locale: appLocale.value }) : null,
-    t(`package.release.source.${props.release.source}`),
-    props.release.translation.status === 'machine' || props.release.translation.status === 'manual'
-      ? t('package.release.translated')
-      : null
+    t(`package.release.source.${props.release.source}`)
   ]
     .filter(Boolean)
     .join(' · ')

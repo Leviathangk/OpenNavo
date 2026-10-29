@@ -1,6 +1,5 @@
 {
   "articles": {
-    "viewTranslation": "翻訳を表示",
     "title": "記事",
     "subtitle": "Mac アプリのおすすめ、レビュー、使い方、まとめ",
     "all": "すべて",
@@ -18,8 +17,6 @@
     "published": "{date} 公開",
     "updated": "{date} 更新",
     "editorial": "OpenNavo 編集部",
-    "machineTranslated": "AI 翻訳",
-    "viewOriginal": "原文を見る",
     "sourceText": "この記事はまだお使いの言語で読めないため、原文を表示しています。",
     "testNote": "テスト環境：",
     "toc": "目次",
@@ -354,7 +351,6 @@
     "release": {
       "new": "新バージョン",
       "title": "{version}の更新内容",
-      "translated": "中国語に翻訳済み",
       "source": {
         "github_release": "GitHub Releaseより",
         "sparkle": "アプリ内更新フィードより",
