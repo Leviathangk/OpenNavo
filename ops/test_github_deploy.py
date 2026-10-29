@@ -571,6 +571,103 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             for mock in [obj.verify, obj.update_monitoring, obj.drain_retired]:
                 mock.assert_not_called()
 
+    def test_failed_forward_reload_allows_next_deploy_after_verified_rollback(self):
+        for forward_failure in ['validate', 'signal']:
+            with self.subTest(forward_failure=forward_failure):
+                self.check_forward_reload_recovery(forward_failure)
+
+    def test_failed_forward_reload_keeps_marker_when_rollback_cannot_confirm_recovery(self):
+        for forward_failure in ['validate', 'signal']:
+            for rollback_failure in ['validate', 'signal', 'verify']:
+                with self.subTest(forward_failure=forward_failure, rollback_failure=rollback_failure):
+                    self.check_forward_reload_recovery(forward_failure, rollback_failure)
+
+    def check_forward_reload_recovery(self, forward_failure, rollback_failure=None):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = prepare_on_host(root, {})
+            obj.config['caddy_container'] = 'fixture-caddy'
+            obj.state['sha'] = 'c' * 40
+            deploy.write_private(obj.state_path, obj.state)
+            before_state = obj.state_path.read_bytes()
+            before_caddy = (obj.directory / 'before-caddy').read_bytes()
+            (obj.directory / 'Caddyfile.next').write_text('candidate route')
+
+            def stub_host_steps(target):
+                for name in ['capacity_gate', 'backup', 'compose', 'warm_candidates', 'verify',
+                             'update_monitoring', 'cleanup', 'prune']:
+                    setattr(target, name, unittest.mock.Mock())
+                target.drain_retired = unittest.mock.Mock(return_value=True)
+
+            stub_host_steps(obj)
+            # The fixture has already prepared this run's release and rollback snapshots.
+            obj.prepare = unittest.mock.Mock()
+
+            def verify_rollback(expected=None):
+                self.assertEqual(expected, obj.state['sha'][:12])
+                self.assertEqual(obj.live_caddy.read_bytes(), before_caddy)
+                self.assertTrue(obj.degraded_path.exists())
+                if rollback_failure == 'verify':
+                    raise RuntimeError('rollback verify failed')
+
+            obj.verify.side_effect = verify_rollback
+            reload_attempt = 0
+
+            def command(args):
+                nonlocal reload_attempt
+                if args[:3] == ['docker', 'image', 'inspect']:
+                    return json.dumps({'org.opencontainers.image.revision': obj.payload['sha']})
+                if args[:2] == ['docker', 'create']:
+                    return 'fixture-container'
+                step = None
+                if 'validate' in args:
+                    reload_attempt += 1
+                    step = 'validate'
+                    if reload_attempt == 2:
+                        self.assertEqual(obj.live_caddy.read_bytes(), before_caddy)
+                        self.assertTrue(obj.degraded_path.exists())
+                        obj.compose.assert_called_with(
+                            'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                            *obj.state['services'].values(), 'worker', candidate=False)
+                elif '--signal=USR1' in args:
+                    step = 'signal'
+                if step and reload_attempt == 1 and step == forward_failure:
+                    raise RuntimeError('forward ' + step + ' failed')
+                if step and reload_attempt == 2 and step == rollback_failure:
+                    raise RuntimeError('rollback ' + step + ' failed')
+                return ''
+
+            with patch.object(deploy, 'command', side_effect=command), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                failure = 'rollback ' + rollback_failure if rollback_failure else 'forward ' + forward_failure
+                with self.assertRaisesRegex(RuntimeError, failure + ' failed'):
+                    obj.apply(archive())
+                self.assertEqual(reload_attempt, 2)
+                self.assertEqual(obj.state_path.read_bytes(), before_state)
+                self.assertEqual(obj.live_caddy.read_bytes(), before_caddy)
+                obj.cleanup.assert_not_called()
+                obj.prune.assert_not_called()
+
+                next_payload = {**payload(), 'run_id': '124'}
+                retry = deploy.Deployment(obj.config, next_payload)
+                stub_host_steps(retry)
+                if rollback_failure:
+                    self.assertTrue(obj.degraded_path.exists())
+                    obj.drain_retired.assert_not_called()
+                    with self.assertRaisesRegex(RuntimeError, 'Manual intervention required'):
+                        retry.apply(archive())
+                    retry.capacity_gate.assert_not_called()
+                    retry.compose.assert_not_called()
+                else:
+                    self.assertFalse(obj.degraded_path.exists())
+                    obj.verify.assert_called_once_with(expected=obj.state['sha'][:12])
+                    obj.update_monitoring.assert_called_once_with(obj.state['services'])
+                    retry.apply(archive())
+                    self.assertEqual(reload_attempt, 3)
+                    self.assertEqual(json.loads(retry.state_path.read_text())['release'], retry.release)
+                    retry.capacity_gate.assert_called_once_with()
+                    retry.cleanup.assert_called_once()
+                    retry.prune.assert_called_once()
+
     def test_verify_checks_legacy_routes_without_sha_and_requires_known_release_headers(self):
         obj = object.__new__(deploy.Deployment)
         obj.payload = payload()

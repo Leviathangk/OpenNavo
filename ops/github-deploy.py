@@ -409,11 +409,12 @@ class Deployment:
                 f'configuration, then remove {self.degraded_path} to allow deployments.')
 
     def mark_degraded(self, reason):
-        # Keep this outside release snapshots and the last verified state so neither a rollback
-        # nor a same-SHA cleanup retry can erase the requirement for operator recovery.
+        # Keep this outside release snapshots and the last verified state so retries cannot
+        # bypass unresolved routing. Only a verified rollback in this run may clear it.
         write_private(self.degraded_path, {
             'release': self.release, 'sha': self.payload['sha'], 'reason': reason,
         })
+        self.degraded_marker_written = True
         print(f'DEGRADED: {reason}. {self.recovery_instructions()}', flush=True)
 
     def compose(self, *args, candidate=True):
@@ -877,6 +878,7 @@ class Deployment:
     def apply(self, archive):
         if self.degraded_path.exists():
             raise RuntimeError('deployment blocked by persistent degraded marker. ' + self.recovery_instructions())
+        self.degraded_marker_written = False
         if self.state.get('sha') == self.payload['sha']:
             self.services = self.state['services']
             self.ensure_live_manifest()
@@ -938,6 +940,11 @@ class Deployment:
                 self.update_monitoring(self.services)
         except Exception:
             self.rollback()
+            if self.degraded_marker_written:
+                # rollback() confirmed old services, restored routing and verification before returning.
+                self.degraded_path.unlink()
+                self.degraded_marker_written = False
+                print('Rollback verified; cleared this deployment\'s degraded marker.', flush=True)
             raise
         previous = {key: value for key, value in self.state.items() if key != 'previous'}
         write_private(self.state_path, {'sha': self.payload['sha'], 'release': self.release, 'services': self.services, 'previous': previous})
