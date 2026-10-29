@@ -4220,6 +4220,8 @@
         "page.dashboard.usage.asOf": "70a458ec8c99a9a84570e2d133843759e3e8e5ccea12776169b35991ba1eaa42",
         "page.dashboard.usage.yesterday": "d6854e4b1d8ccc52544625706de57b6cf0ffff2e265240d9370a3d030891160c",
         "page.dashboard.usage.date": "70d0c1b33626ba4be4e1d36dd7caaff6fda083f227da2728f9afebff0c500659",
+        "page.dashboard.usage.desktopTotal": "c92bde795507f73201dfcd42d6572e0da48cfbc52cc0211ce5e09f23e3bd377c",
+        "page.dashboard.usage.desktopTotalHint": "9546d282996583a1decd4b5b190cbfca50ab560200bd9cbbcc9d66d154abc7b6",
         "page.dashboard.usage.desktop": "46d59aa3e19ba9fd2e1079d93e4f46da060ea157c9beb28348880742cc83f8a7",
         "page.dashboard.usage.web": "43f3899c2ce89b44e0d0f1e91fb826f79966f644f95755810611ed390f4e7fd9",
         "page.dashboard.usage.newDesktop": "ee9386a4411c73822ba5cddfcde3338a74ca5c74309b938904d5d029eac1303d",

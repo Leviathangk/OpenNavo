@@ -766,6 +766,8 @@ class Version1(BaseModel):
 class UsageOverview(BaseModel):
     timeZone: Literal['Asia/Shanghai']
     asOf: AwareDatetime
+    desktopTotal: Annotated[int, Field(description='Count of retained desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Reinstalls count as new identities. Maintenance prunes identities after 90 days of inactivity.', ge=0)]
+    webTotal: Annotated[int, Field(description='Count of retained web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Maintenance prunes identities after 90 days of inactivity.', ge=0)]
     days: list[Day]
     countries: Annotated[list[Country] | MISSING, Field(description="Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.")] = MISSING
     versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]

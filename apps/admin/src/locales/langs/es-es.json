@@ -373,6 +373,8 @@
         "asOf": "Hora de Shanghái · Hoy hasta las {time}",
         "yesterday": "Ayer {value}",
         "date": "Fecha",
+        "desktopTotal": "Usuarios acumulados del cliente",
+        "desktopTotalHint": "Se cuenta por instalación; las reinstalaciones cuentan como usuarios nuevos. Acumulado desde el inicio de las estadísticas el 22 de octubre.",
         "desktop": "Actividad diaria del cliente",
         "web": "Actividad diaria web",
         "newDesktop": "Nuevos identificadores de cliente",

@@ -8160,6 +8160,8 @@ export interface components {
          * @example {
          *       "timeZone": "Asia/Shanghai",
          *       "asOf": "2026-10-22T08:00:00Z",
+         *       "desktopTotal": 12,
+         *       "webTotal": 25,
          *       "days": [
          *         {
          *           "date": "2026-10-22",
@@ -8182,6 +8184,16 @@ export interface components {
             timeZone: "Asia/Shanghai";
             /** Format: date-time */
             asOf: string;
+            /**
+             * Format: int64
+             * @description Count of retained desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Reinstalls count as new identities. Maintenance prunes identities after 90 days of inactivity.
+             */
+            desktopTotal: number;
+            /**
+             * Format: int64
+             * @description Count of retained web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Maintenance prunes identities after 90 days of inactivity.
+             */
+            webTotal: number;
             days: {
                 date: string;
                 /** Format: int64 */

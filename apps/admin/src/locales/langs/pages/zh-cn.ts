@@ -44,6 +44,8 @@ const pages = {
       asOf: '北京时间 · 今日截至 {time}',
       yesterday: '昨日 {value}',
       date: '日期',
+      desktopTotal: '客户端累计用户',
+      desktopTotalHint: '按安装实例计，重装会算新用户；自 10-22 统计上线起累计',
       desktop: '客户端日活',
       web: '网页日活',
       newDesktop: '新增客户端标识',

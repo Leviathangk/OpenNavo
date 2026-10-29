@@ -55,6 +55,8 @@ const pages: PageMessages = {
       asOf: 'Asia/Shanghai · Today through {time}',
       yesterday: 'Yesterday {value}',
       date: 'Date',
+      desktopTotal: 'Client cumulative users',
+      desktopTotalHint: 'Counted per install; reinstalls count as new users. Cumulative since stats launch on Oct 22.',
       desktop: 'Client DAU',
       web: 'Web DAU',
       newDesktop: 'New client IDs',

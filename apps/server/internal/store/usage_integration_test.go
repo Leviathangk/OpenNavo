@@ -8,10 +8,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestUsageTotalsCountRetainedIdentitiesByPlatform(t *testing.T) {
+	st := testutil.NewStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 12, 1, 8, 0, 0, 0, time.UTC)
+	report, err := st.UsageOverview(ctx, now)
+	require.NoError(t, err)
+	require.Zero(t, report.DesktopTotal)
+	require.Zero(t, report.WebTotal)
+
+	sharedID := uuid.NewString()
+	for _, a := range []store.UsageActivity{
+		// An identity outside the daily report's 30-day window still contributes to the total.
+		{AnonymousID: sharedID, Platform: "desktop", OccurredAt: now.AddDate(0, 0, -40), Version: "0.1.3", Locale: "en-US"},
+		{AnonymousID: sharedID, Platform: "web", OccurredAt: now, Locale: "en-US"},
+		{AnonymousID: uuid.NewString(), Platform: "web", OccurredAt: now, Locale: "en-US"},
+		{AnonymousID: uuid.NewString(), Platform: "desktop", OccurredAt: now.AddDate(0, 0, -1), Version: "0.1.4", Locale: "en-US"},
+		{AnonymousID: uuid.NewString(), Platform: "desktop", OccurredAt: now, Version: "test-ci-bot", Locale: "en-US"},
+	} {
+		// Retries deduplicate at (platform, anonymous_id), including test/CI/bot installations.
+		for range 2 {
+			require.NoError(t, st.RecordUsage(ctx, a, a.OccurredAt))
+		}
+	}
+
+	report, err = st.UsageOverview(ctx, now)
+	require.NoError(t, err)
+	var desktopTotal, webTotal int64
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM usage_identities WHERE platform='desktop'").Scan(&desktopTotal).Error)
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM usage_identities WHERE platform='web'").Scan(&webTotal).Error)
+	require.EqualValues(t, 3, desktopTotal)
+	require.EqualValues(t, 2, webTotal)
+	require.Equal(t, desktopTotal, report.DesktopTotal)
+	require.Equal(t, webTotal, report.WebTotal)
+	require.Equal(t, store.UsageDay{Date: "2026-12-01", Desktop: 1, Web: 2, NewDesktop: 1, NewWeb: 2}, report.Days[29])
+}
 
 func TestUsageDailyDedupOfflineDatesVersionsAndRetention(t *testing.T) {
 	st := testutil.NewStore(t)

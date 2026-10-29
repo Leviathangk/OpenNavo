@@ -373,6 +373,8 @@
         "asOf": "Horário de Xangai · Hoje até {time}",
         "yesterday": "Ontem {value}",
         "date": "Data",
+        "desktopTotal": "Usuários acumulados do cliente",
+        "desktopTotalHint": "Contagem por instalação; reinstalações contam como novos usuários. Acumulado desde o início das estatísticas em 22 de outubro.",
         "desktop": "Atividade diária do cliente",
         "web": "Atividade diária da web",
         "newDesktop": "Novos identificadores de cliente",
