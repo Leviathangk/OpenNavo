@@ -6,6 +6,7 @@ import { HOMEBREW_ROW } from './updater';
 import type { AppError, InstalledItem, OutdatedItem, Task, TaskOp, TaskPhase } from '../bindings';
 import { packageKey } from '../client';
 import { downloadSizeOf, findItem, nextTaskId } from './fixtures';
+import { createMockScheduler } from './scheduler';
 
 export interface MockState {
   installed: InstalledItem[];
@@ -202,6 +203,12 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
 
 export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks = {}) {
   let running: Task | undefined;
+  let stopped = false;
+  const scheduler = createMockScheduler();
+  const later = (advance: () => void) => {
+    if (stopped) return;
+    scheduler.later(advance, tickMs);
+  };
 
   const emitTask = (task: Task) => void events.taskUpdated.emit({ ...task });
   const log = (task: Task, lines: string[]) => {
@@ -349,7 +356,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     plan[0]?.enter?.();
 
     const advance = () => {
-      if (task.state === 'canceled') return;
+      if (stopped || task.state === 'canceled') return;
       const step = plan[stepIndex];
       if (!step) {
         finish(task, 'succeeded');
@@ -397,14 +404,14 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
           next.enter?.();
         }
       }
-      setTimeout(advance, tickMs);
+      later(advance);
     };
     emitTask(task);
-    setTimeout(advance, tickMs);
+    later(advance);
   }
 
   function schedule() {
-    if (running) return;
+    if (stopped || running) return;
     const next = [...state.active]
       .filter(task => task.state === 'queued')
       .sort((a, b) => PRIORITY[a.trigger] - PRIORITY[b.trigger] || a.createdAt - b.createdAt)[0];
@@ -468,5 +475,11 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     finish(task, 'canceled');
   }
 
-  return { enqueue, cancel, outdated };
+  /** Retire this session without emitting task results or starting any queued work. */
+  function stop() {
+    stopped = true;
+    scheduler.stop();
+  }
+
+  return { enqueue, cancel, outdated, stop };
 }

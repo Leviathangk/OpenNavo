@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import type { DesktopLocale as Locale } from '@opennavo/shared';
 import { commands, events, unwrap } from '@/ipc/client';
-import { installMockIpc } from '@/ipc/mock';
+import { disposeMockIpc, installMockIpc } from '@/ipc/mock';
 import { startAppLocale } from '@/composables/startAppLocale';
 
 const stops: (() => void)[] = [];
 afterEach(() => {
   stops.splice(0).forEach(stop => stop());
+  disposeMockIpc();
   vi.restoreAllMocks();
 });
 
