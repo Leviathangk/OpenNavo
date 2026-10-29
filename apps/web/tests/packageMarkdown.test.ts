@@ -126,6 +126,7 @@ describe('Markdown alternates (X4)', () => {
     expect(markdownPageTarget('/apps/foo/versions')).toBeUndefined();
     expect(supportsMarkdownNegotiation('/')).toBe(true);
     expect(supportsMarkdownNegotiation('/apps/foo')).toBe(true);
+    expect(supportsMarkdownNegotiation('/apps/foo.md')).toBe(false);
     expect(supportsMarkdownNegotiation('/apps/foo/versions')).toBe(false);
     expect(isOverviewPath('/apps')).toBe(false);
     expect(isOverviewPath('/apps/foo/versions')).toBe(false);

@@ -1,5 +1,3 @@
-import { supportsMarkdownNegotiation } from '../../shared/utils/markdownAlternate';
-
 // Applies the admin edge-cache switch to every HTML and RSS response (server/utils/edgeCache.ts).
 export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('beforeResponse', async event => {
@@ -15,7 +13,6 @@ export default defineNitroPlugin(nitroApp => {
       status: response.statusCode,
       contentType,
       cacheControl: String(response.getHeader('cache-control') ?? ''),
-      markdownNegotiated: supportsMarkdownNegotiation(event.path),
       setCookie: response.hasHeader('set-cookie'),
       authorization: Boolean(getHeader(event, 'authorization'))
     });

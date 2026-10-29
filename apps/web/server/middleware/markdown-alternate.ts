@@ -7,13 +7,19 @@ import {
 } from '../../shared/utils/markdownAlternate';
 import { brandDownloadPath } from '../../app/utils/packageView';
 import { agentLabel } from '../utils/crawlerMetrics';
+import { LONG_EDGE_CACHE_VALUE } from '../utils/edgeCache';
 import { renderHomeMarkdown } from '../utils/homeMarkdown';
 import { packageMarkdown } from '../utils/packageMarkdown';
 
+// Keep the explicit .md projection on the same origin cache policy as the app overview route
+// (/apps/** in nuxt.config.ts). Negotiated Markdown is private and never cacheable.
+const APP_PAGE_CACHE_CONTROL = 's-maxage=21600, stale-while-revalidate';
+
 // X4: <prefix>/apps/{token}.md answers with the overview's facts as Markdown, and the home page can
 // negotiate the same representation through Accept. A suffix cannot be a Nitro route pattern, so this is
-// middleware. Every fetch is logged with its user agent, and Markdown is never cached on the way. Uppercase
-// or escaped paths fall through to package-canonical's one 301 first.
+// middleware. Every fetch is logged with its user agent. Negotiated Markdown is never cached; the explicit
+// .md URL carries the public app cache policy. Uppercase or escaped paths fall through to package-canonical's
+// one 301 first.
 export default defineEventHandler(async event => {
   if (event.method !== 'GET' && event.method !== 'HEAD') return;
   // Every request passes here: the path test comes first and costs only a couple of regular expressions.
@@ -44,8 +50,16 @@ export default defineEventHandler(async event => {
   if (event.handled) return;
   setHeader(event, 'Content-Type', 'text/markdown; charset=utf-8');
   setHeader(event, 'X-Robots-Tag', 'noindex');
-  setHeader(event, 'Cache-Control', 'no-store');
-  setHeader(event, 'Cloudflare-CDN-Cache-Control', 'no-store');
+  if (negotiated) {
+    setHeader(event, 'Cache-Control', 'private, no-store');
+    setHeader(event, 'CDN-Cache-Control', 'no-store');
+    setHeader(event, 'Cloudflare-CDN-Cache-Control', 'no-store');
+  } else {
+    // The explicit .md URL is a public app projection. It is served by this middleware before the
+    // Nitro route cache, so carry the same six-hour origin and two-day Cloudflare policy explicitly.
+    setHeader(event, 'Cache-Control', APP_PAGE_CACHE_CONTROL);
+    setHeader(event, 'Cloudflare-CDN-Cache-Control', LONG_EDGE_CACHE_VALUE);
+  }
   return body;
 });
 import { defineEventHandler, getHeader, setHeader } from 'h3';

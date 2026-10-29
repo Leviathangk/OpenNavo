@@ -22,9 +22,9 @@ const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
 });
 
 describe('HTML edge cache switch', () => {
-  it('keeps Accept-negotiated HTML at the origin because Cloudflare does not reliably vary on Accept', () => {
-    expect(edgeCacheHeader(page({ path: '/', markdownNegotiated: true }))).toBe('no-store');
-    expect(edgeCacheHeader(page({ path: '/apps/iterm2', markdownNegotiated: true }))).toBe('no-store');
+  it('keeps negotiable HTML on the same edge policy as every other HTML page', () => {
+    expect(edgeCacheHeader(page({ path: '/' }))).toBe(SHORT_EDGE_CACHE_VALUE);
+    expect(edgeCacheHeader(page({ path: '/apps/iterm2' }))).toBe(LONG_EDGE_CACHE_VALUE);
   });
 
   it('Keeps purged pages for two days and lists for ten minutes, serving either while the origin errs', () => {

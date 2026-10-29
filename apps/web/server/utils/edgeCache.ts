@@ -71,8 +71,6 @@ export interface EdgeCacheInput {
   status: number;
   contentType: string;
   cacheControl: string;
-  /** A URL whose HTML can be negotiated as Markdown; Cloudflare must not edge-cache it. */
-  markdownNegotiated?: boolean;
   setCookie: boolean;
   authorization: boolean;
 }
@@ -83,7 +81,6 @@ export interface EdgeCacheInput {
  */
 export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
   if (!edgeCacheable(input.contentType)) return undefined;
-  if (input.markdownNegotiated && input.contentType.includes('text/html')) return 'no-store';
   const feed = input.contentType.includes('application/rss+xml');
   const type = edgeRouteType(input.path);
   const shareable =

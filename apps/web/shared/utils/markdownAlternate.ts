@@ -71,5 +71,5 @@ export function isOverviewPath(path: string): boolean {
 
 /** Whether an HTML route has a Markdown representation selected by Accept negotiation. */
 export function supportsMarkdownNegotiation(path: string): boolean {
-  return markdownPageTarget(path) !== undefined;
+  return markdownTarget(path) === undefined && markdownPageTarget(path) !== undefined;
 }
