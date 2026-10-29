@@ -364,6 +364,7 @@ fn permissions() -> Permissions {
         app_management_switch: PermissionState::Granted,
         full_disk_access: PermissionState::Granted,
         relaunch_required: false,
+        relaunch_ineffective: false,
         app_management_pending: false,
         full_disk_access_pending: false,
     }

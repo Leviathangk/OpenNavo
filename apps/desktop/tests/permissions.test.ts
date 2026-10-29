@@ -105,6 +105,7 @@ describe('Permission guidance overlay', () => {
       appManagementSwitch: 'granted',
       fullDiskAccess: 'denied',
       relaunchRequired: false,
+      relaunchIneffective: false,
       appManagementPending: false,
       fullDiskAccessPending: false
     });
@@ -122,6 +123,7 @@ describe('Permission guidance overlay', () => {
       appManagementSwitch: 'denied',
       fullDiskAccess: 'denied',
       relaunchRequired: true,
+      relaunchIneffective: false,
       appManagementPending: false,
       fullDiskAccessPending: true
     });
@@ -245,6 +247,7 @@ describe('Permission response ordering', () => {
     appManagementSwitch: 'denied',
     fullDiskAccess: 'denied',
     relaunchRequired: false,
+    relaunchIneffective: false,
     appManagementPending: false,
     fullDiskAccessPending: false
   };
@@ -253,6 +256,7 @@ describe('Permission response ordering', () => {
     appManagementSwitch: 'granted',
     fullDiskAccess: 'granted',
     relaunchRequired: true,
+    relaunchIneffective: false,
     appManagementPending: true,
     fullDiskAccessPending: false
   };

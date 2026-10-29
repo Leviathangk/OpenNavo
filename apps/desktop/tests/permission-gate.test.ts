@@ -12,6 +12,7 @@ const granted: Permissions = {
   appManagementSwitch: 'granted',
   fullDiskAccess: 'granted',
   relaunchRequired: false,
+  relaunchIneffective: false,
   appManagementPending: false,
   fullDiskAccessPending: false
 };

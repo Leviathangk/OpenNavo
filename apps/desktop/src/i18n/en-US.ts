@@ -1018,6 +1018,10 @@ const messages: MessageSchema = {
   },
   permission: {
     relaunch: {
+      updated: 'OpenNavo has been updated. Reopen it to keep using these features.',
+      ineffective:
+        'Still not in effect after reopening. In Full Disk Access, turn OpenNavo off and on again, then reopen OpenNavo.',
+      openSettings: 'Open System Settings',
       body: 'Turned on in System Settings. Reopen OpenNavo to apply it.',
       action: 'Reopen',
       pending: 'Reopen to apply',

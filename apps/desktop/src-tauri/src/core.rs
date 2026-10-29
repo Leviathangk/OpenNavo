@@ -25,6 +25,9 @@ pub struct DesktopCore {
     pub queue: Arc<TaskQueue>,
     pub data_dir: PathBuf,
     pub cache_dir: PathBuf,
+    pub relaunch_fresh: bool,
+    pub startup_full_disk_pending: bool,
+    relaunch_ineffective: AtomicBool,
     pub sink: EventSink,
     pub library: RwLock<Vec<InstalledItem>>,
     pub updates: RwLock<Vec<OutdatedItem>>,
@@ -60,6 +63,12 @@ impl DesktopCore {
         askpass: PathBuf,
         sink: EventSink,
     ) -> Result<Arc<Self>, AppError> {
+        let relaunch_fresh = crate::relaunch::consume(&data_dir);
+        let startup_full_disk_pending = crate::permissions::combine(crate::permissions::signals(
+            PermissionState::Unknown,
+            false,
+        ))
+        .full_disk_access_pending;
         let database = Database::open(&data_dir.join("opennavo.db"))?;
         let settings_path = data_dir.join("settings.json");
         let settings = Arc::new(RwLock::new(crate::settings::load(&settings_path)?));
@@ -100,6 +109,9 @@ impl DesktopCore {
             queue: queue.clone(),
             data_dir,
             cache_dir,
+            relaunch_fresh,
+            startup_full_disk_pending,
+            relaunch_ineffective: AtomicBool::new(relaunch_fresh && startup_full_disk_pending),
             sink,
             library: RwLock::new(cached),
             updates: RwLock::new(
@@ -866,7 +878,8 @@ impl DesktopCore {
         let inferred = *self.app_management.read().map_err(poisoned)?;
         let blocked = self.app_management_blocked.load(Ordering::Acquire);
         let source = *self.permission_signals.read().map_err(poisoned)?;
-        crate::blocking(move || Ok(crate::permissions::combine(source(inferred, blocked)))).await
+        let signals = crate::blocking(move || Ok(source(inferred, blocked))).await?;
+        Ok(self.combine_permissions(signals))
     }
     /// Tests: infer only from task outcomes without system preflight, independent of this Mac's permissions.
     #[cfg(test)]
@@ -878,6 +891,7 @@ impl DesktopCore {
                 full_disk_readable: None,
                 inferred_app_management: inferred,
                 app_management_blocked_after_grant: blocked,
+                relaunch_ineffective: false,
             };
     }
     /// Keep inference tests independent of installed apps and native post-task metadata scans.
@@ -902,7 +916,14 @@ impl DesktopCore {
         let inferred = *self.app_management.read().map_err(poisoned)?;
         let blocked = self.app_management_blocked.load(Ordering::Acquire);
         let source = *self.permission_signals.read().map_err(poisoned)?;
-        Ok(crate::permissions::combine(source(inferred, blocked)))
+        Ok(self.combine_permissions(source(inferred, blocked)))
+    }
+    fn combine_permissions(&self, mut signals: crate::permissions::Signals) -> Permissions {
+        // Once a read stops being pending, this process never raises the relaunch warning again.
+        signals.relaunch_ineffective = self
+            .relaunch_ineffective
+            .fetch_and(signals.full_disk_pending(), Ordering::AcqRel);
+        crate::permissions::combine(signals)
     }
     async fn infer_app_management(self: &Arc<Self>, task: &Task) -> Result<(), AppError> {
         let next = if task.state == TaskState::Failed
@@ -1326,6 +1347,46 @@ mod alias_tests {
 #[cfg(test)]
 mod permission_tests {
     use super::*;
+    fn pending_full_disk(inferred: PermissionState, blocked: bool) -> crate::permissions::Signals {
+        crate::permissions::Signals {
+            app_bundles: None,
+            all_files: Some(crate::permissions::Preflight::Granted),
+            full_disk_readable: Some(false),
+            inferred_app_management: inferred,
+            app_management_blocked_after_grant: blocked,
+            relaunch_ineffective: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn ineffective_relaunch_clears_permanently_from_either_permission_reader() {
+        for blocking_first in [true, false] {
+            let tmp = tempfile::tempdir().unwrap();
+            let core = DesktopCore::open(
+                tmp.path().join("data"),
+                tmp.path().join("cache"),
+                tmp.path().join("askpass"),
+                Arc::new(|_| {}),
+            )
+            .unwrap();
+            core.relaunch_ineffective.store(true, Ordering::Release);
+            *core.permission_signals.write().unwrap() = pending_full_disk;
+            assert!(core.permissions().await.unwrap().relaunch_ineffective);
+            assert!(core.permissions_blocking().unwrap().relaunch_ineffective);
+            core.infer_permissions_only();
+            let cleared = if blocking_first {
+                core.permissions_blocking().unwrap()
+            } else {
+                core.permissions().await.unwrap()
+            };
+            assert!(!cleared.relaunch_ineffective);
+            *core.permission_signals.write().unwrap() = pending_full_disk;
+            assert!(core.permissions().await.unwrap().full_disk_access_pending);
+            assert!(!core.permissions().await.unwrap().relaunch_ineffective);
+            assert!(!core.permissions_blocking().unwrap().relaunch_ineffective);
+        }
+    }
+
     #[tokio::test]
     async fn known_non_app_cask_and_other_operations_do_not_grant_permission() {
         let tmp = tempfile::tempdir().unwrap();
@@ -1438,6 +1499,7 @@ mod permission_tests {
                 full_disk_readable: Some(false),
                 inferred_app_management: inferred,
                 app_management_blocked_after_grant: blocked,
+                relaunch_ineffective: false,
             };
         *core.app_management.write().unwrap() = PermissionState::Denied;
         let before = core.permissions().await.unwrap();

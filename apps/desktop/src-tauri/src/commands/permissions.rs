@@ -9,6 +9,17 @@ pub async fn permissions_get(state: State<'_, Arc<DesktopCore>>) -> Result<Permi
     state.permissions().await
 }
 
+/// Open System Settings without creating a guidance overlay.
+#[tauri::command]
+#[specta::specta]
+pub async fn permission_settings_open(
+    app: tauri::AppHandle,
+    pane: PrivacyPane,
+) -> Result<(), AppError> {
+    let url = crate::system::privacy_url(pane, &app.config().identifier)?;
+    crate::system::open(&[url]).await
+}
+
 /// Open the corresponding System Settings panel and adjacent guidance overlay (06 §12.7).
 #[tauri::command]
 #[specta::specta]

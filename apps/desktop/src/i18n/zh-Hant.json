@@ -1000,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo 已更新，重新開啟後即可繼續使用。",
+      "ineffective": "重新開啟後仍未生效。請在「完整磁碟取用權限」裡關閉 OpenNavo 再重新開啟，然後重新開啟 OpenNavo。",
+      "openSettings": "開啟系統設定",
       "body": "已在系統設定中開啟，重新開啟 OpenNavo 後生效。",
       "action": "重新開啟",
       "pending": "重新開啟後生效",
