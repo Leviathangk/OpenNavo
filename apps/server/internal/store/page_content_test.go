@@ -130,6 +130,24 @@ func TestPageHashFollowsShownFieldsOnly(t *testing.T) {
 	}
 }
 
+func TestPageHashIgnoresVolatileGitHubSignals(t *testing.T) {
+	now := time.Date(2026, 10, 30, 8, 0, 0, 0, time.UTC)
+	withGitHub := func(stars int64, pushedAt string, archived bool) map[string]any {
+		o := pageOverviewFixture()
+		o["sources"] = append(o["sources"].([]any), map[string]any{
+			"source": "github",
+			"data": map[string]any{
+				"repo": "owner/example", "url": "https://github.com/owner/example", "license": "MIT",
+				"archived": archived, "stars": stars, "pushedAt": pushedAt,
+			},
+		})
+		return o
+	}
+	base := pageOverviewHash(t, withGitHub(100, "2026-10-29T00:00:00Z", false), now)
+	require.Equal(t, base, pageOverviewHash(t, withGitHub(200, "2026-10-30T00:00:00Z", false), now))
+	require.NotEqual(t, base, pageOverviewHash(t, withGitHub(100, "2026-10-29T00:00:00Z", true), now))
+}
+
 func TestStableContentStripsMetadataAtAnyDepth(t *testing.T) {
 	now := time.Date(2026, 10, 26, 8, 0, 0, 0, time.UTC)
 	for _, key := range []string{"verifiedAt", "verified_at", "verifiedBy", "verified_by", "verifier", "checkedAt", "checked_at", "validUntil", "valid_until",

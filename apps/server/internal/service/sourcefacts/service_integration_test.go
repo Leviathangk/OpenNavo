@@ -193,19 +193,28 @@ func TestSourceFactsSignalsRefreshOnlyFoundAppsDaily(t *testing.T) {
 	_, err := svc.Run(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []string{"acme/open ", "acme/closed "}, calls)
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	openBefore, closedBefore := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}], rows[store.SourceFactKey{PackageID: 2, Source: GitHub}]
+	require.NoError(t, st.DB.Exec(`UPDATE package_source_facts SET fail_count=2 WHERE package_id=? AND source='github'`, openBefore.PackageID).Error)
 	calls = nil
 	now = now.Add(25 * time.Hour)
 	stats, err := svc.Run(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []string{"acme/open W/\"e1\"", "acme/closed "}, calls)
 	require.EqualValues(t, 2, stats["githubRequests"])
-	rows, err := st.SourceFacts(ctx)
+	rows, err = st.SourceFacts(ctx)
 	require.NoError(t, err)
 	open := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
 	closed := rows[store.SourceFactKey{PackageID: 2, Source: GitHub}]
 	require.Equal(t, int64(2000), openStars(t, open))
 	require.WithinDuration(t, now, *open.SignalsCheckedAt, time.Second)
+	require.Equal(t, openBefore.CheckedAt, open.CheckedAt)
+	require.Equal(t, openBefore.NextCheckAt, open.NextCheckAt)
+	require.Equal(t, 2, open.FailCount)
 	require.WithinDuration(t, now, *closed.SignalsCheckedAt, time.Second)
+	require.Equal(t, closedBefore.CheckedAt, closed.CheckedAt)
+	require.Equal(t, closedBefore.NextCheckAt, closed.NextCheckAt)
 	require.Equal(t, "acme/closed", closed.Subject)
 	require.Equal(t, "none", closed.Status)
 	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "closed", "en-US")
@@ -221,6 +230,65 @@ func openStars(t *testing.T, row store.SourceFact) int64 {
 	require.NoError(t, json.Unmarshal(row.Data, &github))
 	require.NotNil(t, github.Stars)
 	return *github.Stars
+}
+
+func TestSourceFactsUnavailableRepositoryBacksOffAndClearsAfterThreeFailures(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	addCask(t, st, `{"token":"gone","name":["Gone"],"version":"1","homepage":"https://github.com/acme/gone","url":"https://example.test/gone.dmg","artifacts":[{"app":["Gone.app"]}]}`)
+	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+		if etag == "" {
+			return mitRepo(repo), nil
+		}
+		return sources.RepoResult{NotFound: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+	}}
+	svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec(`DELETE FROM job_outbox WHERE job_type='cache:invalidate'`).Error)
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	initial := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	initialData := string(initial.Data)
+	initialSignalsCheckedAt := *initial.SignalsCheckedAt
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		if attempt == 1 {
+			now = now.Add(25 * time.Hour)
+		} else {
+			now = *rows[store.SourceFactKey{PackageID: 1, Source: GitHub}].SignalsNextCheckAt
+		}
+		_, err = svc.Run(ctx)
+		require.NoError(t, err)
+		rows, err = st.SourceFacts(ctx)
+		require.NoError(t, err)
+		row := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+		require.Equal(t, initial.CheckedAt, row.CheckedAt)
+		require.Equal(t, initial.NextCheckAt, row.NextCheckAt)
+		require.Equal(t, initialSignalsCheckedAt, *row.SignalsCheckedAt)
+		require.Equal(t, attempt, row.SignalsFailCount)
+		switch attempt {
+		case 1, 2:
+			require.Equal(t, initial.Subject, row.Subject)
+			require.Equal(t, initial.Status, row.Status)
+			require.Equal(t, initialData, string(row.Data))
+			require.WithinDuration(t, now.Add(time.Duration(1<<(attempt-1))*time.Hour), *row.SignalsNextCheckAt, time.Second)
+		case 3:
+			require.Empty(t, row.Subject)
+			require.Equal(t, "none", row.Status)
+			require.JSONEq(t, `{}`, string(row.Data))
+			require.Nil(t, row.ETag)
+		}
+	}
+	public, err := st.PublicSourceFacts(ctx, 1)
+	require.NoError(t, err)
+	require.Empty(t, public)
+	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "gone", "en-US")
+	require.NoError(t, err)
+	require.Nil(t, detail.Repository)
+	require.Nil(t, detail.OpenSource)
+	require.Equal(t, []string{"cache:invalidate:seo-content:pkg:1"}, invalidations(t, st))
 }
 
 func mustJSON(t *testing.T, value any) []byte {

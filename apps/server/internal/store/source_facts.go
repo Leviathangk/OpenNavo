@@ -10,6 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const sourceFactSignalClearAfter = 3
+
 // SourceFactPackage is what the source-facts job needs to find an app's repository and bundle
 // identifiers in its Homebrew definition.
 type SourceFactPackage struct {
@@ -127,6 +129,29 @@ func (s *Store) RecordSourceFactSignalFailure(ctx context.Context, key SourceFac
 	return s.DB.WithContext(ctx).Exec(`UPDATE package_source_facts
  SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1
  WHERE package_id=? AND source=? AND subject<>''`, next, key.PackageID, key.Source).Error
+}
+
+// RecordSourceFactRepositoryUnavailable backs off a daily GitHub signal refresh. Three
+// consecutive unavailable responses clear the public repository fact and invalidate its page.
+func (s *Store) RecordSourceFactRepositoryUnavailable(ctx context.Context, key SourceFactKey, token string, next time.Time) error {
+	return s.WithTx(ctx, func(tx *gorm.DB) error {
+		var failures int
+		if err := tx.WithContext(ctx).Raw(`SELECT signals_fail_count FROM package_source_facts WHERE package_id=? AND source=? AND subject<>'' FOR UPDATE`, key.PackageID, key.Source).Scan(&failures).Error; err != nil {
+			return err
+		}
+		failures++
+		if failures < sourceFactSignalClearAfter {
+			return tx.WithContext(ctx).Exec(`UPDATE package_source_facts
+ SET signals_next_check_at=?,signals_fail_count=?
+ WHERE package_id=? AND source=? AND subject<>''`, next, failures, key.PackageID, key.Source).Error
+		}
+		if err := tx.WithContext(ctx).Exec(`UPDATE package_source_facts
+ SET subject='',status='none',data='{}'::jsonb,etag=NULL,signals_next_check_at=?,signals_fail_count=?
+ WHERE package_id=? AND source=? AND subject<>''`, next, failures, key.PackageID, key.Source).Error; err != nil {
+			return err
+		}
+		return sourceFactInvalidation(ctx, tx, key.PackageID, token)
+	})
 }
 
 // RecordSourceFactFailure keeps the successful facts and their check time, but records the

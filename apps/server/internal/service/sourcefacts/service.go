@@ -23,10 +23,17 @@ const (
 	GitHub   = "github"
 	AppStore = "app_store"
 
-	recheck       = 30 * 24 * time.Hour
-	signalRecheck = 24 * time.Hour
-	priceRecheck  = 24 * time.Hour
-	maxBackoff    = 7 * 24 * time.Hour
+	recheck                       = 30 * 24 * time.Hour
+	signalRecheck                 = 24 * time.Hour
+	priceRecheck                  = 24 * time.Hour
+	maxBackoff                    = 7 * 24 * time.Hour
+	maxGitHubRequestsWithoutQuota = 100 // A missing quota header caps one run at 100 requests to protect the shared token.
+	maxGitHubRepoRequests         = 2   // GitHub.Repo follows at most one rename redirect.
+)
+
+var (
+	errGitHubRequestCap            = errors.New("github request cap reached without rate-limit headers")
+	errGitHubRepositoryUnavailable = errors.New("github repository unavailable during signal refresh")
 )
 
 type GitHubSource interface {
@@ -59,18 +66,19 @@ type pending struct {
 }
 
 type Stats struct {
-	Due               map[string]int    `json:"due"`
-	Checked           map[string]int    `json:"checked"`
-	Found             map[string]int    `json:"found"`
-	Failed            map[string]int    `json:"failed"`
-	Changed           int               `json:"changed"`
-	Removed           int               `json:"removed"`
-	Lookups           int               `json:"lookups"`
-	GitHubRequests    int               `json:"githubRequests"`
-	GitHubNotModified int               `json:"githubNotModified"`
-	GitHubRemaining   int64             `json:"githubRemaining"`
-	Stopped           map[string]string `json:"stopped,omitempty"`
-	Reserved          bool              `json:"githubQuotaReserved,omitempty"`
+	Due                map[string]int    `json:"due"`
+	Checked            map[string]int    `json:"checked"`
+	Found              map[string]int    `json:"found"`
+	Failed             map[string]int    `json:"failed"`
+	Changed            int               `json:"changed"`
+	Removed            int               `json:"removed"`
+	Lookups            int               `json:"lookups"`
+	GitHubRequests     int               `json:"githubRequests"`
+	GitHubNotModified  int               `json:"githubNotModified"`
+	GitHubRemaining    int64             `json:"githubRemaining"`
+	Stopped            map[string]string `json:"stopped,omitempty"`
+	Reserved           bool              `json:"githubQuotaReserved,omitempty"`
+	githubQuotaUnknown bool
 }
 
 func (s *Service) Run(ctx context.Context) (map[string]any, error) {
@@ -103,7 +111,7 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 				}
 				continue
 			}
-			signalsOnly := source == GitHub && exists && row.Input == input && row.Subject != "" && row.FailCount == 0 && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
+			signalsOnly := source == GitHub && exists && row.Input == input && row.Subject != "" && contains(items, row.Subject) && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
 			if exists && row.Input == input && row.NextCheckAt.After(start) && !signalsOnly {
 				continue
 			}
@@ -166,6 +174,10 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 			}
 		}
 		fact, low, err := s.checkGitHub(ctx, item, stats)
+		if errors.Is(err, errGitHubRequestCap) {
+			stats.Stopped[GitHub], stats.Reserved = "request_cap", true
+			return nil
+		}
 		if errors.Is(err, sources.ErrRateLimited) {
 			stats.Stopped[GitHub] = "rate_limited"
 			return nil
@@ -176,7 +188,7 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 			}
 			stats.Failed[GitHub]++
 			if item.signalsOnly {
-				if err := s.failSignals(ctx, item); err != nil {
+				if err := s.failSignals(ctx, item, errors.Is(err, errGitHubRepositoryUnavailable)); err != nil {
 					return err
 				}
 			} else if err := s.fail(ctx, item, GitHub); err != nil {
@@ -186,7 +198,11 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 			return err
 		}
 		if low {
-			stats.Stopped[GitHub], stats.Reserved = "quota", true
+			reason := "quota"
+			if stats.githubQuotaUnknown && stats.GitHubRequests >= maxGitHubRequestsWithoutQuota {
+				reason = "request_cap"
+			}
+			stats.Stopped[GitHub], stats.Reserved = reason, true
 			return nil
 		}
 	}
@@ -195,7 +211,8 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 
 // checkGitHub tries the repositories in order until one publishes a license. A 304 for the
 // repository already found keeps it without spending quota. low reports that the quota is down
-// to its last tenth, which the changelog pipeline keeps; the caller stops after this app.
+// to its last tenth, or that the unknown-quota request cap was reached; the caller stops after
+// this app.
 func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (store.SourceFact, bool, error) {
 	now := s.now()
 	fullCheck := !item.signalsOnly
@@ -209,6 +226,9 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	var firstETag string
 	haveFirst := false
 	for _, repo := range item.items {
+		if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
+			return fact, low, errGitHubRequestCap
+		}
 		etag := ""
 		if item.row != nil && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
 			etag = *item.row.ETag
@@ -225,7 +245,13 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		if result.Remaining >= 0 && (stats.GitHubRemaining < 0 || result.Remaining < stats.GitHubRemaining) {
 			stats.GitHubRemaining = result.Remaining
 		}
+		if result.Remaining < 0 || result.Limit < 0 {
+			stats.githubQuotaUnknown = true
+		}
 		if result.Remaining >= 0 && result.Limit > 0 && result.Remaining*10 <= result.Limit {
+			low = true
+		}
+		if stats.githubQuotaUnknown && stats.GitHubRequests >= maxGitHubRequestsWithoutQuota {
 			low = true
 		}
 		if err != nil {
@@ -241,18 +267,24 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
-			fact.FailCount = 0
 			if fullCheck {
+				fact.FailCount = 0
 				fact.CheckedAt = now
 				fact.NextCheckAt = next(now, recheck, item.pkg.ID)
 			}
 			return fact, low, nil
 		}
 		if result.NotFound {
+			if !fullCheck {
+				return fact, low, errGitHubRepositoryUnavailable
+			}
 			continue
 		}
 		current, public := result.Repository.GitHubFact()
 		if !public {
+			if !fullCheck {
+				return fact, low, errGitHubRepositoryUnavailable
+			}
 			continue
 		}
 		if !haveFirst {
@@ -272,7 +304,6 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
-			fact.FailCount = 0
 			if result.ETag != "" {
 				fact.ETag = &result.ETag
 			} else {
@@ -298,13 +329,7 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		}
 	}
 	if !fullCheck && item.row != nil && hasGitHubRepository(*item.row) {
-		// A deleted candidate during a signal-only pass does not invalidate the 30-day fact.
-		fact = *item.row
-		fact.Input = item.input
-		fact.SignalsCheckedAt = timePointer(now)
-		fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
-		fact.SignalsFailCount = 0
-		return fact, low, nil
+		return fact, low, errGitHubRepositoryUnavailable
 	}
 	if haveFirst {
 		fact.Status, fact.Subject = "none", first.Repo
@@ -409,14 +434,19 @@ func (s *Service) fail(ctx context.Context, item pending, source string) error {
 	return s.Store.RecordSourceFactFailure(ctx, store.SourceFactKey{PackageID: item.pkg.ID, Source: source}, item.input, now, now.Add(min(wait, maxBackoff)))
 }
 
-func (s *Service) failSignals(ctx context.Context, item pending) error {
+func (s *Service) failSignals(ctx context.Context, item pending, repositoryUnavailable bool) error {
 	failures := 0
 	if item.row != nil {
 		failures = item.row.SignalsFailCount
 	}
 	wait := time.Hour << min(failures, 8)
 	now := s.now()
-	return s.Store.RecordSourceFactSignalFailure(ctx, store.SourceFactKey{PackageID: item.pkg.ID, Source: GitHub}, now.Add(min(wait, maxBackoff)))
+	nextCheck := now.Add(min(wait, maxBackoff))
+	key := store.SourceFactKey{PackageID: item.pkg.ID, Source: GitHub}
+	if repositoryUnavailable {
+		return s.Store.RecordSourceFactRepositoryUnavailable(ctx, key, item.pkg.Token, nextCheck)
+	}
+	return s.Store.RecordSourceFactSignalFailure(ctx, key, nextCheck)
 }
 
 func (s *Service) logger() *slog.Logger {
@@ -508,4 +538,13 @@ func text(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func contains(values []string, wanted string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, wanted) {
+			return true
+		}
+	}
+	return false
 }
