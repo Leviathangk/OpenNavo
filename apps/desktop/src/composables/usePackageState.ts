@@ -1,3 +1,4 @@
+import { updateErrorKey } from '@/ipc/updateErrors';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import type { GetState } from '@opennavo/ui';
@@ -55,7 +56,7 @@ export function usePackageState() {
 
   function errorText(error: unknown): string {
     if (error instanceof IpcError) {
-      const key = `errors.${error.code}`;
+      const key = updateErrorKey(error);
       return te(key) ? t(key) : error.message;
     }
     return error instanceof Error ? error.message : String(error);

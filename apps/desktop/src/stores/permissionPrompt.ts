@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { Task, TaskOptions } from '@/ipc/bindings';
+import { updateChallenge } from '@/ipc/updateErrors';
 import type { GuidePane } from './permissions';
 
 /** Task failure codes for missing privacy permissions (06 §5.4): App Management and Full Disk Access (zap removes app data). */
@@ -13,6 +14,8 @@ export const PERMISSION_ERRORS: Readonly<Record<string, GuidePane>> = {
  * Retry arguments: an uninstall blocked by Full Disk Access already moved the app, leaving a Caskroom backup; add force to finish (06 §6.3). Otherwise retain the original arguments.
  */
 export function retryOptions(task: Task): TaskOptions {
+  if (task.op === 'upgrade' && task.target?.kind === 'app')
+    return { ...task.options, verification: updateChallenge(task.error) };
   return !task.options.planId && task.op === 'uninstall' && task.error?.code === 'E_FULL_DISK_ACCESS'
     ? { ...task.options, force: true }
     : task.options;

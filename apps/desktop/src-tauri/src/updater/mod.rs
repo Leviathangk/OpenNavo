@@ -19,6 +19,7 @@ pub mod swap;
 mod transfer;
 pub use service::Service;
 pub mod types;
+pub mod unsigned;
 pub mod version;
 pub use types::*;
 

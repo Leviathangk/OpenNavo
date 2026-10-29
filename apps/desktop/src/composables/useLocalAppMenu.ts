@@ -3,6 +3,7 @@ import type { OnMenuItem } from '@opennavo/ui';
 import type { LocalApp } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { useTasksStore } from '@/stores';
+import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useUninstallStore } from '@/stores/uninstall';
 import { usePackageState } from './usePackageState';
 import { useToasts } from './useToasts';
@@ -23,6 +24,9 @@ export function useLocalAppMenu() {
       { key: 'open', label: t('package.open'), icon: 'arrow-up-right' },
       { key: 'reveal', label: t('package.actions.reveal'), icon: 'folder' }
     ];
+    if (app.updater && ['sparkle', 'electron', 'github', 'vendor'].includes(app.updater) && !app.protectedReason) {
+      items.push({ key: 'reinstall', label: t('package.actions.reinstall'), icon: 'rotate-cw' });
+    }
     items.push({
       key: 'uninstall',
       label: t('package.actions.uninstall'),
@@ -61,6 +65,20 @@ export function useLocalAppMenu() {
         return run(unwrap(commands.localAppReveal(app.id)));
       case 'adopt':
         return adopt(app);
+      case 'reinstall':
+        return run(
+          (async () => {
+            if (
+              !(await usePermissionGateStore().require({
+                feature: 'updates',
+                targets: [{ kind: 'app', token: app.id }]
+              }))
+            )
+              return;
+            const item = await unwrap(commands.updatePrepareReinstall(app.id));
+            await tasks.enqueue('upgrade', { kind: 'app', token: app.id }, 'manual', { source: item.source });
+          })()
+        );
       case 'uninstall':
         if (app.removable) await run(uninstaller.start([app.id]));
         return;

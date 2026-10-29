@@ -624,6 +624,20 @@
     }
   },
   "updates": {
+    "review": {
+      "title": "Revisar antes de instalar",
+      "body": "O identificador e a versão de destino foram verificados. Revise estas condições; sua escolha vale apenas para este pacote.",
+      "unsigned_developer": "O app instalado, o novo app ou o instalador não tem uma assinatura de desenvolvedor verificada. Continue apenas se confiar na fonte. O macOS ainda pode bloquear a abertura.",
+      "repair_installed": "A assinatura do app instalado está danificada. O substituto passou nas verificações de assinatura e identidade; continuar substituirá o app antigo.",
+      "not_notarized": "O novo app ou instalador não foi notarizado pela Apple. O macOS pode bloquear a abertura.",
+      "non_newer": "A versão de destino não é mais recente. O app será reinstalado ou voltará a uma versão anterior, que pode não ler os dados mais recentes."
+    },
+    "unsigned": {
+      "title": "Não foi possível verificar o desenvolvedor",
+      "body": "O app instalado, o novo app ou o instalador não tem uma assinatura de desenvolvedor verificada. Continue apenas se confiar na fonte. O macOS ainda pode bloquear a abertura.",
+      "confirm": "Instalar mesmo assim",
+      "badge": "Desenvolvedor não verificado"
+    },
     "title": "Atualizações",
     "summary": "{count} atualização disponível · cerca de {size} para baixar | {count} atualizações disponíveis · cerca de {size} para baixar",
     "summaryNone": "Tudo atualizado",
@@ -1219,10 +1233,11 @@
     "E_MAS_OTHER_ACCOUNT": "Este app foi comprado com outra Conta Apple. Atualize-o na App Store",
     "E_MAS_REGION": "Este app não está disponível na região da loja atual",
     "E_MAS_RATE_LIMITED": "Muitas solicitações à App Store. Tente de novo em um minuto",
+    "E_UPDATE_VERIFY_UNAVAILABLE": "O macOS não conseguiu concluir a verificação do desenvolvedor, então a atualização não foi instalada. Tente novamente mais tarde",
     "E_UPDATE_INTEGRITY": "O download falhou na verificação de integridade, então a atualização não foi instalada",
     "E_UPDATE_PREPARE": "Não foi possível preparar os arquivos de atualização. Verifique o espaço em disco e as permissões de acesso e tente novamente",
     "E_UPDATE_ARCHIVE": "Não foi possível ler, montar ou extrair o pacote de atualização. Consulte o log e tente novamente",
-    "E_UPDATE_VERSION": "A versão do pacote não é a esperada ou não é mais recente que a instalada, por isso não foi instalada",
+    "E_UPDATE_VERSION": "A versão do pacote não corresponde ao manifesto da versão; a atualização não foi instalada",
     "E_UPDATE_TEAM_MISMATCH": "A nova versão é assinada por outro desenvolvedor, então não foi instalada",
     "E_UPDATE_NOT_NOTARIZED": "A nova versão não foi notarizada pela Apple, então não foi instalada",
     "E_UPDATE_ARCH": "A nova versão não é compatível com o chip deste Mac",
@@ -1304,7 +1319,14 @@
     "E_FW_BLOCKLIST_FORMAT": "Nenhum domínio ou IP utilizável foi encontrado no arquivo",
     "E_FW_BLOCKLIST_TOO_LARGE": "A lista de bloqueio é grande demais: no máximo 50 MB e um milhão de entradas",
     "E_FW_BLOCKLIST_LIMIT": "Limite de listas de bloqueio atingido: no máximo 32 listas e 256 MB no total",
-    "E_FW_BLOCKLIST_FILE": "O arquivo não foi encontrado ou não pode ser lido"
+    "E_FW_BLOCKLIST_FILE": "O arquivo não foi encontrado ou não pode ser lido",
+    "E_UPDATE_DIGEST": "O tamanho ou resumo do arquivo não corresponde ao manifesto. Nada foi instalado",
+    "E_UPDATE_SIGNATURE": "A assinatura de código da atualização é inválida. Nada foi instalado",
+    "E_UPDATE_FEED_SIGNATURE": "A verificação da assinatura do arquivo do editor falhou. Nada foi instalado",
+    "E_UPDATE_IDENTITY": "O identificador do pacote não corresponde ao app de destino. Nada foi instalado",
+    "E_UPDATE_CHANGED": "O app ou os arquivos mudaram após a verificação. Verifique as atualizações novamente",
+    "E_UPDATE_NOT_NEWER": "A versão de destino não é mais recente. Escolha Reinstalar no menu do app instalado",
+    "E_UPDATE_CONFIRMATION": "A instalação precisa da sua confirmação. Revise o aviso ou tente novamente"
   },
   "installConfirm": {
     "title": "Adotar o {name} existente?",

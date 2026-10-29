@@ -43,22 +43,15 @@ impl Stage {
         inspector: &dyn gate::Inspector,
         platform: gate::Platform<'_>,
     ) -> Result<(), AppError> {
-        gate::bundles_for_source(
-            inspector,
-            &request.installed,
-            &request.prepared,
-            &request.installed_snapshot,
-            platform,
-            request.expected_team.as_deref(),
-            request.source,
-        )
-        .inspect_err(|_| {
-            // A Vendor download may have no publisher digest. Its local digest
-            // cannot make an invalid signature safe to reuse on the next attempt.
-            if let Err(cleanup) = self.discard_download() {
-                log::warn!("Rejected update cache cleanup failed: {}", cleanup.code);
-            }
-        })
+        request
+            .validate(inspector, &request.prepared, platform)
+            .inspect_err(|_| {
+                // A Vendor download may have no publisher digest. Its local digest
+                // cannot make an invalid signature safe to reuse on the next attempt.
+                if let Err(cleanup) = self.discard_download() {
+                    log::warn!("Rejected update cache cleanup failed: {}", cleanup.code);
+                }
+            })
     }
     /// Discard a rejected or installed download. Other installation failures retain verified bytes.
     pub fn discard_download(&self) -> Result<(), AppError> {
@@ -90,6 +83,16 @@ pub async fn prepare(
     cancel: Arc<AtomicBool>,
     progress: ProgressSink,
 ) -> Result<SwapRequest, AppError> {
+    prepare_confirmed(candidate, stage, cancel, progress, None).await
+}
+pub async fn prepare_confirmed(
+    candidate: &Candidate,
+    stage: &Stage,
+    cancel: Arc<AtomicBool>,
+    progress: ProgressSink,
+    confirmation: Option<&str>,
+) -> Result<SwapRequest, AppError> {
+    candidate.validate_unsigned_confirmation(confirmation)?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(900))
         .redirect(reqwest::redirect::Policy::custom(|attempt| {
@@ -100,7 +103,7 @@ pub async fn prepare(
             }
         }))
         .build()?;
-    prepare_with_client(candidate, stage, cancel, progress, &client).await
+    prepare_confirmed_with_client(candidate, stage, cancel, progress, &client, confirmation).await
 }
 /// The client argument permits a local TLS fixture with its own trust root. There
 /// is no IPC/environment option to disable production transport verification.
@@ -111,6 +114,18 @@ pub async fn prepare_with_client(
     progress: ProgressSink,
     client: &reqwest::Client,
 ) -> Result<SwapRequest, AppError> {
+    prepare_confirmed_with_client(candidate, stage, cancel, progress, client, None).await
+}
+pub async fn prepare_confirmed_with_client(
+    candidate: &Candidate,
+    stage: &Stage,
+    cancel: Arc<AtomicBool>,
+    progress: ProgressSink,
+    client: &reqwest::Client,
+    confirmation: Option<&str>,
+) -> Result<SwapRequest, AppError> {
+    candidate.validate_unsigned_confirmation(confirmation)?;
+    let allow_unsigned = confirmation.is_some();
     if candidate.item.informational_url.is_some() || candidate.item.relaunch_pending {
         return Err(AppError::new(
             "E_NOT_INSTALLABLE",
@@ -199,15 +214,23 @@ pub async fn prepare_with_client(
                 ));
             };
             let (prepared, package) = if package || bytes.starts_with(b"xar!") {
-                use gate::Inspector;
                 use sha2::{Digest, Sha256};
-                let old = gate::NativeInspector.inspect(&source.app_path)?;
-                super::package::verify_signature(&artifact, &old.team_id)?;
+                let old = gate::observe(&source.app_path, false)?;
+                let expected_team = source
+                    .expected_team
+                    .as_deref()
+                    .or_else(|| (!old.unsigned).then_some(old.identity.team_id.as_str()));
+                let authenticated = source.public_key.is_some()
+                    || source
+                        .artifact
+                        .as_ref()
+                        .is_some_and(|a| a.file.sha256.is_some() || a.file.sha512.is_some());
+                super::package::review_signature(&artifact, expected_team, authenticated)?;
                 let prepared = super::package::payload(
                     &artifact,
                     &root.join("package"),
                     &source.app_path,
-                    &old.identifier,
+                    &old.bundle_id,
                 )?;
                 let package = super::package::Artifact {
                     snapshot: Snapshot::capture(&artifact)?,
@@ -245,7 +268,13 @@ pub async fn prepare_with_client(
                     "feed_bundle_version_mismatch",
                 ));
             }
+            let unsigned = if allow_unsigned {
+                Some(super::unsigned::Approval::prepare(&source, &prepared)?)
+            } else {
+                None
+            };
             let request = SwapRequest {
+                unsigned,
                 source: source.item.source,
                 installed: source.app_path,
                 installed_snapshot: source.snapshot,

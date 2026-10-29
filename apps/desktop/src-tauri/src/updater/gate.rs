@@ -1,10 +1,7 @@
 //! Installation checks are mandatory both before staging and at the final swap.
 //! Tests substitute observations; production never accepts a validation override.
 use super::version;
-use crate::{
-    AppError,
-    uninstall::{identity::command, rules::Snapshot},
-};
+use crate::{AppError, uninstall::rules::Snapshot};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -25,6 +22,10 @@ pub struct Identity {
     pub identifier: String,
     pub requirement: String,
     pub notarized: bool,
+    /// The system assessment could not run (for example, a timeout). This is
+    /// different from a successful assessment that explicitly rejected the app.
+    #[serde(default)]
+    pub notarization_unavailable: bool,
     pub architectures: BTreeSet<String>,
     pub minimum_os: String,
     #[serde(default)]
@@ -38,86 +39,192 @@ pub trait Inspector: Send + Sync {
     fn satisfies(&self, path: &Path, requirement: &str) -> Result<bool, AppError>;
 }
 pub struct NativeInspector;
+pub struct Observation {
+    pub identity: Identity,
+    pub unsigned: bool,
+    pub bundle_id: String,
+}
+
+/// Read the installed identity even when its resource seal is damaged. A caller
+/// must still authenticate the replacement and explicitly confirm a repair.
+pub fn observe(path: &Path, assess: bool) -> Result<Observation, AppError> {
+    let path_text = path
+        .to_str()
+        .ok_or_else(|| fail("E_UPDATE_IDENTITY", "bundle_path"))?;
+    let verification = crate::native_command::output(
+        "/usr/bin/codesign",
+        &[
+            "--verify",
+            "--deep",
+            "--strict",
+            "--all-architectures",
+            path_text,
+        ],
+        Duration::from_secs(60),
+    )
+    .map_err(|e| e.context("E_UPDATE_VERIFY_UNAVAILABLE", "signature_check_unavailable"))?;
+    if !matches!(verification.code, Some(0 | 1)) {
+        return Err(fail(
+            "E_UPDATE_VERIFY_UNAVAILABLE",
+            "signature_check_unavailable",
+        ));
+    }
+    let valid = verification.code == Some(0);
+    let info = crate::native_command::output(
+        "/usr/bin/codesign",
+        &["-d", "-r-", "--verbose=4", path_text],
+        Duration::from_secs(15),
+    )
+    .map_err(|e| e.context("E_UPDATE_VERIFY_UNAVAILABLE", "signature_information"))?;
+    let unsigned =
+        info.code == Some(1) && info.stderr.contains(": code object is not signed at all");
+    if info.code != Some(0) && !unsigned {
+        return Err(fail("E_UPDATE_SIGNATURE", "signature_information_invalid"));
+    }
+    let info = info.text();
+    let field = |prefix: &str| {
+        info.lines()
+            .find_map(|l| l.strip_prefix(prefix))
+            .unwrap_or("")
+            .to_owned()
+    };
+    let unsigned = unsigned
+        || (info.lines().any(|l| l == "Signature=adhoc")
+            && !info.lines().any(|l| l.starts_with("Authority="))
+            && matches!(field("TeamIdentifier=").as_str(), "" | "not set"));
+    let dictionary = plist::Value::from_file(path.join("Contents/Info.plist"))
+        .map_err(|_| fail("E_UPDATE_ARCHIVE", "bundle_info"))?;
+    let dict = dictionary
+        .as_dictionary()
+        .ok_or_else(|| fail("E_UPDATE_ARCHIVE", "bundle_info"))?;
+    let value = |key: &str| {
+        dict.get(key)
+            .and_then(|v| v.as_string())
+            .unwrap_or("")
+            .to_owned()
+    };
+    let executable = value("CFBundleExecutable");
+    if executable.is_empty() || executable.contains('/') || executable == "." || executable == ".."
+    {
+        return Err(fail("E_UPDATE_IDENTITY", "bundle_executable"));
+    }
+    let binary = path.join("Contents/MacOS").join(&executable);
+    if !binary.canonicalize()?.starts_with(path.canonicalize()?) {
+        return Err(fail("E_UPDATE_IDENTITY", "bundle_executable_escape"));
+    }
+    let slices = super::macho::inspect(&binary)?;
+    let architectures = slices.keys().cloned().collect();
+    let (notarized, notarization_unavailable) = if assess && valid && !unsigned {
+        match assess_notarization(path, "execute") {
+            Ok(value) => (value, false),
+            Err(e) if e.code == "E_UPDATE_VERIFY_UNAVAILABLE" => (false, true),
+            Err(e) => return Err(e),
+        }
+    } else {
+        (false, false)
+    };
+    let minimum_os = value("LSMinimumSystemVersion");
+    let minimum_os_by_arch = architecture_minimums(&slices, dict);
+    Ok(Observation {
+        unsigned,
+        bundle_id: value("CFBundleIdentifier"),
+        identity: Identity {
+            valid,
+            team_id: field("TeamIdentifier="),
+            identifier: field("Identifier="),
+            requirement: field("designated => "),
+            notarized,
+            notarization_unavailable,
+            architectures,
+            minimum_os,
+            minimum_os_by_arch,
+            version: value("CFBundleVersion"),
+            marketing_version: value("CFBundleShortVersionString"),
+        },
+    })
+}
+
+pub fn assess_notarization(path: &Path, kind: &str) -> Result<bool, AppError> {
+    let output = crate::native_command::output(
+        "/usr/sbin/spctl",
+        &[
+            "--assess",
+            "--type",
+            kind,
+            "--verbose=4",
+            &path.to_string_lossy(),
+        ],
+        Duration::from_secs(60),
+    );
+    notarization_result(output)
+}
+fn notarization_result(
+    output: Result<crate::native_command::Output, AppError>,
+) -> Result<bool, AppError> {
+    let output = output.map_err(|e| {
+        e.context(
+            "E_UPDATE_VERIFY_UNAVAILABLE",
+            "notarization_check_unavailable",
+        )
+    })?;
+    let text = output.text();
+    if output.code == Some(0)
+        && text
+            .lines()
+            .any(|l| l.trim() == "source=Notarized Developer ID")
+    {
+        return Ok(true);
+    }
+    if text.to_ascii_lowercase().contains("revoked")
+        || text.to_ascii_lowercase().contains("malware")
+    {
+        return Err(fail("E_UPDATE_SIGNATURE", "system_security_rejection"));
+    }
+    if output.code == Some(3)
+        && text
+            .lines()
+            .any(|l| l.trim() == "source=Unnotarized Developer ID")
+    {
+        return Ok(false);
+    }
+    Err(fail(
+        "E_UPDATE_VERIFY_UNAVAILABLE",
+        "notarization_check_unavailable",
+    ))
+}
+
 impl Inspector for NativeInspector {
     fn inspect(&self, path: &Path) -> Result<Identity, AppError> {
-        let path_text = path
-            .to_str()
-            .ok_or_else(|| fail("E_UPDATE_INTEGRITY", "bundle_path"))?;
-        command(
+        let output = crate::native_command::output(
             "/usr/bin/codesign",
             &[
                 "--verify",
                 "--deep",
                 "--strict",
                 "--all-architectures",
-                path_text,
+                &path.to_string_lossy(),
             ],
             Duration::from_secs(60),
         )
-        .map_err(|e| e.context("E_UPDATE_INTEGRITY", "invalid_bundle_signature"))?;
-        let valid = true;
-        let info = command(
-            "/usr/bin/codesign",
-            &["-d", "-r-", "--verbose=4", path_text],
-            Duration::from_secs(15),
-        )
-        .map_err(|e| e.context("E_UPDATE_PREPARE", "signature_information"))?
-        .text();
-        let field = |prefix: &str| {
-            info.lines()
-                .find_map(|l| l.strip_prefix(prefix))
-                .unwrap_or("")
-                .to_owned()
-        };
-        let dictionary = plist::Value::from_file(path.join("Contents/Info.plist"))
-            .map_err(|_| fail("E_UPDATE_ARCHIVE", "bundle_info"))?;
-        let dict = dictionary
-            .as_dictionary()
-            .ok_or_else(|| fail("E_UPDATE_ARCHIVE", "bundle_info"))?;
-        let value = |key: &str| {
-            dict.get(key)
-                .and_then(|v| v.as_string())
-                .unwrap_or("")
-                .to_owned()
-        };
-        let executable = value("CFBundleExecutable");
-        if executable.is_empty()
-            || executable.contains('/')
-            || executable == "."
-            || executable == ".."
-        {
-            return Err(fail("E_UPDATE_INTEGRITY", "bundle_executable"));
+        .map_err(|e| e.context("E_UPDATE_VERIFY_UNAVAILABLE", "signature_check_unavailable"))?;
+        match output.code {
+            Some(0) => {}
+            Some(1) => {
+                return Err(fail("E_UPDATE_SIGNATURE", "invalid_bundle_signature")
+                    .with_detail(output.text()));
+            }
+            _ => {
+                return Err(fail(
+                    "E_UPDATE_VERIFY_UNAVAILABLE",
+                    "signature_check_unavailable",
+                ));
+            }
         }
-        let binary = path.join("Contents/MacOS").join(&executable);
-        if !binary.canonicalize()?.starts_with(path.canonicalize()?) {
-            return Err(fail("E_UPDATE_INTEGRITY", "bundle_executable_escape"));
+        let observed = observe(path, true)?;
+        if !observed.identity.valid {
+            return Err(fail("E_UPDATE_SIGNATURE", "invalid_bundle_signature"));
         }
-        let slices = super::macho::inspect(&binary)?;
-        let architectures = slices.keys().cloned().collect();
-        let assessment = command(
-            "/usr/sbin/spctl",
-            &["--assess", "--type", "execute", "--verbose=4", path_text],
-            Duration::from_secs(60),
-        );
-        let notarized = assessment.is_ok_and(|v| {
-            v.stderr
-                .lines()
-                .any(|l| l.trim() == "source=Notarized Developer ID")
-        });
-        let minimum_os = value("LSMinimumSystemVersion");
-        let minimum_os_by_arch = architecture_minimums(&slices, dict);
-        Ok(Identity {
-            valid,
-            team_id: field("TeamIdentifier="),
-            identifier: field("Identifier="),
-            requirement: field("designated => "),
-            notarized,
-            architectures,
-            minimum_os,
-            minimum_os_by_arch,
-            version: value("CFBundleVersion"),
-            marketing_version: value("CFBundleShortVersionString"),
-        })
+        Ok(observed.identity)
     }
     fn satisfies(&self, path: &Path, requirement: &str) -> Result<bool, AppError> {
         if requirement.is_empty() {
@@ -127,7 +234,7 @@ impl Inspector for NativeInspector {
         // codesign treats a plain -R argument as a file name. The leading '='
         // selects literal requirement source, preserving its quotes/comments.
         let literal = format!("={requirement}");
-        let result = command(
+        let result = crate::native_command::output(
             "/usr/bin/codesign",
             &[
                 "--verify",
@@ -137,16 +244,31 @@ impl Inspector for NativeInspector {
                 "-R",
                 &literal,
                 path.to_str()
-                    .ok_or_else(|| fail("E_UPDATE_INTEGRITY", "bundle_path"))?,
+                    .ok_or_else(|| fail("E_UPDATE_IDENTITY", "bundle_path"))?,
             ],
             Duration::from_secs(60),
         );
-        if let Err(error) = &result {
-            log::warn!(
-                "Update identity gate: check=designated_requirement_verification path={path:?} error={error:?}"
-            );
+        let output = result.map_err(|e| {
+            e.context(
+                "E_UPDATE_VERIFY_UNAVAILABLE",
+                "requirement_check_unavailable",
+            )
+        })?;
+        match output.code {
+            Some(0) => Ok(true),
+            Some(1) => Ok(false),
+            Some(3)
+                if output
+                    .text()
+                    .contains("code failed to satisfy specified code requirement(s)") =>
+            {
+                Ok(false)
+            }
+            _ => Err(fail(
+                "E_UPDATE_VERIFY_UNAVAILABLE",
+                "requirement_check_unavailable",
+            )),
         }
-        Ok(result.is_ok())
     }
 }
 
@@ -179,6 +301,14 @@ pub fn identities_for_source(
     source: crate::model::UpdateSource,
 ) -> Result<(), AppError> {
     compatible_identities(old, new, requirement_satisfied, os, arch, expected_team)?;
+    versions_for_source(old, new, source)
+}
+
+pub(crate) fn versions_for_source(
+    old: &Identity,
+    new: &Identity,
+    source: crate::model::UpdateSource,
+) -> Result<(), AppError> {
     if source == crate::model::UpdateSource::Electron {
         return electron_versions(old, new);
     }
@@ -192,7 +322,7 @@ pub fn identities_for_source(
             && (new.version.is_empty()
                 || version::compare(&new.version, &old.version) != Ordering::Greater))
     {
-        return Err(fail("E_UPDATE_VERSION", "bundle_version_not_newer"));
+        return Err(fail("E_UPDATE_NOT_NEWER", "bundle_version_not_newer"));
     }
     Ok(())
 }
@@ -208,7 +338,7 @@ pub(crate) fn compatible_identities(
     expected_team: Option<&str>,
 ) -> Result<(), AppError> {
     if !old.valid || !new.valid {
-        return Err(fail("E_UPDATE_INTEGRITY", "invalid_bundle_signature"));
+        return Err(fail("E_UPDATE_SIGNATURE", "invalid_bundle_signature"));
     }
     let failed: Vec<_> = [
         (
@@ -219,7 +349,6 @@ pub(crate) fn compatible_identities(
         ("installed_identifier_missing", old.identifier.is_empty()),
         ("identifier_changed", old.identifier != new.identifier),
         ("installed_requirement_missing", old.requirement.is_empty()),
-        ("requirement_changed", old.requirement != new.requirement),
         ("requirement_not_satisfied", !requirement_satisfied),
         (
             "expected_team_mismatch",
@@ -240,6 +369,12 @@ pub(crate) fn compatible_identities(
         return Err(fail("E_UPDATE_TEAM_MISMATCH", "signing_identity_changed"));
     }
     if !new.notarized {
+        if new.notarization_unavailable {
+            return Err(fail(
+                "E_UPDATE_VERIFY_UNAVAILABLE",
+                "notarization_check_unavailable",
+            ));
+        }
         return Err(fail("E_UPDATE_NOT_NOTARIZED", "notarization_required"));
     }
     if !new.architectures.contains(arch)
@@ -294,7 +429,7 @@ pub fn bundles_for_source(
 ) -> Result<(), AppError> {
     let Platform { os, arch } = platform;
     if !snapshot.same_object(&Snapshot::capture(old)?) {
-        return Err(fail("E_UPDATE_INTEGRITY", "installed_app_changed"));
+        return Err(fail("E_UPDATE_CHANGED", "installed_app_changed"));
     }
     super::archive::validate_bundle_links(new)?;
     let before = inspector.inspect(old)?;
@@ -317,7 +452,7 @@ pub fn verify_archive(
     sha256: Option<&str>,
 ) -> Result<String, AppError> {
     if length.is_some_and(|v| v != bytes.len() as u64) {
-        return Err(fail("E_UPDATE_INTEGRITY", "download_length"));
+        return Err(fail("E_UPDATE_DIGEST", "download_length"));
     }
     let digest = format!("{:x}", Sha256::digest(bytes));
     if sha256.is_some_and(|expected| {
@@ -325,17 +460,17 @@ pub fn verify_archive(
             || !expected.bytes().all(|b| b.is_ascii_hexdigit())
             || !expected.eq_ignore_ascii_case(&digest)
     }) {
-        return Err(fail("E_UPDATE_INTEGRITY", "download_sha256"));
+        return Err(fail("E_UPDATE_DIGEST", "download_sha256"));
     }
     let key = STANDARD
         .decode(public_key)
-        .map_err(|_| fail("E_UPDATE_INTEGRITY", "eddsa_key"))?;
+        .map_err(|_| fail("E_UPDATE_FEED_SIGNATURE", "eddsa_key"))?;
     let signature = STANDARD
         .decode(signature)
-        .map_err(|_| fail("E_UPDATE_INTEGRITY", "eddsa_signature"))?;
+        .map_err(|_| fail("E_UPDATE_FEED_SIGNATURE", "eddsa_signature"))?;
     ring::signature::UnparsedPublicKey::new(&ring::signature::ED25519, &key)
         .verify(bytes, &signature)
-        .map_err(|_| fail("E_UPDATE_INTEGRITY", "eddsa_verification"))?;
+        .map_err(|_| fail("E_UPDATE_FEED_SIGNATURE", "eddsa_verification"))?;
     Ok(digest)
 }
 
@@ -373,7 +508,7 @@ pub(crate) fn electron_versions(old: &Identity, new: &Identity) -> Result<(), Ap
         || (order.is_eq()
             && (new.version.is_empty() || !version::compare(&new.version, &old.version).is_gt()))
     {
-        return Err(fail("E_UPDATE_VERSION", "bundle_version_not_newer"));
+        return Err(fail("E_UPDATE_NOT_NEWER", "bundle_version_not_newer"));
     }
     Ok(())
 }
@@ -387,6 +522,7 @@ mod tests {
             team_id: "TESTTEAM01".into(),
             identifier: "test.app".into(),
             requirement: "test requirement".into(),
+            notarization_unavailable: false,
             notarized: true,
             architectures: ["arm64".into(), "x86_64".into()].into(),
             minimum_os: "12.0".into(),
@@ -445,5 +581,52 @@ mod tests {
             assert!(electron_versions(&old, &new).is_ok());
             assert!(electron_versions(&new, &old).is_err());
         }
+    }
+}
+
+#[cfg(test)]
+mod assessment_tests {
+    use super::*;
+    use crate::native_command::Output;
+    #[test]
+    fn explicit_denial_is_distinct_from_tool_failure_and_revocation() {
+        let output = |code, stderr: &str| {
+            Ok(Output {
+                code,
+                stdout: String::new(),
+                stderr: stderr.into(),
+            })
+        };
+        assert!(
+            notarization_result(output(
+                Some(0),
+                "App: accepted\nsource=Notarized Developer ID"
+            ))
+            .unwrap()
+        );
+        assert!(
+            !notarization_result(output(
+                Some(3),
+                "App: rejected\nsource=Unnotarized Developer ID"
+            ))
+            .unwrap()
+        );
+        for result in [
+            Err(AppError::new("E_TIMEOUT", "command_timeout")),
+            output(None, ""),
+            output(Some(1), "service unavailable"),
+            output(Some(3), "internal assessment error"),
+        ] {
+            assert_eq!(
+                notarization_result(result).unwrap_err().code,
+                "E_UPDATE_VERIFY_UNAVAILABLE"
+            );
+        }
+        assert_eq!(
+            notarization_result(output(Some(3), "certificate revoked"))
+                .unwrap_err()
+                .code,
+            "E_UPDATE_SIGNATURE"
+        );
     }
 }

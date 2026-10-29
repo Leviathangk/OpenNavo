@@ -618,6 +618,20 @@ export default {
     }
   },
   updates: {
+    review: {
+      title: '安装前请确认',
+      body: '已核对应用标识和目标版本。请确认以下情况；你的选择仅对本次安装包有效。',
+      unsigned_developer: '旧版、新版或安装包缺少可验证的开发者签名。请仅在信任来源时继续，macOS 仍可能阻止打开。',
+      repair_installed: '已安装应用的签名损坏。新版本已通过签名和身份检查，继续将替换旧应用。',
+      not_notarized: '新版本或安装包未经 Apple 公证。macOS 可能阻止打开。',
+      non_newer: '目标版本不高于已安装版本，将进行重装或降级。旧版本可能无法读取新版应用数据。'
+    },
+    unsigned: {
+      title: '无法确认开发者身份',
+      body: '旧版、新版或安装包缺少可验证的开发者签名。请仅在信任来源时继续，macOS 仍可能阻止打开。',
+      confirm: '仍要安装',
+      badge: '开发者未验证'
+    },
     title: '更新',
     summary: '{count} 个可用更新 · 下载约 {size}',
     summaryNone: '全部是最新',
@@ -1214,10 +1228,18 @@ export default {
     E_MAS_OTHER_ACCOUNT: '这款 App 由其他 Apple 账户购买，请在 App Store 里更新',
     E_MAS_REGION: '这款 App 在当前商店地区不可用',
     E_MAS_RATE_LIMITED: 'App Store 请求太频繁了，请过一分钟再试',
+    E_UPDATE_DIGEST: '下载文件的大小或摘要与更新清单不一致，没有安装',
+    E_UPDATE_SIGNATURE: '更新包的代码签名无效，没有安装',
+    E_UPDATE_FEED_SIGNATURE: '更新包未通过更新源的签名验证，没有安装',
+    E_UPDATE_IDENTITY: '更新包的应用标识与目标应用不一致，没有安装',
+    E_UPDATE_CHANGED: '应用或更新文件在校验后发生变化，没有安装，请重新检查更新',
+    E_UPDATE_NOT_NEWER: '目标版本不高于已安装版本，请从已安装应用中选择重新安装',
+    E_UPDATE_CONFIRMATION: '安装需要你确认，请查看提示或重试',
+    E_UPDATE_VERIFY_UNAVAILABLE: 'macOS 暂时无法完成开发者验证，没有安装。请稍后重试',
     E_UPDATE_INTEGRITY: '下载的更新没有通过完整性校验，没有安装',
     E_UPDATE_PREPARE: '无法准备更新文件，请检查磁盘空间和访问权限后重试',
     E_UPDATE_ARCHIVE: '无法读取、挂载或解压更新安装包，请查看日志后重试',
-    E_UPDATE_VERSION: '更新安装包的版本不符合预期，或不高于已安装版本，未安装',
+    E_UPDATE_VERSION: '更新安装包的实际版本与发布清单不一致，没有安装',
     E_UPDATE_TEAM_MISMATCH: '新版本的开发者签名和已安装的不一致，没有安装',
     E_UPDATE_NOT_NOTARIZED: '新版本没有经过 Apple 公证，没有安装',
     E_UPDATE_ARCH: '新版本不支持这台 Mac 的芯片',

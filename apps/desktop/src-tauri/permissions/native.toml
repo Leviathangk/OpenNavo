@@ -9,7 +9,7 @@ commands.allow = [
   "download_act",
   "av_schedule_status", "install_scan_get", "app_signature_check", "app_signature_get", "paste_protection_status", "paste_protection_request_access", "paste_protection_act", "virus_total_status", "virus_total_key_set", "virus_total_lookup",
   "security_overview", "posture_check", "av_engine_status", "av_db_update", "av_scan_start", "av_scan_cancel", "av_scan_get", "av_findings_act", "quarantine_list", "quarantine_restore", "quarantine_delete", "startup_scan", "startup_cached", "startup_login_add", "startup_item_act", "protection_events", "download_verify",
-  "update_ignore", "update_skip", "update_set_channel", "update_rollback", "update_rollback_targets", "app_relaunch",
+  "update_ignore", "update_skip", "update_set_channel", "update_prepare_reinstall", "update_rollback", "update_rollback_targets", "app_relaunch",
   "mas_status", "mas_search", "mas_lookup", "mas_lookup_bundles", "mas_installed", "mas_updates", "mas_open_store",
   "monitor_subscribe", "monitor_unsubscribe", "monitor_trend", "monitor_quit_app", "monitor_open_activity_monitor", "monitor_menu_bar_status", "monitor_open_menu_bar_settings", "monitor_open_in_main", "fan_helper_status", "fan_helper_open_approval", "fan_helper_install", "fan_helper_uninstall", "fan_set_mode", "fan_set_speed", "fan_restore_last",
   "cleanup_scan", "cleanup_cancel", "cleanup_execute", "cleanup_reveal", "cleanup_summary", "cleanup_protect", "cleanup_unprotect", "cleanup_protected_list",

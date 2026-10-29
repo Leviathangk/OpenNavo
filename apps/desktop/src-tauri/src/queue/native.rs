@@ -87,12 +87,14 @@ impl TaskQueue {
             let candidate = self.updater.candidate(&target.token, source)?;
             candidate.item.task_target()?;
             candidate.validate_identity()?;
+            candidate.validate_unsigned_confirmation(options.unsigned_update.as_deref())?;
             let app = self.uninstall_engine.app(&target.token)?;
-            if candidate
-                .expected_team
-                .as_ref()
-                .is_some_and(|t| app.app.team_id.as_ref() != Some(t))
-            {
+            if candidate.expected_team.as_ref().is_some_and(|t| {
+                app.app
+                    .team_id
+                    .as_ref()
+                    .is_some_and(|old| !old.is_empty() && old != "not set" && old != t)
+            }) {
                 return Err(AppError::new(
                     "E_UPDATE_TEAM_MISMATCH",
                     "rule_team_mismatch",
@@ -133,7 +135,7 @@ impl TaskQueue {
             bundle_ids: vec![],
             ..Default::default()
         });
-        let reopen = crate::running_apps::prepare(
+        let mut reopen = crate::running_apps::prepare(
             identity.clone(),
             self.app_control.clone(),
             task.options.quit_running
@@ -151,14 +153,16 @@ impl TaskQueue {
             }
             error
         })?;
+        candidate.validate_unsigned_confirmation(task.options.unsigned_update.as_deref())?;
         let stage = Arc::new(self.stage()?);
         let queue = self.clone();
         let id = task.id.clone();
-        let request = download::prepare(
+        let mut request = download::prepare_confirmed(
             &candidate,
             &stage,
             cancel.clone(),
             Arc::new(move |progress| queue.progress(&id, &[], progress, true)),
+            task.options.unsigned_update.as_deref(),
         )
         .await?;
         crate::running_apps::prepare(
@@ -189,6 +193,33 @@ impl TaskQueue {
             true,
         )?;
         let (os, arch) = service::system()?;
+        let mut review = request.clone();
+        let reviewed_candidate = candidate.clone();
+        let consent = task.options.verification.clone();
+        let (review_os, review_arch) = (os.clone(), arch.clone());
+        let review_stage = stage.clone();
+        request = crate::blocking(move || {
+            crate::updater::unsigned::Approval::review(
+                &reviewed_candidate,
+                &mut review,
+                consent.as_ref(),
+                gate::Platform {
+                    os: &review_os,
+                    arch: &review_arch,
+                },
+            )
+            .inspect_err(|error| {
+                if !matches!(
+                    error.code.as_str(),
+                    "E_UPDATE_CONFIRMATION" | "E_UPDATE_VERIFY_UNAVAILABLE"
+                ) && let Err(cleanup) = review_stage.discard_download()
+                {
+                    log::warn!("Rejected update cache cleanup failed: {}", cleanup.code);
+                }
+            })?;
+            Ok(review)
+        })
+        .await?;
         let validation = request.clone();
         let validation_stage = stage.clone();
         crate::blocking(move || {
@@ -202,6 +233,9 @@ impl TaskQueue {
             )
         })
         .await?;
+        if cancel.load(Ordering::Acquire) {
+            return Err(AppError::new("E_INTERRUPTED", "update_canceled"));
+        }
         let backup = if request.package.is_some() || service::requires_admin(&request.installed) {
             let requests = vec![admin::Request {
                 id: task.id.clone(),
@@ -263,6 +297,11 @@ impl TaskQueue {
             log::warn!("Update list refresh deferred: {}", error.code);
         }
         if task.options.reopen && !old_running {
+            // The first attempt may have quit the app before requesting review.
+            // Preserve the user's reopen choice on the confirmed retry.
+            if reopen.is_empty() && task.options.verification.is_some() {
+                reopen.push(request.installed.clone());
+            }
             for path in reopen {
                 if let Err(error) = self.app_control.reopen(&path) {
                     log::warn!("Updated app could not reopen: {}", error.code);

@@ -94,6 +94,7 @@ fn identity(version: &str) -> Identity {
         team_id: "TESTTEAM01".into(),
         identifier: "test.app".into(),
         requirement: "anchor apple generic and identifier test.app".into(),
+        notarization_unavailable: false,
         notarized: true,
         architectures: ["arm64".into(), "x86_64".into()].into(),
         minimum_os: "13.0".into(),
@@ -110,14 +111,14 @@ fn every_bundle_gate_has_a_failure_case() {
         |new: &Identity| gate::identities(&old, new, true, "15.0", "arm64", Some("TESTTEAM01"));
     assert!(check(&new).is_ok());
     for (code, mut bad) in [
-        ("E_UPDATE_INTEGRITY", new.clone()),
+        ("E_UPDATE_SIGNATURE", new.clone()),
         ("E_UPDATE_TEAM_MISMATCH", new.clone()),
         ("E_UPDATE_NOT_NOTARIZED", new.clone()),
         ("E_UPDATE_ARCH", new.clone()),
         ("E_UPDATE_MIN_OS", new.clone()),
     ] {
         match code {
-            "E_UPDATE_INTEGRITY" => bad.valid = false,
+            "E_UPDATE_SIGNATURE" => bad.valid = false,
             "E_UPDATE_TEAM_MISMATCH" => bad.team_id = "ANOTHER001".into(),
             "E_UPDATE_NOT_NOTARIZED" => bad.notarized = false,
             "E_UPDATE_ARCH" => {
@@ -135,7 +136,7 @@ fn every_bundle_gate_has_a_failure_case() {
     );
     let mut bad = new.clone();
     bad.requirement.push_str(" or true");
-    assert_eq!(check(&bad).unwrap_err().code, "E_UPDATE_TEAM_MISMATCH");
+    assert!(check(&bad).is_ok());
     bad = new.clone();
     bad.identifier = "other.app".into();
     assert_eq!(check(&bad).unwrap_err().code, "E_UPDATE_TEAM_MISMATCH");
@@ -147,7 +148,7 @@ fn every_bundle_gate_has_a_failure_case() {
             .code,
         "E_UPDATE_ARCH"
     );
-    assert_eq!(check(&old).unwrap_err().code, "E_UPDATE_VERSION");
+    assert_eq!(check(&old).unwrap_err().code, "E_UPDATE_NOT_NEWER");
 }
 #[test]
 fn eddsa_and_sha256_verify_actual_bytes_and_fail_on_mutation() {
@@ -158,13 +159,23 @@ fn eddsa_and_sha256_verify_actual_bytes_and_fail_on_mutation() {
     let digest =
         gate::verify_archive(bytes, &public, &signature, Some(bytes.len() as u64), None).unwrap();
     assert!(gate::verify_archive(bytes, &public, &signature, None, Some(&digest)).is_ok());
-    for result in [
+    for (index, result) in [
         gate::verify_archive(b"changed", &public, &signature, None, None),
         gate::verify_archive(bytes, &public, &signature, None, Some(&"0".repeat(64))),
         gate::verify_archive(bytes, &public, &signature, Some(1), None),
         gate::verify_archive(bytes, "wrong", &signature, None, None),
-    ] {
-        assert_eq!(result.unwrap_err().code, "E_UPDATE_INTEGRITY");
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        assert_eq!(
+            result.unwrap_err().code,
+            if matches!(index, 0 | 3) {
+                "E_UPDATE_FEED_SIGNATURE"
+            } else {
+                "E_UPDATE_DIGEST"
+            }
+        );
     }
 }
 
@@ -178,14 +189,14 @@ fn marketing_versions_allow_build_counter_reset_but_never_downgrade() {
     assert!(check(&new).is_ok());
     new.marketing_version = "2.8.0".into();
     new.version = "2000".into();
-    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_VERSION");
+    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_NOT_NEWER");
     new.marketing_version = "2.9.0".into();
     assert!(check(&new).is_ok());
     new.version = "1000".into();
-    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_VERSION");
+    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_NOT_NEWER");
     new.marketing_version.clear();
     new.version = "1".into();
-    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_VERSION");
+    assert_eq!(check(&new).unwrap_err().code, "E_UPDATE_NOT_NEWER");
 }
 
 #[test]
@@ -197,4 +208,28 @@ fn preserves_inline_notes_and_marks_bare_or_archived_packages() {
     let notes = serde_json::to_value(&items[0].notes).unwrap();
     assert_eq!(notes["format"], "html");
     assert_eq!(notes["body"], "<p>Fix &amp; improve <b>launch</b></p>");
+}
+
+#[test]
+fn explicit_reinstall_can_select_equal_or_older_but_preserves_compatibility_filters() {
+    let items = feed(
+        r#"
+      <item><s:version>99</s:version><enclosure url="https://example.org/a.zip"/></item>
+      <item><s:version>100</s:version><s:minimumSystemVersion>26.0</s:minimumSystemVersion><enclosure url="https://example.org/b.zip"/></item>
+      <item><s:version>101</s:version><s:channel>beta</s:channel><enclosure url="https://example.org/c.zip"/></item>
+    "#,
+    );
+    let mut s = selection();
+    s.skipped = Some("99");
+    assert!(feed::select(&items, &s).is_none());
+    assert_eq!(
+        feed::select_for_reinstall(&items, &s).unwrap().version,
+        "99"
+    );
+    s.installed = "99";
+    assert!(feed::select(&items, &s).is_none());
+    assert_eq!(
+        feed::select_for_reinstall(&items, &s).unwrap().version,
+        "99"
+    );
 }

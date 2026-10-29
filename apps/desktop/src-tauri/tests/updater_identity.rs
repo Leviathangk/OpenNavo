@@ -48,18 +48,22 @@ fn real_duoupdater_and_zulip_identities_preserve_dr_and_log_each_rejection() {
         };
         assert!(check(&sample.candidate, true, None).is_ok());
         assert!(check(&sample.candidate, true, Some(&sample.installed.team_id)).is_ok());
+        let mut changed_text = sample.candidate.clone();
+        changed_text
+            .requirement
+            .push_str(" /* equivalent representation */");
+        assert!(check(&changed_text, true, None).is_ok());
+        assert!(check(&changed_text, false, None).is_err());
         for reason in [
             "requirement_not_satisfied",
             "team_id_changed",
             "identifier_changed",
-            "requirement_changed",
             "expected_team_mismatch",
         ] {
             let mut changed = sample.candidate.clone();
             match reason {
                 "team_id_changed" => changed.team_id = "OTHERTEAM1".into(),
                 "identifier_changed" => changed.identifier.push_str(".impostor"),
-                "requirement_changed" => changed.requirement.push_str(" or true"),
                 _ => {}
             }
             let error = check(

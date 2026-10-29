@@ -712,6 +712,7 @@ mod tests {
             id: "task".into(),
             action: Action::AppSwap {
                 request: Box::new(SwapRequest {
+                    unsigned: None,
                     source: Default::default(),
                     installed: app.clone(),
                     prepared: data

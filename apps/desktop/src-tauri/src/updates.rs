@@ -130,6 +130,7 @@ pub fn build(
                 critical_update: false,
                 informational_url: None,
                 download_host: None,
+                unsigned_update: None,
                 expected_team_match: None,
                 kind,
                 token: entry.name.clone(),

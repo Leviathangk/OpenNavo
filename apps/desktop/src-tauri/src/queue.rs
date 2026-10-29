@@ -189,6 +189,16 @@ impl TaskQueue {
         {
             return Err(AppError::new("E_INVALID_ARG", "rollback_options"));
         }
+        if (options.unsigned_update.is_some() || options.verification.is_some())
+            && (op != TaskOp::Upgrade
+                || target.as_ref().is_none_or(|t| t.kind != TaskKind::App)
+                || matches!(trigger, TaskTrigger::Schedule | TaskTrigger::Bundle))
+        {
+            return Err(AppError::new(
+                "E_INVALID_ARG",
+                "unsigned_confirmation_scope",
+            ));
+        }
         let native = target
             .as_ref()
             .map(|t| self.validate_native(op, t, &options))
@@ -1239,6 +1249,46 @@ else:
             token: token.into(),
         }
     }
+    #[test]
+    fn unsigned_consent_is_rejected_outside_manual_app_upgrades_before_persistence() {
+        let (_directory, queue, events) = fixture("install_ok");
+        for (op, kind, trigger) in [
+            (TaskOp::Upgrade, TaskKind::App, TaskTrigger::Schedule),
+            (TaskOp::Upgrade, TaskKind::App, TaskTrigger::Bundle),
+            (TaskOp::Install, TaskKind::App, TaskTrigger::Manual),
+            (TaskOp::Upgrade, TaskKind::Cask, TaskTrigger::Manual),
+        ] {
+            for options in [
+                TaskOptions {
+                    unsigned_update: Some("release-consent".into()),
+                    ..Default::default()
+                },
+                TaskOptions {
+                    verification: Some(crate::updater::UpdateConsent {
+                        key: "a".repeat(64),
+                        warnings: vec![crate::updater::UpdateWarning::NonNewer],
+                    }),
+                    ..Default::default()
+                },
+            ] {
+                let error = queue
+                    .enqueue(
+                        op,
+                        Some(TaskTarget {
+                            kind,
+                            token: "fixture".into(),
+                        }),
+                        options,
+                        trigger,
+                    )
+                    .unwrap_err();
+                assert_eq!(error.message, "unsigned_confirmation_scope");
+            }
+        }
+        assert!(queue.active().unwrap().is_empty());
+        assert!(events.lock().unwrap().is_empty());
+    }
+
     #[test]
     fn links_are_rejected_before_queue_persistence_deduplication_or_plan_validation() {
         let (_directory, queue, events) = fixture("install_ok");

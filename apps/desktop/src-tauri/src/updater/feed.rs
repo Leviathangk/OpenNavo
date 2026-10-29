@@ -319,10 +319,20 @@ pub struct Selection<'a> {
     pub rollout_group: u8,
 }
 pub fn select<'a>(items: &'a [Item], s: &Selection<'_>) -> Option<&'a Item> {
+    select_inner(items, s, false)
+}
+pub fn select_for_reinstall<'a>(items: &'a [Item], s: &Selection<'_>) -> Option<&'a Item> {
+    select_inner(items, s, true)
+}
+fn select_inner<'a>(
+    items: &'a [Item],
+    s: &Selection<'_>,
+    include_current: bool,
+) -> Option<&'a Item> {
     items
         .iter()
         .filter(|i| {
-            version::compare(&i.version, s.installed) == Ordering::Greater
+            (include_current || version::compare(&i.version, s.installed) == Ordering::Greater)
                 && i.channel.as_ref().is_none_or(|c| {
                     c.is_empty() || (s.channel == UpdateChannel::Beta && c == "beta")
                 })
@@ -336,8 +346,9 @@ pub fn select<'a>(items: &'a [Item], s: &Selection<'_>) -> Option<&'a Item> {
                     || i.architectures
                         .iter()
                         .any(|a| a == s.arch || a == "universal"))
-                && s.skipped
-                    .is_none_or(|v| v != i.version && v != i.short_version)
+                && (include_current
+                    || s.skipped
+                        .is_none_or(|v| v != i.version && v != i.short_version))
                 && (s.manual
                     || i.critical_for(s.installed)
                     || i.rollout_interval == 0

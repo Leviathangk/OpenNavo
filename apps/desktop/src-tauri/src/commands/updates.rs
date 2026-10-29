@@ -112,3 +112,14 @@ pub async fn updates_unignore(
 ) -> Result<(), AppError> {
     state.inner().unignore_update(target).await
 }
+
+/// Resolve the current channel for an explicit reinstall/downgrade. Installation
+/// remains a normal queue task and still requires artifact-specific consent.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_prepare_reinstall(
+    state: State<'_, Arc<DesktopCore>>,
+    app_id: String,
+) -> Result<OutdatedItem, AppError> {
+    state.queue.updater.prepare_reinstall(&app_id).await
+}

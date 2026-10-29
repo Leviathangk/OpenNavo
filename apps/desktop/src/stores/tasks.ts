@@ -1,3 +1,9 @@
+import { i18n } from '@/i18n';
+import { IpcError } from '@/ipc/client';
+import { updateChallenge, updateErrorKey } from '@/ipc/updateErrors';
+import { useUpdateReviewConfirmStore } from './updateReviewConfirm';
+import { retryOptions } from './permissionPrompt';
+import { useToasts } from '@/composables/useToasts';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { usePermissionGateStore } from './permissionGate';
@@ -14,6 +20,7 @@ import type {
 } from '@/ipc/bindings';
 import { commands, packageKey, unwrap } from '@/ipc/client';
 import { useInstallConfirmStore } from './installConfirm';
+import { useUnsignedUpdateConfirmStore } from './unsignedUpdateConfirm';
 import { useTapConfirmStore } from './tapConfirm';
 import { useLibraryStore } from './library';
 import { useLocalAppsStore } from './localApps';
@@ -88,6 +95,7 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  const promptedUpdates = new Set<string>();
   function applyUpdate(task: Task | null) {
     if (!task) return;
     for (const changes of pendingReads) changes.set(task.id, task);
@@ -105,6 +113,33 @@ export const useTasksStore = defineStore('tasks', () => {
     useUpdatesStore().settle(task);
     useLibraryStore().settle(task);
     useLocalAppsStore().settle(task);
+    // Only live user-initiated tasks prompt automatically; loading history or a
+    // background schedule never grants consent or opens an unexpected dialog.
+    if (
+      index >= 0 &&
+      task.state === 'failed' &&
+      updateChallenge(task.error) &&
+      task.target?.kind === 'app' &&
+      task.op === 'upgrade' &&
+      !['schedule', 'bundle'].includes(task.trigger) &&
+      !document.documentElement.dataset.opennavoWindow &&
+      !promptedUpdates.has(task.id)
+    ) {
+      promptedUpdates.add(task.id);
+      if (promptedUpdates.size > FINISHED_LIMIT) promptedUpdates.delete(promptedUpdates.values().next().value!);
+      void enqueue('upgrade', task.target, 'retry', retryOptions(task)).catch(error => {
+        useToasts().push({
+          tone: 'danger',
+          title: i18n.global.t('errors.actionFailed'),
+          description:
+            error instanceof IpcError && i18n.global.te(updateErrorKey(error))
+              ? i18n.global.t(updateErrorKey(error))
+              : error instanceof Error
+                ? error.message
+                : String(error)
+        });
+      });
+    }
     pruneLogs();
   }
 
@@ -148,11 +183,34 @@ export const useTasksStore = defineStore('tasks', () => {
         const task = forPackage(target.kind, target.token);
         return task ? [task] : [];
       });
-      const fresh = unique.filter(target => !forPackage(target.kind, target.token));
+      let fresh = unique.filter(target => !forPackage(target.kind, target.token));
       if (!fresh.length) return existing;
       // Permission can change while a previous request owns the confirmation queue.
       if (!(await requireTaskPermission('upgrade', fresh, trigger))) return existing;
       const unattended = trigger === 'schedule' || trigger === 'bundle';
+      // Read the current backend candidate for every native attempt, including
+      // history retries. Never reuse consent saved in a previous task's options.
+      const native = fresh.filter(target => target.kind === 'app');
+      const candidates = native.length ? await unwrap(commands.updatesList()) : [];
+      let verification: TaskOptions['verification'];
+      if (options.verification && native.length === 1 && !unattended) {
+        const item = candidates.find(row => row.appId === native[0]!.token);
+        if (item && (await useUpdateReviewConfirmStore().ask(item, options.verification)))
+          verification = options.verification;
+        else fresh = fresh.filter(target => target.kind !== 'app' || target.token !== native[0]!.token);
+      }
+      const unsigned = candidates.filter(
+        item => item.unsignedUpdate && fresh.some(target => target.kind === 'app' && target.token === item.appId)
+      );
+      const confirmations = new Map<string, string>();
+      if (unsigned.length) {
+        const accepted = !!verification || (!unattended && (await useUnsignedUpdateConfirmStore().ask(unsigned)));
+        for (const item of unsigned) {
+          if (accepted) confirmations.set(item.appId!, item.unsignedUpdate!);
+          else fresh = fresh.filter(target => target.kind !== 'app' || target.token !== item.appId);
+        }
+      }
+
       // Rust finds running Homebrew apps (casks) from their installed bundles and accepts only casks. App Store and
       // directly updated apps come with their update row's running flag (known); command-line formulae have no app to
       // quit. Asking Rust about those targets would fail the whole update with E_INVALID_ARG.
@@ -161,9 +219,21 @@ export const useTasksStore = defineStore('tasks', () => {
         ? []
         : [
             ...(casks.length ? await unwrap(commands.appsRunning(casks)) : []),
-            ...known.filter(app =>
-              fresh.some(target => target.kind === app.target.kind && target.token === app.target.token)
-            )
+            ...new Map(
+              [
+                ...known,
+                ...candidates
+                  .filter(item => item.running && item.appId)
+                  .map(item => ({
+                    target: { kind: 'app' as const, token: item.appId! },
+                    name: item.name
+                  }))
+              ]
+                .filter(app =>
+                  fresh.some(target => target.kind === app.target.kind && target.token === app.target.token)
+                )
+                .map(app => [packageKey(app.target.kind, app.target.token), app])
+            ).values()
           ];
       const choice = runningApps.length
         ? await useRunningAppsStore().ask(runningApps, batch)
@@ -184,8 +254,10 @@ export const useTasksStore = defineStore('tasks', () => {
               target,
               {
                 ...options,
+                unsignedUpdate: target.kind === 'app' ? confirmations.get(target.token) : undefined,
+                verification: target.kind === 'app' ? verification : undefined,
                 quitRunning,
-                reopen: quitRunning && choice.reopen
+                reopen: (quitRunning && choice.reopen) || (!!verification && options.reopen === true)
               },
               trigger
             )

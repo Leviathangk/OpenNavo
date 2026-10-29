@@ -124,8 +124,8 @@ type githubRelease struct {
 }
 
 func parseGitHub(body []byte, row store.UpdateFeed) (*domain.UpdateRelease, error) {
-	if row.GithubRepo == nil || row.AssetPattern == nil || row.TeamID == nil {
-		return nil, errors.New("GitHub rule requires repository, filename regex and Team ID")
+	if row.GithubRepo == nil || row.AssetPattern == nil {
+		return nil, errors.New("GitHub rule requires repository and filename regex")
 	}
 	var choices []githubRelease
 	if row.Channel == "beta" {
@@ -508,8 +508,8 @@ func vendorSparkle(body []byte, channel string) (*domain.UpdateRelease, error) {
 	return best, validateRelease(best, "vendor")
 }
 func (s *Service) vendor(ctx context.Context, row store.UpdateFeed) (*domain.UpdateRelease, error) {
-	if row.Resolver == nil || row.TeamID == nil {
-		return nil, errors.New("vendor resolver and Team ID required")
+	if row.Resolver == nil {
+		return nil, errors.New("vendor resolver required")
 	}
 	variants := row.Resolver.Variants
 	if len(variants) == 0 {
@@ -529,6 +529,13 @@ func (s *Service) vendor(ctx context.Context, row store.UpdateFeed) (*domain.Upd
 		release, err := parseVendor(body, final, rule, row.Channel)
 		if err != nil {
 			return nil, err
+		}
+		if row.TeamID == nil {
+			for _, file := range release.Files {
+				if file.SHA256 == nil && file.SHA512 == nil {
+					return nil, errors.New("unsigned vendor release requires a publisher digest")
+				}
+			}
 		}
 		switch {
 		case result == nil:

@@ -134,7 +134,7 @@ func (v *UpdateFeedInput) Validate() error {
 	}
 	switch v.Source {
 	case "github":
-		if v.TeamID == nil || v.GithubRepo == nil || !linkRepo.MatchString(*v.GithubRepo) || v.AssetPattern == nil || len(*v.AssetPattern) > 2048 || v.Resolver != nil {
+		if v.GithubRepo == nil || !linkRepo.MatchString(*v.GithubRepo) || v.AssetPattern == nil || len(*v.AssetPattern) > 2048 || v.Resolver != nil {
 			return Validation()
 		}
 		if _, err := regexp.Compile(*v.AssetPattern); err != nil || *v.AssetPattern == "" {
@@ -145,11 +145,16 @@ func (v *UpdateFeedInput) Validate() error {
 			v.FeedURL = "https://api.github.com/repos/" + *v.GithubRepo + "/releases?per_page=20"
 		}
 	case "vendor":
-		if v.TeamID == nil || v.Resolver == nil || v.GithubRepo != nil || v.AssetPattern != nil {
+		if v.Resolver == nil || v.GithubRepo != nil || v.AssetPattern != nil {
 			return Validation()
 		}
 		if err := v.Resolver.Validate(); err != nil {
 			return err
+		}
+		// Without a publisher identity, the resolver must provide an independent
+		// digest. The client still requires explicit per-release consent.
+		if v.TeamID == nil && v.Resolver.Mode != "electron" && !v.Resolver.ChecksumForURL && v.Resolver.SHA256Path == "" && v.Resolver.SHA256Pattern == "" {
+			return Validation()
 		}
 	default:
 		if v.GithubRepo != nil || v.AssetPattern != nil || v.Resolver != nil {

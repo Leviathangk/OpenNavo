@@ -47,17 +47,68 @@ pub struct Candidate {
     pub checked_at: i64,
 }
 impl Candidate {
-    pub fn validate_identity(&self) -> Result<(), AppError> {
-        if self.item.expected_team_match == Some(false)
-            || (matches!(
+    pub fn unsigned_key(&self) -> Result<String, AppError> {
+        use sha2::{Digest, Sha256};
+        Ok(format!(
+            "{:x}",
+            Sha256::digest(serde_json::to_vec(&(
+                &self.app_path,
+                &self.snapshot,
+                &self.artifact,
+                &self.feed_item,
+                &self.public_key,
+                &self.expected_team,
                 self.item.source,
-                UpdateSource::Github | UpdateSource::Vendor
-            ) && self.expected_team.as_ref().is_none_or(|t| t.is_empty()))
+                &self.item.bundle_id,
+            ))?)
+        ))
+    }
+    pub fn validate_unsigned_confirmation(
+        &self,
+        confirmation: Option<&str>,
+    ) -> Result<(), AppError> {
+        if self.item.unsigned_update.is_some()
+            && confirmation != Some(self.unsigned_key()?.as_str())
         {
+            return Err(AppError::new(
+                "E_UPDATE_CONFIRMATION",
+                "unsigned_confirmation_required",
+            ));
+        }
+        if confirmation.is_some()
+            && (self.item.unsigned_update.is_none()
+                || !matches!(
+                    self.item.source,
+                    UpdateSource::Electron
+                        | UpdateSource::Sparkle
+                        | UpdateSource::Github
+                        | UpdateSource::Vendor
+                ))
+        {
+            return Err(AppError::new(
+                "E_INVALID_ARG",
+                "unsigned_confirmation_scope",
+            ));
+        }
+        Ok(())
+    }
+    pub fn validate_identity(&self) -> Result<(), AppError> {
+        if self.item.expected_team_match == Some(false) {
             return Err(AppError::new(
                 "E_UPDATE_TEAM_MISMATCH",
                 "rule_team_mismatch",
             ));
+        }
+        if matches!(
+            self.item.source,
+            UpdateSource::Github | UpdateSource::Vendor
+        ) && self.expected_team.as_ref().is_none_or(|t| t.is_empty())
+            && self
+                .artifact
+                .as_ref()
+                .is_none_or(|a| a.file.sha256.is_none() && a.file.sha512.is_none())
+        {
+            return Err(AppError::new("E_UPDATE_DIGEST", "required_release_digest"));
         }
         Ok(())
     }
@@ -159,7 +210,7 @@ impl Service {
     }
     // All lifecycle read/modify/write operations share the database lock with
     // check commits, so neither writer can restore a stale whole-cache snapshot.
-    fn update_candidates<T>(
+    pub(super) fn update_candidates<T>(
         &self,
         update: impl FnOnce(&mut Vec<Candidate>) -> Result<T, AppError>,
     ) -> Result<T, AppError> {
@@ -234,6 +285,21 @@ impl Service {
         c.item.skipped_version = pref.skipped_version;
         c.item.ignored = pref.ignored;
         c.item.running = is_running;
+        c.item.unsigned_update = if matches!(
+            c.item.source,
+            UpdateSource::Electron
+                | UpdateSource::Sparkle
+                | UpdateSource::Github
+                | UpdateSource::Vendor
+        ) && app
+            .team_id
+            .as_deref()
+            .is_none_or(|t| t.is_empty() || t == "not set")
+        {
+            Some(c.unsigned_key()?)
+        } else {
+            None
+        };
         // A running pending update is only a restart action, even after source changes
         // or a committed swap invalidated the pre-install snapshot. Any retry is a
         // normal candidate again and must pass the current route and snapshot gates.
@@ -393,13 +459,18 @@ impl Service {
             .as_ref()
             .is_some_and(|c| c.item.source == UpdateSource::Electron)
         {
-            Some(super::gate::Inspector::inspect(
-                &super::gate::NativeInspector,
-                path,
-            )?)
+            Some(super::gate::observe(path, false)?)
         } else {
             None
         };
+        // A user-requested restart can reopen an unchanged unsigned bundle.
+        // If its own updater replaces it on quit, require a verified download
+        // through the normal update flow instead of trusting the new bytes.
+        let unsigned_digest = before
+            .as_ref()
+            .filter(|o| o.unsigned)
+            .map(|_| super::unsigned::tree_digest(path))
+            .transpose()?;
         let control = &self.apps.control;
         let matches = |process: &crate::running_apps::Process| {
             process.path == path || process.path.starts_with(path)
@@ -416,7 +487,12 @@ impl Service {
             }
             std::thread::sleep(Duration::from_millis(100));
         }
-        if let Some(before) = before.as_ref() {
+        if let Some(digest) = unsigned_digest {
+            if !snapshot.still(path) || super::unsigned::tree_digest(path)? != digest {
+                return Err(AppError::new("E_UPDATE_CHANGED", "relaunch_target_changed"));
+            }
+        } else if let Some(observed) = before.as_ref() {
+            let before = &observed.identity;
             let after = super::gate::Inspector::inspect(&super::gate::NativeInspector, path)?;
             let (os, arch) = system()?;
             super::gate::compatible_identities(
@@ -437,10 +513,7 @@ impl Service {
                 super::gate::electron_versions(before, &after)?;
             }
         } else if !snapshot.still(path) {
-            return Err(AppError::new(
-                "E_UPDATE_INTEGRITY",
-                "relaunch_target_changed",
-            ));
+            return Err(AppError::new("E_UPDATE_CHANGED", "relaunch_target_changed"));
         }
         control.reopen(path)?;
         self.update_candidates(|candidates| {
@@ -794,6 +867,7 @@ impl Service {
                 critical_update: false,
                 informational_url: None,
                 download_host: None,
+                unsigned_update: None,
                 expected_team_match: None,
             };
             out.push(Candidate {
@@ -886,9 +960,7 @@ fn parse_rules(data: &[u8]) -> Result<Vec<FeedRule>, AppError> {
                 || !t
                     .bytes()
                     .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
-        }) || matches!(rule.source, UpdateSource::Github | UpdateSource::Vendor)
-            && rule.team_id.is_none()
-        {
+        }) {
             return Err(AppError::new(
                 "E_UPDATE_TEAM_MISMATCH",
                 "rule_team_required",

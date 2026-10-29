@@ -96,7 +96,7 @@ fn every_digest_is_checked_and_github_cannot_replace_digest_with_team_id() {
         a.verify(b"archive", source).unwrap();
         assert_eq!(
             a.verify(b"tamper!", source).unwrap_err().code,
-            "E_UPDATE_INTEGRITY"
+            "E_UPDATE_DIGEST"
         );
     }
     let mut a = a;
@@ -267,10 +267,10 @@ fn mismatched_or_missing_required_team_is_rejected_before_queue_persistence() {
             let mut c = candidate;
             c.item.expected_team_match = None;
             c.expected_team = None;
-            assert_eq!(
-                c.validate_identity().unwrap_err().code,
-                "E_UPDATE_TEAM_MISMATCH"
-            )
+            c.validate_identity().unwrap();
+            c.artifact.as_mut().unwrap().file.sha256 = None;
+            c.artifact.as_mut().unwrap().file.sha512 = None;
+            assert_eq!(c.validate_identity().unwrap_err().code, "E_UPDATE_DIGEST");
         }
     }
 }

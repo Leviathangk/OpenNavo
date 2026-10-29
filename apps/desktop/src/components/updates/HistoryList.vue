@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { updateErrorKey } from '@/ipc/updateErrors';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -82,7 +83,7 @@ function failure(task: Task): string | null {
   // The shared running-app texts speak of an update being put off.
   if (task.op === 'rollback' && ['E_APP_RUNNING', 'E_APP_QUIT_FAILED'].includes(task.error.code))
     return t('updates.rollback.notQuit', { name: title(task) });
-  const key = `errors.${task.error.code}`;
+  const key = updateErrorKey(task.error);
   return te(key) ? t(key) : task.error.message;
 }
 

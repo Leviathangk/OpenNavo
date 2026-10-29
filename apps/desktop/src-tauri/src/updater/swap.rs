@@ -23,7 +23,31 @@ pub struct SwapRequest {
     pub prepared_snapshot: Snapshot,
     pub expected_team: Option<String>,
     #[serde(default)]
+    pub unsigned: Option<super::unsigned::Approval>,
+    #[serde(default)]
     pub package: Option<super::package::Artifact>,
+}
+impl SwapRequest {
+    pub fn validate(
+        &self,
+        inspector: &dyn Inspector,
+        prepared: &Path,
+        platform: gate::Platform<'_>,
+    ) -> Result<(), AppError> {
+        if let Some(approval) = &self.unsigned {
+            approval.validate(self, prepared, platform)
+        } else {
+            gate::bundles_for_source(
+                inspector,
+                &self.installed,
+                prepared,
+                &self.installed_snapshot,
+                platform,
+                self.expected_team.as_deref(),
+                self.source,
+            )
+        }
+    }
 }
 pub struct Context<'a> {
     pub inspector: &'a dyn Inspector,
@@ -52,9 +76,9 @@ impl Files for NativeFiles {
                 "--rsrc",
                 "--extattr",
                 from.to_str()
-                    .ok_or_else(|| AppError::new("E_UPDATE_INTEGRITY", "bundle_path"))?,
+                    .ok_or_else(|| AppError::new("E_UPDATE_CHANGED", "bundle_path"))?,
                 to.to_str()
-                    .ok_or_else(|| AppError::new("E_UPDATE_INTEGRITY", "bundle_path"))?,
+                    .ok_or_else(|| AppError::new("E_UPDATE_CHANGED", "bundle_path"))?,
             ],
             Duration::from_secs(300),
         )
@@ -175,19 +199,15 @@ pub fn apply(request: &SwapRequest, context: &Context<'_>) -> Result<PathBuf, Ap
         || request.installed == request.prepared
         || !request.prepared_snapshot.matches(&request.prepared)
     {
-        return Err(AppError::new("E_UPDATE_INTEGRITY", "swap_plan_changed"));
+        return Err(AppError::new("E_UPDATE_CHANGED", "swap_plan_changed"));
     }
-    gate::bundles_for_source(
+    request.validate(
         context.inspector,
-        &request.installed,
         &request.prepared,
-        &request.installed_snapshot,
         gate::Platform {
             os: context.os,
             arch: context.arch,
         },
-        request.expected_team.as_deref(),
-        request.source,
     )?;
     let mut recovery = super::backup::Transaction::new(&request.installed)?;
     let work = &recovery.work;
@@ -196,31 +216,33 @@ pub fn apply(request: &SwapRequest, context: &Context<'_>) -> Result<PathBuf, Ap
     context.files.copy_bundle(&request.prepared, &prepared)?;
     // Check the private copy. Validation of a mutable staging pathname alone is
     // insufficient when this action runs as root.
-    gate::bundles_for_source(
+    request.validate(
         context.inspector,
-        &request.installed,
         &prepared,
-        &request.installed_snapshot,
         gate::Platform {
             os: context.os,
             arch: context.arch,
         },
-        request.expected_team.as_deref(),
-        request.source,
     )?;
-    context.files.clear_quarantine(&prepared)?;
+    if request.unsigned.is_none() {
+        context.files.clear_quarantine(&prepared)?;
+    }
     context.files.copy_bundle(&request.installed, &backup)?;
-    let before = context.inspector.inspect(&backup)?;
-    let installed = context.inspector.inspect(&request.installed)?;
-    if before.team_id != installed.team_id
-        || before.version != installed.version
-        || before.requirement != installed.requirement
-        || !before.valid
-    {
-        return Err(AppError::new("E_UPDATE_INTEGRITY", "backup_verification"));
+    if let Some(approval) = &request.unsigned {
+        approval.verify_backup(&request.installed, &backup)?;
+    } else {
+        let before = context.inspector.inspect(&backup)?;
+        let installed = context.inspector.inspect(&request.installed)?;
+        if before.team_id != installed.team_id
+            || before.version != installed.version
+            || before.requirement != installed.requirement
+            || !before.valid
+        {
+            return Err(AppError::new("E_UPDATE_CHANGED", "backup_verification"));
+        }
     }
     if !request.installed_snapshot.still(&request.installed) {
-        return Err(AppError::new("E_UPDATE_INTEGRITY", "installed_app_changed"));
+        return Err(AppError::new("E_UPDATE_CHANGED", "installed_app_changed"));
     }
     // Commit the verified backup before replacing the live bundle. Housekeeping
     // failures cannot be reported as a failed update after a successful exchange.

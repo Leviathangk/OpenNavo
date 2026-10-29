@@ -28,6 +28,7 @@ fn batch(snapshot: &Snapshot) -> AdminBatch {
     let source = PathBuf::from("/fixture-only/Installed.app");
     let destination = PathBuf::from("/fixture-only/Prepared.app");
     let swap = SwapRequest {
+        unsigned: None,
         source: UpdateSource::Electron,
         installed: source.clone(),
         prepared: destination.clone(),

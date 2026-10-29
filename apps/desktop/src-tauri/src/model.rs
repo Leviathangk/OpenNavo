@@ -290,6 +290,9 @@ pub struct OutdatedItem {
     pub informational_url: Option<String>,
     pub download_host: Option<String>,
     pub expected_team_match: Option<bool>,
+    /// Confirmation fingerprint for this release with unverified developer identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unsigned_update: Option<String>,
     pub kind: Kind,
     pub token: String,
     pub name: String,
@@ -334,6 +337,9 @@ pub struct TaskTarget {
 #[derive(Default)]
 pub struct TaskOptions {
     pub source: Option<UpdateSource>,
+    /// Per-release confirmation; never a persistent signature bypass.
+    pub unsigned_update: Option<String>,
+    pub verification: Option<UpdateConsent>,
     pub plan_id: Option<String>,
     pub item_ids: Option<Vec<String>>,
     pub delete_mode: Option<DeleteMode>,

@@ -109,9 +109,41 @@ pub enum UpdateIntegrity {
     TeamId,
 }
 
+/// Exceptions the user can approve for one verified artifact only.
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum UpdateWarning {
+    UnsignedDeveloper,
+    RepairInstalled,
+    NotNotarized,
+    NonNewer,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdateConsent {
+    pub key: String,
+    pub warnings: Vec<UpdateWarning>,
+}
+
 /// Exported error vocabulary; AppError.code stays a string for existing errors.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 pub enum UpdateErrorCode {
+    #[serde(rename = "E_UPDATE_DIGEST")]
+    Digest,
+    #[serde(rename = "E_UPDATE_SIGNATURE")]
+    Signature,
+    #[serde(rename = "E_UPDATE_FEED_SIGNATURE")]
+    FeedSignature,
+    #[serde(rename = "E_UPDATE_IDENTITY")]
+    Identity,
+    #[serde(rename = "E_UPDATE_CHANGED")]
+    Changed,
+    #[serde(rename = "E_UPDATE_NOT_NEWER")]
+    NotNewer,
+    #[serde(rename = "E_UPDATE_CONFIRMATION")]
+    Confirmation,
     #[serde(rename = "E_UPDATE_PREPARE")]
     Prepare,
     #[serde(rename = "E_UPDATE_ARCHIVE")]
@@ -124,6 +156,8 @@ pub enum UpdateErrorCode {
     TeamMismatch,
     #[serde(rename = "E_UPDATE_NOT_NOTARIZED")]
     NotNotarized,
+    #[serde(rename = "E_UPDATE_VERIFY_UNAVAILABLE")]
+    VerifyUnavailable,
     #[serde(rename = "E_UPDATE_ARCH")]
     Arch,
     #[serde(rename = "E_UPDATE_MIN_OS")]

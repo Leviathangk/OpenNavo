@@ -16,6 +16,8 @@ import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import InstallConfirm from '@/components/shell/InstallConfirm.vue';
 import TapConfirm from '@/components/shell/TapConfirm.vue';
+import UpdateReviewConfirm from '@/components/updates/UpdateReviewConfirm.vue';
+import UnsignedUpdateConfirm from '@/components/updates/UnsignedUpdateConfirm.vue';
 import MajorConfirm from '@/components/updates/MajorConfirm.vue';
 import PasteGuard from '@/components/security/PasteGuard.vue';
 import CleanupNotifier from '@/components/cleanup/CleanupNotifier.vue';
@@ -126,6 +128,8 @@ watch(
       <InstallConfirm />
       <TapConfirm />
       <MajorConfirm />
+      <UnsignedUpdateConfirm />
+      <UpdateReviewConfirm />
       <PasteGuard />
       <UninstallDialog />
       <CleanupNotifier />

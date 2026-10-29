@@ -624,6 +624,20 @@
     }
   },
   "updates": {
+    "review": {
+      "title": "Revisar antes de instalar",
+      "body": "Se comprobaron el identificador y la versión de destino. Revisa estas condiciones; tu decisión solo se aplica a este paquete.",
+      "unsigned_developer": "La app instalada, la nueva app o el instalador no tiene una firma de desarrollador verificada. Continúa solo si confías en la fuente. macOS podría bloquear su apertura.",
+      "repair_installed": "La firma de la app instalada está dañada. La sustitución superó las comprobaciones de firma e identidad; continuar reemplazará la app anterior.",
+      "not_notarized": "La nueva app o el instalador no está notarizado por Apple. macOS podría bloquear su apertura.",
+      "non_newer": "La versión de destino no es más reciente. Se reinstalará la app o se instalará una versión anterior, que podría no leer los datos más recientes."
+    },
+    "unsigned": {
+      "title": "No se pudo verificar al desarrollador",
+      "body": "La app instalada, la nueva app o el instalador no tiene una firma de desarrollador verificada. Continúa solo si confías en la fuente. macOS podría bloquear su apertura.",
+      "confirm": "Instalar de todos modos",
+      "badge": "Desarrollador sin verificar"
+    },
     "title": "Actualizaciones",
     "summary": "{count} actualización disponible · unos {size} por descargar | {count} actualizaciones disponibles · unos {size} por descargar",
     "summaryNone": "Todo está actualizado",
@@ -1219,10 +1233,11 @@
     "E_MAS_OTHER_ACCOUNT": "Esta app se compró con otra cuenta de Apple. Actualízala en el App Store",
     "E_MAS_REGION": "Esta app no está disponible en la región de la tienda actual",
     "E_MAS_RATE_LIMITED": "Demasiadas solicitudes al App Store. Vuelve a intentarlo dentro de un minuto",
+    "E_UPDATE_VERIFY_UNAVAILABLE": "macOS no pudo completar la verificación del desarrollador, así que no se instaló. Inténtalo más tarde",
     "E_UPDATE_INTEGRITY": "La descarga no superó la comprobación de integridad, así que no se instaló la actualización",
     "E_UPDATE_PREPARE": "No se pudieron preparar los archivos de actualización. Comprueba el espacio en disco y los permisos de acceso e inténtalo de nuevo",
     "E_UPDATE_ARCHIVE": "No se pudo leer, montar o extraer el paquete de actualización. Consulta el registro e inténtalo de nuevo",
-    "E_UPDATE_VERSION": "La versión del paquete no es la esperada o no es más reciente que la instalada, por lo que no se ha instalado",
+    "E_UPDATE_VERSION": "La versión del paquete no coincide con el manifiesto de la versión; no se ha instalado",
     "E_UPDATE_TEAM_MISMATCH": "La nueva versión está firmada por otro desarrollador, así que no se instaló",
     "E_UPDATE_NOT_NOTARIZED": "La nueva versión no está notarizada por Apple, así que no se instaló",
     "E_UPDATE_ARCH": "La nueva versión no es compatible con el chip de este Mac",
@@ -1304,7 +1319,14 @@
     "E_FW_BLOCKLIST_FORMAT": "No se encontraron dominios ni IP utilizables en el archivo",
     "E_FW_BLOCKLIST_TOO_LARGE": "La lista de bloqueo es demasiado grande: como máximo 50 MB y un millón de entradas",
     "E_FW_BLOCKLIST_LIMIT": "Se alcanzó el límite de listas de bloqueo: como máximo 32 listas y 256 MB en total",
-    "E_FW_BLOCKLIST_FILE": "No se encuentra el archivo o no se puede leer"
+    "E_FW_BLOCKLIST_FILE": "No se encuentra el archivo o no se puede leer",
+    "E_UPDATE_DIGEST": "El tamaño o resumen del archivo no coincide con el manifiesto. No se instaló nada",
+    "E_UPDATE_SIGNATURE": "La firma de código de la actualización no es válida. No se instaló nada",
+    "E_UPDATE_FEED_SIGNATURE": "Falló la comprobación de la firma del archivo del editor. No se instaló nada",
+    "E_UPDATE_IDENTITY": "El identificador del paquete no coincide con la app de destino. No se instaló nada",
+    "E_UPDATE_CHANGED": "La app o los archivos cambiaron tras la verificación. Vuelve a buscar actualizaciones",
+    "E_UPDATE_NOT_NEWER": "La versión de destino no es más reciente. Elige Reinstalar en el menú de la app instalada",
+    "E_UPDATE_CONFIRMATION": "La instalación requiere tu confirmación. Revisa el aviso o vuelve a intentarlo"
   },
   "installConfirm": {
     "title": "¿Adoptar la app existente {name}?",

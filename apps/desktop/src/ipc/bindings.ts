@@ -171,12 +171,17 @@ export const commands = {
 	libraryList: () => typedError<InstalledItem[], AppError>(__TAURI_INVOKE("library_list")),
 	libraryRefresh: () => typedError<InstalledItem[], AppError>(__TAURI_INVOKE("library_refresh")),
 	libraryStorage: () => typedError<StorageSummary, AppError>(__TAURI_INVOKE("library_storage")),
-	updatesList: () => typedError<OutdatedItem[], AppError>(__TAURI_INVOKE("updates_list")),
+	updatesList: () => typedError<OutdatedItem_Serialize[], AppError>(__TAURI_INVOKE("updates_list")),
 	updatesStatus: () => typedError<UpdatesStatus, AppError>(__TAURI_INVOKE("updates_status")),
-	updatesCheck: (sources: UpdateSource[] | null) => typedError<OutdatedItem[], AppError>(__TAURI_INVOKE("updates_check", { sources })),
+	updatesCheck: (sources: UpdateSource[] | null) => typedError<OutdatedItem_Serialize[], AppError>(__TAURI_INVOKE("updates_check", { sources })),
 	updateSkip: (appKey: string, version: string | null) => typedError<null, AppError>(__TAURI_INVOKE("update_skip", { appKey, version })),
 	updateIgnore: (appKey: string, ignored: boolean) => typedError<null, AppError>(__TAURI_INVOKE("update_ignore", { appKey, ignored })),
 	updateSetChannel: (appKey: string, channel: UpdateChannel) => typedError<null, AppError>(__TAURI_INVOKE("update_set_channel", { appKey, channel })),
+	/**
+	 *  Resolve the current channel for an explicit reinstall/downgrade. Installation
+	 *  remains a normal queue task and still requires artifact-specific consent.
+	 */
+	updatePrepareReinstall: (appId: string) => typedError<OutdatedItem_Serialize, AppError>(__TAURI_INVOKE("update_prepare_reinstall", { appId })),
 	/**  Queues a rollback of a recorded update and returns the task id. */
 	updateRollback: (historyId: string) => typedError<string, AppError>(__TAURI_INVOKE("update_rollback", { historyId })),
 	/**  The history ids among `history_ids` whose update can be rolled back now. */
@@ -1483,7 +1488,9 @@ export type OnRequest = {
 	d365: number,
 };
 
-export type OutdatedItem = {
+export type OutdatedItem = OutdatedItem_Serialize | OutdatedItem_Deserialize;
+
+export type OutdatedItem_Deserialize = {
 	source: UpdateSource,
 	appId: string | null,
 	bundleId: string | null,
@@ -1499,6 +1506,38 @@ export type OutdatedItem = {
 	informationalUrl: string | null,
 	downloadHost: string | null,
 	expectedTeamMatch: boolean | null,
+	/**  Confirmation fingerprint for this release with unverified developer identity. */
+	unsignedUpdate?: string | null,
+	kind: Kind,
+	token: string,
+	name: string,
+	installedVersion: string,
+	currentVersion: string,
+	autoUpdates: boolean,
+	pinned: boolean,
+	ignored: boolean,
+	dependents: number,
+	downloadSize: number | null,
+};
+
+export type OutdatedItem_Serialize = {
+	source: UpdateSource,
+	appId: string | null,
+	bundleId: string | null,
+	channel: UpdateChannel | null,
+	major: boolean,
+	notes: UpdateNotes | null,
+	integrity: UpdateIntegrity | null,
+	requiresAdmin: boolean,
+	running: boolean,
+	relaunchPending: boolean,
+	skippedVersion: string | null,
+	criticalUpdate: boolean,
+	informationalUrl: string | null,
+	downloadHost: string | null,
+	expectedTeamMatch: boolean | null,
+	/**  Confirmation fingerprint for this release with unverified developer identity. */
+	unsignedUpdate?: string | null,
 	kind: Kind,
 	token: string,
 	name: string,
@@ -2040,6 +2079,9 @@ export type TaskOp = "install" | "upgrade" | "uninstall" | "remove_leftovers" | 
 
 export type TaskOptions = {
 	source?: UpdateSource | null,
+	/**  Per-release confirmation; never a persistent signature bypass. */
+	unsignedUpdate?: string | null,
+	verification?: UpdateConsent | null,
 	planId?: string | null,
 	itemIds?: string[] | null,
 	deleteMode?: DeleteMode | null,
@@ -2103,8 +2145,13 @@ export type UpdateCheckFailure = {
 
 export type UpdateCheckFailureReason = "rulesUnavailable" | "rateLimited" | "invalidUrl" | "network" | "failed";
 
+export type UpdateConsent = {
+	key: string,
+	warnings: UpdateWarning[],
+};
+
 /**  Exported error vocabulary; AppError.code stays a string for existing errors. */
-export type UpdateErrorCode = "E_UPDATE_PREPARE" | "E_UPDATE_ARCHIVE" | "E_UPDATE_VERSION" | "E_UPDATE_INTEGRITY" | "E_UPDATE_TEAM_MISMATCH" | "E_UPDATE_NOT_NOTARIZED" | "E_UPDATE_ARCH" | "E_UPDATE_MIN_OS" | "E_UPDATE_FEED" | "E_UPDATE_DMG_LICENSE" | "E_UPDATE_SWAP" | "E_APP_RUNNING" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
+export type UpdateErrorCode = "E_UPDATE_DIGEST" | "E_UPDATE_SIGNATURE" | "E_UPDATE_FEED_SIGNATURE" | "E_UPDATE_IDENTITY" | "E_UPDATE_CHANGED" | "E_UPDATE_NOT_NEWER" | "E_UPDATE_CONFIRMATION" | "E_UPDATE_PREPARE" | "E_UPDATE_ARCHIVE" | "E_UPDATE_VERSION" | "E_UPDATE_INTEGRITY" | "E_UPDATE_TEAM_MISMATCH" | "E_UPDATE_NOT_NOTARIZED" | "E_UPDATE_VERIFY_UNAVAILABLE" | "E_UPDATE_ARCH" | "E_UPDATE_MIN_OS" | "E_UPDATE_FEED" | "E_UPDATE_DMG_LICENSE" | "E_UPDATE_SWAP" | "E_APP_RUNNING" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
 
 export type UpdateIntegrity = "eddsa" | "sha512" | "digest" | "sha256" | "team_id";
 
@@ -2113,6 +2160,9 @@ export type UpdateNotes = ({ format: UpdateNotesFormat; body: string }) & { url?
 export type UpdateNotesFormat = "html" | "markdown" | "text";
 
 export type UpdateSource = "homebrew" | "mas" | "sparkle" | "electron" | "github" | "vendor" | "msupdate";
+
+/**  Exceptions the user can approve for one verified artifact only. */
+export type UpdateWarning = "unsigned_developer" | "repair_installed" | "not_notarized" | "non_newer";
 
 export type UpdatesChanged = {
 	count: number,

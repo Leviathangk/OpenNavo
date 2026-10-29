@@ -29,6 +29,7 @@ fn item(kind: Kind, token: &str, pinned: bool, ignored: bool) -> OutdatedItem {
         critical_update: false,
         informational_url: None,
         download_host: None,
+        unsigned_update: None,
         expected_team_match: None,
         kind,
         token: token.into(),

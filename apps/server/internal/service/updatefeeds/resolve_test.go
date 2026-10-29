@@ -401,3 +401,28 @@ func TestVendorVariantsRequireConsistentMinimumOS(t *testing.T) {
 		}
 	}
 }
+
+func TestUnsignedGithubRulesStillRequirePublisherDigests(t *testing.T) {
+	rule := githubRule()
+	rule.TeamID = nil
+	require.NoError(t, rule.UpdateFeedInput.Validate())
+	release, err := parseGitHub(githubBody("sha256:"+strings.Repeat("a", 64)), rule)
+	require.NoError(t, err)
+	require.NotNil(t, release.Files[0].SHA256)
+	_, err = parseGitHub(githubBody(""), rule)
+	require.Error(t, err)
+}
+
+func TestUnsignedVendorRulesRequireChecksumConfiguration(t *testing.T) {
+	rule := domain.UpdateFeedInput{
+		UpdateFeedKey: domain.UpdateFeedKey{BundleID: "test.example.App", Source: "vendor"},
+		FeedURL:       "https://example.org/releases.json",
+		Resolver:      &domain.VendorResolver{Mode: "json", VersionPath: "version", DownloadPath: "url"},
+	}
+	require.Error(t, rule.Validate())
+	rule.Resolver.SHA256Path = "sha256"
+	require.NoError(t, rule.Validate())
+	rule.Resolver.SHA256Path = ""
+	rule.Resolver.ChecksumForURL = true
+	require.NoError(t, rule.Validate())
+}

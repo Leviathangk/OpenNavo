@@ -157,7 +157,7 @@ impl Artifact {
         }
     }
     pub fn verify(&self, bytes: &[u8], source: UpdateSource) -> Result<String, AppError> {
-        let fail = || AppError::new("E_UPDATE_INTEGRITY", "release_download_digest");
+        let fail = || AppError::new("E_UPDATE_DIGEST", "release_download_digest");
         if self.file.size.is_some_and(|n| n != bytes.len() as u64) {
             return Err(fail());
         }

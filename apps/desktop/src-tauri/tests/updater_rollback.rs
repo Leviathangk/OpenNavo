@@ -56,6 +56,7 @@ impl gate::Inspector for Observations {
             },
             identifier: "test.opennavo.Fixture".into(),
             requirement: "fixture requirement".into(),
+            notarization_unavailable: false,
             notarized: true,
             architectures: ["arm64".into(), "x86_64".into()].into(),
             minimum_os: "13.0".into(),
@@ -118,6 +119,7 @@ impl Fixture {
         let prepared = self.root.join(format!("Prepared-{to}.app"));
         bundle(&prepared, to);
         let request = swap::SwapRequest {
+            unsigned: None,
             source: Default::default(),
             installed: self.installed.clone(),
             prepared: prepared.clone(),

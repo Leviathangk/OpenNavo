@@ -67,6 +67,7 @@ impl gate::Inspector for Observations {
             team_id: "TESTTEAM01".into(),
             identifier: "test.opennavo.Fixture".into(),
             requirement: "fixture requirement".into(),
+            notarization_unavailable: false,
             notarized: true,
             architectures: ["arm64".into(), "x86_64".into()].into(),
             minimum_os: "13.0".into(),
@@ -126,6 +127,7 @@ fn recovery_is_noindex_keeps_one_version_and_retires_only_this_apps_legacy_backu
     for (old, next) in [("100", "101"), ("101", "102")] {
         bundle(&prepared, next);
         let request = swap::SwapRequest {
+            unsigned: None,
             source: Default::default(),
             installed: installed.clone(),
             prepared: prepared.clone(),
@@ -173,6 +175,7 @@ fn recovery_is_noindex_keeps_one_version_and_retires_only_this_apps_legacy_backu
     // the application. It must not leave older.app/UUID copies accumulating.
     bundle(&prepared, "103");
     let request = swap::SwapRequest {
+        unsigned: None,
         source: Default::default(),
         installed: installed.clone(),
         prepared: prepared.clone(),
@@ -224,6 +227,7 @@ fn recovery_refuses_symlink_slot_without_replacing_app_or_touching_link_target()
     private_directory(&current).unwrap();
     std::os::unix::fs::symlink(&other, current.join("previous.app")).unwrap();
     let request = swap::SwapRequest {
+        unsigned: None,
         source: Default::default(),
         installed: installed.clone(),
         prepared: prepared.clone(),
@@ -396,7 +400,7 @@ async fn local_tls_eddsa_download_gate_backup_atomic_swap_and_automatic_rollback
             .await
             .unwrap_err()
             .code,
-            "E_UPDATE_INTEGRITY"
+            "E_UPDATE_FEED_SIGNATURE"
         );
         server.kill().await.unwrap();
         server.wait().await.unwrap();
@@ -678,8 +682,19 @@ fn package_payload_for_name(name: &str) {
         )
         .is_err()
     );
-    // Unsigned fixture can exercise extraction only; it never passes the production gate.
+    // Unverified installer execution remains forbidden; an authenticated,
+    // script-free payload can enter the separate per-artifact review path.
     assert!(package::verify_signature(&pkg, "TESTTEAM01").is_err());
+    assert_eq!(
+        package::review_signature(&pkg, None, true).unwrap(),
+        vec![opennavo_desktop_lib::updater::UpdateWarning::UnsignedDeveloper]
+    );
+    assert_eq!(
+        package::review_signature(&pkg, None, false)
+            .unwrap_err()
+            .code,
+        "E_UPDATE_DIGEST"
+    );
 }
 
 #[tokio::test]
@@ -864,8 +879,8 @@ impl gate::Inspector for RejectedDownload {
 async fn vendor_signature_rejection_discards_cache_and_retries_the_same_url() {
     use opennavo_desktop_lib::updater::release::{Artifact, File};
     for (reason, code) in [
-        ("codesign", "E_UPDATE_INTEGRITY"),
-        ("signature", "E_UPDATE_INTEGRITY"),
+        ("codesign", "E_UPDATE_SIGNATURE"),
+        ("signature", "E_UPDATE_SIGNATURE"),
         ("team", "E_UPDATE_TEAM_MISMATCH"),
         ("requirement", "E_UPDATE_TEAM_MISMATCH"),
         ("notarization", "E_UPDATE_NOT_NOTARIZED"),
@@ -1054,6 +1069,7 @@ fn package_transaction_backs_up_and_restores_even_after_partial_installer_failur
         bundle(&installed, "100");
         bundle(&prepared, "101");
         let request = swap::SwapRequest {
+            unsigned: None,
             source: Default::default(),
             installed_snapshot: Snapshot::capture(&installed).unwrap(),
             prepared_snapshot: Snapshot::capture(&prepared).unwrap(),
@@ -1202,7 +1218,7 @@ async fn electron_github_vendor_download_hash_gate_swap_and_rollback_share_the_s
                 .await
                 .unwrap_err()
                 .code,
-                "E_UPDATE_INTEGRITY"
+                "E_UPDATE_DIGEST"
             );
             assert_eq!(
                 fs::read(installed.join("Contents/MacOS/fixture")).unwrap(),
@@ -1270,6 +1286,7 @@ fn electron_beta_upgrades_and_stable_transition_pass_every_swap_gate() {
             info.to_file_xml(info_path).unwrap();
         }
         let request = swap::SwapRequest {
+            unsigned: None,
             source: UpdateSource::Electron,
             installed: installed.clone(),
             prepared: prepared.clone(),
@@ -1480,6 +1497,394 @@ async fn verified_download_retries_recheck_trust_and_cache_lifetime() {
         if !offline {
             server.kill().await.unwrap();
             server.wait().await.unwrap();
+        }
+    }
+}
+
+// Real Mach-O/signature fixtures: an ad-hoc Electron bundle can have a broken
+// resource seal (as LX Music does) even when its published archive hash matches.
+fn unsigned_bundle(path: &Path, version: &str, adhoc: bool) {
+    bundle(path, version);
+    let file = path.join("Contents/Info.plist");
+    let mut info = plist::Value::from_file(&file).unwrap();
+    info.as_dictionary_mut()
+        .unwrap()
+        .insert("CFBundleShortVersionString".into(), version.into());
+    info.to_file_xml(file).unwrap();
+    let executable = path.join("Contents/MacOS/fixture");
+    assert!(
+        std::process::Command::new("/usr/bin/lipo")
+            .args(["/usr/bin/true", "-thin", "x86_64", "-output"])
+            .arg(&executable)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let status = std::process::Command::new("/usr/bin/codesign")
+        .arg("--remove-signature")
+        .arg(&executable)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    if adhoc {
+        assert!(
+            std::process::Command::new("/usr/bin/codesign")
+                .args(["--force", "--sign", "-"])
+                .arg(path)
+                .status()
+                .unwrap()
+                .success()
+        );
+        fs::remove_file(path.join("Contents/_CodeSignature/CodeResources")).unwrap();
+    }
+}
+
+fn unsigned_candidate(installed: &Path, url: String, bytes: &[u8]) -> Candidate {
+    use opennavo_desktop_lib::updater::release::{Artifact, File};
+    use sha2::{Digest, Sha512};
+    let mut candidate = Candidate {
+        item: serde_json::from_value(serde_json::json!({
+            "kind":"link", "token":"fixture", "name":"Fixture", "source":"electron",
+            "appId":"fixture", "bundleId":"test.opennavo.Fixture", "installedVersion":"1.0.0",
+            "currentVersion":"1.1.0", "autoUpdates":false, "pinned":false, "ignored":false,
+            "dependents":0, "major":false, "requiresAdmin":false, "running":false,
+            "relaunchPending":false, "criticalUpdate":false
+        }))
+        .unwrap(),
+        artifact: Some(Artifact {
+            version: "1.1.0".into(),
+            version_key: "CFBundleVersion".into(),
+            file: File {
+                url,
+                name: "Fixture.zip".into(),
+                size: Some(bytes.len() as u64),
+                architecture: Some("universal".into()),
+                sha256: None,
+                sha512: Some(STANDARD.encode(Sha512::digest(bytes))),
+            },
+        }),
+        app_path: installed.into(),
+        snapshot: Snapshot::capture(installed).unwrap(),
+        feed_item: None,
+        public_key: None,
+        expected_team: None,
+        checked_at: 0,
+    };
+    candidate.item.unsigned_update = Some(candidate.unsigned_key().unwrap());
+    candidate
+}
+
+#[test]
+fn unsigned_consent_is_bound_to_release_path_identity_and_snapshot() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let installed = root.join("Fixture.app");
+    bundle(&installed, "1.0.0");
+    let candidate =
+        unsigned_candidate(&installed, "https://example.org/Fixture.zip".into(), b"zip");
+    let key = candidate.item.unsigned_update.as_deref();
+    candidate.validate_unsigned_confirmation(key).unwrap();
+    assert!(candidate.validate_unsigned_confirmation(None).is_err());
+    assert!(
+        candidate
+            .validate_unsigned_confirmation(Some("old-consent"))
+            .is_err()
+    );
+    for field in ["url", "digest", "path", "id", "team", "source", "snapshot"] {
+        let mut changed = candidate.clone();
+        match field {
+            "url" => changed
+                .artifact
+                .as_mut()
+                .unwrap()
+                .file
+                .url
+                .push_str("?different"),
+            "digest" => {
+                changed.artifact.as_mut().unwrap().file.sha512 = Some(STANDARD.encode([0; 64]))
+            }
+            "path" => changed.app_path = tmp.path().join("Another.app"),
+            "id" => changed.item.bundle_id = Some("other.bundle".into()),
+            "team" => changed.expected_team = Some("TESTTEAM01".into()),
+            "source" => changed.item.source = opennavo_desktop_lib::model::UpdateSource::Vendor,
+            "snapshot" => changed.snapshot = Snapshot::capture(&root).unwrap(),
+            _ => unreachable!(),
+        }
+        assert!(
+            changed.validate_unsigned_confirmation(key).is_err(),
+            "{field}"
+        );
+    }
+}
+
+struct UnsignedFiles<'a> {
+    scenario: &'a str,
+}
+impl swap::Files for UnsignedFiles<'_> {
+    fn copy_bundle(&self, from: &Path, to: &Path) -> Result<(), AppError> {
+        swap::NativeFiles.copy_bundle(from, to)?;
+        if (self.scenario == "private_tamper" && to.ends_with("replacement.app"))
+            || (self.scenario == "backup_tamper" && to.ends_with("previous.app"))
+        {
+            fs::write(to.join("Contents/changed"), "tampered copy")?;
+        }
+        Ok(())
+    }
+    fn exchange(&self, a: &Path, b: &Path) -> Result<(), AppError> {
+        swap::NativeFiles.exchange(a, b)
+    }
+    fn register(&self, path: &Path) -> Result<(), AppError> {
+        TempFiles {
+            fail_register: self.scenario == "rollback",
+        }
+        .register(path)
+    }
+    fn clear_quarantine(&self, _: &Path) -> Result<(), AppError> {
+        panic!("unsigned installation must preserve quarantine");
+    }
+}
+
+#[tokio::test]
+async fn confirmed_unsigned_download_keeps_hash_gate_and_atomic_recovery() {
+    for scenario in [
+        "unsigned",
+        "adhoc",
+        "hash",
+        "id",
+        "version",
+        "arch",
+        "minimum",
+        "signed",
+        "tamper",
+        "private_tamper",
+        "backup_tamper",
+        "rollback",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let installed = root.join("Installed.app");
+        let source = root.join("Source.app");
+        unsigned_bundle(&installed, "1.0.0", scenario == "adhoc");
+        unsigned_bundle(&source, "1.1.0", scenario == "adhoc");
+        if scenario == "signed" {
+            fs::copy("/usr/bin/true", source.join("Contents/MacOS/fixture")).unwrap();
+        }
+        if ["id", "version", "minimum"].contains(&scenario) {
+            let path = source.join("Contents/Info.plist");
+            let mut info = plist::Value::from_file(&path).unwrap();
+            let (key, value) = match scenario {
+                "id" => ("CFBundleIdentifier", "wrong.bundle"),
+                "version" => ("CFBundleVersion", "0.9.0"),
+                _ => ("LSMinimumSystemVersion", "99.0"),
+            };
+            info.as_dictionary_mut()
+                .unwrap()
+                .insert(key.into(), value.into());
+            info.to_file_xml(path).unwrap();
+        }
+        let bytes = zip_bytes(&source);
+        let archive = root.join("Fixture.zip");
+        fs::write(&archive, &bytes).unwrap();
+        let (mut server, url, client) = server(&archive, "normal").await;
+        let mut candidate = unsigned_candidate(&installed, url, &bytes);
+        if scenario == "hash" {
+            candidate.artifact.as_mut().unwrap().file.sha512 = Some(STANDARD.encode([0; 64]));
+            candidate.item.unsigned_update = Some(candidate.unsigned_key().unwrap());
+        }
+        let stage = download::Stage::create(&root.join("staging")).unwrap();
+        // No approval cannot even start downloading.
+        assert_eq!(
+            download::prepare_with_client(
+                &candidate,
+                &stage,
+                Arc::new(AtomicBool::new(false)),
+                Arc::new(|_| Ok(())),
+                &client
+            )
+            .await
+            .unwrap_err()
+            .message,
+            "unsigned_confirmation_required"
+        );
+        let result = download::prepare_confirmed_with_client(
+            &candidate,
+            &stage,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| Ok(())),
+            &client,
+            candidate.item.unsigned_update.as_deref(),
+        )
+        .await;
+        if ["hash", "version"].contains(&scenario) {
+            assert_eq!(
+                result.unwrap_err().code,
+                if scenario == "hash" {
+                    "E_UPDATE_DIGEST"
+                } else {
+                    "E_UPDATE_VERSION"
+                }
+            );
+        } else {
+            let request = result.unwrap();
+            if scenario == "tamper" {
+                fs::write(
+                    request.prepared.join("Contents/extra"),
+                    "changed after verification",
+                )
+                .unwrap();
+            }
+            let result = swap::apply(
+                &request,
+                &swap::Context {
+                    inspector: &gate::NativeInspector,
+                    files: &UnsignedFiles { scenario },
+                    os: "98.0",
+                    arch: if scenario == "arch" {
+                        "unsupported"
+                    } else {
+                        "x86_64"
+                    },
+                },
+            );
+            if ["unsigned", "adhoc"].contains(&scenario) {
+                let backup = result.unwrap();
+                assert_eq!(
+                    plist::Value::from_file(backup.join("Contents/Info.plist"))
+                        .unwrap()
+                        .as_dictionary()
+                        .unwrap()["CFBundleVersion"]
+                        .as_string(),
+                    Some("1.0.0")
+                );
+            } else {
+                assert!(result.is_err(), "{scenario}");
+                assert_eq!(
+                    plist::Value::from_file(installed.join("Contents/Info.plist"))
+                        .unwrap()
+                        .as_dictionary()
+                        .unwrap()["CFBundleVersion"]
+                        .as_string(),
+                    Some("1.0.0")
+                );
+            }
+        }
+        server.kill().await.unwrap();
+        server.wait().await.unwrap();
+    }
+}
+
+#[test]
+fn native_reinstall_and_downgrade_consent_is_bound_to_the_exact_artifact_and_tree() {
+    use opennavo_desktop_lib::updater::{
+        UpdateConsent, UpdateSource, UpdateWarning, unsigned::Approval,
+    };
+    for source in [
+        UpdateSource::Electron,
+        UpdateSource::Sparkle,
+        UpdateSource::Github,
+        UpdateSource::Vendor,
+    ] {
+        for current in ["1.1.0", "2.0.0", "0.9.0"] {
+            let temp = tempfile::tempdir().unwrap();
+            let root = temp.path().canonicalize().unwrap();
+            let installed = root.join("Installed.app");
+            let prepared = root.join("Prepared.app");
+            unsigned_bundle(&installed, current, false);
+            unsigned_bundle(&prepared, "1.1.0", false);
+            if current == "0.9.0" {
+                // A growing build number does not hide a marketing-version downgrade.
+                for (path, version) in [(&installed, "2.0.0"), (&prepared, "1.0.0")] {
+                    let file = path.join("Contents/Info.plist");
+                    let mut info = plist::Value::from_file(&file).unwrap();
+                    info.as_dictionary_mut()
+                        .unwrap()
+                        .insert("CFBundleShortVersionString".into(), version.into());
+                    info.to_file_xml(file).unwrap();
+                }
+            }
+            let mut candidate = unsigned_candidate(
+                &installed,
+                "https://example.org/Fixture.zip".into(),
+                b"verified archive",
+            );
+            candidate.item.source = source;
+            if source == UpdateSource::Sparkle {
+                candidate.artifact = None;
+                candidate.public_key = Some(STANDARD.encode([1; 32]));
+                candidate.feed_item = Some(feed::parse(br#"<rss xmlns:s="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item><s:version>1.1.0</s:version><enclosure url="https://example.org/Fixture.zip" s:edSignature="fixture"/></item></channel></rss>"#).unwrap().remove(0));
+            }
+            let request = swap::SwapRequest {
+                source,
+                installed: installed.clone(),
+                prepared: prepared.clone(),
+                installed_snapshot: Snapshot::capture(&installed).unwrap(),
+                prepared_snapshot: Snapshot::capture(&prepared).unwrap(),
+                expected_team: None,
+                unsigned: None,
+                package: None,
+            };
+            let platform = || gate::Platform {
+                os: "98.0",
+                arch: "x86_64",
+            };
+            let mut unapproved = request.clone();
+            let error =
+                Approval::review(&candidate, &mut unapproved, None, platform()).unwrap_err();
+            assert_eq!(error.code, "E_UPDATE_CONFIRMATION");
+            let consent: UpdateConsent =
+                serde_json::from_str(error.detail.as_deref().unwrap()).unwrap();
+            assert_eq!(
+                consent.warnings,
+                vec![UpdateWarning::UnsignedDeveloper, UpdateWarning::NonNewer]
+            );
+            let mut changed = candidate.clone();
+            changed.item.bundle_id = Some("other.app".into());
+            assert_eq!(
+                Approval::review(&changed, &mut request.clone(), Some(&consent), platform())
+                    .unwrap_err()
+                    .code,
+                "E_UPDATE_IDENTITY"
+            );
+            fs::write(prepared.join("Contents/after-review"), "changed").unwrap();
+            assert_eq!(
+                Approval::review(&candidate, &mut request.clone(), Some(&consent), platform())
+                    .unwrap_err()
+                    .code,
+                "E_UPDATE_CONFIRMATION"
+            );
+            fs::remove_file(prepared.join("Contents/after-review")).unwrap();
+            let mut early = request.clone();
+            early.unsigned = Some(Approval::prepare(&candidate, &prepared).unwrap());
+            fs::write(prepared.join("Contents/after-download"), "changed").unwrap();
+            assert_eq!(
+                Approval::review(&candidate, &mut early, Some(&consent), platform())
+                    .unwrap_err()
+                    .code,
+                "E_UPDATE_CHANGED"
+            );
+            fs::remove_file(prepared.join("Contents/after-download")).unwrap();
+            let mut approved = request;
+            Approval::review(&candidate, &mut approved, Some(&consent), platform()).unwrap();
+            swap::apply(
+                &approved,
+                &swap::Context {
+                    inspector: &gate::NativeInspector,
+                    files: &UnsignedFiles {
+                        scenario: "unsigned",
+                    },
+                    os: "98.0",
+                    arch: "x86_64",
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                plist::Value::from_file(installed.join("Contents/Info.plist"))
+                    .unwrap()
+                    .as_dictionary()
+                    .unwrap()["CFBundleVersion"]
+                    .as_string(),
+                Some("1.1.0")
+            );
         }
     }
 }

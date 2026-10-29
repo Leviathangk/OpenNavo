@@ -172,6 +172,7 @@ const rows = computed(() =>
         <template #badges>
           <OnChip v-if="item.source !== 'homebrew'" tone="info">{{ t(`updates.source.${item.source}`) }}</OnChip>
           <OnChip v-if="item.expectedTeamMatch === false" tone="danger">{{ t('updates.badge.teamMismatch') }}</OnChip>
+          <OnChip v-if="item.unsignedUpdate" tone="warning">{{ t('updates.unsigned.badge') }}</OnChip>
           <OnChip v-if="item.criticalUpdate" tone="danger">{{ t('updates.badge.critical') }}</OnChip>
           <OnChip v-if="item.channel === 'beta'" tone="warning">{{ t('updates.badge.beta') }}</OnChip>
           <OnChip v-if="item.major">{{ t('updates.badge.major') }}</OnChip>

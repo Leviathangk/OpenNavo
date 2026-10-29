@@ -31,7 +31,7 @@ fn error(message: &str) -> AppError {
             "backup_verification"
             | "installed_app_changed"
             | "rollback_verification"
-            | "pkg_installed_path" => "E_UPDATE_INTEGRITY",
+            | "pkg_installed_path" => "E_UPDATE_CHANGED",
             _ => "E_UPDATE_ARCHIVE",
         },
         message,
@@ -61,29 +61,14 @@ pub fn verify_signature(path: &Path, team: &str) -> Result<(), AppError> {
         &["--check-signature", &path.to_string_lossy()],
         Duration::from_secs(60),
     )
-    .map_err(|e| e.context("E_UPDATE_INTEGRITY", "pkg_signature_invalid"))?;
+    .map_err(|e| e.context("E_UPDATE_SIGNATURE", "pkg_signature_invalid"))?;
     if !installer_signature(&signature.stdout, team) {
         return Err(AppError::new(
             "E_UPDATE_TEAM_MISMATCH",
             "pkg_installer_team",
         ));
     }
-    let result = command(
-        "/usr/sbin/spctl",
-        &[
-            "--assess",
-            "--type",
-            "install",
-            "--verbose=4",
-            &path.to_string_lossy(),
-        ],
-        Duration::from_secs(60),
-    );
-    if !result.is_ok_and(|s| {
-        s.stderr
-            .lines()
-            .any(|line| line.trim() == "source=Notarized Developer ID")
-    }) {
+    if !gate::assess_notarization(path, "install")? {
         return Err(AppError::new(
             "E_UPDATE_NOT_NOTARIZED",
             "pkg_notarization_required",
@@ -91,6 +76,76 @@ pub fn verify_signature(path: &Path, team: &str) -> Result<(), AppError> {
     }
     Ok(())
 }
+
+/// Inspect before extracting. Unsigned, independently authenticated packages may
+/// be reviewed, but only their fixed script-free app payload can be installed.
+pub fn review_signature(
+    path: &Path,
+    expected_team: Option<&str>,
+    authenticated: bool,
+) -> Result<Vec<super::UpdateWarning>, AppError> {
+    let output = crate::native_command::output(
+        "/usr/sbin/pkgutil",
+        &["--check-signature", &path.to_string_lossy()],
+        Duration::from_secs(60),
+    )
+    .map_err(|e| {
+        e.context(
+            "E_UPDATE_VERIFY_UNAVAILABLE",
+            "pkg_signature_check_unavailable",
+        )
+    })?;
+    let team = package_signer(&output, expected_team, authenticated)?;
+    if team.is_none() {
+        return Ok(vec![super::UpdateWarning::UnsignedDeveloper]);
+    }
+    if !gate::assess_notarization(path, "install")? {
+        return Ok(vec![super::UpdateWarning::NotNotarized]);
+    }
+    Ok(Vec::new())
+}
+fn package_signer(
+    output: &crate::native_command::Output,
+    expected: Option<&str>,
+    authenticated: bool,
+) -> Result<Option<String>, AppError> {
+    let text = output.text();
+    if matches!(output.code, Some(0 | 1))
+        && text.lines().any(|l| l.trim() == "Status: no signature")
+    {
+        if expected.is_some() {
+            return Err(AppError::new(
+                "E_UPDATE_TEAM_MISMATCH",
+                "pkg_installer_team",
+            ));
+        }
+        if !authenticated {
+            return Err(AppError::new("E_UPDATE_DIGEST", "required_release_digest"));
+        }
+        return Ok(None);
+    }
+    let team = text
+        .lines()
+        .find_map(|l| {
+            let line = l.trim();
+            if !line.starts_with("1. Developer ID Installer: ") {
+                return None;
+            }
+            line.rsplit_once('(')?.1.strip_suffix(')')
+        })
+        .ok_or_else(|| AppError::new("E_UPDATE_SIGNATURE", "pkg_signature_invalid"))?;
+    if output.code != Some(0) || !installer_signature(&text, team) {
+        return Err(AppError::new("E_UPDATE_SIGNATURE", "pkg_signature_invalid"));
+    }
+    if expected.is_some_and(|t| t != team) {
+        return Err(AppError::new(
+            "E_UPDATE_TEAM_MISMATCH",
+            "pkg_installer_team",
+        ));
+    }
+    Ok(Some(team.to_owned()))
+}
+
 pub fn fixed_location_metadata(info: &[u8]) -> Result<(), AppError> {
     use quick_xml::{Reader, XmlVersion, events::Event};
     let mut reader = Reader::from_reader(info);
@@ -160,7 +215,7 @@ fn extract(path: &Path, destination: &Path) -> Result<(), AppError> {
     .map_err(|e| e.context("E_UPDATE_ARCHIVE", "pkg_extract_failed"))?;
     Ok(())
 }
-/// Signature/Team validation is required BEFORE invoking this native extractor.
+/// Archive authentication and package signer inspection precede this bounded extractor.
 pub fn payload(
     path: &Path,
     destination: &Path,
@@ -341,7 +396,7 @@ pub fn execute(request: &swap::SwapRequest, work: &Path) -> Result<PathBuf, AppE
         hash.update(&chunk[..len]);
     }
     if format!("{:x}", hash.finalize()) != artifact.sha256 {
-        return Err(AppError::new("E_UPDATE_INTEGRITY", "download_sha256"));
+        return Err(AppError::new("E_UPDATE_DIGEST", "download_sha256"));
     }
     let old = gate::NativeInspector.inspect(&request.installed)?;
     verify_signature(&copy, &old.team_id)?;
@@ -366,4 +421,37 @@ pub fn execute(request: &swap::SwapRequest, work: &Path) -> Result<PathBuf, AppE
         },
         &NativeInstaller,
     )
+}
+
+#[cfg(test)]
+mod consent_tests {
+    use super::*;
+    #[test]
+    fn unsigned_packages_need_an_independent_digest_and_cannot_override_a_pinned_signer() {
+        let output = crate::native_command::Output {
+            code: Some(1),
+            stdout: "Package: App.pkg\n  Status: no signature\n".into(),
+            stderr: String::new(),
+        };
+        assert_eq!(package_signer(&output, None, true).unwrap(), None);
+        assert_eq!(
+            package_signer(&output, None, false).unwrap_err().code,
+            "E_UPDATE_DIGEST"
+        );
+        assert_eq!(
+            package_signer(&output, Some("TESTTEAM01"), true)
+                .unwrap_err()
+                .code,
+            "E_UPDATE_TEAM_MISMATCH"
+        );
+        let broken = crate::native_command::Output {
+            code: Some(1),
+            stdout: "Status: signed by an untrusted certificate".into(),
+            stderr: String::new(),
+        };
+        assert_eq!(
+            package_signer(&broken, None, true).unwrap_err().code,
+            "E_UPDATE_SIGNATURE"
+        );
+    }
 }

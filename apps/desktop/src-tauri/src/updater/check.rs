@@ -11,8 +11,72 @@ struct Environment {
     os: String,
     arch: String,
     manual: bool,
+    include_current: bool,
 }
 impl Service {
+    /// Explicit installed-app action. Ordinary update checks still omit equal
+    /// and older releases so they never pollute automatic update queues.
+    pub async fn prepare_reinstall(&self, app_id: &str) -> Result<OutdatedItem, AppError> {
+        let settings = self.settings()?;
+        let rules = self.rules().await?;
+        let app = self
+            .apps
+            .inventory()?
+            .into_iter()
+            .find(|a| a.id == app_id)
+            .ok_or_else(|| AppError::new("E_INVALID_ARG", "unknown_app"))?;
+        let source = routing::select(&self.database, &settings, &app, &rules)?
+            .filter(|s| {
+                matches!(
+                    s,
+                    UpdateSource::Sparkle
+                        | UpdateSource::Electron
+                        | UpdateSource::Github
+                        | UpdateSource::Vendor
+                )
+            })
+            .ok_or_else(|| AppError::new("E_NOT_INSTALLABLE", "native_reinstall_source"))?;
+        let pref = prefs::load(&self.database, &format!("app:{}", app.id))?;
+        let rule = rules.iter().find(|r| {
+            r.source == source
+                && Some(&r.bundle_id) == app.bundle_id.as_ref()
+                && r.channel.unwrap_or_default() == pref.channel
+        });
+        let (os, arch) = system()?;
+        let env = Environment {
+            os,
+            arch,
+            manual: true,
+            include_current: true,
+        };
+        let mut candidate = if source == UpdateSource::Sparkle {
+            self.sparkle_candidate(&app, rule, &env).await?
+        } else {
+            self.release_candidate(&app, source, rule, &env).await?
+        }
+        .ok_or_else(|| AppError::new("E_UPDATE_FEED", "compatible_release_missing"))?;
+        if candidate.item.informational_url.is_some() {
+            return Err(AppError::new("E_NOT_INSTALLABLE", "informational_update"));
+        }
+        candidate.item.relaunch_pending = false;
+        if app
+            .team_id
+            .as_deref()
+            .is_none_or(|t| t.is_empty() || t == "not set")
+        {
+            candidate.item.unsigned_update = Some(candidate.unsigned_key()?);
+        }
+        // An explicit reinstall supersedes a previously skipped version.
+        self.skip(&format!("app:{}", app.id), None)?;
+        let item = candidate.item.clone();
+        self.update_candidates(|rows| {
+            rows.retain(|r| r.item.app_id != candidate.item.app_id);
+            rows.push(candidate);
+            Ok(())
+        })?;
+        Ok(item)
+    }
+
     async fn sparkle_candidate(
         &self,
         app: &LocalApp,
@@ -46,7 +110,12 @@ impl Service {
             now: chrono::Utc::now().timestamp(),
             rollout_group: super::service::rollout_group(&app.id),
         };
-        let Some(selected) = feed::select(&items, &selection) else {
+        let selected = if env.include_current {
+            feed::select_for_reinstall(&items, &selection)
+        } else {
+            feed::select(&items, &selection)
+        };
+        let Some(selected) = selected else {
             return Ok(None);
         };
         let (kind, token) = self.catalog_identity(app, rule)?;
@@ -82,9 +151,13 @@ impl Service {
                 .and_then(|u| reqwest::Url::parse(u).ok())
                 .and_then(|u| u.host_str().map(str::to_owned))
                 .filter(|_| !informational),
-            expected_team_match: rule
-                .and_then(|r| r.team_id.as_ref())
-                .map(|team| app.team_id.as_ref() == Some(team)),
+            unsigned_update: None,
+            expected_team_match: rule.and_then(|r| r.team_id.as_ref()).and_then(|team| {
+                app.team_id
+                    .as_ref()
+                    .filter(|old| !old.is_empty() && *old != "not set")
+                    .map(|old| old == team)
+            }),
             kind,
             token,
             name: app.name.clone(),
@@ -159,7 +232,12 @@ impl Service {
             }
         };
         let (os, arch) = system()?;
-        let env = Environment { os, arch, manual };
+        let env = Environment {
+            os,
+            arch,
+            manual,
+            include_current: false,
+        };
         let settings = self.settings()?;
         let running = self.apps.control.list()?;
         for app in apps {
@@ -271,8 +349,9 @@ impl Service {
         release.validate(source)?;
         let current = disk_version(path, &release.version_key)
             .ok_or_else(|| AppError::new("E_UPDATE_FEED", "installed_version_missing"))?;
-        if !version::compare_source(source, &release.version, &current)?.is_gt()
-            || pref.skipped_version.as_deref() == Some(&release.version)
+        if !env.include_current
+            && (!version::compare_source(source, &release.version, &current)?.is_gt()
+                || pref.skipped_version.as_deref() == Some(&release.version))
         {
             return Ok(None);
         }
@@ -286,12 +365,12 @@ impl Service {
         };
         let (kind, token) = self.catalog_identity(app, rule)?;
         let expected_team = rule.and_then(|r| r.team_id.clone());
-        if matches!(source, UpdateSource::Github | UpdateSource::Vendor) && expected_team.is_none()
+        if matches!(source, UpdateSource::Github | UpdateSource::Vendor)
+            && expected_team.is_none()
+            && artifact.file.sha256.is_none()
+            && artifact.file.sha512.is_none()
         {
-            return Err(AppError::new(
-                "E_UPDATE_TEAM_MISMATCH",
-                "rule_team_required",
-            ));
+            return Err(AppError::new("E_UPDATE_DIGEST", "required_release_digest"));
         }
         let pending = if app.running && source == UpdateSource::Electron {
             let artifact = artifact.clone();
@@ -332,11 +411,15 @@ impl Service {
             download_host: reqwest::Url::parse(&artifact.file.url)
                 .ok()
                 .and_then(|u| u.host_str().map(str::to_owned)),
-            expected_team_match: expected_team
-                .as_ref()
-                .map(|t| app.team_id.as_ref() == Some(t)),
+            unsigned_update: None,
+            expected_team_match: expected_team.as_ref().and_then(|t| {
+                app.team_id
+                    .as_ref()
+                    .filter(|v| !v.is_empty() && *v != "not set")
+                    .map(|v| v == t)
+            }),
         };
-        Ok(Some(Candidate {
+        let mut candidate = Candidate {
             item,
             app_path: path.into(),
             snapshot: Snapshot::capture(path)?,
@@ -345,7 +428,21 @@ impl Service {
             artifact: Some(artifact),
             expected_team,
             checked_at: chrono::Utc::now().timestamp_millis(),
-        }))
+        };
+        if matches!(
+            source,
+            UpdateSource::Electron
+                | UpdateSource::Sparkle
+                | UpdateSource::Github
+                | UpdateSource::Vendor
+        ) && app
+            .team_id
+            .as_deref()
+            .is_none_or(|t| t.is_empty() || t == "not set")
+        {
+            candidate.item.unsigned_update = Some(candidate.unsigned_key()?);
+        }
+        Ok(Some(candidate))
     }
 }
 pub(super) fn disk_version(path: &Path, key: &str) -> Option<String> {

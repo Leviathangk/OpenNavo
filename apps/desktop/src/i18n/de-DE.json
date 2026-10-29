@@ -624,6 +624,20 @@
     }
   },
   "updates": {
+    "review": {
+      "title": "Vor der Installation prüfen",
+      "body": "App-Kennung und Zielversion wurden geprüft. Bitte diese Bedingungen prüfen; die Entscheidung gilt nur für dieses Paket.",
+      "unsigned_developer": "Die installierte App, die neue App oder das Installationspaket hat keine verifizierte Entwicklersignatur. Nur bei vertrauenswürdiger Quelle fortfahren. macOS kann den Start weiterhin blockieren.",
+      "repair_installed": "Die Signatur der installierten App ist beschädigt. Die neue Version hat die Signatur- und Identitätsprüfung bestanden; sie ersetzt die alte App.",
+      "not_notarized": "Die neue App oder das Installationspaket ist nicht von Apple notarisiert. macOS kann den Start blockieren.",
+      "non_newer": "Die Zielversion ist nicht neuer. Die App wird neu installiert oder auf eine ältere Version zurückgesetzt. Diese kann neuere App-Daten möglicherweise nicht lesen."
+    },
+    "unsigned": {
+      "title": "Entwickler nicht verifiziert",
+      "body": "Die installierte App, die neue App oder das Installationspaket hat keine verifizierte Entwicklersignatur. Nur bei vertrauenswürdiger Quelle fortfahren. macOS kann den Start weiterhin blockieren.",
+      "confirm": "Trotzdem installieren",
+      "badge": "Entwickler nicht verifiziert"
+    },
     "title": "Updates",
     "summary": "{count} Update verfügbar · Download ca. {size} | {count} Updates verfügbar · Download ca. {size}",
     "summaryNone": "Alles ist aktuell",
@@ -1219,10 +1233,11 @@
     "E_MAS_OTHER_ACCOUNT": "Diese App wurde mit einem anderen Apple-Konto gekauft. Aktualisieren Sie sie im App Store",
     "E_MAS_REGION": "Diese App ist in der aktuellen Store-Region nicht verfügbar",
     "E_MAS_RATE_LIMITED": "Zu viele App Store-Anfragen. Versuchen Sie es in einer Minute erneut",
+    "E_UPDATE_VERIFY_UNAVAILABLE": "macOS konnte die Entwicklerprüfung nicht abschließen. Update nicht installiert. Später erneut versuchen",
     "E_UPDATE_INTEGRITY": "Integritätsprüfung des Downloads fehlgeschlagen. Update nicht installiert",
     "E_UPDATE_PREPARE": "Die Update-Dateien konnten nicht vorbereitet werden. Prüfe den freien Speicherplatz und die Zugriffsrechte und versuche es erneut",
     "E_UPDATE_ARCHIVE": "Das Update-Paket konnte nicht gelesen, eingebunden oder entpackt werden. Prüfe das Protokoll und versuche es erneut",
-    "E_UPDATE_VERSION": "Die Paketversion entspricht nicht der erwarteten Version oder ist nicht neuer als die installierte Version und wurde deshalb nicht installiert",
+    "E_UPDATE_VERSION": "Die Paketversion stimmt nicht mit dem Veröffentlichungsmanifest überein. Das Update wurde nicht installiert",
     "E_UPDATE_TEAM_MISMATCH": "Die Entwicklersignatur der neuen Version weicht ab. Nicht installiert",
     "E_UPDATE_NOT_NOTARIZED": "Die neue Version ist nicht von Apple notarisiert. Nicht installiert",
     "E_UPDATE_ARCH": "Die neue Version unterstützt den Chip dieses Mac nicht",
@@ -1304,7 +1319,14 @@
     "E_FW_BLOCKLIST_FORMAT": "Keine nutzbaren Domains oder IPs in der Datei gefunden",
     "E_FW_BLOCKLIST_TOO_LARGE": "Sperrliste zu groß: höchstens 50 MB und 1 Million Einträge",
     "E_FW_BLOCKLIST_LIMIT": "Limit für Sperrlisten erreicht: höchstens 32 Listen und insgesamt 256 MB",
-    "E_FW_BLOCKLIST_FILE": "Die Datei wurde nicht gefunden oder kann nicht gelesen werden"
+    "E_FW_BLOCKLIST_FILE": "Die Datei wurde nicht gefunden oder kann nicht gelesen werden",
+    "E_UPDATE_DIGEST": "Dateigröße oder Hash stimmt nicht mit dem Manifest überein. Nichts installiert",
+    "E_UPDATE_SIGNATURE": "Die Codesignatur des Updates ist ungültig. Nichts installiert",
+    "E_UPDATE_FEED_SIGNATURE": "Die Archivsignatur des Herausgebers konnte nicht bestätigt werden. Nichts installiert",
+    "E_UPDATE_IDENTITY": "Die App-Kennung im Paket stimmt nicht mit der Ziel-App überein. Nichts installiert",
+    "E_UPDATE_CHANGED": "App oder Dateien wurden nach der Prüfung verändert. Erneut nach Updates suchen",
+    "E_UPDATE_NOT_NEWER": "Die Zielversion ist nicht neuer. Im Menü der installierten App „Neu installieren“ wählen",
+    "E_UPDATE_CONFIRMATION": "Die Installation benötigt eine Bestätigung. Hinweis prüfen oder erneut versuchen"
   },
   "installConfirm": {
     "title": "Vorhandenes {name} übernehmen?",

@@ -283,7 +283,7 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 			if p.SparkleFeed != nil {
 				inputs = append(inputs, domain.UpdateFeedInput{UpdateFeedKey: domain.UpdateFeedKey{BundleID: bundle, Source: "sparkle"}, FeedURL: *p.SparkleFeed, TeamID: team, Channel: "stable", PackageID: &p.ID})
 			}
-			if p.GithubRepo != nil && team != nil {
+			if p.GithubRepo != nil {
 				pattern := defaultMacPattern
 				if custom := p.AssetRules["pattern"]; custom != "" {
 					pattern = custom

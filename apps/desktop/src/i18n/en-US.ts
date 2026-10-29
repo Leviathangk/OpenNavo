@@ -633,6 +633,23 @@ const messages: MessageSchema = {
     }
   },
   updates: {
+    review: {
+      title: 'Review Before Installing',
+      body: 'The app identifier and target version were checked. Review these conditions; your choice applies only to this package.',
+      unsigned_developer:
+        'The installed app, new app or installer has no verified developer signature. Continue only if you trust the source. macOS may still block opening it.',
+      repair_installed:
+        'The installed app has a damaged signature. The replacement passed signature and identity checks; continuing will replace the old app.',
+      not_notarized: 'The new app or installer is not notarized by Apple. macOS may block opening it.',
+      non_newer:
+        'The target version is not newer. This will reinstall or downgrade the app. Older versions may not read newer app data.'
+    },
+    unsigned: {
+      title: 'Developer identity unverified',
+      body: 'The installed app, new app or installer has no verified developer signature. Continue only if you trust the source. macOS may still block opening it.',
+      confirm: 'Install Anyway',
+      badge: 'Unverified developer'
+    },
     title: 'Updates',
     summary:
       '{count} update available · about {size} to download | {count} updates available · about {size} to download',
@@ -1239,11 +1256,20 @@ const messages: MessageSchema = {
     E_MAS_OTHER_ACCOUNT: 'This app was bought with another Apple Account. Update it in the App Store',
     E_MAS_REGION: 'This app isn’t available in the current store region',
     E_MAS_RATE_LIMITED: 'Too many App Store requests. Try again in a minute',
+    E_UPDATE_DIGEST: 'The downloaded file’s size or digest does not match the update manifest. Nothing was installed',
+    E_UPDATE_SIGNATURE: 'The update has an invalid code signature. Nothing was installed',
+    E_UPDATE_FEED_SIGNATURE: 'The update failed its publisher’s archive signature check. Nothing was installed',
+    E_UPDATE_IDENTITY: 'The package’s app identifier does not match the target app. Nothing was installed',
+    E_UPDATE_CHANGED:
+      'The app or update files changed after verification. Nothing was installed; check for updates again',
+    E_UPDATE_NOT_NEWER: 'The target version is not newer. Choose Reinstall from the installed app’s menu',
+    E_UPDATE_CONFIRMATION: 'Installation needs your confirmation. Review the prompt or retry',
+    E_UPDATE_VERIFY_UNAVAILABLE:
+      'macOS couldn’t complete developer verification, so the update wasn’t installed. Try again later',
     E_UPDATE_INTEGRITY: 'The download failed its integrity check, so the update wasn’t installed',
     E_UPDATE_PREPARE: 'Couldn’t prepare the update files. Check disk space and access permissions, then retry',
     E_UPDATE_ARCHIVE: 'Couldn’t read, mount or extract the update package. Check the log and retry',
-    E_UPDATE_VERSION:
-      'The package version is unexpected or isn’t newer than the installed version, so it wasn’t installed',
+    E_UPDATE_VERSION: 'The update package version does not match the release manifest, so it was not installed',
     E_UPDATE_TEAM_MISMATCH: 'The new version is signed by a different developer, so it wasn’t installed',
     E_UPDATE_NOT_NOTARIZED: 'The new version isn’t notarized by Apple, so it wasn’t installed',
     E_UPDATE_ARCH: 'The new version doesn’t support this Mac’s chip',

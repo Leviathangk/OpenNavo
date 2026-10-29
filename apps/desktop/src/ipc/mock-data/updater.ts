@@ -337,6 +337,15 @@ export function createUpdaterMock({
   }
 
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
+    update_prepare_reinstall: args => {
+      const row = sourceRows().find(
+        item => item.appId === args.appId && ['sparkle', 'electron', 'github', 'vendor'].includes(item.source)
+      );
+      if (!row || row.informationalUrl) throw appError('E_NOT_INSTALLABLE', 'native_reinstall_source');
+      skipped.delete(appKey(row));
+      row.relaunchPending = false;
+      return row;
+    },
     update_skip: args => {
       const key = String(args.appKey);
       const version = (args.version as string | null) ?? null;

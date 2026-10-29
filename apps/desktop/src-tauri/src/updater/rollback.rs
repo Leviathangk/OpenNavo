@@ -143,6 +143,9 @@ fn plan_in(
     let (Some(target), Some(source)) = (task.target.as_ref(), source) else {
         return Err(unavailable("not_native_update"));
     };
+    if task.options.unsigned_update.is_some() || task.options.verification.is_some() {
+        return Err(unavailable("unsigned_update"));
+    }
     if task.op != TaskOp::Upgrade
         || task.state != TaskState::Succeeded
         || target.kind != TaskKind::App

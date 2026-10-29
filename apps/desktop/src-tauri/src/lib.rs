@@ -166,6 +166,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::updates::update_skip,
             commands::updates::update_ignore,
             commands::updates::update_set_channel,
+            commands::updates::update_prepare_reinstall,
             commands::updates::update_rollback,
             commands::updates::update_rollback_targets,
             commands::updates::app_relaunch,

@@ -20,7 +20,7 @@ const MAXIMUM: u64 = 1024 * 1024 * 1024;
 fn error(message: &str) -> AppError {
     AppError::new(
         match message {
-            "download_length" => "E_UPDATE_INTEGRITY",
+            "download_length" => "E_UPDATE_DIGEST",
             "download_resume_range" | "download_http_status" | "download_size_limit" => {
                 "E_DOWNLOAD"
             }
