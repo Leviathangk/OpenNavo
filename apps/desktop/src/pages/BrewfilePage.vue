@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { installCommand, toBrewfile } from '@opennavo/shared';
+import { catalogBrewfile, catalogInstallCommand } from '@/utils/brew';
 import { OnAppRow, OnButton, OnConfirm, OnEmpty, OnPageHeader } from '@opennavo/ui';
 import PackageGetButton from '@/components/package/PackageGetButton.vue';
 import RequestError from '@/components/common/RequestError.vue';
@@ -54,10 +54,16 @@ const pending = computed(() =>
     return local && !local.disabled && !library.find(item.kind, item.token) && !tasks.forPackage(item.kind, item.token);
   })
 );
-const text = computed(() => toBrewfile(brewfile.items, { title: t('brewfile.fileTitle') }));
+const text = computed(() =>
+  catalogBrewfile(brewfile.items, (_kind, token) => data.value?.get(token), t('brewfile.fileTitle'))
+);
 // Link apps never enter a Brewfile (they have no Homebrew line); the guard keeps the command list honest anyway.
 const pendingCommands = computed(() =>
-  pending.value.flatMap(item => (item.kind === 'link' ? [] : [installCommand(item.kind, item.token)])).join('\n')
+  pending.value
+    .flatMap(item =>
+      item.kind === 'link' ? [] : [catalogInstallCommand(item.kind, item.token, data.value?.get(item.token))]
+    )
+    .join('\n')
 );
 const confirmOpen = ref(false);
 const queueing = ref(false);

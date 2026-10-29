@@ -19,7 +19,7 @@ export function usePackageIdentity() {
 
   /** Local app: use its normalized native icon and the catalog's localized name. */
   function localApp(app: LocalApp) {
-    const token = app.cask ?? app.catalogToken;
+    const token = app.catalogToken;
     const entry = token ? names.lookup('cask', token) : undefined;
     const name = entry ? pick(entry.displayName, entry.name, entry.sourceLocale) : app.name;
     return {
@@ -59,6 +59,10 @@ export function usePackageIdentity() {
       const app = localApps.find(token);
       return app ? localApp(app).name : (fallback ?? token);
     }
+    if (kind === 'cask' && token.includes('/')) {
+      const app = localApps.findCask(token);
+      if (app) return localApp(app).name;
+    }
     const entry = names.lookup(kind, token);
     return entry ? pick(entry.displayName, entry.name, entry.sourceLocale) : (fallback ?? token);
   }
@@ -70,6 +74,10 @@ export function usePackageIdentity() {
       if (app) return localApp(app).icon;
       const name = fallback ?? token;
       return { kind: 'cask' as const, token, name, src: null, accent: null };
+    }
+    if (kind === 'cask' && token.includes('/')) {
+      const app = localApps.findCask(token);
+      if (app) return localApp(app).icon;
     }
     const entry = names.lookup(kind, token);
     return {

@@ -25,7 +25,8 @@ pub async fn inspect_listed(
         return Err(AppError::new("E_INVALID_ARG", "cask_only"));
     }
     let tap = item.as_ref().and_then(|i| i.tap.clone());
-    let name = crate::brew::args::qualified_token(tap.as_deref(), &target.token)?;
+    let brew_target = crate::brew::args::catalog_target(target, item.as_ref())?;
+    let name = crate::brew::args::qualified_token(tap.as_deref(), &brew_target.token)?;
     let brew = locate::locate(settings).await?;
     let json = match locate::read(&brew, settings, ReadOp::Info(Kind::Cask), Some(&name)).await {
         Ok(json) => json,
@@ -40,7 +41,7 @@ pub async fn inspect_listed(
                     .collect()
             });
             let cask = Cask {
-                token: target.token.clone(),
+                token: brew_target.token.clone(),
                 tap: tap.clone(),
                 name: vec![item.name],
                 version: item.version,
@@ -64,7 +65,7 @@ pub async fn inspect_listed(
     let cask = info
         .casks
         .into_iter()
-        .find(|c| c.token == target.token)
+        .find(|c| c.token == brew_target.token)
         .ok_or_else(|| AppError::new("E_INVALID_ARG", "cask_missing"))?;
     crate::blocking(move || {
         let mut result = check(&cask, Path::new("/Applications"))?;
@@ -161,6 +162,44 @@ fn check(cask: &Cask, appdir: &Path) -> Result<InstallPreflight, AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn site_alias_preflight_reads_upstream_cask() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let brew = temp.path().join("brew");
+        std::fs::write(&brew, r#"#!/usr/bin/python3 -I
+import json, sys
+if sys.argv[1:] == ['--version']:
+    print('Homebrew 7.0.7')
+elif sys.argv[1:] == ['--prefix']:
+    print('/tmp/opennavo_fake_prefix')
+elif sys.argv[1:] == ['info', '--json=v2', '--cask', 'stablyai/orca/orca']:
+    print(json.dumps({'casks': [{'token': 'orca', 'name': ['Orca fixture'], 'version': '1', 'artifacts': []}]}))
+else:
+    sys.exit(99)
+"#).unwrap();
+        std::fs::set_permissions(&brew, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let settings = Settings {
+            brew_path: Some(brew.to_string_lossy().into()),
+            ..Default::default()
+        };
+        let mut item = crate::catalog::links::tests::item();
+        item.kind = Kind::Cask;
+        item.token = "stablyai-orca".into();
+        item.tap = Some("stablyai/orca".into());
+        item.brew_token = Some("orca".into());
+        let target = TaskTarget {
+            kind: Kind::Cask.into(),
+            token: item.token.clone(),
+        };
+        let result = inspect_listed(&settings, &target, Some(item))
+            .await
+            .unwrap();
+        assert_eq!(result.name, "Orca fixture");
+        assert_eq!(result.status, InstallPreflightStatus::Ready);
+        assert_eq!(result.tap.as_deref(), Some("stablyai/orca"));
+    }
+
     fn cask(artifacts: serde_json::Value) -> Cask {
         serde_json::from_value(serde_json::json!({"token":"example","name":["Example"],"version":"1","artifacts":artifacts})).expect("fixture")
     }

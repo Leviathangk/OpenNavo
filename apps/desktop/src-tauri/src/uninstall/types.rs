@@ -11,7 +11,9 @@ pub struct LocalApp {
     pub source: AppSource,
     pub updater: Option<crate::updater::UpdateSource>,
     pub homebrew_cask: Option<String>,
+    /// Installed Homebrew full_token; never use this for catalog navigation.
     pub cask: Option<String>,
+    /// Verified site listing, independent of the installed Homebrew identity.
     pub catalog_token: Option<String>,
     pub team_id: Option<String>,
     pub vendor: Option<String>,

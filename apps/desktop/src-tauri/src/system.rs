@@ -1,14 +1,14 @@
-use crate::{AppError, brew::args::validate_token, model::*};
+use crate::{AppError, brew::args::split_cask_token, model::*};
 use std::path::{Path, PathBuf};
 
 pub fn app_path(target: &TaskTarget, library: &[InstalledItem]) -> Result<PathBuf, AppError> {
-    validate_token(&target.token)?;
+    split_cask_token(&target.token)?;
     if target.kind != Kind::Cask {
         return Err(AppError::new("E_INVALID_ARG", "formula_has_no_app"));
     }
     let item = library
         .iter()
-        .find(|i| i.kind == target.kind && i.token == target.token)
+        .find(|i| i.kind == target.kind && i.matches_token(&target.token))
         .ok_or_else(|| AppError::new("E_NOT_FOUND", "installed_app"))?;
     for path in &item.app_paths {
         let path = Path::new(path);

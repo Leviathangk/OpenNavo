@@ -173,9 +173,19 @@ describe('A finished task shows its result before Rust rereads', () => {
     const adoption = { ...task('install', 'notion', finishedAt), options: { adopt: true } };
     tasks.applyUpdate({ ...adoption, state: 'succeeded', finishedAt });
     expect(await current()).toBe('open');
-    expect(apps.find('local-notion')).toMatchObject({ cask: 'notion', source: 'homebrew' });
+    expect(apps.find('local-notion')).toMatchObject({
+      cask: null,
+      catalogToken: 'notion',
+      homebrewCask: null,
+      source: 'homebrew'
+    });
     await reread();
-    expect(apps.find('local-notion')).toMatchObject({ cask: 'notion', source: 'homebrew' });
+    expect(apps.find('local-notion')).toMatchObject({
+      cask: null,
+      catalogToken: 'notion',
+      homebrewCask: null,
+      source: 'homebrew'
+    });
     wrapper.unmount();
   });
 

@@ -704,7 +704,7 @@ export interface paths {
         put?: never;
         /**
          * Add a third-party tap cask
-         * @description Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Per-architecture or per-OS blocks (arch, on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Literal arch arm:/intel: mappings and per-architecture sha256 values preserve both CPUs through Homebrew platform variations. Per-architecture and per-OS blocks (on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Optional siteToken chooses an unused site/catalog token to avoid collisions; upstream file paths and install names retain the original cask token. Without siteToken, tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         post: operations["addTapPackage"];
         delete?: never;
@@ -10662,10 +10662,13 @@ export interface components {
              * @example 1
              */
             id: number;
-            /** @example swiftvm */
+            /**
+             * @description Site/catalog token; may differ from the upstream cask token.
+             * @example swiftvm
+             */
             token: string;
             /**
-             * @description Name brew installs, <owner>/<tap>/<token>
+             * @description Upstream name brew installs, <owner>/<tap>/<cask-token>, independent of the site token
              * @example swiftvm-app/tap/swiftvm
              */
             fullToken: string;
@@ -10738,6 +10741,11 @@ export interface components {
          *     }
          */
         TapPackageAdd: {
+            /**
+             * @description Optional unique site/catalog token, for example stablyai-orca. Defaults to the upstream cask token. Does not change the upstream cask name, tap, sync source or install target. An explicit token must be unused, including removed packages.
+             * @example stablyai-orca
+             */
+            siteToken?: string;
             /**
              * @description Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>
              * @example swiftvm-app/tap/swiftvm

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { installCommand } from '@opennavo/shared';
+import { catalogInstallCommand } from '@/utils/brew';
 import { OnAppIcon, OnCodeText, OnConfirm } from '@opennavo/ui';
 import { useDeepLinkStore } from '@/composables/useDeepLink';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
@@ -32,7 +32,7 @@ const name = computed(() => (target.value ? displayName(target.value.kind, targe
 // request into plain navigation, so `link` never reaches this dialog.
 const command = computed(() =>
   target.value && (target.value.kind === 'cask' || target.value.kind === 'formula')
-    ? installCommand(target.value.kind, target.value.token, names.lookup(target.value.kind, target.value.token)?.tap)
+    ? catalogInstallCommand(target.value.kind, target.value.token, names.lookup(target.value.kind, target.value.token))
     : ''
 );
 

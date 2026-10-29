@@ -22,6 +22,7 @@ export const catalogBaseSnapshot: Schema['CatalogBaseSnapshot'] = {
             installs90d: item.installs90d ?? undefined,
             installs365d: item.installs365d ?? undefined,
             appTargets: item.appTargets ?? undefined,
+            brewToken: item.brewToken ?? undefined,
             tap: item.tap ?? undefined
           }
         ]

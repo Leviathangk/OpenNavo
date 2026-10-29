@@ -1010,8 +1010,8 @@ class TapPackage(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(description='Package ID', examples=[1])]
-    token: Annotated[str, Field(examples=['swiftvm'])]
-    fullToken: Annotated[str, Field(description='Name brew installs, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'])]
+    token: Annotated[str, Field(description='Site/catalog token; may differ from the upstream cask token.', examples=['swiftvm'])]
+    fullToken: Annotated[str, Field(description='Upstream name brew installs, <owner>/<tap>/<cask-token>, independent of the site token', examples=['swiftvm-app/tap/swiftvm'])]
     tap: Annotated[str, Field(examples=['swiftvm-app/tap'])]
     name: Annotated[str, Field(examples=['SwiftVM'])]
     version: Annotated[str, Field(examples=['1.3.0'])]
@@ -1035,6 +1035,7 @@ class TapPackageAdd(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    siteToken: Annotated[str | MISSING, Field(description='Optional unique site/catalog token, for example stablyai-orca. Defaults to the upstream cask token. Does not change the upstream cask name, tap, sync source or install target. An explicit token must be unused, including removed packages.', examples=['stablyai-orca'], max_length=128, min_length=1, pattern='^[a-z0-9][a-z0-9+_.@-]*$')] = MISSING
     cask: Annotated[str, Field(description='Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'], max_length=300, min_length=5, pattern='^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9+_.@-]*$')]
 
 

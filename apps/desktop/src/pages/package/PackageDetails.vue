@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { installCommand, isThirdPartyTap } from '@opennavo/shared';
+import { isThirdPartyTap } from '@opennavo/shared';
+import { catalogInstallCommand } from '@/utils/brew';
 import {
   displayUrl,
   OnButton,
@@ -117,7 +118,9 @@ const items = computed<OnKeyValueItem[]>(() => {
 // Link apps have no install command; their page shows download links instead (store/security plan §4).
 const command = computed(() => {
   const value = kind.value;
-  return value === 'link' ? '' : (detail.value?.installCommand ?? installCommand(value, token.value, local.value?.tap));
+  return value === 'link'
+    ? ''
+    : (detail.value?.installCommand ?? catalogInstallCommand(value, token.value, local.value));
 });
 
 function onCopied(text: string) {
