@@ -13,6 +13,15 @@ import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import { LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared/locales';
 
+const lifecycleCases = JSON.parse(
+  await readFile(new URL('../../../packages/shared/tests/fixtures/packageInstallStates.json', import.meta.url), 'utf8')
+);
+const qaTokens = [
+  ...lifecycleCases.map((_, index) => `qa-lifecycle-${index}`),
+  'qa-spec-metadata',
+  'qa-invalid-repository'
+];
+
 // Former public labels, retained only as regression assertions.
 const translationProvenanceLabels = {
   'en-US': ['AI translation', 'View original', 'AI translated'],
@@ -893,6 +902,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       match &&
       [
         ...seoApps,
+        ...qaTokens,
         'versioned-app@11',
         'plus-app++',
         'ordinary-app',
@@ -1016,6 +1026,33 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                   deprecated: true,
                   homebrewStatus: { state: 'deprecated', reason: 'unmaintained' },
                   deprecation: { reason: 'unmaintained' }
+                }
+              : {}),
+            ...(token === 'qa-spec-metadata'
+              ? {
+                  version: '2.0.0',
+                  license: 'Apache-2.0',
+                  supports: { status: 'known', arm64: true, x86_64: true, requiresRosetta: true },
+                  platforms: [
+                    { tag: 'arm64_sonoma', arch: 'arm64', macos: '14', version: '2.0.0', minMacos: '14' },
+                    { tag: 'ventura', arch: 'x86_64', macos: '13', version: '1.0.0', minMacos: '12' }
+                  ],
+                  repository: {
+                    url: 'https://github.com/acme/example',
+                    stars: 999950,
+                    pushedAt: '2025-10-30T00:00:00Z',
+                    signalsCheckedAt: '2026-10-02T00:00:00Z'
+                  }
+                }
+              : {}),
+            ...(token === 'qa-invalid-repository'
+              ? {
+                  repository: {
+                    url: 'https://github.com/acme/example',
+                    stars: 12345,
+                    signalsCheckedAt: 'not-a-date',
+                    pushedAt: 'not-a-date'
+                  }
                 }
               : {}),
             ...(token === 'facts-app' || token === 'seo-uninstall' ? factsApp : {}),
@@ -1340,8 +1377,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     }
     if (data?.token && data.artifacts) {
       data.facts = factsFrom(data);
+      if (data.token === 'qa-spec-metadata')
+        data.facts.security.identities.push({
+          developer: 'Verified Developer',
+          teamId: 'EXAMPLE123',
+          channels: [],
+          openSource: 'unknown',
+          evidence: evidence('https://example.test/identity')
+        });
       data.collections = [];
-      data.recommendationPaused = false;
+      data.recommendationPaused ??= false;
+      if (data.token.startsWith('qa-lifecycle-'))
+        Object.assign(data, lifecycleCases[Number(data.token.slice('qa-lifecycle-'.length))].fields);
       // L1: current entity decisions can open all ten locales; keep the explicit legacy fixture.
       if (!data.indexing && data.token !== 'versioned-app@11')
         data.indexing = { locales: Object.keys(localePrefixes), notesCount: data.releaseCount };
@@ -1804,6 +1851,70 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.ok(!/Variant App(?! Beta)/.test(title(text) + description(text)), `${page} never says the bare name`);
     }
   });
+  await t.test('lifecycle banners and commands share disabled > deprecated > paused priority', async () => {
+    for (const [index, { name, expected }] of lifecycleCases.entries()) {
+      const response = await fetch(`${origin}/apps/qa-lifecycle-${index}`);
+      const html = await response.text();
+      assert.equal(response.status, 200, name + logs);
+      const page = JSDOM.fragment(html);
+      const banner = page.querySelector('[data-testid="package-lifecycle-banner"]');
+      const command = page.querySelector('[data-testid="package-install-command"]');
+      assert.equal(Boolean(banner), expected !== 'active', name);
+      assert.equal(Boolean(command?.querySelector('code')), expected !== 'disabled', name);
+      assert.equal(Boolean(command?.querySelector('button')), expected !== 'disabled', name);
+      if (banner) {
+        assert.ok(
+          banner.classList.contains(expected === 'disabled' ? 'text-status-danger' : 'text-status-warning'),
+          name
+        );
+        assert.equal(command.querySelector('[role="note"]').textContent.trim(), banner.textContent.trim(), name);
+      }
+    }
+  });
+
+  await t.test(
+    'deduplicated metadata keeps architectures, non-native status, older builds and identity IDs',
+    async () => {
+      const response = await fetch(`${origin}/apps/qa-spec-metadata`);
+      const html = await response.text();
+      assert.equal(response.status, 200, logs);
+      const page = JSDOM.fragment(html);
+      const card = page.querySelector('[data-testid="package-spec-card"]');
+      for (const text of ['Apple silicon', 'Apache-2.0', 'Verified Developer', 'EXAMPLE123'])
+        assert.ok(card.textContent.includes(text), text);
+      const requirements = page.querySelector('[data-testid="package-requirements"]');
+      for (const text of ['Apple silicon', 'Intel', '2.0.0', '1.0.0', 'macOS 12'])
+        assert.ok(requirements.textContent.includes(text), text);
+      assert.ok(requirements.textContent.includes('Not native on Apple silicon'), requirements.textContent);
+      // Bundle IDs and link signatures are checked on the existing Lumen link fixture below.
+    }
+  );
+
+  await t.test('repository SSR links and descriptions are complete and malformed dates stay hidden', async () => {
+    const response = await fetch(`${origin}/apps/qa-spec-metadata`);
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    const page = JSDOM.fragment(html);
+    const card = page.querySelector('[data-testid="package-spec-card"]');
+    assert.ok(card.textContent.includes('★1.0M'), card.textContent);
+    const trigger = card.querySelector('button[aria-describedby]');
+    assert.ok(trigger, 'repository tooltip trigger is associated in SSR');
+    const description = page.querySelector(`[id="${trigger.getAttribute('aria-describedby')}"]`);
+    assert.equal(description?.getAttribute('role'), 'tooltip');
+    assert.ok(description.textContent.includes('Oct 2, 2026'), description.textContent);
+    for (const link of card.querySelectorAll('a[href^="https://"]')) {
+      assert.equal(link.getAttribute('target'), '_blank');
+      assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
+      assert.ok(link.querySelector('svg'), 'external-link indicator');
+    }
+    const invalid = await fetch(`${origin}/apps/qa-invalid-repository`);
+    const invalidPage = JSDOM.fragment(await invalid.text());
+    assert.equal(invalid.status, 200, logs);
+    const invalidCard = invalidPage.querySelector('[data-testid="package-spec-card"]');
+    assert.ok(invalidCard.textContent.includes('★12.3K'));
+    assert.equal(invalidCard.querySelector('button[aria-describedby]'), null);
+  });
+
   await t.test('link apps share /apps and download from the developer instead of installing', async () => {
     const response = await fetch(`${origin}/apps/lumen-notes`, {
       headers: { accept: 'text/html' }
@@ -4152,6 +4263,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     [...requestedTokens].sort(),
     [
       ...seoApps,
+      ...qaTokens,
       'dependency-content-app',
       'facts-app',
       'font-sample',

@@ -1,15 +1,72 @@
-import { describe, expect, it } from 'vitest';
-import { formatRepoStars, repoMaintenanceStatus, repoSignalDays, toPackageRepoSignals } from '../src/utils/repoSignals';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  formatRepoStars,
+  repoAgeDays,
+  repoMaintenanceStatus,
+  repoSignalDays,
+  toPackageRepoSignals
+} from '../src/utils/repoSignals';
 
 describe('repository signals', () => {
-  it.each([
-    [999, '999'],
-    [1000, '1.0K'],
-    [12345, '12.3K'],
-    [1_200_000, '1.2M'],
-    [1_049_999, '1.0M']
-  ])('formats %s stars as %s', (stars, expected) => {
-    expect(formatRepoStars(stars)).toBe(expected);
+  const boundaries = [999, 1000, 12345, 999950, 1_049_999, 1_200_000, 1e9];
+  const localized = [
+    ['en-US', ['999', '1.0K', '12.3K', '1.0M', '1.0M', '1.2M', '1.0B']],
+    ['zh-CN', ['999', '1000.0', '1.2万', '100.0万', '105.0万', '120.0万', '10.0亿']],
+    ['zh-Hant', ['999', '1000.0', '1.2萬', '100.0萬', '105.0萬', '120.0萬', '10.0億']],
+    ['ja-JP', ['999', '1000.0', '1.2万', '100.0万', '105.0万', '120.0万', '10.0億']],
+    ['es-ES', ['999', '1,0\u00a0mil', '12,3\u00a0mil', '1,0\u00a0M', '1,0\u00a0M', '1,2\u00a0M', '1,0 mil millones']],
+    ['pt-BR', ['999', '1,0\u00a0mil', '12,3\u00a0mil', '1,0\u00a0mi', '1,0\u00a0mi', '1,2\u00a0mi', '1,0\u00a0bi']],
+    [
+      'ru-RU',
+      ['999', '1,0\u00a0тыс.', '12,3\u00a0тыс.', '1,0\u00a0млн', '1,0\u00a0млн', '1,2\u00a0млн', '1,0\u00a0млрд']
+    ],
+    ['de-DE', ['999', '1000,0', '12.345,0', '999.950,0', '1,0\u00a0Mio.', '1,2\u00a0Mio.', '1,0\u00a0Mrd.']],
+    ['fr-FR', ['999', '1,0\u00a0k', '12,3\u00a0k', '1,0\u00a0M', '1,0\u00a0M', '1,2\u00a0M', '1,0\u00a0Md']],
+    ['it-IT', ['999', '1,0K', '12,3K', '1,0\u00a0Mln', '1,0\u00a0Mln', '1,2\u00a0Mln', '1,0\u00a0Mld']]
+  ] as const;
+  for (const [locale, expected] of localized) {
+    it.each(boundaries.map((stars, index) => [stars, expected[index]] as const))(
+      `${locale} formats the %s star boundary as %s`,
+      (stars, label) => {
+        expect(formatRepoStars(stars, locale)).toBe(label);
+        expect(formatRepoStars(stars, locale)).not.toMatch(/1000[.,]0\s*M|1050[.,]0\s*K/);
+      }
+    );
+  }
+
+  it('rounds ties consistently and carries into the next compact unit', () => {
+    expect(formatRepoStars(12_350, 'en-US')).toBe('12.4K');
+    expect(formatRepoStars(999_949, 'en-US')).toBe('999.9K');
+    expect(formatRepoStars(999_950, 'en-US')).toBe('1.0M');
+    expect(formatRepoStars(1_050_000, 'en-US')).toBe('1.1M');
+  });
+
+  it.each(['invalid', '2026-13-40', '9999999999999999', '', ' ', null, undefined, 42, {}])(
+    'omits invalid repository dates: %j',
+    value => {
+      const signals = toPackageRepoSignals({ repository: { stars: 12345, signalsCheckedAt: value, pushedAt: value } });
+      expect(signals?.stars).toBe(12345);
+      expect(signals?.checkedAt).toBeUndefined();
+      expect(signals?.pushedAt).toBeUndefined();
+      expect(toPackageRepoSignals({ repository: { signalsCheckedAt: value } })).toBeNull();
+    }
+  );
+
+  it('uses only an injected clock for repository ages and maintenance status', () => {
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => {
+      throw new Error('render must use its injected clock');
+    });
+    try {
+      const now = Date.parse('2026-10-30T00:00:00Z');
+      expect(repoAgeDays('2025-10-30T00:00:00Z', now)).toBe(365);
+      expect(repoSignalDays({ pushedAt: '2025-10-30T00:00:00Z' }, now)).toBe(365);
+      expect(repoMaintenanceStatus({ pushedAt: '2025-10-30T00:00:00Z' }, now)).toBe('current');
+      expect(repoSignalDays({ pushedAt: 'invalid' }, now)).toBeNull();
+      expect(repoSignalDays({ pushedAt: '2027-01-01' }, now)).toBeNull();
+      expect(clock).not.toHaveBeenCalled();
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('reads only the optional repository object and ignores legacy field spellings', () => {

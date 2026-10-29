@@ -31,12 +31,13 @@ function repoText(
     updated: (days: number) => string;
     unmaintained: string;
     archived: string;
-  }
+  },
+  now: number
 ): { value: string; badge?: OnPackageSpecRow['badge'] } {
   if (!signals) return { value: '' };
   const parts: string[] = [];
-  const age = repoSignalDays(signals);
-  const maintenance = repoMaintenanceStatus(signals);
+  const age = repoSignalDays(signals, now);
+  const maintenance = repoMaintenanceStatus(signals, now);
   if (age !== null && maintenance !== 'archived') parts.push(labels.updated(age));
   if (maintenance === 'unmaintained')
     return { value: parts.filter(Boolean).join(' · '), badge: { label: labels.unmaintained, tone: 'warning' } };
@@ -45,7 +46,7 @@ function repoText(
   return { value: parts.filter(Boolean).join(' · ') };
 }
 
-export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale): PackageSpecModel {
+export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, now: number): PackageSpecModel {
   const signals = toPackageRepoSignals(pkg);
   const rows: OnPackageSpecRow[] = [];
   const quick = quickFacts(pkg, t, locale);
@@ -87,11 +88,15 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
   const github = pkg.kind === 'link' && pkg.link?.github;
   const repositoryUrl = repository?.url ?? osi?.url ?? (github ? `https://github.com/${github.repo}` : undefined);
   if (osi || repository || github) {
-    const repo = repoText(signals, {
-      updated: days => t('package.repo.updated', { days }),
-      unmaintained: t('package.repo.unmaintained'),
-      archived: t('package.repo.archived')
-    });
+    const repo = repoText(
+      signals,
+      {
+        updated: days => t('package.repo.updated', { days }),
+        unmaintained: t('package.repo.unmaintained'),
+        archived: t('package.repo.archived')
+      },
+      now
+    );
     rows.push({
       key: 'openSource',
       label: t('package.spec.repository'),
@@ -103,7 +108,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
         signals?.stars === undefined
           ? undefined
           : {
-              label: `★${formatRepoStars(signals.stars)}`,
+              label: `★${formatRepoStars(signals.stars, locale)}`,
               href: repository?.url ?? undefined,
               checked: signals.checkedAt
                 ? t('package.repo.checked', { date: formatDate(signals.checkedAt, { locale }) })

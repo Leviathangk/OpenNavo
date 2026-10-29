@@ -3,6 +3,8 @@ import type { PackageDetail } from '@opennavo/api';
 import type { LocalItem } from '@/ipc/client';
 import { packageSpec } from '@/utils/packageSpec';
 
+const SPEC_NOW = Date.parse('2026-10-30T00:00:00Z');
+
 const t = (key: string) => key;
 const detail = (overrides: Partial<PackageDetail> = {}) =>
   ({
@@ -17,7 +19,7 @@ const detail = (overrides: Partial<PackageDetail> = {}) =>
     artifacts: { apps: [], binaries: [], pkgs: [], entries: [] },
     ...overrides
   }) as PackageDetail;
-const rows = (pkg: PackageDetail) => packageSpec(pkg, null, null, t, 'en-US').rows;
+const rows = (pkg: PackageDetail) => packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW).rows;
 
 describe('desktop quick-info field parity', () => {
   it('restores Ely Office link version, source, GitHub, signature and Bundle IDs', () => {
@@ -98,7 +100,8 @@ describe('desktop quick-info field parity', () => {
       null,
       { actualVersion: '0.9.0', appPaths: ['~/Library/Fonts/Example.otf'] },
       t,
-      'en-US'
+      'en-US',
+      SPEC_NOW
     ).rows;
     expect(spec.find(row => row.key === 'files')?.value).toBe('1 · OTF');
     expect(spec.find(row => row.key === 'fontLocation')?.value).toBe('~/Library/Fonts');
@@ -119,7 +122,7 @@ describe('desktop quick-info field parity', () => {
       bundleIds: ['org.example.app'],
       link: kind === 'link' ? { pricing: 'free', teamId: 'EXAMPLE123', github: { repo: 'acme/example' } } : null
     } as unknown as LocalItem;
-    const spec = packageSpec(null, local, null, t, 'en-US');
+    const spec = packageSpec(null, local, null, t, 'en-US', SPEC_NOW);
     expect(spec.rows.find(row => row.key === 'token')?.value).toBe('example');
     expect(spec.rows.find(row => row.key === 'homepage')?.href).toBe('https://example.com/');
     expect(spec.rows.find(row => row.key === (kind === 'link' ? 'bundle' : 'binaries'))?.value).toBe(
@@ -140,12 +143,46 @@ describe('desktop alternate names', () => {
       });
       const local = { ...pkg, name: pkg.displayName } as unknown as LocalItem;
       const expected = ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? 'vscode, VS Code 编辑器' : 'vscode';
-      for (const spec of [packageSpec(pkg, null, null, t, locale), packageSpec(null, local, null, t, locale)])
+      for (const spec of [
+        packageSpec(pkg, null, null, t, locale, SPEC_NOW),
+        packageSpec(null, local, null, t, locale, SPEC_NOW)
+      ])
         expect(spec.rows.find(row => row.key === 'names')?.value).toBe(expected);
       pkg.names = ['Visual Studio Code', 'VS Code 编辑器'];
-      expect(packageSpec(pkg, null, null, t, locale).rows.some(row => row.key === 'names')).toBe(
+      expect(packageSpec(pkg, null, null, t, locale, SPEC_NOW).rows.some(row => row.key === 'names')).toBe(
         ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale)
       );
     }
+  });
+});
+
+describe('QA spec card regressions', () => {
+  it.each(['cask', 'formula', 'link'] as const)(
+    'keeps a standalone top-level license without OSI data for %s',
+    kind => {
+      const pkg = detail({ kind, license: 'Apache-2.0', openSource: null });
+      const spec = packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW);
+      expect(spec.rows.find(row => row.key === 'license')?.value).toBe('Apache-2.0');
+      expect(spec.rows.some(row => row.key === 'openSource')).toBe(false);
+    }
+  );
+
+  it('keeps stars but omits an invalid checked-date tooltip without throwing', () => {
+    const pkg = Object.assign(detail(), {
+      repository: { url: 'https://github.com/acme/example', stars: 12345, signalsCheckedAt: 'not-a-date' }
+    });
+    expect(() => packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW)).not.toThrow();
+    const spec = packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW);
+    expect(spec.rows.find(row => row.key === 'openSource')?.stars).toMatchObject({
+      label: '★12.3K',
+      checked: undefined
+    });
+  });
+
+  it('localizes repository stars with the interface locale', () => {
+    const pkg = Object.assign(detail(), { repository: { url: 'https://github.com/acme/example', stars: 12345 } });
+    expect(
+      packageSpec(pkg, null, null, t, 'fr-FR', SPEC_NOW).rows.find(row => row.key === 'openSource')?.stars?.label
+    ).toBe('★12,3\u00a0k');
   });
 });

@@ -1,11 +1,83 @@
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { createSSRApp, defineComponent, h, nextTick } from 'vue';
+import { renderToString } from 'vue/server-renderer';
 import { describe, expect, it } from 'vitest';
 import OnPackageSpecCard from '../src/components/OnPackageSpecCard.vue';
 import OnPackageOverview from '../src/components/OnPackageOverview.vue';
 import { withLocale } from './helpers';
 
 describe('Package detail product decisions', () => {
+  it('includes the repository aria-describedby association in SSR output', async () => {
+    const context: { teleports?: Record<string, string> } = {};
+    const html = await renderToString(
+      createSSRApp(OnPackageSpecCard, {
+        checkedLabel: 'Checked',
+        rows: [
+          {
+            key: 'repository',
+            label: 'Repository',
+            stars: {
+              label: '★12.3K',
+              checked: 'Repository data checked October 2, 2026.'
+            }
+          }
+        ]
+      }),
+      context
+    );
+    const page = document.createElement('div');
+    page.innerHTML = html + (context.teleports?.body ?? '');
+    const id = page.querySelector('button')?.getAttribute('aria-describedby');
+    expect(id).toBeTruthy();
+    const description = page.querySelector(`[id="${id}"]`);
+    expect(description?.getAttribute('role')).toBe('tooltip');
+    expect(description?.textContent).toContain('Repository data checked October 2, 2026.');
+  });
+
+  it('uses standard external-link attributes and styling without routing external URLs', () => {
+    const RouterLink = defineComponent({
+      props: ['to'],
+      setup:
+        (props, { slots }) =>
+        () =>
+          h('a', { href: props.to, 'data-router': 'true' }, slots.default?.())
+    });
+    const wrapper = mount(OnPackageSpecCard, {
+      props: {
+        linkAs: RouterLink,
+        rows: [
+          {
+            key: 'repository',
+            label: 'Repository',
+            value: 'GitHub repository',
+            href: 'https://github.com/acme/app',
+            stars: { label: '★12.3K', href: 'https://github.com/acme/app' }
+          },
+          { key: 'homepage', label: 'Homepage', value: 'example.com', href: 'https://example.com/' },
+          { key: 'internal', label: 'Related', value: 'Related app', href: '/apps/example' }
+        ]
+      }
+    });
+    try {
+      const links = wrapper.findAll('a').filter(link => link.attributes('href')?.startsWith('https://'));
+      expect(links).toHaveLength(3);
+      for (const link of links) {
+        expect(link.attributes('target')).toBe('_blank');
+        expect(link.attributes('rel')).toBe('noopener noreferrer');
+        expect(link.attributes('data-router')).toBeUndefined();
+        expect(link.classes()).toEqual(
+          expect.arrayContaining(['inline-flex', 'gap-4px', 'no-underline', 'hover:underline'])
+        );
+        expect(link.find('svg').exists()).toBe(true);
+      }
+      const internal = wrapper.get('[data-router]');
+      expect(internal.attributes('href')).toBe('/apps/example');
+      expect(internal.attributes('target')).toBeUndefined();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('keeps one overall date and puts the repository date in an accessible, tappable star tooltip', async () => {
     const wrapper = mount(OnPackageSpecCard, {
       props: {

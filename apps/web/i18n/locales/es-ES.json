@@ -679,6 +679,7 @@
     },
     "repo": {
       "stars": "★",
+      "checked": "Datos del repositorio comprobados el {date}.",
       "updated": "Actualizado hace {days} días",
       "unmaintained": "Puede que ya no reciba mantenimiento",
       "archived": "Archivado"

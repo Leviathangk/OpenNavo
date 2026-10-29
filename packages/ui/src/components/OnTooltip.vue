@@ -20,7 +20,7 @@ export interface OnTooltipProps {
 const props = withDefaults(defineProps<OnTooltipProps>(), { placement: 'top', delay: 400 });
 defineOptions({ inheritAttrs: false });
 
-defineSlots<{ default?: () => unknown }>();
+defineSlots<{ default?: (props: { describedBy: string | undefined }) => unknown }>();
 
 const id = useId();
 const root = ref<HTMLElement>();
@@ -145,7 +145,7 @@ onBeforeUnmount(hide);
     @focusout="hide"
     @click="toggle"
   >
-    <slot />
+    <slot :described-by="!disabled && content && !lazy ? id : undefined" />
   </span>
   <Teleport v-if="used" to="body">
     <span

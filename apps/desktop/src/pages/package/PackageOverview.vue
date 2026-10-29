@@ -83,7 +83,8 @@ const installNotice = computed(() => {
 });
 
 const installed = computed(() => library.find(kind.value, token.value));
-const spec = computed(() => packageSpec(detail.value, local.value, installed.value, t, appLocale.value));
+const specNow = Date.now();
+const spec = computed(() => packageSpec(detail.value, local.value, installed.value, t, appLocale.value, specNow));
 
 // Bundle IDs that can match an App Store listing: link apps register theirs, and for casks the server names the
 // listing it found. The panel asks Apple itself, so price and availability follow this Mac's storefront.

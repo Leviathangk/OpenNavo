@@ -20,11 +20,11 @@ export interface DesktopPackageSpec {
 
 type Translate = (key: string, named?: Record<string, unknown>) => string;
 
-function repoSummary(signals: PackageRepoSignals | null, t: Translate) {
+function repoSummary(signals: PackageRepoSignals | null, t: Translate, now: number) {
   if (!signals) return { value: '', badge: undefined };
   const values: string[] = [];
-  const days = repoSignalDays(signals);
-  const status = repoMaintenanceStatus(signals);
+  const days = repoSignalDays(signals, now);
+  const status = repoMaintenanceStatus(signals, now);
   if (days !== null && status !== 'archived') values.push(t('package.repo.updated', { days }));
   if (status === 'archived')
     return { value: values.join(' · '), badge: { label: t('package.repo.archived'), tone: 'danger' as const } };
@@ -41,7 +41,8 @@ export function packageSpec(
     | null
     | undefined,
   t: Translate,
-  locale: SiteLocale
+  locale: SiteLocale,
+  now: number
 ): DesktopPackageSpec {
   const signals = toPackageRepoSignals(detail);
   const rows: OnPackageSpecRow[] = [];
@@ -124,7 +125,7 @@ export function packageSpec(
   const osi = detail?.openSource;
   const github = value.kind === 'link' && link?.github;
   if (repository || osi || github) {
-    const summary = repoSummary(signals, t);
+    const summary = repoSummary(signals, t, now);
     rows.push({
       key: 'openSource',
       label: t('package.spec.repository'),
@@ -136,7 +137,7 @@ export function packageSpec(
         signals?.stars === undefined
           ? undefined
           : {
-              label: `★${formatRepoStars(signals.stars)}`,
+              label: `★${formatRepoStars(signals.stars, locale)}`,
               href: repository?.url ?? undefined,
               checked: signals.checkedAt
                 ? t('package.repo.checked', { date: formatDate(signals.checkedAt, { locale }) })

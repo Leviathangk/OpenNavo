@@ -679,6 +679,7 @@
     },
     "repo": {
       "stars": "★",
+      "checked": "リポジトリ情報の確認日：{date}。",
       "updated": "{days} 日前に更新",
       "unmaintained": "メンテナンスが終了している可能性があります",
       "archived": "アーカイブ済み"

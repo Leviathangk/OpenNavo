@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { disabledByHomebrew, packageInstallState } from '../src/lifecycle';
 
 describe('disabledByHomebrew', () => {
@@ -41,4 +42,16 @@ describe('Package install availability', () => {
       packageInstallState({ homebrewStatus: { state: 'disabled' }, deprecated: true, recommendationPaused: true })
     ).toBe('disabled');
   });
+});
+
+const lifecycleCases = JSON.parse(
+  readFileSync(new URL('./fixtures/packageInstallStates.json', import.meta.url), 'utf8')
+) as {
+  name: string;
+  fields: Parameters<typeof packageInstallState>[0];
+  expected: ReturnType<typeof packageInstallState>;
+}[];
+
+it.each(lifecycleCases)('shares the lifecycle priority for $name', ({ fields, expected }) => {
+  expect(packageInstallState(fields)).toBe(expected);
 });

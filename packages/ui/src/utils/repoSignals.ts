@@ -6,6 +6,8 @@
  * object from the package payload. Keeping this view model in the UI package means web and
  * desktop can render the same data without coupling to an API response shape.
  */
+import type { SiteLocale } from '@opennavo/shared';
+
 export interface PackageRepoSignals {
   stars?: number;
   pushedAt?: string;
@@ -40,6 +42,11 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
+function dateValue(value: unknown): string | undefined {
+  const date = stringValue(value);
+  return date && Number.isFinite(Date.parse(date)) ? date : undefined;
+}
+
 /**
  * Adapt a package/API payload to the independent display view model.
  * Missing or malformed optional fields are ignored; a null result means the
@@ -51,8 +58,8 @@ export function toPackageRepoSignals(input: unknown): PackageRepoSignals | null 
   const osi = source ? record(source.openSource) : null;
   const signals: PackageRepoSignals = {
     stars: numberValue(value?.stars),
-    pushedAt: stringValue(value?.pushedAt),
-    checkedAt: stringValue(value?.signalsCheckedAt),
+    pushedAt: dateValue(value?.pushedAt),
+    checkedAt: dateValue(value?.signalsCheckedAt),
     archived:
       typeof value?.archived === 'boolean'
         ? value.archived
@@ -69,16 +76,32 @@ export function toPackageRepoSignals(input: unknown): PackageRepoSignals | null 
   return hasSignal || signals.repoUrl ? signals : null;
 }
 
-/** Format stars using a single decimal below the next unit, avoiding 1050.0K. */
-export function formatRepoStars(stars: number): string {
+/** Locale compact units and half-expand rounding, including carry into the next unit. */
+export function formatRepoStars(stars: number, locale: SiteLocale = 'en-US'): string {
   const value = Math.max(0, Math.round(stars));
-  if (value < 1000) return String(value);
-  if (value < 1_000_000) return `${(Math.floor(value / 100) / 10).toFixed(1)}K`;
-  return `${(Math.floor(value / 100_000) / 10).toFixed(1)}M`;
+  if (value < 1000) return new Intl.NumberFormat(locale).format(value);
+  const options: Intl.NumberFormatOptions = {
+    notation: 'compact',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    roundingMode: 'halfExpand'
+  };
+  const parts = new Intl.NumberFormat(locale, options).formatToParts(value);
+  // Some short locale forms stop at millions (Spanish: 1000 M). The long form
+  // supplies the localized next unit, e.g. "1,0 mil millones", without inventing a suffix.
+  const integer = Number(
+    parts
+      .filter(part => part.type === 'integer')
+      .map(part => part.value)
+      .join('')
+  );
+  if (integer >= 1000 && parts.some(part => part.type === 'compact'))
+    return new Intl.NumberFormat(locale, { ...options, compactDisplay: 'long' }).format(value);
+  return parts.map(part => part.value).join('');
 }
 
 /** Whole elapsed days for a pushed-at timestamp, or null for an invalid/future date. */
-export function repoAgeDays(pushedAt: string, now = Date.now()): number | null {
+export function repoAgeDays(pushedAt: string, now: number): number | null {
   const timestamp = Date.parse(pushedAt);
   if (!Number.isFinite(timestamp) || timestamp > now) return null;
   return Math.floor((now - timestamp) / 86_400_000);
@@ -87,7 +110,7 @@ export function repoAgeDays(pushedAt: string, now = Date.now()): number | null {
 /** Archived takes precedence over the unmaintained warning. */
 export function repoMaintenanceStatus(
   signals: Pick<PackageRepoSignals, 'archived' | 'pushedAt'>,
-  now = Date.now()
+  now: number
 ): 'archived' | 'unmaintained' | 'current' | null {
   if (signals.archived === true) return 'archived';
   if (!signals.pushedAt) return null;
@@ -95,6 +118,6 @@ export function repoMaintenanceStatus(
   return days !== null && days > 365 ? 'unmaintained' : 'current';
 }
 
-export function repoSignalDays(signals: Pick<PackageRepoSignals, 'pushedAt'>, now = Date.now()): number | null {
+export function repoSignalDays(signals: Pick<PackageRepoSignals, 'pushedAt'>, now: number): number | null {
   return signals.pushedAt ? repoAgeDays(signals.pushedAt, now) : null;
 }

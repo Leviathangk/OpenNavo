@@ -1,0 +1,42 @@
+[
+  { "name": "active", "fields": { "homebrewStatus": { "state": "active" } }, "expected": "active" },
+  {
+    "name": "paused without disable object",
+    "fields": { "homebrewStatus": { "state": "active" }, "recommendationPaused": true },
+    "expected": "paused"
+  },
+  {
+    "name": "deprecated without deprecation object",
+    "fields": { "homebrewStatus": { "state": "deprecated", "reason": "unmaintained" } },
+    "expected": "deprecated"
+  },
+  {
+    "name": "disabled without disable object",
+    "fields": { "homebrewStatus": { "state": "disabled", "reason": "discontinued" } },
+    "expected": "disabled"
+  },
+  {
+    "name": "disabled beats deprecated and paused",
+    "fields": {
+      "homebrewStatus": { "state": "disabled" },
+      "deprecation": { "reason": "unmaintained" },
+      "recommendationPaused": true
+    },
+    "expected": "disabled"
+  },
+  {
+    "name": "deprecated beats paused",
+    "fields": { "homebrewStatus": { "state": "active" }, "deprecated": true, "recommendationPaused": true },
+    "expected": "deprecated"
+  },
+  {
+    "name": "legacy disabled beats deprecated",
+    "fields": { "homebrewStatus": null, "disabled": true, "deprecated": true },
+    "expected": "disabled"
+  },
+  {
+    "name": "active Homebrew keeps paused app installable",
+    "fields": { "homebrewStatus": { "state": "active" }, "disabled": true, "disable": { "reason": "stale" } },
+    "expected": "paused"
+  }
+]
