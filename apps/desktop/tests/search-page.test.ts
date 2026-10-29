@@ -15,7 +15,8 @@ afterEach(() => {
 
 describe('Search page', () => {
   it('Shows a failed links sync, keeps cached results, and refreshes after retry', async () => {
-    const { pinia, router } = await setup('/search?q=code');
+    // Count only catalog rows; debounced App Store results can arrive between assertions.
+    const { pinia, router } = await setup('/search?q=code&source=catalog');
     const status = commands.catalogStatus;
     let failed = true;
     vi.spyOn(commands, 'catalogStatus').mockImplementation(async () => {
@@ -50,7 +51,7 @@ describe('Search page', () => {
   });
 
   it('Keeps the last results and the count line while the next search is in flight', async () => {
-    const { pinia, router } = await setup('/search');
+    const { pinia, router } = await setup('/search?source=catalog');
     await startLocalState();
     const search = commands.catalogSearch;
     // One search reads casks and link apps in parallel; hold every read for "cod" until released.

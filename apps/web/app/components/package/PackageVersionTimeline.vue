@@ -16,7 +16,6 @@ export interface OnVersionTimelineProps {
   installedVersion?: string | null;
   /** Initially expanded entry count; collapse the rest (08 §10.6). */
   expandedCount?: number;
-  showOriginal?: boolean;
   /** Entries offering Update to this version on desktop. */
   canUpdate?: (entry: ReleaseEntry) => boolean;
   /** Unloaded older-version count; positive values show Load N earlier versions below. */
@@ -109,7 +108,6 @@ function marker(entry: ReleaseEntry, index: number) {
           :installed="entry.version === installedKey"
           :collapsed="isCollapsed(entry, index)"
           :collapsible="!defaultCollapsed(index) ? false : !isCollapsed(entry, index)"
-          :show-original="showOriginal"
           :can-update="canUpdate?.(entry) ?? false"
           :heading-level="headingLevel"
           :compatibility-labels="compatibilityLabels ? { ...compatibilityLabels, unknown: '' } : undefined"

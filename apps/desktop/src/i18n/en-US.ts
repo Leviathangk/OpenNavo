@@ -2,7 +2,6 @@ import type { MessageSchema } from './index';
 
 const messages: MessageSchema = {
   articles: {
-    viewTranslation: 'View translation',
     title: 'Articles',
     subtitle: 'Mac app picks, reviews, tutorials and roundups',
     all: 'All',
@@ -20,8 +19,6 @@ const messages: MessageSchema = {
     published: 'Published {date}',
     updated: 'Updated {date}',
     editorial: 'OpenNavo Editors',
-    machineTranslated: 'AI translation',
-    viewOriginal: 'View original',
     sourceText: 'This article isn’t available in your language yet, so the original is shown below.',
     testNote: 'How we tested:',
     toc: 'Contents',
@@ -362,7 +359,6 @@ const messages: MessageSchema = {
     release: {
       new: 'New',
       title: 'What’s new in {version}',
-      translated: 'Translated',
       source: {
         github_release: 'From GitHub Releases',
         sparkle: 'From the app’s update feed',
@@ -1022,6 +1018,10 @@ const messages: MessageSchema = {
   },
   permission: {
     relaunch: {
+      updated: 'OpenNavo has been updated. Reopen it to keep using these features.',
+      ineffective:
+        'Still not in effect after reopening. In Full Disk Access, turn OpenNavo off and on again, then reopen OpenNavo.',
+      openSettings: 'Open System Settings',
       body: 'Turned on in System Settings. Reopen OpenNavo to apply it.',
       action: 'Reopen',
       pending: 'Reopen to apply',

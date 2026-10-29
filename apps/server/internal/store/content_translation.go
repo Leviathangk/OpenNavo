@@ -42,15 +42,6 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 	if err := s.CheckContentApp(ctx, ref); err != nil {
 		return out, err
 	}
-	if ref.Entity == "article" {
-		var published bool
-		if err := s.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM articles WHERE published_revision_id=? AND status='published')", ref.ID).Scan(&published).Error; err != nil {
-			return out, err
-		}
-		if !published {
-			return out, gorm.ErrRecordNotFound
-		}
-	}
 	spec := content.Registry[ref.Entity]
 	parentWhere, parentArgs := "id=?", []any{ref.ID}
 	if ref.Entity == "collection_item" {
@@ -79,6 +70,11 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 		return out, gorm.ErrRecordNotFound
 	}
 	where, args := textWhere(ref)
+	if ref.Entity == "article" {
+		// Check publication in the text SELECT itself: a republish between reference
+		// resolution and this read must not return the previous revision's source.
+		where += " AND EXISTS(SELECT 1 FROM articles a WHERE a.published_revision_id=i.revision_id AND a.status='published')"
+	}
 	args = append(args, out.SourceLocale)
 	var raw json.RawMessage
 	if err := s.contentJSON(ctx, &raw, "SELECT to_jsonb(i) FROM "+spec.Table+" i WHERE "+where+" AND locale=?", args...); err != nil {

@@ -16,7 +16,7 @@ import (
 
 func tapView(cask store.TapCask) map[string]any {
 	view := map[string]any{
-		"id": cask.PackageID, "token": cask.Token, "fullToken": cask.Tap + "/" + cask.Token, "tap": cask.Tap,
+		"id": cask.PackageID, "token": cask.Token, "fullToken": cask.FullToken, "tap": cask.Tap,
 		"name": cask.Name, "version": cask.Version, "sourcePath": cask.SourcePath,
 		"sourceUrl": "https://github.com/" + homebrew.TapRepository(cask.Tap) + "/blob/HEAD/" + cask.SourcePath,
 		"headSha":   nil, "checkedAt": cask.CheckedAt, "lastError": nil, "removed": cask.RemovedAt != nil, "createdAt": cask.CreatedAt,
@@ -43,10 +43,49 @@ func (s *Service) listTapPackages(ctx context.Context) (any, error) {
 }
 
 func (s *Service) readTapCandidate(ctx context.Context, in Input) (*taps.Candidate, error) {
+	siteToken, custom := in.Body["siteToken"]
+	if custom {
+		value, ok := siteToken.(string)
+		if !ok || !homebrew.ValidCaskToken(value) {
+			return nil, domain.Rejected("tap_site_token_invalid")
+		}
+	}
 	if s.Taps == nil {
 		return nil, domain.Internal(errors.New("tap reader is not configured"))
 	}
-	return s.Taps.Read(ctx, strings.TrimSpace(text(in.Body, "cask")))
+	candidate, err := s.Taps.Read(ctx, strings.TrimSpace(text(in.Body, "cask")))
+	if err == nil && custom {
+		candidate.Package.Token = siteToken.(string)
+	}
+	return candidate, err
+}
+
+func tapOwner(ctx context.Context, st *store.Store, candidate *taps.Candidate, custom bool) (*store.CaskOwner, error) {
+	if custom {
+		// Site routes are shared by casks and link apps, including removed entries.
+		if err := st.LinkTokenAvailable(ctx, candidate.Package.Token, 0); err != nil {
+			var app *domain.AppError
+			if errors.As(err, &app) && app.Code == domain.CodeConflict {
+				return nil, &domain.AppError{Code: domain.CodeConflict, HTTPStatus: http.StatusConflict, Msg: "rejected: tap_site_token_taken:" + candidate.Package.Token}
+			}
+			return nil, err
+		}
+	}
+	owner, err := st.CaskOwner(ctx, candidate.Package.Token)
+	if err != nil {
+		return nil, err
+	}
+	if err := taps.Conflict(owner, candidate.Tap, candidate.Package.Token); err != nil {
+		return nil, err
+	}
+	upstream, err := st.TrackedCaskOwner(ctx, candidate.Package.FullToken)
+	if err != nil {
+		return nil, err
+	}
+	if upstream != nil {
+		return nil, &domain.AppError{Code: domain.CodeConflict, HTTPStatus: http.StatusConflict, Msg: "rejected: tap_cask_already_added:" + candidate.Package.FullToken}
+	}
+	return owner, nil
 }
 
 func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, error) {
@@ -60,11 +99,9 @@ func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, 
 			return nil, err
 		}
 	}
-	owner, err := s.Store.CaskOwner(ctx, candidate.Token)
+	_, custom := in.Body["siteToken"]
+	owner, err := tapOwner(ctx, s.Store, candidate, custom)
 	if err != nil {
-		return nil, err
-	}
-	if err := taps.Conflict(owner, candidate.Tap, candidate.Token); err != nil {
 		return nil, err
 	}
 	if domain.CurrentOperation(ctx).DryRun {
@@ -74,11 +111,7 @@ func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, 
 		if err := store.LockCatalogWrites(ctx, st.DB); err != nil {
 			return nil, err
 		}
-		owner, err := st.CaskOwner(ctx, candidate.Token)
-		if err != nil {
-			return nil, err
-		}
-		if err := taps.Conflict(owner, candidate.Tap, candidate.Token); err != nil {
+		if _, err := tapOwner(ctx, st, candidate, custom); err != nil {
 			return nil, err
 		}
 		now := s.now()

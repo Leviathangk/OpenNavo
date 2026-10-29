@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
-import { installCommand, withRecentReturn } from '@opennavo/shared';
+import { withRecentReturn } from '@opennavo/shared';
+import { catalogInstallCommand } from '@/utils/brew';
 import { architectures, displayUrl, OnPackageOverview, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
@@ -55,7 +56,9 @@ const description = computed(
 // Link apps have no install command; their page shows download links instead (store/security plan §4).
 const command = computed(() => {
   const value = kind.value;
-  return value === 'link' ? '' : (detail.value?.installCommand ?? installCommand(value, token.value, local.value?.tap));
+  return value === 'link'
+    ? ''
+    : (detail.value?.installCommand ?? catalogInstallCommand(value, token.value, local.value));
 });
 
 const messages = useUiMessages();
@@ -191,7 +194,6 @@ function onCopied(text: string) {
     :screenshots="shots"
     :screenshots-label="t('package.screenshots')"
     :has-about="Boolean(description)"
-    :about-machine-translated="Boolean(detail?.machineTranslated)"
     :caveats="detail?.caveats"
     :caveats-title="t('package.caveats')"
     :command="command"

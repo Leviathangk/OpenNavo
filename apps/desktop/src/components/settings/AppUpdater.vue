@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n';
 import { formatPercent } from '@opennavo/shared';
 import { OnButton } from '@opennavo/ui';
 import { useAppLocale } from '@/composables/useAppLocale';
-import { useToasts } from '@/composables/useToasts';
 import { useAppUpdaterStore } from '@/stores/appUpdater';
 import SettingRow from './SettingRow.vue';
 
@@ -12,7 +11,6 @@ const props = defineProps<{ currentVersion: string | null }>();
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const updater = useAppUpdaterStore();
-const toasts = useToasts();
 const hint = computed(() => {
   switch (updater.state) {
     case 'checking':
@@ -41,14 +39,7 @@ async function openOrRestart() {
     updater.show();
     return;
   }
-  try {
-    await updater.restart();
-  } catch (error) {
-    toasts.push({
-      tone: 'warning',
-      title: String(error).includes('active_tasks') ? t('updater.busy') : t('errors.actionFailed')
-    });
-  }
+  await updater.restart();
 }
 </script>
 

@@ -49,6 +49,7 @@ SELECTORS: dict[str, dict[str, Any]] = {
         "limit": {"type": "integer", "minimum": 1, "maximum": 16000, "default": 8000},
     },
     "package_refresh": {"mode": {"type": "string", "enum": ["resync"], "default": "resync"}},
+    "package_set_enabled": {"enabled": {"type": "boolean"}},
     "package_set_icon": {"remove": {"type": "boolean", "default": False}},
     "collection_publish": {
         "action": {"type": "string", "enum": ["publish", "unpublish"], "default": "publish"}
@@ -148,6 +149,13 @@ def normalize_arguments(spec: ToolSpec, args: dict[str, Any]) -> None:
 
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "package_set_enabled": (
+        " Set catalog visibility, matching the admin UI: enabled=true clears hidden;"
+        " enabled=false sets hidden. Homebrew and stale-version disabled flags and removed"
+        " state remain in effect. dry_run returns the before/after hidden state without"
+        " persisting changes. Uses the same audit, revisions and cache/sitemap invalidation"
+        " as package_update_meta."
+    ),
     "listing_gaps": (
         " Defaults to visible, enabled, current non-font apps: hidden=false, disabled=false,"
         " removed=false and is_font=false. Override those filters for another scope. total"
@@ -159,6 +167,12 @@ USAGE = {
         " Supplying id reads one release; list filters do not apply to that mode."
     ),
     "translations_write": (
+        " For articles, prefer article_id (API articleId): read with mode=read,"
+        " entity=article and article_id; write with ref.entity=article and article_id."
+        " The server resolves the published revision. If id (read) or ref.id (write)"
+        " is also supplied, it must match article_get published.id. Without article_id,"
+        " use that published.id as id/ref.id; ambiguous article IDs are rejected."
+        " Publish drafts first; draft translations are unsupported."
         " For writes, omit ref.secondaryId except for collection_item, where it is the"
         " positive package ID (ref.id is the collection ID). Never send null or zero."
     ),
@@ -235,8 +249,11 @@ USAGE = {
     "tap_package_add": (
         " cask is what brew install --cask takes, e.g. swiftvm-app/tap/swiftvm (tap"
         " swiftvm-app/tap = github.com/swiftvm-app/homebrew-tap). The cask file is read from"
-        " GitHub without running Ruby; arch, on_arm, on_intel, on_<macos> and language blocks or"
-        " local variables are rejected with their line. Official Homebrew tokens cannot be added."
+        " GitHub without running Ruby; literal arch arm:/intel: and matching sha256 selectors"
+        " preserve both CPUs. on_arm, on_intel, on_<macos>, language blocks and local variables"
+        " are rejected with their line. Optional site_token selects a unique catalog token for"
+        " collisions, e.g. cask stablyai/orca/orca with site_token stablyai-orca. Install and sync"
+        " keep the upstream name. Omitting site_token retains the existing token collision rules."
         " Adding records every version the file's newest 100 commits declare (the dry run lists"
         " them as versions), so release notes can be written for them right away."
     ),
@@ -315,6 +332,13 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
             ),
         }
         required = ["package" if key == "id" else key for key in required]
+    if spec.name == "package_set_enabled":
+        properties = {
+            key: value
+            for key, value in properties.items()
+            if key in {"package", "enabled", "dry_run", "expected_revision", "idempotency_key"}
+        }
+        required = ["package", "enabled"]
     if spec.name in {"revision_restore", "package_set_icon", "feature_upsert"}:
         required = []
     if spec.name == "package_text_get":
@@ -579,6 +603,8 @@ class AdapterTool(Tool):
                         raise AgentError("1002")
                     current += 1
             args["id"] = package
+        if self.name == "package_set_enabled":
+            args["hidden"] = not args.pop("enabled")
         if self.name == "listing_gaps":
             args.setdefault(
                 "gaps",

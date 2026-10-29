@@ -273,6 +273,11 @@ pub fn reject_write(database: &Database, target: &TaskTarget) -> Result<(), AppE
     if target.kind == TaskKind::Link {
         return Err(AppError::new("E_NOT_INSTALLABLE", "link_target"));
     }
+    if target.kind == TaskKind::Cask && target.token.contains('/') {
+        // Planned removals may name a verified installed cask outside the catalog.
+        crate::brew::args::split_cask_token(&target.token)?;
+        return Ok(());
+    }
     // A caller cannot bypass the guard by relabelling a link as a cask. Formula
     // tokens occupy a separate namespace and local-app plans use an app identity.
     if target.kind == TaskKind::Cask

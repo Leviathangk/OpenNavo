@@ -74,6 +74,17 @@ class MCPDeploymentTests(unittest.TestCase):
         self.assertIn('@internalSitemap path /api/v1/sitemap/packages\n\thandle @internalSitemap {\n\t\trespond 404', api)
         self.assertLess(api.index('handle @internalSitemap {'), api.index('handle @public {'))
 
+    def test_admin_health_routes_are_json_before_the_spa_fallback(self):
+        text = (ROOT / 'caddy/Caddyfile').read_text()
+        admin = text[text.index('{$ADMIN_DOMAIN} {'):]
+        route = '@adminHealth path /api/health /readyz\n\thandle @adminHealth {'
+        self.assertIn(route, admin)
+        health = admin[admin.index(route):admin.index('\thandle /admin-api/* {')]
+        self.assertIn('\t\theader Content-Type application/json', health)
+        self.assertIn('\t\troot * /srv/admin', health)
+        self.assertIn('\t\tfile_server', health)
+        self.assertLess(admin.index(route), admin.index('\thandle {'))
+
     def test_monitoring_requires_exactly_six_current_schedules(self):
         def responses(count):
             values = [

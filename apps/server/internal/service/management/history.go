@@ -121,6 +121,13 @@ func historyRefs(ctx context.Context, st *store.Store, op, entity string, in Inp
 		id = valueID(m["id"])
 	}
 	if entity == "translation" {
+		if op == "FixTranslation" {
+			r, err := translationManageRef(ctx, st, op, in, false)
+			if err != nil {
+				return nil, err
+			}
+			return []content.Ref{r}, nil
+		}
 		if r, err := contentRef(in.Body["ref"]); err == nil {
 			return []content.Ref{r}, nil
 		}

@@ -11,6 +11,21 @@ import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
+import { LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared/locales';
+
+// Former public labels, retained only as regression assertions.
+const translationProvenanceLabels = {
+  'en-US': ['AI translation', 'View original', 'AI translated'],
+  'zh-CN': ['AI 翻译', '查看原文'],
+  'ja-JP': ['AI 翻訳', '原文を見る', '原文を表示'],
+  'es-ES': ['Traducción con IA', 'Ver original'],
+  'pt-BR': ['Tradução por IA', 'Ver original'],
+  'ru-RU': ['Перевод ИИ', 'Открыть оригинал', 'Показать оригинал'],
+  'de-DE': ['KI-Übersetzung', 'Original ansehen', 'KI-übersetzt'],
+  'fr-FR': ['Traduction IA', 'Voir l’original', 'Traduit par IA'],
+  'it-IT': ['Traduzione con IA', 'Mostra l’originale', 'Tradotto con IA'],
+  'zh-Hant': ['AI 翻譯', '檢視原文']
+};
 
 // Check the rendered HTML that crawlers receive. Empty alt is valid for explicit decorations and for an
 // image inside a named graphic, such as OnAppIcon's standalone mode; content images need their own text.
@@ -494,7 +509,34 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   };
   const roundup = zh => ({
     ...roundupCard(zh),
-    bodyMarkdown: `## ${zh ? '怎么选' : 'What to compare'}\n\nPick by task.\n\n::app[ordinary-app]\n\n## ${zh ? '对比' : 'Side by side'}\n\n| App | Price |\n| --- | --- |\n| A | Free |\n\n::app[facts-app]\n\n::app[missing-app]`,
+    bodyMarkdown: [
+      `## ${zh ? '怎么选' : 'What to compare'}`,
+      'Pick by task.',
+      '::app[ordinary-app]',
+      `## ${zh ? '对比' : 'Side by side'}`,
+      '| App | Price |\n| --- | --- |\n| A | Free |',
+      '::app[facts-app]',
+      '::app[missing-app]',
+      '[Relative app](/apps/ordinary-app?notes=1&original=1#install)',
+      '[Absolute app](https://opennavo.com/es/apps/ordinary-app#install)',
+      '[WWW app](https://www.opennavo.com/ru/apps/ordinary-app)',
+      '[Traditional app](/zh-hant/apps/ordinary-app)',
+      '[Simplified app](/zh/apps/ordinary-app)',
+      '[Dotted app](/apps/tool.app)',
+      '[Dotted label](/background-items/com.Example.js)',
+      '[Article feed](/articles/feed.xml)',
+      '[App feed](/es/apps/ordinary-app/feed.xml)',
+      '[Collection feed](/collections/picks/feed.xml)',
+      '[API](/api/v1/articles?raw=1#data)',
+      '[Asset](https://opennavo.com/_og/article.png)',
+      '[Other feed](/articles/feed.json)',
+      '[External](https://vendor.example/docs)',
+      '[Anchor](#install)',
+      '[Email](mailto:reader@example.test)',
+      '```md\n[Block](/zh/apps/ordinary-app)\n```',
+      '`[Inline](/zh-hant/apps/ordinary-app)`',
+      '![Article capture](/images/article-capture.png)'
+    ].join('\n\n'),
     testNote: 'MacBook Pro (M4), macOS 26.',
     seoTitle: null,
     seoDescription: null,
@@ -503,7 +545,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     author,
     sources: [{ title: 'Vendor docs', url: 'https://vendor.example/docs' }],
     packages: [appSummary('ordinary-app', 'Ordinary App'), appSummary('facts-app', 'Facts App')],
-    images: [],
+    images: [{ url: '/images/article-capture.png', width: 1280, height: 800 }],
     related: [tutorialCard],
     revision: 2
   });
@@ -534,6 +576,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   const packageQueries = [];
   // App list total, so a cached list page can be made to run past its end.
   let packagesTotal = 50;
+  let hotVersion = '';
+  let hotFailure = '';
+  const hotReads = new Map();
   let sitemapPackageRequests = 0;
   const listCapabilities = [];
   const api = createServer((req, res) => {
@@ -544,7 +589,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     let data;
     let status = 200;
     const lifecycle = /^\/api\/v1\/packages\/cask\/([^/]+)\/lifecycle$/.exec(path)?.[1];
-    if (path.startsWith('/api/v1/seo/')) {
+    if (
+      [
+        '/api/v1/packages',
+        '/api/v1/packages/cask/ordinary-app',
+        '/api/v1/packages/cask/ordinary-app/releases'
+      ].includes(path)
+    )
+      hotReads.set(path, (hotReads.get(path) ?? 0) + 1);
+    if (hotFailure && path === hotFailure) {
+      status = 503;
+      data = null;
+    } else if (path.startsWith('/api/v1/seo/')) {
       seoApiRequests.push(path);
       status = 404;
       data = null;
@@ -656,7 +712,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         summary: 'Synthetic package summary',
         iconUrl: null,
         accentColor: null,
-        version: '11.0',
+        version: hotVersion || '11.0',
         primaryCategory: null,
         installs30d: 10,
         rank30d: 1,
@@ -778,7 +834,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           hasNotes: true,
           summary: null,
           sections: [],
-          bodyMarkdown: 'Release fixture notes',
+          bodyMarkdown: `Release fixture notes${hotVersion ? ` revision ${hotVersion}` : ''}`,
           translation: { status: 'manual', locale: locale ?? 'en-US' }
         })),
         stats: {
@@ -884,7 +940,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
               token === 'ordinary-app'
                 ? `Revision ${revision} of a synthetic package.`
                 : 'A synthetic package for SSR regression tests.',
-            version: '11.0',
+            version: token === 'ordinary-app' && hotVersion ? hotVersion : '11.0',
             versionChangedAt: '2026-01-01T00:00:00Z',
             tap: 'homebrew/cask',
             installCommand: `brew install --cask ${token}`,
@@ -913,7 +969,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             sourceUrl: 'https://example.test/source',
             formulaeUrl: 'https://example.test/package',
             sourceLocale: 'en-US',
-            machineTranslated: false,
+            machineTranslated: token === 'ordinary-app',
             ...(indexing[token] ? { indexing: indexing[token] } : {}),
             ...(['dependency-content-app', 'reverse-dependency-app'].includes(token)
               ? {
@@ -1087,6 +1143,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         slug: 'choose-a-screenshot-app',
         article: roundup((query.get('locale') ?? req.headers['accept-language']) === 'zh-CN')
       };
+    } else if (path === '/api/v1/articles/provenance-check') {
+      const locale = query.get('locale') ?? req.headers['accept-language'] ?? 'en-US';
+      data = {
+        state: 'published',
+        slug: 'provenance-check',
+        article: {
+          ...roundup(false),
+          slug: 'provenance-check',
+          locale,
+          availableLocales: [...SITE_LOCALES],
+          machineTranslated: true
+        }
+      };
     } else if (path === '/api/v1/articles/old-slug') {
       data = { state: 'moved', slug: 'choose-a-screenshot-app' };
     } else if (path === '/api/v1/articles/pulled-article') {
@@ -1133,12 +1202,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         slug: 'editors',
         title: 'Code editors that start in under a second',
         subtitle: 'Lightweight picks',
-        body: null,
+        body: 'Collection introduction.',
         coverUrl: null,
         itemCount: 0,
         updatedAt: '2026-10-01T00:00:00Z',
         sourceLocale: 'en-US',
-        machineTranslated: false,
+        machineTranslated: true,
         items: []
       };
     } else if (path === '/api/v1/browse') {
@@ -2450,7 +2519,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     // Recently Updated is a list like /apps, paginated pages included. (Later tests need /recent itself
     // uncached by the route cache, so these are other languages' URLs.)
     for (const path of ['/pt/recent', '/ru/recent?page=2', '/es/recent?page=2&size=12'])
-      assert.deepEqual(await edge(path), [200, SHORT_EDGE], path);
+      assert.deepEqual(await edge(path), [200, 'max-age=60, stale-while-revalidate=300, stale-if-error=300'], path);
     // Feeds: an app's release feed is purged with the app, so it keeps long; the others expire like lists.
     for (const path of ['/apps/ordinary-app/feed.xml', '/zh/apps/ordinary-app/feed.xml']) {
       const response = await fetch(`${origin}${path}`);
@@ -3487,6 +3556,26 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(zh.html.includes('如何选择截图工具'));
     assert.ok(zh.html.includes('href="/zh/articles/feed.xml"'));
   });
+  await t.test('public pages hide translation provenance in every site locale', async () => {
+    for (const locale of SITE_LOCALES) {
+      const { prefix } = LOCALE_METADATA[locale];
+      for (const path of ['/articles/provenance-check', '/apps/ordinary-app', '/collections/editors']) {
+        const response = await fetch(`${origin}${prefix}${path}`);
+        const html = await response.text();
+        assert.equal(response.status, 200, `${locale} ${path}: ${logs}`);
+        const document = JSDOM.fragment(html);
+        for (const node of document.querySelectorAll('script, style')) node.remove();
+        const visible = document.textContent;
+        for (const label of translationProvenanceLabels[locale])
+          assert.ok(!visible.includes(label), `${locale} ${path}: ${label}`);
+        assert.ok(html.includes('machineTranslated'), 'API provenance remains in the payload');
+        assert.equal(
+          document.querySelector('link[rel="canonical"]')?.getAttribute('href'),
+          `https://example.test${prefix}${path}`
+        );
+      }
+    }
+  });
   await t.test('article pages render the full body with honest structured data and languages', async () => {
     const response = await fetch(`${origin}/zh/articles/choose-a-screenshot-app`, {
       headers: { accept: 'text/html' }
@@ -3500,7 +3589,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(html.includes('href="#对比"'), 'table of contents links to anchors');
     assert.equal([...html.matchAll(/data-testid="article-app-card"/g)].length, 2, 'unknown apps render no card');
     assert.ok(html.includes('当前目录数据'));
-    assert.ok(html.includes('AI 翻译') && html.includes('href="/articles/choose-a-screenshot-app"'), 'view original');
+    const byline = JSDOM.fragment(html).querySelector('[data-testid="article-byline"]');
+    assert.ok(byline && !/AI 翻译|查看原文/.test(byline.textContent), 'translation provenance is hidden');
+    assert.ok(!byline.querySelector('a[href="/articles/choose-a-screenshot-app"]'), 'no provenance link');
     assert.ok(html.includes('href="/zh/authors/lin-wei"'));
     assert.ok(html.includes('<time datetime="2026-10-12T10:00:00Z">'), 'publication date');
     assert.ok(html.includes('<time datetime="2026-10-14T10:00:00Z">'), 'a later update shows its own date');
@@ -3559,6 +3650,45 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const app = await (await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } })).text();
     assert.ok(/data-testid="package-articles"[\s\S]*href="\/articles\/choose-a-screenshot-app"/.test(app));
     assert.ok(app.includes('"@id":"https://example.test/apps/ordinary-app#app"'));
+  });
+  await t.test('article body links follow the page locale, including fallback text and cached responses', async () => {
+    // Each request has the same article revision; the body payload key already separates locales.
+    for (const prefix of ['/zh', '/ja', '/zh-hant', '/es', '/ru', '', '/zh']) {
+      const response = await fetch(`${origin}${prefix}/articles/choose-a-screenshot-app`);
+      const html = await response.text();
+      assert.equal(response.status, 200, logs);
+      const document = new JSDOM(html).window.document;
+      const body = document.querySelector('[data-testid="article-body"]');
+      const links = new Map([...body.querySelectorAll('a')].map(link => [link.textContent, link]));
+      const expected = {
+        'Relative app': `${prefix}/apps/ordinary-app?notes=1&original=1#install`,
+        'Absolute app': `${prefix}/apps/ordinary-app#install`,
+        'WWW app': `${prefix}/apps/ordinary-app`,
+        'Traditional app': `${prefix}/apps/ordinary-app`,
+        'Simplified app': `${prefix}/apps/ordinary-app`,
+        'Dotted app': `${prefix}/apps/tool.app`,
+        'Dotted label': `${prefix}/background-items/com.Example.js`,
+        'Article feed': `${prefix}/articles/feed.xml`,
+        'App feed': `${prefix}/apps/ordinary-app/feed.xml`,
+        'Collection feed': `${prefix}/collections/picks/feed.xml`,
+        API: '/api/v1/articles?raw=1#data',
+        Asset: '/_og/article.png',
+        'Other feed': '/articles/feed.json',
+        External: 'https://vendor.example/docs',
+        Anchor: '#install',
+        Email: 'mailto:reader@example.test'
+      };
+      for (const [label, href] of Object.entries(expected)) {
+        assert.equal(links.get(label)?.getAttribute('href'), href, `${prefix || 'English'}: ${label}`);
+        if (href.startsWith('/') || href.startsWith('#'))
+          assert.equal(links.get(label)?.hasAttribute('target'), false, `${label} stays in this tab`);
+      }
+      assert.equal(links.get('External').getAttribute('target'), '_blank');
+      assert.equal(body.querySelector('pre code').textContent, '[Block](/zh/apps/ordinary-app)\n');
+      assert.equal(body.querySelector('p code').textContent, '[Inline](/zh-hant/apps/ordinary-app)');
+      assert.equal(body.querySelector('img').getAttribute('src'), '/images/article-capture.png');
+      assert.ok(html.includes(`article-body:choose-a-screenshot-app:${prefix.slice(1) || 'en'}:2`));
+    }
   });
   await t.test('article languages closed for indexing are noindex and absent from hreflang', async () => {
     const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
@@ -3706,6 +3836,95 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(articles.includes('<loc>https://example.test/articles</loc>'));
     assert.ok((await group('authors')).includes('<loc>https://example.test/authors/lin-wei</loc>'));
     assert.ok(!(await group('en-static')).includes('<loc>https://example.test/articles</loc>'));
+  });
+  await t.test(
+    'hot page caches isolate locales and query variants, invalidate content, and never store 503s',
+    async () => {
+      const paths = [
+        '/recent',
+        '/ja/recent?page=2',
+        '/apps/ordinary-app/versions',
+        '/zh/apps/ordinary-app/versions?notes=1'
+      ];
+      const prefixes = ['/recent', '/ja/recent', '/apps/ordinary-app', '/zh/apps/ordinary-app'];
+      const request = async path => {
+        const response = await fetch(origin + path, { headers: { accept: 'text/html' } });
+        return { response, html: await response.text() };
+      };
+      const imageURL = html => /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
+      try {
+        await invalidatePaths(prefixes);
+        const before = [];
+        for (const path of paths) {
+          const first = await request(path);
+          assert.equal(first.response.status, 200, path);
+          assert.match(
+            first.response.headers.get('cache-control'),
+            path.includes('/recent') ? /s-maxage=60/ : /s-maxage=21600/
+          );
+          const reads = [...hotReads];
+          const second = await request(path);
+          assert.equal(second.html, first.html, `${path}: warm HTML`);
+          assert.deepEqual([...hotReads], reads, `${path}: a cache hit must not call the API`);
+          before.push(first.html);
+        }
+        assert.notEqual(imageURL(before[0]), imageURL(before[1]), 'localized images have separate URLs');
+        assert.notEqual(imageURL(before[2]), imageURL(before[3]), 'localized app images have separate URLs');
+        hotVersion = '11.99';
+        assert.equal((await request(paths[2])).html, before[2], 'content is cached until the change-feed purge');
+        await invalidatePaths(prefixes);
+        for (const [index, path] of paths.entries()) {
+          const updated = await request(path);
+          assert.equal(updated.response.status, 200);
+          assert.ok(updated.html.includes('11.99'), `${path}: new version after invalidation`);
+          if (path.includes('/versions'))
+            assert.notEqual(imageURL(updated.html), imageURL(before[index]), 'content version rotates OG URL');
+        }
+        for (const [path, failingAPI] of [
+          ['/recent', '/api/v1/packages'],
+          ['/apps/ordinary-app/versions', '/api/v1/packages/cask/ordinary-app/releases']
+        ]) {
+          await invalidatePaths(prefixes);
+          hotFailure = failingAPI;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const reads = hotReads.get(failingAPI);
+            const failed = await request(path);
+            assert.equal(failed.response.status, 503, path);
+            for (const header of ['cache-control', 'cdn-cache-control', 'cloudflare-cdn-cache-control'])
+              assert.equal(failed.response.headers.get(header), 'no-store', `${path}: ${header}`);
+            assert.ok(hotReads.get(failingAPI) > reads, 'an error must be retried rather than cached');
+          }
+          hotFailure = '';
+          assert.equal((await request(path)).response.status, 200, 'recovery needs no cache purge');
+        }
+      } finally {
+        hotFailure = '';
+        hotVersion = '';
+        await invalidatePaths(prefixes);
+      }
+    }
+  );
+  await t.test('OG images reuse bounded storage and advertise immutable caching only for valid images', async () => {
+    const html = await (await fetch(origin + '/ja/about')).text();
+    const url = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    assert.ok(url);
+    assert.match(url, /build_[^,]+/, 'shared template/font edits rotate the build input in the signed URL');
+    const local = url.replace('https://example.test', origin);
+    const first = await fetch(local);
+    assert.equal(first.status, 200, logs);
+    const bytes = Buffer.from(await first.arrayBuffer());
+    const second = await fetch(local);
+    assert.equal(second.status, 200, logs);
+    assert.equal(second.headers.get('x-og-cache'), 'HIT');
+    assert.deepEqual(Buffer.from(await second.arrayBuffer()), bytes);
+    assert.equal(second.headers.get('etag'), first.headers.get('etag'));
+    assert.match(second.headers.get('cache-control'), /max-age=2592000.*immutable/);
+    assert.match(second.headers.get('vary'), /host/i);
+    assert.match(second.headers.get('vary'), /accept-encoding/i);
+    const invalid = await fetch(local.replace(/s_[^,/.]+/, 's_invalid'));
+    assert.ok(invalid.status >= 400, 'an invalid signature is rejected');
+    assert.equal(invalid.headers.get('cache-control'), 'no-store');
+    await invalid.arrayBuffer();
   });
   // Moves the server clock, so it runs last.
   await t.test('a cached page that turns into a 404 stops answering 200 once it expires', async () => {

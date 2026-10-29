@@ -47,6 +47,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
   const appManagement = computed(() => paneState('app_management', status.value));
   const fullDiskAccess = computed(() => paneState('full_disk_access', status.value));
   const relaunchRequired = computed(() => status.value?.relaunchRequired ?? false);
+  const relaunchIneffective = computed(() => status.value?.relaunchIneffective ?? false);
   const appManagementPending = computed(() => panePending('app_management', status.value));
   const fullDiskAccessPending = computed(() => panePending('full_disk_access', status.value));
 
@@ -97,6 +98,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
     appManagement,
     fullDiskAccess,
     relaunchRequired,
+    relaunchIneffective,
     appManagementPending,
     fullDiskAccessPending,
     pending,

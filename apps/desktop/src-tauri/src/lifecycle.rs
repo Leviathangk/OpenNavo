@@ -288,6 +288,15 @@ async fn finish_quit<R: tauri::Runtime>(
         return;
     }
     if code == tauri::RESTART_EXIT_CODE {
+        #[cfg(target_os = "macos")]
+        match crate::relaunch::reopen(&core.data_dir, crate::relaunch::Reason::User) {
+            Ok(true) => {
+                app.exit(0);
+                return;
+            }
+            Ok(false) => {}
+            Err(error) => log::warn!("LaunchServices relaunch failed: {error}"),
+        }
         app.request_restart();
     } else {
         app.exit(code);

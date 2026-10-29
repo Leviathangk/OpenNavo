@@ -22,7 +22,6 @@ import StorySection from '../StorySection.vue';
       <OnChip tone="danger" outline>Disabled</OnChip>
     </StoryRow>
     <StoryRow label="Outline">
-      <OnChip tone="outline">Machine translation</OnChip>
       <OnChip tone="outline">Patch</OnChip>
     </StoryRow>
     <StoryRow label="Medium size">

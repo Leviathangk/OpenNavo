@@ -15,6 +15,9 @@ import { api } from '@/api';
 import { commands } from '@/ipc/client';
 import AppUpdater from '@/components/settings/AppUpdater.vue';
 import { setup } from './helpers';
+import { useToasts } from '@/composables/useToasts';
+import { usePermissionGateStore } from '@/stores/permissionGate';
+import { router } from '@/router';
 
 vi.mock('@tauri-apps/plugin-updater', () => ({ check: vi.fn() }));
 vi.mock('@tauri-apps/plugin-process', () => ({ relaunch: vi.fn() }));
@@ -32,6 +35,7 @@ function release(version = '0.1.4') {
 beforeEach(async () => {
   vi.clearAllMocks();
   localStorage.clear();
+  useToasts().clear();
   await setup();
   await useSettingsStore().load();
   vi.useFakeTimers();
@@ -176,15 +180,51 @@ describe('OpenNavo automatic self-update checks', () => {
       })
     );
     const first = updater.restart();
-    const rejected = expect(first).rejects.toThrow('active_tasks');
     const duplicate = updater.restart();
     expect(relaunch).toHaveBeenCalledTimes(1);
     fail(new Error('active_tasks'));
-    await rejected;
+    await first;
+    expect(useToasts().items.value.map(item => item.title)).toEqual([i18n.global.t('updater.busy')]);
     await duplicate;
     expect(updater.state).toBe('installed');
     await updater.restart();
     expect(relaunch).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['active_tasks', 'exit_in_progress', 'launch failed'])(
+    'Handles native restart failure %s without rejecting or losing the installed update',
+    async reason => {
+      const updater = useAppUpdaterStore();
+      updater.update = release();
+      updater.state = 'installed';
+      vi.mocked(relaunch).mockRejectedValueOnce(new Error(reason));
+      await expect(updater.restart()).resolves.toBeUndefined();
+      expect(updater.state).toBe('installed');
+      expect(updater.restarting).toBe(false);
+      const items = useToasts().items.value;
+      if (reason === 'exit_in_progress') expect(items).toHaveLength(0);
+      else {
+        expect(items).toHaveLength(1);
+        expect(items[0]).toMatchObject(
+          reason === 'active_tasks'
+            ? { tone: 'warning', title: i18n.global.t('updater.busy') }
+            : { tone: 'danger', title: i18n.global.t('errors.actionFailed'), description: reason }
+        );
+      }
+    }
+  );
+
+  it('Remembers the open permission gate before restarting an installed update', async () => {
+    const updater = useAppUpdaterStore();
+    updater.state = 'installed';
+    const gate = usePermissionGateStore();
+    gate.current = { feature: 'cleanup' };
+    let remembered: ReturnType<typeof gate.takeRemembered> = null;
+    vi.mocked(relaunch).mockImplementationOnce(async () => {
+      remembered = gate.takeRemembered();
+    });
+    await updater.restart();
+    expect(remembered).toEqual({ route: router.currentRoute.value.fullPath, request: { feature: 'cleanup' } });
   });
 
   it('Simulates a failed download and allows a successful retry without native updates', async () => {

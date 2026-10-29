@@ -26,7 +26,9 @@ export const useLibraryStore = defineStore('library', () => {
   const storage = ref<StorageSummary | null>(null);
 
   const byKey = computed(() => new Map(items.value.map(item => [packageKey(item.kind, item.token), item])));
-  const find = (kind: Kind, token: string) => byKey.value.get(packageKey(kind, token));
+  const find = (kind: Kind, token: string) =>
+    byKey.value.get(packageKey(kind, token)) ??
+    items.value.find(item => item.kind === kind && item.fullToken === token);
 
   function accept(list: InstalledItem[]) {
     const listed = new Map(list.map(item => [packageKey(item.kind, item.token), item]));
@@ -52,7 +54,7 @@ export const useLibraryStore = defineStore('library', () => {
   /** Apply a finished cask install, uninstall, pin or unpin before Rust's inventory reread shows it. */
   function settle(task: Task) {
     if (task.state !== 'succeeded' || task.target?.kind !== 'cask') return;
-    const { token } = task.target;
+    const token = find('cask', task.target.token)?.token ?? task.target.token;
     const key = packageKey('cask', token);
     const at = task.finishedAt ?? Date.now();
     if (task.op === 'pin' || task.op === 'unpin') {

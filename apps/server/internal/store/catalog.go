@@ -347,7 +347,7 @@ func (s *Store) DispatchOutbox(ctx context.Context, deliver func(context.Context
 				ID               int64
 				JobType, Payload string
 			}
-			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources','taps:sync','links:sync','update-feeds:verify') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
+			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','github-release:snapshot','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources','taps:sync','links:sync','update-feeds:verify') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
 				return fmt.Errorf("load job outbox: %w", err)
 			}
 			if len(rows) == 0 {

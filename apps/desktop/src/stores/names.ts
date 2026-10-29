@@ -12,6 +12,7 @@ export interface PackageIdentity {
   accentColor: string | null;
   /** Third-party tap of the cask, for brew commands shown before an install. */
   tap?: string | null;
+  brewToken?: string | null;
 }
 
 /**
@@ -57,12 +58,14 @@ export const useNamesStore = defineStore('names', () => {
         displayName: item.displayName,
         iconUrl: item.iconUrl,
         accentColor: item.accentColor,
-        tap: item.tap ?? null
+        tap: item.tap ?? null,
+        brewToken: item.brewToken ?? null
       };
     }
   }
 
   function lookup(kind: Kind, token: string): PackageIdentity | undefined {
+    if (token.includes('/')) return undefined;
     const key = packageKey(kind, token);
     const entry = entries.value[key];
     if (!entry && !requested.has(key)) {

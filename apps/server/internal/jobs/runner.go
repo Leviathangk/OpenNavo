@@ -103,7 +103,11 @@ func execute(ctx context.Context, handler Handler, payload Payload) (stats map[s
 	return handler(ctx, payload)
 }
 
-func RegisterSchedules(scheduler *asynq.Scheduler) error {
+type scheduleRegistrar interface {
+	Register(string, *asynq.Task, ...asynq.Option) (string, error)
+}
+
+func RegisterSchedules(scheduler scheduleRegistrar) error {
 	for _, definition := range Definitions {
 		if definition.Cron == "" {
 			continue
@@ -112,8 +116,10 @@ func RegisterSchedules(scheduler *asynq.Scheduler) error {
 		if err != nil {
 			return err
 		}
-		if _, err := scheduler.Register(definition.Cron, task, options...); err != nil {
-			return fmt.Errorf("register %s: %w", definition.Type, err)
+		for _, spec := range definition.cronSpecs() {
+			if _, err := scheduler.Register(spec, task, options...); err != nil {
+				return fmt.Errorf("register %s: %w", definition.Type, err)
+			}
 		}
 	}
 	return nil
@@ -127,11 +133,19 @@ func NextSchedule(taskType string, now time.Time, location *time.Location) (time
 	if definition.Cron == "" {
 		return time.Time{}, errors.New("job has no schedule")
 	}
-	schedule, err := cron.ParseStandard("CRON_TZ=" + location.String() + " " + definition.Cron)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parse schedule: %w", err)
+	var next time.Time
+	for _, spec := range definition.cronSpecs() {
+		schedule, err := cron.ParseStandard(spec)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("parse schedule: %w", err)
+		}
+		// Unqualified specs inherit the scheduler location; CRON_TZ overrides it.
+		candidate := schedule.Next(now.In(location))
+		if next.IsZero() || candidate.Before(next) {
+			next = candidate
+		}
 	}
-	return schedule.Next(now), nil
+	return next.In(now.Location()), nil
 }
 
 type logAdapter struct{ logger *slog.Logger }

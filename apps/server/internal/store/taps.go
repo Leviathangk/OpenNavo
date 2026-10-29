@@ -30,6 +30,14 @@ type TapCask struct {
 	CreatedAt, UpdatedAt         time.Time
 }
 
+// CaskToken is the upstream file/Homebrew identity; Token is the catalog's site identity.
+func (c TapCask) CaskToken() string {
+	if c.FullToken != "" {
+		return strings.TrimPrefix(c.FullToken, c.Tap+"/")
+	}
+	return c.Token
+}
+
 const tapCaskSQL = `SELECT t.package_id,p.token,p.full_token,t.tap,p.tap AS package_tap,p.name,p.version,p.raw_hash,
  p.disabled,p.deprecated,COALESCE(p.disable_date::text,'') AS disable_date,COALESCE(p.deprecation_date::text,'') AS deprecation_date,
  COALESCE(p.dependencies->>'normalizationVersion','') AS normalization_version,t.source_path,COALESCE(t.etag,'') AS e_tag,
@@ -58,9 +66,24 @@ func (s *Store) TapCask(ctx context.Context, packageID int64) (*TapCask, error) 
 // CaskOwner is the catalog row currently holding a cask token, if any.
 type CaskOwner struct {
 	ID        int64
+	Token     string
 	Tap       string
 	RemovedAt *time.Time
 	Tracked   bool
+}
+
+// TrackedCaskOwner prevents registering the same upstream cask under multiple site tokens.
+// The caller rechecks this while holding LockCatalogWrites before creating a registration.
+func (s *Store) TrackedCaskOwner(ctx context.Context, fullToken string) (*CaskOwner, error) {
+	var rows []CaskOwner
+	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.token,p.tap,p.removed_at,true AS tracked FROM packages p JOIN tap_casks t ON t.package_id=p.id WHERE p.kind='cask' AND p.full_token=?", fullToken).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("load upstream cask owner: %w", err)
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	return &rows[0], nil
 }
 
 func (s *Store) CaskOwner(ctx context.Context, token string) (*CaskOwner, error) {

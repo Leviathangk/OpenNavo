@@ -41,6 +41,7 @@ import { createFirewallMock } from './mock-data/firewall';
 import { createCleanupMock } from './mock-data/cleanup';
 import { createMonitorMock } from './mock-data/monitor';
 import { createUninstallMock } from './mock-data/uninstall';
+import { createMockScheduler } from './mock-data/scheduler';
 import type { MockFailure, MockState } from './mock-data/runner';
 
 const appInfo: AppInfo = { version: '0.0.0', os: 'macos', arch: 'aarch64' };
@@ -215,7 +216,14 @@ let stopPreviousMock: (() => void) | undefined;
 let currentFirewall: ReturnType<typeof createFirewallMock> | undefined;
 /** The running firewall simulation, so component tests can make a new connection ask. */
 export const firewallMock = () => currentFirewall;
-import.meta.hot?.dispose(() => stopPreviousMock?.());
+
+/** Stop this mock session before replacing it or tearing down its browser environment. */
+export function disposeMockIpc() {
+  stopPreviousMock?.();
+  stopPreviousMock = undefined;
+  currentFirewall = undefined;
+}
+import.meta.hot?.dispose(disposeMockIpc);
 
 export function installMockIpc(
   options: {
@@ -225,7 +233,9 @@ export function installMockIpc(
     persistSettings?: boolean;
   } = {}
 ) {
-  stopPreviousMock?.();
+  disposeMockIpc();
+  const scheduler = createMockScheduler();
+  const later = (run: () => void, ms: number) => scheduler.later(run, ms);
   const params = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
   const systemLocale =
     options.systemLocale ??
@@ -248,7 +258,7 @@ export function installMockIpc(
   };
   // Comma-separated ?mock= switches: no-brew, first-run (fresh settings), slow-official / official-down (slow/failed official probe), slow-mirrors (mirrors slower than official),
   // brew-install-fail-download / brew-install-fail-sudo (Homebrew install failures), no-app-management (permission denied for app update/uninstall),
-  // full_disk_access / no-permission-check / permission-relaunch (privacy permissions, below), restore, update.
+  // full_disk_access / no-permission-check / permission-relaunch / permission-relaunch-ineffective (privacy, below), restore, update.
   const flags = new Set(
     typeof location !== 'undefined' ? (new URLSearchParams(location.search).get('mock') ?? '').split(',') : []
   );
@@ -281,6 +291,7 @@ export function installMockIpc(
         ? 'granted'
         : 'denied',
     relaunchRequired: false,
+    relaunchIneffective: false,
     appManagementPending: false,
     fullDiskAccessPending: false
   };
@@ -295,8 +306,17 @@ export function installMockIpc(
       appManagementSwitch: 'unknown',
       fullDiskAccess: 'unknown',
       relaunchRequired: false,
+      relaunchIneffective: false,
       appManagementPending: false,
       fullDiskAccessPending: false
+    };
+  if (flags.has('permission-relaunch-ineffective'))
+    permissions = {
+      ...permissions,
+      fullDiskAccess: 'denied',
+      relaunchRequired: true,
+      relaunchIneffective: true,
+      fullDiskAccessPending: true
     };
   let env: EnvInfo = {
     ...envFixture(),
@@ -325,6 +345,7 @@ export function installMockIpc(
               appManagementSwitch: 'granted',
               appManagement: 'granted',
               relaunchRequired: true,
+              relaunchIneffective: false,
               appManagementPending: true
             }
       );
@@ -463,6 +484,10 @@ export function installMockIpc(
   currentFirewall = firewall;
   // Reinstalling the simulator must not let the previous session emit into the new stores.
   stopPreviousMock = () => {
+    runner.stop();
+    uninstall?.stop();
+    cleanup?.stop();
+    scheduler.stop();
     window.removeEventListener('storage', onStorage);
     monitor.stop();
     securityMock.stop();
@@ -552,11 +577,11 @@ export function installMockIpc(
         const path = `/Users/mock/Downloads/${file}`;
         const tick = options.tickMs ?? 250;
         const mismatch = flags.has('download-mismatch');
-        setTimeout(() => {
+        later(() => {
           downloads.add(path);
           void events.downloadDetected.emit({ token, path });
         }, tick * 2);
-        setTimeout(
+        later(
           () =>
             void events.downloadVerified.emit({
               path,
@@ -822,9 +847,10 @@ export function installMockIpc(
     permissions_get: () => permissions,
     permission_guide_open: args => {
       const pane = args.pane as PrivacyPane;
-      setTimeout(() => grant(pane), guideDelayMs);
+      later(() => grant(pane), guideDelayMs);
       return null;
     },
+    permission_settings_open: () => null,
     permission_guide_close: () => null,
     permission_guide_fit: () => null,
     permission_guide_info: () => ({ draggable: true, ownerName: null, ownerIcon: null }),

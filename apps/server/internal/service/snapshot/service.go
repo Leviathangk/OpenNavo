@@ -85,6 +85,9 @@ func item(zh, en store.PublicPackage) (publicapi.CatalogItem, error) {
 	if !homebrew.IsOfficialTap(zh.Tap) {
 		tap := zh.Tap
 		r.Tap = &tap
+		if _, upstream, err := homebrew.ParseTapCask(zh.FullToken); err == nil && upstream != zh.Token {
+			r.BrewToken = &upstream
+		}
 		if zh.Kind == "cask" && art.Entries != nil {
 			targets := []string{}
 			complete := true

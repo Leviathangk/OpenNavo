@@ -2,7 +2,7 @@ import { computed, onScopeDispose, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { check } from '@tauri-apps/plugin-updater';
 import type { Update } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
+import { useRelaunch } from '@/composables/useRelaunch';
 import { i18n } from '@/i18n';
 import { commands, unwrap } from '@/ipc/client';
 import { useSettingsStore } from './settings';
@@ -34,7 +34,8 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
   const dialogOpen = ref(false);
   const manualPrompt = ref(false);
   const installFailed = ref(false);
-  const restarting = ref(false);
+  // The dialog's button says restart, so the busy notice keeps the updater's own wording.
+  const { restarting, restart: relaunch } = useRelaunch(undefined, 'updater.busy');
   const busy = computed(() => tasks.active.length > 0);
   const working = computed(() => state.value === 'checking' || state.value === 'downloading' || restarting.value);
   let history: CheckHistory = {};
@@ -199,12 +200,7 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
       percent.value = null;
       return;
     }
-    restarting.value = true;
-    try {
-      await relaunch();
-    } finally {
-      restarting.value = false;
-    }
+    await relaunch();
   }
 
   async function showPreview() {

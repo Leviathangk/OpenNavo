@@ -181,6 +181,62 @@ fn installed_app_routing_uses_enabled_sources_in_priority_order() {
     app.path = "/System/Applications/Fixture.app".into();
     assert_eq!(select(&Settings::default(), &app), None);
 }
+
+#[test]
+fn routing_without_catalog_hint_uses_only_the_installed_taps_policy() {
+    use opennavo_desktop_lib::{db::Database, updater::routing};
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("Fixture.app");
+    fs::create_dir_all(path.join("Contents/Resources")).unwrap();
+    fs::write(
+        path.join("Contents/Resources/app-update.yml"),
+        "provider: generic\nurl: https://example.org/releases\n",
+    )
+    .unwrap();
+    let db = Database::open(&tmp.path().join("db")).unwrap();
+    for (token, tap, auto_updates) in [
+        ("fixture", None, false),
+        ("vendor-fixture", Some("vendor/tap"), true),
+    ] {
+        let mut item = serde_json::json!({
+            "kind":"cask", "token":token, "name":"Fixture", "names":[], "version":"1",
+            "autoUpdates":auto_updates, "deprecated":false, "disabled":false, "hidden":false,
+            "isFont":false, "isLibrary":false, "categories":[], "tags":[], "installs30d":0,
+            "popularity":0, "apps":[], "binaries":[], "versionChangedAt":""
+        });
+        if let Some(tap) = tap {
+            item["tap"] = tap.into();
+            item["brewToken"] = "fixture".into();
+        }
+        db.with(|c| {
+            c.execute(
+                "INSERT INTO catalog_items(kind,token,data,name,version,version_changed_at) VALUES('cask',?1,?2,'Fixture','1',0)",
+                [token, &item.to_string()],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+    }
+    for (identity, expected) in [
+        ("fixture", UpdateSource::Homebrew),
+        ("homebrew/cask/fixture", UpdateSource::Homebrew),
+        ("vendor/tap/fixture", UpdateSource::Electron),
+        ("other/tap/fixture", UpdateSource::Homebrew),
+    ] {
+        let app: LocalApp = serde_json::from_value(serde_json::json!({
+            "id":"fixture", "path":path, "name":"Fixture", "bundleId":"test.app",
+            "cask":identity, "catalogToken":null, "source":"homebrew", "running":false,
+            "removable":true
+        }))
+        .unwrap();
+        assert_eq!(
+            routing::select(&db, &Settings::default(), &app, &[]).unwrap(),
+            Some(expected),
+            "{identity}"
+        );
+    }
+}
+
 #[test]
 fn pending_update_requires_matching_metadata_and_complete_sha512_without_symlinks() {
     let tmp = tempfile::tempdir().unwrap();

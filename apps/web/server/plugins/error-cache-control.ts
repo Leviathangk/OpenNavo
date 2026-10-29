@@ -7,7 +7,8 @@ function isSitemapError(event: H3Event) {
 }
 
 function errorCacheHeaders(event: H3Event, status: number) {
-  if (status < 400) return;
+  // SWR can report a background render error after the stale response has already been sent.
+  if (status < 400 || event.node.res.headersSent) return;
   for (const name of ['Cache-Control', 'CDN-Cache-Control', 'Cloudflare-CDN-Cache-Control'])
     setHeader(event, name, 'no-store');
   if (status === 503 && !getResponseHeader(event, 'retry-after')) {
@@ -20,7 +21,7 @@ export default defineNitroPlugin(nitro => {
   // its error handler sends them, and also cover responses whose status was set while rendering.
   nitro.hooks.hook('error', (error, { event }) => {
     const status = (error as { statusCode?: number }).statusCode;
-    if (event && (status === 410 || status === 503) && isSitemapError(event)) errorCacheHeaders(event, status);
+    if (event && typeof status === 'number') errorCacheHeaders(event, status);
   });
   nitro.hooks.hook('beforeResponse', event => errorCacheHeaders(event, event.node.res.statusCode));
 });

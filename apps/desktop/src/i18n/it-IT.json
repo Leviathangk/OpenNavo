@@ -1,6 +1,5 @@
 {
   "articles": {
-    "viewTranslation": "Mostra traduzione",
     "title": "Articoli",
     "subtitle": "Consigli, recensioni, tutorial e rassegne di app per Mac",
     "all": "Tutti",
@@ -18,8 +17,6 @@
     "published": "Pubblicato il {date}",
     "updated": "Aggiornato il {date}",
     "editorial": "Redazione di OpenNavo",
-    "machineTranslated": "Tradotto con IA",
-    "viewOriginal": "Mostra l’originale",
     "sourceText": "Questo articolo non è ancora disponibile nella tua lingua, quindi qui sotto trovi l’originale.",
     "testNote": "Ambiente di test:",
     "toc": "Indice",
@@ -354,7 +351,6 @@
     "release": {
       "new": "Nuova versione",
       "title": "Novità della versione {version}",
-      "translated": "Tradotto in cinese",
       "source": {
         "github_release": "Da GitHub Releases",
         "sparkle": "Dal feed di aggiornamento dell’app",
@@ -1004,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo è stato aggiornato. Riaprilo per continuare a usare queste funzionalità.",
+      "ineffective": "Ancora non attivo dopo la riapertura. In Accesso completo al disco, disattiva e riattiva OpenNavo, quindi riapri OpenNavo.",
+      "openSettings": "Apri Impostazioni di Sistema",
       "body": "Attivato nelle Impostazioni di Sistema. Riapri OpenNavo per applicare la modifica.",
       "action": "Riapri",
       "pending": "Riapri per applicare",

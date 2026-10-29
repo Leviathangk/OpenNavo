@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"net/url"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -59,18 +60,22 @@ type LinkInfo struct {
 	AdoptedByCask *string            `json:"adoptedByCask"`
 }
 type LinkInput struct {
-	Token        string             `json:"token"`
-	Name         string             `json:"name"`
-	SourceLocale string             `json:"sourceLocale"`
-	Homepage     *string            `json:"homepage"`
-	DownloadURL  *string            `json:"downloadUrl"`
-	GithubRepo   *string            `json:"githubRepo"`
-	BundleIDs    []string           `json:"bundleIds"`
-	TeamID       *string            `json:"teamId"`
-	Pricing      string             `json:"pricing"`
-	SparkleFeed  *string            `json:"sparkleFeed"`
-	AssetRules   map[string]string  `json:"assetRules"`
-	Notes        map[string]*string `json:"notes"`
+	Token              string             `json:"token"`
+	Name               string             `json:"name"`
+	SourceLocale       string             `json:"sourceLocale"`
+	Homepage           *string            `json:"homepage"`
+	DownloadURL        *string            `json:"downloadUrl"`
+	GithubRepo         *string            `json:"githubRepo"`
+	GithubTagPrefix    *string            `json:"githubTagPrefix"`
+	GithubTagRegex     *string            `json:"githubTagRegex"`
+	GithubAssetPattern *string            `json:"githubAssetPattern"`
+	IncludePrereleases bool               `json:"includePrereleases"`
+	BundleIDs          []string           `json:"bundleIds"`
+	TeamID             *string            `json:"teamId"`
+	Pricing            string             `json:"pricing"`
+	SparkleFeed        *string            `json:"sparkleFeed"`
+	AssetRules         map[string]string  `json:"assetRules"`
+	Notes              map[string]*string `json:"notes"`
 }
 
 var linkToken = regexp.MustCompile(`^[a-z0-9][a-z0-9+@._-]{0,127}$`)
@@ -124,6 +129,9 @@ func (v *LinkInput) Validate() error {
 	if v.GithubRepo != nil && (!linkRepo.MatchString(*v.GithubRepo) || strings.HasSuffix(*v.GithubRepo, ".git") || strings.Contains(*v.GithubRepo, "..")) {
 		return Rejected("github_repo_invalid:githubRepo")
 	}
+	if err := v.ValidateGithubFilters(); err != nil {
+		return err
+	}
 	if v.TeamID != nil && !linkTeam.MatchString(*v.TeamID) {
 		return Rejected("team_id_invalid:teamId")
 	}
@@ -154,6 +162,43 @@ func (v *LinkInput) Validate() error {
 		}
 		if _, err := regexp.Compile(s); err != nil {
 			return Rejected("asset_rule_pattern_invalid:assetRules")
+		}
+	}
+	return nil
+}
+
+// HasGithubFilters also selects the releases list when prereleases are requested:
+// GitHub's /releases/latest endpoint never includes them.
+func (v LinkInput) HasGithubFilters() bool {
+	return v.GithubTagPrefix != nil || v.GithubTagRegex != nil || v.GithubAssetPattern != nil || v.IncludePrereleases
+}
+
+func (v LinkInput) ValidateGithubFilters() error {
+	for _, field := range []struct {
+		key   string
+		value *string
+		limit int
+	}{{"githubTagPrefix", v.GithubTagPrefix, 256}, {"githubTagRegex", v.GithubTagRegex, 1024}, {"githubAssetPattern", v.GithubAssetPattern, 512}} {
+		if field.value != nil && (strings.TrimSpace(*field.value) == "" || len(*field.value) > field.limit) {
+			return Rejected("github_filter_length_invalid:" + field.key)
+		}
+	}
+	if v.HasGithubFilters() && v.GithubRepo == nil {
+		return Rejected("github_repo_required:githubRepo")
+	}
+	if v.GithubTagPrefix != nil && v.GithubTagRegex != nil {
+		return Rejected("github_tag_filters_exclusive:githubTagRegex")
+	}
+	if v.GithubTagRegex != nil {
+		// Go's regexp package uses RE2 syntax and linear-time matching; never
+		// compile these expressions in Python's backtracking regex engine.
+		if _, err := regexp.Compile(*v.GithubTagRegex); err != nil {
+			return Rejected("github_tag_regex_invalid:githubTagRegex")
+		}
+	}
+	if v.GithubAssetPattern != nil {
+		if _, err := path.Match(*v.GithubAssetPattern, ""); err != nil {
+			return Rejected("github_asset_pattern_invalid:githubAssetPattern")
 		}
 	}
 	return nil

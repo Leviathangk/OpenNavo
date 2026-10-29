@@ -404,12 +404,8 @@ impl Engine {
             .filter(|record| {
                 (target.kind == TaskKind::App && record.app.id == target.token)
                     || (target.kind == TaskKind::Cask
-                        && record
-                            .app
-                            .cask
-                            .as_ref()
-                            .or(record.app.catalog_token.as_ref())
-                            == Some(&target.token))
+                        && (record.app.cask.as_ref() == Some(&target.token)
+                            || record.app.catalog_token.as_ref() == Some(&target.token)))
             })
             .map(|record| record.app.id.clone())
             .collect();
@@ -448,6 +444,7 @@ mod tests {
             app_management_switch: PermissionState::Granted,
             full_disk_access: PermissionState::Granted,
             relaunch_required: false,
+            relaunch_ineffective: false,
             app_management_pending: false,
             full_disk_access_pending: false,
         }

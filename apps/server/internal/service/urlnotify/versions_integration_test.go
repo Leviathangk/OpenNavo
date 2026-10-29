@@ -25,7 +25,7 @@ func TestVersionsOutboxRechecksNotesBeforeAnnouncement(t *testing.T) {
 			note := store.URLNotification{URL: "https://site.example.test/apps/versions-outbox/versions", Path: "/apps/versions-outbox/versions", Locale: "en-US", Reason: "updated", Announce: true, Robots: "index, follow"}
 			require.NoError(t, store.QueueURLNotification(ctx, st.DB, note))
 			require.NoError(t, st.DB.Exec("UPDATE url_notify_outbox SET state=?,next_attempt_at=? WHERE url=? AND state<>'announced'", state, now, note.URL).Error)
-			rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 1)
+			rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 1, 0)
 			require.NoError(t, err)
 			require.Len(t, rows, 1)
 			settings, err := st.SEOSettings(ctx)

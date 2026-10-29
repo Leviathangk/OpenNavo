@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/cache"
+	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"gorm.io/gorm"
 )
@@ -73,8 +74,16 @@ func (s *Store) QueueURLFeed(ctx context.Context, previous URLNotifyState, next 
 	})
 }
 
-func (s *Store) ClaimURLNotifications(ctx context.Context, token string, now time.Time, limit int) ([]URLNotificationRow, error) {
+func (s *Store) ClaimURLNotifications(ctx context.Context, token string, now time.Time, limit int, maxRetryAfter time.Duration) ([]URLNotificationRow, error) {
 	rows := []URLNotificationRow{}
+	// Older workers copied unbounded probe/purge deadlines into the outbox. Repair
+	// those on first claim, preserving ordinary content waits and next-day budgets.
+	capAt := now.Add(config.ProbeRetryAfterCap(maxRetryAfter))
+	if err := s.DB.WithContext(ctx).Exec(`UPDATE url_notify_outbox SET next_attempt_at=?
+ WHERE state IN ('pending','invalidated','probed') AND next_attempt_at>?
+ AND next_attempt_at>updated_at + make_interval(secs => ?)`, capAt, capAt, config.MaxProbeRetryAfter.Seconds()).Error; err != nil {
+		return rows, err
+	}
 	err := s.DB.WithContext(ctx).Raw(`UPDATE url_notify_outbox SET lease_token=?,lease_until=?,updated_at=?
 WHERE id IN (SELECT id FROM url_notify_outbox WHERE state IN ('pending','invalidated','probed')
 AND (path='/' OR NOT EXISTS (SELECT 1 FROM url_notify_outbox settings WHERE settings.path='/' AND settings.state IN ('pending','dead')
@@ -115,6 +124,9 @@ func (s *Store) PauseURLNotification(ctx context.Context, row URLNotificationRow
 // Waiting for shared capacity is not a delivery failure and must not exhaust
 // the retry budget. Keep the lease/revision fence used by all acknowledgements.
 func (s *Store) DeferURLNotification(ctx context.Context, row URLNotificationRow, now, due time.Time) error {
+	if capAt := now.Add(config.MaxProbeRetryAfter); due.After(capAt) {
+		due = capAt
+	}
 	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_outbox SET next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error='',updated_at=?
 WHERE id=? AND revision=? AND lease_token=? AND lease_until>?`, due, now, row.ID, row.Revision, row.LeaseToken, now).Error
 }

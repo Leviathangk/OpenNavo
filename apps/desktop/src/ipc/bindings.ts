@@ -166,10 +166,12 @@ export const commands = {
 	onRequest: OnRequest | null,
 	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
 	tap?: string | null,
+	/**  Upstream Homebrew token when the catalog uses a site alias. */
+	brewToken?: string | null,
 } | null, AppError>(__TAURI_INVOKE("catalog_get", { kind, token })),
 	catalogCategories: () => typedError<CategoryItem[], AppError>(__TAURI_INVOKE("catalog_categories")),
-	libraryList: () => typedError<InstalledItem[], AppError>(__TAURI_INVOKE("library_list")),
-	libraryRefresh: () => typedError<InstalledItem[], AppError>(__TAURI_INVOKE("library_refresh")),
+	libraryList: () => typedError<InstalledItem_Serialize[], AppError>(__TAURI_INVOKE("library_list")),
+	libraryRefresh: () => typedError<InstalledItem_Serialize[], AppError>(__TAURI_INVOKE("library_refresh")),
 	libraryStorage: () => typedError<StorageSummary, AppError>(__TAURI_INVOKE("library_storage")),
 	updatesList: () => typedError<OutdatedItem_Serialize[], AppError>(__TAURI_INVOKE("updates_list")),
 	updatesStatus: () => typedError<UpdatesStatus, AppError>(__TAURI_INVOKE("updates_status")),
@@ -218,6 +220,8 @@ export const commands = {
 	appCancelQuit: () => __TAURI_INVOKE<void>("app_cancel_quit"),
 	/**  Current privacy permissions (06 §12.3, §12.6): read-only, without prompts. */
 	permissionsGet: () => typedError<Permissions, AppError>(__TAURI_INVOKE("permissions_get")),
+	/**  Open System Settings without creating a guidance overlay. */
+	permissionSettingsOpen: (pane: PrivacyPane) => typedError<null, AppError>(__TAURI_INVOKE("permission_settings_open", { pane })),
 	/**  Open the corresponding System Settings panel and adjacent guidance overlay (06 §12.7). */
 	permissionGuideOpen: (pane: PrivacyPane) => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_open", { pane })),
 	permissionGuideClose: () => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_close")),
@@ -548,6 +552,8 @@ export type CatalogItem_Deserialize = {
 	onRequest: OnRequest | null,
 	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
 	tap?: string | null,
+	/**  Upstream Homebrew token when the catalog uses a site alias. */
+	brewToken?: string | null,
 };
 
 /**  Date strings retain the HTTP catalog format; local IPC times use Unix milliseconds. */
@@ -588,6 +594,8 @@ export type CatalogItem_Serialize = {
 	onRequest: OnRequest | null,
 	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
 	tap?: string | null,
+	/**  Upstream Homebrew token when the catalog uses a site alias. */
+	brewToken?: string | null,
 };
 
 export type CatalogStatus = {
@@ -1150,9 +1158,33 @@ export type InstallScanState = "disabled" | "skipped" | "clean" | "threat";
 
 export type InstallScannedEvent = InstallScanResult;
 
-export type InstalledItem = {
+export type InstalledItem = InstalledItem_Serialize | InstalledItem_Deserialize;
+
+export type InstalledItem_Deserialize = {
 	kind: Kind,
 	token: string,
+	/**  Installed Homebrew identity, independent of the site's catalog alias. */
+	fullToken?: string | null,
+	name: string,
+	installedVersion: string,
+	actualVersion: string | null,
+	latestVersion: string | null,
+	status: InstalledStatus,
+	onRequest: boolean,
+	requiredBy: string[],
+	installedAt: number | null,
+	sizeBytes: number | null,
+	appPaths: string[],
+	iconPath: string | null,
+	autoUpdates: boolean,
+	pinned: boolean,
+};
+
+export type InstalledItem_Serialize = {
+	kind: Kind,
+	token: string,
+	/**  Installed Homebrew identity, independent of the site's catalog alias. */
+	fullToken?: string | null,
 	name: string,
 	installedVersion: string,
 	actualVersion: string | null,
@@ -1226,7 +1258,9 @@ export type LocalApp = {
 	source: AppSource,
 	updater: UpdateSource | null,
 	homebrewCask: string | null,
+	/**  Installed Homebrew full_token; never use this for catalog navigation. */
 	cask: string | null,
+	/**  Verified site listing, independent of the installed Homebrew identity. */
 	catalogToken: string | null,
 	teamId: string | null,
 	vendor: string | null,
@@ -1599,6 +1633,8 @@ export type Permissions = {
 	fullDiskAccess: PermissionState,
 	/**  Enabled in System Settings but not yet effective; quit and reopen OpenNavo. */
 	relaunchRequired: boolean,
+	/**  Full Disk Access was still pending after our relaunch; toggle its System Settings switch. */
+	relaunchIneffective: boolean,
 	/**  App Management is on in System Settings, but this process is still blocked until it reopens. */
 	appManagementPending: boolean,
 	/**  Full Disk Access is on in System Settings, but macOS applies it only after OpenNavo reopens. */

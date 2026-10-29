@@ -96,6 +96,18 @@ describe('crawler request counters', () => {
 });
 
 describe('page cache invalidation', () => {
+  it('drops localized recent pagination/payloads without evicting other locales', async () => {
+    const { pageCacheMatcher } = await import('../server/utils/pageCache');
+    const matches = pageCacheMatcher(['/ja/recent']);
+    for (const path of ['/ja/recent', '/ja/recent?page=2', '/ja/recent/_payload.json']) {
+      const prefix = path.split('?')[0]!.replace(/\W/g, '').slice(0, 16);
+      expect(matches(`nitro:routes:_:${prefix}.hash.json`)).toBe(true);
+    }
+    for (const path of ['/recent', '/zh/recent', '/ja/apps/example']) {
+      const prefix = path.replace(/\W/g, '').slice(0, 16);
+      expect(matches(`nitro:routes:_:${prefix}.hash.json`)).toBe(false);
+    }
+  });
   it('Matches pages, descendants and payloads, allowing harmless prefix collisions', async () => {
     const { pageCacheMatcher, authorized } = await import('../server/utils/pageCache');
     const matches = pageCacheMatcher(['/apps/vlc', '/zh/apps/visual-studio-code']);

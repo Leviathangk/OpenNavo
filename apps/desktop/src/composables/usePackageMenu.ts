@@ -1,12 +1,13 @@
 import { useI18n } from 'vue-i18n';
 import type { OnMenuItem } from '@opennavo/ui';
-import { installCommand } from '@opennavo/shared';
 import type { InstalledItem, Kind } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { useBrewfileStore } from '@/stores/brewfile';
 import { useLibraryStore, useTasksStore } from '@/stores';
 import { useLocalAppsStore } from '@/stores/localApps';
 import { useUninstallStore } from '@/stores/uninstall';
+import { useNamesStore } from '@/stores/names';
+import { catalogInstallCommand } from '@/utils/brew';
 import { openExternal } from '@/utils/external';
 import { fetchClientConfig } from './useClientConfig';
 import { usePackageState } from './usePackageState';
@@ -23,6 +24,7 @@ export function usePackageMenu() {
   const tasks = useTasksStore();
   const localApps = useLocalAppsStore();
   const uninstaller = useUninstallStore();
+  const names = useNamesStore();
   const toasts = useToasts();
   const { act, errorText } = usePackageState();
 
@@ -101,7 +103,7 @@ export function usePackageMenu() {
         break;
       case 'copy': {
         if (!command && kind === 'link') break;
-        const text = command ?? installCommand(kind as Exclude<Kind, 'link'>, token);
+        const text = command ?? catalogInstallCommand(kind as Exclude<Kind, 'link'>, token, names.lookup(kind, token));
         await navigator.clipboard.writeText(text);
         toasts.push({ tone: 'success', title: t('package.commandCopied'), description: text });
         break;

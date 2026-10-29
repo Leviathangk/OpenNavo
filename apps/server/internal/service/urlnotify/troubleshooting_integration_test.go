@@ -31,7 +31,7 @@ func TestTroubleshootingOutboxRechecksEvidenceAfterProbe(t *testing.T) {
 	require.Equal(t, "en-US", plan[1].Locale, "subpage inherits locale from parent")
 	require.NoError(t, store.QueueURLNotification(ctx, st.DB, note))
 	require.NoError(t, st.DB.Exec(`UPDATE url_notify_outbox SET state='probed',next_attempt_at=?`, now).Error)
-	rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 1)
+	rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 1, 0)
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
 	settings, err := st.SEOSettings(ctx)

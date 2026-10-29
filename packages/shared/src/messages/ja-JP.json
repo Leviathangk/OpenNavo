@@ -69,8 +69,6 @@
   },
   "about": {
     "title": "紹介",
-    "machineTranslated": "AI 翻訳",
-    "viewOriginal": "原文を表示",
     "expand": "全文を展開",
     "collapse": "折りたたむ"
   },
@@ -149,9 +147,7 @@
     "installed": "現在インストール中",
     "patch": "パッチ",
     "prerelease": "プレリリース",
-    "machineTranslation": "AI 翻訳",
     "noNotes": "このバージョンには個別の更新内容はありません",
-    "viewOriginal": "原文を表示",
     "expand": "展開",
     "collapse": "折りたたむ",
     "updateTo": "このバージョンに更新",

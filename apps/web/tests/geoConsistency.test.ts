@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LOCALE_METADATA, SITE_LOCALES, sharedMessages, type SiteLocale } from '@opennavo/shared';
+import { LOCALE_METADATA, SITE_LOCALES, type SiteLocale } from '@opennavo/shared';
 import type { PackageDetail } from '@opennavo/api';
 import { faqItems } from '../app/utils/packageFaq';
 import { softwareAppNode } from '../app/utils/structuredData';
@@ -273,7 +273,7 @@ describe('G5 cross-export normalized facts', () => {
       case 'G5-29':
         expect(schema?.description).toBe('Instantané publié H1');
         expect(md).toContain('Corps publié H1');
-        expect(md).toContain(sharedMessages['fr-FR'].about.machineTranslated);
+        expect(md).not.toContain('Traduit par IA');
         expect(md).not.toContain('H2');
         break;
       case 'G5-30':
@@ -314,7 +314,7 @@ describe('G5 cross-export normalized facts', () => {
             expect(out.md).not.toContain(GEO_HASH);
             expect(out.html.details).not.toContain(GEO_HASH);
           }
-          if (sample.id === 'G5-29') expect(out.md).not.toContain(sharedMessages['fr-FR'].about.machineTranslated);
+          if (sample.id === 'G5-29') expect(out.md).not.toContain('Traduit par IA');
           if (sample.id === 'G5-30') expect(out.schema).toMatchObject({ offers: { eligibleRegion: { name: 'US' } } });
         } finally {
           if (variant.now) vi.useRealTimers();

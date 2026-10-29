@@ -82,6 +82,26 @@ describe('application SEO repair', () => {
     expect(html).toContain('2026');
     expect(html).toContain('<time');
   });
+  it.each(SITE_LOCALES)('omits release translation provenance in %s', async locale => {
+    vi.stubGlobal('useI18n', () => ({
+      t: (key: string) => siteMessage(locale, key),
+      locale: ref(locale)
+    }));
+    vi.stubGlobal('toAppLocale', () => locale);
+    for (const component of [LatestRelease, Timeline]) {
+      const renderRelease = (status: ReleaseEntry['translation']['status']) => {
+        const value = release({
+          hasNotes: true,
+          summary: 'Improved export',
+          translation: { status, locale, machineTranslated: status === 'machine' }
+        });
+        return render(component, { release: value, entries: [value], total: 1, versionsHref: '/apps/sample/versions' });
+      };
+      const original = await renderRelease('source');
+      expect(await renderRelease('machine')).toBe(original);
+      expect(await renderRelease('manual')).toBe(original);
+    }
+  });
   it('omits pending requirements and prices without amounts, retaining zero prices', async () => {
     const pkg = page();
     pkg.facts.requirements = [

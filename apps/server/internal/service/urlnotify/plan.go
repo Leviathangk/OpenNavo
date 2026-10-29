@@ -21,7 +21,8 @@ const bulkContentRows = 50
 // longCachedSections hold the pages the web caches at the edge for hours (app pages with their
 // versions, details and dependencies tabs, articles and authors); they must match the long-TTL page
 // types in apps/web/server/utils/edgeCache.ts.
-// Home and list pages expire within minutes and need no purge. The whole host is never purged: that
+// Home and most lists expire within minutes. Recently Updated is purged on catalog changes too.
+// The whole host is never purged: that
 // would also evict the 30-day share images (/_og/) and the hashed build assets (/_nuxt/).
 var longCachedSections = []string{"/apps", "/articles", "/authors", "/collections"}
 
@@ -57,7 +58,7 @@ func sectionPrefixes(siteURL string) []string {
 	host := purgeHost(siteURL)
 	prefixes := make([]string, 0, len(seo.Locales)*len(longCachedSections))
 	for _, locale := range seo.Locales {
-		for _, section := range longCachedSections {
+		for _, section := range append(slices.Clone(longCachedSections), "/recent") {
 			prefixes = append(prefixes, host+localePrefix(locale)+section)
 		}
 	}
@@ -136,6 +137,9 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 				path := localePrefix(locale) + "/apps/" + token
 				plan.Paths = appendUnique(plan.Paths, seenPath, path)
 				plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+path)
+				recent := localePrefix(locale) + "/recent"
+				plan.Paths = appendUnique(plan.Paths, seenPath, recent)
+				plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+recent)
 				if token == "opennavo" {
 					download := localePrefix(locale) + "/download"
 					plan.Paths = appendUnique(plan.Paths, seenPath, download)

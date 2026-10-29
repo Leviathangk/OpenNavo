@@ -36,13 +36,16 @@ func TestTraditionalBackfillOnlyPlansTraditionalPages(t *testing.T) {
 	plan, count, err := n.catalogPlan(ctx, 0, changes[0].Seq, time.Now().Add(time.Minute))
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
-	require.Equal(t, []string{"/zh-hant/apps/locale-app"}, plan.Paths)
-	require.Equal(t, []string{"site.example/zh-hant/apps/locale-app"}, plan.PurgePrefixes)
+	require.Equal(t, []string{"/zh-hant/apps/locale-app", "/zh-hant/recent"}, plan.Paths)
+	require.Equal(t, []string{"site.example/zh-hant/apps/locale-app", "site.example/zh-hant/recent"}, plan.PurgePrefixes)
 	require.Empty(t, plan.IndexNowURLs)
 	notes, err := n.notifications(ctx, plan)
 	require.NoError(t, err)
-	require.Len(t, notes, 1)
-	require.False(t, notes[0].Announce)
+	require.Len(t, notes, 2)
+	for _, note := range notes {
+		require.False(t, note.Announce)
+		require.Equal(t, "zh-Hant", note.Locale)
+	}
 	// A single old writer in the same batch restores the original all-language behavior.
 	require.NoError(t, st.AppendContentChange(ctx, 701))
 	changes, err = st.PendingURLChanges(ctx, 0, time.Now().Add(time.Minute), 100)
@@ -50,7 +53,7 @@ func TestTraditionalBackfillOnlyPlansTraditionalPages(t *testing.T) {
 	require.Nil(t, changes[1].Locales)
 	plan, _, err = n.catalogPlan(ctx, 0, changes[1].Seq, time.Now().Add(time.Minute))
 	require.NoError(t, err)
-	require.Len(t, plan.Paths, len(seo.Locales))
+	require.Len(t, plan.Paths, 2*len(seo.Locales))
 	require.Contains(t, plan.Paths, "/apps/locale-app")
 }
 

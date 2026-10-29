@@ -9,7 +9,11 @@ pub async fn brewfile_export(
     targets: Option<Vec<TaskTarget>>,
 ) -> Result<u32, AppError> {
     if let Some(targets) = targets {
-        return crate::blocking(move || crate::brewfile::export_list(&path, &targets)).await;
+        let database = state.database.clone();
+        return crate::blocking(move || {
+            crate::brewfile::export_catalog_list(&database, &path, &targets)
+        })
+        .await;
     }
     crate::brewfile::export(state.inner().clone(), path).await
 }

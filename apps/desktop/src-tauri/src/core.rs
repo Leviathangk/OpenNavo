@@ -25,6 +25,9 @@ pub struct DesktopCore {
     pub queue: Arc<TaskQueue>,
     pub data_dir: PathBuf,
     pub cache_dir: PathBuf,
+    pub relaunch_fresh: bool,
+    pub startup_full_disk_pending: bool,
+    relaunch_ineffective: AtomicBool,
     pub sink: EventSink,
     pub library: RwLock<Vec<InstalledItem>>,
     pub updates: RwLock<Vec<OutdatedItem>>,
@@ -60,6 +63,12 @@ impl DesktopCore {
         askpass: PathBuf,
         sink: EventSink,
     ) -> Result<Arc<Self>, AppError> {
+        let relaunch_fresh = crate::relaunch::consume(&data_dir);
+        let startup_full_disk_pending = crate::permissions::combine(crate::permissions::signals(
+            PermissionState::Unknown,
+            false,
+        ))
+        .full_disk_access_pending;
         let database = Database::open(&data_dir.join("opennavo.db"))?;
         let settings_path = data_dir.join("settings.json");
         let settings = Arc::new(RwLock::new(crate::settings::load(&settings_path)?));
@@ -100,6 +109,9 @@ impl DesktopCore {
             queue: queue.clone(),
             data_dir,
             cache_dir,
+            relaunch_fresh,
+            startup_full_disk_pending,
+            relaunch_ineffective: AtomicBool::new(relaunch_fresh && startup_full_disk_pending),
             sink,
             library: RwLock::new(cached),
             updates: RwLock::new(
@@ -393,7 +405,7 @@ impl DesktopCore {
         for current in library.iter_mut() {
             if let Some(item) = items
                 .iter()
-                .find(|i| i.kind == current.kind && i.token == current.token)
+                .find(|i| i.kind == current.kind && i.install_token() == current.install_token())
             {
                 current.size_bytes = item.size_bytes;
                 current.icon_path = item.icon_path.clone();
@@ -427,16 +439,17 @@ impl DesktopCore {
                 )?;
                 let mut cached = core.library.write().map_err(poisoned)?;
                 for current in cached.iter_mut() {
-                    if let Some(item) = scan
-                        .items
-                        .iter()
-                        .find(|i| i.kind == current.kind && i.token == current.token)
-                    {
+                    if let Some(item) = scan.items.iter().find(|i| {
+                        i.kind == current.kind && i.install_token() == current.install_token()
+                    }) {
+                        current.token = item.token.clone();
                         current.name = item.name.clone();
                         current.latest_version = item.latest_version.clone();
                         current.status = item.status;
                     }
                 }
+                core.database
+                    .set_meta("installed_cache", &serde_json::to_string(&*cached)?)?;
             }
             Ok(())
         })
@@ -716,12 +729,46 @@ impl DesktopCore {
             let info = self.installed_info.read().map_err(poisoned)?;
             !info.formulae.is_empty() || !info.casks.is_empty()
         };
+        let brew_target = target
+            .map(|target| {
+                let library = self.library.read().map_err(poisoned)?;
+                let installed = library
+                    .iter()
+                    .find(|i| i.kind == target.kind && i.matches_token(&target.token));
+                let mut resolved = target.clone();
+                let name = if target.kind == TaskKind::Cask {
+                    if let Some(installed) = installed {
+                        installed.install_token().to_owned()
+                    } else if target.token.contains('/') {
+                        crate::brew::args::split_cask_token(&target.token)?;
+                        target.token.clone()
+                    } else {
+                        let catalog =
+                            crate::catalog::get(&self.database, Kind::Cask, &target.token)?;
+                        let upstream = crate::brew::args::catalog_target(target, catalog.as_ref())?;
+                        crate::brew::args::qualified_token(
+                            catalog.as_ref().and_then(|i| i.tap.as_deref()),
+                            &upstream.token,
+                        )?
+                    }
+                } else {
+                    target.token.clone()
+                };
+                if target.kind == TaskKind::Cask {
+                    resolved.token = name.clone();
+                } else if let Some(installed) = installed {
+                    resolved.token = installed.brew_token().to_owned();
+                }
+                Ok::<_, AppError>((resolved, name))
+            })
+            .transpose()?;
         let (op, token) = if has_info {
-            target
-                .map(|t| {
+            brew_target
+                .as_ref()
+                .map(|(t, name)| {
                     t.kind
                         .brew_kind()
-                        .map(|kind| (ReadOp::Info(kind), Some(t.token.as_str())))
+                        .map(|kind| (ReadOp::Info(kind), Some(name.as_str())))
                 })
                 .transpose()?
                 .unwrap_or((ReadOp::Installed, None))
@@ -736,7 +783,7 @@ impl DesktopCore {
             self.database.set_meta("cask_rules_cache", &raw)?;
         }
         let core = self.clone();
-        let target = target.cloned();
+        let target = brew_target.map(|(target, _)| target);
         let prefix = brew.prefix.clone();
         let mut scan = crate::blocking(move || {
             let incoming: Info = serde_json::from_str(&raw)?;
@@ -748,13 +795,15 @@ impl DesktopCore {
                 match target.kind.brew_kind()? {
                     Kind::Link => return Err(AppError::new("E_NOT_INSTALLABLE", "link_target")),
                     Kind::Cask => {
-                        info.casks.retain(|i| i.token != target.token);
-                        info.casks.extend(
-                            incoming
-                                .casks
-                                .into_iter()
-                                .filter(|i| i.token == target.token),
-                        );
+                        let (tap, upstream) = crate::brew::args::split_cask_token(&target.token)?;
+                        let matches = |i: &crate::brew::json::Cask| {
+                            i.token == upstream
+                                && i.tap.as_deref().unwrap_or("homebrew/cask")
+                                    == tap.unwrap_or("homebrew/cask")
+                        };
+                        info.casks.retain(|i| !matches(i));
+                        info.casks
+                            .extend(incoming.casks.into_iter().filter(matches));
                     }
                     Kind::Formula => {
                         info.formulae.retain(|i| i.name != target.token);
@@ -829,7 +878,8 @@ impl DesktopCore {
         let inferred = *self.app_management.read().map_err(poisoned)?;
         let blocked = self.app_management_blocked.load(Ordering::Acquire);
         let source = *self.permission_signals.read().map_err(poisoned)?;
-        crate::blocking(move || Ok(crate::permissions::combine(source(inferred, blocked)))).await
+        let signals = crate::blocking(move || Ok(source(inferred, blocked))).await?;
+        Ok(self.combine_permissions(signals))
     }
     /// Tests: infer only from task outcomes without system preflight, independent of this Mac's permissions.
     #[cfg(test)]
@@ -841,6 +891,7 @@ impl DesktopCore {
                 full_disk_readable: None,
                 inferred_app_management: inferred,
                 app_management_blocked_after_grant: blocked,
+                relaunch_ineffective: false,
             };
     }
     /// Keep inference tests independent of installed apps and native post-task metadata scans.
@@ -865,7 +916,14 @@ impl DesktopCore {
         let inferred = *self.app_management.read().map_err(poisoned)?;
         let blocked = self.app_management_blocked.load(Ordering::Acquire);
         let source = *self.permission_signals.read().map_err(poisoned)?;
-        Ok(crate::permissions::combine(source(inferred, blocked)))
+        Ok(self.combine_permissions(source(inferred, blocked)))
+    }
+    fn combine_permissions(&self, mut signals: crate::permissions::Signals) -> Permissions {
+        // Once a read stops being pending, this process never raises the relaunch warning again.
+        signals.relaunch_ineffective = self
+            .relaunch_ineffective
+            .fetch_and(signals.full_disk_pending(), Ordering::AcqRel);
+        crate::permissions::combine(signals)
     }
     async fn infer_app_management(self: &Arc<Self>, task: &Task) -> Result<(), AppError> {
         let next = if task.state == TaskState::Failed
@@ -899,14 +957,31 @@ impl DesktopCore {
                 .target
                 .as_ref()
                 .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task_target"))?;
+            let catalog = if target.kind == Kind::Cask && !target.token.contains('/') {
+                crate::catalog::get(&self.database, Kind::Cask, &target.token)?
+            } else {
+                None
+            };
+            let upstream = crate::brew::args::catalog_target(target, catalog.as_ref())?;
+            let (tap, token) = if target.kind == Kind::Cask {
+                let (tap, token) = crate::brew::args::split_cask_token(&upstream.token)?;
+                (
+                    tap.or_else(|| catalog.as_ref().and_then(|i| i.tap.as_deref())),
+                    token,
+                )
+            } else {
+                (None, upstream.token.as_str())
+            };
             // With cached artifacts, exclude fonts/pkg Casks without app artifacts; without metadata, approximate using Cask kind.
-            if let Some(cask) = info.casks.iter().find(|cask| cask.token == target.token)
-                && cask.artifacts.as_ref().is_some_and(|artifacts| {
-                    !artifacts
-                        .iter()
-                        .any(|artifact| artifact.get("app").is_some())
-                })
-            {
+            if let Some(cask) = info.casks.iter().find(|cask| {
+                cask.token == token
+                    && cask.tap.as_deref().unwrap_or("homebrew/cask")
+                        == tap.unwrap_or("homebrew/cask")
+            }) && cask.artifacts.as_ref().is_some_and(|artifacts| {
+                !artifacts
+                    .iter()
+                    .any(|artifact| artifact.get("app").is_some())
+            }) {
                 return Ok(());
             }
             PermissionState::Granted
@@ -959,14 +1034,57 @@ impl DesktopCore {
         };
         let core = self.clone();
         crate::blocking(move || {
-            let matches = |item: &OutdatedItem| item.kind == kind && item.token == target.token;
+            let library = core.library.read().map_err(poisoned)?;
+            let local = library
+                .iter()
+                .find(|i| i.kind == kind && i.matches_token(&target.token));
+            let source_identity = local
+                .map(|i| {
+                    if kind == Kind::Cask {
+                        i.install_token()
+                    } else {
+                        i.brew_token()
+                    }
+                })
+                .unwrap_or(&target.token)
+                .to_owned();
+            let ambiguous = local.is_some_and(|local| {
+                library
+                    .iter()
+                    .filter(|other| other.kind == kind && other.brew_token() == local.brew_token())
+                    .count()
+                    > 1
+            });
+            let site_token = local
+                .map(|i| i.token.as_str())
+                .unwrap_or(&target.token)
+                .to_owned();
+            drop(library);
+            let matches = |item: &OutdatedItem| item.kind == kind && item.token == site_token;
             let mut source = core.outdated_source.write().map_err(poisoned)?;
             let entries = match kind {
                 Kind::Cask => &mut source.casks,
                 Kind::Formula => &mut source.formulae,
                 Kind::Link => return Ok(()),
             };
-            let Some(index) = entries.iter().position(|entry| entry.name == target.token) else {
+            let Some(index) = entries.iter().position(|entry| {
+                if kind != Kind::Cask {
+                    return entry.name == source_identity;
+                }
+                let Ok((tap, upstream)) = crate::brew::args::split_cask_token(&entry.name) else {
+                    return false;
+                };
+                let Ok((source_tap, source_token)) =
+                    crate::brew::args::split_cask_token(&source_identity)
+                else {
+                    return false;
+                };
+                upstream == source_token
+                    && match tap {
+                        Some(tap) => Some(tap) == source_tap,
+                        None => !ambiguous,
+                    }
+            }) else {
                 return Ok(());
             };
             match pinned {
@@ -1097,8 +1215,178 @@ impl DesktopCore {
 }
 
 #[cfg(test)]
+mod alias_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn targeted_refresh_and_settlement_preserve_installed_cask_identity() {
+        use std::os::unix::fs::PermissionsExt;
+        for (tap, site_token, read_token) in [
+            ("stablyai/orca", "stablyai-orca", "stablyai/orca/orca"),
+            ("homebrew/cask", "orca", "homebrew/cask/orca"),
+        ] {
+            let temp = tempfile::tempdir().unwrap();
+            let core = DesktopCore::open(
+                temp.path().join("data"),
+                temp.path().join("cache"),
+                temp.path().join("askpass"),
+                Arc::new(|_| {}),
+            )
+            .unwrap();
+            let mut official = crate::catalog::links::tests::item();
+            official.kind = Kind::Cask;
+            official.token = "orca".into();
+            official.tap = None;
+            official.brew_token = None;
+            let mut alias = official.clone();
+            alias.token = "stablyai-orca".into();
+            alias.tap = Some("stablyai/orca".into());
+            alias.brew_token = Some("orca".into());
+            core.database
+                .with(|c| {
+                    crate::catalog::upsert(c, &official)?;
+                    crate::catalog::upsert(c, &alias)
+                })
+                .unwrap();
+            let raw = serde_json::json!({"casks": [{"token": "orca", "tap": tap, "version": "1", "installed": "1", "artifacts": []}]}).to_string();
+            let mut info: Info = serde_json::from_str(&raw).unwrap();
+            let (other_tap, other_token) = if tap == "stablyai/orca" {
+                ("homebrew/cask", "orca")
+            } else {
+                ("stablyai/orca", "stablyai-orca")
+            };
+            let mut other = info.casks[0].clone();
+            other.tap = Some(other_tap.into());
+            info.casks.push(other);
+            *core.library.write().unwrap() = library::scan(
+                &core.database,
+                &info,
+                temp.path().to_str().unwrap(),
+                Locale::EnUs,
+            )
+            .unwrap()
+            .items;
+            *core.installed_info.write().unwrap() = info;
+            let script = temp.path().join("brew");
+            std::fs::write(&script, format!(
+                "#!/usr/bin/python3 -I\nimport sys\na=sys.argv[1:]\nif a==['--version']: print('Homebrew 7.0.7')\nelif a in (['--prefix'],['--cache']): print({prefix:?})\nelif a==['info','--json=v2','--cask',{read_token:?}]: print({raw:?})\nelse: sys.exit(2)\n",
+                prefix = temp.path().join("cache").to_string_lossy(),
+            )).unwrap();
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+            core.settings.write().unwrap().brew_path = Some(script.to_string_lossy().into_owned());
+            let target = TaskTarget {
+                kind: TaskKind::Cask,
+                token: site_token.into(),
+            };
+            let refreshed = core
+                .refresh_library(LibraryChangeReason::Task, Some(&target))
+                .await
+                .unwrap();
+            assert_eq!(refreshed.len(), 2);
+            let refreshed = refreshed
+                .iter()
+                .find(|item| item.token == site_token)
+                .unwrap();
+            assert_eq!(refreshed.full_token, Some(format!("{tap}/orca")));
+            assert!(
+                core.library
+                    .read()
+                    .unwrap()
+                    .iter()
+                    .any(|item| item.token == other_token)
+            );
+            let source: crate::updates::Outdated =
+                serde_json::from_value(serde_json::json!({"casks": [
+                    {"name": format!("{tap}/orca"), "current_version": "2"},
+                    {"name": format!("{other_tap}/orca"), "current_version": "2"}
+                ]}))
+                .unwrap();
+            let mut task = core
+                .queue
+                .enqueue(
+                    TaskOp::Upgrade,
+                    Some(target),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .unwrap();
+            task.state = TaskState::Succeeded;
+            for op in [TaskOp::Upgrade, TaskOp::Uninstall] {
+                *core.outdated_source.write().unwrap() = source.clone();
+                // Build the Homebrew list without enumerating this Mac's native apps.
+                let updates = crate::updates::build(
+                    &core.database,
+                    &source,
+                    &mut core.library.write().unwrap(),
+                    Locale::EnUs,
+                    1,
+                )
+                .unwrap();
+                assert_eq!(updates.len(), 2);
+                assert!(updates.iter().any(|item| item.token == site_token));
+                *core.updates.write().unwrap() = updates;
+                task.op = op;
+                task.target.as_mut().unwrap().token = if op == TaskOp::Uninstall {
+                    read_token
+                } else {
+                    site_token
+                }
+                .into();
+                core.settle_updates(&task).await.unwrap();
+                let source = core.outdated_source.read().unwrap();
+                assert_eq!(source.casks.len(), 1);
+                assert_eq!(source.casks[0].name, format!("{other_tap}/orca"));
+                let updates = core.updates.read().unwrap();
+                assert_eq!(updates.len(), 1);
+                assert_eq!(updates[0].token, other_token);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod permission_tests {
     use super::*;
+    fn pending_full_disk(inferred: PermissionState, blocked: bool) -> crate::permissions::Signals {
+        crate::permissions::Signals {
+            app_bundles: None,
+            all_files: Some(crate::permissions::Preflight::Granted),
+            full_disk_readable: Some(false),
+            inferred_app_management: inferred,
+            app_management_blocked_after_grant: blocked,
+            relaunch_ineffective: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn ineffective_relaunch_clears_permanently_from_either_permission_reader() {
+        for blocking_first in [true, false] {
+            let tmp = tempfile::tempdir().unwrap();
+            let core = DesktopCore::open(
+                tmp.path().join("data"),
+                tmp.path().join("cache"),
+                tmp.path().join("askpass"),
+                Arc::new(|_| {}),
+            )
+            .unwrap();
+            core.relaunch_ineffective.store(true, Ordering::Release);
+            *core.permission_signals.write().unwrap() = pending_full_disk;
+            assert!(core.permissions().await.unwrap().relaunch_ineffective);
+            assert!(core.permissions_blocking().unwrap().relaunch_ineffective);
+            core.infer_permissions_only();
+            let cleared = if blocking_first {
+                core.permissions_blocking().unwrap()
+            } else {
+                core.permissions().await.unwrap()
+            };
+            assert!(!cleared.relaunch_ineffective);
+            *core.permission_signals.write().unwrap() = pending_full_disk;
+            assert!(core.permissions().await.unwrap().full_disk_access_pending);
+            assert!(!core.permissions().await.unwrap().relaunch_ineffective);
+            assert!(!core.permissions_blocking().unwrap().relaunch_ineffective);
+        }
+    }
+
     #[tokio::test]
     async fn known_non_app_cask_and_other_operations_do_not_grant_permission() {
         let tmp = tempfile::tempdir().unwrap();
@@ -1211,6 +1499,7 @@ mod permission_tests {
                 full_disk_readable: Some(false),
                 inferred_app_management: inferred,
                 app_management_blocked_after_grant: blocked,
+                relaunch_ineffective: false,
             };
         *core.app_management.write().unwrap() = PermissionState::Denied;
         let before = core.permissions().await.unwrap();

@@ -14,6 +14,8 @@ const props = defineProps<{
   tagline: string;
   platform: string;
   site?: string;
+  // eslint-disable-next-line vue/no-unused-properties -- Version the signed cache URL without rendering the build ID.
+  build?: string;
   icons?: { name: string; token: string; src?: string | null; accent?: string | null }[];
 }>();
 // Wide CJK characters and long titles need smaller lettering within the fixed canvas; article

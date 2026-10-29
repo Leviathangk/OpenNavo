@@ -1,6 +1,5 @@
 {
   "articles": {
-    "viewTranslation": "Übersetzung ansehen",
     "title": "Artikel",
     "subtitle": "Empfehlungen, Tests, Anleitungen und Übersichten zu Mac-Apps",
     "all": "Alle",
@@ -18,8 +17,6 @@
     "published": "Veröffentlicht am {date}",
     "updated": "Aktualisiert am {date}",
     "editorial": "OpenNavo-Redaktion",
-    "machineTranslated": "KI-übersetzt",
-    "viewOriginal": "Original ansehen",
     "sourceText": "Diesen Artikel gibt es noch nicht in Ihrer Sprache, daher wird unten das Original angezeigt.",
     "testNote": "So haben wir getestet:",
     "toc": "Verzeichnis",
@@ -354,7 +351,6 @@
     "release": {
       "new": "Neu",
       "title": "Neu in {version}",
-      "translated": "Übersetzt",
       "source": {
         "github_release": "Aus GitHub Releases",
         "sparkle": "Aus dem Update-Feed der App",
@@ -1004,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo wurde aktualisiert. Öffnen Sie es erneut, um diese Funktionen weiter zu nutzen.",
+      "ineffective": "Auch nach erneutem Öffnen noch nicht wirksam. Schalten Sie OpenNavo unter „Festplattenvollzugriff“ aus und wieder ein und öffnen Sie OpenNavo anschließend erneut.",
+      "openSettings": "Systemeinstellungen öffnen",
       "body": "In den Systemeinstellungen aktiviert. Öffnen Sie OpenNavo erneut, damit die Änderung wirksam wird.",
       "action": "Erneut öffnen",
       "pending": "Nach erneutem Öffnen wirksam",

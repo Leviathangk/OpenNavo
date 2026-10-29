@@ -170,7 +170,6 @@ usePageSeo({
         v-else
         class="web-timeline"
         :entries="data.records"
-        :show-original="original"
         :expanded-count="page === 1 ? 3 : 1"
         :heading-level="2"
         :compatibility-labels="compatibilityLabels"

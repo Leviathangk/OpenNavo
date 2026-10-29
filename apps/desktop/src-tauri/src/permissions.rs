@@ -68,6 +68,13 @@ pub struct Signals {
     pub full_disk_readable: Option<bool>,
     pub inferred_app_management: PermissionState,
     pub app_management_blocked_after_grant: bool,
+    pub relaunch_ineffective: bool,
+}
+
+impl Signals {
+    pub fn full_disk_pending(&self) -> bool {
+        self.full_disk_readable == Some(false) && self.all_files == Some(Preflight::Granted)
+    }
 }
 
 pub fn combine(signals: Signals) -> Permissions {
@@ -89,8 +96,7 @@ pub fn combine(signals: Signals) -> Permissions {
         }
     };
     // Enabled in System Settings but not this process: both permissions take effect only after relaunch.
-    let full_disk_pending =
-        signals.full_disk_readable == Some(false) && signals.all_files == Some(Preflight::Granted);
+    let full_disk_pending = signals.full_disk_pending();
     let app_management_pending = signals.app_management_blocked_after_grant
         && full_disk_access != PermissionState::Granted
         && signals.app_bundles == Some(Preflight::Granted);
@@ -103,6 +109,7 @@ pub fn combine(signals: Signals) -> Permissions {
         app_management,
         full_disk_access,
         relaunch_required: full_disk_pending || app_management_pending,
+        relaunch_ineffective: signals.relaunch_ineffective && full_disk_pending,
         app_management_pending,
         full_disk_access_pending: full_disk_pending,
     }
@@ -120,6 +127,7 @@ pub fn signals(
         full_disk_readable: home.as_deref().and_then(probe_full_disk),
         inferred_app_management,
         app_management_blocked_after_grant,
+        relaunch_ineffective: false,
     }
 }
 
@@ -194,6 +202,7 @@ mod tests {
             full_disk_readable: Some(false),
             inferred_app_management: PermissionState::Unknown,
             app_management_blocked_after_grant: false,
+            relaunch_ineffective: false,
         }
     }
 
@@ -299,6 +308,47 @@ mod tests {
         });
         assert!(!not_granted.relaunch_required);
         assert!(!not_granted.app_management_pending);
+    }
+
+    #[test]
+    fn ineffective_relaunch_requires_pending_full_disk_access() {
+        let signals = Signals {
+            all_files: Some(Preflight::Granted),
+            relaunch_ineffective: true,
+            ..base()
+        };
+        assert!(combine(signals).relaunch_ineffective);
+        assert!(
+            !combine(Signals {
+                relaunch_ineffective: false,
+                ..signals
+            })
+            .relaunch_ineffective
+        );
+        for (readable, preflight) in [
+            (Some(true), Some(Preflight::Granted)),
+            (None, Some(Preflight::Granted)),
+            (Some(false), Some(Preflight::Denied)),
+            (None, None),
+        ] {
+            assert!(
+                !combine(Signals {
+                    full_disk_readable: readable,
+                    all_files: preflight,
+                    ..signals
+                })
+                .relaunch_ineffective
+            );
+        }
+        assert!(
+            !combine(Signals {
+                app_bundles: Some(Preflight::Granted),
+                app_management_blocked_after_grant: true,
+                relaunch_ineffective: true,
+                ..base()
+            })
+            .relaunch_ineffective
+        );
     }
 
     #[test]

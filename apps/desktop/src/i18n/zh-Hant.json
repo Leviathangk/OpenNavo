@@ -1,6 +1,5 @@
 {
   "articles": {
-    "viewTranslation": "檢視譯文",
     "title": "文章",
     "subtitle": "Mac 軟體推薦、評測、教程和合集",
     "all": "全部",
@@ -18,8 +17,6 @@
     "published": "{date} 釋出",
     "updated": "{date} 更新",
     "editorial": "OpenNavo 編輯部",
-    "machineTranslated": "AI 翻譯",
-    "viewOriginal": "檢視原文",
     "sourceText": "這篇文章還沒有當前語言的版本，下面顯示的是原文。",
     "testNote": "測試環境：",
     "toc": "目錄",
@@ -354,7 +351,6 @@
     "release": {
       "new": "新版本",
       "title": "{version} 更新內容",
-      "translated": "已譯為中文",
       "source": {
         "github_release": "來自 GitHub Release",
         "sparkle": "來自應用內更新源",
@@ -1004,6 +1000,9 @@
   },
   "permission": {
     "relaunch": {
+      "updated": "OpenNavo 已更新，重新開啟後即可繼續使用。",
+      "ineffective": "重新開啟後仍未生效。請在「完整磁碟取用權限」裡關閉 OpenNavo 再重新開啟，然後重新開啟 OpenNavo。",
+      "openSettings": "開啟系統設定",
       "body": "已在系統設定中開啟，重新開啟 OpenNavo 後生效。",
       "action": "重新開啟",
       "pending": "重新開啟後生效",

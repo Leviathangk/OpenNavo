@@ -26,6 +26,7 @@ pub mod native_menu;
 pub mod notifications;
 pub mod permissions;
 pub mod queue;
+pub mod relaunch;
 pub mod running_apps;
 pub mod scheduler;
 pub mod security;
@@ -197,6 +198,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::system::app_quit,
             commands::system::app_cancel_quit,
             commands::permissions::permissions_get,
+            commands::permissions::permission_settings_open,
             commands::permissions::permission_guide_open,
             commands::permissions::permission_guide_close,
             commands::permissions::permission_guide_fit,
@@ -406,10 +408,15 @@ pub fn run() {
                 tauri::path::BaseDirectory::Resource,
             )?;
             let sink = events::sink(app.handle().clone());
-            deeplink::install(app.handle(), sink.clone());
+            let core_sink = sink.clone();
             let core = tauri::async_runtime::block_on(blocking(move || {
-                core::DesktopCore::open(data, cache, askpass, sink)
+                core::DesktopCore::open(data, cache, askpass, core_sink)
             }))?;
+            #[cfg(target_os = "macos")]
+            if relaunch::self_heal(app.handle(), &core, hidden) {
+                return Ok(());
+            }
+            deeplink::install(app.handle(), sink);
             let app_handle = app.handle().clone();
             let store_path = core.data_dir.join("settings.json");
             let save = tauri::async_runtime::block_on(blocking(move || {
@@ -473,6 +480,8 @@ fn export_bindings() {
     write_bindings(&specta_builder()).expect("binding export must succeed");
     let bindings = std::fs::read_to_string("../src/ipc/bindings.ts").unwrap();
     for expected in [
+        "permissionSettingsOpen: (pane: PrivacyPane)",
+        "relaunchIneffective: boolean",
         "monitorSubscribe: (view: MonitorView, modules: MonitorModule[])",
         "monitorTrend:",
         "export type MonitorTrendPoint =",

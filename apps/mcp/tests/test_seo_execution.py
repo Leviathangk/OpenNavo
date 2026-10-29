@@ -139,6 +139,7 @@ def test_guides_name_only_existing_tools() -> None:
     # OpenSEO's inspect_urls.
     others = {
         "after_seq",
+        "article_id",
         "batch_too_large",
         "body_markdown",
         "dry_run",

@@ -71,6 +71,8 @@ paths:
       summary: getTranslationsSource
       description: Batch translation endpoint. Requires translation:review. Agent access requires an internal
         gateway and a separately scoped token. Each language validates permissions and input independently.
+        For articles, prefer articleId to resolve the current published revision. Otherwise id must be
+        article_get published.id of a published article. Ambiguous article IDs are rejected; drafts must be published first.
       x-permissions:
         - translation:review
       parameters:
@@ -81,11 +83,19 @@ paths:
             $ref: "#/components/schemas/ContentEntity"
         - name: id
           in: query
-          required: true
+          description: Content ID; for articles use published.id from article_get, or omit when articleId is supplied.
           schema:
             type: integer
             format: int64
             minimum: 0
+            maximum: 1000000000
+        - name: articleId
+          in: query
+          description: Article identity ID (entity=article only). Resolves the published revision; if id is supplied, it must match.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
             maximum: 1000000000
         - name: secondaryId
           in: query
@@ -1657,6 +1667,52 @@ paths:
         - $ref: '#/components/parameters/AgentTool'
         - $ref: '#/components/parameters/AgentRequestId'
         - $ref: '#/components/parameters/AgentClientIP'
+  /dashboard/usage/intraday:
+    get:
+      tags: [dashboard]
+      operationId: getDashboardUsageIntraday
+      summary: Intraday active trend
+      description: >-
+        Distribution of each device/browser's first activity today in Asia/Shanghai,
+        from midnight through asOf. This is not an online-user count. Uses the same
+        usage_daily day and platform filters as the overview's today-active cards.
+        Returns 24 ordered hourly buckets; future hours have null counts, while
+        elapsed hours without activity have zero counts. Cumulative series end at
+        today's active counts for the sampled data. Devices on different platforms
+        are counted separately. Historical rows use last_active_at at migration
+        time because their original first activity cannot be recovered.
+      x-permissions: [dashboard:view]
+      x-agent-access: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/UsageIntradayResponse'
+                  - $ref: '#/components/schemas/BusinessErrorResponse'
+              examples:
+                en-US:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                zh-CN:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                ja-JP:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                es-ES:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                pt-BR:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                ru-RU:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                de-DE:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                fr-FR:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                it-IT:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                zh-Hant:
+                  $ref: '#/components/examples/UsageIntradayResponse'
   /packages:
     get:
       tags:
@@ -4097,7 +4153,7 @@ paths:
         - packages
       operationId: addTapPackage
       summary: 'Add a third-party tap cask'
-      description: "Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Per-architecture or per-OS blocks (arch, on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      description: "Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Literal arch arm:/intel: mappings and per-architecture sha256 values preserve both CPUs through Homebrew platform variations. Per-architecture and per-OS blocks (on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Optional siteToken chooses an unused site/catalog token to avoid collisions; upstream file paths and install names retain the original cask token. Without siteToken, tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
       parameters:
         - $ref: '#/components/parameters/ExpectedRevision'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -9743,7 +9799,7 @@ paths:
         - translations
       operationId: getTranslationStatus
       summary: "Read an object's six-language text and status"
-      description: 'Requires translation:review. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.'
+      description: 'Requires translation:review. For articles, prefer articleId to resolve the current published revision. Otherwise id must be article_get published.id; ambiguous IDs and unpublished revisions are rejected. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.'
       x-permissions:
         - translation:review
       parameters:
@@ -9755,6 +9811,16 @@ paths:
         - name: id
           in: query
           required: false
+          description: Content ID; for articles use published.id from article_get, or omit when articleId is supplied.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+            example: 1
+        - name: articleId
+          in: query
+          required: false
+          description: Article identity ID (entity=article only). Resolves the published revision; if id is supplied, it must match.
           schema:
             type: integer
             format: int64
@@ -14178,6 +14244,12 @@ components:
       properties:
         ref:
           $ref: "#/components/schemas/ContentRef"
+        articleId:
+          description: Article identity ID (ref.entity=article only). Recommended for articles; resolves the published revision. Omit ref.id or supply the same published revision ID. Draft articles must be published first.
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000000000
         model:
           type: string
           minLength: 1
@@ -14237,6 +14309,7 @@ components:
         reason:
           type: string
         value:
+          description: Translation on success. Article failures always return null; other entities may return the current translation for recovery.
           type: object
           allOf:
             - $ref: "#/components/schemas/BatchTranslationValue"
@@ -16294,6 +16367,27 @@ components:
           type: string
           nullable: true
           description: GitHub owner/name, without a URL or .git suffix.
+        githubTagPrefix:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 256
+          description: Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.
+        githubTagRegex:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 1024
+          description: Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.
+        githubAssetPattern:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 512
+          description: Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.
+        includePrereleases:
+          type: boolean
+          description: Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback.
         bundleIds:
           type: array
           maxItems: 32
@@ -16399,6 +16493,27 @@ components:
           type: string
           nullable: true
           description: GitHub owner/name, without a URL or .git suffix.
+        githubTagPrefix:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 256
+          description: Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.
+        githubTagRegex:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 1024
+          description: Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.
+        githubAssetPattern:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 512
+          description: Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.
+        includePrereleases:
+          type: boolean
+          description: Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback.
         bundleIds:
           type: array
           maxItems: 32
@@ -16519,6 +16634,27 @@ components:
           type: string
           nullable: true
           description: GitHub owner/name, without a URL or .git suffix.
+        githubTagPrefix:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 256
+          description: Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.
+        githubTagRegex:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 1024
+          description: Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.
+        githubAssetPattern:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 512
+          description: Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.
+        includePrereleases:
+          type: boolean
+          description: Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback.
         bundleIds:
           type: array
           maxItems: 32
@@ -18729,6 +18865,43 @@ components:
         code: '0000'
         msg: ok
         data:
+          githubReleases:
+            timeZone: Asia/Shanghai
+            downloads: { today: 12, yesterday: 9, total: 953 }
+            updates: { today: 8, yesterday: 6, total: 582 }
+            lastSnapshotAt: "2026-10-22T08:10:00Z"
+            dailyStartDate: "2026-10-21"
+            days:
+              - { date: "2026-09-23", downloads: null, updates: null }
+              - { date: "2026-09-24", downloads: null, updates: null }
+              - { date: "2026-09-25", downloads: null, updates: null }
+              - { date: "2026-09-26", downloads: null, updates: null }
+              - { date: "2026-09-27", downloads: null, updates: null }
+              - { date: "2026-09-28", downloads: null, updates: null }
+              - { date: "2026-09-29", downloads: null, updates: null }
+              - { date: "2026-09-30", downloads: null, updates: null }
+              - { date: "2026-10-01", downloads: null, updates: null }
+              - { date: "2026-10-02", downloads: null, updates: null }
+              - { date: "2026-10-03", downloads: null, updates: null }
+              - { date: "2026-10-04", downloads: null, updates: null }
+              - { date: "2026-10-05", downloads: null, updates: null }
+              - { date: "2026-10-06", downloads: null, updates: null }
+              - { date: "2026-10-07", downloads: null, updates: null }
+              - { date: "2026-10-08", downloads: null, updates: null }
+              - { date: "2026-10-09", downloads: null, updates: null }
+              - { date: "2026-10-10", downloads: null, updates: null }
+              - { date: "2026-10-11", downloads: null, updates: null }
+              - { date: "2026-10-12", downloads: null, updates: null }
+              - { date: "2026-10-13", downloads: null, updates: null }
+              - { date: "2026-10-14", downloads: null, updates: null }
+              - { date: "2026-10-15", downloads: null, updates: null }
+              - { date: "2026-10-16", downloads: null, updates: null }
+              - { date: "2026-10-17", downloads: null, updates: null }
+              - { date: "2026-10-18", downloads: null, updates: null }
+              - { date: "2026-10-19", downloads: null, updates: null }
+              - { date: "2026-10-20", downloads: null, updates: null }
+              - { date: "2026-10-21", downloads: 9, updates: 6 }
+              - { date: "2026-10-22", downloads: 12, updates: 8 }
           packages:
             casks: 40
             formulae: 0
@@ -19718,6 +19891,7 @@ components:
         - catalog_sync
         - analytics_sync
         - snapshot_build
+        - github-release_snapshot
         - changelog_schedule
         - assets_download-size
         - cleanup
@@ -19730,6 +19904,7 @@ components:
         - catalog_sync
         - analytics_sync
         - snapshot_build
+        - github-release_snapshot
         - enrich_schedule
         - translate_schedule
         - changelog_schedule
@@ -20044,12 +20219,14 @@ components:
       example:
         timeZone: Asia/Shanghai
         asOf: '2026-10-22T08:00:00Z'
+        desktopTotal: 12
+        webTotal: 25
         days:
           - {date: '2026-10-22', web: 20, desktop: 10, newWeb: 5, newDesktop: 2}
         versions:
           - {version: '0.1.3', count: 10}
       type: object
-      required: [timeZone, asOf, days, versions]
+      required: [timeZone, asOf, desktopTotal, webTotal, days, versions]
       properties:
         timeZone:
           type: string
@@ -20057,6 +20234,16 @@ components:
         asOf:
           type: string
           format: date-time
+        desktopTotal:
+          description: Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Identities are deduplicated by a locally persisted client installation UUID; upgrades and app-bundle reinstalls reuse it while app data remains. Clearing app data (including Homebrew zap) can create a new identity. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
+          type: integer
+          format: int64
+          minimum: 0
+        webTotal:
+          description: Cumulative web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
+          type: integer
+          format: int64
+          minimum: 0
         days:
           type: array
           items:
@@ -20105,6 +20292,220 @@ components:
               count:
                 type: integer
                 format: int64
+    GitHubReleaseCounts:
+      type: object
+      example: { today: 12, yesterday: 9, total: 953 }
+      required: [today, yesterday, total]
+      properties:
+        today:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Increase on the current Beijing calendar day; null without a snapshot or on the first snapshot day.
+        yesterday:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Increase on the previous Beijing calendar day; null without a snapshot or on the first snapshot day.
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Sum of cumulative counts in the latest complete snapshot; null before the first successful snapshot.
+    GitHubReleaseDay:
+      type: object
+      example: { date: "2026-10-22", downloads: 12, updates: 8 }
+      required: [date, downloads, updates]
+      properties:
+        date:
+          type: string
+          format: date
+        downloads:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        updates:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+    GitHubReleaseOverview:
+      type: object
+      example:
+        timeZone: Asia/Shanghai
+        downloads: { today: 12, yesterday: 9, total: 953 }
+        updates: { today: 8, yesterday: 6, total: 582 }
+        lastSnapshotAt: "2026-10-22T08:10:00Z"
+        dailyStartDate: "2026-10-21"
+        days:
+          - { date: "2026-09-23", downloads: null, updates: null }
+          - { date: "2026-09-24", downloads: null, updates: null }
+          - { date: "2026-09-25", downloads: null, updates: null }
+          - { date: "2026-09-26", downloads: null, updates: null }
+          - { date: "2026-09-27", downloads: null, updates: null }
+          - { date: "2026-09-28", downloads: null, updates: null }
+          - { date: "2026-09-29", downloads: null, updates: null }
+          - { date: "2026-09-30", downloads: null, updates: null }
+          - { date: "2026-10-01", downloads: null, updates: null }
+          - { date: "2026-10-02", downloads: null, updates: null }
+          - { date: "2026-10-03", downloads: null, updates: null }
+          - { date: "2026-10-04", downloads: null, updates: null }
+          - { date: "2026-10-05", downloads: null, updates: null }
+          - { date: "2026-10-06", downloads: null, updates: null }
+          - { date: "2026-10-07", downloads: null, updates: null }
+          - { date: "2026-10-08", downloads: null, updates: null }
+          - { date: "2026-10-09", downloads: null, updates: null }
+          - { date: "2026-10-10", downloads: null, updates: null }
+          - { date: "2026-10-11", downloads: null, updates: null }
+          - { date: "2026-10-12", downloads: null, updates: null }
+          - { date: "2026-10-13", downloads: null, updates: null }
+          - { date: "2026-10-14", downloads: null, updates: null }
+          - { date: "2026-10-15", downloads: null, updates: null }
+          - { date: "2026-10-16", downloads: null, updates: null }
+          - { date: "2026-10-17", downloads: null, updates: null }
+          - { date: "2026-10-18", downloads: null, updates: null }
+          - { date: "2026-10-19", downloads: null, updates: null }
+          - { date: "2026-10-20", downloads: null, updates: null }
+          - { date: "2026-10-21", downloads: 9, updates: 6 }
+          - { date: "2026-10-22", downloads: 12, updates: 8 }
+      description: >-
+        Totals across all desktop-v* releases of opennavo/OpenNavo, sampled hourly.
+        Downloads count only *_universal.dmg, including Homebrew install and upgrade.
+        Updates count only *.app.tar.gz across both architectures; transfers, not people.
+        Daily increases sum nonnegative per-asset differences from the previous snapshot day.
+        New assets use zero as their previous count. The first snapshot day has cumulative data only.
+        Missing days are null and their increases fall into the next snapshot day. No historical backfill.
+        Failed snapshots preserve the last successful values and timestamp.
+      required: [downloads, updates, days, timeZone, lastSnapshotAt, dailyStartDate]
+      properties:
+        downloads:
+          $ref: "#/components/schemas/GitHubReleaseCounts"
+        updates:
+          $ref: "#/components/schemas/GitHubReleaseCounts"
+        days:
+          description: The last 30 Beijing calendar days, oldest first. Null counts mean daily data is unavailable.
+          type: array
+          minItems: 30
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/GitHubReleaseDay"
+        timeZone:
+          type: string
+          enum: [Asia/Shanghai]
+        lastSnapshotAt:
+          type: string
+          format: date-time
+          nullable: true
+        dailyStartDate:
+          type: string
+          format: date
+          nullable: true
+          description: First snapshot day with an earlier snapshot day; null until a second distinct snapshot day exists.
+    UsageIntradayHour:
+      example: {hour: 0, web: 2, desktop: 1, cumulativeWeb: 2, cumulativeDesktop: 1}
+      type: object
+      required: [hour, web, desktop, cumulativeWeb, cumulativeDesktop]
+      properties:
+        hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+          description: Hour in Asia/Shanghai; the current hour is partial.
+        web:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
+        desktop:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
+        cumulativeWeb:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Total active browsers from midnight through this hour; null for a future hour.
+        cumulativeDesktop:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Total active desktop installations from midnight through this hour; null for a future hour.
+    UsageIntraday:
+      example: &usageIntradayExample
+        date: '2026-10-29'
+        timeZone: Asia/Shanghai
+        asOf: '2026-10-28T16:00:00Z'
+        hours:
+          - {hour: 0, web: 2, desktop: 1, cumulativeWeb: 2, cumulativeDesktop: 1}
+          - {hour: 1, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 2, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 3, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 4, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 5, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 6, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 7, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 8, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 9, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 10, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 11, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 12, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 13, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 14, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 15, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 16, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 17, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 18, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 19, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 20, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 21, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 22, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 23, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+      type: object
+      required: [date, timeZone, asOf, hours]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Today's calendar date in Asia/Shanghai.
+        timeZone:
+          type: string
+          enum: [Asia/Shanghai]
+        asOf:
+          type: string
+          format: date-time
+        hours:
+          type: array
+          minItems: 24
+          maxItems: 24
+          items:
+            $ref: '#/components/schemas/UsageIntradayHour'
+    UsageIntradayResponse:
+      example: &usageIntradayResponseExample
+        code: '0000'
+        msg: ok
+        data: *usageIntradayExample
+      type: object
+      required: [code, msg]
+      properties:
+        code:
+          $ref: '#/components/schemas/Code'
+        msg:
+          type: string
+          example: ok
+        data:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/UsageIntraday'
+          nullable: true
     DashboardOverview:
       type: object
       required:
@@ -20113,7 +20514,10 @@ components:
         - feedbackOpen
         - jobs
         - snapshot
+        - githubReleases
       properties:
+        githubReleases:
+          $ref: '#/components/schemas/GitHubReleaseOverview'
         usage:
           $ref: '#/components/schemas/UsageOverview'
         packages:
@@ -20222,6 +20626,43 @@ components:
         hermes:
           $ref: '#/components/schemas/HermesDaily'
       example:
+        githubReleases:
+          timeZone: Asia/Shanghai
+          downloads: { today: 12, yesterday: 9, total: 953 }
+          updates: { today: 8, yesterday: 6, total: 582 }
+          lastSnapshotAt: "2026-10-22T08:10:00Z"
+          dailyStartDate: "2026-10-21"
+          days:
+            - { date: "2026-09-23", downloads: null, updates: null }
+            - { date: "2026-09-24", downloads: null, updates: null }
+            - { date: "2026-09-25", downloads: null, updates: null }
+            - { date: "2026-09-26", downloads: null, updates: null }
+            - { date: "2026-09-27", downloads: null, updates: null }
+            - { date: "2026-09-28", downloads: null, updates: null }
+            - { date: "2026-09-29", downloads: null, updates: null }
+            - { date: "2026-09-30", downloads: null, updates: null }
+            - { date: "2026-10-01", downloads: null, updates: null }
+            - { date: "2026-10-02", downloads: null, updates: null }
+            - { date: "2026-10-03", downloads: null, updates: null }
+            - { date: "2026-10-04", downloads: null, updates: null }
+            - { date: "2026-10-05", downloads: null, updates: null }
+            - { date: "2026-10-06", downloads: null, updates: null }
+            - { date: "2026-10-07", downloads: null, updates: null }
+            - { date: "2026-10-08", downloads: null, updates: null }
+            - { date: "2026-10-09", downloads: null, updates: null }
+            - { date: "2026-10-10", downloads: null, updates: null }
+            - { date: "2026-10-11", downloads: null, updates: null }
+            - { date: "2026-10-12", downloads: null, updates: null }
+            - { date: "2026-10-13", downloads: null, updates: null }
+            - { date: "2026-10-14", downloads: null, updates: null }
+            - { date: "2026-10-15", downloads: null, updates: null }
+            - { date: "2026-10-16", downloads: null, updates: null }
+            - { date: "2026-10-17", downloads: null, updates: null }
+            - { date: "2026-10-18", downloads: null, updates: null }
+            - { date: "2026-10-19", downloads: null, updates: null }
+            - { date: "2026-10-20", downloads: null, updates: null }
+            - { date: "2026-10-21", downloads: 9, updates: 6 }
+            - { date: "2026-10-22", downloads: 12, updates: 8 }
         packages:
           casks: 40
           formulae: 0
@@ -22947,9 +23388,10 @@ components:
         token:
           type: string
           example: swiftvm
+          description: Site/catalog token; may differ from the upstream cask token.
         fullToken:
           type: string
-          description: 'Name brew installs, <owner>/<tap>/<token>'
+          description: 'Upstream name brew installs, <owner>/<tap>/<cask-token>, independent of the site token'
           example: swiftvm-app/tap/swiftvm
         tap:
           type: string
@@ -23035,6 +23477,13 @@ components:
       required:
         - cask
       properties:
+        siteToken:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[a-z0-9][a-z0-9+_.@-]*$'
+          description: 'Optional unique site/catalog token, for example stablyai-orca. Defaults to the upstream cask token. Does not change the upstream cask name, tap, sync source or install target. An explicit token must be unused, including removed packages.'
+          example: stablyai-orca
         cask:
           type: string
           minLength: 5
@@ -24537,6 +24986,43 @@ components:
         code: '0000'
         msg: ok
         data:
+          githubReleases:
+            timeZone: Asia/Shanghai
+            downloads: { today: 12, yesterday: 9, total: 953 }
+            updates: { today: 8, yesterday: 6, total: 582 }
+            lastSnapshotAt: "2026-10-22T08:10:00Z"
+            dailyStartDate: "2026-10-21"
+            days:
+              - { date: "2026-09-23", downloads: null, updates: null }
+              - { date: "2026-09-24", downloads: null, updates: null }
+              - { date: "2026-09-25", downloads: null, updates: null }
+              - { date: "2026-09-26", downloads: null, updates: null }
+              - { date: "2026-09-27", downloads: null, updates: null }
+              - { date: "2026-09-28", downloads: null, updates: null }
+              - { date: "2026-09-29", downloads: null, updates: null }
+              - { date: "2026-09-30", downloads: null, updates: null }
+              - { date: "2026-10-01", downloads: null, updates: null }
+              - { date: "2026-10-02", downloads: null, updates: null }
+              - { date: "2026-10-03", downloads: null, updates: null }
+              - { date: "2026-10-04", downloads: null, updates: null }
+              - { date: "2026-10-05", downloads: null, updates: null }
+              - { date: "2026-10-06", downloads: null, updates: null }
+              - { date: "2026-10-07", downloads: null, updates: null }
+              - { date: "2026-10-08", downloads: null, updates: null }
+              - { date: "2026-10-09", downloads: null, updates: null }
+              - { date: "2026-10-10", downloads: null, updates: null }
+              - { date: "2026-10-11", downloads: null, updates: null }
+              - { date: "2026-10-12", downloads: null, updates: null }
+              - { date: "2026-10-13", downloads: null, updates: null }
+              - { date: "2026-10-14", downloads: null, updates: null }
+              - { date: "2026-10-15", downloads: null, updates: null }
+              - { date: "2026-10-16", downloads: null, updates: null }
+              - { date: "2026-10-17", downloads: null, updates: null }
+              - { date: "2026-10-18", downloads: null, updates: null }
+              - { date: "2026-10-19", downloads: null, updates: null }
+              - { date: "2026-10-20", downloads: null, updates: null }
+              - { date: "2026-10-21", downloads: 9, updates: 6 }
+              - { date: "2026-10-22", downloads: 12, updates: 8 }
           packages:
             casks: 40
             formulae: 0
@@ -28269,6 +28755,7 @@ components:
         entity:
           $ref: '#/components/schemas/ContentEntity'
         id:
+          description: Content ID. For article translations, use article_get published.id of a published article, or omit when articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.
           type: integer
           format: int64
           minimum: 0
@@ -28281,7 +28768,7 @@ components:
       example:
         entity: package
         id: 1
-      description: 'announcement needs no id; other entities require a positive integer id. collection_item also requires secondaryId (packageId).'
+      description: 'announcement needs no id; other entities require a positive integer id. Article translations may instead supply articleId to resolve the published revision. collection_item also requires secondaryId (packageId).'
     HistoryRef:
       type: object
       additionalProperties: false
@@ -29012,6 +29499,12 @@ components:
       properties:
         ref:
           $ref: '#/components/schemas/ContentRef'
+        articleId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Owning article identity, present only for article revisions. Send with ref when correcting an article translation to disambiguate IDs.
+          example: 1
         label:
           type: string
           maxLength: 200
@@ -29791,6 +30284,12 @@ components:
       properties:
         ref:
           $ref: '#/components/schemas/ContentRef'
+        articleId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Article identity ID (ref.entity=article only). Resolves the current published revision; if ref.id is supplied, it must match.
+          example: 1
         locale:
           $ref: '#/components/schemas/WritableLocale'
         model:
@@ -29809,7 +30308,7 @@ components:
         fields:
           displayName: Example App
           summary: An app for organizing daily work
-      description: 'Non-source languages only. Agent edits become machine with the current source hash; human edits become manual. Agent translation wording, completeness and formatting are decided by the caller; field types and storage limits still apply.'
+      description: 'Non-source languages only. For articles, prefer articleId to resolve the current published revision. Otherwise ref.id must be article_get published.id; ambiguous IDs and unpublished revisions are rejected. Agent edits become machine with the current source hash; human edits become manual. Agent translation wording, completeness and formatting are decided by the caller; field types and storage limits still apply.'
     GlossaryTranslations:
       type: object
       additionalProperties: false
@@ -37189,6 +37688,8 @@ components:
           withinDays: 14
           records: []
   examples:
+    UsageIntradayResponse:
+      value: *usageIntradayResponseExample
     AdminArticleSixLocales:
       value:
         code: '0000'
@@ -37650,9 +38151,48 @@ components:
         code: '0000'
         msg: ok
         data:
+          githubReleases:
+            timeZone: Asia/Shanghai
+            downloads: { today: 12, yesterday: 9, total: 953 }
+            updates: { today: 8, yesterday: 6, total: 582 }
+            lastSnapshotAt: "2026-10-22T08:10:00Z"
+            dailyStartDate: "2026-10-21"
+            days:
+              - { date: "2026-09-23", downloads: null, updates: null }
+              - { date: "2026-09-24", downloads: null, updates: null }
+              - { date: "2026-09-25", downloads: null, updates: null }
+              - { date: "2026-09-26", downloads: null, updates: null }
+              - { date: "2026-09-27", downloads: null, updates: null }
+              - { date: "2026-09-28", downloads: null, updates: null }
+              - { date: "2026-09-29", downloads: null, updates: null }
+              - { date: "2026-09-30", downloads: null, updates: null }
+              - { date: "2026-10-01", downloads: null, updates: null }
+              - { date: "2026-10-02", downloads: null, updates: null }
+              - { date: "2026-10-03", downloads: null, updates: null }
+              - { date: "2026-10-04", downloads: null, updates: null }
+              - { date: "2026-10-05", downloads: null, updates: null }
+              - { date: "2026-10-06", downloads: null, updates: null }
+              - { date: "2026-10-07", downloads: null, updates: null }
+              - { date: "2026-10-08", downloads: null, updates: null }
+              - { date: "2026-10-09", downloads: null, updates: null }
+              - { date: "2026-10-10", downloads: null, updates: null }
+              - { date: "2026-10-11", downloads: null, updates: null }
+              - { date: "2026-10-12", downloads: null, updates: null }
+              - { date: "2026-10-13", downloads: null, updates: null }
+              - { date: "2026-10-14", downloads: null, updates: null }
+              - { date: "2026-10-15", downloads: null, updates: null }
+              - { date: "2026-10-16", downloads: null, updates: null }
+              - { date: "2026-10-17", downloads: null, updates: null }
+              - { date: "2026-10-18", downloads: null, updates: null }
+              - { date: "2026-10-19", downloads: null, updates: null }
+              - { date: "2026-10-20", downloads: null, updates: null }
+              - { date: "2026-10-21", downloads: 9, updates: 6 }
+              - { date: "2026-10-22", downloads: 12, updates: 8 }
           usage:
             timeZone: Asia/Shanghai
             asOf: '2026-10-22T08:00:00Z'
+            desktopTotal: 12
+            webTotal: 25
             days:
               - {date: '2026-10-21', web: 17, desktop: 8, newWeb: 4, newDesktop: 1}
               - {date: '2026-10-22', web: 20, desktop: 10, newWeb: 5, newDesktop: 2}

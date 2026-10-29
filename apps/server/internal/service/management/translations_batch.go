@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,6 +29,7 @@ type translationItem struct {
 }
 type translationBatch struct {
 	Ref          content.Ref       `json:"ref"`
+	ArticleID    *int64            `json:"articleId,omitempty"`
 	Model        string            `json:"model"`
 	Translations []translationItem `json:"translations"`
 }
@@ -37,14 +39,32 @@ func (s *Service) translationsSource(ctx context.Context, in Input) (any, error)
 		return nil, err
 	}
 	ref := content.Ref{Entity: text(in.Params, "entity"), ID: int64(number(in.Params, "id", 0)), SecondaryID: int64(number(in.Params, "secondaryid", 0))}
-	if !ref.Valid() {
+	if ref.Entity != "article" && !ref.Valid() {
 		return nil, domain.Rejected("content_ref_invalid")
 	}
 	if err := assertContentAccess(ctx, ref); err != nil {
 		return nil, err
 	}
+	var articleID *int64
+	if _, ok := in.Params["articleid"]; ok {
+		id := int64(number(in.Params, "articleid", 0))
+		articleID = &id
+		if _, supplied := in.Params["id"]; supplied && ref.ID == 0 && ref.Entity == "article" {
+			return nil, domain.Rejected("article_ref_mismatch:articleId_and_ref.id")
+		}
+	}
+	ref, err := s.Store.ResolveArticleTranslationRef(ctx, ref, articleID, false)
+	if err != nil {
+		return nil, err
+	}
+	if !ref.Valid() {
+		return nil, domain.Rejected("content_ref_invalid")
+	}
 	source, err := s.Store.ReadContentSource(ctx, ref)
 	if err != nil {
+		if ref.Entity == "article" && errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.Rejected("article_ref_must_be_published_revision:use_articleId_or_article_get.published.id")
+		}
 		return nil, store.MapAdminError(err)
 	}
 	values := []store.TranslationValue{}
@@ -70,7 +90,7 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 	if json.Unmarshal(raw, &request) != nil {
 		return nil, domain.Rejected("body_invalid")
 	}
-	if !request.Ref.Valid() {
+	if request.Ref.Entity != "article" && !request.Ref.Valid() {
 		return nil, domain.Rejected("content_ref_invalid")
 	}
 	if len(request.Translations) < 1 {
@@ -82,6 +102,23 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 	if err := assertContentAccess(ctx, request.Ref); err != nil {
 		return nil, err
 	}
+	if request.Ref.Entity == "article" && request.ArticleID != nil && request.Ref.ID == 0 {
+		var supplied struct {
+			Ref map[string]json.RawMessage `json:"ref"`
+		}
+		_ = json.Unmarshal(raw, &supplied)
+		if _, present := supplied.Ref["id"]; present {
+			return nil, domain.Rejected("article_ref_mismatch:articleId_and_ref.id")
+		}
+	}
+	ref, err := s.Store.ResolveArticleTranslationRef(ctx, request.Ref, request.ArticleID, false)
+	if err != nil {
+		return nil, err
+	}
+	if !ref.Valid() {
+		return nil, domain.Rejected("content_ref_invalid")
+	}
+	request.Ref = ref
 	seen := map[string]bool{}
 	for _, item := range request.Translations {
 		if seen[item.Locale] {
@@ -93,24 +130,7 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 	for _, item := range request.Translations {
 		result, err := s.writeTranslationLocale(ctx, request, item)
 		if err != nil {
-			reason := "write_failed"
-			var app *domain.AppError
-			if errors.As(err, &app) && app.Code == domain.CodeValidation {
-				reason = "validation_failed"
-				if app.Msg != "" {
-					reason += ":" + app.Msg
-				}
-			}
-			switch {
-			case errors.Is(err, errTranslationRevision):
-				reason = "revision_conflict"
-			case errors.Is(err, agentgate.ErrIdempotencyKeyReused):
-				reason = "idempotency_key_reused"
-			}
-			var violation *agentgate.Violation
-			if errors.As(err, &violation) {
-				reason = violation.Reason
-			}
+			reason := translationFailureReason(err)
 			logctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			logerr := agentgate.Log(logctx, s.Store.DB, domain.CurrentOperation(ctx).RequestID, writeOwner(ctx), "WriteTranslations", "rejected", item.Locale+":"+reason)
 			cancel()
@@ -118,7 +138,7 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 				return nil, logerr
 			}
 			var current any
-			if i18n.Valid(item.Locale) {
+			if request.Ref.Entity != "article" && i18n.Valid(item.Locale) {
 				if v, e := s.Store.TranslationValue(ctx, request.Ref, item.Locale); e == nil {
 					current = v
 				}
@@ -133,6 +153,44 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 	}
 	return map[string]any{"results": results}, nil
 }
+
+// Return actionable business errors, never raw database errors or their values.
+func translationFailureReason(err error) string {
+	switch {
+	case errors.Is(err, errTranslationRevision):
+		return "revision_conflict"
+	case errors.Is(err, agentgate.ErrIdempotencyKeyReused):
+		return "idempotency_key_reused"
+	case errors.Is(err, context.Canceled):
+		return "request_cancelled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "deadline_exceeded"
+	}
+	var violation *agentgate.Violation
+	if errors.As(err, &violation) {
+		return violation.Reason
+	}
+	var app *domain.AppError
+	if errors.As(store.MapAdminError(err), &app) {
+		if app.Code == domain.CodeValidation && strings.HasPrefix(app.Msg, "rejected: ") {
+			return "validation_failed:" + app.Msg
+		}
+		switch app.Code {
+		case domain.CodeValidation:
+			return "validation_failed"
+		case domain.CodeNotFound:
+			return "content_not_found"
+		case domain.CodeConflict:
+			return "state_conflict"
+		case domain.CodeForbidden:
+			return "permission_denied"
+		case domain.CodeInvalidState:
+			return "invalid_state"
+		}
+	}
+	return "internal_error"
+}
+
 func (s *Service) writeTranslationLocale(ctx context.Context, request translationBatch, item translationItem) (any, error) {
 	key := item.IdempotencyKey
 	if key == "" {
@@ -167,6 +225,9 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 		}
 		op := domain.CurrentOperation(ctx)
 		st := &store.Store{DB: tx, Redis: s.Store.Redis}
+		if _, err := st.ResolveArticleTranslationRef(ctx, request.Ref, request.ArticleID, true); err != nil {
+			return err
+		}
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "content:"+request.Ref.Entity+":"+request.Ref.Key()).Error; err != nil {
 			return err
 		}

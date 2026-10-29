@@ -4378,7 +4378,12 @@ export interface components {
             /** @example visual-studio-code */
             token: string;
             /**
-             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.
+             * @description Upstream Homebrew cask token when different from the site token. Install with <tap>/<brewToken>; otherwise use <tap>/<token>. Absent for official casks and casks without a site alias.
+             * @example orca
+             */
+            brewToken?: string;
+            /**
+             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>; when brewToken is present, use it instead of token.
              * @example swiftvm-app/tap
              */
             tap?: string;
@@ -4709,7 +4714,12 @@ export interface components {
             /** @example visual-studio-code */
             token: string;
             /**
-             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.
+             * @description Upstream Homebrew cask token when different from the site token. Install with <tap>/<brewToken>; otherwise use <tap>/<token>. Absent for official casks and casks without a site alias.
+             * @example orca
+             */
+            brewToken?: string;
+            /**
+             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>; when brewToken is present, use it instead of token.
              * @example swiftvm-app/tap
              */
             tap?: string;

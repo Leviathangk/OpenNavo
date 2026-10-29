@@ -378,6 +378,11 @@ impl Service {
         let apps = self.routed_apps(&settings)?;
         let running = self.apps.control.list()?;
         let native = self.list_with_context(&settings, &apps, &running)?;
+        let installed: Vec<InstalledItem> = self
+            .database
+            .meta("installed_cache")?
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
         // Ownership survives an empty check (including skipped releases) and a restart.
         // Pending restarts also prevent a second installation through Homebrew.
         let native_casks: std::collections::HashSet<_> = apps
@@ -392,18 +397,18 @@ impl Service {
             .filter_map(|app| app.cask.as_deref())
             .collect();
         brew.retain(|item| {
+            let identity = installed
+                .iter()
+                .find(|local| local.kind == item.kind && local.matches_token(&item.token))
+                .map(|local| local.install_token())
+                .unwrap_or(&item.token);
             settings.update_sources.enabled(UpdateSource::Homebrew)
-                && !(item.kind == Kind::Cask && native_casks.contains(item.token.as_str()))
+                && !(item.kind == Kind::Cask && native_casks.contains(identity))
         });
-        let installed: Vec<InstalledItem> = self
-            .database
-            .meta("installed_cache")?
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
         for item in &mut brew {
             if let Some(local) = installed
                 .iter()
-                .find(|i| i.kind == item.kind && i.token == item.token)
+                .find(|i| i.kind == item.kind && i.matches_token(&item.token))
             {
                 item.running = running.iter().any(|p| {
                     local
@@ -784,7 +789,6 @@ impl Service {
         // Public rules use token:"" when no catalog package is associated.
         // This is an absent navigation hint, not a token for catalog::get.
         let token = [
-            app.cask.as_ref(),
             app.catalog_token.as_ref(),
             rule.and_then(|r| r.token.as_ref()),
         ]

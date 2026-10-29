@@ -81,6 +81,7 @@ type PublicPackage struct {
 	SourceLocale                           string              `json:"source_locale"`
 	ID                                     int64
 	Kind, Token, Name, Tap, Version        string
+	FullToken                              string `json:"full_token"`
 	VersionBase                            string `json:"version_base"`
 	Names                                  []string
 	DescEN                                 *string `json:"desc_en"`

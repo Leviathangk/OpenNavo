@@ -29,7 +29,7 @@ const (
 	// Cloudflare takes up to 100 prefixes per purge request, and on the Free plan 5 requests a minute
 	// (bursts of 25) for the whole account.
 	purgeChunk    = 100
-	purgeInterval = 12 * time.Second
+	purgeInterval = store.URLPurgeInterval
 	// Above this backlog size, coalesce work into one purge of the long-cached sections.
 	maxPurgePrefixes = 1000
 	indexNowChunk    = 10000
@@ -56,6 +56,8 @@ type Notifier struct {
 	CloudflareAPI    string
 	// Sleep waits between retries; tests replace it.
 	Sleep func(time.Duration)
+	// ProbeSleep supports cancellation during the bounded public probe budget.
+	ProbeSleep func(context.Context, time.Duration) error
 	// Reset for each drain; Run includes skips in its persisted delivery status.
 	contentGate contentGateStats
 }
@@ -65,6 +67,16 @@ type Result struct {
 }
 
 func (n *Notifier) defaults() {
+	if n.ProbeSleep == nil {
+		n.ProbeSleep = n.probePause
+		// Preserve injected clocks used by notification tests, before Sleep gets its default.
+		if n.Sleep != nil {
+			n.ProbeSleep = func(ctx context.Context, delay time.Duration) error {
+				n.Sleep(delay)
+				return ctx.Err()
+			}
+		}
+	}
 	if n.HTTP == nil {
 		n.HTTP = &http.Client{Timeout: 20 * time.Second}
 	}
@@ -346,7 +358,7 @@ func (n *Notifier) probe(ctx context.Context, urls []string) string {
 		return "probe unavailable"
 	}
 	for path, code := range reply.Statuses {
-		if code >= 500 {
+		if code >= 500 || code == http.StatusTooManyRequests {
 			return fmt.Sprintf("probe %s returned %d", path, code)
 		}
 	}
@@ -410,14 +422,15 @@ type purgeWait struct{ until time.Time }
 
 func (e *purgeWait) Error() string { return "waiting for Cloudflare purge capacity" }
 
-func purgeRetryAt(header string, now time.Time) time.Time {
+func purgeRetryAt(header string, now time.Time, maxRetryAfter time.Duration) time.Time {
+	capAt := now.Add(config.ProbeRetryAfterCap(maxRetryAfter))
 	if seconds, err := strconv.ParseInt(header, 10, 32); err == nil && seconds > 0 {
-		return now.Add(time.Duration(seconds) * time.Second)
+		return minProbeTime(now.Add(time.Duration(seconds)*time.Second), capAt)
 	}
 	if due, err := http.ParseTime(header); err == nil && due.After(now) {
-		return due
+		return minProbeTime(due, capAt)
 	}
-	return now.Add(time.Minute)
+	return minProbeTime(now.Add(time.Minute), capAt)
 }
 
 // purgePrefixes sends at most 100 prefixes per request and stops at the first
@@ -431,7 +444,7 @@ func (n *Notifier) purgePrefixes(ctx context.Context, settings store.SEOSettings
 			return purged, 0, err
 		}
 		if !allowed {
-			due, err := n.Store.URLPurgeReadyAt(ctx)
+			due, err := n.Store.URLPurgeReadyAt(ctx, n.Now(), n.Config.IndexNowProbeMaxRetryAfter)
 			if err != nil {
 				return purged, 0, err
 			}
@@ -451,8 +464,8 @@ func (n *Notifier) purgePrefixes(ctx context.Context, settings store.SEOSettings
 		data, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests {
-			due := purgeRetryAt(resp.Header.Get("Retry-After"), n.Now())
-			if err := n.Store.DelayURLPurge(ctx, due); err != nil {
+			due := purgeRetryAt(resp.Header.Get("Retry-After"), n.Now(), n.Config.IndexNowProbeMaxRetryAfter)
+			if err := n.Store.DelayURLPurge(ctx, n.Now(), due, n.Config.IndexNowProbeMaxRetryAfter); err != nil {
 				return purged, resp.StatusCode, err
 			}
 			return purged, resp.StatusCode, &purgeWait{until: due}
