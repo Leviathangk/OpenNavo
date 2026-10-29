@@ -248,7 +248,6 @@
     "release": {
       "new": "Nuova versione",
       "title": "Novità della versione {version}",
-      "translated": "Tradotto con IA",
       "source": {
         "github_release": "Da GitHub Releases",
         "sparkle": "Dal feed di aggiornamento dell’app",
@@ -954,8 +953,6 @@
     "published": "Pubblicato il {date}",
     "updated": "Aggiornato il {date}",
     "editorial": "Redazione di OpenNavo",
-    "machineTranslated": "Traduzione con IA",
-    "viewOriginal": "Mostra l’originale",
     "sourceText": "Questo articolo non è ancora disponibile nella tua lingua, quindi qui sotto trovi l’originale.",
     "testNote": "Come abbiamo testato:",
     "toc": "Indice",

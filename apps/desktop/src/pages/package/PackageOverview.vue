@@ -191,7 +191,6 @@ function onCopied(text: string) {
     :screenshots="shots"
     :screenshots-label="t('package.screenshots')"
     :has-about="Boolean(description)"
-    :about-machine-translated="Boolean(detail?.machineTranslated)"
     :caveats="detail?.caveats"
     :caveats-title="t('package.caveats')"
     :command="command"

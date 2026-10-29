@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { siteMessage } from '../server/utils/siteCopy';
 import { describe, expect, it } from 'vitest';
 import type { PublicComponents } from '@opennavo/api';
+import { SITE_LOCALES } from '@opennavo/shared';
 import { mdText, nestedMarkdown, renderPackageMarkdown } from '../server/utils/packageMarkdown';
 import { isOverviewPath, markdownAlternatesEnabled, markdownTarget } from '../shared/utils/markdownAlternate';
 
@@ -145,6 +146,14 @@ describe('Markdown alternates (X4)', () => {
     expect(md).toContain('https://opennavo.example/zh/apps/facts-app');
     expect(md).toContain('## 介绍');
     expect(md).toContain('macOS 13 起');
+  });
+
+  it.each(SITE_LOCALES)('Omits translation provenance from Markdown in %s', locale => {
+    const options = { siteUrl: 'https://opennavo.example', locale };
+    const detail = { ...pkg, sourceLocale: 'en-US' as const, machineTranslated: true };
+    expect(renderPackageMarkdown(detail, options)).toBe(
+      renderPackageMarkdown({ ...detail, machineTranslated: false }, options)
+    );
   });
 
   it('Keeps yearly billing, source and store download scope', () => {

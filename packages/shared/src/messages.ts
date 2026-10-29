@@ -81,8 +81,6 @@ const zhCN = {
   },
   about: {
     title: '介绍',
-    machineTranslated: 'AI 翻译',
-    viewOriginal: '查看原文',
     expand: '展开全文',
     collapse: '收起'
   },
@@ -161,9 +159,7 @@ const zhCN = {
     installed: '当前安装',
     patch: '补丁',
     prerelease: '预发布',
-    machineTranslation: 'AI 翻译',
     noNotes: '此版本没有单独的更新说明',
-    viewOriginal: '查看原文',
     expand: '展开',
     collapse: '收起',
     updateTo: '更新到此版本',
@@ -266,8 +262,6 @@ const enUS: SharedMessages = {
   },
   about: {
     title: 'About',
-    machineTranslated: 'AI translated',
-    viewOriginal: 'View original',
     expand: 'Read more',
     collapse: 'Show less'
   },
@@ -346,9 +340,7 @@ const enUS: SharedMessages = {
     installed: 'Installed',
     patch: 'Patch',
     prerelease: 'Pre-release',
-    machineTranslation: 'AI translated',
     noNotes: 'No separate release notes for this version',
-    viewOriginal: 'View original',
     expand: 'Expand',
     collapse: 'Collapse',
     updateTo: 'Update to this version',

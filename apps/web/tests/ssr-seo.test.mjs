@@ -11,6 +11,21 @@ import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
+import { LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared/locales';
+
+// Former public labels, retained only as regression assertions.
+const translationProvenanceLabels = {
+  'en-US': ['AI translation', 'View original', 'AI translated'],
+  'zh-CN': ['AI 翻译', '查看原文'],
+  'ja-JP': ['AI 翻訳', '原文を見る', '原文を表示'],
+  'es-ES': ['Traducción con IA', 'Ver original'],
+  'pt-BR': ['Tradução por IA', 'Ver original'],
+  'ru-RU': ['Перевод ИИ', 'Открыть оригинал', 'Показать оригинал'],
+  'de-DE': ['KI-Übersetzung', 'Original ansehen', 'KI-übersetzt'],
+  'fr-FR': ['Traduction IA', 'Voir l’original', 'Traduit par IA'],
+  'it-IT': ['Traduzione con IA', 'Mostra l’originale', 'Tradotto con IA'],
+  'zh-Hant': ['AI 翻譯', '檢視原文']
+};
 
 // Check the rendered HTML that crawlers receive. Empty alt is valid for explicit decorations and for an
 // image inside a named graphic, such as OnAppIcon's standalone mode; content images need their own text.
@@ -913,7 +928,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             sourceUrl: 'https://example.test/source',
             formulaeUrl: 'https://example.test/package',
             sourceLocale: 'en-US',
-            machineTranslated: false,
+            machineTranslated: token === 'ordinary-app',
             ...(indexing[token] ? { indexing: indexing[token] } : {}),
             ...(['dependency-content-app', 'reverse-dependency-app'].includes(token)
               ? {
@@ -1087,6 +1102,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         slug: 'choose-a-screenshot-app',
         article: roundup((query.get('locale') ?? req.headers['accept-language']) === 'zh-CN')
       };
+    } else if (path === '/api/v1/articles/provenance-check') {
+      const locale = query.get('locale') ?? req.headers['accept-language'] ?? 'en-US';
+      data = {
+        state: 'published',
+        slug: 'provenance-check',
+        article: {
+          ...roundup(false),
+          slug: 'provenance-check',
+          locale,
+          availableLocales: [...SITE_LOCALES],
+          machineTranslated: true
+        }
+      };
     } else if (path === '/api/v1/articles/old-slug') {
       data = { state: 'moved', slug: 'choose-a-screenshot-app' };
     } else if (path === '/api/v1/articles/pulled-article') {
@@ -1133,12 +1161,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         slug: 'editors',
         title: 'Code editors that start in under a second',
         subtitle: 'Lightweight picks',
-        body: null,
+        body: 'Collection introduction.',
         coverUrl: null,
         itemCount: 0,
         updatedAt: '2026-10-01T00:00:00Z',
         sourceLocale: 'en-US',
-        machineTranslated: false,
+        machineTranslated: true,
         items: []
       };
     } else if (path === '/api/v1/browse') {
@@ -3487,6 +3515,26 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(zh.html.includes('如何选择截图工具'));
     assert.ok(zh.html.includes('href="/zh/articles/feed.xml"'));
   });
+  await t.test('public pages hide translation provenance in every site locale', async () => {
+    for (const locale of SITE_LOCALES) {
+      const { prefix } = LOCALE_METADATA[locale];
+      for (const path of ['/articles/provenance-check', '/apps/ordinary-app', '/collections/editors']) {
+        const response = await fetch(`${origin}${prefix}${path}`);
+        const html = await response.text();
+        assert.equal(response.status, 200, `${locale} ${path}: ${logs}`);
+        const document = JSDOM.fragment(html);
+        for (const node of document.querySelectorAll('script, style')) node.remove();
+        const visible = document.textContent;
+        for (const label of translationProvenanceLabels[locale])
+          assert.ok(!visible.includes(label), `${locale} ${path}: ${label}`);
+        assert.ok(html.includes('machineTranslated'), 'API provenance remains in the payload');
+        assert.equal(
+          document.querySelector('link[rel="canonical"]')?.getAttribute('href'),
+          `https://example.test${prefix}${path}`
+        );
+      }
+    }
+  });
   await t.test('article pages render the full body with honest structured data and languages', async () => {
     const response = await fetch(`${origin}/zh/articles/choose-a-screenshot-app`, {
       headers: { accept: 'text/html' }
@@ -3500,7 +3548,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(html.includes('href="#对比"'), 'table of contents links to anchors');
     assert.equal([...html.matchAll(/data-testid="article-app-card"/g)].length, 2, 'unknown apps render no card');
     assert.ok(html.includes('当前目录数据'));
-    assert.ok(html.includes('AI 翻译') && html.includes('href="/articles/choose-a-screenshot-app"'), 'view original');
+    const byline = JSDOM.fragment(html).querySelector('[data-testid="article-byline"]');
+    assert.ok(byline && !/AI 翻译|查看原文/.test(byline.textContent), 'translation provenance is hidden');
+    assert.ok(!byline.querySelector('a[href="/articles/choose-a-screenshot-app"]'), 'no provenance link');
     assert.ok(html.includes('href="/zh/authors/lin-wei"'));
     assert.ok(html.includes('<time datetime="2026-10-12T10:00:00Z">'), 'publication date');
     assert.ok(html.includes('<time datetime="2026-10-14T10:00:00Z">'), 'a later update shows its own date');

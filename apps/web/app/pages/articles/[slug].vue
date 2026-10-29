@@ -19,12 +19,11 @@ import {
 
 // Article page (WP17): the published revision with the full body in SSR. A former slug redirects
 // permanently, a withdrawn article answers 410. Languages whose text is not ready show the source
-// text, stay out of the index and out of hreflang; machine translations link to the original.
+// text, stay out of the index and out of hreflang.
 const { t, locale } = useI18n();
 const api = useApi();
 const route = useRoute();
 const localePath = useLocalePath();
-const switchLocalePath = useSwitchLocalePath();
 const event = useRequestEvent();
 const NuxtLink = resolveComponent('NuxtLink');
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
@@ -74,12 +73,6 @@ const textLang = computed(() =>
   article.value && article.value.locale !== appLocale.value ? article.value.locale : undefined
 );
 const sourceText = computed(() => Boolean(article.value && !article.value.availableLocales.includes(appLocale.value)));
-const originalHref = computed(() => {
-  const value = article.value;
-  if (!value?.machineTranslated) return undefined;
-  const code = toRouteLocale(value.sourceLocale);
-  return code !== locale.value ? switchLocalePath(code) : undefined;
-});
 const authorPath = computed(() =>
   article.value?.author ? localePath(`/authors/${article.value.author.slug}`) : undefined
 );
@@ -221,12 +214,6 @@ useSeoMeta({
               t('articles.updated', { date: dates.updated })
             }}</time>
             <span>{{ t('articles.readingTime', { minutes: article.readingMinutes }) }}</span>
-            <span v-if="article.machineTranslated" class="inline-flex items-center gap-6px">
-              {{ t('articles.machineTranslated') }}
-              <NuxtLink v-if="originalHref" :to="originalHref" class="text-status-info no-underline hover:underline">{{
-                t('articles.viewOriginal')
-              }}</NuxtLink>
-            </span>
           </div>
           <p
             v-if="sourceText"

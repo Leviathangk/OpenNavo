@@ -1,5 +1,3 @@
-import type { ReleaseEntry } from '@opennavo/api';
-
 /** Release highlights support only bold and inline code; return segments for component rendering without v-html. */
 export interface InlineSegment {
   type: 'text' | 'strong' | 'code';
@@ -23,9 +21,4 @@ export function parseInline(text: string): InlineSegment[] {
 export function isPatchVersion(version: string): boolean {
   const parts = version.split('.');
   return parts.length >= 3 && parts.every(part => /^\d+$/.test(part)) && Number(parts.at(-1)) > 0;
-}
-
-/** Show AI translated only for displayed machine translations (08 §8.15, 12 D3); prefer machineTranslated, then status if absent. */
-export function isMachineTranslated(entry: Pick<ReleaseEntry, 'translation'>): boolean {
-  return entry.translation.machineTranslated ?? entry.translation.status === 'machine';
 }
