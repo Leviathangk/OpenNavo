@@ -129,9 +129,9 @@ export default defineNuxtConfig({
       siteUrl: 'http://localhost:3000',
       cdnBase: 'http://localhost:9000/opennavo',
       appVersion: '0.0.0',
-      // X4 experiment: /apps/{token}.md and its <link rel="alternate" type="text/markdown"> (env
-      // NUXT_PUBLIC_MARKDOWN_ALTERNATES); off until the fetch logs show agents use it.
-      markdownAlternates: false,
+      // X4: /apps/{token}.md, Accept-negotiated Markdown and the <link rel="alternate" type="text/markdown">
+      // (env NUXT_PUBLIC_MARKDOWN_ALTERNATES can disable the projection without a rebuild).
+      markdownAlternates: true,
       // Inject the site URL only at runtime: nuxt.config is evaluated at build time, when process.env in the image is empty.
       // NUXT_PUBLIC_SITE_URL overrides both siteUrl above and site.url here (site configuration: og:image, sitemap, robots);
       // NUXT_PUBLIC_I18N_BASE_URL overrides i18n.baseUrl (canonical, hreflang); use the same value for both in deployment (05 §9).
@@ -255,7 +255,8 @@ export default defineNuxtConfig({
   // Route caching applies only to production builds; development renders every request (05 §4).
   $production: {
     routeRules: localizedRules({
-      '/': { swr: 300 },
+      // Markdown itself is returned by server middleware before this cached page handler runs.
+      '/': { cache: { swr: true, maxAge: 300 } },
       '/discover': { swr: 300 },
       '/about': { swr: 900 },
       // The form posts from the browser; the page itself has nothing per visitor (no cookies or
@@ -278,7 +279,7 @@ export default defineNuxtConfig({
       // Also the per-app release feeds (F6) at /apps/{token}/feed.xml. An app's changes drop its pages
       // by prefix (internal-server /cache/invalidate), and every web build caches under its own Redis
       // namespace (cache-storage.ts), so six hours never serves the previous build's HTML.
-      '/apps/**': { swr: 21600 },
+      '/apps/**': { cache: { swr: true, maxAge: 21600 } },
       '/apps/*/versions': { cache: { maxAge: 21600, swr: true, staleMaxAge: 64800 } },
       // X5: collections are cached like other lists; editing one purges its pages by prefix (S6 outbox,
       // BE-1), and error responses are never cached (route-cache-errors.ts, error-cache-control.ts).

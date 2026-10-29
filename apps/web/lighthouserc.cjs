@@ -7,6 +7,11 @@ const median = { aggregationMethod: 'median-run' };
 module.exports = {
   ci: {
     collect: {
+      settings: {
+        // Lighthouse 12.6.1's DIRECTIVE_SAFELIST does not recognize Content-Signal.
+        // TODO: restore the robots-txt audit once Lighthouse supports Content-Signal.
+        skipAudits: ['robots-txt']
+      },
       url: [
         'http://localhost:3100/zh/apps/visual-studio-code',
         'http://localhost:3100/apps/visual-studio-code',

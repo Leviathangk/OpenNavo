@@ -1,9 +1,9 @@
 import { LOCALE_METADATA } from '@opennavo/shared';
 import { markdownAlternatesEnabled, markdownTarget } from '~~/shared/utils/markdownAlternate';
 
-// X4 experiment (off by default): while runtimeConfig.public.markdownAlternates is on, every app overview
-// links its Markdown version (server/middleware/markdown-alternate.ts) with rel=alternate type=text/markdown.
-// Registered once for the app and following the route, so no page has to opt in.
+// X4: while runtimeConfig.public.markdownAlternates is on, every app overview links its Markdown version
+// (server/middleware/markdown-alternate.ts) with rel=alternate type=text/markdown. Registered once for the
+// app and following the route, so no page has to opt in.
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig();
   if (!markdownAlternatesEnabled(config.public.markdownAlternates)) return;
