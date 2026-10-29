@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
+	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -80,4 +82,31 @@ func TestSitemapRejectsPagesAboveTheLimit(t *testing.T) {
 	svc := &catalog.PublicService{}
 	_, err := svc.Sitemap(context.Background(), "apps", 1, catalog.SitemapPageSize+1)
 	require.Error(t, err)
+}
+
+func TestSitemapCacheFollowsFontSwitchOffOnOff(t *testing.T) {
+	st := testutil.NewFactsStore(t)
+	ctx := context.Background()
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,name,version,desc_en,source_locale,installs_30d,rank_30d,is_font,tap,version_base,raw,raw_hash)
+ VALUES ('cask','font-switch','font-switch','Font Switch','1','A font','en-US',0,NULL,true,'homebrew/cask','1','{}','fixture')`).Error)
+	svc := &catalog.PublicService{Store: st, Cache: cache.Redis{Client: st.Redis}}
+	setFonts := func(enabled bool) {
+		t.Helper()
+		require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=settings || jsonb_build_object('pages', COALESCE(settings->'pages','{}'::jsonb) || jsonb_build_object('fontsSitemap', ?::boolean)) WHERE id=true`, enabled).Error)
+		require.NoError(t, store.QueueCacheInvalidation(ctx, st.DB, "font-switch-test", "c:pkg:sitemap:*"))
+		require.NoError(t, st.DispatchCacheInvalidations(ctx))
+		require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{"c:pkg:sitemap:*"}))
+	}
+	read := func(want bool) {
+		t.Helper()
+		page, err := svc.Sitemap(ctx, "fonts", 1, 100)
+		require.NoError(t, err)
+		require.Equal(t, want, len(page.Records) == 1)
+	}
+	setFonts(false)
+	read(false)
+	setFonts(true)
+	read(true)
+	setFonts(false)
+	read(false)
 }

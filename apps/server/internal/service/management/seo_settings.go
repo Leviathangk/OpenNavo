@@ -339,7 +339,7 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 				return err
 			}
 			// Article, author and article sitemap reads share c:art: (store.ArticleCachePatterns); the sitemap lists only open languages.
-			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", cache.PackageDetailPrefix+"*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:art:*", "c:browse:*", "c:site:*"); err != nil {
+			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", cache.PackageDetailPrefix+"*", "c:pkg:sitemap:*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:art:*", "c:browse:*", "c:site:*"); err != nil {
 				return err
 			}
 		case !reflect.DeepEqual(previous, after.Settings):

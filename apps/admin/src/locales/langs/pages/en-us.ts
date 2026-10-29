@@ -917,7 +917,8 @@ const pages: PageMessages = {
       versionsSitemap: 'Include version pages in the sitemap',
       versionsSitemapHint: 'When on, only version pages with standalone value are added to the sitemap.',
       fontsSitemap: 'Include font pages in the sitemap',
-      fontsSitemapHint: 'When on, eligible font pages and font directories are added to the sitemap.',
+      fontsSitemapHint:
+        'When on, eligible font pages and font directories are added to the sitemap, and font detail pages also take part in indexing decisions.',
       openLocales: 'Languages open for indexing',
       openLocalesHint:
         'Unchecked languages still render, but none of their pages are indexed: home, list, category, static and app pages are noindex and stay out of hreflang, sitemaps and IndexNow. In checked languages, app pages are still judged on their own translation quality. English is the default language and always stays open.',
