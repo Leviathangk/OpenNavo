@@ -71,6 +71,8 @@ paths:
       summary: getTranslationsSource
       description: Batch translation endpoint. Requires translation:review. Agent access requires an internal
         gateway and a separately scoped token. Each language validates permissions and input independently.
+        For articles, prefer articleId to resolve the current published revision. Otherwise id must be
+        article_get published.id of a published article. Ambiguous article IDs are rejected; drafts must be published first.
       x-permissions:
         - translation:review
       parameters:
@@ -81,11 +83,19 @@ paths:
             $ref: "#/components/schemas/ContentEntity"
         - name: id
           in: query
-          required: true
+          description: Content ID; for articles use published.id from article_get, or omit when articleId is supplied.
           schema:
             type: integer
             format: int64
             minimum: 0
+            maximum: 1000000000
+        - name: articleId
+          in: query
+          description: Article identity ID (entity=article only). Resolves the published revision; if id is supplied, it must match.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
             maximum: 1000000000
         - name: secondaryId
           in: query
@@ -14178,6 +14188,12 @@ components:
       properties:
         ref:
           $ref: "#/components/schemas/ContentRef"
+        articleId:
+          description: Article identity ID (ref.entity=article only). Recommended for articles; resolves the published revision. Omit ref.id or supply the same published revision ID. Draft articles must be published first.
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000000000
         model:
           type: string
           minLength: 1
@@ -14237,6 +14253,7 @@ components:
         reason:
           type: string
         value:
+          description: Translation on success. Article failures always return null; other entities may return the current translation for recovery.
           type: object
           allOf:
             - $ref: "#/components/schemas/BatchTranslationValue"
@@ -28269,6 +28286,7 @@ components:
         entity:
           $ref: '#/components/schemas/ContentEntity'
         id:
+          description: Content ID. For article translations, use article_get published.id of a published article, or omit when the batch articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.
           type: integer
           format: int64
           minimum: 0
@@ -28281,7 +28299,7 @@ components:
       example:
         entity: package
         id: 1
-      description: 'announcement needs no id; other entities require a positive integer id. collection_item also requires secondaryId (packageId).'
+      description: 'announcement needs no id; other entities require a positive integer id. Article translations may instead supply the batch articleId to resolve the published revision. collection_item also requires secondaryId (packageId).'
     HistoryRef:
       type: object
       additionalProperties: false

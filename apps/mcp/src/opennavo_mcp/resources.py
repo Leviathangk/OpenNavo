@@ -48,7 +48,8 @@ results; the agent plans and edits; these tools read, change and publish site co
    saving. Errors carry code, reason and detail: rejected: revision_conflict:<n> means read
    again and re-plan, idempotency_key_reused means the key belongs to another request, and
    batch_too_large:<n> means split the batch.
-   Translations are different: first call translations_write(mode="read", entity, id).
+   Translations are different: first call translations_write(mode="read", entity, id),
+   using article_id instead of id for articles to resolve the published revision.
    For mode="write", send ref and translations; inside each translations[] item, send
    sourceHash from the read, expectedRevision from that language's revision (a 64-character
    hexadecimal hash), and idempotencyKey. Do not send top-level expected_revision or
@@ -85,7 +86,8 @@ Do only the kinds of work assigned to you; another agent owns the rest.
    send expected_revision (the integer revision the read returned) and an idempotency_key,
    then read it back. Check
    page_index_get for pages you changed.
-   For translations, call translations_write(mode="read", entity, id) first. Write ref and
+   For translations, call translations_write(mode="read", entity, id) first; prefer
+   article_id instead of id for articles. Write ref and
    translations, with sourceHash, expectedRevision (that language's 64-character revision
    hash) and idempotencyKey inside each translations[] item, not top-level
    expected_revision/idempotency_key. Inspect every results[].status; a successful call
@@ -167,9 +169,13 @@ advisory. dry_run previews; for ordinary article updates, send expected_revision
 integer revision returned by article_get) and an idempotency_key. Reuse the key only for
 an identical retry; use a new key after changing the request.
 Editing a published article creates a new draft; publish it to update the live page.
-For translations, first call translations_write(mode="read", entity="article", id set to
-the published revision ID). Write with ref.entity="article" and ref.id set to that same
-published revision ID. Each translations[] item carries sourceHash from the read,
+For translations, prefer translations_write(mode="read", entity="article", article_id
+set to the article ID), then write with ref.entity="article" and the same article_id
+(API field articleId). The server resolves the current published revision. Publish drafts
+first. Alternatively, use article_get published.id as id in read mode and ref.id on write;
+an article ID is not a revision ID, and ambiguous IDs are rejected. If article_id and
+id/ref.id are both supplied, they must identify the same published revision.
+Each translations[] item carries sourceHash from the read,
 expectedRevision (that language's 64-character revision hash) and idempotencyKey; do not
 send top-level expected_revision or idempotency_key. Inspect every results[].status even
 when the call succeeds, and retry only failed items. Re-read on revision conflicts and

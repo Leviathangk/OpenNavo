@@ -1007,6 +1007,7 @@
       "query": [
         "entity",
         "id",
+        "articleId",
         "secondaryId"
       ]
     },

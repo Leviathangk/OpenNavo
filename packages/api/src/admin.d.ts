@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * getTranslationsSource
-         * @description Batch translation endpoint. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Each language validates permissions and input independently.
+         * @description Batch translation endpoint. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Each language validates permissions and input independently. For articles, prefer articleId to resolve the current published revision. Otherwise id must be article_get published.id of a published article. Ambiguous article IDs are rejected; drafts must be published first.
          */
         get: operations["getTranslationsSource"];
         put?: never;
@@ -2997,6 +2997,11 @@ export interface components {
          */
         TranslationsBatchWrite: {
             ref: components["schemas"]["ContentRef"];
+            /**
+             * Format: int64
+             * @description Article identity ID (ref.entity=article only). Recommended for articles; resolves the published revision. Omit ref.id or supply the same published revision ID. Draft articles must be published first.
+             */
+            articleId?: number;
             model?: string;
             /**
              * Format: int64
@@ -3034,6 +3039,7 @@ export interface components {
             /** @enum {string} */
             status: "written" | "preview" | "proposal" | "preserved_manual" | "failed";
             reason: string;
+            /** @description Translation on success. Article failures always return null; other entities may return the current translation for recovery. */
             value: components["schemas"]["BatchTranslationValue"] | null;
             /** @description Every failed content check for a validation_failed result; reason names the first. */
             violations?: components["schemas"]["TranslationViolation"][];
@@ -15217,7 +15223,7 @@ export interface components {
          */
         HistoryEntity: "package" | "release" | "category" | "collection" | "feature" | "screenshot" | "collection_item" | "desktop_release" | "mirror" | "announcement" | "synonym" | "glossary" | "feedback" | "asset" | "article" | "article_author";
         /**
-         * @description announcement needs no id; other entities require a positive integer id. collection_item also requires secondaryId (packageId).
+         * @description announcement needs no id; other entities require a positive integer id. Article translations may instead supply the batch articleId to resolve the published revision. collection_item also requires secondaryId (packageId).
          * @example {
          *       "entity": "package",
          *       "id": 1
@@ -15227,6 +15233,7 @@ export interface components {
             entity: components["schemas"]["ContentEntity"];
             /**
              * Format: int64
+             * @description Content ID. For article translations, use article_get published.id of a published article, or omit when the batch articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.
              * @example 1
              */
             id?: number;
@@ -23312,7 +23319,10 @@ export interface operations {
         parameters: {
             query: {
                 entity: components["schemas"]["ContentEntity"];
-                id: number;
+                /** @description Content ID; for articles use published.id from article_get, or omit when articleId is supplied. */
+                id?: number;
+                /** @description Article identity ID (entity=article only). Resolves the published revision; if id is supplied, it must match. */
+                articleId?: number;
                 secondaryId?: number;
             };
             header?: {

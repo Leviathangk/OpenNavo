@@ -1840,7 +1840,7 @@ class ContentRef(BaseModel):
         extra='forbid',
     )
     entity: ContentEntity
-    id: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    id: Annotated[int | MISSING, Field(description='Content ID. For article translations, use article_get published.id of a published article, or omit when the batch articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.', examples=[1], ge=0)] = MISSING
     secondaryId: Annotated[int | MISSING, Field(examples=[2], ge=1)] = MISSING
 
 
@@ -3476,7 +3476,8 @@ class GetTranslationsSourceInput(BaseModel):
         extra='forbid',
     )
     entity: ContentEntity
-    id: Annotated[int, Field(ge=0, le=1000000000)]
+    id: Annotated[int | MISSING, Field(ge=0, le=1000000000)] = MISSING
+    articleId: Annotated[int | MISSING, Field(ge=1, le=1000000000)] = MISSING
     secondaryId: Annotated[int | MISSING, Field(ge=0, le=1000000000)] = MISSING
 
 
@@ -4609,6 +4610,7 @@ class TranslationsBatchWrite(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
+    articleId: Annotated[int | MISSING, Field(description='Article identity ID (ref.entity=article only). Recommended for articles; resolves the published revision. Omit ref.id or supply the same published revision ID. Draft articles must be published first.', ge=1, le=1000000000)] = MISSING
     model: Annotated[str | MISSING, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = MISSING
     taskId: Annotated[int | MISSING, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = MISSING
     fencing: Annotated[int | MISSING, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = MISSING
@@ -4622,7 +4624,7 @@ class BatchTranslationResult(BaseModel):
     locale: str
     status: Literal['written', 'preview', 'proposal', 'preserved_manual', 'failed']
     reason: str
-    value: Annotated[BatchTranslationValue | None, Field(...)]
+    value: Annotated[BatchTranslationValue | None, Field(description='Translation on success. Article failures always return null; other entities may return the current translation for recovery.')]
     violations: Annotated[list[TranslationViolation] | MISSING, Field(description='Every failed content check for a validation_failed result; reason names the first.', max_length=20)] = MISSING
 
 
