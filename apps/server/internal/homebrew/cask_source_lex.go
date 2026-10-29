@@ -36,12 +36,13 @@ type rbPart struct {
 }
 
 type rbToken struct {
-	kind   rbKind
-	text   string
-	parts  []rbPart
-	words  []string
-	line   int
-	spaced bool // whitespace precedes the token
+	kind    rbKind
+	text    string
+	parts   []rbPart
+	words   []string
+	line    int
+	spaced  bool // whitespace precedes the token
+	heredoc bool // token originated from a << heredoc start
 }
 
 var rbKeywords = map[string]bool{
@@ -115,7 +116,7 @@ func (l *rbLexer) valueEnded() bool {
 		return false
 	}
 	switch last.kind {
-	case rbIdent, rbConst, rbString, rbWords, rbRegexp, rbNumber, rbSymbol:
+	case rbIdent, rbConst, rbString, rbWords, rbRegexp, rbCommand, rbNumber, rbSymbol:
 		return true
 	case rbKeyword:
 		return last.text == "end" || last.text == "self" || last.text == "true" || last.text == "false" || last.text == "nil"
@@ -583,9 +584,10 @@ func (l *rbLexer) startsHeredoc() bool {
 	}
 	c := rest[0]
 	if c == '~' || c == '-' {
-		return len(rest) > 1 && (isIdentStart(rest[1]) || rest[1] == '"' || rest[1] == '\'')
-	}
-	if (c < 'A' || c > 'Z') && c != '_' && c != '"' && c != '\'' {
+		if len(rest) <= 1 || !isIdentStart(rest[1]) && rest[1] != '"' && rest[1] != '\'' {
+			return false
+		}
+	} else if (c < 'A' || c > 'Z') && c != '_' && c != '"' && c != '\'' {
 		return false
 	}
 	return !l.valueEnded() || l.last().kind == rbIdent && l.pos > 0 && l.src[l.pos-1] == ' '
@@ -619,7 +621,7 @@ func (l *rbLexer) readHeredocStart(spaced bool) error {
 	if heredoc.ident == "" {
 		return l.fail("invalid heredoc")
 	}
-	l.emit(rbToken{kind: rbString, line: l.line, spaced: spaced})
+	l.emit(rbToken{kind: rbString, line: l.line, spaced: spaced, heredoc: true})
 	l.pending = append(l.pending, heredoc)
 	return nil
 }

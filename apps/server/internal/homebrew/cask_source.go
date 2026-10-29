@@ -36,6 +36,8 @@ func (e *UnsupportedCaskError) Error() string {
 // executed: architecture selectors are evaluated for both CPUs; per-OS/architecture blocks, local variables,
 // language blocks and unknown stanzas are rejected.
 // Flight blocks, livecheck and caveats blocks only run inside brew on the user's Mac, so they are skipped.
+// A flight-only respond_to?(:*_steps) compatibility guard may contain literal helper strings; other
+// conditionals and local variables are rejected.
 func ParseCaskSource(source string, ref CaskSource, today time.Time) (json.RawMessage, error) {
 	tokens, err := lexRuby(source)
 	if err != nil {
@@ -443,7 +445,7 @@ var majorMinorPatch = regexp.MustCompile(`^([^.,:]+)(?:.([^.,:]+)(?:.([^.,:]+))?
 var dividerNames = map[string]string{"dots": ".", "hyphens": "-", "underscores": "_"}
 
 // evaluate supports the interpolations casks use for paths and download URLs: version (with the
-// Cask::DSL::Version helpers), token, appdir, staged_path, caskroom_path and HOMEBREW_PREFIX.
+// Cask::DSL::Version helpers), arch, token, appdir, staged_path, caskroom_path and HOMEBREW_PREFIX.
 func (p *caskParser) evaluate(part rbPart) (string, error) {
 	tokens, err := lexRuby(part.text)
 	if err != nil {
@@ -666,7 +668,10 @@ var versionCharacters = regexp.MustCompile(`^[0-9a-zA-Z.,:\-_+ ]+$`)
 
 func (p *caskParser) statement() error {
 	name := p.next()
-	if name.kind == rbKeyword && (name.text == "if" || name.text == "unless" || name.text == "case") {
+	if isKeyword(name, "if") {
+		return p.flightGuard(name)
+	}
+	if name.kind == rbKeyword && (name.text == "unless" || name.text == "case") {
 		return p.fail(name.line, "conditionals are not supported")
 	}
 	if name.kind != rbIdent {
@@ -729,6 +734,11 @@ func unsupportedStanza(name string) string {
 // skipBlock consumes tokens up to the end matching an already consumed opener and
 // returns the identifiers that start statements directly inside the block.
 func (p *caskParser) skipBlock(opener string) ([]string, error) {
+	return p.skipRubyBlock(opener, false)
+}
+
+// Guarded flights reject syntax whose boundaries the permissive Ruby skipper cannot establish.
+func (p *caskParser) skipRubyBlock(opener string, guardedFlight bool) ([]string, error) {
 	closers := []string{"end"}
 	if opener == "{" {
 		closers = []string{"}"}
@@ -739,6 +749,11 @@ func (p *caskParser) skipBlock(opener string) ([]string, error) {
 		// The opener was consumed before the call, so a previous token always exists.
 		previous := p.tokens[p.pos-1]
 		token := p.next()
+		if guardedFlight {
+			if err := p.validateFlightGuardToken(token, previous, closers[len(closers)-1]); err != nil {
+				return nil, err
+			}
+		}
 		startsStatement := previous.kind == rbNewline ||
 			previous.kind == rbPunct && slices.Contains([]string{"(", "[", "{", ",", "=", "|", "&&", "||", "=>", "+=", "-=", "||=", "&&=", "!", "?", ":"}, previous.text) ||
 			previous.kind == rbKeyword && slices.Contains([]string{"do", "then", "else", "elsif", "begin", "and", "or", "not", "when", "in", "ensure", "rescue"}, previous.text)

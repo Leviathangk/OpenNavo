@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -112,6 +113,40 @@ func TestReadNamesTheRejectionReason(t *testing.T) {
 	candidate, err := (&Service{GitHub: accepted}).Read(context.Background(), "owner/tap/app")
 	require.NoError(t, err)
 	require.Equal(t, "owner/tap", candidate.Tap)
+}
+
+func TestReadDoubleShotFlightGuard(t *testing.T) {
+	// The read path used by onboarding needs no store or live GitHub connection.
+	source, err := os.ReadFile("../../homebrew/testdata/casks/double-shot.rb")
+	require.NoError(t, err)
+	const head = "68fb39413dbaa57e20ffa4c3b977f7ac76b9f53f"
+	const path = "Casks/double-shot.rb"
+	now := time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC)
+	history, err := json.Marshal([]any{map[string]any{"sha": head, "commit": map[string]any{"committer": map[string]any{"date": now}}}})
+	require.NoError(t, err)
+	github := scriptedGitHub{
+		commits: map[string]func() ([]byte, int, error){path: respond(string(history), http.StatusOK)},
+		files:   map[string]func() ([]byte, int, error){head + "/" + path: respond(string(source), http.StatusOK)},
+	}
+	svc := &Service{GitHub: github, Now: func() time.Time { return now }}
+	candidate, err := svc.Read(context.Background(), "owner/tap/double-shot")
+	require.NoError(t, err)
+	require.Equal(t, "Double Shot", candidate.Package.Name)
+	require.Equal(t, "1.0.6", candidate.Package.Version)
+	require.Equal(t, path, candidate.SourcePath)
+	require.Equal(t, head, candidate.HeadSHA)
+	require.Contains(t, string(candidate.Package.Artifacts), `"postflight_steps"`)
+	require.NotContains(t, string(candidate.Package.Artifacts), `"postflight"`)
+	require.Len(t, candidate.History, 1)
+
+	// Metadata inside either branch must retain the onboarding validation error.
+	unsafe := strings.Replace(string(source), "  else\n", "  else\n    version \"2.0\"\n", 1)
+	github.files[head+"/"+path] = respond(unsafe, http.StatusOK)
+	_, err = svc.Read(context.Background(), "owner/tap/double-shot")
+	var appErr *domain.AppError
+	require.ErrorAs(t, err, &appErr)
+	require.Equal(t, domain.CodeValidation, appErr.Code)
+	require.Equal(t, "rejected: tap_cask_unsupported:line_27", appErr.Msg)
 }
 
 func TestConflictNamesTheTokenOwner(t *testing.T) {

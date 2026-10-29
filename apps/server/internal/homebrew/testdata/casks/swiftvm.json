@@ -1,0 +1,76 @@
+{
+  "artifacts": [
+    {
+      "app": [
+        "SwiftVM.app"
+      ],
+      "target": "/Applications/SwiftVM.app"
+    },
+    {
+      "binary": [
+        "$APPDIR/SwiftVM.app/Contents/Helpers/swiftvm"
+      ],
+      "target": "$HOMEBREW_PREFIX/bin/swiftvm"
+    },
+    {
+      "zap": [
+        {
+          "trash": [
+            "~/Library/Caches/SwiftVM",
+            "~/Library/Preferences/com.swiftvm.app.plist"
+          ]
+        }
+      ]
+    }
+  ],
+  "auto_updates": true,
+  "caveats": null,
+  "caveats_rosetta": null,
+  "conflicts_with": null,
+  "container": null,
+  "depends_on": {
+    "arch": [
+      {
+        "bits": 64,
+        "type": "arm"
+      }
+    ]
+  },
+  "deprecated": false,
+  "deprecation_date": null,
+  "deprecation_reason": null,
+  "deprecation_replacement_cask": null,
+  "deprecation_replacement_formula": null,
+  "desc": "Run macOS and Linux virtual machines",
+  "disable_date": null,
+  "disable_reason": null,
+  "disable_replacement_cask": null,
+  "disable_replacement_formula": null,
+  "disabled": false,
+  "full_token": "swiftvm-app/tap/swiftvm",
+  "homepage": "https://github.com/swiftvm-app/swiftvm",
+  "languages": [],
+  "name": [
+    "SwiftVM"
+  ],
+  "old_tokens": [],
+  "rename": [],
+  "ruby_source_path": "Casks/swiftvm.rb",
+  "sha256": "0f523cf1fb6ee2f1b16a4eb24789c54032fc91c62e3981595637376f142fcaba",
+  "supported_platforms": [
+    "arm64_golden_gate",
+    "arm64_tahoe",
+    "arm64_sequoia",
+    "arm64_sonoma",
+    "arm64_ventura",
+    "arm64_monterey",
+    "arm64_big_sur"
+  ],
+  "tap": "swiftvm-app/tap",
+  "tap_git_head": "99e3218",
+  "token": "swiftvm",
+  "url": "https://github.com/swiftvm-app/swiftvm/releases/download/v1.3.0/SwiftVM-1.3.0.dmg",
+  "url_specs": {},
+  "variations": {},
+  "version": "1.3.0"
+}
