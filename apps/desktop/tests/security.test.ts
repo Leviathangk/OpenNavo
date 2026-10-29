@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import type { VueWrapper } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { defineComponent, watch } from 'vue';
 import type { Component } from 'vue';
 import { OnMenu } from '@opennavo/ui';
@@ -189,6 +189,11 @@ describe('Before the first startup read', () => {
 describe('Virus scan', () => {
   it('Asks before downloading the database, then a quick scan finds and quarantines the EICAR test file', async () => {
     const { wrapper } = await mountPage('/security/scan');
+    // Run every mock tick before asserting completion, even when the runner's event loop is busy.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     expect(wrapper.text()).toContain('先下载官方病毒库');
     expect(wrapper.text()).toContain('113 MB');
     const quick = () => button(wrapper, '快速扫描');
@@ -196,7 +201,7 @@ describe('Virus scan', () => {
 
     await button(wrapper, '同意并下载')?.trigger('click');
     await flushPromises();
-    await wait(TICK * 6);
+    await vi.advanceTimersByTimeAsync(TICK * 4);
     await flushPromises();
     expect(wrapper.text()).not.toContain('先下载官方病毒库');
     expect(quick()?.attributes('disabled')).toBeUndefined();
@@ -204,8 +209,9 @@ describe('Virus scan', () => {
     await quick()?.trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('正在快速扫描');
-    await wait(TICK * 9);
+    await vi.advanceTimersByTimeAsync(TICK * 6);
     await flushPromises();
+    expect(useSecurityStore().scan?.state).toBe('done');
     expect(wrapper.text()).toContain('扫描完成');
     expect(wrapper.text()).toContain('Eicar-Test-Signature');
 
