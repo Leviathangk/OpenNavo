@@ -123,8 +123,6 @@ export default defineNuxtConfig({
       crawlerBurst: 12
     },
     public: {
-      geoinflowScriptUrl: '',
-      geoinflowWebsiteId: '',
       desktopBrewCaskAvailable: false,
       apiBase: 'http://localhost:8080/api/v1',
       siteUrl: 'http://localhost:3000',

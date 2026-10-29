@@ -1,5 +1,4 @@
 import { webRouteType } from '@opennavo/shared';
-import { trackGeoinflow } from './geoinflow';
 
 // Configured analytics starts in every region after the page is idle, unless
 // the visitor has opted out. Advertising signals remain disabled.
@@ -83,7 +82,6 @@ let lastPageView = '';
 
 /** Page views are sent manually so they carry the page type; query strings are left out. */
 export function trackPageView() {
-  trackGeoinflow();
   if (!activeId || !window.gtag || lastPageView === location.pathname) return;
   lastPageView = location.pathname;
   window.gtag('event', 'page_view', {
@@ -95,7 +93,6 @@ export function trackPageView() {
 
 /** Install-intent events (marked as key events in GA4). A no-op until analytics is active. */
 export function trackEvent(event: AnalyticsEvent) {
-  trackGeoinflow(event);
   if (!activeId || !window.gtag) return;
   window.gtag('event', event, params());
 }

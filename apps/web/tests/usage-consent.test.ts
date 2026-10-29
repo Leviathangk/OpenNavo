@@ -12,9 +12,6 @@ beforeEach(() => {
     analytics: { usageEnabled: true, ga4Enabled: false, ga4MeasurementId: '' }
   });
   vi.stubGlobal('computed', computed);
-  vi.stubGlobal('useRuntimeConfig', () => ({
-    public: { geoinflowScriptUrl: '', geoinflowWebsiteId: '' }
-  }));
   vi.stubGlobal('useSiteSettings', () => settings);
   vi.stubGlobal('useState', (key: string, initialize: () => unknown) => {
     if (!states.has(key)) states.set(key, ref(initialize()));

@@ -1,6 +1,6 @@
 # HTTP availability probes
 
-The optional host service `opennavo-http-probe` exposes six lightweight probes to
+The optional host service `opennavo-http-probe` exposes configurable lightweight probes to
 the existing Prometheus instance. It requires Python 3 and curl, not another
 container. Install `http-probe.py` under `/opt/opennavo-monitoring/` and install
 `http-probe.service` as `/etc/systemd/system/opennavo-http-probe.service`.
@@ -19,9 +19,9 @@ Create `/opt/opennavo-monitoring/probes.json` outside the repository:
 }
 ```
 
-Production checks the web homepage, API `/healthz`, admin homepage and GEOInflow
-`/api/heartbeat` over local TLS with correct SNI. Two additional probes check the
-public web homepage and GEOInflow heartbeat. Origin probes bypass CDN caching.
+Production checks the web homepage, API `/healthz` and admin homepage over local
+TLS with correct SNI. An additional probe checks the public web homepage.
+Origin probes bypass CDN caching.
 Only HTTP 200 counts as healthy; redirects, TLS failures and timeouts fail.
 These are availability checks, not full functional/database checks.
 
