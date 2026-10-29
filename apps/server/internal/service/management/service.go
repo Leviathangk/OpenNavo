@@ -12,6 +12,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
@@ -44,6 +45,7 @@ type Input struct {
 	Actor                                    store.AuditActor
 	CI                                       bool
 	tapCandidate                             *taps.Candidate
+	translationRef                           *content.Ref // pinned inside the agent write transaction
 }
 
 func Decode(request any, body []byte, actor store.AuditActor, ci bool) (Input, error) {

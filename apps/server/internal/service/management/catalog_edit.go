@@ -91,6 +91,13 @@ func (s *Service) catalogEdit(ctx context.Context, name string, in Input) (any, 
 			return err
 		}
 		st := &store.Store{DB: tx, Redis: s.Store.Redis}
+		if name == "FixTranslation" {
+			var err error
+			in, err = pinTranslationManageRef(ctx, st, name, in)
+			if err != nil {
+				return err
+			}
+		}
 		rule, _ := agentgate.RuleFor(name)
 		current, refs, err := writeRevision(ctx, st, name, rule, in, true)
 		if err != nil {

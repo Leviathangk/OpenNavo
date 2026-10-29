@@ -233,6 +233,9 @@ func (s *Service) translationManage(ctx context.Context, op string, in Input) (a
 }
 
 func translationManageRef(ctx context.Context, st *store.Store, op string, in Input, lock bool) (content.Ref, error) {
+	if op == "FixTranslation" && in.translationRef != nil {
+		return *in.translationRef, nil
+	}
 	var request struct {
 		Ref       content.Ref `json:"ref"`
 		ArticleID *int64      `json:"articleId"`
@@ -274,6 +277,23 @@ func translationManageRef(ctx context.Context, st *store.Store, op string, in In
 		return ref, domain.Rejected("content_ref_invalid")
 	}
 	return ref, nil
+}
+
+// Called under the catalog lock, before the agent's optimistic revision check.
+// Match WriteTranslations: catalog, owning article, then revision content. Keep
+// the resolved reference for validation, the mutation, and every history/audit snapshot.
+func pinTranslationManageRef(ctx context.Context, st *store.Store, op string, in Input) (Input, error) {
+	ref, err := translationManageRef(ctx, st, op, in, true)
+	if err != nil {
+		return in, err
+	}
+	if err := st.DB.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "content:"+ref.Entity+":"+ref.Key()).Error; err != nil {
+		return in, err
+	}
+	in.Body = maps.Clone(in.Body)
+	in.Body["ref"] = ref
+	in.translationRef = &ref
+	return in, nil
 }
 
 // Build a UNION with fixed registry identifiers; filter and paginate in the database instead of scanning the entire catalog in MCP.
