@@ -120,6 +120,44 @@ func TestHermesBatchHTTPContracts(t *testing.T) {
  (1903,'en-US','Draft article sentinel','en-US','source')`).Error
 	}))
 	for _, bearer := range []string{"", token} {
+		status := call("GET", "/translations/status?entity=article&articleId=901", nil, bearer, "0000")
+		require.EqualValues(t, 1901, status["ref"].(map[string]any)["id"])
+		require.EqualValues(t, 901, status["articleId"])
+		call("GET", "/translations/status?entity=article&id=1901", nil, bearer, "0000")
+		for _, tc := range []struct {
+			query, reason string
+			ref           map[string]any
+			articleID     any
+		}{
+			{"id=901", "article_ref_must_be_published_revision", map[string]any{"entity": "article", "id": 901}, nil},
+			{"id=1903", "publish_article_first", map[string]any{"entity": "article", "id": 1903}, nil},
+			{"articleId=903", "article_must_be_published_first", map[string]any{"entity": "article"}, 903},
+			{"id=901&articleId=901", "article_ref_mismatch", map[string]any{"entity": "article", "id": 901}, 901},
+		} {
+			var before, after string
+			require.NoError(t, st.DB.Raw("SELECT jsonb_agg(to_jsonb(i) ORDER BY revision_id,locale)::text FROM article_revision_i18n i").Scan(&before).Error)
+			rejected := envelope("GET", "/translations/status?entity=article&"+tc.query, nil, bearer, "1001")
+			require.Contains(t, rejected["msg"], tc.reason)
+			require.Nil(t, rejected["data"])
+			fix := map[string]any{"ref": tc.ref, "locale": "de-DE", "fields": map[string]any{"title": "Rejected correction"}}
+			if tc.articleID != nil {
+				fix["articleId"] = tc.articleID
+			}
+			rejected = envelope("PUT", "/translations/fix", fix, bearer, "1001")
+			require.Contains(t, rejected["msg"], tc.reason)
+			require.Nil(t, rejected["data"])
+			require.NoError(t, st.DB.Raw("SELECT jsonb_agg(to_jsonb(i) ORDER BY revision_id,locale)::text FROM article_revision_i18n i").Scan(&after).Error)
+			require.JSONEq(t, before, after)
+		}
+		for _, fix := range []map[string]any{
+			{"ref": map[string]any{"entity": "article", "id": 1901}},
+			{"ref": map[string]any{"entity": "article"}, "articleId": 901},
+			{"ref": map[string]any{"entity": "article", "id": 901}, "articleId": 902},
+		} {
+			fix["locale"], fix["fields"] = "de-DE", map[string]any{"title": "Korrigiertes Handbuch"}
+			fixed := call("PUT", "/translations/fix", fix, bearer, "0000")
+			require.Contains(t, []float64{1901, 901}, fixed["ref"].(map[string]any)["id"])
+		}
 		view := call("GET", "/translations/source?entity=article&articleId=901", nil, bearer, "0000")
 		require.EqualValues(t, 1901, view["ref"].(map[string]any)["id"])
 		call("GET", "/translations/source?entity=article&id=1901", nil, bearer, "0000")

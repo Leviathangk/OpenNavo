@@ -1840,7 +1840,7 @@ class ContentRef(BaseModel):
         extra='forbid',
     )
     entity: ContentEntity
-    id: Annotated[int | MISSING, Field(description='Content ID. For article translations, use article_get published.id of a published article, or omit when the batch articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.', examples=[1], ge=0)] = MISSING
+    id: Annotated[int | MISSING, Field(description='Content ID. For article translations, use article_get published.id of a published article, or omit when articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.', examples=[1], ge=0)] = MISSING
     secondaryId: Annotated[int | MISSING, Field(examples=[2], ge=1)] = MISSING
 
 
@@ -1975,6 +1975,7 @@ class TranslationFix(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
+    articleId: Annotated[int | MISSING, Field(description='Article identity ID (ref.entity=article only). Resolves the current published revision; if ref.id is supplied, it must match.', examples=[1], ge=1)] = MISSING
     locale: WritableLocale
     model: Annotated[str | MISSING, Field(description='Optional model provenance; omitted models are recorded as agent:unspecified.', examples=['example-model'], max_length=160, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = MISSING
     fields: ContentFields
@@ -4216,6 +4217,7 @@ class GetTranslationStatusInput(BaseModel):
     )
     entity: ContentEntity
     id: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
+    articleId: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
     secondaryId: Annotated[int | MISSING, Field(examples=[2], ge=1)] = MISSING
 
 
@@ -5540,6 +5542,7 @@ class TranslationObject(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
+    articleId: Annotated[int | MISSING, Field(description='Owning article identity, present only for article revisions. Send with ref when correcting an article translation to disambiguate IDs.', examples=[1], ge=1)] = MISSING
     label: Annotated[str, Field(examples=['Visual Studio Code'], max_length=200)]
     sourceLocale: Locale
     sourceHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64)]

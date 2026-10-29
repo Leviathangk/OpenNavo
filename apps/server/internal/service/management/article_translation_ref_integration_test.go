@@ -3,7 +3,9 @@
 package management
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/opennavo/opennavo/server/internal/content"
@@ -17,6 +19,9 @@ func TestArticleTranslationReferences(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	svc := &Service{Store: st}
 	ctx := hermesContext("translation:review", "content:article:edit", "content:collection:edit")
+	fixOperation := *domain.CurrentOperation(ctx)
+	fixOperation.Name = "fixTranslation"
+	fixCtx := domain.WithOperation(ctx, &fixOperation)
 	// Independent identity sequences deliberately collide: article 31 is not
 	// revision 31, which is another article's published content.
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
@@ -81,6 +86,14 @@ func TestArticleTranslationReferences(t *testing.T) {
 			var app *domain.AppError
 			require.ErrorAs(t, err, &app)
 			require.Equal(t, domain.CodeValidation, app.Code)
+			status, err := svc.Execute(ctx, "GetTranslationStatus", Input{Params: params})
+			require.Nil(t, status, "invalid status references must not expose revision text")
+			require.ErrorContains(t, err, tc.reason)
+			fixBody := articleBody(translationBatch{Ref: content.Ref{Entity: "article", ID: tc.id}, ArticleID: tc.articleID})
+			fixBody["locale"], fixBody["fields"] = "de-DE", map[string]any{"title": "Korrigiertes Handbuch"}
+			fixed, err := svc.Execute(fixCtx, "FixTranslation", Input{Body: fixBody})
+			require.Nil(t, fixed, "rejected fixes must not echo other articles' content")
+			require.ErrorContains(t, err, tc.reason)
 			write, err := svc.Execute(ctx, "WriteTranslations", Input{Body: articleBody(translationBatch{
 				Ref: content.Ref{Entity: "article", ID: tc.id}, ArticleID: tc.articleID,
 				Translations: []translationItem{{Locale: "de-DE", Fields: map[string]any{"title": "Referenzhandbuch"}}},
@@ -95,6 +108,15 @@ func TestArticleTranslationReferences(t *testing.T) {
 		read, err := svc.Execute(ctx, "GetTranslationsSource", Input{Params: map[string]any{"entity": "article", "id": float64(0), "articleid": float64(31)}})
 		require.ErrorContains(t, err, "article_ref_mismatch")
 		require.Nil(t, read)
+		status, err := svc.Execute(ctx, "GetTranslationStatus", Input{Params: map[string]any{"entity": "article", "id": float64(0), "articleid": float64(31)}})
+		require.ErrorContains(t, err, "article_ref_mismatch")
+		require.Nil(t, status)
+		fixed, err := svc.Execute(fixCtx, "FixTranslation", Input{Body: map[string]any{
+			"ref": map[string]any{"entity": "article", "id": 0}, "articleId": 31,
+			"locale": "de-DE", "fields": map[string]any{"title": "Korrigiertes Handbuch"},
+		}})
+		require.ErrorContains(t, err, "article_ref_mismatch")
+		require.Nil(t, fixed)
 		write, err := svc.Execute(ctx, "WriteTranslations", Input{Body: hermesMap(translationBatch{
 			Ref: content.Ref{Entity: "article", ID: 0}, ArticleID: int64ptr(31),
 			Translations: []translationItem{{Locale: "de-DE", Fields: map[string]any{"title": "Referenzhandbuch"}}},
@@ -127,6 +149,9 @@ func TestArticleTranslationReferences(t *testing.T) {
 			require.NoError(t, err)
 			view := hermesMap(read)
 			require.EqualValues(t, tc.resolved, view["ref"].(map[string]any)["id"])
+			status, err := svc.Execute(ctx, "GetTranslationStatus", Input{Params: params})
+			require.NoError(t, err)
+			require.EqualValues(t, tc.resolved, hermesMap(status)["ref"].(map[string]any)["id"])
 			value, err := st.TranslationValue(ctx, content.Ref{Entity: "article", ID: tc.resolved}, "de-DE")
 			require.NoError(t, err)
 			write, err := svc.Execute(ctx, "WriteTranslations", Input{Body: articleBody(translationBatch{
@@ -142,8 +167,40 @@ func TestArticleTranslationReferences(t *testing.T) {
 			after, err := svc.Execute(ctx, "GetTranslationsSource", Input{Params: params})
 			require.NoError(t, err)
 			require.Contains(t, string(mustJSON(t, after)), "Referenzhandbuch")
+			fixBody := articleBody(translationBatch{Ref: content.Ref{Entity: "article", ID: tc.id}, ArticleID: tc.articleID})
+			fixBody["locale"], fixBody["fields"] = "de-DE", map[string]any{"title": "Korrigiertes Handbuch"}
+			fixed, err := svc.Execute(fixCtx, "FixTranslation", Input{Body: fixBody})
+			require.NoError(t, err)
+			require.EqualValues(t, tc.resolved, hermesMap(fixed)["ref"].(map[string]any)["id"])
+			updated, err = st.TranslationValue(ctx, content.Ref{Entity: "article", ID: tc.resolved}, "de-DE")
+			require.NoError(t, err)
+			require.Equal(t, "Korrigiertes Handbuch", updated.Fields["title"])
 		})
 	}
+
+	t.Run("admin translation list can fix a colliding published revision", func(t *testing.T) {
+		listed, err := svc.Execute(context.Background(), "ListTranslations", Input{Params: map[string]any{"entity": "article", "status": "source"}})
+		require.NoError(t, err)
+		records := hermesMap(listed)["records"].([]any)
+		var row map[string]any
+		for _, record := range records {
+			candidate := record.(map[string]any)
+			if candidate["ref"].(map[string]any)["id"] == float64(31) {
+				row = candidate
+			}
+		}
+		require.NotNil(t, row)
+		require.EqualValues(t, 32, row["articleId"])
+		fixed, err := svc.Execute(context.Background(), "FixTranslation", Input{Body: map[string]any{
+			"ref": row["ref"], "articleId": row["articleId"], "locale": "de-DE", "fields": map[string]any{"title": "Manuelle Korrektur"},
+		}})
+		require.NoError(t, err)
+		require.EqualValues(t, 31, hermesMap(fixed)["ref"].(map[string]any)["id"])
+		updated, err := st.TranslationValue(ctx, content.Ref{Entity: "article", ID: 31}, "de-DE")
+		require.NoError(t, err)
+		require.Equal(t, "Manuelle Korrektur", updated.Fields["title"])
+		require.Equal(t, "manual", updated.Status)
+	})
 
 	t.Run("failed locale returns its reason without stored values", func(t *testing.T) {
 		before := snapshot()
@@ -166,6 +223,52 @@ func TestArticleTranslationReferences(t *testing.T) {
 		_, err := svc.writeTranslationLocale(ctx, request, translationItem{Locale: "de-DE", Fields: map[string]any{"title": "Neue Übersetzung"}})
 		require.ErrorContains(t, err, "article_ref_mismatch")
 		require.JSONEq(t, before, snapshot())
+		require.NoError(t, st.DB.Exec("UPDATE articles SET published_revision_id=401 WHERE id=31").Error)
+	})
+
+	t.Run("fix revalidates publication before taking the content lock", func(t *testing.T) {
+		before := snapshot()
+		var republished bool
+		callback := "test:republish-before-translation-fix-lock"
+		require.NoError(t, st.DB.Callback().Row().Before("gorm:row").Register(callback, func(db *gorm.DB) {
+			query := db.Statement.SQL.String()
+			if republished || !strings.Contains(query, "FROM articles") || !strings.Contains(query, "FOR UPDATE") {
+				return
+			}
+			republished = true
+			require.NoError(t, st.DB.Exec("UPDATE articles SET published_revision_id=402 WHERE id=31").Error)
+		}))
+		t.Cleanup(func() { _ = st.DB.Callback().Row().Remove(callback) })
+		fixed, err := svc.Execute(context.Background(), "FixTranslation", Input{Body: map[string]any{
+			"ref": map[string]any{"entity": "article", "id": 401}, "articleId": 31,
+			"locale": "de-DE", "fields": map[string]any{"title": "Must not be written"},
+		}})
+		require.True(t, republished)
+		require.ErrorContains(t, err, "article_ref_mismatch")
+		require.Nil(t, fixed)
+		require.JSONEq(t, before, snapshot())
+		require.NoError(t, st.DB.Callback().Row().Remove(callback))
+		require.NoError(t, st.DB.Exec("UPDATE articles SET published_revision_id=401 WHERE id=31").Error)
+	})
+
+	t.Run("source read rejects a republish after resolution", func(t *testing.T) {
+		var republished bool
+		callback := "test:republish-before-translation-source"
+		require.NoError(t, st.DB.Callback().Row().After("gorm:row").Register(callback, func(db *gorm.DB) {
+			query := db.Statement.SQL.String()
+			if republished || !strings.Contains(query, "SELECT source_locale") || !strings.Contains(query, "article_revisions") {
+				return
+			}
+			republished = true
+			require.NoError(t, st.DB.Exec("UPDATE articles SET published_revision_id=402 WHERE id=31").Error)
+		}))
+		t.Cleanup(func() { _ = st.DB.Callback().Row().Remove(callback) })
+		read, err := svc.Execute(ctx, "GetTranslationsSource", Input{Params: map[string]any{"entity": "article", "articleid": float64(31)}})
+		require.True(t, republished)
+		require.ErrorContains(t, err, "article_ref_must_be_published_revision")
+		require.Nil(t, read, "the old revision's source must not be returned")
+		require.NoError(t, st.DB.Callback().Row().Remove(callback))
+		require.NoError(t, st.DB.Exec("UPDATE articles SET published_revision_id=401 WHERE id=31").Error)
 	})
 
 	t.Run("collection_item retains composite reference", func(t *testing.T) {
@@ -192,6 +295,13 @@ func TestArticleTranslationReferences(t *testing.T) {
 
 	t.Run("non-article cannot supply articleId", func(t *testing.T) {
 		_, err := svc.Execute(ctx, "GetTranslationsSource", Input{Params: map[string]any{"entity": "collection_item", "id": float64(810), "secondaryid": float64(991), "articleid": float64(31)}})
+		require.ErrorContains(t, err, "article_id_requires_article")
+		_, err = svc.Execute(ctx, "GetTranslationStatus", Input{Params: map[string]any{"entity": "collection_item", "id": float64(810), "secondaryid": float64(991), "articleid": float64(31)}})
+		require.ErrorContains(t, err, "article_id_requires_article")
+		_, err = svc.Execute(ctx, "FixTranslation", Input{Body: map[string]any{
+			"ref": content.Ref{Entity: "collection_item", ID: 810, SecondaryID: 991}, "articleId": 31,
+			"locale": "de-DE", "fields": map[string]any{"note": "Referenznotiz"},
+		}})
 		require.ErrorContains(t, err, "article_id_requires_article")
 	})
 }

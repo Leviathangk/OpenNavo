@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 import pytest
-from conftest import Backend
+from conftest import Backend, execution_args
 from fastmcp import Client
 
 
@@ -93,3 +93,67 @@ async def test_invalid_article_id_is_not_forwarded(
         result = await client.call_tool("translations_write", args, raise_on_error=False)
     assert result.is_error
     assert all(op == "introspectAgentToken" for op, _ in backend.calls)
+
+
+@pytest.mark.parametrize("revision_id", [None, 31])
+async def test_status_and_fix_accept_article_identity(
+    backend: Backend, revision_id: int | None
+) -> None:
+    read: dict[str, Any] = {"entity": "article", "article_id": 32}
+    ref: dict[str, Any] = {"entity": "article"}
+    if revision_id is not None:
+        read["id"] = revision_id
+        ref["id"] = revision_id
+    write = {
+        "ref": ref,
+        "article_id": 32,
+        "locale": "de-DE",
+        "fields": {"title": "Korrigiertes Handbuch"},
+    }
+    async with Client(backend.server) as client:
+        assert not (await client.call_tool("translation_status", read)).is_error
+        assert not (
+            await client.call_tool("translation_fix", execution_args("translation_fix", write))
+        ).is_error
+    get = next(req for op, req in backend.calls if op == "getTranslationStatus")
+    assert get.url.params["articleId"] == "32"
+    assert get.url.params.get("id") == (str(revision_id) if revision_id is not None else None)
+    put = next(req for op, req in backend.calls if op == "fixTranslation")
+    assert json.loads(put.content) == {
+        "ref": ref,
+        "articleId": 32,
+        "locale": "de-DE",
+        "fields": write["fields"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("tool", "operation"),
+    [("translation_status", "getTranslationStatus"), ("translation_fix", "fixTranslation")],
+)
+@pytest.mark.parametrize(
+    "reason", ["article_ref_must_be_published_revision", "article_must_be_published_first"]
+)
+async def test_status_and_fix_rejections_do_not_echo_content(
+    backend: Backend, tool: str, operation: str, reason: str
+) -> None:
+    backend.responses[operation] = {"value": "unrelated translation sentinel"}
+    args: dict[str, Any] = (
+        {"entity": "article", "id": 31}
+        if tool == "translation_status"
+        else {
+            "ref": {"entity": "article", "id": 31},
+            "locale": "de-DE",
+            "fields": {"title": "Korrigiertes Handbuch"},
+        }
+    )
+    async with Client(backend.server) as client:
+        await client.list_tools()
+        backend.code = "1001"
+        backend.msg = "rejected: " + reason
+        result = await client.call_tool(tool, execution_args(tool, args), raise_on_error=False)
+    assert result.is_error
+    assert result.structured_content is not None
+    assert result.structured_content["error"]["reason"] == reason
+    assert "unrelated translation sentinel" not in str(result)
+    assert backend.calls[-1][0] == operation

@@ -2045,7 +2045,7 @@ export interface paths {
         };
         /**
          * Read an object's six-language text and status
-         * @description Requires translation:review. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Requires translation:review. For articles, prefer articleId to resolve the current published revision. Otherwise id must be article_get published.id; ambiguous IDs and unpublished revisions are rejected. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["getTranslationStatus"];
         put?: never;
@@ -15223,7 +15223,7 @@ export interface components {
          */
         HistoryEntity: "package" | "release" | "category" | "collection" | "feature" | "screenshot" | "collection_item" | "desktop_release" | "mirror" | "announcement" | "synonym" | "glossary" | "feedback" | "asset" | "article" | "article_author";
         /**
-         * @description announcement needs no id; other entities require a positive integer id. Article translations may instead supply the batch articleId to resolve the published revision. collection_item also requires secondaryId (packageId).
+         * @description announcement needs no id; other entities require a positive integer id. Article translations may instead supply articleId to resolve the published revision. collection_item also requires secondaryId (packageId).
          * @example {
          *       "entity": "package",
          *       "id": 1
@@ -15233,7 +15233,7 @@ export interface components {
             entity: components["schemas"]["ContentEntity"];
             /**
              * Format: int64
-             * @description Content ID. For article translations, use article_get published.id of a published article, or omit when the batch articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.
+             * @description Content ID. For article translations, use article_get published.id of a published article, or omit when articleId is supplied. Ambiguous IDs are rejected; use articleId to disambiguate.
              * @example 1
              */
             id?: number;
@@ -15893,6 +15893,12 @@ export interface components {
          */
         TranslationObject: {
             ref: components["schemas"]["ContentRef"];
+            /**
+             * Format: int64
+             * @description Owning article identity, present only for article revisions. Send with ref when correcting an article translation to disambiguate IDs.
+             * @example 1
+             */
+            articleId?: number;
             /** @example Visual Studio Code */
             label: string;
             sourceLocale: components["schemas"]["Locale"];
@@ -16522,7 +16528,7 @@ export interface components {
             locales?: components["schemas"]["Locale"][];
         };
         /**
-         * @description Non-source languages only. Agent edits become machine with the current source hash; human edits become manual. Agent translation wording, completeness and formatting are decided by the caller; field types and storage limits still apply.
+         * @description Non-source languages only. For articles, prefer articleId to resolve the current published revision. Otherwise ref.id must be article_get published.id; ambiguous IDs and unpublished revisions are rejected. Agent edits become machine with the current source hash; human edits become manual. Agent translation wording, completeness and formatting are decided by the caller; field types and storage limits still apply.
          * @example {
          *       "ref": {
          *         "entity": "package",
@@ -16537,6 +16543,12 @@ export interface components {
          */
         TranslationFix: {
             ref: components["schemas"]["ContentRef"];
+            /**
+             * Format: int64
+             * @description Article identity ID (ref.entity=article only). Resolves the current published revision; if ref.id is supplied, it must match.
+             * @example 1
+             */
+            articleId?: number;
             locale: components["schemas"]["WritableLocale"];
             /**
              * @description Optional model provenance; omitted models are recorded as agent:unspecified.
@@ -28462,7 +28474,10 @@ export interface operations {
         parameters: {
             query: {
                 entity: components["schemas"]["ContentEntity"];
+                /** @description Content ID; for articles use published.id from article_get, or omit when articleId is supplied. */
                 id?: number;
+                /** @description Article identity ID (entity=article only). Resolves the published revision; if id is supplied, it must match. */
+                articleId?: number;
                 secondaryId?: number;
             };
             header?: {

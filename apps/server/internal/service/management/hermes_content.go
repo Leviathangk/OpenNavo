@@ -3,6 +3,7 @@ package management
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
 	"time"
 
@@ -202,26 +203,24 @@ func (s *Service) upsertNotes(ctx context.Context, in Input) (any, error) {
 	})
 }
 func (s *Service) translationManage(ctx context.Context, op string, in Input) (any, error) {
-	ref, err := contentRef(in.Body["ref"])
-	if op == "GetTranslationStatus" {
-		ref = content.Ref{Entity: text(in.Params, "entity"), ID: int64(number(in.Params, "id", 0)), SecondaryID: int64(number(in.Params, "secondaryid", 0))}
-		if !ref.Valid() {
-			return nil, domain.Rejected("content_ref_invalid")
-		}
-		err = nil
-	}
+	ref, err := translationManageRef(ctx, s.Store, op, in, false)
 	if err != nil {
-		return nil, err
-	}
-	if err := assertContentAccess(ctx, ref); err != nil {
 		return nil, err
 	}
 	if op == "GetTranslationStatus" {
 		v, err := s.translationView(ctx, ref)
 		return v, store.MapAdminError(err)
 	}
+	// History and audit snapshots must use the same resolved revision as the write.
+	in.Body = maps.Clone(in.Body)
+	in.Body["ref"] = ref
 	ctx = store.WithTranslationModel(ctx, text(in.Body, "model"))
 	return s.write(ctx, in, op, "translation", func(st *store.Store) (any, error) {
+		// Match publication's lock order: lock and revalidate the owning article
+		// before WriteContentText acquires the revision's content lock.
+		if _, err := translationManageRef(ctx, st, op, in, true); err != nil {
+			return nil, err
+		}
 		fields, ok := in.Body["fields"].(map[string]any)
 		if !ok {
 			return nil, fieldError(in.Body, "fields")
@@ -231,6 +230,50 @@ func (s *Service) translationManage(ctx context.Context, op string, in Input) (a
 		}
 		return mutationResult(ctx, st, ref)
 	})
+}
+
+func translationManageRef(ctx context.Context, st *store.Store, op string, in Input, lock bool) (content.Ref, error) {
+	var request struct {
+		Ref       content.Ref `json:"ref"`
+		ArticleID *int64      `json:"articleId"`
+	}
+	var idSupplied bool
+	if op == "GetTranslationStatus" {
+		request.Ref = content.Ref{Entity: text(in.Params, "entity"), ID: int64(number(in.Params, "id", 0)), SecondaryID: int64(number(in.Params, "secondaryid", 0))}
+		_, idSupplied = in.Params["id"]
+		if _, ok := in.Params["articleid"]; ok {
+			id := int64(number(in.Params, "articleid", 0))
+			request.ArticleID = &id
+		}
+	} else {
+		raw, err := json.Marshal(in.Body)
+		if err != nil || json.Unmarshal(raw, &request) != nil {
+			return request.Ref, domain.Rejected("content_ref_invalid")
+		}
+		var supplied struct {
+			Ref map[string]json.RawMessage `json:"ref"`
+		}
+		_ = json.Unmarshal(raw, &supplied)
+		_, idSupplied = supplied.Ref["id"]
+	}
+	ref := request.Ref
+	if ref.Entity != "article" && !ref.Valid() {
+		return ref, domain.Rejected("content_ref_invalid")
+	}
+	if err := assertContentAccess(ctx, ref); err != nil {
+		return ref, err
+	}
+	if ref.Entity == "article" && request.ArticleID != nil && idSupplied && ref.ID == 0 {
+		return ref, domain.Rejected("article_ref_mismatch:articleId_and_ref.id")
+	}
+	ref, err := st.ResolveArticleTranslationRef(ctx, ref, request.ArticleID, lock)
+	if err != nil {
+		return ref, err
+	}
+	if !ref.Valid() {
+		return ref, domain.Rejected("content_ref_invalid")
+	}
+	return ref, nil
 }
 
 // Build a UNION with fixed registry identifiers; filter and paginate in the database instead of scanning the entire catalog in MCP.
@@ -413,6 +456,10 @@ func (s *Service) translationView(ctx context.Context, ref content.Ref) (map[str
 	state, err := s.Store.HistorySnapshot(ctx, ref)
 	if err != nil {
 		return nil, err
+	}
+	if ref.Entity == "article" && len(state["article_revisions"]) > 0 {
+		// The admin fix drawer round-trips this identity to disambiguate revision IDs.
+		view["articleId"] = state["article_revisions"][0]["article_id"]
 	}
 	urls, err := s.Store.HistoryURLs(ctx, ref, s.Config.WebBaseURL, state)
 	if err != nil {

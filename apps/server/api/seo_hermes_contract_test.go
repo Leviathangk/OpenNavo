@@ -45,6 +45,30 @@ func TestHermesBatchContracts(t *testing.T) {
 		}
 	}
 	require.True(t, articleIDFound)
+	fix := doc.Components.Schemas["TranslationFix"].Value
+	require.NoError(t, fix.VisitJSON(map[string]any{
+		"ref": map[string]any{"entity": "article"}, "articleId": 31,
+		"locale": "de-DE", "fields": map[string]any{"title": "Referenzhandbuch"},
+	}))
+	for _, invalid := range []any{nil, 0, -1, "31"} {
+		require.Error(t, fix.VisitJSON(map[string]any{
+			"ref": map[string]any{"entity": "article"}, "articleId": invalid,
+			"locale": "de-DE", "fields": map[string]any{"title": "Referenzhandbuch"},
+		}))
+	}
+	articleIDFound = false
+	for _, param := range doc.Paths.Value("/translations/status").Get.Parameters {
+		if param.Value.Name == "articleId" {
+			articleIDFound = true
+			require.False(t, param.Value.Required)
+			require.NoError(t, param.Value.Schema.Value.VisitJSON(31))
+			require.Error(t, param.Value.Schema.Value.VisitJSON(0))
+		}
+		if param.Value.Name == "id" {
+			require.False(t, param.Value.Required)
+		}
+	}
+	require.True(t, articleIDFound)
 	for _, path := range []string{"/translations/source", "/translations/batch"} {
 		for method, op := range doc.Paths.Value(path).Operations() {
 			examples := op.Responses.Status(200).Value.Content["application/json"].Examples

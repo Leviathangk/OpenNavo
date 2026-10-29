@@ -379,7 +379,7 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 	}
 	// SEO and intent-page views attach their own revisions inside execute; they need
 	// the same snapshot boundary as reads augmented by withReadRevision.
-	if _, ok := readRevisionWrites[op]; ok || op == "GetPackageSeo" || op == "GetPackageIntentPages" {
+	if _, ok := readRevisionWrites[op]; ok || op == "GetPackageSeo" || op == "GetPackageIntentPages" || op == "GetTranslationStatus" {
 		return s.readWithRevision(ctx, op, in)
 	}
 	return s.execute(ctx, op, in)
