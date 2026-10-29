@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
-import { installCommand } from '@opennavo/shared';
+import { catalogInstallCommand } from '@/utils/brew';
 import { OnButton, OnCollectionView, OnConfirm } from '@opennavo/ui';
 import type { OnCollectionEntry } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
@@ -15,6 +15,7 @@ import { useRemoteLoader } from '@/composables/useRemoteLoader';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useTasksStore } from '@/stores';
+import { useNamesStore } from '@/stores/names';
 
 // Collection details (API): body, items, recommendations; after confirmation, enqueue batch installs individually (trigger=bundle), skipping installed/disabled items.
 // ?install=1 (opennavo://collection/{slug}?action=install) opens confirmation immediately; the dialog lists all brew commands to execute (06 §10).
@@ -27,6 +28,7 @@ const route = useRoute();
 const router = useRouter();
 const library = useLibraryStore();
 const tasks = useTasksStore();
+const names = useNamesStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
@@ -50,7 +52,17 @@ const pending = computed(() =>
 );
 const pendingCommands = computed(() =>
   pending.value
-    .flatMap(item => (item.package.kind === 'link' ? [] : [installCommand(item.package.kind, item.package.token)]))
+    .flatMap(item =>
+      item.package.kind === 'link'
+        ? []
+        : [
+            catalogInstallCommand(
+              item.package.kind,
+              item.package.token,
+              names.lookup(item.package.kind, item.package.token)
+            )
+          ]
+    )
     .join('\n')
 );
 const entries = computed<OnCollectionEntry[]>(() =>

@@ -61,6 +61,7 @@ func (s *Service) rawBase() string {
 // Candidate is a tap cask read from GitHub and normalized, ready to be written to the catalog.
 // History holds the versions its file's recent commits declared, read up to HistorySHA; an empty
 // HistorySHA means the read failed and the tap sync reads it later.
+// Token remains the upstream cask token; Package.Token may be a custom site token.
 type Candidate struct {
 	Tap, Token, SourcePath string
 	ETag, HeadSHA          string
@@ -316,14 +317,14 @@ func Conflict(owner *store.CaskOwner, tap, token string) error {
 
 // Write stores a candidate in the catalog inside st's transaction and returns the package ID.
 func Write(ctx context.Context, st *store.Store, candidate *Candidate, now time.Time) (int64, error) {
-	previous, err := st.CatalogRow(ctx, "cask", candidate.Token)
+	previous, err := st.CatalogRow(ctx, "cask", candidate.Package.Token)
 	if err != nil {
 		return 0, err
 	}
 	if _, err := st.ApplyCatalogBatchWithLifecycle(ctx, []store.CatalogMutation{{Package: candidate.Package, Previous: previous}}, now); err != nil {
 		return 0, err
 	}
-	row, err := st.CatalogRow(ctx, "cask", candidate.Token)
+	row, err := st.CatalogRow(ctx, "cask", candidate.Package.Token)
 	if err != nil {
 		return 0, err
 	}
@@ -398,7 +399,7 @@ func (s *Service) refresh(ctx context.Context, cask store.TapCask) (string, int,
 	if (notModified || head.SHA == cask.HeadSHA) && current && cask.RemovedAt == nil && !due {
 		return s.finishRefresh(ctx, cask, nil, head, false, s.readHistory(ctx, cask, cask.SourcePath, head, nil))
 	}
-	candidate, err := s.evaluate(ctx, cask.Tap, cask.Token, cask.SourcePath, head)
+	candidate, err := s.evaluate(ctx, cask.Tap, cask.CaskToken(), cask.SourcePath, head)
 	if errors.Is(err, errDeleted) {
 		return s.refreshMoved(ctx, cask, head)
 	}
@@ -434,7 +435,7 @@ func (s *Service) readHistory(ctx context.Context, cask store.TapCask, path stri
 // A deleted path can be a move between Homebrew's supported layouts. Only remove the
 // package after all alternate paths have been checked; upstream/parse failures keep it intact.
 func (s *Service) refreshMoved(ctx context.Context, cask store.TapCask, oldHead commit) (string, int, error) {
-	for _, path := range homebrew.TapCaskPaths(cask.Token) {
+	for _, path := range homebrew.TapCaskPaths(cask.CaskToken()) {
 		if path == cask.SourcePath {
 			continue
 		}
@@ -445,7 +446,7 @@ func (s *Service) refreshMoved(ctx context.Context, cask store.TapCask, oldHead 
 		if head.Missing {
 			continue
 		}
-		candidate, err := s.evaluate(ctx, cask.Tap, cask.Token, path, head)
+		candidate, err := s.evaluate(ctx, cask.Tap, cask.CaskToken(), path, head)
 		if errors.Is(err, errDeleted) {
 			continue
 		}
@@ -483,6 +484,7 @@ func (s *Service) finishRefresh(ctx context.Context, cask store.TapCask, candida
 			outcome, message = "removed", errDeleted.Error()
 		} else if candidate != nil && (candidate.Package.RawHash != live.RawHash || live.RemovedAt != nil ||
 			live.NormalizationVersion != fmt.Sprint(homebrew.CaskNormalizationVersion)) {
+			candidate.Package.Token = live.Token
 			if _, err := Write(ctx, st, candidate, s.now()); err != nil {
 				return err
 			}
@@ -516,7 +518,7 @@ func (s *Service) finishRefresh(ctx context.Context, cask store.TapCask, candida
 
 // A package ID is reused after removal. Compare the registration generation as well as its source.
 func sameRegistration(live *store.TapCask, previous store.TapCask) bool {
-	return live != nil && live.Tap == previous.Tap && live.PackageTap == previous.PackageTap &&
+	return live != nil && live.Tap == previous.Tap && live.PackageTap == previous.PackageTap && live.FullToken == previous.FullToken &&
 		live.SourcePath == previous.SourcePath && live.CreatedAt.Equal(previous.CreatedAt)
 }
 

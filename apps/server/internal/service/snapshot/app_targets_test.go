@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/gen/publicapi"
+
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/stretchr/testify/require"
@@ -36,4 +38,21 @@ end`, homebrew.CaskSource{Tap: "example/tap", Token: "demo"}, time.Now())
 	result, err = item(public, public)
 	require.NoError(t, err)
 	require.Nil(t, result.AppTargets, "legacy data must not guess destinations")
+}
+
+func TestTapCatalogPreservesUpstreamToken(t *testing.T) {
+	public := store.PublicPackage{Kind: "cask", Token: "stablyai-orca", FullToken: "stablyai/orca/orca", Tap: "stablyai/orca"} // #nosec G101 -- Public package names, not credentials.
+	result, err := item(public, public)
+	require.NoError(t, err)
+	require.Equal(t, "orca", *result.BrewToken)
+	encoded, err := json.Marshal(result)
+	require.NoError(t, err)
+	var base publicapi.CatalogBaseItem
+	require.NoError(t, json.Unmarshal(encoded, &base))
+	require.Equal(t, "stablyai-orca", base.Token)
+	require.Equal(t, "orca", *base.BrewToken)
+	public.Token = "orca"
+	result, err = item(public, public)
+	require.NoError(t, err)
+	require.Nil(t, result.BrewToken, "unchanged casks preserve their existing payload")
 }

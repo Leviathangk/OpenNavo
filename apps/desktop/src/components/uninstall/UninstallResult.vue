@@ -7,6 +7,7 @@ import type { LocalApp } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import type { UninstallResult } from '@/stores/uninstall';
+import { matchesCask } from '@/stores/localApps';
 import { displayPath } from '@/utils/paths';
 
 // Done (proposal §03 scenario 10): what was freed, what moved to the Trash, what was skipped and why.
@@ -32,7 +33,9 @@ const retryable = computed(() =>
     const app =
       target?.kind === 'app'
         ? props.apps.find(item => item.id === target.token)
-        : props.apps.find(item => item.cask === target?.token);
+        : target?.kind === 'cask'
+          ? props.apps.find(item => matchesCask(item, target.token))
+          : undefined;
     return app && task.state === 'failed' ? [app.id] : [];
   })
 );

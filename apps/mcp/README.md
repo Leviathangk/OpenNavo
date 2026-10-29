@@ -86,6 +86,22 @@ lists versions eligible for `release_write_notes`; a listed build also permits s
 on its base version (for example, `2.0,42` permits `2.0`). Writing notes does not create a version.
 Listing a link app does not guarantee a one-click installer or a usable update feed.
 
+For a tap cask whose upstream token collides with another listing, pass an optional `site_token`:
+
+```json
+{"cask":"stablyai/orca/orca","site_token":"stablyai-orca","dry_run":true}
+```
+
+Use these arguments with `tap_package_add` and its normal write metadata. The admin API uses
+`siteToken` in the JSON body and `dryRun=true` in the query. A site token must match
+`^[a-z0-9][a-z0-9+_.@-]*$`, contain at most 128 characters, and be unused, including removed
+listings. Omit it to keep the existing upstream-token behavior. One upstream cask can have only
+one active tap registration. Preview validates the same collisions and writes no catalog data.
+The site listing uses `stablyai-orca`; sync still reads `Casks/orca.rb`, and install commands
+remain `brew install --cask stablyai/orca/orca`. Desktop snapshots publish optional `brewToken`
+for clients that resolve a site alias before calling Homebrew; deploy the updated desktop client
+before advertising alias listings for desktop installation.
+
 GitHub release selection is optional on both `link_app_add` and `link_app_update`. The admin
 POST `/links/packages` and PATCH `/links/packages/{id}` expose the same fields in camelCase:
 

@@ -169,7 +169,7 @@ impl Engine {
         })
     }
     pub fn seed_rule(&self, token: &str, value: serde_json::Value) -> Result<(), AppError> {
-        crate::brew::args::validate_token(token)?;
+        crate::brew::args::split_cask_token(token)?;
         self.rules_cache
             .lock()
             .map_err(poison)?
@@ -179,36 +179,75 @@ impl Engine {
     pub fn local_rule(&self, token: &str) -> Option<serde_json::Value> {
         self.local_rule_with(token, &self.installed_rules())
     }
+    /// Rule reads go to Homebrew with its installed identity and to the site with its alias.
+    fn rule_identity(&self, token: &str) -> Result<(String, Option<String>), AppError> {
+        let (tap, upstream) = crate::brew::args::split_cask_token(token)?;
+        let catalog = if tap.is_some() {
+            crate::catalog::get_brew_cask(&self.database, upstream, tap)?
+        } else {
+            crate::catalog::get(&self.database, Kind::Cask, token)?
+        };
+        let identity = match catalog.as_ref() {
+            Some(item) if tap.is_none() => crate::brew::args::qualified_token(
+                item.tap.as_deref(),
+                item.brew_token.as_deref().unwrap_or(&item.token),
+            )?,
+            _ => token.to_owned(),
+        };
+        Ok((identity, catalog.map(|item| item.token)))
+    }
     /// `local_rule` with the installed casks' rules already parsed, for callers that look up many tokens.
     pub(crate) fn local_rule_with(
         &self,
         token: &str,
         installed: &HashMap<String, serde_json::Value>,
     ) -> Option<serde_json::Value> {
-        if let Some(value) = self.rules_cache.lock().ok()?.get(token) {
+        let (identity, catalog_token) = self.rule_identity(token).ok()?;
+        for key in [
+            Some(token),
+            Some(identity.as_str()),
+            catalog_token.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if let Some(value) = self.rules_cache.lock().ok()?.get(key) {
+                return Some(value.clone());
+            }
+            if let Some(value) = self
+                .database
+                .meta(&format!("uninstall_rules:{key}"))
+                .ok()
+                .flatten()
+                .and_then(|s| serde_json::from_str(&s).ok())
+            {
+                return Some(value);
+            }
+        }
+        if let Some(value) = installed.get(&identity) {
             return Some(value.clone());
         }
-        if let Some(value) = self
-            .database
-            .meta(&format!("uninstall_rules:{token}"))
-            .ok()
-            .flatten()
-            .and_then(|s| serde_json::from_str(&s).ok())
+        let (tap, upstream) = crate::brew::args::split_cask_token(&identity).ok()?;
+        // Homebrew sometimes omits its default tap. Both spellings refer to the official cask.
+        if tap.is_none_or(|tap| tap == "homebrew/cask")
+            && let Some(value) = installed
+                .get(&format!("homebrew/cask/{upstream}"))
+                .or_else(|| installed.get(upstream))
         {
-            return Some(value);
-        }
-        if let Some(value) = installed.get(token) {
             return Some(value.clone());
         }
         // Local Homebrew API or Caskroom metadata. No app paths are uploaded.
-        let mut files = vec![
-            self.roots
-                .home
-                .join("Library/Caches/Homebrew/api/cask")
-                .join(format!("{token}.json")),
-        ];
+        let mut files = Vec::new();
+        if tap.is_none_or(|tap| tap == "homebrew/cask") {
+            files.push(
+                self.roots
+                    .home
+                    .join("Library/Caches/Homebrew/api/cask")
+                    .join(format!("{upstream}.json")),
+            );
+        }
         for root in &self.roots.caskrooms {
-            collect_json(&root.join(token).join(".metadata"), 4, &mut files);
+            collect_json(&root.join(upstream).join(".metadata"), 4, &mut files);
         }
         files.into_iter().find_map(|p| {
             let m = std::fs::symlink_metadata(&p).ok()?;
@@ -216,7 +255,9 @@ impl Engine {
                 return None;
             }
             let v: serde_json::Value = serde_json::from_slice(&std::fs::read(p).ok()?).ok()?;
-            (v.get("token").and_then(|t| t.as_str()) == Some(token)).then_some(v)
+            (v.get("token").and_then(|t| t.as_str()) == Some(upstream)
+                && tap.is_none_or(|tap| v.get("tap").and_then(|t| t.as_str()) == Some(tap)))
+            .then_some(v)
         })
     }
     /// Casks of the last `brew info --installed` output by token, parsed again only when that output changes.
@@ -234,13 +275,21 @@ impl Engine {
         {
             return rules.clone();
         }
-        let rules: HashMap<_, _> = serde_json::from_str::<serde_json::Value>(&raw)
+        let casks = serde_json::from_str::<serde_json::Value>(&raw)
             .ok()
             .and_then(|value| value.get("casks")?.as_array().cloned())
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|cask| Some((cask.get("token")?.as_str()?.to_owned(), cask)))
-            .collect();
+            .unwrap_or_default();
+        let mut rules = HashMap::new();
+        for cask in casks {
+            let Some(token) = cask.get("token").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let identity = match cask.get("tap").and_then(|v| v.as_str()) {
+                Some(tap) => format!("{tap}/{token}"),
+                None => token.to_owned(),
+            };
+            rules.insert(identity, cask);
+        }
         let rules = Arc::new(rules);
         if let Ok(mut cached) = self.installed_rules.lock() {
             *cached = Some((hash, rules.clone()));
@@ -248,7 +297,7 @@ impl Engine {
         rules
     }
     pub async fn fetch_rule(&self, token: &str) -> Result<Option<serde_json::Value>, AppError> {
-        crate::brew::args::validate_token(token)?;
+        let (identity, catalog_token) = self.rule_identity(token)?;
         if let Some(value) = self.rules_cache.lock().map_err(poison)?.get(token).cloned() {
             return Ok(Some(value));
         }
@@ -259,7 +308,7 @@ impl Engine {
                 &brew,
                 &settings,
                 crate::brew::args::ReadOp::Info(Kind::Cask),
-                Some(token),
+                Some(&identity),
             )
             .await
             && raw.len() <= 16 * 1024 * 1024
@@ -277,12 +326,15 @@ impl Engine {
         if let Some(value) = self.local_rule(token) {
             return Ok(Some(value));
         }
+        let Some(catalog_token) = catalog_token else {
+            return Ok(None);
+        };
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(5))
             .redirect(reqwest::redirect::Policy::none())
             .build()?;
         let url = format!(
-            "{}/packages/cask/{token}",
+            "{}/packages/cask/{catalog_token}",
             crate::catalog::sync::configured_base().trim_end_matches('/')
         );
         let Ok(mut response) = client
