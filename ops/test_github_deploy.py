@@ -482,12 +482,94 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
                 self.assertEqual(obj.live_caddy.read_text(), 'candidate route')
                 self.assertEqual(obj.state_path.read_bytes(), before_state)
                 self.assertIn('DEGRADED', output.getvalue())
-                self.assertIn('Caddy still routes to the candidate', output.getvalue())
+                self.assertIn('routing unconfirmed', output.getvalue())
+                self.assertNotIn('Caddy still routes to the candidate', output.getvalue())
+                marker = json.loads(obj.degraded_path.read_text())
+                self.assertEqual(marker['release'], obj.release)
+                self.assertEqual(marker['sha'], obj.payload['sha'])
+                self.assertIn('previous services failed to start', marker['reason'])
+                self.assertEqual(obj.degraded_path.stat().st_mode & 0o777, 0o600)
                 obj.compose.assert_called_once_with(
                     'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
                     *obj.state['services'].values(), 'worker', candidate=False)
                 for mock in [obj.reload, obj.verify, obj.update_monitoring, obj.drain_retired, run]:
                     mock.assert_not_called()
+
+                # A new receiver process must reject the next deployment without touching Docker.
+                retry = deploy.Deployment(obj.config, payload())
+                with patch.object(deploy, 'command') as run, \
+                        self.assertRaisesRegex(RuntimeError, 'Manual intervention required') as failure:
+                    retry.apply(archive())
+                self.assertIn(f'remove {obj.degraded_path}', str(failure.exception))
+                run.assert_not_called()
+
+    def test_degraded_marker_blocks_new_deploys_and_same_sha_retries_until_manually_removed(self):
+        for same_sha in [False, True]:
+            for content in ['', 'not valid JSON', '{"reason":"routing unconfirmed"}']:
+                with self.subTest(same_sha=same_sha, content=content), tempfile.TemporaryDirectory() as root:
+                    obj, _ = prepare_on_host(root, {})
+                    if same_sha:
+                        obj.state['sha'] = obj.payload['sha']
+                        deploy.write_private(obj.state_path, obj.state)
+                    obj.degraded_path.write_text(content)
+                    retry = deploy.Deployment(obj.config, payload())
+                    with patch.object(retry, 'capacity_gate', side_effect=RuntimeError('deployment resumed')) as capacity, \
+                            patch.object(retry, 'verify', side_effect=RuntimeError('deployment resumed')) as verify, \
+                            patch.object(retry, 'prepare') as prepare, \
+                            patch.object(retry, 'cleanup') as cleanup, \
+                            patch.object(deploy, 'command') as run:
+                        with self.assertRaisesRegex(RuntimeError, 'Manual intervention required') as failure:
+                            retry.apply(archive())
+                        self.assertIn(f'remove {obj.degraded_path}', str(failure.exception))
+                        self.assertEqual(obj.degraded_path.read_text(), content)
+                        for mock in [capacity, verify, prepare, cleanup, run]:
+                            mock.assert_not_called()
+                        obj.degraded_path.unlink()
+                        with self.assertRaisesRegex(RuntimeError, 'deployment resumed'):
+                            retry.apply(archive())
+                        (verify if same_sha else capacity).assert_called_once_with()
+
+    def test_caddy_reload_failure_marks_routing_unconfirmed_and_blocks_next_deploy(self):
+        for fail_validation in [False, True]:
+            with self.subTest(fail_validation=fail_validation), tempfile.TemporaryDirectory() as root:
+                obj, _ = prepare_on_host(root, {})
+                obj.config['caddy_container'] = 'fixture-caddy'
+                error = RuntimeError('fixture Caddy failure')
+                commands = [error] if fail_validation else ['', error]
+                with patch.object(deploy, 'command', side_effect=commands), \
+                        contextlib.redirect_stdout(io.StringIO()) as output, \
+                        self.assertRaisesRegex(RuntimeError, 'fixture Caddy failure'):
+                    obj.reload()
+                self.assertIn('routing unconfirmed', output.getvalue())
+                self.assertNotIn('Caddy still routes to the candidate', output.getvalue())
+                self.assertFalse(hasattr(obj, 'switch_at'))
+                self.assertEqual(json.loads(obj.degraded_path.read_text())['reason'],
+                                 'Caddy reload failed; routing unconfirmed')
+                retry = deploy.Deployment(obj.config, payload())
+                with patch.object(deploy, 'command') as run, \
+                        self.assertRaisesRegex(RuntimeError, 'Manual intervention required'):
+                    retry.apply(archive())
+                run.assert_not_called()
+
+    def test_rollback_caddy_reload_failure_retains_candidates_and_requires_manual_recovery(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = prepare_on_host(root, {})
+            obj.config['caddy_container'] = 'fixture-caddy'
+            obj.compose = unittest.mock.Mock()
+            obj.verify = unittest.mock.Mock()
+            obj.update_monitoring = unittest.mock.Mock()
+            obj.drain_retired = unittest.mock.Mock()
+            with patch.object(deploy, 'command', side_effect=['', RuntimeError('fixture Caddy failure')]), \
+                    contextlib.redirect_stdout(io.StringIO()) as output, \
+                    self.assertRaisesRegex(RuntimeError, 'fixture Caddy failure'):
+                obj.rollback()
+            self.assertIn('routing unconfirmed', output.getvalue())
+            self.assertTrue(obj.degraded_path.exists())
+            obj.compose.assert_called_once_with(
+                'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                *obj.state['services'].values(), 'worker', candidate=False)
+            for mock in [obj.verify, obj.update_monitoring, obj.drain_retired]:
+                mock.assert_not_called()
 
     def test_verify_checks_legacy_routes_without_sha_and_requires_known_release_headers(self):
         obj = object.__new__(deploy.Deployment)
@@ -513,6 +595,7 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
 
     def test_same_sha_short_circuit_skips_capacity_gate(self):
         obj = object.__new__(deploy.Deployment)
+        obj.root = Path('/fixture')
         obj.payload = payload()
         obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live', 'web': 'web_live'}}
         events = []
@@ -541,6 +624,7 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
 
     def test_retry_verifies_existing_release_before_resuming_cleanup(self):
         obj = object.__new__(deploy.Deployment)
+        obj.root = Path('/fixture')
         obj.payload = payload()
         previous = {'services': {'api': 'api_previous'}}
         obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live'}, 'previous': previous}
@@ -711,8 +795,9 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
 
     def test_pulls_every_image_and_rejects_a_foreign_revision_before_preparing(self):
         for revision in ['a' * 40, 'f' * 40]:
-            with self.subTest(revision=revision):
+            with self.subTest(revision=revision), tempfile.TemporaryDirectory() as root:
                 obj = object.__new__(deploy.Deployment)
+                obj.root = Path(root)
                 obj.payload, obj.state = payload(), {}
                 events = []
                 def stop(_):
@@ -765,6 +850,7 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)
             obj = object.__new__(deploy.Deployment)
+            obj.root = directory
             obj.config = {'project': 'fixture'}
             obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
             obj.payload = payload()

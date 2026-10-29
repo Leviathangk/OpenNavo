@@ -3,6 +3,7 @@ import { getHeapStatistics } from 'node:v8';
 import { RequestCounter, countResponse } from '../utils/crawlerMetrics';
 import { InFlightCounter, localReadinessStatus, readCgroupMemoryLimit } from '../utils/internalHealth';
 import { loadShedState } from '../utils/loadShed';
+import { renderMemoryMetrics } from '../utils/memoryMetrics';
 import { clearSitemapStorage } from '../utils/sitemapStorage';
 import { cacheBuildIdentity } from './cache-storage';
 
@@ -92,7 +93,12 @@ export default defineNitroPlugin(nitroApp => {
     }
     if (request.method === 'GET' && request.url === '/metrics') {
       response.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
-      response.end(counter.render() + loadShedState.render() + `opennavo_web_http_in_flight ${activeHTTP.value}\n`);
+      response.end(
+        counter.render() +
+          loadShedState.render() +
+          `opennavo_web_http_in_flight ${activeHTTP.value}\n` +
+          renderMemoryMetrics()
+      );
       return;
     }
     if (request.method === 'GET' && request.url === '/cache/build') {

@@ -149,7 +149,7 @@ jobs:
     needs: [source, images, admin]
     environment: production
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     permissions:
       contents: read
       packages: read

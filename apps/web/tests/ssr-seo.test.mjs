@@ -2414,6 +2414,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       metrics,
       /opennavo_web_requests_total\{agent="browser",route="app",status="200",verification="unknown",verification_basis="none"\} \d+/
     );
+    assert.match(metrics, /^opennavo_web_in_flight \d+$/m);
+    assert.match(metrics, /^opennavo_web_image_in_flight \d+$/m);
+    assert.match(metrics, /^# TYPE opennavo_web_load_shed_total counter$/m);
+    assert.match(metrics, /^opennavo_web_http_in_flight \d+$/m);
+    for (const name of ['heap_used', 'heap_limit', 'rss', 'external'])
+      assert.match(metrics, new RegExp(`^opennavo_web_${name}_bytes \\d+$`, 'm'));
   });
   await t.test('only public cached pages may be cached at the edge', async () => {
     // Purged pages keep two days and lists ten minutes; both answer from the edge while the origin sheds load.

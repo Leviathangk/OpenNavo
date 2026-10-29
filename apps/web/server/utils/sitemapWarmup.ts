@@ -14,8 +14,28 @@ export interface WarmupOptions {
 /** Abort both waits and our ownership of in-flight work, even if a transport ignores cancellation. */
 function cancellable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
-    const abort = () => reject(new Error('Warmup cancelled'));
-    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    let settled = false;
+    const cleanup = () => signal.removeEventListener('abort', abort);
+    const abort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('Warmup cancelled'));
+    };
+    work.then(
+      value => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(value);
+      },
+      error => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      }
+    );
     if (signal.aborted) abort();
     else signal.addEventListener('abort', abort, { once: true });
   });
@@ -25,6 +45,7 @@ function pause(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const abort = () => {
       clearTimeout(timer);
+      signal.removeEventListener('abort', abort);
       reject(new Error('Warmup cancelled'));
     };
     const timer = setTimeout(() => {

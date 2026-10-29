@@ -400,6 +400,22 @@ class Deployment:
         self.web_replicas = configured_web_replicas(config)
         self.warm_paths = warm_paths(payload)
 
+    @property
+    def degraded_path(self):
+        return self.root / 'deploy/github-degraded.json'
+
+    def recovery_instructions(self):
+        return ('Manual intervention required: verify Caddy routing, running services and release '
+                f'configuration, then remove {self.degraded_path} to allow deployments.')
+
+    def mark_degraded(self, reason):
+        # Keep this outside release snapshots and the last verified state so neither a rollback
+        # nor a same-SHA cleanup retry can erase the requirement for operator recovery.
+        write_private(self.degraded_path, {
+            'release': self.release, 'sha': self.payload['sha'], 'reason': reason,
+        })
+        print(f'DEGRADED: {reason}. {self.recovery_instructions()}', flush=True)
+
     def compose(self, *args, candidate=True):
         directory = self.directory if candidate else self.root
         return command(['docker', 'compose', '--project-directory', str(self.root), '-p', self.config['project'],
@@ -703,8 +719,12 @@ class Deployment:
         print('API and web monitoring targets updated and healthy.', flush=True)
 
     def reload(self):
-        command(['docker', 'exec', self.config['caddy_container'], 'caddy', 'validate', '--config', '/etc/caddy/Caddyfile'])
-        command(['docker', 'kill', '--signal=USR1', self.config['caddy_container']])
+        try:
+            command(['docker', 'exec', self.config['caddy_container'], 'caddy', 'validate', '--config', '/etc/caddy/Caddyfile'])
+            command(['docker', 'kill', '--signal=USR1', self.config['caddy_container']])
+        except Exception:
+            self.mark_degraded('Caddy reload failed; routing unconfirmed')
+            raise
         self.switch_at = time.monotonic()
 
     def verify(self, expected=None):
@@ -735,13 +755,14 @@ class Deployment:
             self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
                          *self.state['services'].values(), 'worker', candidate=False)
         except Exception as error:
-            # Caddy still serves the candidate, including when the switch failed before these
-            # files were promoted. Keep the active configuration consistent with that route.
+            # Retain candidate configuration for recovery. The route is unconfirmed: the initial
+            # Caddy reload may have failed before these files were promoted.
+            self.mark_degraded('previous services failed to start; routing unconfirmed; '
+                               'candidate containers retained')
             self.env.write_bytes((self.directory / 'release.env').read_bytes())
             self.rolling.write_bytes((self.directory / 'rolling.compose.json').read_bytes())
-            print('DEGRADED: previous services failed to start; Caddy still routes to the candidate, '
-                  'candidate env and rolling configuration restored; candidate containers retained.', flush=True)
-            raise RuntimeError('degraded rollback: previous services failed to start; candidate route retained') from error
+            print('Candidate env and rolling configuration restored for manual recovery.', flush=True)
+            raise RuntimeError('degraded rollback: previous services failed to start; routing unconfirmed') from error
         print('Previous release services are healthy; switching Caddy back.', flush=True)
         self.live_caddy.write_bytes((self.directory / 'before-caddy').read_bytes())
         self.reload()
@@ -854,6 +875,8 @@ class Deployment:
                     print(f'Kept {kind} image {short}: Docker refused removal', flush=True)
 
     def apply(self, archive):
+        if self.degraded_path.exists():
+            raise RuntimeError('deployment blocked by persistent degraded marker. ' + self.recovery_instructions())
         if self.state.get('sha') == self.payload['sha']:
             self.services = self.state['services']
             self.ensure_live_manifest()

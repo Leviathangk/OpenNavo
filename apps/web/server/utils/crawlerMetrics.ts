@@ -57,6 +57,8 @@ export function agentLabel(userAgent: string | undefined): AgentLabel {
 }
 
 const STATUSES = new Set([200, 301, 302, 304, 400, 403, 404, 410, 429, 500, 502, 503]);
+/** Keep a malformed/future route label from turning the private metrics endpoint into a growing cache. */
+export const MAX_REQUEST_COUNTER_SERIES = 4096;
 
 export function statusLabel(status: number): string {
   return STATUSES.has(status) ? String(status) : `${Math.floor(status / 100)}xx`;
@@ -131,6 +133,7 @@ export function countResponse(counter: RequestCounter, event: H3Event): void {
 
 export class RequestCounter {
   private readonly counts = new Map<string, number>();
+  private overflow = 0;
 
   add(agent: AgentLabel, route: string, status: string, identity?: CrawlerIdentity) {
     const { verification, verificationBasis } = identity ?? {
@@ -138,6 +141,10 @@ export class RequestCounter {
       verificationBasis: 'none'
     };
     const key = `${agent}\u0000${route}\u0000${status}\u0000${verification}\u0000${verificationBasis}`;
+    if (!this.counts.has(key) && this.counts.size >= MAX_REQUEST_COUNTER_SERIES) {
+      this.overflow += 1;
+      return;
+    }
     this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
   }
 
@@ -153,6 +160,10 @@ export class RequestCounter {
         `opennavo_web_requests_total{agent="${agent}",route="${route}",status="${status}",verification="${verification}",verification_basis="${basis}"} ${value}`
       );
     }
+    if (this.overflow)
+      lines.push(
+        `opennavo_web_requests_total{agent="unknown",route="overflow",status="other",verification="unknown",verification_basis="none"} ${this.overflow}`
+      );
     return `${lines.join('\n')}\n`;
   }
 }
