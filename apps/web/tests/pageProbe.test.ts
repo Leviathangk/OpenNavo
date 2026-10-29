@@ -189,7 +189,94 @@ describe('bounded internal page probes', () => {
       expect(Object.keys(result.temporaryFailures)).toEqual(['/hung', '/later']);
       expect(vi.getTimerCount()).toBe(1);
       await vi.advanceTimersByTimeAsync(PROBE_SLOT_MAX_MS - PROBE_BUDGET_MS);
-      expect(warn).toHaveBeenCalledExactlyOnceWith('page probe slot exceeded its hard deadline; releasing capacity');
+      expect(warn).toHaveBeenCalledExactlyOnceWith(
+        'page probe slot exceeded its hard deadline; aborting requests and releasing capacity'
+      );
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('aborts a request still releasing its response body at the hard slot deadline', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const probe = createPageProbe(1);
+      let signal!: AbortSignal;
+      const aborted = vi.fn();
+      const cancel = vi.fn(
+        () =>
+          new Promise<void>(resolve => {
+            signal.addEventListener(
+              'abort',
+              () => {
+                aborted();
+                resolve();
+              },
+              { once: true }
+            );
+          })
+      );
+      const pending = probe(['/streaming'], async (_path, value) => {
+        signal = value;
+        return { ...response(200), body: { cancel } as unknown as ReadableStream };
+      });
+      await vi.advanceTimersByTimeAsync(PROBE_SLOT_MAX_MS - 1);
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(signal.aborted).toBe(false);
+      await expect(probe(['/blocked'], async () => response(200))).rejects.toBeInstanceOf(ProbeBusyError);
+      await vi.advanceTimersByTimeAsync(1);
+      await pending;
+      expect(signal.aborted).toBe(true);
+      expect(aborted).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect((await probe(['/recovered'], async () => response(200))).statuses['/recovered']).toBe(200);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([1, 2, 4])('bounds reclaimed requests that ignore abort with concurrency %i', async concurrency => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const probe = createPageProbe(concurrency);
+      const signals: AbortSignal[] = [];
+      const settlers: Array<() => void> = [];
+      const fetch = vi.fn(
+        (_path: string, signal: AbortSignal) =>
+          new Promise<ReturnType<typeof response>>(resolve => {
+            signals.push(signal);
+            settlers.push(() => resolve(response(200)));
+          })
+      );
+      // Each stuck slot permits one replacement, even if cancellation never settles it.
+      for (let wave = 0; wave < 2; wave++) {
+        const runs = Array.from({ length: concurrency }, () => probe(['/hung'], fetch));
+        await vi.advanceTimersByTimeAsync(PROBE_SLOT_MAX_MS);
+        for (const result of await Promise.all(runs)) expect(result.statuses['/hung']).toBe(503);
+      }
+      expect(fetch).toHaveBeenCalledTimes(2 * concurrency);
+      expect(signals.every(signal => signal.aborted)).toBe(true);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await expect(probe(['/blocked'], fetch)).rejects.toBeInstanceOf(ProbeBusyError);
+        await vi.advanceTimersByTimeAsync(PROBE_SLOT_MAX_MS);
+      }
+      expect(fetch).toHaveBeenCalledTimes(2 * concurrency);
+      // Late settlement restores only one slot in the unfinished-work allowance.
+      settlers[0]();
+      await vi.advanceTimersByTimeAsync(0);
+      const replacement = probe(['/replacement'], fetch);
+      expect(fetch).toHaveBeenCalledTimes(2 * concurrency + 1);
+      await expect(probe(['/extra'], fetch)).rejects.toBeInstanceOf(ProbeBusyError);
+      for (const settle of settlers.slice(1)) settle();
+      expect((await replacement).statuses['/replacement']).toBe(200);
+      expect((await probe(['/recovered'], async () => response(200))).statuses['/recovered']).toBe(200);
+      expect(warn).toHaveBeenCalledTimes(2 * concurrency);
       expect(vi.getTimerCount()).toBe(0);
     } finally {
       warn.mockRestore();
