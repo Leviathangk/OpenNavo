@@ -13,6 +13,7 @@ type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
 type SitemapLocale = PublicComponents['schemas']['SitemapLocale'];
 type BackgroundItem = PublicComponents['schemas']['BackgroundItem'];
 type Locale = PublicComponents['schemas']['Locale'];
+type LocalizedEntry = ReturnType<typeof localizedEntries>[number];
 
 interface CategoryNode {
   slug: string;
@@ -28,6 +29,12 @@ const PAGE_SIZE = 500;
  * a page of records whose slimmed form is still bigger is split further (slimRecord, chunkRecords).
  */
 const CHUNK_BYTES = Math.floor(MAX_CACHE_ENTRY_BYTES * 0.75);
+/** XML sitemaps may contain at most 50,000 URLs. This is also the memory guard for dynamic groups. */
+export const SITEMAP_URL_LIMIT = 50_000;
+/** Refuse a catalog snapshot before a hostile or corrupted API response can fill the Node heap. */
+export const MAX_SNAPSHOT_RECORDS = 100_000;
+/** Leave room for every open locale while building label/path maps. */
+const MAX_BACKGROUND_LABELS = SITEMAP_URL_LIMIT;
 /**
  * Sitemaps may trail the catalog by up to half an hour (IndexNow announces changes as they happen): a
  * catalog snapshot, and the index's list of populated buckets, are used as they are for this long
@@ -126,14 +133,22 @@ export default defineNitroPlugin(nitroApp => {
               ]
         );
       // Never silently truncate a bucket if the catalog outgrows this partition.
-      if (urls.length > 50000) throw new Error(`Sitemap bucket exceeds URL limit: ${ctx.sitemapName}`);
+      assertSitemapUrlLimit(ctx.sitemapName, urls.length);
       ctx.urls.push(...urls);
       return;
     }
     const load = GROUPS[ctx.sitemapName];
-    if (load) ctx.urls.push(...(await load()));
+    if (load) {
+      const urls = await load();
+      assertSitemapUrlLimit(ctx.sitemapName, urls.length);
+      ctx.urls.push(...urls);
+    }
   });
 });
+
+function assertSitemapUrlLimit(name: string, count: number): void {
+  if (count > SITEMAP_URL_LIMIT) throw new Error(`Sitemap ${name} exceeds the ${SITEMAP_URL_LIMIT}-URL limit`);
+}
 
 function apiBase() {
   const config = useRuntimeConfig();
@@ -213,6 +228,8 @@ type PackageCacheKey = `${PackageGroup}:${number}`;
 const packageReads = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
 const packageRebuilds = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
 const rebuildFailedAt = new Map<PackageCacheKey, number>();
+// Full records belong only to active requests/rebuilds. Storage owns the snapshots, so an idle
+// process retains no assembled catalog and a refresh cannot pin the previous catalog in a local cache.
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
@@ -272,8 +289,21 @@ async function readSnapshot(group: PackageGroup, revision: number) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
     if (!manifest || manifest.keys.join() === seen) return undefined;
-    const chunks = await Promise.all(manifest.keys.map(key => storage.getItem<SitemapRecord[]>(key)));
-    if (chunks.every(chunk => chunk !== null)) return { records: chunks.flat(), expires: manifest.expires };
+    // Read sequentially so only one chunk is live beside the assembled snapshot. Promise.all + flat()
+    // briefly retained every chunk and then copied every record a second time during crawler bursts.
+    const records: SitemapRecord[] = [];
+    let complete = true;
+    for (const key of manifest.keys) {
+      const chunk = await storage.getItem<SitemapRecord[]>(key);
+      if (!chunk) {
+        complete = false;
+        break;
+      }
+      if (records.length + chunk.length > MAX_SNAPSHOT_RECORDS)
+        throw new Error(`Sitemap ${group} snapshot exceeds the ${MAX_SNAPSHOT_RECORDS}-record limit`);
+      records.push(...chunk);
+    }
+    if (complete) return { records, expires: manifest.expires };
     seen = manifest.keys.join();
   }
   return undefined;
@@ -304,19 +334,24 @@ function refreshPackages(group: PackageGroup, revision: number) {
 
 async function writeSnapshot(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
   const storage = useStorage('cache');
-  // Reload every OFFSET page and publish only after all immutable chunks are stored.
-  const pages = await loadPackagePages(group);
   const version = randomUUID();
-  const keys = pages.map((_, index) => `sitemap-package-snapshots-v2:${group}:${version}:${index}`);
+  const keys: string[] = [];
+  const records: SitemapRecord[] = [];
   let previous: PackageSnapshot | null;
   try {
-    // Sequential writes ensure no writes remain in flight when failure cleanup starts.
-    for (const [index, page] of pages.entries()) {
-      await storage.setItem(keys[index]!, page, { ttl: SNAPSHOT_TTL_SECONDS });
-      if (!(await storage.hasItem(keys[index]!))) {
+    // Fetch, slim, and persist one API page at a time. The old implementation retained every chunk and
+    // then called flat(), creating a second full catalog-sized array at the peak of every rebuild.
+    await loadPackagePages(group, async page => {
+      if (records.length + page.length > MAX_SNAPSHOT_RECORDS)
+        throw new Error(`Sitemap ${group} snapshot exceeds the ${MAX_SNAPSHOT_RECORDS}-record limit`);
+      const key = `sitemap-package-snapshots-v2:${group}:${version}:${keys.length}`;
+      await storage.setItem(key, page, { ttl: SNAPSHOT_TTL_SECONDS });
+      if (!(await storage.hasItem(key))) {
         throw new Error('Sitemap snapshot chunk was not stored');
       }
-    }
+      keys.push(key);
+      records.push(...page);
+    });
     // Read the manifest being replaced right before replacing it, so a snapshot another server
     // published in the meantime is reclaimed as well.
     previous = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
@@ -332,12 +367,14 @@ async function writeSnapshot(group: PackageGroup, revision: number): Promise<Sit
   // Explicit reclamation is required: the default memory driver ignores TTL.
   // Readers racing this cleanup move on to the new manifest (readSnapshot).
   if (previous) await Promise.all(previous.keys.map(key => storage.removeItem(key)));
-  return pages.flat();
+  return records;
 }
 
-/** The chunks of a snapshot: each API page, slimmed, and split again if it still exceeds CHUNK_BYTES. */
-async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapRecord[][]> {
-  const chunks: SitemapRecord[][] = [];
+/** Streams API pages as bounded chunks; callers decide whether to persist or consume each chunk. */
+async function loadPackagePages(
+  group: 'apps' | 'fonts',
+  onChunk: (chunk: SitemapRecord[]) => Promise<void>
+): Promise<void> {
   // Rows can be fewer than the page size (the API filters by index policy); total counts candidates.
   for (let current = 1; ; current += 1) {
     const page = await $fetch<{ data: { total: number; records: SitemapEntry[] } }>(`${apiBase()}/sitemap/packages`, {
@@ -348,8 +385,8 @@ async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapRecord[
     const records = page.data.records.filter(
       record => (record.kind === 'cask' || record.kind === 'link') && record.token !== BRAND.caskToken
     );
-    chunks.push(...chunkRecords(records.map(slimRecord)));
-    if (current * PAGE_SIZE >= page.data.total) return chunks;
+    for (const chunk of chunkRecords(records.map(slimRecord))) await onChunk(chunk);
+    if (current * PAGE_SIZE >= page.data.total) return;
   }
 }
 
@@ -471,7 +508,20 @@ async function openLocales(): Promise<readonly Locale[]> {
 }
 
 function flatten(nodes: CategoryNode[]): CategoryNode[] {
-  return nodes.flatMap(node => [node, ...flatten(node.children)]);
+  const result: CategoryNode[] = [];
+  const pending = [...nodes].reverse();
+  while (pending.length) {
+    const node = pending.pop()!;
+    if (result.length >= SITEMAP_URL_LIMIT) throw new Error(`Categories exceed the ${SITEMAP_URL_LIMIT}-node limit`);
+    result.push(node);
+    for (const child of [...node.children].reverse()) pending.push(child);
+  }
+  return result;
+}
+
+function appendSitemapUrls(target: LocalizedEntry[], entries: readonly LocalizedEntry[], name: string): void {
+  assertSitemapUrlLimit(name, target.length + entries.length);
+  target.push(...entries);
 }
 
 /**
@@ -482,14 +532,28 @@ function flatten(nodes: CategoryNode[]): CategoryNode[] {
 const backgroundItemEntries = createStaleCache(
   async (): Promise<ReturnType<typeof localizedEntries>> => {
     const labels = new Map<string, Locale[]>();
+    let localizedCount = 0;
     for (const locale of await openLocales())
       for (let current = 1; ; current += 1) {
         const page = await $fetch<{ data: { total: number; records: BackgroundItem[] } }>(
           `${apiBase()}/background-items`,
           { query: { locale, current, size: 100 } }
         );
-        for (const item of page.data.records.filter(record => record.indexable))
-          labels.set(item.label, [...(labels.get(item.label) ?? []), locale]);
+        for (const item of page.data.records.filter(record => record.indexable)) {
+          let locales = labels.get(item.label);
+          if (!locales) {
+            if (labels.size >= MAX_BACKGROUND_LABELS)
+              throw new Error(`Background sitemap exceeds the ${MAX_BACKGROUND_LABELS}-label limit`);
+            locales = [];
+            labels.set(item.label, locales);
+          }
+          if (!locales.includes(locale)) {
+            locales.push(locale);
+            localizedCount += 1;
+            if (localizedCount > SITEMAP_URL_LIMIT)
+              throw new Error(`Background sitemap exceeds the ${SITEMAP_URL_LIMIT}-URL limit`);
+          }
+        }
         if (page.data.records.length < 100 || current * 100 >= page.data.total) break;
       }
     // No lastmod, like categories and browse: the content's checkedAt dates a verification, not a change,
@@ -533,13 +597,13 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
       $fetch<{ data: CategoryNode[] }>(`${apiBase()}/categories`),
       openLocales()
     ]);
-    return (
-      flatten(tree.data)
-        .filter(node => !node.hiddenByDefault)
-        // An empty category is a noindex list (S4), so it stays out of the sitemap too.
-        .filter(node => (node.packageCount ?? 1) > 0)
-        .flatMap(node => localizedEntries(`/categories/${node.slug}`, 'categories', open))
-    );
+    const urls: LocalizedEntry[] = [];
+    for (const node of flatten(tree.data)) {
+      if (node.hiddenByDefault || (node.packageCount ?? 1) <= 0) continue;
+      // An empty category is a noindex list (S4), so it stays out of the sitemap too.
+      appendSitemapUrls(urls, localizedEntries(`/categories/${node.slug}`, 'categories', open), 'categories');
+    }
+    return urls;
   },
   // Articles in the languages whose text is ready, and the list once there is something to list.
   articles: async () => {
@@ -549,10 +613,15 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
       .flatMap(item => item.locales.map(entry => entry.lastmod ?? ''))
       .sort()
       .at(-1);
-    return [
-      ...localizedEntries('/articles', 'articles', await openLocales(), () => newest),
-      ...articles.flatMap(item => packageEntries(item, `/articles/${item.slug}`, 'articles'))
-    ];
+    const urls: LocalizedEntry[] = [];
+    appendSitemapUrls(
+      urls,
+      localizedEntries('/articles', 'articles', await openLocales(), () => newest),
+      'articles'
+    );
+    for (const item of articles)
+      appendSitemapUrls(urls, packageEntries(item, `/articles/${item.slug}`, 'articles'), 'articles');
+    return urls;
   },
   // T1: every page of every A–Z leaf in each language open for indexing. Names sort into buckets by the
   // language they are shown in, so a leaf's alternates are the languages that have the same leaf page.
@@ -560,6 +629,7 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
     const languages = new Map<string, Locale[]>();
     const includeFonts = (await getSiteSettings()).pages.fontsSitemap;
     const kinds: ('apps' | 'fonts')[] = includeFonts ? ['apps', 'fonts'] : ['apps'];
+    let localizedCount = 0;
     for (const locale of await openLocales())
       for (const kind of kinds) {
         const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
@@ -571,32 +641,53 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
               kind === 'fonts'
                 ? `/browse/fonts/${bucket.key}${page > 1 ? `?page=${page}` : ''}`
                 : `/browse/${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
-            languages.set(path, [...(languages.get(path) ?? []), locale]);
+            let locales = languages.get(path);
+            if (!locales) {
+              locales = [];
+              languages.set(path, locales);
+            }
+            if (!locales.includes(locale)) {
+              locales.push(locale);
+              localizedCount += 1;
+              if (localizedCount > SITEMAP_URL_LIMIT)
+                throw new Error(`Browse sitemap exceeds the ${SITEMAP_URL_LIMIT}-URL limit`);
+            }
           }
       }
-    return [...languages].flatMap(([path, locales]) => localizedEntries(path, 'browse', locales));
+    const urls: LocalizedEntry[] = [];
+    for (const [path, locales] of languages)
+      appendSitemapUrls(urls, localizedEntries(path, 'browse', locales), 'browse');
+    return urls;
   },
   // F1: the label pages the API marks indexable in each open language (backgroundItemEntries).
   'background-items': () => backgroundItemEntries(),
   authors: async () => {
     const [{ authors }, open] = await Promise.all([articleSitemap(), openLocales()]);
-    return authors.flatMap(author =>
-      localizedEntries(`/authors/${author.slug}`, 'authors', open, () => author.lastmod)
-    );
+    const urls: LocalizedEntry[] = [];
+    for (const author of authors)
+      appendSitemapUrls(
+        urls,
+        localizedEntries(`/authors/${author.slug}`, 'authors', open, () => author.lastmod),
+        'authors'
+      );
+    return urls;
   },
   collections: async () => {
     const open = await openLocales();
-    const urls: ReturnType<typeof localizedEntries> = [];
+    const urls: LocalizedEntry[] = [];
     for (let current = 1; ; current += 1) {
       const page = await $fetch<{
         data: { total: number; records: { slug: string; updatedAt: string; itemCount: number }[] };
       }>(`${apiBase()}/collections`, { query: { current, size: 100 } });
       // An empty collection is a noindex page (S4), so it stays out of the sitemap too.
-      urls.push(
-        ...page.data.records
-          .filter(item => item.itemCount > 0)
-          .flatMap(item => localizedEntries(`/collections/${item.slug}`, 'collections', open, () => item.updatedAt))
-      );
+      for (const item of page.data.records) {
+        if (item.itemCount <= 0) continue;
+        appendSitemapUrls(
+          urls,
+          localizedEntries(`/collections/${item.slug}`, 'collections', open, () => item.updatedAt),
+          'collections'
+        );
+      }
       if (page.data.records.length < 100 || current * 100 >= page.data.total) return urls;
     }
   }

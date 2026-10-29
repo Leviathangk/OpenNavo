@@ -79,6 +79,9 @@ const BUDGETED_AGENTS: ReadonlySet<AgentLabel> = new Set([
   'amazonbot'
 ]);
 
+/** The labels above are finite today; retain a hard ceiling if a future label is passed at runtime. */
+const MAX_LOAD_SHED_SERIES = 1024;
+
 export const crawlerBudgeted = (agent: AgentLabel): boolean => BUDGETED_AGENTS.has(agent);
 
 export function loadShedConfig(input: Record<string, unknown> = {}): LoadShedConfig {
@@ -245,6 +248,7 @@ export class LoadShedState {
 
   reject(agent: AgentLabel, level: LoadShedReason) {
     const key = `${agent}\u0000${loadShedTier(agent)}\u0000${level}`;
+    if (!this.counts.has(key) && this.counts.size >= MAX_LOAD_SHED_SERIES) return;
     this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
   }
 

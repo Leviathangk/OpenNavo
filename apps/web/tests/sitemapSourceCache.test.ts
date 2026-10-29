@@ -1,3 +1,6 @@
+import { setImmediate } from 'node:timers/promises';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStorage } from 'unstorage';
 import memoryDriver from 'unstorage/drivers/memory';
@@ -90,6 +93,47 @@ const catalog = (count: number) =>
   Array.from({ length: count }, (_, i) => ({ kind: 'cask', token: `app-${i}`, locales: [{ locale: 'en-US' }] }));
 
 describe('sitemap source snapshot cache', () => {
+  it.each(['build', 'read', 'refresh'])(
+    'releases assembled records after a snapshot %s, without waiting for expiry',
+    async phase => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      const { bucket, storage, stale, idle } = await setup(catalog(1));
+      const records: WeakRef<object>[] = [];
+      const track = (key: string, value: unknown) => {
+        if (key.startsWith('sitemap-package-snapshots-') && Array.isArray(value))
+          for (const record of value) records.push(new WeakRef(record));
+      };
+      // Plain wrappers avoid mock call histories retaining the records under test.
+      const write = storage.setItem.bind(storage);
+      storage.setItem = (async (key, value, options) => {
+        track(key, value);
+        return write(key, value, options);
+      }) as typeof storage.setItem;
+      const read = storage.getItem.bind(storage);
+      storage.getItem = (async (key, options) => {
+        const value = await read(key, options);
+        track(key, value);
+        return value;
+      }) as typeof storage.getItem;
+
+      const name = packageSitemapName('apps', 'app-0');
+      await bucket(name);
+      if (phase === 'read') await bucket(name);
+      if (phase === 'refresh') {
+        stale();
+        await bucket(name);
+      }
+      await idle();
+      expect(records.length).toBe(phase === 'build' ? 1 : phase === 'read' ? 2 : 3);
+      // WeakRef targets remain alive for the current job; collect only after the next event-loop turn.
+      setFlagsFromString('--expose-gc');
+      const collect = runInNewContext('gc') as () => void;
+      await setImmediate();
+      collect();
+      expect(records.every(record => record.deref() === undefined)).toBe(true);
+    }
+  );
+
   it.each([false, true])('controls font buckets and font versions with fontsSitemap=%s', async enabled => {
     const font = { kind: 'cask', token: 'font-sample', notesCount: 5, locales: [{ locale: 'en-US' }] };
     const { index, bucket, fetch } = await setup(catalog(1), enabled, [font]);
