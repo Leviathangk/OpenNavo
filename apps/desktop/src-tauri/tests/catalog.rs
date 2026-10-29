@@ -6,7 +6,6 @@ use opennavo_desktop_lib::{
 use std::{
     io::{Read, Write},
     path::PathBuf,
-    time::Instant,
 };
 fn fixtures() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../apps/server/testdata/desktop")
@@ -44,6 +43,42 @@ fn list() -> ListQuery {
         offset: 0,
     }
 }
+fn sixteen_thousand_snapshot(temp: &std::path::Path) -> (PathBuf, SnapshotInfo) {
+    use sha2::{Digest, Sha256};
+
+    let mut snap = snapshot();
+    let mut template = snap.items[0].clone();
+    template.names = vec!["Benchmark Application".into()];
+    template
+        .display_name
+        .0
+        .insert(Locale::ZhCn, "性能测试应用".into());
+    template.display_name.0.remove(&Locale::EnUs);
+    template.name = "Benchmark Application".into();
+    template
+        .summary
+        .0
+        .insert(Locale::ZhCn, "确定的性能测试数据".into());
+    template.summary.0.remove(&Locale::EnUs);
+    template.binaries.clear();
+    template.pinyin = None;
+    for i in snap.items.len()..16_000 {
+        let mut item = template.clone();
+        item.token = format!("bench_{i}");
+        snap.items.push(item);
+    }
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    serde_json::to_writer(&mut encoder, &snap).unwrap();
+    let bytes = encoder.finish().unwrap();
+    let path = temp.join("catalog.gz");
+    std::fs::write(&path, &bytes).unwrap();
+    let mut info: SnapshotInfo = fixture("latest.json");
+    info.item_count = 16_000;
+    info.bytes = bytes.len() as u64;
+    info.sha256 = format!("{:x}", Sha256::digest(&bytes));
+    (path, info)
+}
+
 #[test]
 fn fixtures_import_delta_search_and_atomic_failure() {
     let temp = tempfile::tempdir().unwrap();
@@ -152,58 +187,21 @@ fn fixtures_import_delta_search_and_atomic_failure() {
 }
 #[test]
 fn sixteen_thousand_import_and_short_queries() {
-    use sha2::{Digest, Sha256};
     let temp = tempfile::tempdir().unwrap();
     let db = Database::open(&temp.path().join("catalog.db")).unwrap();
-    let mut snap = snapshot();
-    let mut template = snap.items[0].clone();
-    template.names = vec!["Benchmark Application".into()];
-    template
-        .display_name
-        .0
-        .insert(Locale::ZhCn, "性能测试应用".into());
-    template.display_name.0.remove(&Locale::EnUs);
-    template.name = "Benchmark Application".into();
-    template
-        .summary
-        .0
-        .insert(Locale::ZhCn, "确定的性能测试数据".into());
-    template.summary.0.remove(&Locale::EnUs);
-    template.binaries.clear();
-    template.pinyin = None;
-    for i in snap.items.len()..16_000 {
-        let mut item = template.clone();
-        item.token = format!("bench_{i}");
-        snap.items.push(item);
-    }
-    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
-    serde_json::to_writer(&mut encoder, &snap).unwrap();
-    let bytes = encoder.finish().unwrap();
-    let path = temp.path().join("catalog.gz");
-    std::fs::write(&path, &bytes).unwrap();
-    let mut info: SnapshotInfo = fixture("latest.json");
-    info.item_count = 16000;
-    info.bytes = bytes.len() as u64;
-    info.sha256 = format!("{:x}", Sha256::digest(&bytes));
-    let started = Instant::now();
+    let (path, info) = sixteen_thousand_snapshot(temp.path());
     catalog::import_file(&db, &path, &info, 10).unwrap();
-    let elapsed = started.elapsed();
-    println!("16k gzip import: {} ms", elapsed.as_millis());
-    assert!(elapsed.as_secs_f64() < 3.0, "{elapsed:?}");
     for (q, token) in [
         ("微信", "wechat"),
         ("rg", "ripgrep"),
         ("vscode", "visual-studio-code"),
     ] {
-        let start = Instant::now();
         let result = catalog::search(&db, &search(q), 20).unwrap();
-        println!("query {q}: {} us", start.elapsed().as_micros());
         if q == "rg" {
             assert!(result.items.is_empty());
         } else {
             assert_eq!(result.items[0].item.token, token);
         }
-        assert!(start.elapsed().as_millis() < 50);
     }
     let mut query = list();
     query.kind = Some(Kind::Formula);
@@ -221,6 +219,29 @@ fn sixteen_thousand_import_and_short_queries() {
         .collect();
     assert!(stats.windows(2).all(|w| w[0] >= w[1]));
 }
+
+// Run from apps/desktop/src-tauri with:
+// cargo test --test catalog sixteen_thousand_import_and_short_queries_performance -- --ignored --nocapture
+#[test]
+#[ignore = "machine-dependent performance benchmark"]
+fn sixteen_thousand_import_and_short_queries_performance() {
+    let temp = tempfile::tempdir().unwrap();
+    let db = Database::open(&temp.path().join("catalog.db")).unwrap();
+    let (path, info) = sixteen_thousand_snapshot(temp.path());
+    let started = std::time::Instant::now();
+    catalog::import_file(&db, &path, &info, 10).unwrap();
+    let elapsed = started.elapsed();
+    println!("16k gzip import: {} ms", elapsed.as_millis());
+    assert!(elapsed.as_secs_f64() < 3.0, "{elapsed:?}");
+    for q in ["微信", "rg", "vscode"] {
+        let started = std::time::Instant::now();
+        catalog::search(&db, &search(q), 20).unwrap();
+        let elapsed = started.elapsed();
+        println!("query {q}: {} us", elapsed.as_micros());
+        assert!(elapsed.as_millis() < 50, "{q}: {elapsed:?}");
+    }
+}
+
 struct HttpServer {
     url: String,
     stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
