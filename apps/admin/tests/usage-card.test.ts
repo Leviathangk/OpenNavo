@@ -19,7 +19,8 @@ const day = (date: string, desktop: number, web: number, newDesktop = 0, newWeb 
   newDesktop,
   newWeb
 });
-const mountCard = (usage: Schemas['UsageOverview']) => mount(UsageCard, { props: { usage }, global: { components } });
+const mountCard = (usage: Schemas['UsageOverview']) =>
+  mount(UsageCard, { props: { usage }, global: { components, stubs: { UsageIntraday: true } } });
 
 it('shows the cumulative client total independently of web totals and daily activity and refreshes it', async () => {
   const usage: Schemas['UsageOverview'] = {

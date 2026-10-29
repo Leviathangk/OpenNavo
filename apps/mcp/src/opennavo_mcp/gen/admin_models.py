@@ -773,6 +773,27 @@ class UsageOverview(BaseModel):
     versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]
 
 
+class UsageIntradayHour(BaseModel):
+    hour: Annotated[int, Field(description='Hour in Asia/Shanghai; the current hour is partial.', ge=0, le=23)]
+    web: Annotated[int | None, Field(description='Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    desktop: Annotated[int | None, Field(description='Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    cumulativeWeb: Annotated[int | None, Field(description='Total active browsers from midnight through this hour; null for a future hour.', ge=0)]
+    cumulativeDesktop: Annotated[int | None, Field(description='Total active desktop installations from midnight through this hour; null for a future hour.', ge=0)]
+
+
+class UsageIntraday(BaseModel):
+    date: Annotated[date_aliased, Field(description="Today's calendar date in Asia/Shanghai.")]
+    timeZone: Literal['Asia/Shanghai']
+    asOf: AwareDatetime
+    hours: Annotated[list[UsageIntradayHour], Field(max_length=24, min_length=24)]
+
+
+class UsageIntradayResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: UsageIntraday | None | MISSING = MISSING
+
+
 class Packages(BaseModel):
     casks: Annotated[int, Field(description='Non-font apps (Homebrew Casks and link apps), excluding disabled and removed packages.', examples=[40])]
     formulae: Annotated[int, Field(examples=[20])]

@@ -71,7 +71,7 @@ const stats = computed(() => {
       <NAlert v-if="failed" type="error" role="alert" :title="$t('page.dashboard.loadFailed')">
         <NButton :loading="loading" @click="load">{{ $t('page.dashboard.retry') }}</NButton>
       </NAlert>
-      <UsageCard v-if="overview?.usage" :usage="overview.usage" />
+      <UsageCard v-if="overview?.usage" :usage="overview.usage" :refresh-at="refreshedAt" />
       <div v-if="overview" class="grid grid-cols-1 gap-16px lg:grid-cols-3">
         <CoverageCard :coverage="overview.coverage" class="lg:col-span-2" />
         <SyncCard :jobs="overview.jobs" :snapshot="overview.snapshot" />

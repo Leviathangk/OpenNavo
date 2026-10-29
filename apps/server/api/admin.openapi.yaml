@@ -1667,6 +1667,52 @@ paths:
         - $ref: '#/components/parameters/AgentTool'
         - $ref: '#/components/parameters/AgentRequestId'
         - $ref: '#/components/parameters/AgentClientIP'
+  /dashboard/usage/intraday:
+    get:
+      tags: [dashboard]
+      operationId: getDashboardUsageIntraday
+      summary: Intraday active trend
+      description: >-
+        Distribution of each device/browser's first activity today in Asia/Shanghai,
+        from midnight through asOf. This is not an online-user count. Uses the same
+        usage_daily day and platform filters as the overview's today-active cards.
+        Returns 24 ordered hourly buckets; future hours have null counts, while
+        elapsed hours without activity have zero counts. Cumulative series end at
+        today's active counts for the sampled data. Devices on different platforms
+        are counted separately. Historical rows use last_active_at at migration
+        time because their original first activity cannot be recovered.
+      x-permissions: [dashboard:view]
+      x-agent-access: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/UsageIntradayResponse'
+                  - $ref: '#/components/schemas/BusinessErrorResponse'
+              examples:
+                en-US:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                zh-CN:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                ja-JP:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                es-ES:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                pt-BR:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                ru-RU:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                de-DE:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                fr-FR:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                it-IT:
+                  $ref: '#/components/examples/UsageIntradayResponse'
+                zh-Hant:
+                  $ref: '#/components/examples/UsageIntradayResponse'
   /packages:
     get:
       tags:
@@ -20207,6 +20253,107 @@ components:
               count:
                 type: integer
                 format: int64
+    UsageIntradayHour:
+      example: {hour: 0, web: 2, desktop: 1, cumulativeWeb: 2, cumulativeDesktop: 1}
+      type: object
+      required: [hour, web, desktop, cumulativeWeb, cumulativeDesktop]
+      properties:
+        hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+          description: Hour in Asia/Shanghai; the current hour is partial.
+        web:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
+        desktop:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
+        cumulativeWeb:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Total active browsers from midnight through this hour; null for a future hour.
+        cumulativeDesktop:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+          description: Total active desktop installations from midnight through this hour; null for a future hour.
+    UsageIntraday:
+      example: &usageIntradayExample
+        date: '2026-10-29'
+        timeZone: Asia/Shanghai
+        asOf: '2026-10-28T16:00:00Z'
+        hours:
+          - {hour: 0, web: 2, desktop: 1, cumulativeWeb: 2, cumulativeDesktop: 1}
+          - {hour: 1, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 2, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 3, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 4, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 5, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 6, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 7, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 8, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 9, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 10, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 11, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 12, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 13, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 14, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 15, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 16, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 17, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 18, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 19, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 20, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 21, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 22, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+          - {hour: 23, web: null, desktop: null, cumulativeWeb: null, cumulativeDesktop: null}
+      type: object
+      required: [date, timeZone, asOf, hours]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Today's calendar date in Asia/Shanghai.
+        timeZone:
+          type: string
+          enum: [Asia/Shanghai]
+        asOf:
+          type: string
+          format: date-time
+        hours:
+          type: array
+          minItems: 24
+          maxItems: 24
+          items:
+            $ref: '#/components/schemas/UsageIntradayHour'
+    UsageIntradayResponse:
+      example: &usageIntradayResponseExample
+        code: '0000'
+        msg: ok
+        data: *usageIntradayExample
+      type: object
+      required: [code, msg]
+      properties:
+        code:
+          $ref: '#/components/schemas/Code'
+        msg:
+          type: string
+          example: ok
+        data:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/UsageIntraday'
+          nullable: true
     DashboardOverview:
       type: object
       required:
@@ -37312,6 +37459,8 @@ components:
           withinDays: 14
           records: []
   examples:
+    UsageIntradayResponse:
+      value: *usageIntradayResponseExample
     AdminArticleSixLocales:
       value:
         code: '0000'

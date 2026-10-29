@@ -9,10 +9,11 @@ import { $t } from '@/locales';
 import { USAGE_SERIES_COLORS } from './usage-series';
 import UsageTrend from './usage-trend.vue';
 import UsageCountryTable from './usage-country-table.vue';
+import UsageIntraday from './usage-intraday.vue';
 
 defineOptions({ name: 'UsageCard' });
 
-const props = defineProps<{ usage: Schemas['UsageOverview'] }>();
+const props = defineProps<{ usage: Schemas['UsageOverview']; refreshAt?: Date | null }>();
 const theme = useThemeVars();
 const appStore = useAppStore();
 const themeStore = useThemeStore();
@@ -139,6 +140,7 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
           </section>
         </div>
       </div>
+      <UsageIntraday :refresh-at="refreshAt" />
       <details v-if="days.length">
         <summary class="cursor-pointer rounded py-4px text-13px focus-visible:outline-solid">
           {{ text('details') }}

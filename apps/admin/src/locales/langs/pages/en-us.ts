@@ -44,6 +44,25 @@ const pages: PageMessages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    intraday: {
+      title: 'Intraday active trend',
+      description:
+        'Each device/browser is counted once per day, in the hour of its first activity; these are not online users.',
+      asOf: 'As of {date} {time} (Beijing time)',
+      measure: 'Activity measure',
+      hourly: 'First active this hour',
+      cumulative: 'Cumulative today',
+      desktop: 'Client',
+      web: 'Web',
+      loadFailed: 'Intraday active trend could not be loaded. Please retry.',
+      keyboardHint: 'Use arrow keys to inspect hours, Home for the first hour, and End for the current hour',
+      details: 'Hourly counts',
+      hour: 'Hour (Beijing time)',
+      hourlyDesktop: 'First active clients',
+      hourlyWeb: 'First active browsers',
+      cumulativeDesktop: 'Cumulative active clients',
+      cumulativeWeb: 'Cumulative active browsers'
+    },
     usage: {
       countries: 'Country distribution today',
       countryOrder: 'Sorted by total DAU',
