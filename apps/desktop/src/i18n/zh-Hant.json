@@ -626,15 +626,15 @@
   "updates": {
     "review": {
       "title": "安裝前請確認",
-      "body": "已核對應用程式識別碼和目標版本。請確認以下情況；你的選擇僅對本次套件有效。",
-      "unsigned_developer": "舊版、新版或安裝套件缺少可驗證的開發者簽名。請僅在信任來源時繼續，macOS 仍可能阻止開啟。",
-      "repair_installed": "已安裝應用程式的簽名損壞。新版本已通過簽名和身分檢查，繼續將取代舊應用程式。",
-      "not_notarized": "新版本或安裝套件未經 Apple 公證。macOS 可能阻止開啟。",
-      "non_newer": "目標版本不高於已安裝版本，將進行重新安裝或降級。舊版本可能無法讀取新版應用程式資料。"
+      "body": "已核對應用標識和目標版本。請確認以下情況；你的選擇僅對本次安裝包有效。",
+      "unsigned_developer": "舊版、新版或安裝包缺少可驗證的開發者簽名。請僅在信任來源時繼續，macOS 仍可能阻止開啟。",
+      "repair_installed": "已安裝應用的簽名損壞。新版本已透過簽名和身份檢查，繼續將替換舊應用。",
+      "not_notarized": "新版本或安裝包未經 Apple 公證。macOS 可能阻止開啟。",
+      "non_newer": "目標版本不高於已安裝版本，將進行重灌或降級。舊版本可能無法讀取新版應用資料。"
     },
     "unsigned": {
-      "title": "無法確認開發者身分",
-      "body": "舊版、新版或安裝套件缺少可驗證的開發者簽名。請僅在信任來源時繼續，macOS 仍可能阻止開啟。",
+      "title": "無法確認開發者身份",
+      "body": "舊版、新版或安裝包缺少可驗證的開發者簽名。請僅在信任來源時繼續，macOS 仍可能阻止開啟。",
       "confirm": "仍要安裝",
       "badge": "開發者未驗證"
     },
@@ -1233,11 +1233,18 @@
     "E_MAS_OTHER_ACCOUNT": "這款 App 由其他 Apple 帳號購買，請在 App Store 裡更新",
     "E_MAS_REGION": "這款 App 在當前商店地區不可用",
     "E_MAS_RATE_LIMITED": "App Store 請求太頻繁了，請過一分鐘再試",
+    "E_UPDATE_DIGEST": "下載檔案的大小或摘要與更新清單不一致，沒有安裝",
+    "E_UPDATE_SIGNATURE": "更新包的程式碼簽名無效，沒有安裝",
+    "E_UPDATE_FEED_SIGNATURE": "更新包未透過更新源的簽名驗證，沒有安裝",
+    "E_UPDATE_IDENTITY": "更新包的應用標識與目標應用不一致，沒有安裝",
+    "E_UPDATE_CHANGED": "應用或更新檔案在校驗後發生變化，沒有安裝，請重新檢查更新",
+    "E_UPDATE_NOT_NEWER": "目標版本不高於已安裝版本，請從已安裝應用中選擇重新安裝",
+    "E_UPDATE_CONFIRMATION": "安裝需要你確認，請檢視提示或重試",
     "E_UPDATE_VERIFY_UNAVAILABLE": "macOS 暫時無法完成開發者驗證，沒有安裝。請稍後重試",
     "E_UPDATE_INTEGRITY": "下載的更新沒有透過完整性校驗，沒有安裝",
     "E_UPDATE_PREPARE": "無法準備更新檔案，請檢查磁碟空間和訪問權限後重試",
     "E_UPDATE_ARCHIVE": "無法讀取、掛載或解壓更新安裝包，請檢視日誌後重試",
-    "E_UPDATE_VERSION": "更新安裝包的實際版本與發佈清單不一致，未安裝",
+    "E_UPDATE_VERSION": "更新安裝包的實際版本與釋出清單不一致，沒有安裝",
     "E_UPDATE_TEAM_MISMATCH": "新版本的開發者簽名和已安裝的不一致，沒有安裝",
     "E_UPDATE_NOT_NOTARIZED": "新版本沒有經過 Apple 公證，沒有安裝",
     "E_UPDATE_ARCH": "新版本不支援這台 Mac 的晶片",
@@ -1319,14 +1326,7 @@
     "E_FW_BLOCKLIST_FORMAT": "沒有在檔案裡找到可用的域名或 IP",
     "E_FW_BLOCKLIST_TOO_LARGE": "遮蔽列表太大了，最多 50 MB、100 萬條",
     "E_FW_BLOCKLIST_LIMIT": "遮蔽列表已經到上限：最多 32 個，合計不超過 256 MB",
-    "E_FW_BLOCKLIST_FILE": "找不到這個檔案，或者沒有權限讀取",
-    "E_UPDATE_DIGEST": "下載檔案的大小或摘要與更新清單不一致，沒有安裝",
-    "E_UPDATE_SIGNATURE": "更新套件的程式碼簽名無效，沒有安裝",
-    "E_UPDATE_FEED_SIGNATURE": "更新套件未通過更新來源的簽名驗證，沒有安裝",
-    "E_UPDATE_IDENTITY": "更新套件的應用程式識別碼與目標不一致，沒有安裝",
-    "E_UPDATE_CHANGED": "應用程式或更新檔案在驗證後發生變化，沒有安裝，請重新檢查更新",
-    "E_UPDATE_NOT_NEWER": "目標版本不高於已安裝版本，請從已安裝應用程式中選擇重新安裝",
-    "E_UPDATE_CONFIRMATION": "安裝需要你確認，請查看提示或重試"
+    "E_FW_BLOCKLIST_FILE": "找不到這個檔案，或者沒有權限讀取"
   },
   "installConfirm": {
     "title": "接管現有 {name}？",

@@ -405,7 +405,7 @@ func TestVendorVariantsRequireConsistentMinimumOS(t *testing.T) {
 func TestUnsignedGithubRulesStillRequirePublisherDigests(t *testing.T) {
 	rule := githubRule()
 	rule.TeamID = nil
-	require.NoError(t, rule.UpdateFeedInput.Validate())
+	require.NoError(t, rule.Validate())
 	release, err := parseGitHub(githubBody("sha256:"+strings.Repeat("a", 64)), rule)
 	require.NoError(t, err)
 	require.NotNil(t, release.Files[0].SHA256)
