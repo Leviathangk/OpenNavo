@@ -4,7 +4,6 @@ package urlnotify
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -32,7 +31,7 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 	defer server.Close()
 	waits := 0
 	makeNotifier := func() *Notifier {
-		return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(d time.Duration) { require.Equal(t, time.Second, d); waits++ }}
+		return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(d time.Duration) { require.Equal(t, 2*time.Second, d); waits++ }}
 	}
 	row := store.URLNotificationRow{}
 	row.URL, row.Announce = server.URL+"/apps/example", true
@@ -67,11 +66,11 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 	n := makeNotifier()
 	n.defaults()
 	_, _, err = n.drainOutbox(ctx, "fixture-owner")
-	require.Error(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 3, requests)
 	var attempts []int
 	require.NoError(t, st.DB.Raw("SELECT attempts FROM url_notify_outbox ORDER BY id").Scan(&attempts).Error)
-	require.Equal(t, []int{1, 0}, attempts)
+	require.Equal(t, []int{0, 0}, attempts)
 
 }
 
@@ -125,10 +124,10 @@ func TestProbeComparesIndexingIntentAndWaitsOutLoadShedding(t *testing.T) {
 	require.False(t, wait.until.Before(now.Add(120*time.Second)))
 	require.ErrorAs(t, probe("/articles/limited"), &wait)
 	require.False(t, wait.until.Before(now.Add(30*time.Second)))
-	// Without the shedding mark a 503 is the page's own failure.
+	// Every 503 is temporary, even when an intermediary removed the shedding header.
 	err := probe("/articles/broken")
-	require.EqualError(t, err, "public page probe returned 503")
-	require.False(t, errors.As(err, &wait))
+	require.ErrorAs(t, err, &wait)
+	require.False(t, wait.until.Before(now.Add(120*time.Second)))
 
 	// Shedding is no delivery failure: the receipt keeps its retry budget and waits for the cooldown.
 	resetCooldown()

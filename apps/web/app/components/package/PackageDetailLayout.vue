@@ -32,6 +32,7 @@ if (pkg.value)
     kind: pkg.value.kind,
     token: pkg.value.token,
     iconUrl: pkg.value.iconUrl,
+    contentVersion: pkg.value.version,
     accent: pkg.value.accentColor,
     ...useOgFrame()
   });

@@ -127,8 +127,11 @@ func TestDurableOutboxFailuresRestartAndFencing(t *testing.T) {
 		probeFail.Store(true)
 		now = now.Add(time.Hour)
 		_, err = newNotifier().Run(ctx)
-		require.Error(t, err)
+		require.NoError(t, err, "exhausted 503 probes are temporary and keep the delivery pending")
 		require.Equal(t, "invalidated", state())
+		var attempts int
+		require.NoError(t, st.DB.Raw("SELECT attempts FROM url_notify_outbox ORDER BY id DESC LIMIT 1").Scan(&attempts).Error)
+		require.Zero(t, attempts)
 		require.Zero(t, announcements.Load())
 		invalidateCount := invalidations.Load()
 		probeFail.Store(false)

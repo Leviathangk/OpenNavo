@@ -567,24 +567,22 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	if due.After(n.Now()) {
 		return &probeWait{until: due}
 	}
-	// Run is globally serialized. Pace every request, including failed ones.
-	n.Sleep(time.Second)
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, row.URL, http.NoBody)
+	// Run remains globally serialized; retries never add parallel public requests.
+	response, err := n.probeHTTP(ctx, row.URL)
 	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "OpenNavo-Probe/1.0 IndexNow")
-	client := *n.HTTP
-	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	response, err := client.Do(req)
-	if err != nil {
-		if e := n.Store.RecordURLProbe(ctx, n.Now(), n.Now(), true); e != nil {
+		retryAt := n.Now()
+		var wait *probeWait
+		if errors.As(err, &wait) {
+			retryAt = wait.until
+		}
+		if e := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, true); e != nil {
 			return e
 		}
-		return errors.New("public page probe unavailable")
+		due, e := n.Store.URLProbeReadyAt(ctx)
+		if e != nil {
+			return e
+		}
+		return &probeWait{until: maxProbeTime(due, retryAt)}
 	}
 	defer func() { _ = response.Body.Close() }()
 	overloaded := response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500
@@ -594,19 +592,6 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	}
 	if err := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, overloaded); err != nil {
 		return err
-	}
-	// The web sheds low-priority probes under load and the edge may rate limit them. Both ask the
-	// worker to come back later and say nothing about this page, so the row waits without spending
-	// its retry budget. Unmarked server errors remain failures, so a broken page still surfaces.
-	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable && response.Header.Get(loadShedHeader) != "" {
-		due, err := n.Store.URLProbeReadyAt(ctx)
-		if err != nil {
-			return err
-		}
-		if due.Before(retryAt) {
-			due = retryAt
-		}
-		return &probeWait{until: due}
 	}
 	if row.Robots == "" && (response.StatusCode >= 300 && response.StatusCode < 400 || response.StatusCode == 404 || response.StatusCode == 410) {
 		return nil
@@ -655,9 +640,6 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	}
 	return nil
 }
-
-// The web marks load-shed responses with the shedding level; see apps/web/server/utils/loadShed.ts.
-const loadShedHeader = "X-OpenNavo-Load-Shed"
 
 // sameURL compares canonical URLs as URLs: scheme and host case-insensitively, the path decoded.
 func sameURL(got, want string) bool {

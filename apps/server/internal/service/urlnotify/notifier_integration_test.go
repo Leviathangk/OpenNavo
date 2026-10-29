@@ -144,7 +144,7 @@ func addCasks(t *testing.T, st *store.Store, prefix string, count int) {
 func sections() []any {
 	prefixes := []any{}
 	for _, language := range []string{"", "/zh", "/ja", "/es", "/pt", "/ru", "/de", "/fr", "/it", "/zh-hant"} {
-		for _, section := range []string{"/apps", "/articles", "/authors", "/collections"} {
+		for _, section := range []string{"/apps", "/articles", "/authors", "/collections", "/recent"} {
 			prefixes = append(prefixes, "opennavo.example"+language+section)
 		}
 	}
@@ -187,7 +187,7 @@ func TestURLChangeFeedRefreshesPagesThenNotifies(t *testing.T) {
 	require.Contains(t, state.LastError, "web cache endpoint returned 500")
 	require.Empty(t, f.cloudflare.requests)
 	require.Empty(t, f.indexNow.requests)
-	require.EqualValues(t, 10, outboxRemaining(t, f.st))
+	require.EqualValues(t, 20, outboxRemaining(t, f.st))
 	cursor := state.Cursor
 	f.web.status = 200
 	finishFeed(t, f)
@@ -196,7 +196,7 @@ func TestURLChangeFeedRefreshesPagesThenNotifies(t *testing.T) {
 	require.Equal(t, cursor, state.Cursor)
 	require.Empty(t, state.LastError)
 	require.Len(t, f.cloudflare.requests, 1)
-	require.Len(t, f.cloudflare.requests[0]["prefixes"], 10)
+	require.Len(t, f.cloudflare.requests[0]["prefixes"], 20)
 	require.NotEmpty(t, f.indexNow.requests)
 	submitted := f.indexNow.requests[len(f.indexNow.requests)-1]
 	require.Equal(t, "opennavo.example", submitted["host"])
@@ -227,7 +227,8 @@ func TestURLChangeFeedBoundsPurgeBatchesAndResumes(t *testing.T) {
 			seen[v.(string)] = true
 		}
 	}
-	require.Len(t, seen, 170)
+	require.Len(t, seen, 180)
+	require.Contains(t, seen, "opennavo.example/fr/recent")
 	require.Contains(t, seen, "opennavo.example/fr/apps/chunk-016")
 }
 
@@ -270,14 +271,14 @@ func TestPendingPurgesSurviveFailuresAndRestart(t *testing.T) {
 			if status == 429 {
 				// Waiting for purge capacity defers the rows, without spending their attempts.
 				require.NoError(t, err)
-				require.EqualValues(t, 10, outboxRemaining(t, f.st))
+				require.EqualValues(t, 20, outboxRemaining(t, f.st))
 				require.Empty(t, f.indexNow.requests)
 			} else {
 				// A failed purge waits in the durable queue; the rows go on to their probe and IndexNow.
 				require.Error(t, err)
 				require.Zero(t, outboxRemaining(t, f.st))
 				require.NotEmpty(t, f.indexNow.requests)
-				require.Len(t, queuedPurges(t, f.st), 10)
+				require.Len(t, queuedPurges(t, f.st), 20)
 			}
 			restarted := *f.notifier
 			f.notifier = &restarted
@@ -304,7 +305,7 @@ func TestIndexBackfillAnnouncesPausedAppsOnce(t *testing.T) {
 	require.NoError(t, f.st.DB.Exec("UPDATE url_notify_state SET cursor=(SELECT max(seq) FROM catalog_changes)").Error)
 	f.web.publicStatus = 503
 	_, err := f.run(context.Background())
-	require.Error(t, err)
+	require.NoError(t, err, "temporary probe overload defers delivery without exhausting it")
 	require.Empty(t, f.indexNow.requests)
 	state, err := f.st.URLNotifyState(context.Background())
 	require.NoError(t, err)

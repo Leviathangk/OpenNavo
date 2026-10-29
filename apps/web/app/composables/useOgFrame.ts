@@ -4,17 +4,18 @@
  *
  * Callers name the template in full (defineOgImage('OgListSatori', …)): only then does nuxt-og-image
  * put the template file's hash in the image URL, so an edited template gets new URLs past the
- * immutable CDN and social-site caches. Edits to og/OgFrame.vue or og/OgAppIcon.vue alone do not.
+ * immutable CDN and social-site caches. The build ID also versions shared templates, fonts and tokens.
  */
 export function useOgFrame() {
   const { t } = useI18n();
+  const config = useRuntimeConfig();
   let site = '';
   try {
-    site = new URL(useRuntimeConfig().public.siteUrl).host;
+    site = new URL(config.public.siteUrl).host;
   } catch {
     // An invalid site URL leaves the domain out instead of failing the image.
   }
-  return { tagline: t('og.tagline'), platform: t('og.platform'), site };
+  return { tagline: t('og.tagline'), platform: t('og.platform'), site, build: config.app.buildId };
 }
 
 /** Up to four listed apps for a share image's icon column; without them the brand icon stands in. */

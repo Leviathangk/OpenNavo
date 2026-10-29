@@ -43,7 +43,7 @@ func TestFailedPurgesWaitInTheQueueAndKillNoRow(t *testing.T) {
 	require.ErrorContains(t, err, "cloudflare purge failed")
 	var prefixes []string
 	require.NoError(t, f.st.DB.Raw("SELECT DISTINCT purge_prefix FROM url_notify_outbox WHERE purge_prefix<>'' ORDER BY 1").Scan(&prefixes).Error)
-	require.Len(t, prefixes, 10)
+	require.Len(t, prefixes, 20)
 	require.ElementsMatch(t, prefixes, queuedPurges(t, f.st))
 	require.Zero(t, outboxRemaining(t, f.st), "the rows were probed and announced")
 	require.NotEmpty(t, f.indexNow.requests)
@@ -74,7 +74,7 @@ func TestFailedPurgesWaitInTheQueueAndKillNoRow(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, queuedPurges(t, f.st))
 	last := f.cloudflare.requests[len(f.cloudflare.requests)-1]["prefixes"].([]any)
-	require.Len(t, last, 10)
+	require.Len(t, last, 20)
 }
 
 // Without edge purging there is nothing to purge, and nothing is queued.

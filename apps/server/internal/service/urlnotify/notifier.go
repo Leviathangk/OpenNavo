@@ -56,6 +56,8 @@ type Notifier struct {
 	CloudflareAPI    string
 	// Sleep waits between retries; tests replace it.
 	Sleep func(time.Duration)
+	// ProbeSleep supports cancellation during the bounded public probe budget.
+	ProbeSleep func(context.Context, time.Duration) error
 	// Reset for each drain; Run includes skips in its persisted delivery status.
 	contentGate contentGateStats
 }
@@ -65,6 +67,16 @@ type Result struct {
 }
 
 func (n *Notifier) defaults() {
+	if n.ProbeSleep == nil {
+		n.ProbeSleep = n.probePause
+		// Preserve injected clocks used by notification tests, before Sleep gets its default.
+		if n.Sleep != nil {
+			n.ProbeSleep = func(ctx context.Context, delay time.Duration) error {
+				n.Sleep(delay)
+				return ctx.Err()
+			}
+		}
+	}
 	if n.HTTP == nil {
 		n.HTTP = &http.Client{Timeout: 20 * time.Second}
 	}
@@ -346,7 +358,7 @@ func (n *Notifier) probe(ctx context.Context, urls []string) string {
 		return "probe unavailable"
 	}
 	for path, code := range reply.Statuses {
-		if code >= 500 {
+		if code >= 500 || code == http.StatusTooManyRequests {
 			return fmt.Sprintf("probe %s returned %d", path, code)
 		}
 	}

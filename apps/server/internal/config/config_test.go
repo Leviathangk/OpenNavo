@@ -25,6 +25,8 @@ func TestConfigurationValidation(t *testing.T) {
 		{"GITHUB_SETTINGS_ENCRYPTION_KEY", func(c *Config) { c.GitHubSettingsEncryptionKey = "short" }},
 		{"SEO_SETTINGS_ENCRYPTION_KEY", func(c *Config) { c.SEOSettingsEncryptionKey = "short" }},
 		{"WEB_INTERNAL_SECRET", func(c *Config) { c.WebInternalSecret = "short" }},
+		{"negative probe interval", func(c *Config) { c.IndexNowProbeInterval = -time.Second }},
+		{"excessive probe interval", func(c *Config) { c.IndexNowProbeInterval = 6 * time.Second }},
 		{"prod", func(c *Config) { c.AppEnv = "prod" }},
 		{"duration", func(c *Config) { c.JWTAccessTTL = 0 }}, {"url", func(c *Config) { c.CDNBaseURL = "file:///tmp" }},
 		{"timezone", func(c *Config) { c.TZSchedule = "bad-zone" }}, {"log", func(c *Config) { c.LogLevel = "verbose" }},
