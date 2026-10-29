@@ -453,27 +453,28 @@
       "license": "Лицензия"
     },
     "spec": {
-      "title": "At a glance",
-      "price": "Price",
-      "system": "System",
-      "chip": "Chip",
-      "autoUpdates": "Auto-updates",
-      "openSource": "Open source",
-      "repository": "Repository",
-      "githubRepository": "GitHub repository",
-      "developer": "Developer",
-      "homepage": "Homepage",
+      "title": "Основные сведения",
+      "price": "Цена",
+      "system": "Система",
+      "chip": "Процессор",
+      "autoUpdates": "Автообновление",
+      "openSource": "Открытый исходный код",
+      "repository": "Репозиторий",
+      "githubRepository": "Репозиторий GitHub",
+      "developer": "Разработчик",
+      "homepage": "Сайт",
       "token": "Token",
       "installedVersion": "Installed version",
       "installLocation": "Install location",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "Да",
+      "no": "Нет",
+      "checked": "Проверено"
     },
     "repo": {
-      "stars": "Stars",
-      "updated": "Updated {days} days ago",
-      "unmaintained": "May no longer be maintained",
-      "archived": "Archived"
+      "stars": "★",
+      "updated": "Обновлено {days} дн. назад",
+      "unmaintained": "Возможно, больше не поддерживается",
+      "archived": "В архиве"
     },
     "deps": {
       "macos": "Системные требования",

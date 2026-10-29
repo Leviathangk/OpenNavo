@@ -581,10 +581,10 @@
       "priceStoreNote": "Homebrew installiert die Version von der Website des Entwicklers; Preis und Funktionen können von der Version im App Store abweichen.",
       "openSourceQ": "Ist {name} Open Source?",
       "openSourceA": "Der Quellcode von {name} ist auf GitHub öffentlich ({repo}) und steht unter der Lizenz {license}.",
-      "openSourceNoLicenseA": "{name} has a public GitHub repository ({repo}), but OpenNavo has not verified an OSI license.",
+      "openSourceNoLicenseA": "{name} hat ein öffentliches GitHub-Repository ({repo}), aber OpenNavo hat keine OSI-Lizenz bestätigt.",
       "openSourceArchived": "Das Repository ist archiviert und wird nicht mehr aktualisiert.",
-      "openSourceStars": "Repository stars: {stars}.",
-      "openSourceChecked": "Repository data checked {date}.",
+      "openSourceStars": "Repository-Sterne: {stars}.",
+      "openSourceChecked": "Repository-Daten am {date} geprüft.",
       "uninstallQ": "Wie deinstalliere ich {name} vollständig auf dem Mac?",
       "uninstallRun": "Führen Sie `brew uninstall --cask {token}` aus.",
       "uninstallDoes": "Der Befehl {actions}.",
@@ -663,25 +663,26 @@
       "source": "Die Installationsdatei laden Sie von {source} herunter."
     },
     "spec": {
-      "title": "At a glance",
-      "price": "Price",
+      "title": "Auf einen Blick",
+      "price": "Preis",
       "system": "System",
       "chip": "Chip",
-      "autoUpdates": "Auto-updates",
-      "openSource": "Open source",
+      "autoUpdates": "Automatische Updates",
+      "openSource": "Open Source",
       "repository": "Repository",
-      "githubRepository": "GitHub repository",
-      "developer": "Developer",
-      "homepage": "Homepage",
+      "githubRepository": "GitHub-Repository",
+      "developer": "Entwickler",
+      "homepage": "Website",
       "token": "Token",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "Ja",
+      "no": "Nein",
+      "checked": "Geprüft"
     },
     "repo": {
       "stars": "★",
-      "updated": "Updated {days} days ago",
-      "unmaintained": "May no longer be maintained",
-      "archived": "Archived"
+      "updated": "Vor {days} Tagen aktualisiert",
+      "unmaintained": "Wird möglicherweise nicht mehr gepflegt",
+      "archived": "Archiviert"
     },
     "quick": {
       "title": "Eckdaten",

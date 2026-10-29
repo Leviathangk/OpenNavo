@@ -453,27 +453,28 @@
       "license": "Licença"
     },
     "spec": {
-      "title": "At a glance",
-      "price": "Price",
-      "system": "System",
+      "title": "Visão geral",
+      "price": "Preço",
+      "system": "Sistema",
       "chip": "Chip",
-      "autoUpdates": "Auto-updates",
-      "openSource": "Open source",
-      "repository": "Repository",
-      "githubRepository": "GitHub repository",
-      "developer": "Developer",
-      "homepage": "Homepage",
+      "autoUpdates": "Atualização automática",
+      "openSource": "Código aberto",
+      "repository": "Repositório",
+      "githubRepository": "Repositório do GitHub",
+      "developer": "Desenvolvedor",
+      "homepage": "Site",
       "token": "Token",
       "installedVersion": "Installed version",
       "installLocation": "Install location",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "Sim",
+      "no": "Não",
+      "checked": "Verificado"
     },
     "repo": {
-      "stars": "Stars",
-      "updated": "Updated {days} days ago",
-      "unmaintained": "May no longer be maintained",
-      "archived": "Archived"
+      "stars": "★",
+      "updated": "Atualizado há {days} dias",
+      "unmaintained": "Pode não receber mais manutenção",
+      "archived": "Arquivado"
     },
     "deps": {
       "macos": "Requisitos do sistema",

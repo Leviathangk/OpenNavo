@@ -453,27 +453,28 @@
       "license": "Lizenz"
     },
     "spec": {
-      "title": "At a glance",
-      "price": "Price",
+      "title": "Auf einen Blick",
+      "price": "Preis",
       "system": "System",
       "chip": "Chip",
-      "autoUpdates": "Auto-updates",
-      "openSource": "Open source",
+      "autoUpdates": "Automatische Updates",
+      "openSource": "Open Source",
       "repository": "Repository",
-      "githubRepository": "GitHub repository",
-      "developer": "Developer",
-      "homepage": "Homepage",
+      "githubRepository": "GitHub-Repository",
+      "developer": "Entwickler",
+      "homepage": "Website",
       "token": "Token",
       "installedVersion": "Installed version",
       "installLocation": "Install location",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "Ja",
+      "no": "Nein",
+      "checked": "Geprüft"
     },
     "repo": {
-      "stars": "Stars",
-      "updated": "Updated {days} days ago",
-      "unmaintained": "May no longer be maintained",
-      "archived": "Archived"
+      "stars": "★",
+      "updated": "Vor {days} Tagen aktualisiert",
+      "unmaintained": "Wird möglicherweise nicht mehr gepflegt",
+      "archived": "Archiviert"
     },
     "deps": {
       "macos": "Systemvoraussetzungen",

@@ -581,10 +581,10 @@
       "priceStoreNote": "Homebrew installa la versione del sito dello sviluppatore, che può differire da quella dell’App Store per prezzo e funzioni.",
       "openSourceQ": "{name} è open source?",
       "openSourceA": "Il codice sorgente di {name} è pubblico su GitHub ({repo}) con licenza {license}.",
-      "openSourceNoLicenseA": "{name} has a public GitHub repository ({repo}), but OpenNavo has not verified an OSI license.",
+      "openSourceNoLicenseA": "{name} ha un repository pubblico su GitHub ({repo}), ma OpenNavo non ha verificato una licenza OSI.",
       "openSourceArchived": "Il repository è archiviato e non viene più aggiornato.",
-      "openSourceStars": "Repository stars: {stars}.",
-      "openSourceChecked": "Repository data checked {date}.",
+      "openSourceStars": "Stelle del repository: {stars}.",
+      "openSourceChecked": "Dati del repository verificati il {date}.",
       "uninstallQ": "Come disinstallare completamente {name} dal Mac?",
       "uninstallRun": "Esegui `brew uninstall --cask {token}`.",
       "uninstallDoes": "Il comando {actions}.",
@@ -663,25 +663,26 @@
       "source": "Il file di installazione si scarica da {source}."
     },
     "spec": {
-      "title": "At a glance",
-      "price": "Price",
-      "system": "System",
+      "title": "A colpo d’occhio",
+      "price": "Prezzo",
+      "system": "Sistema",
       "chip": "Chip",
-      "autoUpdates": "Auto-updates",
+      "autoUpdates": "Aggiornamenti automatici",
       "openSource": "Open source",
       "repository": "Repository",
-      "githubRepository": "GitHub repository",
-      "developer": "Developer",
-      "homepage": "Homepage",
+      "githubRepository": "Repository GitHub",
+      "developer": "Sviluppatore",
+      "homepage": "Sito web",
       "token": "Token",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "Sì",
+      "no": "No",
+      "checked": "Verificato"
     },
     "repo": {
       "stars": "★",
-      "updated": "Updated {days} days ago",
-      "unmaintained": "May no longer be maintained",
-      "archived": "Archived"
+      "updated": "Aggiornato {days} giorni fa",
+      "unmaintained": "La manutenzione potrebbe essere terminata",
+      "archived": "Archiviato"
     },
     "quick": {
       "title": "Informazioni di base",

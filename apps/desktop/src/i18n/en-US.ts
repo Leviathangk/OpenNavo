@@ -469,6 +469,7 @@ const messages: MessageSchema = {
       openSource: 'Open source',
       repository: 'Repository',
       githubRepository: 'GitHub repository',
+      checked: 'Checked',
       developer: 'Developer',
       homepage: 'Homepage',
       token: 'Token',

@@ -208,7 +208,7 @@ usePageSeo({
           :rows="spec.rows"
           :title="t('package.spec.title')"
           :checked-at="spec.checkedAt"
-          :checked-label="t('package.quick.checked')"
+          :checked-label="t('package.spec.checked')"
           :link-as="NuxtLink"
         />
       </template>

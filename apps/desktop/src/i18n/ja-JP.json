@@ -453,27 +453,28 @@
       "license": "ライセンス"
     },
     "spec": {
-      "title": "At a glance",
-      "price": "Price",
-      "system": "System",
-      "chip": "Chip",
-      "autoUpdates": "Auto-updates",
-      "openSource": "Open source",
-      "repository": "Repository",
-      "githubRepository": "GitHub repository",
-      "developer": "Developer",
-      "homepage": "Homepage",
+      "title": "基本情報",
+      "price": "価格",
+      "system": "システム要件",
+      "chip": "チップ",
+      "autoUpdates": "自動更新",
+      "openSource": "オープンソース",
+      "repository": "リポジトリ",
+      "githubRepository": "GitHub リポジトリ",
+      "developer": "開発元",
+      "homepage": "ホームページ",
       "token": "Token",
       "installedVersion": "Installed version",
       "installLocation": "Install location",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "はい",
+      "no": "いいえ",
+      "checked": "確認日"
     },
     "repo": {
-      "stars": "Stars",
-      "updated": "Updated {days} days ago",
-      "unmaintained": "May no longer be maintained",
-      "archived": "Archived"
+      "stars": "★",
+      "updated": "{days} 日前に更新",
+      "unmaintained": "メンテナンスが終了している可能性があります",
+      "archived": "アーカイブ済み"
     },
     "deps": {
       "macos": "システム要件",

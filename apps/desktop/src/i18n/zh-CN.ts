@@ -455,6 +455,7 @@ export default {
       openSource: '开源',
       repository: '仓库',
       githubRepository: 'GitHub 仓库',
+      checked: '核查日期',
       developer: '开发者',
       homepage: '主页',
       token: 'Token',
