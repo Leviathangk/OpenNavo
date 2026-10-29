@@ -6,6 +6,7 @@ import { createOnUi } from '@opennavo/ui';
 import { i18n } from '@/i18n';
 import type { OutdatedItem, Task } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
+import { disposeMockIpc } from '@/ipc/mock';
 import RunningAppsConfirm from '@/components/shell/RunningAppsConfirm.vue';
 import MajorConfirm from '@/components/updates/MajorConfirm.vue';
 import OutdatedList from '@/components/updates/OutdatedList.vue';
@@ -31,12 +32,10 @@ beforeEach(() => {
     }
   );
 });
-afterEach(async () => {
-  // The simulated runner keeps emitting task events until queued updates finish; drain them so they never reach the
-  // next test's stores.
-  await vi.waitFor(() => expect(activeContext?.state.active ?? []).toHaveLength(0), { timeout: 5000 });
-  activeContext = undefined;
+afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
+  disposeMockIpc();
+  activeContext = undefined;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   useToasts().clear();
@@ -234,11 +233,16 @@ describe('Updates from every source', () => {
     await flushPromises();
     const iterm = enqueue.mock.calls.find(([, target]) => target?.token === 'local-iterm2');
     expect(iterm?.[2]).toMatchObject({ source: 'sparkle', quitRunning: true });
-    return enqueue.mock.calls.map(([op, target, options]) => ({
+    const calls = enqueue.mock.calls.map(([op, target, options]) => ({
       op,
       target,
       source: options.source ?? null
     }));
+    await vi.waitFor(() => expect(activeContext?.state.active).toHaveLength(0), { timeout: 4000 });
+    expect(activeContext?.state.history.every(task => ['succeeded', 'failed', 'canceled'].includes(task.state))).toBe(
+      true
+    );
+    return calls;
   }
 
   it('Update All queues each row through its own source, smallest first, never a relaunch or a link-only row', async () => {

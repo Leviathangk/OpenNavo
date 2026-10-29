@@ -24,6 +24,7 @@ import type {
 } from '../bindings';
 import { findItem } from './fixtures';
 import type { MockState, Step } from './runner';
+import { createMockScheduler } from './scheduler';
 
 const KB = 1e3;
 const MB = 1e6;
@@ -421,7 +422,6 @@ const LAST_USED_CASKS: Record<string, number> = {
 const expand = (path: string) => path.replace(/^~(?=\/)/, MOCK_HOME);
 const confidence = (reason: MatchReason): PlanItem['confidence'] =>
   reason === 'name_similar' ? 'low' : reason === 'team_id' || reason === 'name_exact' ? 'medium' : 'high';
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const appError = (code: string, message: string): AppError => ({ code, message, detail: null });
 
 export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[] {
@@ -543,6 +543,7 @@ export interface UninstallMockOptions {
 
 /** Commands for the uninstall feature plus runner hooks (steps, completion results). */
 export function createUninstallMock({ state, tickMs, permissions, enqueue }: UninstallMockOptions) {
+  const scheduler = createMockScheduler();
   let apps = localAppsFixture(state);
   let lastFootprintScan = 0;
   const plans = new Map<string, { plan: UninstallPlan; items: Map<string, MockItem> }>();
@@ -562,7 +563,7 @@ export function createUninstallMock({ state, tickMs, permissions, enqueue }: Uni
         total: LOCATIONS.length,
         location: LOCATIONS[checked] ?? ''
       });
-      await delay(tickMs);
+      if (!(await scheduler.delay(tickMs))) return null;
     }
     if (canceled.has(requestId)) throw appError('E_SCAN_CANCELED', 'scan_canceled');
     void events.uninstallScanProgress.emit({
@@ -571,6 +572,7 @@ export function createUninstallMock({ state, tickMs, permissions, enqueue }: Uni
       total: LOCATIONS.length,
       location: ''
     });
+    return true;
   }
 
   function incomplete(): SkippedLocation[] {
@@ -686,7 +688,7 @@ export function createUninstallMock({ state, tickMs, permissions, enqueue }: Uni
       const targets = ids.map(id => findApp(id));
       if (targets.some(app => !app)) throw appError('E_NOT_FOUND', 'app_not_found');
       if (targets.some(app => app && !app.removable)) throw appError('E_PROTECTED', 'protected');
-      await scan(requestId);
+      if (!(await scan(requestId))) return null;
       const fullDiskAccess = permissions().fullDiskAccess === 'granted';
       const items = new Map<string, MockItem>();
       const now = Date.now();
@@ -777,5 +779,5 @@ export function createUninstallMock({ state, tickMs, permissions, enqueue }: Uni
     }
   };
 
-  return { handlers, hooks: { steps, completed }, apps: () => apps };
+  return { handlers, hooks: { steps, completed }, apps: () => apps, stop: scheduler.stop };
 }

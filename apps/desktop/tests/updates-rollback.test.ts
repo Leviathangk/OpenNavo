@@ -7,18 +7,17 @@ import { useToasts } from '@/composables/useToasts';
 import { i18n } from '@/i18n';
 import type { Task } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
+import { disposeMockIpc } from '@/ipc/mock';
 import HistoryList from '@/components/updates/HistoryList.vue';
 import UpdatesPage from '@/pages/UpdatesPage.vue';
 import { startLocalState, useUpdatesStore } from '@/stores';
 import { setup } from './helpers';
-import type { TestContext } from './helpers';
 
 // One-click rollback (store/security plan §7, P2): an update from a source other than Homebrew or the App Store kept
 // the version it replaced. History offers to go back to it on the newest such update of an app; Rust checks the kept
 // copy again, asks a running app to quit and skips the version rolled back from. ?mock=update-sources seeds Notion's
 // Electron update 4.3.0 → 4.4.1.
 const wrappers: VueWrapper[] = [];
-let activeContext: TestContext | undefined;
 beforeEach(() => {
   vi.stubGlobal(
     'IntersectionObserver',
@@ -28,10 +27,9 @@ beforeEach(() => {
     }
   );
 });
-afterEach(async () => {
-  await vi.waitFor(() => expect(activeContext?.state.active ?? []).toHaveLength(0), { timeout: 5000 });
-  activeContext = undefined;
+afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
+  disposeMockIpc();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   history.replaceState(null, '', '/');
@@ -43,7 +41,6 @@ const ui = createOnUi({ locale: ref('zh-CN' as const) });
 async function mountUpdates() {
   history.replaceState(null, '', '/?mock=update-sources');
   const context = await setup('/updates', { tickMs: 5 });
-  activeContext = context;
   const { pinia, router } = context;
   await startLocalState();
   const wrapper = mount(UpdatesPage, { global: { plugins: [pinia, router, i18n, ui] }, attachTo: document.body });
@@ -88,6 +85,7 @@ describe('Rolling back an update', () => {
     expect(button(entry(wrapper, 'Notion', '4.3.0 → 4.4.1'), '回滚')).toBeUndefined();
 
     await vi.waitFor(() => expect(entry(wrapper, 'Notion', '回滚', '4.4.1 → 4.3.0')).toBeTruthy(), { timeout: 4000 });
+    await vi.waitFor(() => expect(context.state.history.find(task => task.op === 'rollback')?.state).toBe('succeeded'));
     const done = context.state.history.find(task => task.op === 'rollback')!;
     expect(done).toMatchObject({
       state: 'succeeded',
@@ -155,7 +153,6 @@ describe('Rollback entries in history', () => {
   async function mountList(task: Task) {
     history.replaceState(null, '', '/?mock=update-sources');
     const context = await setup('/updates', { tickMs: 5 });
-    activeContext = context;
     const { pinia, router } = context;
     const wrapper = mount(HistoryList, {
       props: { tasks: [task] },

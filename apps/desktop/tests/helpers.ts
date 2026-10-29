@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { afterEach } from 'vitest';
 import type { Pinia } from 'pinia';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import type { RouteRecordRaw, Router } from 'vue-router';
@@ -6,8 +7,11 @@ import { defineComponent, h } from 'vue';
 import { i18n } from '@/i18n';
 import type { Locale } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
-import { installMockIpc } from '@/ipc/mock';
+import { disposeMockIpc, installMockIpc } from '@/ipc/mock';
 import type { MockState } from '@/ipc/mock-data/runner';
+
+// Stop pending task ticks and delayed mock events while jsdom is still available.
+afterEach(disposeMockIpc);
 
 /** Placeholder pages and rails: shell tests only cover layout and navigation. */
 export const stub = (text: string) => defineComponent({ name: `Stub${text}`, setup: () => () => h('p', text) });
