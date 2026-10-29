@@ -320,6 +320,24 @@
       "charCount": "{count} / {max} 文字"
     },
     "dashboard": {
+      "intraday": {
+        "title": "当日のアクティブ推移",
+        "description": "デバイス・ブラウザーごとに1日1回、当日最初に利用した時間帯に集計します。オンライン人数ではありません",
+        "asOf": "北京時間 · {date} {time} 時点",
+        "measure": "アクティブ集計方法",
+        "hourly": "時間別の初回アクティブ",
+        "cumulative": "本日の累計アクティブ",
+        "desktop": "クライアント",
+        "web": "ウェブ",
+        "loadFailed": "当日のアクティブ推移を読み込めませんでした。再試行してください。",
+        "keyboardHint": "左右の矢印キーで時間を選択、Home で最初の時間、End で現在の時間を表示",
+        "details": "時間別の詳細",
+        "hour": "時間（北京時間）",
+        "hourlyDesktop": "初回アクティブのクライアント",
+        "hourlyWeb": "初回アクティブのブラウザー",
+        "cumulativeDesktop": "累計アクティブクライアント",
+        "cumulativeWeb": "累計アクティブブラウザー"
+      },
       "scale": "カタログ規模",
       "total": "アプリ数",
       "fonts": "フォント",

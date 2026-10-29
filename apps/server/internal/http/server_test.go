@@ -217,8 +217,8 @@ func TestAllPlaceholderRoutesFollowContracts(t *testing.T) {
 	}
 	// The SEO engine's 28 routes left; editorial intent pages, app SEO titles, page decisions,
 	// site index settings and due facts added 8.
-	if count != 212 {
-		t.Fatalf("expected 212 contracted routes, got %d", count)
+	if count != 213 {
+		t.Fatalf("expected 213 contracted routes, got %d", count)
 	}
 }
 func TestHealthValidationLocaleAndCORS(t *testing.T) {

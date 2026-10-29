@@ -19,7 +19,8 @@ const day = (date: string, desktop: number, web: number, newDesktop = 0, newWeb 
   newDesktop,
   newWeb
 });
-const mountCard = (usage: Schemas['UsageOverview']) => mount(UsageCard, { props: { usage }, global: { components } });
+const mountCard = (usage: Schemas['UsageOverview']) =>
+  mount(UsageCard, { props: { usage }, global: { components, stubs: { UsageIntraday: true } } });
 
 it('keeps platforms separate, shows today and provides chart data as an accessible table', () => {
   const wrapper = mountCard({

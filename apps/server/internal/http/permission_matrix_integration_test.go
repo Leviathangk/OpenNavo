@@ -34,7 +34,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups := map[string]string{
 		"site:index:view":            "getPageDecision getSiteIndexSettings",
 		"":                           "getUserInfo logout getProfile updateProfile changePassword",
-		"dashboard:view":             "getDashboardOverview",
+		"dashboard:view":             "getDashboardOverview getDashboardUsageIntraday",
 		"catalog:package:view":       "listAdminPackages getAdminPackage listPackageScreenshots listPackageVersions listChangelogSources listAdminReleases getAdminRelease getCategoryTree",
 		"catalog:package:edit":       "updatePackageMeta setPackageCategories",
 		"catalog:asset:upload":       "setPackageIcon deletePackageIcon addPackageScreenshot reorderPackageScreenshots updatePackageScreenshot deletePackageScreenshot listAssets uploadAsset",

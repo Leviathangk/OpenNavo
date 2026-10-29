@@ -320,6 +320,24 @@
       "charCount": "{count} / {max}"
     },
     "dashboard": {
+      "intraday": {
+        "title": "Atividade ao longo do dia",
+        "description": "Cada dispositivo ou navegador é contado uma vez por dia, na hora de sua primeira atividade; não são usuários online.",
+        "asOf": "Horário de Pequim · {date} até {time}",
+        "measure": "Medida de atividade",
+        "hourly": "Primeira atividade por hora",
+        "cumulative": "Acumulado de hoje",
+        "desktop": "Cliente",
+        "web": "Web",
+        "loadFailed": "Não foi possível carregar a atividade do dia. Tente novamente.",
+        "keyboardHint": "Use as setas para explorar as horas, Home para a primeira e End para a atual",
+        "details": "Contagem por hora",
+        "hour": "Hora (Pequim)",
+        "hourlyDesktop": "Clientes com primeira atividade",
+        "hourlyWeb": "Navegadores com primeira atividade",
+        "cumulativeDesktop": "Clientes ativos acumulados",
+        "cumulativeWeb": "Navegadores ativos acumulados"
+      },
       "scale": "Catálogo",
       "total": "Aplicativos",
       "fonts": "Fontes",

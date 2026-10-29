@@ -33,6 +33,24 @@ const pages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    intraday: {
+      title: '当天活跃趋势',
+      description: '每台设备/浏览器每天只计一次，计在当天首次活跃的小时；不是在线人数',
+      asOf: '北京时间 · {date} 截至 {time}',
+      measure: '活跃统计方式',
+      hourly: '每小时首次活跃',
+      cumulative: '今日累计活跃',
+      desktop: '客户端',
+      web: '网页',
+      loadFailed: '当天活跃趋势加载失败，请重试',
+      keyboardHint: '使用左右方向键查看小时，Home 查看首小时，End 查看当前小时',
+      details: '小时明细',
+      hour: '小时（北京时间）',
+      hourlyDesktop: '首次活跃客户端',
+      hourlyWeb: '首次活跃浏览器',
+      cumulativeDesktop: '累计活跃客户端',
+      cumulativeWeb: '累计活跃浏览器'
+    },
     usage: {
       countries: '今日国家分布',
       countryOrder: '按总日活排序',

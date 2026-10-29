@@ -305,6 +305,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/usage/intraday": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Intraday active trend
+         * @description Distribution of each device/browser's first activity today in Asia/Shanghai, from midnight through asOf. This is not an online-user count. Uses the same usage_daily day and platform filters as the overview's today-active cards. Returns 24 ordered hourly buckets; future hours have null counts, while elapsed hours without activity have zero counts. Cumulative series end at today's active counts for the sampled data. Devices on different platforms are counted separately. Historical rows use last_active_at at migration time because their original first activity cannot be recovered.
+         */
+        get: operations["getDashboardUsageIntraday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/packages": {
         parameters: {
             query?: never;
@@ -8207,6 +8227,415 @@ export interface components {
                 /** Format: int64 */
                 count: number;
             }[];
+        };
+        /**
+         * @example {
+         *       "hour": 0,
+         *       "web": 2,
+         *       "desktop": 1,
+         *       "cumulativeWeb": 2,
+         *       "cumulativeDesktop": 1
+         *     }
+         */
+        UsageIntradayHour: {
+            /** @description Hour in Asia/Shanghai; the current hour is partial. */
+            hour: number;
+            /**
+             * Format: int64
+             * @description Browsers whose immutable first_active_at falls in this hour; null for a future hour.
+             */
+            web: number | null;
+            /**
+             * Format: int64
+             * @description Desktop installations whose immutable first_active_at falls in this hour; null for a future hour.
+             */
+            desktop: number | null;
+            /**
+             * Format: int64
+             * @description Total active browsers from midnight through this hour; null for a future hour.
+             */
+            cumulativeWeb: number | null;
+            /**
+             * Format: int64
+             * @description Total active desktop installations from midnight through this hour; null for a future hour.
+             */
+            cumulativeDesktop: number | null;
+        };
+        /**
+         * @example {
+         *       "date": "2026-10-29",
+         *       "timeZone": "Asia/Shanghai",
+         *       "asOf": "2026-10-28T16:00:00Z",
+         *       "hours": [
+         *         {
+         *           "hour": 0,
+         *           "web": 2,
+         *           "desktop": 1,
+         *           "cumulativeWeb": 2,
+         *           "cumulativeDesktop": 1
+         *         },
+         *         {
+         *           "hour": 1,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 2,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 3,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 4,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 5,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 6,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 7,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 8,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 9,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 10,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 11,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 12,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 13,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 14,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 15,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 16,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 17,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 18,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 19,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 20,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 21,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 22,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 23,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         }
+         *       ]
+         *     }
+         */
+        UsageIntraday: {
+            /**
+             * Format: date
+             * @description Today's calendar date in Asia/Shanghai.
+             */
+            date: string;
+            /** @enum {string} */
+            timeZone: "Asia/Shanghai";
+            /** Format: date-time */
+            asOf: string;
+            hours: components["schemas"]["UsageIntradayHour"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "date": "2026-10-29",
+         *         "timeZone": "Asia/Shanghai",
+         *         "asOf": "2026-10-28T16:00:00Z",
+         *         "hours": [
+         *           {
+         *             "hour": 0,
+         *             "web": 2,
+         *             "desktop": 1,
+         *             "cumulativeWeb": 2,
+         *             "cumulativeDesktop": 1
+         *           },
+         *           {
+         *             "hour": 1,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 2,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 3,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 4,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 5,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 6,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 7,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 8,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 9,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 10,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 11,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 12,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 13,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 14,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 15,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 16,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 17,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 18,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 19,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 20,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 21,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 22,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 23,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        UsageIntradayResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data?: components["schemas"]["UsageIntraday"] | null;
         };
         /**
          * @example {
@@ -23903,6 +24332,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardOverviewResponseResult"];
+                };
+            };
+        };
+    };
+    getDashboardUsageIntraday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageIntradayResponse"] | components["schemas"]["BusinessErrorResponse"];
                 };
             };
         };
