@@ -82,7 +82,7 @@ func TestPurgeCooldownSurvivesRestartWithoutExhaustingAttempts(t *testing.T) {
 	require.EqualValues(t, 1, calls.Load())
 	due := now.Add(180 * time.Second)
 	checkPending(due)
-	ready, err := st.URLPurgeReadyAt(ctx)
+	ready, err := st.URLPurgeReadyAt(ctx, now, 0)
 	require.NoError(t, err)
 	require.Equal(t, due.UnixMicro(), ready.UnixMicro())
 	// Even a newly queued URL must honor another job's persisted cooldown.

@@ -32,9 +32,9 @@ func TestBuildPlanCoversTokensAndAnnouncements(t *testing.T) {
 	require.Contains(t, plan.Paths, "/apps/editor")
 	require.Contains(t, plan.Paths, "/zh/apps/old-name")
 	require.Contains(t, plan.Paths, "/ru/apps/gone")
-	require.Len(t, plan.Paths, 5*len(seo.Locales), "editor, new-name, old-name, gone, hidden-app in all site languages")
+	require.Len(t, plan.Paths, 6*len(seo.Locales), "app prefixes and one recent listing per language")
 	require.Contains(t, plan.PurgePrefixes, "opennavo.example/ja/apps/new-name")
-	require.Len(t, plan.PurgePrefixes, 5*len(seo.Locales))
+	require.Len(t, plan.PurgePrefixes, 6*len(seo.Locales))
 
 	// Live apps announce indexable languages; former tokens and removed apps announce all site languages.
 	require.Contains(t, plan.IndexNowURLs, "https://opennavo.example/apps/editor")
@@ -59,7 +59,7 @@ func TestBuildPlanPurgesEveryTokenByPrefixInAllLanguages(t *testing.T) {
 	current := map[int64]store.URLChange{1: {Token: "zed"}, 2: {Token: "newest-name"}}
 	plan := BuildPlan(changes, current, map[int64]store.IndexRow{}, seo.Policy{Mode: "off"}, "https://opennavo.example/")
 
-	require.Len(t, plan.PurgePrefixes, 4*len(seo.Locales), "zed, newest-name, new-name and old-name in all site languages")
+	require.Len(t, plan.PurgePrefixes, 5*len(seo.Locales), "four app prefixes and one recent listing per language")
 	for _, prefix := range []string{"opennavo.example/apps/zed", "opennavo.example/zh/apps/zed", "opennavo.example/ru/apps/newest-name", "opennavo.example/ja/apps/new-name", "opennavo.example/pt/apps/old-name"} {
 		require.Contains(t, plan.PurgePrefixes, prefix)
 	}
@@ -73,13 +73,13 @@ func TestBuildPlanPurgesEveryTokenByPrefixInAllLanguages(t *testing.T) {
 
 func TestSectionPrefixesCoverLongCachedPagesInAllLanguages(t *testing.T) {
 	prefixes := sectionPrefixes("https://opennavo.example/")
-	require.Len(t, prefixes, 4*len(seo.Locales))
+	require.Len(t, prefixes, 5*len(seo.Locales))
 	require.Equal(t, []string{"opennavo.example/apps", "opennavo.example/articles", "opennavo.example/authors"}, prefixes[:3])
 	require.Contains(t, prefixes, "opennavo.example/zh/apps")
 	require.Contains(t, prefixes, "opennavo.example/ru/authors")
 	// Never the whole host or a whole language, which would drop share images and build assets too.
 	for _, prefix := range prefixes {
-		require.Regexp(t, `^opennavo\.example(/[a-z]{2}(-hant)?)?/(apps|articles|authors|collections)$`, prefix)
+		require.Regexp(t, `^opennavo\.example(/[a-z]{2}(-hant)?)?/(apps|articles|authors|collections|recent)$`, prefix)
 	}
 }
 
@@ -135,7 +135,7 @@ func TestBuildPlanRefreshesButDoesNotAnnounceBulkContentRewrites(t *testing.T) {
 	// One app also changed on its own, so it is still announced.
 	changes = append(changes, store.URLChange{Seq: 99, PackageID: 1, Token: current[1].Token, Reason: "asset", CreatedAt: at.Add(time.Minute)})
 	plan := BuildPlan(changes, current, index, seo.Policy{Mode: "off"}, "https://opennavo.example")
-	require.Len(t, plan.Paths, (bulkContentRows+1)*len(seo.Locales))
+	require.Len(t, plan.Paths, (bulkContentRows+2)*len(seo.Locales))
 	require.Len(t, plan.IndexNowURLs, 6)
 }
 
@@ -203,9 +203,11 @@ func TestBuildPlanMergesLanguageScopes(t *testing.T) {
 			row := indexRow(1, "editor")
 			row.PublishedLocales = seo.Locales
 			plan := BuildPlan(changes, map[int64]store.URLChange{1: {Token: "editor"}}, map[int64]store.IndexRow{1: row}, seo.Policy{Mode: "shadow", OpenLocales: []string{"en-US", "ja-JP"}}, "https://site.example")
-			require.Len(t, plan.Paths, len(scopes.expected))
+			require.Len(t, plan.Paths, 2*len(scopes.expected))
 			for _, locale := range scopes.expected {
 				require.Contains(t, plan.Paths, localePrefix(locale)+"/apps/editor")
+				require.Contains(t, plan.Paths, localePrefix(locale)+"/recent")
+				require.Contains(t, plan.PurgePrefixes, "site.example"+localePrefix(locale)+"/recent")
 			}
 			require.NotContains(t, plan.IndexNowURLs, "https://site.example/zh-hant/apps/editor")
 		})
@@ -214,7 +216,7 @@ func TestBuildPlanMergesLanguageScopes(t *testing.T) {
 
 func TestScopedContentDoesNotAnnounceClosedRemovedPage(t *testing.T) {
 	plan := BuildPlan([]store.URLChange{{PackageID: 1, Token: "removed", Reason: "content", Locales: []string{"zh-Hant"}}}, map[int64]store.URLChange{1: {Token: "removed", Op: "delete"}}, nil, seo.Policy{OpenLocales: []string{"en-US"}}, "https://site.example")
-	require.Equal(t, []string{"/zh-hant/apps/removed"}, plan.Paths)
+	require.Equal(t, []string{"/zh-hant/apps/removed", "/zh-hant/recent"}, plan.Paths)
 	require.Empty(t, plan.IndexNowURLs)
 }
 

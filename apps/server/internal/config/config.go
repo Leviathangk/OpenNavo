@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/url"
 	"os"
@@ -15,9 +16,26 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
+const DefaultProbeMaxRetryAfter = 15 * time.Minute
+const MaxProbeRetryAfter = 24 * time.Hour
+
+// ProbeRetryAfterCap also bounds callers that construct Config without Load.
+func ProbeRetryAfterCap(value time.Duration) time.Duration {
+	if value <= 0 {
+		return DefaultProbeMaxRetryAfter
+	}
+	if value > MaxProbeRetryAfter {
+		slog.Warn("probe retry cap exceeds 24h; clamping to 24h")
+		return MaxProbeRetryAfter
+	}
+	return value
+}
+
 type Config struct {
 	IndexNowContentGate         bool          `env:"INDEXNOW_CONTENT_GATE" envDefault:"true"`
 	IndexNowDailyLimit          int           `env:"INDEXNOW_DAILY_LIMIT" envDefault:"5000"`
+	IndexNowProbeInterval       time.Duration `env:"INDEXNOW_PROBE_INTERVAL" envDefault:"2s"`
+	IndexNowProbeMaxRetryAfter  time.Duration `env:"INDEXNOW_PROBE_MAX_RETRY_AFTER" envDefault:"15m"`
 	UsageCountryTrustedProxies  []string      `env:"USAGE_COUNTRY_TRUSTED_PROXIES" envSeparator:","`
 	AgentGatewaySecret          string        `env:"AGENT_GATEWAY_SECRET"`
 	AppEnv                      string        `env:"APP_ENV,required"`
@@ -75,7 +93,8 @@ func Load() (Config, error) {
 		return Config{}, errors.New("missing or invalid environment variables")
 	}
 
-	return cfg, cfg.Validate()
+	err = cfg.Validate()
+	return cfg, err
 }
 
 func LoadEnvFile(path string) error {
@@ -126,7 +145,16 @@ var publicExampleSecrets = []string{
 	"local-development-only",
 }
 
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
+	if c.IndexNowProbeMaxRetryAfter < 0 {
+		return errors.New("INDEXNOW_PROBE_MAX_RETRY_AFTER must not be negative")
+	}
+	if c.IndexNowProbeMaxRetryAfter > MaxProbeRetryAfter {
+		c.IndexNowProbeMaxRetryAfter = ProbeRetryAfterCap(c.IndexNowProbeMaxRetryAfter)
+	}
+	if c.IndexNowProbeInterval < 0 || c.IndexNowProbeInterval > 5*time.Second {
+		return errors.New("INDEXNOW_PROBE_INTERVAL must be between zero and five seconds")
+	}
 	if c.CatalogKinds != "" && c.CatalogKinds != "cask" {
 		return errors.New("CATALOG_KINDS must be cask")
 	}

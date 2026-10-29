@@ -4,6 +4,7 @@ import {
   edgeCacheHeader,
   edgeRouteType,
   LONG_EDGE_CACHE_VALUE,
+  RECENT_EDGE_CACHE_VALUE,
   SHORT_EDGE_CACHE_VALUE,
   type EdgeCacheInput
 } from '../server/utils/edgeCache';
@@ -56,12 +57,15 @@ describe('HTML edge cache switch', () => {
     for (const path of ['/recent', '/zh/recent', '/ru/recent', '/recent?page=2', '/ja/recent?page=3&size=12']) {
       expect(edgeRouteType(path), path).toBe('list');
       expect(edgeCacheHeader(page({ path, cacheControl: 's-maxage=300, stale-while-revalidate' })), path).toBe(
-        SHORT_EDGE_CACHE_VALUE
+        RECENT_EDGE_CACHE_VALUE
       );
     }
     // GA4 page_type and the crawler counters keep reporting it as "other".
     expect(webRouteType('/recent')).toBe('other');
     expect(webRouteType('/zh/recent?page=2')).toBe('other');
+    expect(RECENT_EDGE_CACHE_VALUE).toBe('max-age=60, stale-while-revalidate=300, stale-if-error=300');
+    for (const status of [404, 429, 500, 503])
+      expect(edgeCacheHeader(page({ path: '/zh/recent', status }))).toBe('no-store');
     for (const path of ['/recent/extra', '/xx/recent', '/recentx', '/apps/recent'])
       expect(edgeRouteType(path), path).toBe(webRouteType(path));
     expect(edgeCacheHeader(page({ path: '/recent?page=99999', status: 404 }))).toBe('no-store');

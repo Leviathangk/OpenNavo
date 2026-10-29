@@ -534,6 +534,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   const packageQueries = [];
   // App list total, so a cached list page can be made to run past its end.
   let packagesTotal = 50;
+  let hotVersion = '';
+  let hotFailure = '';
+  const hotReads = new Map();
   let sitemapPackageRequests = 0;
   const listCapabilities = [];
   const api = createServer((req, res) => {
@@ -544,7 +547,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     let data;
     let status = 200;
     const lifecycle = /^\/api\/v1\/packages\/cask\/([^/]+)\/lifecycle$/.exec(path)?.[1];
-    if (path.startsWith('/api/v1/seo/')) {
+    if (
+      [
+        '/api/v1/packages',
+        '/api/v1/packages/cask/ordinary-app',
+        '/api/v1/packages/cask/ordinary-app/releases'
+      ].includes(path)
+    )
+      hotReads.set(path, (hotReads.get(path) ?? 0) + 1);
+    if (hotFailure && path === hotFailure) {
+      status = 503;
+      data = null;
+    } else if (path.startsWith('/api/v1/seo/')) {
       seoApiRequests.push(path);
       status = 404;
       data = null;
@@ -656,7 +670,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         summary: 'Synthetic package summary',
         iconUrl: null,
         accentColor: null,
-        version: '11.0',
+        version: hotVersion || '11.0',
         primaryCategory: null,
         installs30d: 10,
         rank30d: 1,
@@ -778,7 +792,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           hasNotes: true,
           summary: null,
           sections: [],
-          bodyMarkdown: 'Release fixture notes',
+          bodyMarkdown: `Release fixture notes${hotVersion ? ` revision ${hotVersion}` : ''}`,
           translation: { status: 'manual', locale: locale ?? 'en-US' }
         })),
         stats: {
@@ -884,7 +898,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
               token === 'ordinary-app'
                 ? `Revision ${revision} of a synthetic package.`
                 : 'A synthetic package for SSR regression tests.',
-            version: '11.0',
+            version: token === 'ordinary-app' && hotVersion ? hotVersion : '11.0',
             versionChangedAt: '2026-01-01T00:00:00Z',
             tap: 'homebrew/cask',
             installCommand: `brew install --cask ${token}`,
@@ -2450,7 +2464,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     // Recently Updated is a list like /apps, paginated pages included. (Later tests need /recent itself
     // uncached by the route cache, so these are other languages' URLs.)
     for (const path of ['/pt/recent', '/ru/recent?page=2', '/es/recent?page=2&size=12'])
-      assert.deepEqual(await edge(path), [200, SHORT_EDGE], path);
+      assert.deepEqual(await edge(path), [200, 'max-age=60, stale-while-revalidate=300, stale-if-error=300'], path);
     // Feeds: an app's release feed is purged with the app, so it keeps long; the others expire like lists.
     for (const path of ['/apps/ordinary-app/feed.xml', '/zh/apps/ordinary-app/feed.xml']) {
       const response = await fetch(`${origin}${path}`);
@@ -3706,6 +3720,95 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(articles.includes('<loc>https://example.test/articles</loc>'));
     assert.ok((await group('authors')).includes('<loc>https://example.test/authors/lin-wei</loc>'));
     assert.ok(!(await group('en-static')).includes('<loc>https://example.test/articles</loc>'));
+  });
+  await t.test(
+    'hot page caches isolate locales and query variants, invalidate content, and never store 503s',
+    async () => {
+      const paths = [
+        '/recent',
+        '/ja/recent?page=2',
+        '/apps/ordinary-app/versions',
+        '/zh/apps/ordinary-app/versions?notes=1'
+      ];
+      const prefixes = ['/recent', '/ja/recent', '/apps/ordinary-app', '/zh/apps/ordinary-app'];
+      const request = async path => {
+        const response = await fetch(origin + path, { headers: { accept: 'text/html' } });
+        return { response, html: await response.text() };
+      };
+      const imageURL = html => /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
+      try {
+        await invalidatePaths(prefixes);
+        const before = [];
+        for (const path of paths) {
+          const first = await request(path);
+          assert.equal(first.response.status, 200, path);
+          assert.match(
+            first.response.headers.get('cache-control'),
+            path.includes('/recent') ? /s-maxage=60/ : /s-maxage=21600/
+          );
+          const reads = [...hotReads];
+          const second = await request(path);
+          assert.equal(second.html, first.html, `${path}: warm HTML`);
+          assert.deepEqual([...hotReads], reads, `${path}: a cache hit must not call the API`);
+          before.push(first.html);
+        }
+        assert.notEqual(imageURL(before[0]), imageURL(before[1]), 'localized images have separate URLs');
+        assert.notEqual(imageURL(before[2]), imageURL(before[3]), 'localized app images have separate URLs');
+        hotVersion = '11.99';
+        assert.equal((await request(paths[2])).html, before[2], 'content is cached until the change-feed purge');
+        await invalidatePaths(prefixes);
+        for (const [index, path] of paths.entries()) {
+          const updated = await request(path);
+          assert.equal(updated.response.status, 200);
+          assert.ok(updated.html.includes('11.99'), `${path}: new version after invalidation`);
+          if (path.includes('/versions'))
+            assert.notEqual(imageURL(updated.html), imageURL(before[index]), 'content version rotates OG URL');
+        }
+        for (const [path, failingAPI] of [
+          ['/recent', '/api/v1/packages'],
+          ['/apps/ordinary-app/versions', '/api/v1/packages/cask/ordinary-app/releases']
+        ]) {
+          await invalidatePaths(prefixes);
+          hotFailure = failingAPI;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const reads = hotReads.get(failingAPI);
+            const failed = await request(path);
+            assert.equal(failed.response.status, 503, path);
+            for (const header of ['cache-control', 'cdn-cache-control', 'cloudflare-cdn-cache-control'])
+              assert.equal(failed.response.headers.get(header), 'no-store', `${path}: ${header}`);
+            assert.ok(hotReads.get(failingAPI) > reads, 'an error must be retried rather than cached');
+          }
+          hotFailure = '';
+          assert.equal((await request(path)).response.status, 200, 'recovery needs no cache purge');
+        }
+      } finally {
+        hotFailure = '';
+        hotVersion = '';
+        await invalidatePaths(prefixes);
+      }
+    }
+  );
+  await t.test('OG images reuse bounded storage and advertise immutable caching only for valid images', async () => {
+    const html = await (await fetch(origin + '/ja/about')).text();
+    const url = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    assert.ok(url);
+    assert.match(url, /build_[^,]+/, 'shared template/font edits rotate the build input in the signed URL');
+    const local = url.replace('https://example.test', origin);
+    const first = await fetch(local);
+    assert.equal(first.status, 200, logs);
+    const bytes = Buffer.from(await first.arrayBuffer());
+    const second = await fetch(local);
+    assert.equal(second.status, 200, logs);
+    assert.equal(second.headers.get('x-og-cache'), 'HIT');
+    assert.deepEqual(Buffer.from(await second.arrayBuffer()), bytes);
+    assert.equal(second.headers.get('etag'), first.headers.get('etag'));
+    assert.match(second.headers.get('cache-control'), /max-age=2592000.*immutable/);
+    assert.match(second.headers.get('vary'), /host/i);
+    assert.match(second.headers.get('vary'), /accept-encoding/i);
+    const invalid = await fetch(local.replace(/s_[^,/.]+/, 's_invalid'));
+    assert.ok(invalid.status >= 400, 'an invalid signature is rejected');
+    assert.equal(invalid.headers.get('cache-control'), 'no-store');
+    await invalid.arrayBuffer();
   });
   // Moves the server clock, so it runs last.
   await t.test('a cached page that turns into a 404 stops answering 200 once it expires', async () => {

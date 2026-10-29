@@ -6,6 +6,7 @@ import { loadShedState } from '../utils/loadShed';
 import { renderMemoryMetrics } from '../utils/memoryMetrics';
 import { clearSitemapStorage } from '../utils/sitemapStorage';
 import { cacheBuildIdentity } from './cache-storage';
+import { createPageProbe, ProbeBusyError } from '../utils/pageProbe';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_PATHS = 10000;
@@ -44,6 +45,7 @@ export default defineNitroPlugin(nitroApp => {
     event.context.releaseInternalHTTP?.();
   });
   const config = useRuntimeConfig();
+  const probePages = createPageProbe(config.probeConcurrency, config.probeMaxRetryAfterSeconds);
   const port = Number(config.metricsPort);
   if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
   const activeHTTP = new InFlightCounter();
@@ -73,6 +75,7 @@ export default defineNitroPlugin(nitroApp => {
   const server = createServer(async (request, response) => {
     const reply = (status: number, body?: unknown) => {
       response.writeHead(status, {
+        'Cache-Control': 'no-store',
         'Content-Type': body === undefined ? 'text/plain' : 'application/json'
       });
       response.end(body === undefined ? '' : JSON.stringify(body));
@@ -140,19 +143,24 @@ export default defineNitroPlugin(nitroApp => {
       try {
         const body = (await readJSON(request)) as { paths?: unknown };
         const paths = Array.isArray(body.paths)
-          ? body.paths.filter((path): path is string => typeof path === 'string' && path.startsWith('/'))
+          ? body.paths.filter(
+              (path): path is string => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//')
+            )
           : [];
         if (!paths.length || paths.length > 10) return reply(400);
-        const statuses: Record<string, number> = {};
-        for (const path of paths) {
-          const result = await nitroApp.localFetch(path, {
+        const result = await probePages(paths, (path, signal) =>
+          nitroApp.localFetch(path, {
             headers: { accept: 'text/html', 'user-agent': 'OpenNavo-Probe/1.0' },
-            redirect: 'manual'
-          });
-          statuses[path] = result.status;
+            redirect: 'manual',
+            signal
+          })
+        );
+        return reply(200, result);
+      } catch (error) {
+        if (error instanceof ProbeBusyError) {
+          response.setHeader('Retry-After', '5');
+          return reply(503, { temporaryFailure: true });
         }
-        return reply(200, { statuses });
-      } catch {
         return reply(400);
       }
     }
