@@ -57,7 +57,7 @@ const pages: PageMessages = {
       date: 'Date',
       desktopTotal: 'Client cumulative users',
       desktopTotalHint:
-        'Counted per install; reinstalls count as new users. Cumulative since Oct 22. The reporting endpoint can be inflated with forged UUIDs.',
+        'Deduplicated by local installation ID; clearing app data may count as a new ID. Cumulative since Oct 22. The reporting endpoint can be inflated with forged UUIDs.',
       desktop: 'Client DAU',
       web: 'Web DAU',
       newDesktop: 'New client IDs',
@@ -68,7 +68,8 @@ const pages: PageMessages = {
       empty: 'No activity reported yet. Reports appear after clients run or visitors use the website.',
       trend: 'Daily activity · {start} to {end}',
       details: 'Daily counts',
-      newHint: 'New means first observed with this ID. Clearing local data or reinstalling may count as new.'
+      newHint:
+        'New means first observed with this ID. Client reinstalls and upgrades reuse it while app data remains; clearing app or browser data may create a new ID.'
     },
     scale: 'Catalog',
     total: 'Apps',

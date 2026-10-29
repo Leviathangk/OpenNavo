@@ -8186,7 +8186,7 @@ export interface components {
             asOf: string;
             /**
              * Format: int64
-             * @description Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Reinstalls count as new identities, and forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
+             * @description Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Identities are deduplicated by a locally persisted client installation UUID; upgrades and app-bundle reinstalls reuse it while app data remains. Clearing app data (including Homebrew zap) can create a new identity. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
              */
             desktopTotal: number;
             /**
