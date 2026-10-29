@@ -24,6 +24,7 @@ type historyTable struct {
 }
 
 var packageLifecycleFields = [...]string{"disabled", "stale_disabled", "disable_date", "disable_reason", "disable_replacement", "disabled_override_at", "disabled_override_date", "disabled_override_reason", "disabled_override_replacement", "disabled_override_stale", "disabled_override_version"}
+var packageDisabledOverrideFields = [...]string{"disabled_override_at", "disabled_override_date", "disabled_override_reason", "disabled_override_replacement", "disabled_override_stale", "disabled_override_version"}
 
 func historyTables(ref content.Ref, includePackageLifecycle bool) []historyTable {
 	spec, ok := content.Registry[ref.Entity]

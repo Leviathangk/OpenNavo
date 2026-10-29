@@ -123,3 +123,75 @@ WHERE id=802`).Error)
 	require.True(t, disabled)
 	require.Equal(t, int64(200), downloadSize)
 }
+
+func TestRestoreRevisionRestoresWholeDisabledOverrideGroup(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	actorID := int64(803)
+	require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(803,'override-history-fixture','isolated-test-only');
+INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,disabled,stale_disabled)
+VALUES(803,'cask','override-history','override-history','homebrew/cask','Override history','1','1','{}','fixture',true,true);
+INSERT INTO package_meta(package_id) VALUES(803)`).Error)
+	svc := &Service{Store: st}
+	permissions := []string{"catalog:package:edit"}
+	clear := func(requestID string, hidden bool) {
+		op := &domain.Operation{RequestID: requestID, Name: "updatePackageMeta", ActorID: &actorID, Permissions: permissions, RequiredPermissions: permissions, AllowDelete: true}
+		in := Input{ID: 803, Body: map[string]any{"hidden": hidden, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
+		_, err := svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
+		require.NoError(t, err)
+	}
+
+	requestID1 := uuid.NewString()
+	clear(requestID1, true)
+	var revisionID int64
+	require.NoError(t, st.DB.Raw("SELECT id FROM content_revisions WHERE request_id=? AND entity='package' ORDER BY id DESC LIMIT 1", requestID1).Scan(&revisionID).Error)
+	require.Positive(t, revisionID)
+
+	type overrideState struct {
+		At          sql.NullTime   `gorm:"column:disabled_override_at"`
+		Date        sql.NullString `gorm:"column:disabled_override_date"`
+		Reason      sql.NullString `gorm:"column:disabled_override_reason"`
+		Replacement sql.NullString `gorm:"column:disabled_override_replacement"`
+		Stale       bool           `gorm:"column:disabled_override_stale"`
+		Version     sql.NullString `gorm:"column:disabled_override_version"`
+	}
+	readOverride := func() overrideState {
+		var state overrideState
+		require.NoError(t, st.DB.Raw(`SELECT disabled_override_at,disabled_override_date::text,disabled_override_reason,disabled_override_replacement,disabled_override_stale,disabled_override_version FROM packages WHERE id=803`).Scan(&state).Error)
+		return state
+	}
+	target := readOverride()
+	require.True(t, target.At.Valid)
+	require.False(t, target.Date.Valid)
+	require.False(t, target.Reason.Valid)
+	require.False(t, target.Replacement.Valid)
+	require.True(t, target.Stale)
+	require.Equal(t, "1", target.Version.String)
+
+	// The second clear writes a new override payload while leaving revision #1's
+	// target snapshot available for the restore below.
+	require.NoError(t, st.DB.Exec(`UPDATE packages
+SET disabled=true,stale_disabled=false,version='2',disable_date='2026-02-02',disable_reason='later',disable_replacement='cask:later'
+WHERE id=803`).Error)
+	clear(uuid.NewString(), false)
+	later := readOverride()
+	require.Equal(t, "2026-02-02", later.Date.String)
+	require.Equal(t, "later", later.Reason.String)
+	require.Equal(t, "cask:later", later.Replacement.String)
+	require.False(t, later.Stale)
+	require.Equal(t, "2", later.Version.String)
+
+	_, err := svc.Execute(ctx, "RestoreRevision", Input{ID: revisionID, Body: map[string]any{}})
+	require.NoError(t, err)
+	restored := readOverride()
+	require.True(t, restored.At.Valid)
+	require.True(t, target.At.Time.Equal(restored.At.Time))
+	require.Equal(t, target.Date, restored.Date)
+	require.Equal(t, target.Reason, restored.Reason)
+	require.Equal(t, target.Replacement, restored.Replacement)
+	require.Equal(t, target.Stale, restored.Stale)
+	require.Equal(t, target.Version, restored.Version)
+	require.False(t, restored.Date.Valid)
+	require.False(t, restored.Reason.Valid)
+	require.False(t, restored.Replacement.Valid)
+}
