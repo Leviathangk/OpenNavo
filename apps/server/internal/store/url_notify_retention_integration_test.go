@@ -32,7 +32,7 @@ func TestURLNotificationRetentionPreservesDeliveryAndSettingsBarrier(t *testing.
 	witness := insert("/apps/replaced", "announced", before.Add(-time.Hour))
 	barrier := insert("/", "dead", before.Add(-time.Hour))
 	require.NoError(t, st.DB.Exec("UPDATE url_notify_state SET probe_ready_at=?,probe_failures=3", now.Add(time.Hour)).Error)
-	claim, err := st.ClaimURLNotifications(ctx, "before", now, 100)
+	claim, err := st.ClaimURLNotifications(ctx, "before", now, 100, 0)
 	require.NoError(t, err)
 	require.Empty(t, claim)
 	// A locked receipt does not hold up cleanup or allow deleting its superseding witness.
@@ -58,10 +58,10 @@ func TestURLNotificationRetentionPreservesDeliveryAndSettingsBarrier(t *testing.
 	for _, id := range []int64{staleSuccess, staleDead, replaced, witness} {
 		require.NotContains(t, remaining, id)
 	}
-	claim, err = st.ClaimURLNotifications(ctx, "after", now, 100)
+	claim, err = st.ClaimURLNotifications(ctx, "after", now, 100, 0)
 	require.NoError(t, err)
 	require.Empty(t, claim)
-	cooldown, err := st.URLProbeReadyAt(ctx)
+	cooldown, err := st.URLProbeReadyAt(ctx, now, time.Hour)
 	require.NoError(t, err)
 	require.WithinDuration(t, now.Add(time.Hour), cooldown, time.Second)
 	queue, err := st.URLNotifyQueue(ctx, now)
@@ -72,7 +72,7 @@ func TestURLNotificationRetentionPreservesDeliveryAndSettingsBarrier(t *testing.
 	n, err = st.PruneURLNotifications(ctx, before, 1000)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), n)
-	claim, err = st.ClaimURLNotifications(ctx, "released", now, 100)
+	claim, err = st.ClaimURLNotifications(ctx, "released", now, 100, 0)
 	require.NoError(t, err)
 	require.Len(t, claim, len(live))
 	var exists bool

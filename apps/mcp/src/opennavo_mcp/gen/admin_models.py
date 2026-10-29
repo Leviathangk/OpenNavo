@@ -4794,6 +4794,10 @@ class LinkPackageAdd(BaseModel):
     homepage: str | None | MISSING = MISSING
     downloadUrl: str | None | MISSING = MISSING
     githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix.')] = MISSING
+    githubTagPrefix: Annotated[str | None | MISSING, Field(description='Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.', max_length=256, min_length=1)] = MISSING
+    githubTagRegex: Annotated[str | None | MISSING, Field(description='Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.', max_length=1024, min_length=1)] = MISSING
+    githubAssetPattern: Annotated[str | None | MISSING, Field(description='Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.', max_length=512, min_length=1)] = MISSING
+    includePrereleases: Annotated[bool | MISSING, Field(description='Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback.')] = MISSING
     bundleIds: Annotated[list[str] | MISSING, Field(max_length=32)] = MISSING
     teamId: Annotated[str | None | MISSING, Field(pattern='^[A-Z0-9]{10}$')] = MISSING
     pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source', 'unknown']
@@ -4812,6 +4816,10 @@ class LinkPackageUpdate(BaseModel):
     homepage: str | None | MISSING = MISSING
     downloadUrl: str | None | MISSING = MISSING
     githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix.')] = MISSING
+    githubTagPrefix: Annotated[str | None | MISSING, Field(description='Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.', max_length=256, min_length=1)] = MISSING
+    githubTagRegex: Annotated[str | None | MISSING, Field(description='Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.', max_length=1024, min_length=1)] = MISSING
+    githubAssetPattern: Annotated[str | None | MISSING, Field(description='Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.', max_length=512, min_length=1)] = MISSING
+    includePrereleases: Annotated[bool | MISSING, Field(description='Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback.')] = MISSING
     bundleIds: Annotated[list[str] | MISSING, Field(max_length=32)] = MISSING
     teamId: Annotated[str | None | MISSING, Field(pattern='^[A-Z0-9]{10}$')] = MISSING
     pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source', 'unknown'] | MISSING = MISSING
@@ -4831,6 +4839,10 @@ class LinkPackage(BaseModel):
     homepage: Annotated[str | None, Field(...)]
     downloadUrl: Annotated[str | None, Field(...)]
     githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix.')]
+    githubTagPrefix: Annotated[str | None | MISSING, Field(description='Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.', max_length=256, min_length=1)] = MISSING
+    githubTagRegex: Annotated[str | None | MISSING, Field(description='Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.', max_length=1024, min_length=1)] = MISSING
+    githubAssetPattern: Annotated[str | None | MISSING, Field(description='Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.', max_length=512, min_length=1)] = MISSING
+    includePrereleases: Annotated[bool | MISSING, Field(description='Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback.')] = MISSING
     bundleIds: Annotated[list[str], Field(max_length=32)]
     teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')]
     pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source', 'unknown']

@@ -16,6 +16,10 @@ const props = defineProps<{
   tagline: string;
   platform: string;
   site?: string;
+  // eslint-disable-next-line vue/no-unused-properties -- Version the signed cache URL without rendering the build ID.
+  build?: string;
+  // eslint-disable-next-line vue/no-unused-properties -- Invalidate immutable images when the app version changes.
+  contentVersion?: string;
 }>();
 // Wide CJK characters and long names need smaller lettering within the fixed share-image canvas.
 const titleSize = computed(() => {

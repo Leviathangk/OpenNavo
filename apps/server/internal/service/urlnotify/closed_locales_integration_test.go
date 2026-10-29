@@ -55,7 +55,7 @@ func TestClosedLocalesAreNotAnnounced(t *testing.T) {
 		require.NoError(t, store.QueueURLNotification(ctx, st.DB, note))
 	}
 	require.NoError(t, st.DB.Exec(`UPDATE url_notify_outbox SET state='probed',next_attempt_at=?`, now).Error)
-	rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 10)
+	rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 10, 0)
 	require.NoError(t, err)
 	require.Len(t, rows, 6)
 	settings, err := st.SEOSettings(ctx)

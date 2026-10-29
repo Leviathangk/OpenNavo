@@ -34,7 +34,7 @@ func TestBulkCatalogRefreshDoesNotReadReleaseTimelines(t *testing.T) {
 	plan, count, err := n.catalogPlan(context.Background(), 0, end, time.Now().Add(time.Minute))
 	require.NoError(t, err)
 	require.Equal(t, 51, count)
-	require.Len(t, plan.Paths, 51*len(seo.Locales), "all refresh obligations are preserved")
+	require.Len(t, plan.Paths, 52*len(seo.Locales), "all refresh obligations are preserved")
 	require.Empty(t, plan.IndexNowURLs)
 	// A real app update in the same batch must still load facts before announcing.
 	require.NoError(t, st.DB.Exec(`INSERT INTO catalog_changes(package_id,kind,token,op,reason)

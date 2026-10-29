@@ -11,6 +11,8 @@ const props = defineProps<{
   tagline: string;
   platform: string;
   site?: string;
+  // eslint-disable-next-line vue/no-unused-properties -- Version the signed cache URL without rendering the build ID.
+  build?: string;
   variant: 'home' | 'discover';
   icons?: { name: string; token: string; src?: string | null; accent?: string | null }[];
 }>();
