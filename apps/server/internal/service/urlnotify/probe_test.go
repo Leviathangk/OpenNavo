@@ -20,6 +20,7 @@ func TestProbeRetryDelay(t *testing.T) {
 	for _, header := range []string{"2147483647", "Fri, 31 Dec 9999 23:59:59 GMT"} {
 		require.Equal(t, 15*time.Minute, probeRetryDelay(header, 0, now, 0))
 		require.Equal(t, 45*time.Second, probeRetryDelay(header, 0, now, 45*time.Second))
+		require.Equal(t, 24*time.Hour, probeRetryDelay(header, 0, now, 48*time.Hour))
 	}
 	for attempt := range 3 {
 		for _, header := range []string{"", "invalid", "-1", "-0", "+1", "-9999", "9999999999", now.Add(-time.Hour).Format(http.TimeFormat)} {

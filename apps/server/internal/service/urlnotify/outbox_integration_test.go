@@ -195,7 +195,7 @@ func TestDurableOutboxFailuresRestartAndFencing(t *testing.T) {
 	})
 	t.Run("old revision and expired owner cannot acknowledge", func(t *testing.T) {
 		require.NoError(t, st.DB.Transaction(func(tx *gorm.DB) error { return store.QueueURLNotification(ctx, tx, note) }))
-		rows, err := st.ClaimURLNotifications(ctx, "old", now, 1)
+		rows, err := st.ClaimURLNotifications(ctx, "old", now, 1, 0)
 		require.NoError(t, err)
 		require.Len(t, rows, 1)
 		require.NoError(t, st.DB.Transaction(func(tx *gorm.DB) error { return store.QueueURLNotification(ctx, tx, note) }))
@@ -204,7 +204,7 @@ func TestDurableOutboxFailuresRestartAndFencing(t *testing.T) {
 		require.False(t, owned)
 		require.NoError(t, st.CompleteURLNotification(ctx, rows[0], "announced", nil, now))
 		require.Equal(t, "pending", state())
-		fresh, err := st.ClaimURLNotifications(ctx, "fresh", now, 1)
+		fresh, err := st.ClaimURLNotifications(ctx, "fresh", now, 1, 0)
 		require.NoError(t, err)
 		require.Len(t, fresh, 1)
 		require.Greater(t, fresh[0].Revision, rows[0].Revision)

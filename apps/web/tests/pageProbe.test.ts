@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPageProbe, probeRetryDelay, PROBE_BUDGET_MS, ProbeBusyError } from '../server/utils/pageProbe';
+import {
+  createPageProbe,
+  probeRetryDelay,
+  PROBE_BUDGET_MS,
+  PROBE_SLOT_MAX_MS,
+  ProbeBusyError
+} from '../server/utils/pageProbe';
 
 function clock() {
   let now = Date.parse('2026-01-01T00:00:00Z');
@@ -59,6 +65,28 @@ describe('bounded internal page probes', () => {
       }
     }
   );
+
+  it('clamps retry cap configuration to 24h and warns only above the limit', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      for (const configured of [24 * 60 * 60, 25 * 60 * 60, '90000', Number.MAX_VALUE]) {
+        warn.mockClear();
+        const result = await createPageProbe(1, configured)(
+          ['/recent'],
+          async () => response(503, '2147483647'),
+          clock()
+        );
+        expect(result.temporaryFailures['/recent']).toEqual({ retryAfterSeconds: 24 * 60 * 60 });
+        if (Number(configured) > 24 * 60 * 60) {
+          expect(warn).toHaveBeenCalledExactlyOnceWith('probe retry cap exceeds 24h; clamping to 24h');
+        } else {
+          expect(warn).not.toHaveBeenCalled();
+        }
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
 
   it('retries 429/503, releases response bodies and recovers without marking a page missing', async () => {
     const time = clock();
@@ -147,6 +175,7 @@ describe('bounded internal page probes', () => {
 
   it('returns within the budget even when an internal transport ignores cancellation', async () => {
     vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       let signal!: AbortSignal;
       const pending = createPageProbe(1)(['/hung', '/later'], async (_path, value) => {
@@ -158,11 +187,60 @@ describe('bounded internal page probes', () => {
       expect(signal.aborted).toBe(true);
       expect(result.statuses).toEqual({ '/hung': 503, '/later': 503 });
       expect(Object.keys(result.temporaryFailures)).toEqual(['/hung', '/later']);
+      expect(vi.getTimerCount()).toBe(1);
+      await vi.advanceTimersByTimeAsync(PROBE_SLOT_MAX_MS - PROBE_BUDGET_MS);
+      expect(warn).toHaveBeenCalledExactlyOnceWith('page probe slot exceeded its hard deadline; releasing capacity');
       expect(vi.getTimerCount()).toBe(0);
     } finally {
+      warn.mockRestore();
       vi.useRealTimers();
     }
   });
+
+  it.each(['never', 'resolve', 'reject'])(
+    'force-releases a hung slot once and preserves capacity after late settlement: %s',
+    async settlement => {
+      vi.useFakeTimers();
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const probe = createPageProbe(1);
+        let settle!: () => void;
+        const hung = probe(
+          ['/hung'],
+          () =>
+            new Promise<ReturnType<typeof response>>((resolve, reject) => {
+              settle = () => (settlement === 'reject' ? reject(new Error('late rejection')) : resolve(response(200)));
+            })
+        );
+        await vi.advanceTimersByTimeAsync(PROBE_BUDGET_MS);
+        expect((await hung).statuses['/hung']).toBe(503);
+        await expect(probe(['/blocked'], async () => response(200))).rejects.toBeInstanceOf(ProbeBusyError);
+        await vi.advanceTimersByTimeAsync(PROBE_SLOT_MAX_MS - PROBE_BUDGET_MS - 1);
+        await expect(probe(['/blocked'], async () => response(200))).rejects.toBeInstanceOf(ProbeBusyError);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(warn).toHaveBeenCalledTimes(1);
+        let finish!: () => void;
+        const replacement = probe(
+          ['/replacement'],
+          () =>
+            new Promise<ReturnType<typeof response>>(resolve => {
+              finish = () => resolve(response(200));
+            })
+        );
+        if (settlement !== 'never') settle();
+        await vi.advanceTimersByTimeAsync(0);
+        await expect(probe(['/extra'], async () => response(200))).rejects.toBeInstanceOf(ProbeBusyError);
+        finish();
+        expect((await replacement).statuses['/replacement']).toBe(200);
+        expect((await probe(['/recovered'], async () => response(200))).statuses['/recovered']).toBe(200);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        warn.mockRestore();
+        vi.useRealTimers();
+      }
+    }
+  );
 
   it('bounds simultaneous callers without retaining a queue, and releases capacity after failure', async () => {
     for (const concurrency of [undefined, 0, -1, 'invalid', 1, 2]) {

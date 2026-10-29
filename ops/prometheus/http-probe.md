@@ -28,7 +28,8 @@ These are availability checks, not full functional/database checks.
 The default concurrency is one. Retries for 429/503 and transport failures share
 a twelve-second scrape budget and never exceed three attempts per target.
 `Retry-After` seconds/dates take precedence over exponential backoff with jitter,
-up to `maxRetryAfterSeconds` (default 900 seconds, or 15 minutes). Invalid or
+up to `maxRetryAfterSeconds` (default 900 seconds, or 15 minutes). Configured
+values above 86400 seconds clamp to 24 hours and log a warning. Invalid or
 negative headers use the default backoff. Capped cooldowns persist across
 scrapes in at most eight target slots. Deferred
 checks export `temporary_failure=1` and `retry_after_seconds` while `success=0`

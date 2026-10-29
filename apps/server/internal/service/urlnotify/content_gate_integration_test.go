@@ -346,7 +346,7 @@ func TestIndexNowContentGate(t *testing.T) {
 		f := fixture(t)
 		note := f.queue("/apps/gate-app", seo.IndexableRobots, "invalidated")
 		ctx := context.Background()
-		rows, err := f.st.ClaimURLNotifications(ctx, "fixture-owner", f.now, 1)
+		rows, err := f.st.ClaimURLNotifications(ctx, "fixture-owner", f.now, 1, 0)
 		require.NoError(t, err)
 		require.Len(t, rows, 1)
 		for _, change := range []func(*store.URLNotificationRow){

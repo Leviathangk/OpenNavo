@@ -98,6 +98,18 @@ class ProbeTest(unittest.TestCase):
             self.assertIn('temporary_failure{service="web",layer="origin"} 1', result)
             self.assertGreater(state['due'], self.now)
 
+    def test_retry_cap_configuration_clamps_at_24_hours_and_warns(self):
+        for configured in [86400, 86400.1, 90000, 10 ** 300]:
+            with self.subTest(configured=configured):
+                with patch.object(module.logging, 'warning') as warning:
+                    policy = module.ProbePolicy({'maxRetryAfterSeconds': configured})
+                    self.assertEqual(policy.max_retry_after, 86400)
+                    if configured > 86400:
+                        warning.assert_called_once_with('probe retry cap exceeds 24h; clamping to 24h')
+                    else:
+                        warning.assert_not_called()
+                self.assertEqual(module.retry_delay('2147483647', 0, policy.max_retry_after), 86400)
+
     def test_total_scrape_deadline_bounds_all_targets(self):
         target = dict(service='web', layer='origin', url='https://example.org/')
         def timeout(*_args, **kwargs):

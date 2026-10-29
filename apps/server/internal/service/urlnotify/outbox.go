@@ -213,7 +213,7 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 	}
 	// Three bounded passes allow a healthy batch to finish all phases in one worker invocation.
 	for pass := 0; pass < 3; pass++ {
-		rows, err := n.Store.ClaimURLNotifications(ctx, owner, n.Now(), min(n.Batch, 100))
+		rows, err := n.Store.ClaimURLNotifications(ctx, owner, n.Now(), min(n.Batch, 100), n.Config.IndexNowProbeMaxRetryAfter)
 		if err != nil {
 			return purged, announced, err
 		}
@@ -560,7 +560,7 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	if target.Host != site.Host || target.Scheme != site.Scheme {
 		return errors.New("notification outside configured site")
 	}
-	due, err := n.Store.URLProbeReadyAt(ctx)
+	due, err := n.Store.URLProbeReadyAt(ctx, n.Now(), n.Config.IndexNowProbeMaxRetryAfter)
 	if err != nil {
 		return err
 	}
@@ -575,14 +575,14 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 		if errors.As(err, &wait) {
 			retryAt = wait.until
 		}
-		if e := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, true); e != nil {
+		if e := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, true, n.Config.IndexNowProbeMaxRetryAfter); e != nil {
 			return e
 		}
-		due, e := n.Store.URLProbeReadyAt(ctx)
+		due, e := n.Store.URLProbeReadyAt(ctx, n.Now(), n.Config.IndexNowProbeMaxRetryAfter)
 		if e != nil {
 			return e
 		}
-		return &probeWait{until: maxProbeTime(due, retryAt)}
+		return &probeWait{until: due}
 	}
 	defer func() { _ = response.Body.Close() }()
 	overloaded := response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500
@@ -590,7 +590,7 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	if overloaded {
 		retryAt = n.Now().Add(probeRetryDelay(response.Header.Get("Retry-After"), 0, n.Now(), n.Config.IndexNowProbeMaxRetryAfter))
 	}
-	if err := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, overloaded); err != nil {
+	if err := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, overloaded, n.Config.IndexNowProbeMaxRetryAfter); err != nil {
 		return err
 	}
 	if row.Robots == "" && (response.StatusCode >= 300 && response.StatusCode < 400 || response.StatusCode == 404 || response.StatusCode == 410) {

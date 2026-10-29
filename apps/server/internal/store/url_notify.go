@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/config"
 	"gorm.io/gorm"
 )
 
@@ -207,32 +208,39 @@ func (s *Store) ReserveURLPurge(ctx context.Context, now time.Time, interval tim
 	return result.RowsAffected == 1, result.Error
 }
 
-func (s *Store) URLPurgeReadyAt(ctx context.Context) (time.Time, error) {
+func (s *Store) URLPurgeReadyAt(ctx context.Context, now time.Time, maxRetryAfter time.Duration) (time.Time, error) {
 	var due time.Time
-	err := s.DB.WithContext(ctx).Raw("SELECT next_purge_at FROM url_notify_state WHERE id=true").Scan(&due).Error
+	// Persist the bound so repeated reads and restarts cannot move it forward.
+	err := s.DB.WithContext(ctx).Raw(`UPDATE url_notify_state SET next_purge_at=least(coalesce(next_purge_at,'epoch'::timestamptz),?)
+ WHERE id=true RETURNING next_purge_at`, now.Add(config.ProbeRetryAfterCap(maxRetryAfter))).Scan(&due).Error
 	return due, err
 }
 
 // Account-level throttling may outlive our own interval. Persist the cooldown
 // so release purges, other workers and restarts all honor the same deadline.
-func (s *Store) DelayURLPurge(ctx context.Context, due time.Time) error {
-	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=greatest(next_purge_at,?) WHERE id=true", due).Error
+func (s *Store) DelayURLPurge(ctx context.Context, now, due time.Time, maxRetryAfter time.Duration) error {
+	capAt := now.Add(config.ProbeRetryAfterCap(maxRetryAfter))
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=greatest(least(next_purge_at,?),least(?::timestamptz,?)) WHERE id=true", capAt, due, capAt).Error
 }
 
 // URLProbeReadyAt persists overload cooldown across notifier restarts.
-func (s *Store) URLProbeReadyAt(ctx context.Context) (time.Time, error) {
+func (s *Store) URLProbeReadyAt(ctx context.Context, now time.Time, maxRetryAfter time.Duration) (time.Time, error) {
 	var row struct{ Ready time.Time }
-	err := s.DB.WithContext(ctx).Raw("SELECT coalesce(probe_ready_at, 'epoch'::timestamptz) AS ready FROM url_notify_state WHERE id=true").Scan(&row).Error
+	// Repair legacy unbounded values once; a read-only now+cap would slide forever.
+	err := s.DB.WithContext(ctx).Raw(`UPDATE url_notify_state SET probe_ready_at=least(coalesce(probe_ready_at,'epoch'::timestamptz),?)
+ WHERE id=true RETURNING probe_ready_at AS ready`, now.Add(config.ProbeRetryAfterCap(maxRetryAfter))).Scan(&row).Error
 	return row.Ready, err
 }
 
-func (s *Store) RecordURLProbe(ctx context.Context, now, retryAt time.Time, overloaded bool) error {
+func (s *Store) RecordURLProbe(ctx context.Context, now, retryAt time.Time, overloaded bool, maxRetryAfter time.Duration) error {
+	capAt := now.Add(config.ProbeRetryAfterCap(maxRetryAfter))
 	if !overloaded {
-		return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET probe_failures=0 WHERE id=true").Error
+		return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET probe_failures=0,probe_ready_at=least(probe_ready_at,?) WHERE id=true", capAt).Error
 	}
 	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_state SET
- probe_ready_at=greatest(probe_ready_at, ?, ?::timestamptz + make_interval(secs => 30 * power(2, least(probe_failures, 6))::int)),
- probe_failures=least(probe_failures+1, 7) WHERE id=true`, retryAt, now).Error
+ probe_ready_at=greatest(least(probe_ready_at,?),least(?::timestamptz,?),
+ least(?::timestamptz + make_interval(secs => 30 * power(2, least(probe_failures, 6))::int),?)),
+ probe_failures=least(probe_failures+1, 7) WHERE id=true`, capAt, retryAt, capAt, now, capAt).Error
 }
 
 // CollapseURLPurges coalesces only sections represented in the queue. In particular,

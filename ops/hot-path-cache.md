@@ -35,12 +35,17 @@ successful page instead of replacing it with an error.
   positive overrides up to five seconds. A page gets at most three HTTP
   attempts within ten seconds, including pacing. 429 and every 503 honor
   `Retry-After` seconds or HTTP dates up to `INDEXNOW_PROBE_MAX_RETRY_AFTER`
-  (default `15m`; zero selects the default); absent, invalid or negative headers
+  (default `15m`; zero selects the default; values above `24h` clamp with a
+  warning); absent, invalid or negative headers
   use exponential backoff with jitter. The capped delay is persisted when it
   exceeds the run budget. Exhaustion and transport failures defer the existing
   outbox row
   without spending delivery attempts or declaring the page removed. The
-  existing durable exponential cooldown survives worker restarts.
+  existing durable exponential cooldown survives worker restarts. Reads and
+  writes persistently cap old probe and purge deadlines, so repeated reads do
+  not extend recovery. Legacy outbox deadlines beyond 24 hours are shortened
+  to the configured cap when claiming work; normal content waits and next-day
+  announcement budgets retain their schedules.
 - The internal `/cache/probe` endpoint shares one active batch per web process
   by default (`NUXT_PROBE_CONCURRENCY`, clamped to 1–4), with no waiting queue.
   Each batch handles at most ten paths sequentially, three attempts per path
@@ -50,12 +55,15 @@ successful page instead of replacing it with an error.
   per-URL state. `NUXT_PROBE_MAX_RETRY_AFTER_SECONDS` caps server-provided
   cooldowns at 900 seconds by default. Capacity refusals are uncached 503s.
   Timed-out local requests retain their concurrency slot until the underlying
-  request settles, even though the endpoint returns the timeout result early.
+  request settles or a hard 30-second slot deadline expires. Expiry releases
+  capacity and logs a warning; late settlement cannot release it a second time.
+  Retry cap configuration above 24 hours clamps to 24 hours with a warning.
 - The optional Prometheus HTTP exporter changes from four workers to one.
   Its local JSON accepts `"probe": {"concurrency": 1, "maxAttempts": 3,
   "budgetSeconds": 12, "maxRetryAfterSeconds": 900}`. Concurrency is bounded to
   1–4, attempts to 1–3 and the entire scrape to 1–12 seconds, below its documented
-  15-second timeout. Server-provided cooldowns default to a 15-minute cap.
+  15-second timeout. Server-provided cooldowns default to a 15-minute cap;
+  configured caps above 24 hours clamp to 24 hours with a warning.
   Per-target cooldown slots are bounded by the eight configured targets and
   retained across scrapes. Long waits skip HTTP requests on subsequent scrapes.
   `temporary_failure` and `retry_after_seconds` metrics distinguish deferred

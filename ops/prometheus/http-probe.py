@@ -2,6 +2,7 @@
 """Bounded HTTP probes for the existing Prometheus instance (stdlib + curl)."""
 import concurrent.futures
 import json
+import logging
 import math
 import random
 import subprocess
@@ -11,6 +12,7 @@ from email.utils import parsedate_to_datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 DEFAULT_MAX_RETRY_AFTER_SECONDS = 15 * 60
+MAX_RETRY_AFTER_SECONDS = 24 * 60 * 60
 
 
 class ProbePolicy:
@@ -27,6 +29,9 @@ class ProbePolicy:
                 or type(self.max_retry_after) not in (int, float) or not math.isfinite(self.max_retry_after)
                 or self.max_retry_after <= 0):
             raise ValueError('invalid bounded probe policy')
+        if self.max_retry_after > MAX_RETRY_AFTER_SECONDS:
+            logging.warning('probe retry cap exceeds 24h; clamping to 24h')
+            self.max_retry_after = MAX_RETRY_AFTER_SECONDS
 
 
 def retry_delay(header, failures, max_retry_after=DEFAULT_MAX_RETRY_AFTER_SECONDS):

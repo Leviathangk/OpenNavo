@@ -1,6 +1,8 @@
 export const PROBE_MAX_ATTEMPTS = 3;
 export const PROBE_BUDGET_MS = 10_000;
 export const PROBE_MAX_RETRY_AFTER_SECONDS = 15 * 60;
+export const PROBE_RETRY_AFTER_LIMIT_SECONDS = 24 * 60 * 60;
+export const PROBE_SLOT_MAX_MS = 3 * PROBE_BUDGET_MS;
 
 export class ProbeBusyError extends Error {}
 
@@ -71,9 +73,11 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
   const parsed = Number(concurrency);
   const limit = Number.isInteger(parsed) && parsed >= 1 ? Math.min(parsed, 4) : 1;
   const retryCap = Number(maxRetryAfterSeconds);
+  if (Number.isFinite(retryCap) && retryCap > PROBE_RETRY_AFTER_LIMIT_SECONDS)
+    console.warn('probe retry cap exceeds 24h; clamping to 24h');
   const maxRetryAfterMs =
-    Number.isFinite(retryCap) && retryCap > 0 && Number.isSafeInteger(retryCap * 1000)
-      ? retryCap * 1000
+    Number.isFinite(retryCap) && retryCap > 0
+      ? Math.min(retryCap, PROBE_RETRY_AFTER_LIMIT_SECONDS) * 1000
       : PROBE_MAX_RETRY_AFTER_SECONDS * 1000;
   let active = 0;
   let cooldownUntil = 0;
@@ -90,13 +94,24 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
     active++;
     let pendingRequests = 0;
     let finished = false;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      active--;
+      clearTimeout(slotTimer);
+    };
+    const slotTimer = setTimeout(() => {
+      console.warn('page probe slot exceeded its hard deadline; releasing capacity');
+      release();
+    }, PROBE_SLOT_MAX_MS);
     const trackedFetch = async (path: string, signal: AbortSignal) => {
       pendingRequests++;
       try {
         return await fetch(path, signal);
       } finally {
         pendingRequests--;
-        if (finished && pendingRequests === 0) active--;
+        if (finished && pendingRequests === 0) release();
       }
     };
     const statuses: Record<string, number> = {};
@@ -107,7 +122,9 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
         let retryAt = Math.max(cooldownUntil, clock.now() + 1000);
         statuses[path] = 503;
         if (cooldownUntil > clock.now()) {
-          temporaryFailures[path] = { retryAfterSeconds: Math.ceil((cooldownUntil - clock.now()) / 1000) };
+          temporaryFailures[path] = {
+            retryAfterSeconds: Math.ceil((cooldownUntil - clock.now()) / 1000)
+          };
           continue;
         }
         for (let attempt = 0; attempt < PROBE_MAX_ATTEMPTS; attempt++) {
@@ -137,14 +154,16 @@ export function createPageProbe(concurrency: unknown, maxRetryAfterSeconds: unkn
         if (statuses[path] === 503 || statuses[path] === 429) {
           // One scalar cooldown covers later batches too, including legacy callers that only read statuses.
           cooldownUntil = Math.max(cooldownUntil, retryAt);
-          temporaryFailures[path] = { retryAfterSeconds: Math.max(1, Math.ceil((retryAt - clock.now()) / 1000)) };
+          temporaryFailures[path] = {
+            retryAfterSeconds: Math.max(1, Math.ceil((retryAt - clock.now()) / 1000))
+          };
         }
       }
       return { statuses, temporaryFailures };
     } finally {
-      // Returning the timeout does not mean Nitro stopped work; keep its admission slot until it settles.
+      // Keep cancelled Nitro work counted until it settles or the hard slot deadline expires.
       finished = true;
-      if (pendingRequests === 0) active--;
+      if (pendingRequests === 0) release();
     }
   };
 }

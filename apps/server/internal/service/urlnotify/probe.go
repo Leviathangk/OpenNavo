@@ -9,14 +9,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/config"
 )
 
 const probeBudget = 10 * time.Second
 const probeMaxAttempts = 3
-const defaultProbeMaxRetryAfter = 15 * time.Minute
 
-func maxProbeTime(a, b time.Time) time.Time {
-	if a.After(b) {
+func minProbeTime(a, b time.Time) time.Time {
+	if a.Before(b) {
 		return a
 	}
 	return b
@@ -45,9 +46,7 @@ func (n *Notifier) probePause(ctx context.Context, delay time.Duration) error {
 
 // Honor Retry-After up to the configured cap. Long waits go back to the durable outbox.
 func probeRetryDelay(header string, attempt int, now time.Time, maxRetryAfter time.Duration) time.Duration {
-	if maxRetryAfter <= 0 {
-		maxRetryAfter = defaultProbeMaxRetryAfter
-	}
+	maxRetryAfter = config.ProbeRetryAfterCap(maxRetryAfter)
 	header = strings.TrimSpace(header)
 	if seconds, err := strconv.ParseUint(header, 10, 31); err == nil {
 		return min(maxRetryAfter, max(100*time.Millisecond, time.Duration(seconds)*time.Second))
@@ -56,7 +55,7 @@ func probeRetryDelay(header string, attempt int, now time.Time, maxRetryAfter ti
 		return min(maxRetryAfter, due.Sub(now))
 	}
 	base := 500 * time.Millisecond * time.Duration(1<<min(attempt, 6))
-	return base + time.Duration(rand.Int64N(int64(base))) // #nosec G404 -- Retry jitter is not a security decision.
+	return min(maxRetryAfter, base+time.Duration(rand.Int64N(int64(base)))) // #nosec G404 -- Retry jitter is not a security decision.
 }
 
 func (n *Notifier) probeHTTP(ctx context.Context, rawURL string) (*http.Response, error) {

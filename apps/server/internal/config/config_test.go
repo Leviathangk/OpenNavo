@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"log/slog"
 	"math"
 	"net/url"
 	"os"
@@ -10,6 +12,34 @@ import (
 	"testing"
 	"time"
 )
+
+func TestProbeRetryCapClampsAndWarns(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	for _, configured := range []time.Duration{0, time.Second, 24 * time.Hour, 25 * time.Hour, time.Duration(math.MaxInt64)} {
+		logs.Reset()
+		cfg := validConfig()
+		cfg.IndexNowProbeMaxRetryAfter = configured
+		if err := cfg.Validate(); err != nil {
+			t.Fatal(err)
+		}
+		want := min(configured, 24*time.Hour)
+		if cfg.IndexNowProbeMaxRetryAfter != want {
+			t.Fatalf("configured %s: got %s, want %s", configured, cfg.IndexNowProbeMaxRetryAfter, want)
+		}
+		if warned := strings.Contains(logs.String(), "level=WARN") && strings.Contains(logs.String(), "clamping to 24h"); warned != (configured > 24*time.Hour) {
+			t.Fatalf("configured %s: unexpected warning: %s", configured, logs.String())
+		}
+		if want == 0 {
+			want = 15 * time.Minute
+		}
+		if cap := ProbeRetryAfterCap(configured); cap != want {
+			t.Fatalf("effective cap %s, want %s", cap, want)
+		}
+	}
+}
 
 func validConfig() Config {
 	return Config{AppEnv: "dev", PublicBaseURL: "http://localhost:8080", WebBaseURL: "http://localhost:3000", AdminOrigin: "http://localhost:9527", DatabaseURL: "postgres://localhost:55432/opennavo", RedisURL: "redis://localhost:56379", CDNBaseURL: "http://localhost:9000/opennavo", HomebrewAPIBase: "https://formulae.brew.sh/api", JWTSecret: strings.Repeat("x", 32), DBMaxOpenConns: 30, JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 168 * time.Hour, TZSchedule: "Asia/Shanghai", LogLevel: "info", TraditionalObjectsPerSecond: 20, TraditionalWritesPerMinute: 30}
