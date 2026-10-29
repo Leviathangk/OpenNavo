@@ -33,6 +33,26 @@ const pages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    githubReleases: {
+      title: 'GitHub 下载 / 更新',
+      downloads: '下载',
+      updates: '更新',
+      total: '全部版本累计',
+      today: '今日 {value}',
+      yesterday: '昨日 {value}',
+      snapshot: '最近快照 {time} · 北京时间 · 每小时采集',
+      never: '尚无成功快照 · 北京时间 · 每小时采集',
+      trend: '每日下载 / 更新趋势 · 近 30 天',
+      details: '每日明细',
+      date: '日期',
+      empty: '等待首次 GitHub 快照，请在系统设置中配置 GitHub Token。',
+      pending: '在另一个北京时间自然日采集快照后，将开始显示每日数据。',
+      dailyStart: '每日数据自 {date} 起开始统计。',
+      downloadsHint: '下载统计所有桌面版本的通用 DMG 下载次数，包含 Homebrew 安装和升级。',
+      updatesHint: '更新统计 Apple Silicon 和 Intel 的 .app.tar.gz 下载次数之和，下载次数不代表人数。',
+      releasesHint: '以后的 beta/预发布版与正式版一起算。',
+      dailyHint: '按北京时间自然日统计。— 表示无每日数据。漏采期间的增量计入下一个成功采集日，不补算历史。'
+    },
     intraday: {
       title: '当天活跃趋势',
       description: '每台设备/浏览器每天只计一次，计在当天首次活跃的小时；不是在线人数',
@@ -534,6 +554,7 @@ const pages = {
         catalog_sync: '目录同步',
         analytics_sync: '安装量同步',
         snapshot_build: '客户端快照',
+        'github-release_snapshot': 'GitHub 下载量快照',
         enrich_schedule: '包增强调度（已停用）',
         translate_schedule: '版本摘要调度（已停用）',
         changelog_schedule: '提交记录抓取调度',

@@ -14,6 +14,7 @@ import (
 
 type Definition struct {
 	Type, Queue, Cron string
+	AdditionalCrons   []string
 	Retries           int
 	Ref               string
 }
@@ -23,6 +24,7 @@ var Definitions = []Definition{
 	{Type: "catalog:sync", Queue: "critical", Cron: "*/15 * * * *", Retries: 3},
 	{Type: "analytics:sync", Queue: "default", Cron: "0 3 * * *", Retries: 5},
 	{Type: "snapshot:build", Queue: "critical", Cron: "5 * * * *", Retries: 3},
+	{Type: "github-release:snapshot", Queue: "default", Cron: "10 * * * *", AdditionalCrons: []string{"CRON_TZ=Asia/Shanghai 59 23 * * *"}, Retries: 3},
 
 	{Type: "changelog:schedule", Queue: "default", Cron: "*/10 * * * *", Retries: 3},
 	{Type: "changelog:resolve", Queue: "changelog", Retries: 3, Ref: "package"},
@@ -57,6 +59,14 @@ func DefinitionFor(taskType string) (Definition, error) {
 	}
 	return Definition{}, errors.New("unknown job type")
 }
+
+func (d Definition) cronSpecs() []string {
+	if d.Cron == "" {
+		return nil
+	}
+	return append([]string{d.Cron}, d.AdditionalCrons...)
+}
+
 func (d Definition) Key(payload Payload) string {
 	if d.Ref == "content" && payload.Content != nil {
 		return d.Type + ":" + payload.Content.Entity + ":" + payload.Content.Key() + ":" + payload.SourceHash
@@ -112,6 +122,11 @@ func uniqueTTL(definition Definition) time.Duration {
 	const shortest, longest = 20 * time.Minute, 23 * time.Hour
 	if definition.Cron == "" {
 		return 24 * time.Hour
+	}
+	if len(definition.AdditionalCrons) > 0 {
+		// Extra ticks can be closer than the primary period: 23:59 and 00:10
+		// are only eleven minutes apart. Use the run timeout as the lock floor.
+		return shortest
 	}
 	schedule, err := cron.ParseStandard(definition.Cron)
 	if err != nil {

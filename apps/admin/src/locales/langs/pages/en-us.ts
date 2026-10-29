@@ -44,6 +44,29 @@ const pages: PageMessages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    githubReleases: {
+      title: 'GitHub downloads / updates',
+      downloads: 'Downloads',
+      updates: 'Updates',
+      total: 'Total across all releases',
+      today: 'Today {value}',
+      yesterday: 'Yesterday {value}',
+      snapshot: 'Last snapshot {time} · Asia/Shanghai · Hourly',
+      never: 'No successful snapshot yet · Asia/Shanghai · Hourly',
+      trend: 'Daily downloads / updates · Last 30 days',
+      details: 'Daily counts',
+      date: 'Date',
+      empty: 'Waiting for the first GitHub snapshot. Configure the GitHub token in system settings.',
+      pending: 'Daily counts appear after a snapshot on another Beijing calendar day.',
+      dailyStart: 'Daily data starts from {date}.',
+      downloadsHint:
+        'Downloads count universal DMG transfers across all desktop releases, including Homebrew install and upgrade.',
+      updatesHint:
+        'Updates count .app.tar.gz transfers for Apple Silicon and Intel combined. Download counts, not people.',
+      releasesHint: 'Future beta/pre-release versions are counted together with stable releases.',
+      dailyHint:
+        'Days use Beijing time. — means no daily data. Missed days count toward the next successful snapshot day; history is not backfilled.'
+    },
     intraday: {
       title: 'Intraday active trend',
       description:
@@ -561,6 +584,7 @@ const pages: PageMessages = {
         catalog_sync: 'Catalog sync',
         analytics_sync: 'Install stats sync',
         snapshot_build: 'Desktop snapshot',
+        'github-release_snapshot': 'GitHub release download snapshot',
         enrich_schedule: 'Enrichment scheduler (retired)',
         translate_schedule: 'Release summary scheduler (retired)',
         changelog_schedule: 'Homebrew commit scheduler',

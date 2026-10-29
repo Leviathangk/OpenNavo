@@ -192,6 +192,11 @@ SELECT jsonb_build_object(
 		return nil, err
 	}
 	out["usage"] = usage
+	githubReleases, err := s.Store.GitHubReleaseOverview(ctx, s.now())
+	if err != nil {
+		return nil, err
+	}
+	out["githubReleases"] = githubReleases
 	out["hermes"] = map[string]any{"date": day.Format("2006-01-02"), "timeZone": "UTC", "writes": metrics.Writes, "translations": metrics.Translations, "failures": metrics.Failures}
 	return out, nil
 }
