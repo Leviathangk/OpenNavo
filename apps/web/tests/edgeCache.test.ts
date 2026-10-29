@@ -22,6 +22,11 @@ const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
 });
 
 describe('HTML edge cache switch', () => {
+  it('keeps negotiable HTML on the same edge policy as every other HTML page', () => {
+    expect(edgeCacheHeader(page({ path: '/' }))).toBe(SHORT_EDGE_CACHE_VALUE);
+    expect(edgeCacheHeader(page({ path: '/apps/iterm2' }))).toBe(LONG_EDGE_CACHE_VALUE);
+  });
+
   it('Keeps purged pages for two days and lists for ten minutes, serving either while the origin errs', () => {
     expect(LONG_EDGE_CACHE_VALUE).toBe('max-age=172800, stale-while-revalidate=604800, stale-if-error=604800');
     expect(SHORT_EDGE_CACHE_VALUE).toBe('max-age=600, stale-while-revalidate=86400, stale-if-error=86400');
