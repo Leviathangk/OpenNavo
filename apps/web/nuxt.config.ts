@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { LOCALIZED_FEEDS } from './shared/utils/localizedFeeds';
 import { packageSitemaps } from './shared/utils/sitemapBuckets';
 import { THEME_STORAGE_KEY } from './shared/utils/theme';
 import { themeBootScript } from '@opennavo/ui/theme';
@@ -287,11 +288,7 @@ export default defineNuxtConfig({
   // (WP17), and release feeds per app and per collection (F6).
   serverHandlers: LOCALES.flatMap(code => {
     const prefix = LOCALE_METADATA[code].prefix;
-    return [
-      { route: `${prefix}/articles/feed.xml`, handler: '~~/server/handlers/articleFeed.ts' },
-      { route: `${prefix}/apps/:token/feed.xml`, handler: '~~/server/handlers/packageFeed.ts' },
-      { route: `${prefix}/collections/:slug/feed.xml`, handler: '~~/server/handlers/collectionFeed.ts' }
-    ];
+    return LOCALIZED_FEEDS.map(({ route, handler }) => ({ route: `${prefix}${route}`, handler }));
   }),
   // Generate gzip and brotli assets at build time and serve by Accept-Encoding (the production Caddy proxy also compresses dynamic pages).
   nitro: { compressPublicAssets: { gzip: true, brotli: true } },

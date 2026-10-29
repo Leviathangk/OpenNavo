@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ARTICLE_MAX_APP_CARDS, headingId, renderArticle } from '../src/utils/article';
 
 const image = { url: 'https://cdn.opennavo.example/a.png', width: 1280, height: 800 };
+
+const articleHtml = (source: string, options: Parameters<typeof renderArticle>[1] = {}) =>
+  renderArticle(source, options)
+    .segments.map(segment => (segment.type === 'html' ? segment.html : ''))
+    .join('');
 
 describe('renderArticle', () => {
   it('splits app cards out of the Markdown and builds the table of contents', () => {
@@ -97,5 +102,69 @@ describe('renderArticle', () => {
     // CommonMark: a closer after punctuation needs whitespace or punctuation after it in Latin text.
     expect(html('**foo,**bar')).toContain('**foo,**bar');
     expect(html('a ** b ** c')).toContain('a ** b ** c');
+  });
+});
+
+describe('article links', () => {
+  it.each([
+    ['/apps/tool', '/apps/tool', '/ja/apps/tool'],
+    ['https://opennavo.com/apps/tool', '/apps/tool', '/ja/apps/tool'],
+    ['https://www.opennavo.com/apps/tool', '/apps/tool', '/ja/apps/tool'],
+    ['https://OPENNAVO.COM/apps/tool', '/apps/tool', '/ja/apps/tool'],
+    ['https://opennavo.com', '/', '/ja'],
+    ['/apps/tool?sort=name&note=a%2Fb#install', '/apps/tool', '/ja/apps/tool?sort=name&note=a%2Fb#install'],
+    ['https://www.opennavo.com/apps/tool?x=1#part', '/apps/tool', '/ja/apps/tool?x=1#part'],
+    ['https://opennavo.com?x=1#part', '/', '/ja?x=1#part'],
+    ['/apps/tool?#', '/apps/tool', '/ja/apps/tool?#']
+  ])('localizes %s in the same tab without changing its query or hash', (href, path, expected) => {
+    const localizePath = vi.fn((pathname: string) => (pathname === '/' ? '/ja' : `/ja${pathname}`));
+    const html = articleHtml(`[tool](${href})`, { locale: 'ja', localizePath });
+    const element = new DOMParser().parseFromString(html, 'text/html').querySelector('a')!;
+    expect(element.getAttribute('href')).toBe(expected);
+    expect(element.hasAttribute('target')).toBe(false);
+    expect(localizePath).toHaveBeenCalledExactlyOnceWith(path, 'ja');
+  });
+
+  it.each([
+    'https://vendor.example/apps/tool',
+    '//opennavo.com/apps/tool',
+    'https://opennavo.com.example/apps/tool',
+    'https://opennavo.com@vendor.example/apps/tool',
+    'http://opennavo.com/apps/tool',
+    '#install',
+    'mailto:reader@example.test'
+  ])('preserves %s without calling the path resolver', href => {
+    const localizePath = vi.fn();
+    const html = articleHtml(`[link](${href})`, { locale: 'ja', localizePath });
+    const element = new DOMParser().parseFromString(html, 'text/html').querySelector('a')!;
+    expect(element.getAttribute('href')).toBe(href);
+    expect(localizePath).not.toHaveBeenCalled();
+    if (href.startsWith('#')) expect(element.hasAttribute('target')).toBe(false);
+    else expect(element.getAttribute('target')).toBe('_blank');
+  });
+
+  it('leaves code and image URLs untouched, including images rendered as fallback links', () => {
+    const localizePath = vi.fn();
+    const html = articleHtml(
+      [
+        '```md\n[block](/apps/tool)\n```',
+        '`[inline](https://opennavo.com/apps/tool)`',
+        '![Listed](/images/capture.png)',
+        '![Fallback](https://opennavo.com/images/missing.png)'
+      ].join('\n\n'),
+      { locale: 'ja', localizePath, images: [{ url: '/images/capture.png', width: 100, height: 80 }] }
+    );
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    expect(document.querySelector('pre code')?.textContent).toBe('[block](/apps/tool)\n');
+    expect(document.querySelector('p code')?.textContent).toBe('[inline](https://opennavo.com/apps/tool)');
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('/images/capture.png');
+    expect(document.querySelector('a')?.getAttribute('href')).toBe('https://opennavo.com/images/missing.png');
+    expect(localizePath).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse a previous render’s locale or resolver', () => {
+    const source = '[tool](https://opennavo.com/apps/tool)';
+    expect(articleHtml(source, { locale: 'ja', localizePath: path => `/ja${path}` })).toContain('href="/ja/apps/tool"');
+    expect(articleHtml(source)).toContain('<a href="/apps/tool">');
   });
 });

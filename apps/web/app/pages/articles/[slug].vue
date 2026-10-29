@@ -6,6 +6,7 @@ import type { RenderedArticle } from '@opennavo/ui/markdown';
 import { hreflangsFor } from '~~/shared/utils/hreflang';
 import { packagePath } from '~/utils/packageView';
 import { withVariantNames } from '~/utils/seoTitles';
+import { localizeArticlePath } from '~/utils/articleLinks';
 import {
   ARTICLE_SLUG,
   articleDescription,
@@ -23,6 +24,7 @@ import {
 const { t, locale } = useI18n();
 const api = useApi();
 const route = useRoute();
+const router = useRouter();
 const localePath = useLocalePath();
 const switchLocalePath = useSwitchLocalePath();
 const event = useRequestEvent();
@@ -61,7 +63,12 @@ const { data: body } = await useAsyncData(
     const value = article.value;
     if (!value?.bodyMarkdown) return { segments: [], toc: [] };
     const { renderArticle } = await import('@opennavo/ui/markdown');
-    return renderArticle(value.bodyMarkdown, { images: value.images, title: value.title });
+    return renderArticle(value.bodyMarkdown, {
+      images: value.images,
+      title: value.title,
+      locale: locale.value,
+      localizePath: (path, currentLocale) => localizeArticlePath(path, currentLocale, router)
+    });
   }
 );
 
