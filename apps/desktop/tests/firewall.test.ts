@@ -31,12 +31,8 @@ afterEach(() => {
 });
 
 const TICK = 15;
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function settle(ticks = 0) {
-  if (ticks) {
-    if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(TICK * ticks + 5);
-    else await wait(TICK * ticks + 5);
-  }
+  if (ticks) await vi.advanceTimersByTimeAsync(TICK * ticks + 5);
   await flushPromises();
   await flushPromises();
 }
@@ -51,6 +47,8 @@ function mountIn(context: TestContext, component: Component) {
 }
 
 async function open(path: string, flags = '', component: Component = FirewallPage) {
+  // All firewall mock callbacks are scheduler-driven; advance them directly so CI load cannot race assertions.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   history.replaceState(null, '', flags ? `/?mock=${flags}` : '/');
   const context = await setup(path, { tickMs: TICK });
   await startLocalState();

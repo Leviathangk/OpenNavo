@@ -37,7 +37,6 @@ afterEach(() => {
 });
 
 const TICK = 15;
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function mountPage(path: string, flags = '') {
   if (flags) history.replaceState(null, '', `/?mock=${flags}`);
@@ -343,9 +342,13 @@ describe('Scan failures', () => {
 
   it('Names the folders macOS refused and offers the privacy setting', async () => {
     const { wrapper } = await mountPage('/security/scan', 'av-ready,av-denied-downloads');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     await button(wrapper, '快速扫描')!.trigger('click');
     await flushPromises();
-    await wait(TICK * 2);
+    await vi.advanceTimersByTimeAsync(TICK * 2);
     await flushPromises();
     const note = wrapper.get('[role="status"]');
     expect(note.text()).toContain('没有权限读取：下载');
@@ -354,9 +357,13 @@ describe('Scan failures', () => {
 
   it('Says why a scan stopped when the engine did not start', async () => {
     const { wrapper } = await mountPage('/security/scan', 'av-ready,av-engine-fail');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     await button(wrapper, '快速扫描')!.trigger('click');
     await flushPromises();
-    await wait(TICK * 2);
+    await vi.advanceTimersByTimeAsync(TICK * 2);
     await flushPromises();
     expect(wrapper.text()).toContain('扫描中断');
     expect(wrapper.get('[role="alert"]').text()).toBe('病毒扫描引擎没有正常启动，请稍后重试');
@@ -644,6 +651,10 @@ describe('Protection', () => {
   it('Keeps asking while access is missing, only while the window is visible, and stops once it is allowed', async () => {
     const context = await setup('/security/protection', { tickMs: TICK });
     await startLocalState();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const security = useSecurityStore();
     await security.setSecuritySetting('pasteProtection', true);
     const status = vi.spyOn(commands, 'pasteProtectionStatus');
@@ -660,15 +671,17 @@ describe('Protection', () => {
     await flushPromises();
     expect(security.pasteStatus?.accessibilityGranted).toBe(false);
     const opened = status.mock.calls.length;
-    await wait(60);
+    await vi.advanceTimersByTimeAsync(60);
     expect(status.mock.calls.length).toBe(opened);
 
     // Allowed in System Settings while the window was out of sight, then it is visible again.
     status.mockResolvedValue({ status: 'ok', data: { enabled: true, accessibilityGranted: true, listening: true } });
     visibility.mockReturnValue('visible');
-    await vi.waitFor(() => expect(security.pasteStatus?.accessibilityGranted).toBe(true));
+    await vi.advanceTimersByTimeAsync(10);
+    await flushPromises();
+    expect(security.pasteStatus?.accessibilityGranted).toBe(true);
     const calls = status.mock.calls.length;
-    await wait(60);
+    await vi.advanceTimersByTimeAsync(60);
     expect(status.mock.calls.length).toBe(calls);
   });
 });
@@ -759,11 +772,15 @@ describe('Paste protection (S2)', () => {
 
   it('Pauses a suspicious paste with Discard focused, and goes away once answered', async () => {
     history.replaceState(null, '', '/?mock=paste-blocked');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const context = await setup('/security', { tickMs: TICK });
     await startLocalState();
     const act = vi.spyOn(commands, 'pasteProtectionAct');
     mountIn(context, PasteGuard);
-    await wait(TICK * 6);
+    await vi.advanceTimersByTimeAsync(TICK * 4);
     await flushPromises();
     const dialog = () => document.body.querySelector('[role="alertdialog"]');
     expect(dialog()?.textContent).toContain('已暂停粘贴到「Terminal」');
@@ -778,10 +795,14 @@ describe('Paste protection (S2)', () => {
 
   it('Text too long to check is paused too, and the dialog says it was not checked', async () => {
     history.replaceState(null, '', '/?mock=paste-too-long');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const context = await setup('/security', { tickMs: TICK });
     await startLocalState();
     mountIn(context, PasteGuard);
-    await wait(TICK * 6);
+    await vi.advanceTimersByTimeAsync(TICK * 4);
     await flushPromises();
     const text = document.body.querySelector('[role="alertdialog"]')?.textContent ?? '';
     expect(text).toContain('要粘贴的内容太长，没有完整检查');
@@ -793,10 +814,14 @@ describe('Paste protection (S2)', () => {
 describe('VirusTotal (S2, optional)', () => {
   it('Stays off until a valid key is saved, then looks up a finding by its hash only', async () => {
     const context = await mountPage('/security/scan', 'av-ready');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const { wrapper } = context;
     await button(wrapper, '快速扫描')!.trigger('click');
     await flushPromises();
-    await wait(TICK * 9);
+    await vi.advanceTimersByTimeAsync(TICK * 6);
     await flushPromises();
     expect(wrapper.text()).toContain('Eicar-Test-Signature');
     // The finding's row menu.
