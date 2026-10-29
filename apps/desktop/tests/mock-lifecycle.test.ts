@@ -92,4 +92,34 @@ describe('Mock IPC session lifecycle', () => {
     await vi.runAllTimersAsync();
     expect(changed).not.toHaveBeenCalled();
   });
+
+  it('cancels a cleanup scan delay when the mock IPC session is disposed', async () => {
+    await setup('/cleanup', { tickMs: 10 });
+    const progress = vi.fn();
+    await events.cleanupScanProgress.listen(progress);
+    const pending = commands.cleanupScan('cleanup-request', null);
+    await Promise.resolve();
+    expect(progress).toHaveBeenCalledTimes(1);
+
+    disposeMockIpc();
+    expect(vi.getTimerCount()).toBe(0);
+    await expect(pending).resolves.toMatchObject({ status: 'ok', data: null });
+    await vi.runAllTimersAsync();
+    expect(progress).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels an uninstall plan delay when the mock IPC session is disposed', async () => {
+    await setup('/installed', { tickMs: 10 });
+    const progress = vi.fn();
+    await events.uninstallScanProgress.listen(progress);
+    const pending = commands.uninstallPlan('uninstall-request', ['local-zoom']);
+    await Promise.resolve();
+    expect(progress).toHaveBeenCalledTimes(1);
+
+    disposeMockIpc();
+    expect(vi.getTimerCount()).toBe(0);
+    await expect(pending).resolves.toMatchObject({ status: 'ok', data: null });
+    await vi.runAllTimersAsync();
+    expect(progress).toHaveBeenCalledTimes(1);
+  });
 });

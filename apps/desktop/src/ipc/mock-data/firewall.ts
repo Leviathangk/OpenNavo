@@ -29,6 +29,7 @@ import type {
   FirewallSettings,
   FirewallStatus
 } from '../bindings';
+import { createMockScheduler } from './scheduler';
 
 const appError = (code: string, message: string, detail: string | null = null): AppError => ({ code, message, detail });
 
@@ -105,15 +106,11 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
   const SERVICE_MISSING = { code: 'E_FW_DISCONNECTED', detail: 'firewall_service_missing' } as const;
   // macOS keeps the filter configuration saved at the first consent; turning it on again doesn't ask.
   let configured = on;
-  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const scheduler = createMockScheduler();
   let sequence = 0;
   const id = (prefix: string) => `${prefix}-${++sequence}`;
   const later = (run: () => void, ticks = 1) => {
-    const timer = setTimeout(() => {
-      timers.delete(timer);
-      run();
-    }, tickMs * ticks);
-    timers.add(timer);
+    scheduler.later(run, tickMs * ticks);
   };
 
   let settings: FirewallSettings = {
@@ -678,8 +675,7 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
   }
 
   function stop() {
-    for (const timer of timers) clearTimeout(timer);
-    timers.clear();
+    scheduler.stop();
   }
 
   return { handlers, stop, ask, reconnect };

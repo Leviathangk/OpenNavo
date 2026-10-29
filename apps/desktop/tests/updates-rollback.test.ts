@@ -28,8 +28,8 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
-  disposeMockIpc();
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
+  disposeMockIpc();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   history.replaceState(null, '', '/');
@@ -85,6 +85,7 @@ describe('Rolling back an update', () => {
     expect(button(entry(wrapper, 'Notion', '4.3.0 → 4.4.1'), '回滚')).toBeUndefined();
 
     await vi.waitFor(() => expect(entry(wrapper, 'Notion', '回滚', '4.4.1 → 4.3.0')).toBeTruthy(), { timeout: 4000 });
+    await vi.waitFor(() => expect(context.state.history.find(task => task.op === 'rollback')?.state).toBe('succeeded'));
     const done = context.state.history.find(task => task.op === 'rollback')!;
     expect(done).toMatchObject({
       state: 'succeeded',

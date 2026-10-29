@@ -4,6 +4,7 @@
 // ?mock= switches: av-ready (database already downloaded), no-fda (startup categories that need Full Disk Access are
 // missing), av-db-rate-limited (the update fails with a rate limit), av-engine-fail (scans stop before clamd starts).
 import { events as ipcEvents } from '../bindings';
+import { createMockScheduler } from './scheduler';
 import type { AppSettings } from '../client';
 import type {
   ActOutcome,
@@ -468,7 +469,7 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
     }
   ];
   const scans = new Map<string, AvScanResult>();
-  const timers = new Set<ReturnType<typeof setInterval>>();
+  const scheduler = createMockScheduler();
   let lastScanId: string | null = null;
   let sequence = 0;
 
@@ -530,13 +531,11 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
     engine.updating = true;
     changed('engine');
     const id = `av-db-${++sequence}`;
-    const timer = setTimeout(() => {
-      timers.delete(timer as unknown as ReturnType<typeof setInterval>);
+    scheduler.later(() => {
       engine.updating = false;
       engine.db = { daily: 28155, main: 63, bytecode: 339, updatedAt: Date.now(), bytes: 113 * MB };
       changed('engine');
     }, tickMs * 4);
-    timers.add(timer as unknown as ReturnType<typeof setInterval>);
     return id;
   }
 
@@ -582,19 +581,16 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
     // ?mock=av-engine-fail: clamd does not start (as when its socket path was too long); the scan ends at once.
     if (flags.has('av-engine-fail')) {
       Object.assign(scan, { state: 'failed', finishedAt: Date.now(), errorCode: 'E_AV_ENGINE' });
-      timers.add(
-        setTimeout(() => void ipcEvents.avFinished.emit(JSON.parse(JSON.stringify(scan)) as AvScanResult), tickMs)
-      );
+      scheduler.later(() => void ipcEvents.avFinished.emit(JSON.parse(JSON.stringify(scan)) as AvScanResult), tickMs);
       return { scanId };
     }
     engine.running = true;
     engine.residentBytes = 1.6 * GB;
     changed('engine');
     let step = 0;
-    const timer = setInterval(() => {
+    const timer = scheduler.repeat(() => {
       if (scan.state !== 'running') {
-        clearInterval(timer);
-        timers.delete(timer);
+        scheduler.cancelRepeat(timer!);
         return;
       }
       step++;
@@ -633,8 +629,7 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
           unreadable: 0,
           excluded: 0
         };
-        clearInterval(timer);
-        timers.delete(timer);
+        scheduler.cancelRepeat(timer!);
         void ipcEvents.avFinished.emit(JSON.parse(JSON.stringify(scan)) as AvScanResult);
         changed('events');
         return;
@@ -648,7 +643,6 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
         cachedFiles: scan.metrics.cachedFiles
       });
     }, tickMs);
-    timers.add(timer);
     return { scanId };
   }
 
@@ -967,12 +961,11 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
       expiresAt: Date.now() + 60_000
     };
     pastes.add(blocked.id);
-    timers.add(setTimeout(() => void ipcEvents.pasteBlocked.emit(blocked), tickMs * 4));
+    scheduler.later(() => void ipcEvents.pasteBlocked.emit(blocked), tickMs * 4);
   }
 
   function stop() {
-    for (const timer of timers) clearInterval(timer);
-    timers.clear();
+    scheduler.stop();
   }
 
   return { handlers, stop, scanStep, installFailure };

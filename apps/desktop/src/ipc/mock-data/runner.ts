@@ -6,6 +6,7 @@ import { HOMEBREW_ROW } from './updater';
 import type { AppError, InstalledItem, OutdatedItem, Task, TaskOp, TaskPhase } from '../bindings';
 import { packageKey } from '../client';
 import { downloadSizeOf, findItem, nextTaskId } from './fixtures';
+import { createMockScheduler } from './scheduler';
 
 export interface MockState {
   installed: InstalledItem[];
@@ -203,14 +204,10 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
 export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks = {}) {
   let running: Task | undefined;
   let stopped = false;
-  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const scheduler = createMockScheduler();
   const later = (advance: () => void) => {
     if (stopped) return;
-    const timer = setTimeout(() => {
-      timers.delete(timer);
-      advance();
-    }, tickMs);
-    timers.add(timer);
+    scheduler.later(advance, tickMs);
   };
 
   const emitTask = (task: Task) => void events.taskUpdated.emit({ ...task });
@@ -481,8 +478,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
   /** Retire this session without emitting task results or starting any queued work. */
   function stop() {
     stopped = true;
-    for (const timer of timers) clearTimeout(timer);
-    timers.clear();
+    scheduler.stop();
   }
 
   return { enqueue, cancel, outdated, stop };

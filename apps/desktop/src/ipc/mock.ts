@@ -41,6 +41,7 @@ import { createFirewallMock } from './mock-data/firewall';
 import { createCleanupMock } from './mock-data/cleanup';
 import { createMonitorMock } from './mock-data/monitor';
 import { createUninstallMock } from './mock-data/uninstall';
+import { createMockScheduler } from './mock-data/scheduler';
 import type { MockFailure, MockState } from './mock-data/runner';
 
 const appInfo: AppInfo = { version: '0.0.0', os: 'macos', arch: 'aarch64' };
@@ -233,14 +234,8 @@ export function installMockIpc(
   } = {}
 ) {
   disposeMockIpc();
-  const timers = new Set<ReturnType<typeof setTimeout>>();
-  const later = (run: () => void, ms: number) => {
-    const timer = setTimeout(() => {
-      timers.delete(timer);
-      run();
-    }, ms);
-    timers.add(timer);
-  };
+  const scheduler = createMockScheduler();
+  const later = (run: () => void, ms: number) => scheduler.later(run, ms);
   const params = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
   const systemLocale =
     options.systemLocale ??
@@ -479,8 +474,9 @@ export function installMockIpc(
   // Reinstalling the simulator must not let the previous session emit into the new stores.
   stopPreviousMock = () => {
     runner.stop();
-    for (const timer of timers) clearTimeout(timer);
-    timers.clear();
+    uninstall?.stop();
+    cleanup?.stop();
+    scheduler.stop();
     window.removeEventListener('storage', onStorage);
     monitor.stop();
     securityMock.stop();

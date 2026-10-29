@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe('Installing from a third-party tap', () => {
   it('asks before every install and queues nothing without consent', async () => {
-    await init();
+    const context = await init();
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
     const tasks = useTasksStore();
     const declined = tasks.enqueue('install', target);
@@ -40,9 +40,11 @@ describe('Installing from a third-party tap', () => {
     await flushPromises();
     expect(useTapConfirmStore().pending?.tap).toBe('example-dev/tap');
     useTapConfirmStore().choose(true);
-    expect(await accepted).not.toBeNull();
+    const task = await accepted;
+    expect(task).not.toBeNull();
     // The tap never travels with the request; Rust reads it from the synced catalog.
     expect(enqueue).toHaveBeenCalledWith('install', target, { adopt: false }, 'manual');
+    await vi.waitFor(() => expect(context.state.history.find(entry => entry.id === task?.id)?.state).toBe('succeeded'));
   });
 
   it('shows the tap and treats closing the dialog as declining', async () => {
@@ -62,14 +64,15 @@ describe('Installing from a third-party tap', () => {
   });
 
   it('never asks for official casks', async () => {
-    await init();
+    const context = await init();
     vi.spyOn(commands, 'installPreflight').mockResolvedValue({
       status: 'ok',
       data: { name: 'Notion', paths: [], status: 'ready', tap: null }
     });
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
-    await useTasksStore().enqueue('install', target);
+    const task = await useTasksStore().enqueue('install', target);
     expect(useTapConfirmStore().pending).toBeNull();
     expect(enqueue).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(context.state.history.find(entry => entry.id === task?.id)?.state).toBe('succeeded'));
   });
 });
