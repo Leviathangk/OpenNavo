@@ -582,6 +582,8 @@
       "openSourceQ": "Ist {name} Open Source?",
       "openSourceA": "Der Quellcode von {name} ist auf GitHub öffentlich ({repo}) und steht unter der Lizenz {license}.",
       "openSourceArchived": "Das Repository ist archiviert und wird nicht mehr aktualisiert.",
+      "openSourceStars": "Repository stars: {stars}.",
+      "openSourceChecked": "Repository data checked {date}.",
       "uninstallQ": "Wie deinstalliere ich {name} vollständig auf dem Mac?",
       "uninstallRun": "Führen Sie `brew uninstall --cask {token}` aus.",
       "uninstallDoes": "Der Befehl {actions}.",
@@ -658,6 +660,25 @@
     "lead": {
       "developer": "Der Entwickler ist {developer}.",
       "source": "Die Installationsdatei laden Sie von {source} herunter."
+    },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
     },
     "quick": {
       "title": "Eckdaten",

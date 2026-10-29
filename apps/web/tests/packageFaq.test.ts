@@ -349,7 +349,7 @@ describe('App questions', () => {
       'en-US'
     );
     expect(items.find(item => item.key === 'openSource')!.answer).toBe(
-      'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license.'
+      'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license. Repository data checked Dec 1, 2025.'
     );
   });
 

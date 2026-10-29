@@ -582,6 +582,8 @@
       "openSourceQ": "Is {name} open source?",
       "openSourceA": "{name}’s source code is public on GitHub ({repo}) under the {license} license.",
       "openSourceArchived": "The repository is archived and no longer updated.",
+      "openSourceStars": "Repository stars: {stars}.",
+      "openSourceChecked": "Repository data checked {date}.",
       "uninstallQ": "How do I completely uninstall {name} on a Mac?",
       "uninstallRun": "Run `brew uninstall --cask {token}`.",
       "uninstallDoes": "It {actions}.",
@@ -658,6 +660,25 @@
     "lead": {
       "developer": "It is made by {developer}.",
       "source": "You download it from {source}."
+    },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
     },
     "quick": {
       "title": "Quick facts",

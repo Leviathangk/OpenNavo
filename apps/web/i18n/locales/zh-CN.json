@@ -582,6 +582,8 @@
       "openSourceQ": "{name} 是开源软件吗？",
       "openSourceA": "{name} 的源代码公开在 GitHub 上（{repo}），使用 {license} 许可证。",
       "openSourceArchived": "这个仓库已经归档，不再更新。",
+      "openSourceStars": "Repository stars: {stars}.",
+      "openSourceChecked": "Repository data checked {date}.",
       "uninstallQ": "怎样在 Mac 上彻底卸载 {name}？",
       "uninstallRun": "运行 `brew uninstall --cask {token}`。",
       "uninstallDoes": "它会{actions}。",
@@ -658,6 +660,25 @@
     "lead": {
       "developer": "开发者是 {developer}。",
       "source": "安装包从 {source} 下载。"
+    },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
     },
     "quick": {
       "title": "基本信息",

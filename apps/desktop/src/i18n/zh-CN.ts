@@ -446,6 +446,27 @@ export default {
       arch: '架构',
       license: '许可证'
     },
+    spec: {
+      title: '基本信息',
+      price: '价格',
+      system: '系统',
+      chip: '芯片',
+      autoUpdates: '自动更新',
+      openSource: '开源',
+      developer: '开发者',
+      homepage: '主页',
+      token: 'Token',
+      installedVersion: '已安装版本',
+      installLocation: '安装位置',
+      yes: '是',
+      no: '否'
+    },
+    repo: {
+      stars: 'Stars',
+      updated: '{days} 天前更新',
+      unmaintained: '可能已停止维护',
+      archived: '已归档'
+    },
     deps: {
       macos: '系统要求',
       formulae: '依赖的命令行工具',

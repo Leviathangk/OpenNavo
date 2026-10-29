@@ -452,6 +452,27 @@
       "arch": "架構",
       "license": "許可證"
     },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "installedVersion": "Installed version",
+      "installLocation": "Install location",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "repo": {
+      "stars": "Stars",
+      "updated": "Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
+    },
     "deps": {
       "macos": "系統要求",
       "formulae": "依賴的命令列工具",

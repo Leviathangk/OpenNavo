@@ -63,6 +63,8 @@ defineSlots<{
   main?: () => unknown;
   /** Top of the side column in place of the install command, e.g. link apps' download panel. */
   download?: () => unknown;
+  /** Shared package specification card, rendered in the side column. */
+  spec?: () => unknown;
   /** After information, e.g. monthly installs. */
   aside?: () => unknown;
   /** End of the side column, after similar apps, e.g. the collections an app is in. */
@@ -102,6 +104,7 @@ defineSlots<{
       >
         <OnInstallCommand :command="command" @copied="emit('copied', $event)" />
       </section>
+      <slot name="spec" />
       <section
         v-if="info.length"
         class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px"

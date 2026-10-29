@@ -582,6 +582,8 @@
       "openSourceQ": "Есть ли у {name} открытый исходный код?",
       "openSourceA": "Исходный код {name} открыт на GitHub ({repo}) под лицензией {license}.",
       "openSourceArchived": "Репозиторий архивирован и больше не обновляется.",
+      "openSourceStars": "Repository stars: {stars}.",
+      "openSourceChecked": "Repository data checked {date}.",
       "uninstallQ": "Как полностью удалить {name} с Mac?",
       "uninstallRun": "Выполните `brew uninstall --cask {token}`.",
       "uninstallDoes": "Команда {actions}.",
@@ -658,6 +660,25 @@
     "lead": {
       "developer": "Разработчик — {developer}.",
       "source": "Установочный файл загружается с {source}."
+    },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
     },
     "quick": {
       "title": "Основные сведения",

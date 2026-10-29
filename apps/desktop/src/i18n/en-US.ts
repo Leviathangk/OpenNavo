@@ -460,6 +460,27 @@ const messages: MessageSchema = {
       arch: 'Architecture',
       license: 'License'
     },
+    spec: {
+      title: 'At a glance',
+      price: 'Price',
+      system: 'System',
+      chip: 'Chip',
+      autoUpdates: 'Auto-updates',
+      openSource: 'Open source',
+      developer: 'Developer',
+      homepage: 'Homepage',
+      token: 'Token',
+      installedVersion: 'Installed version',
+      installLocation: 'Install location',
+      yes: 'Yes',
+      no: 'No'
+    },
+    repo: {
+      stars: 'Stars',
+      updated: 'Updated {days} days ago',
+      unmaintained: 'May no longer be maintained',
+      archived: 'Archived'
+    },
     deps: {
       macos: 'Requires',
       formulae: 'Command-line dependencies',

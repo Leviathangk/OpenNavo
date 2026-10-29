@@ -29,6 +29,7 @@ export { default as OnPackageHeader } from './components/OnPackageHeader.vue';
 export { default as OnPackageListView } from './components/OnPackageListView.vue';
 export { default as OnPackageNotice } from './components/OnPackageNotice.vue';
 export { default as OnPackageOverview } from './components/OnPackageOverview.vue';
+export { default as OnPackageSpecCard } from './components/OnPackageSpecCard.vue';
 export { default as OnCaskArtifacts } from './components/OnCaskArtifacts.vue';
 export { default as OnPackageStats } from './components/OnPackageStats.vue';
 export { default as OnPageHeader } from './components/OnPageHeader.vue';
@@ -105,6 +106,7 @@ export type { OnPackageHeaderChip, OnPackageHeaderProps } from './components/OnP
 export type { OnPackageListViewProps } from './components/OnPackageListView.vue';
 export type { OnPackageNoticeProps } from './components/OnPackageNotice.vue';
 export type { OnPackageOverviewProps, OnRelatedPackage } from './components/OnPackageOverview.vue';
+export type { OnPackageSpecCardProps, OnPackageSpecRow } from './components/OnPackageSpecCard.vue';
 export type { OnPackageStatsCell, OnPackageStatsProps } from './components/OnPackageStats.vue';
 export type { OnPageHeaderProps } from './components/OnPageHeader.vue';
 export type { OnPaginationProps } from './components/OnPagination.vue';
@@ -151,6 +153,14 @@ export { BUNDLED_ICONS, CATEGORY_ICONS, UI_ICONS } from './icons';
 export { collectionIcons } from './utils/collections';
 export { architectures, displayUrl, installTrend, monthlyInstalls } from './utils/package';
 export type { InstallTrend, MonthlyRow } from './utils/package';
+export {
+  formatRepoStars,
+  repoAgeDays,
+  repoMaintenanceStatus,
+  repoSignalDays,
+  toPackageRepoSignals
+} from './utils/repoSignals';
+export type { PackageRepoSignals } from './utils/repoSignals';
 export { commandBreak } from './utils/command';
 export { heroGlowGradient } from './utils/glow';
 export {

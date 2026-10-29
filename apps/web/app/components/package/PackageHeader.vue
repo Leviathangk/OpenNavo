@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { disabledByHomebrew } from '@opennavo/shared';
-import { architectures, OnButton, OnIcon, OnPackageHeader, useUiMessages } from '@opennavo/ui';
+import { architectures, OnButton, OnIcon, OnPackageHeader, toPackageRepoSignals, useUiMessages } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { httpsUrl, linkDownloadUrl, linkSource } from '~/utils/linkApp';
@@ -36,6 +36,7 @@ const arch = computed(() =>
     .map(item => t(`package.arch.${item}`))
     .join(' · ')
 );
+const repoSignals = computed(() => toPackageRepoSignals(props.pkg, props.pkg.openSource?.url ?? props.pkg.repoUrl));
 const unavailable = computed(() => Boolean(props.pkg.disable));
 
 const chips = computed<OnPackageHeaderChip[]>(() => {
@@ -61,6 +62,8 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
     list.push({ key: 'pricing', label: t(`package.link.pricing.${link.value.pricing}`) });
   if (props.pkg.autoUpdates) list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
   if (arch.value) list.push({ key: 'arch', label: arch.value });
+  if (props.pkg.openSource?.archived || repoSignals.value?.archived)
+    list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (disabledByHomebrew(props.pkg))
     list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
   else if (pausedByOpenNavo(props.pkg))

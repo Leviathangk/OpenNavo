@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
 import { withRecentReturn } from '@opennavo/shared';
 import { catalogInstallCommand } from '@/utils/brew';
-import { architectures, displayUrl, OnPackageOverview, useUiMessages } from '@opennavo/ui';
-import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
+import { OnPackageOverview, OnPackageSpecCard } from '@opennavo/ui';
+import type { OnRelatedPackage } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
 import ArticleCard from '@/components/article/ArticleCard.vue';
 import LatestRelease from '@/components/package/LatestRelease.vue';
@@ -20,6 +20,8 @@ import { useAppLocale } from '@/composables/useAppLocale';
 import { useRemoteLoader } from '@/composables/useRemoteLoader';
 import { usePackage } from '@/composables/usePackageDetail';
 import { useToasts } from '@/composables/useToasts';
+import { packageSpec } from '@/utils/packageSpec';
+import { useLibraryStore } from '@/stores';
 
 // Overview (mockup 03): shared OnPackageOverview (ADR-017); left: screenshots → introduction → latest release → caveats.
 // Right: install command → information → monthly installs → similar apps. Offline shows only the local summary and install command.
@@ -27,6 +29,7 @@ const route = useRoute();
 const { t } = useI18n();
 const { pick, appLocale } = useAppLocale();
 const toasts = useToasts();
+const library = useLibraryStore();
 const { kind, token, detail, local } = usePackage();
 
 const { data: related } = useRemoteLoader(
@@ -61,7 +64,12 @@ const command = computed(() => {
     : (detail.value?.installCommand ?? catalogInstallCommand(value, token.value, local.value));
 });
 
-const messages = useUiMessages();
+const installed = computed(() => library.find(kind.value, token.value));
+const spec = computed(() =>
+  detail.value
+    ? packageSpec(detail.value, local.value, installed.value, t, appLocale.value)
+    : { rows: [], checkedAt: null, repoSignals: null }
+);
 
 // Bundle IDs that can match an App Store listing: link apps register theirs, and for casks the server names the
 // listing it found. The panel asks Apple itself, so price and availability follow this Mac's storefront.
@@ -84,91 +92,6 @@ const link = computed<LinkInfo | null>(() => {
     github: remote.github ? { repo: remote.github.repo, latest: remote.github.latest ?? null } : null
   };
 });
-const linkInfo = computed<OnKeyValueItem[]>(() => {
-  const value = link.value;
-  if (!value) return [];
-  const items: OnKeyValueItem[] = [];
-  if (value.homepage)
-    items.push({
-      key: 'homepage',
-      label: t('package.info.homepage'),
-      value: displayUrl(value.homepage),
-      href: value.homepage
-    });
-  if (value.github)
-    items.push({
-      key: 'github',
-      label: 'GitHub',
-      value: value.github.repo,
-      href: `https://github.com/${value.github.repo}`
-    });
-  if (value.teamId) items.push({ key: 'team', label: t('package.link.teamId'), value: value.teamId, mono: true });
-  items.push({
-    key: 'pricing',
-    label: t('package.link.pricingLabel'),
-    value: t(`package.link.pricing.${value.pricing}`)
-  });
-  const bundleIds = detail.value?.bundleIds ?? local.value?.bundleIds ?? [];
-  if (bundleIds.length) items.push({ key: 'bundle', label: 'Bundle ID', value: bundleIds.join(' '), mono: true });
-  return items;
-});
-
-const info = computed<OnKeyValueItem[]>(() => {
-  if (kind.value === 'link') return linkInfo.value;
-  const value = detail.value;
-  const items: OnKeyValueItem[] = [{ key: 'token', label: 'Token', value: token.value, mono: true }];
-  const homepage = value?.homepage ?? local.value?.homepage;
-  if (homepage)
-    items.push({
-      key: 'homepage',
-      label: t('package.info.homepage'),
-      value: displayUrl(homepage),
-      href: homepage
-    });
-  const binaries = value?.artifacts.binaries ?? local.value?.binaries ?? [];
-  if (binaries.length)
-    items.push({
-      key: 'binaries',
-      label: t('package.info.binaries'),
-      value: binaries.join(' '),
-      mono: true
-    });
-  if (kind.value === 'cask')
-    items.push({
-      key: 'auto',
-      label: t('package.info.autoUpdates'),
-      value: t((value?.autoUpdates ?? local.value?.autoUpdates) ? 'package.info.autoYes' : 'package.info.autoNo')
-    });
-  if (!value) return items;
-  if (value.artifacts.uninstallNotes?.length)
-    items.push({
-      key: 'uninstall',
-      label: t('package.info.uninstall'),
-      value: value.artifacts.uninstallNotes.join('；')
-    });
-  const arch = architectures(value.supports).map(item => t(`package.arch.${item}`));
-  items.push({
-    key: 'arch',
-    label: t('package.info.arch'),
-    value:
-      value.supports.status !== 'known' ? messages.value.cask.unknown : arch.join(' · ') || messages.value.cask.noMac
-  });
-  if (value.supports.requiresRosetta)
-    items.push({
-      key: 'rosetta',
-      label: t('package.arch.arm64'),
-      value: messages.value.cask.rosetta
-    });
-  if (value.platforms?.some(platform => platform.version !== value.version))
-    items.push({
-      key: 'platformVersions',
-      label: messages.value.cask.version,
-      value: messages.value.cask.legacy
-    });
-  if (value.license) items.push({ key: 'license', label: t('package.info.license'), value: value.license });
-  return items;
-});
-
 const relatedItems = computed<OnRelatedPackage[]>(() =>
   (related.value ?? []).map(pkg => ({
     key: `${pkg.kind}/${pkg.token}`,
@@ -197,7 +120,7 @@ function onCopied(text: string) {
     :caveats="detail?.caveats"
     :caveats-title="t('package.caveats')"
     :command="command"
-    :info="info"
+    :info="[]"
     :related="relatedItems"
     :related-title="t('package.related')"
     :link-as="RouterLink"
@@ -221,6 +144,14 @@ function onCopied(text: string) {
     </template>
     <template v-if="kind === 'link' && link" #download>
       <LinkDownloadPanel :token="token" :link="link" />
+    </template>
+    <template #spec>
+      <OnPackageSpecCard
+        :rows="spec.rows"
+        :title="t('package.spec.title')"
+        :checked-at="spec.checkedAt"
+        :checked-label="t('package.quick.checked')"
+      />
     </template>
     <template #aside>
       <MonthlyInstallsCard v-if="detail && kind !== 'link'" :installs="detail.installs" />

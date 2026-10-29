@@ -582,6 +582,8 @@
       "openSourceQ": "{name} はオープンソースですか？",
       "openSourceA": "{name} のソースコードは GitHub（{repo}）で公開されており、ライセンスは {license} です。",
       "openSourceArchived": "このリポジトリはアーカイブされていて、更新されていません。",
+      "openSourceStars": "Repository stars: {stars}.",
+      "openSourceChecked": "Repository data checked {date}.",
       "uninstallQ": "Mac から {name} を完全にアンインストールするには？",
       "uninstallRun": "`brew uninstall --cask {token}` を実行します。",
       "uninstallDoes": "これにより{actions}が行われます。",
@@ -658,6 +660,25 @@
     "lead": {
       "developer": "開発元は {developer} です。",
       "source": "インストーラは {source} からダウンロードします。"
+    },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
     },
     "quick": {
       "title": "基本情報",

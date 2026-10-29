@@ -9,6 +9,7 @@ import { formatDate } from './packageDate';
 // without a page-specific fact is left out, so no two apps share a boilerplate answer. Link apps
 // (T3) never get a Homebrew command.
 import { formatVersion } from '@opennavo/shared';
+import { formatRepoStars, toPackageRepoSignals } from '@opennavo/ui';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { evidenceLine, joinSentences } from './appAnswer';
 import {
@@ -315,6 +316,17 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
       t('package.faq.openSourceQ', { name }),
       sentences([
         t('package.faq.openSourceA', { name, repo: repository.repo, license: repository.license }),
+        (() => {
+          const signals = toPackageRepoSignals(pkg, repository.url);
+          return signals?.stars === undefined
+            ? undefined
+            : t('package.faq.openSourceStars', { stars: `★ ${formatRepoStars(signals.stars)}` });
+        })(),
+        (() => {
+          const signals = toPackageRepoSignals(pkg, repository.url);
+          const checkedAt = signals?.checkedAt ?? repository.checkedAt;
+          return checkedAt ? t('package.faq.openSourceChecked', { date: date(checkedAt) }) : undefined;
+        })(),
         repository.archived && t('package.faq.openSourceArchived')
       ])
     );
