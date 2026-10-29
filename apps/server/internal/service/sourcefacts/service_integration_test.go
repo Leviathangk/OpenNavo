@@ -113,14 +113,18 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "MIT", detail.OpenSource.License)
 	require.Equal(t, "https://github.com/acme/alpha", detail.OpenSource.Url)
-	require.Equal(t, int64(1234), *detail.OpenSource.Stars)
-	require.Equal(t, time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC), *detail.OpenSource.PushedAt)
-	require.Equal(t, now, *detail.OpenSource.SignalsCheckedAt)
+	require.Equal(t, int64(1234), *detail.Repository.Stars)
+	require.Equal(t, time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC), *detail.Repository.PushedAt)
+	require.Equal(t, now, *detail.Repository.SignalsCheckedAt)
+	require.NotContains(t, string(mustJSON(t, detail.OpenSource)), "stars")
+	require.NotContains(t, string(mustJSON(t, detail.OpenSource)), "pushedAt")
+	require.NotContains(t, string(mustJSON(t, detail.OpenSource)), "signalsCheckedAt")
 	require.Nil(t, detail.AppStore)
 	require.Equal(t, "active", string(detail.HomebrewStatus.State))
 	detail, err = (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "beta", "zh-CN")
 	require.NoError(t, err)
 	require.Nil(t, detail.OpenSource)
+	require.Nil(t, detail.Repository, "an app without a public GitHub repository has neither fact")
 	require.Equal(t, "Beta Pro - Editor", detail.AppStore.Name)
 	require.Equal(t, []string{"EN", "ZH"}, detail.AppStore.Languages)
 	require.Zero(t, detail.AppStore.Price)
@@ -148,10 +152,10 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.EqualValues(t, 4000, stats["githubRemaining"])
 	rows, err = st.SourceFacts(ctx)
 	require.NoError(t, err)
-	var open sources.OpenSource
-	require.NoError(t, json.Unmarshal(rows[store.SourceFactKey{PackageID: 1, Source: GitHub}].Data, &open))
-	require.Equal(t, int64(1234), *open.Stars)
-	require.Equal(t, time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC), *open.PushedAt)
+	var githubFact sources.GitHubFact
+	require.NoError(t, json.Unmarshal(rows[store.SourceFactKey{PackageID: 1, Source: GitHub}].Data, &githubFact))
+	require.Equal(t, int64(1234), *githubFact.Stars)
+	require.Equal(t, time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC), *githubFact.PushedAt)
 	require.Empty(t, invalidations(t, st))
 
 	// The definition no longer points at an App Store identifier: the row goes and so does the page fact.
@@ -193,23 +197,37 @@ func TestSourceFactsSignalsRefreshOnlyFoundAppsDaily(t *testing.T) {
 	now = now.Add(25 * time.Hour)
 	stats, err := svc.Run(ctx)
 	require.NoError(t, err)
-	require.Equal(t, []string{"acme/open W/\"e1\""}, calls)
-	require.EqualValues(t, 1, stats["githubRequests"])
+	require.Equal(t, []string{"acme/open W/\"e1\"", "acme/closed "}, calls)
+	require.EqualValues(t, 2, stats["githubRequests"])
 	rows, err := st.SourceFacts(ctx)
 	require.NoError(t, err)
 	open := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
 	closed := rows[store.SourceFactKey{PackageID: 2, Source: GitHub}]
 	require.Equal(t, int64(2000), openStars(t, open))
 	require.WithinDuration(t, now, *open.SignalsCheckedAt, time.Second)
-	require.Nil(t, closed.SignalsCheckedAt)
+	require.WithinDuration(t, now, *closed.SignalsCheckedAt, time.Second)
+	require.Equal(t, "acme/closed", closed.Subject)
+	require.Equal(t, "none", closed.Status)
+	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "closed", "en-US")
+	require.NoError(t, err)
+	require.Nil(t, detail.OpenSource, "non-OSI repository must not publish openSource")
+	require.Equal(t, "https://github.com/acme/closed", detail.Repository.Url)
+	require.Nil(t, detail.Repository.Stars, "GitHub omitted stargazers_count in this response")
 }
 
 func openStars(t *testing.T, row store.SourceFact) int64 {
 	t.Helper()
-	var open sources.OpenSource
-	require.NoError(t, json.Unmarshal(row.Data, &open))
-	require.NotNil(t, open.Stars)
-	return *open.Stars
+	var github sources.GitHubFact
+	require.NoError(t, json.Unmarshal(row.Data, &github))
+	require.NotNil(t, github.Stars)
+	return *github.Stars
+}
+
+func mustJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	require.NoError(t, err)
+	return raw
 }
 
 func TestSourceFactsJobStopsOnRateLimitsAndBacksOffOnErrors(t *testing.T) {

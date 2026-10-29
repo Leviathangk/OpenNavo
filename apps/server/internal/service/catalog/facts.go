@@ -76,8 +76,9 @@ func (s *PublicService) appFacts(ctx context.Context, d *publicapi.PackageDetail
 	return nil
 }
 
-// sourceFacts adds what the facts:sources job read from GitHub and the Mac App Store. Rows are
-// published only when found; unreadable data is skipped rather than shown half-filled.
+// sourceFacts adds what the facts:sources job read from GitHub and the Mac App Store. A public
+// GitHub repository is published even when its license is not OSI-approved; the openSource
+// object remains limited to the 30-day license decision.
 func (s *PublicService) sourceFacts(ctx context.Context, d *publicapi.PackageDetail, id int64) error {
 	rows, err := s.Store.PublicSourceFacts(ctx, id)
 	if err != nil {
@@ -86,24 +87,35 @@ func (s *PublicService) sourceFacts(ctx context.Context, d *publicapi.PackageDet
 	for _, row := range rows {
 		switch row.Source {
 		case "github":
-			var open sources.OpenSource
-			if json.Unmarshal(row.Data, &open) != nil || open.Repo == "" || open.License == "" {
+			var github sources.GitHubFact
+			if json.Unmarshal(row.Data, &github) != nil {
 				continue
 			}
-			fact := &publicapi.OpenSourceFact{Repo: open.Repo, Url: open.URL, License: open.License, Archived: open.Archived, CheckedAt: row.CheckedAt}
-			if open.Stars != nil {
-				stars := *open.Stars
-				fact.Stars = &stars
+			// Rows written by an older worker may have recorded the repository in
+			// subject before the JSON payload was populated.
+			if github.Repo == "" && row.Subject != "" {
+				github.Repo, github.URL = row.Subject, "https://github.com/"+row.Subject
 			}
-			if open.PushedAt != nil {
-				pushedAt := open.PushedAt.UTC()
-				fact.PushedAt = &pushedAt
+			if github.Repo == "" || github.URL == "" {
+				continue
+			}
+			repository := &publicapi.RepositoryFact{Url: github.URL, Archived: github.Archived}
+			if github.Stars != nil {
+				stars := *github.Stars
+				repository.Stars = &stars
+			}
+			if github.PushedAt != nil {
+				pushedAt := github.PushedAt.UTC()
+				repository.PushedAt = &pushedAt
 			}
 			if row.SignalsCheckedAt != nil {
 				signalsCheckedAt := row.SignalsCheckedAt.UTC()
-				fact.SignalsCheckedAt = &signalsCheckedAt
+				repository.SignalsCheckedAt = &signalsCheckedAt
 			}
-			d.OpenSource = fact
+			d.Repository = repository
+			if row.Status == "found" && github.License != "" {
+				d.OpenSource = &publicapi.OpenSourceFact{Repo: github.Repo, Url: github.URL, License: github.License, Archived: github.Archived, CheckedAt: row.CheckedAt}
+			}
 		case "app_store":
 			var listing sources.Listing
 			if json.Unmarshal(row.Data, &listing) != nil || listing.Name == "" || listing.URL == "" || listing.Currency == "" {

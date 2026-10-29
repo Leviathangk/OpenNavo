@@ -2825,6 +2825,8 @@ export interface components {
             /** @description Apps only: up to three published articles that cover this app, newest first */
             articles?: components["schemas"]["ArticleCard"][];
             homebrewStatus?: components["schemas"]["HomebrewStatus"];
+            /** @description Apps only; null unless the Homebrew definition points at a public GitHub repository */
+            repository?: components["schemas"]["RepositoryFact"] | null;
             /** @description Apps only; null unless GitHub reports an OSI-approved license for a code repository the Homebrew definition points at */
             openSource?: components["schemas"]["OpenSourceFact"] | null;
             /** @description Apps only; null unless a Mac App Store listing shares a bundle identifier and a name with this app */
@@ -6208,9 +6210,6 @@ export interface components {
          *       "url": "https://github.com/gnachman/iTerm2",
          *       "license": "GPL-2.0",
          *       "archived": false,
-         *       "stars": 12345,
-         *       "pushedAt": "2026-10-13T08:00:00Z",
-         *       "signalsCheckedAt": "2026-10-14T03:35:00Z",
          *       "checkedAt": "2026-10-14T03:35:00Z"
          *     }
          */
@@ -6227,6 +6226,25 @@ export interface components {
             /** @example false */
             archived: boolean;
             /**
+             * Format: date-time
+             * @example 2026-10-14T03:35:00Z
+             */
+            checkedAt: string;
+        };
+        /**
+         * @description Current signals from the public GitHub repository the Homebrew definition points at. The repository is checked daily; stars and pushedAt are read from the same response as archived.
+         * @example {
+         *       "url": "https://github.com/gnachman/iTerm2",
+         *       "stars": 12345,
+         *       "pushedAt": "2026-10-13T08:00:00Z",
+         *       "signalsCheckedAt": "2026-10-14T03:35:00Z",
+         *       "archived": false
+         *     }
+         */
+        RepositoryFact: {
+            /** @example https://github.com/gnachman/iTerm2 */
+            url: string;
+            /**
              * Format: int64
              * @description GitHub stargazers_count from the repository response; omitted when the signal has not been stored.
              * @example 12345
@@ -6240,15 +6258,12 @@ export interface components {
             pushedAt?: string | null;
             /**
              * Format: date-time
-             * @description When the daily GitHub stars and pushedAt signals were last checked; omitted before the first signal refresh.
+             * @description When the daily GitHub repository signals were last checked; omitted before the first signal refresh.
              * @example 2026-10-14T03:35:00Z
              */
             signalsCheckedAt?: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-10-14T03:35:00Z
-             */
-            checkedAt: string;
+            /** @example false */
+            archived: boolean;
         };
         /**
          * @description The Mac App Store listing that shares a bundle identifier and a name with this app, read from Apple's lookup API for one storefront by a scheduled job. It describes the App Store edition, which can differ from the download Homebrew installs.

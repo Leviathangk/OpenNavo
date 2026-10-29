@@ -15,11 +15,23 @@ import (
 // ErrRateLimited stops a batch: the source refused more requests for now.
 var ErrRateLimited = errors.New("source rate limited")
 
-// OpenSource is the published license fact for an app.
+// OpenSource is the published license fact for an app. Repository signals are
+// stored separately in GitHubFact so the OSI decision can keep its 30-day
+// schedule.
 type OpenSource struct {
+	Repo     string `json:"repo"`
+	URL      string `json:"url"`
+	License  string `json:"license"`
+	Archived bool   `json:"archived"`
+}
+
+// GitHubFact is the repository record kept for every public GitHub repository
+// identified by a package. License is populated only after the 30-day OSI
+// check accepts the repository.
+type GitHubFact struct {
 	Repo     string     `json:"repo"`
 	URL      string     `json:"url"`
-	License  string     `json:"license"`
+	License  string     `json:"license,omitempty"`
 	Archived bool       `json:"archived"`
 	Stars    *int64     `json:"stars,omitempty"`
 	PushedAt *time.Time `json:"pushedAt,omitempty"`
@@ -57,14 +69,31 @@ var osiLicenses = map[string]bool{
 // language) under an OSI-approved license GitHub recognized. Releases-only repositories, missing
 // or unrecognized licenses ("NOASSERTION") publish nothing rather than a guess.
 func (r Repository) OpenSource() (OpenSource, bool) {
-	if r.Private || r.License == nil || !osiLicenses[r.License.SPDXID] || r.Language == nil || *r.Language == "" {
+	if !r.Public() || r.License == nil || !osiLicenses[r.License.SPDXID] || r.Language == nil || *r.Language == "" {
 		return OpenSource{}, false
 	}
-	if githubRepo(r.HTMLURL) == "" || !strings.EqualFold(githubRepo(r.HTMLURL), r.FullName) {
-		return OpenSource{}, false
+	return OpenSource{Repo: r.FullName, URL: githubURL(r.FullName), License: r.License.SPDXID, Archived: r.Archived}, true
+}
+
+// Public reports whether GitHub returned a public repository whose canonical
+// URL and full name agree. It intentionally does not require language or a
+// license: releases-only and non-OSI repositories still publish signals.
+func (r Repository) Public() bool {
+	return !r.Private && r.FullName != "" && githubRepo(r.HTMLURL) != "" && strings.EqualFold(githubRepo(r.HTMLURL), r.FullName)
+}
+
+// GitHubFact returns the repository identity and current signals for any
+// public repository, including one without an OSI-approved license.
+func (r Repository) GitHubFact() (GitHubFact, bool) {
+	if !r.Public() {
+		return GitHubFact{}, false
 	}
-	return OpenSource{Repo: r.FullName, URL: "https://github.com/" + r.FullName, License: r.License.SPDXID, Archived: r.Archived,
+	return GitHubFact{Repo: r.FullName, URL: githubURL(r.FullName), Archived: r.Archived,
 		Stars: cloneInt64(r.StargazersCount), PushedAt: cloneTime(r.PushedAt)}, true
+}
+
+func githubURL(repo string) string {
+	return "https://github.com/" + repo
 }
 
 func cloneInt64(value *int64) *int64 {

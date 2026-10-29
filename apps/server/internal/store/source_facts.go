@@ -93,7 +93,7 @@ func (s *Store) SourceFacts(ctx context.Context) (map[SourceFactKey]SourceFact, 
 // PublicSourceFacts returns the facts a page may show for one app.
 func (s *Store) PublicSourceFacts(ctx context.Context, packageID int64) ([]SourceFact, error) {
 	var rows []SourceFact
-	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count FROM package_source_facts WHERE package_id=? AND status='found' ORDER BY source`, packageID).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT package_id,source,input,subject,status,data,etag,checked_at,next_check_at,fail_count,signals_checked_at,signals_next_check_at,signals_fail_count FROM package_source_facts WHERE package_id=? AND (status='found' OR (source='github' AND subject<>'')) ORDER BY source`, packageID).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query public source facts: %w", err)
 	}
 	return rows, nil
@@ -126,7 +126,7 @@ func (s *Store) SaveSourceFact(ctx context.Context, fact SourceFact, token strin
 func (s *Store) RecordSourceFactSignalFailure(ctx context.Context, key SourceFactKey, next time.Time) error {
 	return s.DB.WithContext(ctx).Exec(`UPDATE package_source_facts
  SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1
- WHERE package_id=? AND source=? AND status='found'`, next, key.PackageID, key.Source).Error
+ WHERE package_id=? AND source=? AND subject<>''`, next, key.PackageID, key.Source).Error
 }
 
 // RecordSourceFactFailure keeps the successful facts and their check time, but records the

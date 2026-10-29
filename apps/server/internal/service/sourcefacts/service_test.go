@@ -14,7 +14,7 @@ func TestGitHubSignalsUseDailyScheduleWithoutChangingLicenseSchedule(t *testing.
 	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
 	licenseNext := now.Add(29 * 24 * time.Hour)
 	signalNext := now.Add(-time.Minute)
-	row := store.SourceFact{Status: "found", CheckedAt: now.Add(-24 * time.Hour), NextCheckAt: licenseNext, SignalsNextCheckAt: &signalNext}
+	row := store.SourceFact{Source: GitHub, Subject: "owner/app", Status: "found", CheckedAt: now.Add(-24 * time.Hour), NextCheckAt: licenseNext, SignalsNextCheckAt: &signalNext}
 	require.True(t, githubSignalsDue(row, now))
 	require.True(t, row.NextCheckAt.After(now), "the 30-day license check remains scheduled later")
 
@@ -28,17 +28,17 @@ func TestGitHubSignalsUseDailyScheduleWithoutChangingLicenseSchedule(t *testing.
 func TestMergeGitHubSignalsPreservesExistingLicenseFacts(t *testing.T) {
 	oldPushed := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	newPushed := time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC)
-	data, err := json.Marshal(sources.OpenSource{Repo: "owner/app", URL: "https://github.com/owner/app", License: "MIT", Archived: true, Stars: int64PointerForTest(12), PushedAt: &oldPushed})
+	data, err := json.Marshal(sources.GitHubFact{Repo: "owner/app", URL: "https://github.com/owner/app", License: "MIT", Archived: true, Stars: int64PointerForTest(12), PushedAt: &oldPushed})
 	require.NoError(t, err)
 	stars := int64(34)
-	updated, err := mergeGitHubSignals(data, sources.Repository{StargazersCount: &stars, PushedAt: &newPushed})
+	updated, err := mergeGitHubSignals(data, sources.Repository{FullName: "owner/app", HTMLURL: "https://github.com/owner/app", StargazersCount: &stars, PushedAt: &newPushed})
 	require.NoError(t, err)
-	var open sources.OpenSource
-	require.NoError(t, json.Unmarshal(updated, &open))
-	require.Equal(t, "MIT", open.License)
-	require.True(t, open.Archived)
-	require.Equal(t, int64(34), *open.Stars)
-	require.Equal(t, newPushed, *open.PushedAt)
+	var fact sources.GitHubFact
+	require.NoError(t, json.Unmarshal(updated, &fact))
+	require.Equal(t, "MIT", fact.License)
+	require.False(t, fact.Archived, "archived is a daily repository signal")
+	require.Equal(t, int64(34), *fact.Stars)
+	require.Equal(t, newPushed, *fact.PushedAt)
 }
 
 func int64PointerForTest(value int64) *int64 { return &value }

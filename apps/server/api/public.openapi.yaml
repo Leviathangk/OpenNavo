@@ -12552,6 +12552,12 @@ components:
                 $ref: '#/components/schemas/ArticleCard'
             homebrewStatus:
               $ref: '#/components/schemas/HomebrewStatus'
+            repository:
+              type: object
+              allOf:
+                - $ref: '#/components/schemas/RepositoryFact'
+              nullable: true
+              description: 'Apps only; null unless the Homebrew definition points at a public GitHub repository'
             openSource:
               type: object
               allOf:
@@ -16598,6 +16604,24 @@ components:
         archived:
           type: boolean
           example: false
+        checkedAt:
+          type: string
+          format: date-time
+          example: 2026-10-14T03:35:00Z
+      example:
+        repo: gnachman/iTerm2
+        url: https://github.com/gnachman/iTerm2
+        license: GPL-2.0
+        archived: false
+        checkedAt: 2026-10-14T03:35:00Z
+    RepositoryFact:
+      type: object
+      required: [url, archived]
+      description: 'Current signals from the public GitHub repository the Homebrew definition points at. The repository is checked daily; stars and pushedAt are read from the same response as archived.'
+      properties:
+        url:
+          type: string
+          example: https://github.com/gnachman/iTerm2
         stars:
           type: integer
           format: int64
@@ -16614,21 +16638,17 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: 'When the daily GitHub stars and pushedAt signals were last checked; omitted before the first signal refresh.'
+          description: 'When the daily GitHub repository signals were last checked; omitted before the first signal refresh.'
           example: 2026-10-14T03:35:00Z
-        checkedAt:
-          type: string
-          format: date-time
-          example: 2026-10-14T03:35:00Z
+        archived:
+          type: boolean
+          example: false
       example:
-        repo: gnachman/iTerm2
         url: https://github.com/gnachman/iTerm2
-        license: GPL-2.0
-        archived: false
         stars: 12345
         pushedAt: 2026-10-13T08:00:00Z
         signalsCheckedAt: 2026-10-14T03:35:00Z
-        checkedAt: 2026-10-14T03:35:00Z
+        archived: false
     AppStoreListing:
       type: object
       required: [name, url, bundleId, price, currency, region, languages, checkedAt]

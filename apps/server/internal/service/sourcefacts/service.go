@@ -1,8 +1,9 @@
 // Package sourcefacts runs the hourly facts:sources job: for each app it finds the GitHub
 // repository and bundle identifiers in the Homebrew definition (rules in internal/sourcefacts),
-// asks GitHub for the license and Apple's lookup API for a matching Mac App Store listing, and
-// keeps the result with a schedule. One run stays inside a time budget, leaves GitHub quota for the
-// changelog pipeline and paces App Store lookups; whatever is left waits for the next run.
+// asks GitHub for repository signals and the 30-day OSI license decision, and asks Apple's lookup
+// API for a matching Mac App Store listing. One run stays inside a time budget, leaves GitHub
+// quota for the changelog pipeline and paces App Store lookups; whatever is left waits for the
+// next run.
 package sourcefacts
 
 import (
@@ -95,16 +96,21 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 			row, exists := rows[key]
 			if input == "" {
 				if exists {
-					if err := s.Store.DeleteSourceFact(ctx, key, p.Token, row.Status == "found"); err != nil {
+					if err := s.Store.DeleteSourceFact(ctx, key, p.Token, publicSourceFact(&row)); err != nil {
 						return nil, err
 					}
 					stats.Removed++
 				}
 				continue
 			}
-			signalsOnly := source == GitHub && exists && row.Input == input && row.Status == "found" && row.FailCount == 0 && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
+			signalsOnly := source == GitHub && exists && row.Input == input && row.Subject != "" && row.FailCount == 0 && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
 			if exists && row.Input == input && row.NextCheckAt.After(start) && !signalsOnly {
 				continue
+			}
+			if signalsOnly {
+				// The stored subject is the repository whose ETag was checked. A daily
+				// refresh must spend one request on that repository only.
+				items = []string{row.Subject}
 			}
 			item := pending{pkg: p, input: input, items: items, signalsOnly: signalsOnly}
 			if exists {
@@ -199,9 +205,12 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		fact.Input = item.input
 	}
 	low := false
+	var first sources.GitHubFact
+	var firstETag string
+	haveFirst := false
 	for _, repo := range item.items {
 		etag := ""
-		if item.row != nil && item.row.Status == "found" && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
+		if item.row != nil && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
 			etag = *item.row.ETag
 		}
 		result, err := s.GitHub.Repo(ctx, repo, etag)
@@ -223,15 +232,16 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			return fact, low, err
 		}
 		if result.NotModified && etag != "" {
-			if item.row == nil || item.row.Status != "found" {
+			if item.row == nil || !hasGitHubRepository(*item.row) {
 				continue
 			}
 			fact = *item.row
 			fact.Input = item.input
-			fact.Status, fact.Subject = "found", item.row.Subject
+			fact.Subject = item.row.Subject
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
+			fact.FailCount = 0
 			if fullCheck {
 				fact.CheckedAt = now
 				fact.NextCheckAt = next(now, recheck, item.pkg.ID)
@@ -241,50 +251,28 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		if result.NotFound {
 			continue
 		}
-		if open, ok := result.Repository.OpenSource(); ok {
-			var data []byte
-			if !fullCheck {
-				data, err = mergeGitHubSignals(item.row.Data, result.Repository)
-				if err != nil {
-					return fact, low, err
-				}
-			} else {
-				open.Stars = cloneInt64(result.Repository.StargazersCount)
-				open.PushedAt = cloneTime(result.Repository.PushedAt)
-				data, err = json.Marshal(open)
-				if err != nil {
-					return fact, low, err
-				}
-			}
-			fact.Status, fact.Subject, fact.Data = "found", open.Repo, data
-			if !fullCheck {
-				fact.Subject = item.row.Subject
-				fact.CheckedAt = item.row.CheckedAt
-				fact.NextCheckAt = item.row.NextCheckAt
-			}
-			fact.SignalsCheckedAt = timePointer(now)
-			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
-			fact.SignalsFailCount = 0
-			if result.ETag != "" {
-				fact.ETag = &result.ETag
-			} else if !fullCheck {
-				fact.ETag = item.row.ETag
-			}
-			return fact, low, nil
+		current, public := result.Repository.GitHubFact()
+		if !public {
+			continue
+		}
+		if !haveFirst {
+			first, firstETag, haveFirst = current, result.ETag, true
 		}
 		if !fullCheck {
-			// A daily signal refresh must not discard the successful license judgment if GitHub
-			// changes or temporarily omits license metadata. The 30-day check owns that decision.
+			// A daily signal refresh never changes the OSI judgment. It updates the
+			// repository signals and keeps status, license data and the 30-day
+			// schedule from the existing row.
 			data, mergeErr := mergeGitHubSignals(item.row.Data, result.Repository)
 			if mergeErr != nil {
 				return fact, low, mergeErr
 			}
-			fact.Status, fact.Subject, fact.Data = "found", item.row.Subject, data
+			fact.Status, fact.Subject, fact.Data = item.row.Status, current.Repo, data
 			fact.CheckedAt = item.row.CheckedAt
 			fact.NextCheckAt = item.row.NextCheckAt
 			fact.SignalsCheckedAt = timePointer(now)
 			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 			fact.SignalsFailCount = 0
+			fact.FailCount = 0
 			if result.ETag != "" {
 				fact.ETag = &result.ETag
 			} else {
@@ -292,8 +280,24 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			}
 			return fact, low, nil
 		}
+		if open, ok := result.Repository.OpenSource(); ok {
+			current.License = open.License
+			data, marshalErr := json.Marshal(current)
+			if marshalErr != nil {
+				return fact, low, marshalErr
+			}
+			fact.Status, fact.Subject, fact.Data = "found", current.Repo, data
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
+			fact.FailCount = 0
+			if result.ETag != "" {
+				fact.ETag = &result.ETag
+			}
+			return fact, low, nil
+		}
 	}
-	if !fullCheck && item.row != nil && item.row.Status == "found" {
+	if !fullCheck && item.row != nil && hasGitHubRepository(*item.row) {
 		// A deleted candidate during a signal-only pass does not invalidate the 30-day fact.
 		fact = *item.row
 		fact.Input = item.input
@@ -301,6 +305,21 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
 		fact.SignalsFailCount = 0
 		return fact, low, nil
+	}
+	if haveFirst {
+		fact.Status, fact.Subject = "none", first.Repo
+		data, err := json.Marshal(first)
+		if err != nil {
+			return fact, low, err
+		}
+		fact.Data = data
+		fact.SignalsCheckedAt = timePointer(now)
+		fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+		fact.SignalsFailCount = 0
+		fact.FailCount = 0
+		if firstETag != "" {
+			fact.ETag = &firstETag
+		}
 	}
 	// Every candidate was read (at most three requests), so "none" is a complete answer even when
 	// the quota turned low on the way; the run stops after this app.
@@ -408,36 +427,22 @@ func (s *Service) logger() *slog.Logger {
 }
 
 func githubSignalsDue(row store.SourceFact, now time.Time) bool {
-	return row.Status == "found" && (row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now))
+	return row.Subject != "" && (row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now))
 }
 
 func mergeGitHubSignals(data json.RawMessage, repository sources.Repository) ([]byte, error) {
-	var open sources.OpenSource
-	if err := json.Unmarshal(data, &open); err != nil || open.Repo == "" || open.License == "" {
-		if err == nil {
-			err = errors.New("github source fact has no open-source identity")
+	var fact sources.GitHubFact
+	if len(data) > 0 && string(data) != "null" && string(data) != "{}" {
+		if err := json.Unmarshal(data, &fact); err != nil {
+			return nil, err
 		}
-		return nil, err
 	}
-	open.Stars = cloneInt64(repository.StargazersCount)
-	open.PushedAt = cloneTime(repository.PushedAt)
-	return json.Marshal(open)
-}
-
-func cloneInt64(value *int64) *int64 {
-	if value == nil {
-		return nil
+	current, ok := repository.GitHubFact()
+	if !ok {
+		return nil, errors.New("github repository is not public")
 	}
-	out := *value
-	return &out
-}
-
-func cloneTime(value *time.Time) *time.Time {
-	if value == nil {
-		return nil
-	}
-	out := value.UTC()
-	return &out
+	current.License = fact.License
+	return json.Marshal(current)
 }
 
 func timePointer(value time.Time) *time.Time {
@@ -445,10 +450,11 @@ func timePointer(value time.Time) *time.Time {
 	return &value
 }
 
-// samePublic compares what a page would show: nothing unless found, else the subject and data.
+// samePublic compares what a page would show: found source facts and public
+// GitHub repository rows with a stored subject are both visible.
 func samePublic(before, after *store.SourceFact) bool {
 	shown := func(row *store.SourceFact) (string, any) {
-		if row == nil || row.Status != "found" {
+		if !publicSourceFact(row) {
 			return "", nil
 		}
 		var data any
@@ -458,6 +464,14 @@ func samePublic(before, after *store.SourceFact) bool {
 	subjectBefore, dataBefore := shown(before)
 	subjectAfter, dataAfter := shown(after)
 	return subjectBefore == subjectAfter && reflect.DeepEqual(dataBefore, dataAfter)
+}
+
+func hasGitHubRepository(row store.SourceFact) bool {
+	return row.Source == GitHub && row.Subject != ""
+}
+
+func publicSourceFact(row *store.SourceFact) bool {
+	return row != nil && (row.Status == "found" || hasGitHubRepository(*row))
 }
 
 // next spreads rechecks over a day so a first fill does not come due all at once later.
