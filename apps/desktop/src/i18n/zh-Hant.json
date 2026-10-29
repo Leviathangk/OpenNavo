@@ -455,26 +455,26 @@
     "spec": {
       "title": "基本資訊",
       "price": "價格",
-      "system": "系統需求",
+      "system": "系統",
       "chip": "晶片",
       "autoUpdates": "自動更新",
       "openSource": "開源",
-      "repository": "儲存庫",
-      "githubRepository": "GitHub 儲存庫",
+      "repository": "倉庫",
+      "githubRepository": "GitHub 倉庫",
+      "checked": "核查日期",
       "developer": "開發者",
       "homepage": "主頁",
       "token": "Token",
-      "installedVersion": "Installed version",
-      "installLocation": "Install location",
+      "installedVersion": "已安裝版本",
+      "installLocation": "安裝位置",
       "yes": "是",
-      "no": "否",
-      "checked": "核查日期"
+      "no": "否"
     },
     "repo": {
-      "stars": "★",
+      "stars": "Stars",
       "updated": "{days} 天前更新",
-      "unmaintained": "可能已不再維護",
-      "archived": "已封存"
+      "unmaintained": "可能已停止維護",
+      "archived": "已歸檔"
     },
     "deps": {
       "macos": "系統要求",
