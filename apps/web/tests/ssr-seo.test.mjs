@@ -1662,8 +1662,17 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.match(html, /<title>[^<]*Example App @11[^<]*OpenNavo<\/title>/);
       // S1/C3: an absent subtitle leaves a Vue conditional comment after the exact heading.
       assert.match(html, /<h1\b[^>]*>Example App @11(?:<!--(?:v-if)?-->)?<\/h1>/);
-      // T2: the facts/install blocks render the complete copyable command in a single code element.
-      assert.match(html, /<code\b[^>]*>brew install --cask versioned-app@11<\/code>/);
+      // The shared command card can include an empty CSS wrap marker. Its command still appears once,
+      // in one text node, preserving the literal @ and the complete text copied to Terminal.
+      const commands = [...JSDOM.fragment(html).querySelectorAll('main pre code')].filter(
+        code => code.textContent.trim() === 'brew install --cask versioned-app@11'
+      );
+      assert.equal(commands.length, 1, `${path}: one complete install command in the overview`);
+      assert.deepEqual(
+        [...commands[0].childNodes].filter(node => node.nodeType === 3).map(node => node.textContent.trim()),
+        ['brew install --cask versioned-app@11'],
+        `${path}: the command remains one copyable text node`
+      );
       assert.ok(html.includes(`https://example.test${path}`), 'canonical URL retains the version suffix');
       // WP1: the description says what the page answers instead of stacking the install command.
       const description = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '';
@@ -3240,15 +3249,31 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const graphOf = page =>
       JSON.parse(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(page)?.[1] ?? '{}')['@graph'];
     const page = await html('/apps/facts-app');
-    const lead = /data-testid="app-answer"[^>]*>([^<]*)</.exec(page)?.[1];
-    // T2 (appAnswer.ts): the lead identifies the app; sourced price and requirements live in their blocks.
-    assert.equal(lead, 'Facts App is a Developer Tools app for Mac.');
+    const document = JSDOM.fragment(page);
+    // PR1 removes the templated lead. The title, authored description and shared spec card retain facts.
+    assert.equal(document.querySelector('[data-testid="app-answer"]'), null);
+    assert.equal(document.querySelector('main h1')?.textContent.trim(), 'Facts App');
+    assert.equal(
+      document.querySelector('main a[href="/categories/developer-tools"]')?.textContent.trim(),
+      'Developer Tools'
+    );
+    assert.equal(
+      document.querySelector('main .on-about-collapsed .on-markdown')?.textContent.trim(),
+      'A synthetic package for SSR regression tests.'
+    );
+    const specs = document.querySelectorAll('[data-testid="package-spec-card"]');
+    assert.equal(specs.length, 1, 'one shared specification card');
+    assert.ok(specs[0].textContent.includes('$9.99 per month'), 'verified price remains in the spec card');
+    assert.ok(specs[0].textContent.includes('macOS 13 or later'), 'verified requirement remains in the spec card');
     const section = id => new RegExp(`data-testid="${id}"[\\s\\S]*?</section>`).exec(page)?.[0] ?? '';
     // T2 splits the former guide/facts cards into install, uninstall, price and requirements sections.
     const guide = section('package-install');
     assert.ok(guide.includes('Homebrew installs the app in your Applications folder.'), guide);
     assert.ok(guide.includes('href="https://vendor.example/FactsApp.dmg"'));
-    assert.ok(guide.includes('it is not a security certification'));
+    assert.ok(
+      section('package-safety').includes('This is not a safety certification.'),
+      'the safety section retains the disclaimer instead of repeating it in the install guide'
+    );
     assert.ok(
       section('package-uninstall').includes('data-testid="package-zap"'),
       'zap only because the definition lists files'
@@ -3283,12 +3308,20 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(app.softwareRequirements, 'macOS 13 or later');
     assert.equal(app.downloadUrl, 'https://vendor.example/FactsApp.dmg');
     assert.ok(!('aggregateRating' in app), 'no invented ratings');
-    // Other languages render the same answer in their own words.
-    assert.match(
-      await html('/ja/apps/facts-app'),
-      /data-testid="app-answer"[^>]*>Facts App は「Developer Tools」カテゴリ/
+    // Other languages retain the same authored description and localize the shared spec card.
+    const japanese = JSDOM.fragment(await html('/ja/apps/facts-app'));
+    assert.equal(japanese.querySelector('[data-testid="app-answer"]'), null);
+    assert.equal(japanese.querySelector('main h1')?.textContent.trim(), 'Facts App');
+    assert.equal(
+      japanese.querySelector('main a[href="/ja/categories/developer-tools"]')?.textContent.trim(),
+      'Developer Tools'
     );
-    // Apps without evidence keep a plain lead and no offer; fonts are not SoftwareApplication.
+    assert.equal(
+      japanese.querySelector('main .on-about-collapsed .on-markdown')?.textContent.trim(),
+      'A synthetic package for SSR regression tests.'
+    );
+    assert.equal(japanese.querySelector('[data-testid="package-spec-card"] h2')?.textContent, '基本情報');
+    // Apps without price evidence have no offer; fonts are not SoftwareApplication.
     const ordinary = await html('/apps/ordinary-app');
     const [plain] = graphOf(ordinary).filter(node => node['@type'] === 'SoftwareApplication');
     assert.ok(!('offers' in plain));
@@ -3319,7 +3352,15 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const visible = html =>
       html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace(/<style\b[^>]*>[\s\S]*?<\/style>/g, '');
     const notion = visible(await page('/apps/notion'));
-    assert.ok(notion.includes('It is made by Notion Labs, Inc.'));
+    const notionDocument = JSDOM.fragment(notion);
+    const developer = [...notionDocument.querySelectorAll('[data-testid="package-spec-card"] dt')].find(
+      term => term.textContent.trim() === 'Developer'
+    );
+    assert.equal(developer?.nextElementSibling?.textContent.trim(), 'Notion Labs, Inc.');
+    assert.ok(
+      notionDocument.querySelector('main h1')?.parentElement?.textContent.includes('Notion Labs, Inc.'),
+      'the title area still names the developer after removing the templated lead'
+    );
     assert.ok(!notion.includes('Inc..'));
     const empty = visible(await page('/apps/repair-empty'));
     assert.ok(!empty.includes('id="whats-new"'));
