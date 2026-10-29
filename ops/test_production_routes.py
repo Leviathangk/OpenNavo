@@ -20,6 +20,8 @@ class ProductionRouteTests(unittest.TestCase):
     def response(self, path, host='api.opennavo.localhost', method='GET', data=None, **kwargs):
         def envelope(value, code='0000'):
             return 200, {}, json.dumps({'code': code, 'data': value}).encode()
+        if host.startswith('admin.') and path in ['/api/health', '/readyz']:
+            return 200, {'Content-Type': 'application/json'}, b'{"status":"ok"}'
         if path == '/readyz':
             return 200, {}, b'OK'
         if host == 'web.opennavo.localhost':
