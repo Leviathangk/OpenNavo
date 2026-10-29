@@ -31,12 +31,8 @@ afterEach(() => {
 });
 
 const TICK = 15;
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function settle(ticks = 0) {
-  if (ticks) {
-    if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(TICK * ticks + 5);
-    else await wait(TICK * ticks + 5);
-  }
+  if (ticks) await vi.advanceTimersByTimeAsync(TICK * ticks + 5);
   await flushPromises();
   await flushPromises();
 }
@@ -51,6 +47,8 @@ function mountIn(context: TestContext, component: Component) {
 }
 
 async function open(path: string, flags = '', component: Component = FirewallPage) {
+  // All firewall mock callbacks are scheduler-driven; advance them directly so CI load cannot race assertions.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   history.replaceState(null, '', flags ? `/?mock=${flags}` : '/');
   const context = await setup(path, { tickMs: TICK });
   await startLocalState();
@@ -154,11 +152,17 @@ describe('Turning it on', () => {
 
   it('Stays paused with the reason when the filter dialog is declined, and can ask again', async () => {
     const { wrapper } = await open('/firewall', 'firewall-consent-denied');
+    // Drive the nested installation and consent callbacks instead of waiting for wall-clock time.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     await button(wrapper, '开启应用防火墙')!.trigger('click');
     await settle(1);
     await button(wrapper, '打开系统设置')!.trigger('click');
     await settle(4);
     await settle();
+    expect(useFirewallStore().status).toMatchObject({
+      filter: 'off',
+      error: { code: 'E_FW_CONSENT_DENIED' }
+    });
     expect(wrapper.text()).toContain('应用防火墙已暂停');
     expect(wrapper.text()).toContain('没有允许过滤网络内容，防火墙没有开启');
     const enable = vi.spyOn(commands, 'firewallEnable');
