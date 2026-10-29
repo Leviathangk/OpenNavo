@@ -19,7 +19,6 @@ const ttls: Record<string, number> = {
   '/categories': 900,
   '/categories/**': 900,
   '/rankings': 900,
-  '/recent': 300,
   '/download': 600,
   '/security': 900,
   // F8 security topics, T1 A–Z directory and F1 background-items encyclopedia.
@@ -64,6 +63,12 @@ describe('localized route policies', () => {
       expect(config.$production?.routeRules?.[actualPath], actualPath).toEqual({ swr });
       expect(config.routeRules?.[actualPath]?.swr).toBeUndefined();
     }
+    expect(config.$production?.routeRules?.[`${prefix}/recent`]).toEqual({
+      cache: { maxAge: 60, swr: true, staleMaxAge: 300 }
+    });
+    expect(config.$production?.routeRules?.[`${prefix}/apps/*/versions`]).toEqual({
+      cache: { maxAge: 21600, swr: true, staleMaxAge: 64800 }
+    });
   });
 
   it.each(prefixes)('keeps %s search uncached and Brewfile client-only and excludes both from indexing', prefix => {
@@ -97,11 +102,18 @@ describe('localized route policies', () => {
 
   it('does not generate obsolete English prefixes or broad cache rules covering search', () => {
     const production = config.$production?.routeRules ?? {};
-    expect(Object.keys(production)).toHaveLength(prefixes.length * Object.keys(ttls).length);
+    expect(Object.keys(production)).toHaveLength(prefixes.length * (Object.keys(ttls).length + 2));
     for (const path of [...Object.keys(production), ...Object.keys(config.routeRules ?? {})]) {
       expect(path).not.toMatch(/^\/en(?:\/|$)/);
       expect(path).not.toMatch(/^(?:\/zh|\/ja|\/es|\/pt|\/ru|\/de|\/fr|\/it|\/zh-hant)?\/\*\*$/);
     }
+  });
+});
+
+it('explicitly caches signed OG images in the existing bounded image storage for thirty days at the CDN', () => {
+  expect(config.ogImage).toEqual({
+    runtimeCacheStorage: true,
+    defaults: { width: 1200, height: 630, emojis: false, cacheMaxAgeSeconds: 2592000 }
   });
 });
 

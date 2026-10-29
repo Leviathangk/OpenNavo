@@ -23,7 +23,7 @@ type LinkApp struct {
 	Removed         bool                  `json:"removed"`
 }
 
-const linkView = `SELECT jsonb_build_object('id',p.id,'revision',l.revision,'kind',p.kind,'token',p.token,'name',p.name,'sourceLocale',p.source_locale,'homepage',l.homepage,'downloadUrl',l.download_url,'githubRepo',l.github_repo,'bundleIds',l.bundle_ids,'teamId',l.team_id,'pricing',l.pricing,'sparkleFeed',l.sparkle_feed,'assetRules',l.asset_rules,'notes',l.notes,'latest',l.latest,'etag',l.etag,'syncedAt',l.synced_at,'lastError',l.last_error,'adoptedByCaskAt',l.adopted_by_cask_at,'removed',p.removed_at IS NOT NULL) AS data FROM link_apps l JOIN packages p ON p.id=l.package_id`
+const linkView = `SELECT jsonb_build_object('id',p.id,'revision',l.revision,'kind',p.kind,'token',p.token,'name',p.name,'sourceLocale',p.source_locale,'homepage',l.homepage,'downloadUrl',l.download_url,'githubRepo',l.github_repo,'githubTagPrefix',l.github_tag_prefix,'githubTagRegex',l.github_tag_regex,'githubAssetPattern',l.github_asset_pattern,'includePrereleases',l.include_prereleases,'bundleIds',l.bundle_ids,'teamId',l.team_id,'pricing',l.pricing,'sparkleFeed',l.sparkle_feed,'assetRules',l.asset_rules,'notes',l.notes,'latest',l.latest,'etag',l.etag,'syncedAt',l.synced_at,'lastError',l.last_error,'adoptedByCaskAt',l.adopted_by_cask_at,'removed',p.removed_at IS NOT NULL) AS data FROM link_apps l JOIN packages p ON p.id=l.package_id`
 
 func (s *Store) LinkApps(ctx context.Context, activeOnly bool) ([]LinkApp, error) {
 	condition := ""
@@ -94,11 +94,11 @@ func (s *Store) WriteLinkApp(ctx context.Context, id int64, input domain.LinkInp
 	bundles, _ := json.Marshal(input.BundleIDs)
 	rules, _ := json.Marshal(input.AssetRules)
 	notes, _ := json.Marshal(input.Notes)
-	err := s.DB.WithContext(ctx).Exec(`INSERT INTO link_apps(package_id,homepage,download_url,github_repo,bundle_ids,team_id,pricing,sparkle_feed,asset_rules,notes)
- VALUES(?,?,?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?,?,?,?::jsonb,?::jsonb)
- ON CONFLICT(package_id) DO UPDATE SET homepage=EXCLUDED.homepage,download_url=EXCLUDED.download_url,github_repo=EXCLUDED.github_repo,bundle_ids=EXCLUDED.bundle_ids,team_id=EXCLUDED.team_id,pricing=EXCLUDED.pricing,sparkle_feed=EXCLUDED.sparkle_feed,asset_rules=EXCLUDED.asset_rules,notes=EXCLUDED.notes,
- latest=CASE WHEN link_apps.github_repo IS DISTINCT FROM EXCLUDED.github_repo OR link_apps.sparkle_feed IS DISTINCT FROM EXCLUDED.sparkle_feed OR link_apps.asset_rules IS DISTINCT FROM EXCLUDED.asset_rules THEN NULL ELSE link_apps.latest END,
- etag=CASE WHEN link_apps.github_repo IS DISTINCT FROM EXCLUDED.github_repo OR link_apps.sparkle_feed IS DISTINCT FROM EXCLUDED.sparkle_feed OR link_apps.asset_rules IS DISTINCT FROM EXCLUDED.asset_rules THEN NULL ELSE link_apps.etag END`, id, input.Homepage, input.DownloadURL, input.GithubRepo, string(bundles), input.TeamID, input.Pricing, input.SparkleFeed, string(rules), string(notes)).Error
+	err := s.DB.WithContext(ctx).Exec(`INSERT INTO link_apps(package_id,homepage,download_url,github_repo,bundle_ids,team_id,pricing,sparkle_feed,asset_rules,notes,github_tag_prefix,github_tag_regex,github_asset_pattern,include_prereleases)
+ VALUES(?,?,?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?,?,?,?::jsonb,?::jsonb,?,?,?,?)
+ ON CONFLICT(package_id) DO UPDATE SET homepage=EXCLUDED.homepage,download_url=EXCLUDED.download_url,github_repo=EXCLUDED.github_repo,bundle_ids=EXCLUDED.bundle_ids,team_id=EXCLUDED.team_id,pricing=EXCLUDED.pricing,sparkle_feed=EXCLUDED.sparkle_feed,asset_rules=EXCLUDED.asset_rules,notes=EXCLUDED.notes,github_tag_prefix=EXCLUDED.github_tag_prefix,github_tag_regex=EXCLUDED.github_tag_regex,github_asset_pattern=EXCLUDED.github_asset_pattern,include_prereleases=EXCLUDED.include_prereleases,
+ latest=CASE WHEN link_apps.github_repo IS DISTINCT FROM EXCLUDED.github_repo OR link_apps.sparkle_feed IS DISTINCT FROM EXCLUDED.sparkle_feed OR link_apps.asset_rules IS DISTINCT FROM EXCLUDED.asset_rules OR link_apps.github_tag_prefix IS DISTINCT FROM EXCLUDED.github_tag_prefix OR link_apps.github_tag_regex IS DISTINCT FROM EXCLUDED.github_tag_regex OR link_apps.github_asset_pattern IS DISTINCT FROM EXCLUDED.github_asset_pattern OR link_apps.include_prereleases IS DISTINCT FROM EXCLUDED.include_prereleases THEN NULL ELSE link_apps.latest END,
+ etag=CASE WHEN link_apps.github_repo IS DISTINCT FROM EXCLUDED.github_repo OR link_apps.sparkle_feed IS DISTINCT FROM EXCLUDED.sparkle_feed OR link_apps.asset_rules IS DISTINCT FROM EXCLUDED.asset_rules OR link_apps.github_tag_prefix IS DISTINCT FROM EXCLUDED.github_tag_prefix OR link_apps.github_tag_regex IS DISTINCT FROM EXCLUDED.github_tag_regex OR link_apps.github_asset_pattern IS DISTINCT FROM EXCLUDED.github_asset_pattern OR link_apps.include_prereleases IS DISTINCT FROM EXCLUDED.include_prereleases THEN NULL ELSE link_apps.etag END`, id, input.Homepage, input.DownloadURL, input.GithubRepo, string(bundles), input.TeamID, input.Pricing, input.SparkleFeed, string(rules), string(notes), input.GithubTagPrefix, input.GithubTagRegex, input.GithubAssetPattern, input.IncludePrereleases).Error
 	if err != nil {
 		return 0, err
 	}
@@ -216,7 +216,7 @@ func sameLinkSource(a, b LinkApp) bool {
 	equal := func(x, y *string) bool { return (x == nil && y == nil) || (x != nil && y != nil && *x == *y) }
 	x, _ := json.Marshal(a.AssetRules)
 	y, _ := json.Marshal(b.AssetRules)
-	return equal(a.GithubRepo, b.GithubRepo) && equal(a.SparkleFeed, b.SparkleFeed) && string(x) == string(y)
+	return equal(a.GithubRepo, b.GithubRepo) && equal(a.SparkleFeed, b.SparkleFeed) && string(x) == string(y) && equal(a.GithubTagPrefix, b.GithubTagPrefix) && equal(a.GithubTagRegex, b.GithubTagRegex) && equal(a.GithubAssetPattern, b.GithubAssetPattern) && a.IncludePrereleases == b.IncludePrereleases
 }
 
 func adoptLinks(ctx context.Context, tx *gorm.DB, tokens []string, now time.Time) error {

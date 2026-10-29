@@ -4396,6 +4396,14 @@ export interface components {
             downloadUrl?: string | null;
             /** @description GitHub owner/name, without a URL or .git suffix. */
             githubRepo?: string | null;
+            /** @description Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes. */
+            githubTagPrefix?: string | null;
+            /** @description Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes. */
+            githubTagRegex?: string | null;
+            /** @description Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes. */
+            githubAssetPattern?: string | null;
+            /** @description Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback. */
+            includePrereleases?: boolean;
             bundleIds?: string[];
             teamId?: string | null;
             /** @enum {string} */
@@ -4433,6 +4441,14 @@ export interface components {
             downloadUrl?: string | null;
             /** @description GitHub owner/name, without a URL or .git suffix. */
             githubRepo?: string | null;
+            /** @description Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes. */
+            githubTagPrefix?: string | null;
+            /** @description Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes. */
+            githubTagRegex?: string | null;
+            /** @description Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes. */
+            githubAssetPattern?: string | null;
+            /** @description Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback. */
+            includePrereleases?: boolean;
             bundleIds?: string[];
             teamId?: string | null;
             /** @enum {string} */
@@ -4511,6 +4527,14 @@ export interface components {
             downloadUrl: string | null;
             /** @description GitHub owner/name, without a URL or .git suffix. */
             githubRepo: string | null;
+            /** @description Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes. */
+            githubTagPrefix?: string | null;
+            /** @description Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes. */
+            githubTagRegex?: string | null;
+            /** @description Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes. */
+            githubAssetPattern?: string | null;
+            /** @description Defaults to false. Include releases GitHub marks prerelease; drafts are always excluded. Required for beta-only desktop releases. Filters and true require githubRepo. Selects newest published match from at most 1000 releases, reporting no-match or search-limit without fallback. */
+            includePrereleases?: boolean;
             bundleIds: string[];
             teamId: string | null;
             /** @enum {string} */

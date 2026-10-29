@@ -4,10 +4,10 @@ package urlnotify
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +16,90 @@ import (
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestProbeRetryAfterCapIsPersisted(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	for _, status := range []int{429, 503, 500} {
+		for _, header := range []string{"2147483647", "Fri, 31 Dec 9999 23:59:59 GMT"} {
+			for _, configured := range []time.Duration{0, 45 * time.Second} {
+				t.Run(fmt.Sprintf("%d/%s/%s", status, header, configured), func(t *testing.T) {
+					require.NoError(t, st.DB.Exec("UPDATE url_notify_state SET probe_ready_at=NULL,probe_failures=0").Error)
+					now := time.Now().UTC().Truncate(time.Microsecond)
+					var requests atomic.Int32
+					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						if requests.Add(1) == 1 {
+							w.Header().Set("Retry-After", header)
+							w.WriteHeader(status)
+						}
+					}))
+					defer server.Close()
+					makeNotifier := func() *Notifier {
+						return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL, IndexNowProbeMaxRetryAfter: configured}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
+					}
+					row := store.URLNotificationRow{}
+					row.URL, row.Announce = server.URL+"/apps/example", true
+					require.Error(t, makeNotifier().probeNotification(ctx, row))
+					due, err := st.URLProbeReadyAt(ctx, now, configured)
+					require.NoError(t, err)
+					cap := configured
+					if cap == 0 {
+						cap = 15 * time.Minute
+					}
+					require.Equal(t, now.Add(cap), due.UTC())
+					var wait *probeWait
+					require.ErrorAs(t, makeNotifier().probeNotification(ctx, row), &wait)
+					require.Equal(t, int32(1), requests.Load(), "a new notifier must honor the persisted cooldown")
+					now = due
+					require.NoError(t, makeNotifier().probeNotification(ctx, row))
+					require.Equal(t, int32(2), requests.Load(), "probing resumes when the cap expires")
+				})
+			}
+		}
+	}
+}
+
+func TestProbeRecoversFromLegacyCooldownAndOutboxAfterUpgrade(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	for _, configured := range []time.Duration{0, 45 * time.Second} {
+		t.Run(configured.String(), func(t *testing.T) {
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			cap := config.ProbeRetryAfterCap(configured)
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
+			defer server.Close()
+			require.NoError(t, st.DB.Exec("DELETE FROM url_notify_outbox").Error)
+			require.NoError(t, store.QueueURLNotification(ctx, st.DB, store.URLNotification{URL: server.URL + "/articles/example", Path: "/articles/example", Locale: "en-US", Announce: true}))
+			require.NoError(t, st.DB.Exec("UPDATE url_notify_outbox SET state='invalidated',next_attempt_at='9999-12-31',updated_at=?", now).Error)
+			require.NoError(t, st.DB.Exec("UPDATE url_notify_state SET probe_ready_at='9999-12-31',probe_failures=7").Error)
+			makeNotifier := func() *Notifier {
+				return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL, IndexNowProbeMaxRetryAfter: configured}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
+			}
+			row := store.URLNotificationRow{URLNotification: store.URLNotification{URL: server.URL + "/articles/example", Announce: true}}
+			var wait *probeWait
+			require.ErrorAs(t, makeNotifier().probeNotification(ctx, row), &wait)
+			require.Equal(t, now.Add(cap), wait.until.UTC())
+			rows, err := st.ClaimURLNotifications(ctx, "upgrade", now, 10, configured)
+			require.NoError(t, err)
+			require.Empty(t, rows)
+			due := now.Add(cap)
+			now = now.Add(cap / 2)
+			require.ErrorAs(t, makeNotifier().probeNotification(ctx, row), &wait)
+			require.Equal(t, due, wait.until.UTC(), "reads after restart must not extend the repaired cooldown")
+			rows, err = st.ClaimURLNotifications(ctx, "restart", now, 10, configured)
+			require.NoError(t, err)
+			require.Empty(t, rows)
+			now = due
+			rows, err = st.ClaimURLNotifications(ctx, "recovered", now, 10, configured)
+			require.NoError(t, err)
+			require.Len(t, rows, 1)
+			require.NoError(t, makeNotifier().probeNotification(ctx, rows[0]))
+			require.Equal(t, int32(1), requests.Load())
+			require.NoError(t, st.CompleteURLNotification(ctx, rows[0], "probed", nil, now))
+		})
+	}
+}
 
 func TestProbePacingAndDurableCooldown(t *testing.T) {
 	st := testutil.NewFactsStore(t)
@@ -32,7 +116,7 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 	defer server.Close()
 	waits := 0
 	makeNotifier := func() *Notifier {
-		return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(d time.Duration) { require.Equal(t, time.Second, d); waits++ }}
+		return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(d time.Duration) { require.Equal(t, 2*time.Second, d); waits++ }}
 	}
 	row := store.URLNotificationRow{}
 	row.URL, row.Announce = server.URL+"/apps/example", true
@@ -48,8 +132,8 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 	require.Equal(t, 2, requests)
 	require.Equal(t, 2, waits)
 	// After recovery a new overload starts from the initial backoff.
-	require.NoError(t, st.RecordURLProbe(ctx, now, now, true))
-	due, err := st.URLProbeReadyAt(ctx)
+	require.NoError(t, st.RecordURLProbe(ctx, now, now, true, 0))
+	due, err := st.URLProbeReadyAt(ctx, now, 0)
 	require.NoError(t, err)
 	require.WithinDuration(t, now.Add(30*time.Second), due, time.Millisecond)
 	// A failed batch makes one request; other rows wait without spending attempts.
@@ -67,11 +151,11 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 	n := makeNotifier()
 	n.defaults()
 	_, _, err = n.drainOutbox(ctx, "fixture-owner")
-	require.Error(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 3, requests)
 	var attempts []int
 	require.NoError(t, st.DB.Raw("SELECT attempts FROM url_notify_outbox ORDER BY id").Scan(&attempts).Error)
-	require.Equal(t, []int{1, 0}, attempts)
+	require.Equal(t, []int{0, 0}, attempts)
 
 }
 
@@ -125,10 +209,10 @@ func TestProbeComparesIndexingIntentAndWaitsOutLoadShedding(t *testing.T) {
 	require.False(t, wait.until.Before(now.Add(120*time.Second)))
 	require.ErrorAs(t, probe("/articles/limited"), &wait)
 	require.False(t, wait.until.Before(now.Add(30*time.Second)))
-	// Without the shedding mark a 503 is the page's own failure.
+	// Every 503 is temporary, even when an intermediary removed the shedding header.
 	err := probe("/articles/broken")
-	require.EqualError(t, err, "public page probe returned 503")
-	require.False(t, errors.As(err, &wait))
+	require.ErrorAs(t, err, &wait)
+	require.False(t, wait.until.Before(now.Add(120*time.Second)))
 
 	// Shedding is no delivery failure: the receipt keeps its retry budget and waits for the cooldown.
 	resetCooldown()

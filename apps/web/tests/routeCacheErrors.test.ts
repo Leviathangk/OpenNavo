@@ -14,6 +14,32 @@ const cachedRouteEvent = (key = 'apps.Abc123') =>
   }) as unknown as H3Event;
 
 describe('Route cache entries of error pages', () => {
+  it('marks thrown OG and overload errors no-store and leaves already-sent SWR responses alone', async () => {
+    const hooks: Record<string, (...args: unknown[]) => unknown> = {};
+    vi.stubGlobal('defineNitroPlugin', (plugin: (app: unknown) => void) =>
+      plugin({ hooks: { hook: (name: string, handler: (...args: unknown[]) => unknown) => (hooks[name] = handler) } })
+    );
+    await import('../server/plugins/error-cache-control');
+    const headers = new Map<string, unknown>([['retry-after', '120']]);
+    const response = {
+      headersSent: false,
+      setHeader: (name: string, value: unknown) => {
+        if (response.headersSent) throw new Error('headers already sent');
+        headers.set(name.toLowerCase(), value);
+      },
+      getHeader: (name: string) => headers.get(name.toLowerCase())
+    };
+    const event = { path: '/_og/image.png', node: { res: response } } as unknown as H3Event;
+    for (const statusCode of [403, 429, 503]) {
+      hooks.error!({ statusCode }, { event });
+      for (const name of ['cache-control', 'cdn-cache-control', 'cloudflare-cdn-cache-control'])
+        expect(headers.get(name)).toBe('no-store');
+    }
+    expect(headers.get('retry-after')).toBe('120');
+    response.headersSent = true;
+    expect(() => hooks.error!({ statusCode: 404 }, { event, tags: ['cache'] })).not.toThrow();
+  });
+
   it('finds the entry a cached route stores its response under', async () => {
     expect(await routeCacheKey(cachedRouteEvent())).toBe('nitro:routes:_:apps.Abc123.json');
     expect(await routeCacheKey({ context: {} } as unknown as H3Event)).toBeUndefined();

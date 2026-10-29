@@ -48,6 +48,9 @@ func (s *Service) linkOperation(ctx context.Context, op string, in Input) (any, 
 	}
 	if op != "RemoveLinkPackage" {
 		// PATCH merges nullable fields, while preserving omitted fields and immutable token.
+		if v, ok := in.Body["includePrereleases"]; ok && v == nil {
+			return nil, domain.Rejected("include_prereleases_invalid:includePrereleases")
+		}
 		if previous != nil {
 			if v, ok := in.Body["token"]; ok && v != previous.Token {
 				return nil, domain.Rejected("immutable_field:token")

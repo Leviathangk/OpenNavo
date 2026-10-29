@@ -102,6 +102,83 @@ remain `brew install --cask stablyai/orca/orca`. Desktop snapshots publish optio
 for clients that resolve a site alias before calling Homebrew; deploy the updated desktop client
 before advertising alias listings for desktop installation.
 
+GitHub release selection is optional on both `link_app_add` and `link_app_update`. The admin
+POST `/links/packages` and PATCH `/links/packages/{id}` expose the same fields in camelCase:
+
+| MCP argument | Admin field | Meaning |
+| --- | --- | --- |
+| `github_tag_prefix` | `githubTagPrefix` | Case-sensitive literal tag prefix, at most 256 UTF-8 bytes. |
+| `github_tag_regex` | `githubTagRegex` | Go RE2 expression on the raw tag, at most 1024 UTF-8 bytes. Use `^` and `$` for a whole-tag match. |
+| `github_asset_pattern` | `githubAssetPattern` | Case-sensitive Go `path.Match` glob on asset names, at most 512 UTF-8 bytes; for example `*.dmg`. Supports `*`, `?`, character classes and backslash escaping, without globstar. |
+| `include_prereleases` | `includePrereleases` | Defaults to `false`. Set `true` to consider releases marked prerelease by GitHub. Drafts are always excluded. |
+
+Prefix and regex are mutually exclusive; the asset pattern is ANDed with either. Filters
+require `github_repo`. Empty/blank strings, invalid glob syntax and invalid or unsupported
+RE2 syntax (including lookaround/backreferences) are rejected by Go. Expressions are never
+compiled or executed by Python. Send `null` to clear a string filter, and `false` to disable
+prereleases. Omitted PATCH fields retain their values. When using a prefix, the prefix and
+then a leading `v` are removed from the displayed version; regex selection removes only a
+leading `v`. The original tag is always retained in release metadata.
+
+Without filters and with prereleases disabled, sync keeps using GitHub's `/releases/latest`.
+With any filter or prereleases enabled, sync reads up to ten pages of 100 releases and
+chooses the match with the newest `published_at` (lexically greatest tag breaks ties),
+regardless of list order or semantic version. An asset pattern requires at least one
+matching asset and keeps only matching assets. Architecture `asset_rules` still classify
+those assets; they do not filter releases. Every page is fetched on later syncs, so cached
+metadata cannot bypass changed filters or hide an older page's edits.
+
+No match reports `github_release_no_match` in `lastError` and increments the sync failure
+count, including when all matching app releases are beta and prereleases are disabled.
+There is no fallback to an engine release, `/releases/latest`, or a configured Sparkle feed.
+More than ten pages reports `github_release_search_limit` without selecting a partial result.
+HTTP/rate-limit/metadata errors also fail the sync. As with other upstream failures, the
+last recorded package version/history are preserved; a filter edit clears `latest` and the
+conditional cache before the next sync. If GitHub matches successfully, the existing
+newest-publication comparison with a separately configured Sparkle feed still applies.
+
+`dry_run: true` validates and previews the effective config on create/update without writing
+the app, audit records or sync jobs. It does not query GitHub or predict a selected release.
+Actual creation/edits persist these fields and queue sync; subsequent scheduled/manual
+version syncs apply the same config. Apply migration **00121** and deploy the API and MCP
+generated models together before using the new arguments.
+
+Read-only public GitHub API inspection on 2026-10-29 found these distinct desktop streams:
+
+- [TensorFold desktop `v1.0.0-beta.10`](https://github.com/ashhart/TensorFold/releases/tag/v1.0.0-beta.10)
+  contains `TensorFold-1.0.0-beta.10-arm64.dmg` and is a prerelease (as is beta.9).
+  [Engine `v1.1.8`](https://github.com/ashhart/TensorFold/releases/tag/v1.1.8) contains
+  `tensorfold-1.1.8-macos-arm64.tar.gz`. A DMG glob with prereleases enabled follows the app
+  through a future stable release; adding a beta regex would intentionally pin it to beta tags.
+- [Rapid-MLX desktop `rapid-mac-v0.16.10`](https://github.com/raullenchai/Rapid-MLX/releases/tag/rapid-mac-v0.16.10)
+  contains `rapid-mlx-desktop.dmg` and is stable. [Engine `v0.16.10`](https://github.com/raullenchai/Rapid-MLX/releases/tag/v0.16.10)
+  contains `install.sh` and checksum files. Use the literal prefix `rapid-mac-v` and a DMG glob.
+
+Example MCP tool arguments (run `packages_search` first, as for any link addition):
+
+```json
+{
+  "token": "tensorfold",
+  "name": "TensorFold",
+  "pricing": "open_source",
+  "github_repo": "ashhart/TensorFold",
+  "github_asset_pattern": "*.dmg",
+  "include_prereleases": true,
+  "dry_run": true
+}
+```
+
+```json
+{
+  "package": "rapid-mlx",
+  "github_tag_prefix": "rapid-mac-v",
+  "github_tag_regex": null,
+  "github_asset_pattern": "*.dmg",
+  "include_prereleases": false,
+  "dry_run": true
+}
+```
+
 For an optional concurrency check on `link_app_update` or `link_app_remove`, send the
 Link app's `revision` from `link_apps_list` as `expected_revision`. This counter also tracks
 admin edits; it is separate from package content revisions.
