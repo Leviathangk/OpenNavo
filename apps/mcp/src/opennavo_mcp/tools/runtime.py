@@ -49,6 +49,7 @@ SELECTORS: dict[str, dict[str, Any]] = {
         "limit": {"type": "integer", "minimum": 1, "maximum": 16000, "default": 8000},
     },
     "package_refresh": {"mode": {"type": "string", "enum": ["resync"], "default": "resync"}},
+    "package_set_enabled": {"enabled": {"type": "boolean"}},
     "package_set_icon": {"remove": {"type": "boolean", "default": False}},
     "collection_publish": {
         "action": {"type": "string", "enum": ["publish", "unpublish"], "default": "publish"}
@@ -148,6 +149,13 @@ def normalize_arguments(spec: ToolSpec, args: dict[str, Any]) -> None:
 
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "package_set_enabled": (
+        " Set catalog visibility, matching the admin UI: enabled=true clears hidden;"
+        " enabled=false sets hidden. Homebrew and stale-version disabled flags and removed"
+        " state remain in effect. dry_run returns the before/after hidden state without"
+        " persisting changes. Uses the same audit, revisions and cache/sitemap invalidation"
+        " as package_update_meta."
+    ),
     "listing_gaps": (
         " Defaults to visible, enabled, current non-font apps: hidden=false, disabled=false,"
         " removed=false and is_font=false. Override those filters for another scope. total"
@@ -315,6 +323,13 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
             ),
         }
         required = ["package" if key == "id" else key for key in required]
+    if spec.name == "package_set_enabled":
+        properties = {
+            key: value
+            for key, value in properties.items()
+            if key in {"package", "enabled", "dry_run", "expected_revision", "idempotency_key"}
+        }
+        required = ["package", "enabled"]
     if spec.name in {"revision_restore", "package_set_icon", "feature_upsert"}:
         required = []
     if spec.name == "package_text_get":
@@ -579,6 +594,8 @@ class AdapterTool(Tool):
                         raise AgentError("1002")
                     current += 1
             args["id"] = package
+        if self.name == "package_set_enabled":
+            args["hidden"] = not args.pop("enabled")
         if self.name == "listing_gaps":
             args.setdefault(
                 "gaps",

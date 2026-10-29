@@ -78,6 +78,12 @@ TOOLS = (
         write=True,
     ),
     tool(
+        "package_set_enabled",
+        "catalog:package:edit",
+        "updatePackageMeta listAdminPackages",
+        write=True,
+    ),
+    tool(
         "package_set_text",
         "catalog:package:edit",
         "updatePackageText listAdminPackages",

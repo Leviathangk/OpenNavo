@@ -12,7 +12,7 @@ from opennavo_mcp.tools.manifest import RESOURCE_PERMISSIONS, TOOLS
 
 
 def test_contract_and_permission_drift() -> None:
-    assert len(TOOLS) == len({tool.name for tool in TOOLS}) == 102
+    assert len(TOOLS) == len({tool.name for tool in TOOLS}) == 103
     assert len(RESOURCE_PERMISSIONS) == 9
     assert len(PERMISSIONS) == len(set(PERMISSIONS)) == 24
     assert {tool.permission for tool in TOOLS} - {""} == set(PERMISSIONS)
