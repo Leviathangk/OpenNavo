@@ -45,7 +45,7 @@ const pages = {
       yesterday: '昨日 {value}',
       date: '日期',
       desktopTotal: '客户端累计用户',
-      desktopTotalHint: '按安装实例计，重装会算新用户；自 10-22 统计上线起累计',
+      desktopTotalHint: '按安装实例计，重装算新用户，从 10-22 开始累计；上报接口可被伪造 UUID 刷数',
       desktop: '客户端日活',
       web: '网页日活',
       newDesktop: '新增客户端标识',
@@ -56,7 +56,7 @@ const pages = {
       empty: '暂未收到活跃数据。客户端运行或网页有效访问后会自动上报。',
       trend: '每日活跃趋势 · {start} 至 {end}',
       details: '每日明细',
-      newHint: '新增指首次观察到此标识。清除本地数据，或超过 90 天未活跃后回访，可能计为新增。'
+      newHint: '新增指首次观察到此标识。清除本地数据或重新安装可能计为新增。'
     },
     scale: '规模',
     total: 'App 总数',

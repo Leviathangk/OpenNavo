@@ -98,7 +98,7 @@ type UsageOverview struct {
 func (s *Store) UsageOverview(ctx context.Context, now time.Time) (UsageOverview, error) {
 	today := now.In(usageZone).Format("2006-01-02")
 	result := UsageOverview{TimeZone: "Asia/Shanghai", AsOf: now.UTC(), Days: []UsageDay{}, Versions: []UsageVersion{}, Countries: []UsageCountry{}}
-	// Count retained identities across all dates; maintenance prunes inactive identities after 90 days.
+	// Identities are kept permanently, so daily-detail cleanup cannot reduce cumulative totals.
 	err := s.DB.WithContext(ctx).Raw(`SELECT count(*) FILTER(WHERE platform='desktop'),count(*) FILTER(WHERE platform='web') FROM usage_identities`).Row().Scan(&result.DesktopTotal, &result.WebTotal)
 	if err != nil {
 		return result, err

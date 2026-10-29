@@ -8186,12 +8186,12 @@ export interface components {
             asOf: string;
             /**
              * Format: int64
-             * @description Count of retained desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Reinstalls count as new identities. Maintenance prunes identities after 90 days of inactivity.
+             * @description Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Reinstalls count as new identities, and forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
              */
             desktopTotal: number;
             /**
              * Format: int64
-             * @description Count of retained web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Maintenance prunes identities after 90 days of inactivity.
+             * @description Cumulative web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
              */
             webTotal: number;
             days: {
