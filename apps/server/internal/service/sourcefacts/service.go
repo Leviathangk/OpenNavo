@@ -222,7 +222,8 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (store.SourceFact, bool, error) {
 	now := s.now()
 	fullCheck := !item.signalsOnly
-	fact := store.SourceFact{PackageID: item.pkg.ID, Source: GitHub, Input: item.input, Status: "none", CheckedAt: now, NextCheckAt: next(now, recheck, item.pkg.ID)}
+	licenseCheck := store.SourceFact{PackageID: item.pkg.ID, Source: GitHub, Input: item.input, Status: "none", CheckedAt: now, NextCheckAt: next(now, recheck, item.pkg.ID)}
+	fact := licenseCheck
 	if item.signalsOnly && item.row != nil {
 		fact = *item.row
 		fact.Input = item.input
@@ -303,10 +304,15 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		if !haveFirst {
 			first, firstETag, haveFirst = current, result.ETag, true
 		}
+		if !fullCheck && !strings.EqualFold(item.row.Subject, current.Repo) {
+			// Recovery or a redirect can select a different repository. Its license
+			// must be checked before publishing a new open-source decision.
+			fullCheck = true
+			fact = licenseCheck
+		}
 		if !fullCheck {
-			// A daily signal refresh never changes the OSI judgment. It updates the
-			// repository signals and keeps status, license data and the 30-day
-			// schedule from the existing row.
+			// A daily refresh of the same repository keeps its OSI judgment and
+			// 30-day schedule while updating the repository signals.
 			data, mergeErr := mergeGitHubSignals(item.row.Data, result.Repository)
 			if mergeErr != nil {
 				return fact, low, mergeErr
@@ -443,7 +449,7 @@ func (s *Service) save(ctx context.Context, item pending, fact store.SourceFact,
 	if changed {
 		stats.Changed++
 	}
-	if item.signalsOnly {
+	if item.signalsOnly && strings.EqualFold(item.row.Subject, fact.Subject) {
 		return s.Store.UpdateSourceFactSignals(ctx, fact, item.pkg.Token, changed)
 	}
 	return s.Store.SaveSourceFact(ctx, fact, item.pkg.Token, changed)
@@ -496,7 +502,9 @@ func mergeGitHubSignals(data json.RawMessage, repository sources.Repository) ([]
 	if !ok {
 		return nil, errors.New("github repository is not public")
 	}
-	current.License = fact.License
+	if strings.EqualFold(fact.Repo, current.Repo) {
+		current.License = fact.License
+	}
 	return json.Marshal(current)
 }
 

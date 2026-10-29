@@ -126,10 +126,11 @@ func (s *Store) SaveSourceFact(ctx context.Context, fact SourceFact, token strin
 }
 
 // RecordSourceFactSignalFailure backs off a daily GitHub signal refresh while preserving the
-// successful license fact and its 30-day schedule.
+// successful license fact and its 30-day schedule. Transient errors leave the unavailable
+// count unchanged; only a successful refresh resets it.
 func (s *Store) RecordSourceFactSignalFailure(ctx context.Context, key SourceFactKey, next time.Time) error {
 	return s.DB.WithContext(ctx).Exec(`UPDATE package_source_facts
-	 SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1,signals_unavailable_count=0
+	 SET signals_next_check_at=?,signals_fail_count=signals_fail_count+1
 	 WHERE package_id=? AND source=?`, next, key.PackageID, key.Source).Error
 }
 
@@ -154,7 +155,8 @@ func (s *Store) UpdateSourceFactSignals(ctx context.Context, fact SourceFact, to
 }
 
 // RecordSourceFactRepositoryUnavailable backs off a daily GitHub signal refresh. Three
-// consecutive unavailable responses clear the public repository fact and invalidate its page.
+// unavailable responses since the last success clear the public repository fact and invalidate
+// its page. Transient errors neither increment nor reset the unavailable count.
 func (s *Store) RecordSourceFactRepositoryUnavailable(ctx context.Context, key SourceFactKey, token string, next time.Time) error {
 	return s.WithTx(ctx, func(tx *gorm.DB) error {
 		var state struct {
@@ -173,7 +175,7 @@ func (s *Store) RecordSourceFactRepositoryUnavailable(ctx context.Context, key S
 	 WHERE package_id=? AND source=?`, next, state.SignalsFailCount, state.SignalsUnavailableCount, key.PackageID, key.Source).Error
 		}
 		if err := tx.WithContext(ctx).Exec(`UPDATE package_source_facts
-	 SET subject='',data=data-'stars'-'pushedAt'-'archived',etag=NULL,signals_next_check_at=?,signals_fail_count=?,signals_unavailable_count=?
+	 SET subject='',data=data-'stars'-'pushedAt',etag=NULL,signals_next_check_at=?,signals_fail_count=?,signals_unavailable_count=?
 	 WHERE package_id=? AND source=? AND subject<>''`, next, state.SignalsFailCount, state.SignalsUnavailableCount, key.PackageID, key.Source).Error; err != nil {
 			return err
 		}

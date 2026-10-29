@@ -77,8 +77,8 @@ func (s *PublicService) appFacts(ctx context.Context, d *publicapi.PackageDetail
 }
 
 // sourceFacts adds what the facts:sources job read from GitHub and the Mac App Store. A public
-// GitHub repository is published even when its license is not OSI-approved; the openSource
-// object remains limited to the 30-day license decision.
+// GitHub repository with a stored subject is published even when its license is not
+// OSI-approved; the openSource object remains limited to the stored license decision.
 func (s *PublicService) sourceFacts(ctx context.Context, d *publicapi.PackageDetail, id int64) error {
 	rows, err := s.Store.PublicSourceFacts(ctx, id)
 	if err != nil {
@@ -99,20 +99,22 @@ func (s *PublicService) sourceFacts(ctx context.Context, d *publicapi.PackageDet
 			if github.Repo == "" || github.URL == "" {
 				continue
 			}
-			repository := &publicapi.RepositoryFact{Url: github.URL, Archived: github.Archived}
-			if github.Stars != nil {
-				stars := *github.Stars
-				repository.Stars = &stars
+			if row.Subject != "" {
+				repository := &publicapi.RepositoryFact{Url: github.URL, Archived: github.Archived}
+				if github.Stars != nil {
+					stars := *github.Stars
+					repository.Stars = &stars
+				}
+				if github.PushedAt != nil {
+					pushedAt := github.PushedAt.UTC()
+					repository.PushedAt = &pushedAt
+				}
+				if row.SignalsCheckedAt != nil {
+					signalsCheckedAt := row.SignalsCheckedAt.UTC()
+					repository.SignalsCheckedAt = &signalsCheckedAt
+				}
+				d.Repository = repository
 			}
-			if github.PushedAt != nil {
-				pushedAt := github.PushedAt.UTC()
-				repository.PushedAt = &pushedAt
-			}
-			if row.SignalsCheckedAt != nil {
-				signalsCheckedAt := row.SignalsCheckedAt.UTC()
-				repository.SignalsCheckedAt = &signalsCheckedAt
-			}
-			d.Repository = repository
 			if row.Status == "found" && github.License != "" {
 				d.OpenSource = &publicapi.OpenSourceFact{Repo: github.Repo, Url: github.URL, License: github.License, Archived: github.Archived, CheckedAt: row.CheckedAt}
 			}

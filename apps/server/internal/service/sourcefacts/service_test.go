@@ -87,4 +87,14 @@ func TestMergeGitHubSignalsPreservesExistingLicenseFacts(t *testing.T) {
 	require.Equal(t, newPushed, *fact.PushedAt)
 }
 
+func TestMergeGitHubSignalsDoesNotCarryLicenseAcrossRepositories(t *testing.T) {
+	data := json.RawMessage(`{"repo":"owner/old","url":"https://github.com/owner/old","license":"MIT"}`)
+	updated, err := mergeGitHubSignals(data, sources.Repository{FullName: "owner/new", HTMLURL: "https://github.com/owner/new"})
+	require.NoError(t, err)
+	var fact sources.GitHubFact
+	require.NoError(t, json.Unmarshal(updated, &fact))
+	require.Equal(t, "owner/new", fact.Repo)
+	require.Empty(t, fact.License, "a signal merge cannot reuse another repository's license")
+}
+
 func int64PointerForTest(value int64) *int64 { return &value }
