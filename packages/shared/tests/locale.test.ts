@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchLocale } from '../src/locale';
+import { matchLocale, packageAliases } from '../src/locale';
 import { DESKTOP_LOCALES, SITE_LOCALES } from '../src/locales.gen';
 import { readFileSync } from 'node:fs';
 
@@ -54,5 +54,29 @@ describe('Locale matching', () => {
 
   it('moves on to the next preference when no Chinese locale is supported', () => {
     expect(matchLocale(['zh-TW', 'ja-JP'], ['en-US', 'ja-JP'])).toBe('ja-JP');
+  });
+});
+
+describe('Package alternate names', () => {
+  it.each(SITE_LOCALES)('keeps only matching scripts and Latin product names in %s', locale => {
+    const names = [
+      'Visual Studio Code',
+      'vscode',
+      'VS Code 编辑器',
+      'VS Code エディター',
+      'Редактор VS Code',
+      'VS Code 편집기'
+    ];
+    expect(packageAliases(names, 'Visual Studio Code', locale)).toEqual([
+      'vscode',
+      ...(['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? ['VS Code 编辑器'] : []),
+      ...(locale === 'ja-JP' ? ['VS Code エディター'] : []),
+      ...(locale === 'ru-RU' ? ['Редактор VS Code'] : [])
+    ]);
+    expect(names).toHaveLength(6);
+  });
+  it('handles empty input and preserves Latin aliases with accents', () => {
+    expect(packageAliases([], 'Example', 'en-US')).toEqual([]);
+    expect(packageAliases(['Example', 'Éditeur'], 'Example', 'en-US')).toEqual(['Éditeur']);
   });
 });

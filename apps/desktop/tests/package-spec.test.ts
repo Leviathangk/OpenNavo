@@ -128,3 +128,24 @@ describe('desktop quick-info field parity', () => {
     expect(spec.checkedAt).toBeNull();
   });
 });
+
+describe('desktop alternate names', () => {
+  const locales = ['en-US', 'zh-CN', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
+  it.each(locales)('filters online and offline aliases in %s for all package kinds', locale => {
+    for (const kind of ['cask', 'formula', 'link'] as const) {
+      const pkg = detail({
+        kind,
+        displayName: 'Visual Studio Code',
+        names: ['Visual Studio Code', 'vscode', 'VS Code 编辑器']
+      });
+      const local = { ...pkg, name: pkg.displayName } as unknown as LocalItem;
+      const expected = ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? 'vscode, VS Code 编辑器' : 'vscode';
+      for (const spec of [packageSpec(pkg, null, null, t, locale), packageSpec(null, local, null, t, locale)])
+        expect(spec.rows.find(row => row.key === 'names')?.value).toBe(expected);
+      pkg.names = ['Visual Studio Code', 'VS Code 编辑器'];
+      expect(packageSpec(pkg, null, null, t, locale).rows.some(row => row.key === 'names')).toBe(
+        ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale)
+      );
+    }
+  });
+});

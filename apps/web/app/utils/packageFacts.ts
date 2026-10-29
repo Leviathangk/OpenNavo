@@ -5,7 +5,7 @@ import { formatDate } from './packageDate';
 // stated with its check date, a stale one only "as of" its date and never as current, and anything
 // pending review or without a dated source is left out.
 import type { PackageDetail, PackageRepository, PublicComponents } from '@opennavo/api';
-import { disabledByHomebrew, formatVersion, isThirdPartyTap } from '@opennavo/shared';
+import { disabledByHomebrew, formatVersion, isThirdPartyTap, packageAliases } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { httpsUrl, linkSource } from './linkApp';
 import type { Translate } from './seoTitles';
@@ -446,7 +446,7 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
     add({ key: 'homebrew', label: 'Homebrew', value: status });
   }
 
-  const names = pkg.names.filter(name => name !== pkg.displayName);
+  const names = packageAliases(pkg.names, pkg.displayName, locale);
   if (names.length) add({ key: 'names', label: t('package.details.names'), value: names.join(', ') });
 
   return { rows, checkedAt: oldestCheck(evidence) };

@@ -645,8 +645,7 @@
       "alternativesQ": "{name} の代わりになるアプリは？",
       "alternativesA": "{list} などがあります。",
       "titleFor": "{name} についてよくある質問",
-      "repositoryQ": "{name} には公開 GitHub リポジトリがありますか？",
-      "source": "出典：{source}。"
+      "repositoryQ": "{name} には公開 GitHub リポジトリがありますか？"
     },
     "securityPromo": {
       "title": "OpenNavo：ウイルススキャンとApp ファイアウォール",

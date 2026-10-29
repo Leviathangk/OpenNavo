@@ -645,8 +645,7 @@
       "alternativesQ": "{name} 有哪些替代品？",
       "alternativesA": "可以考虑 {list}。",
       "titleFor": "关于 {name} 的常见问题",
-      "repositoryQ": "{name} 有公开的 GitHub 仓库吗？",
-      "source": "来源：{source}。"
+      "repositoryQ": "{name} 有公开的 GitHub 仓库吗？"
     },
     "securityPromo": {
       "title": "OpenNavo：病毒扫描与应用防火墙",

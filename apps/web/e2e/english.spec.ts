@@ -43,14 +43,12 @@ test('English details have English UI/body and complete SEO/hreflang', async ({ 
   await expect(install).toContainText('brew install --cask');
   await expect(install).toContainText('visual-studio-code');
 
-  // Quick facts keep aliases in their original languages; the rest of the English body (summary,
-  // notes, install stats, similar apps) must not contain Chinese.
-  const body = await page.locator('main').evaluate(element => {
-    const copy = element.cloneNode(true) as HTMLElement;
-    copy.querySelector('[data-fact="names"]')?.remove();
-    return copy.textContent ?? '';
-  });
-  expect(body).not.toMatch(CJK);
+  // The spec card filters alternate names along with the rest of the English body.
+  const spec = page.getByTestId('package-spec-card');
+  await expect(spec).toContainText('Also known as');
+  await expect(spec).toContainText('vscode');
+  await expect(spec).not.toContainText('VS Code 编辑器');
+  expect(await page.locator('main').textContent()).not.toMatch(CJK);
 
   const head = await headInfo(page);
   expect(head.description).toContain('Visual Studio Code');

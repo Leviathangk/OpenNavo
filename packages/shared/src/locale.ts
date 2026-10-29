@@ -43,3 +43,14 @@ export function pick(
   }
   return fallback;
 }
+
+/** Alternate names for the visible locale, excluding the displayed name and unrelated scripts. */
+export function packageAliases(names: readonly string[], displayName: string, locale: SiteLocaleCode): string[] {
+  return names.filter(name => {
+    if (name === displayName) return false;
+    if (/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(name) && locale !== 'ja-JP') return false;
+    if (/\p{Script=Han}/u.test(name) && !['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale)) return false;
+    if (/\p{Script=Cyrillic}/u.test(name) && locale !== 'ru-RU') return false;
+    return !/\p{Script=Hangul}/u.test(name);
+  });
+}

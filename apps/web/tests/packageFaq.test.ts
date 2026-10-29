@@ -6,6 +6,8 @@ import { chipSupport, dataLocations, FAQ_LIMIT, faqItems, uninstallSteps, zapPat
 import type { FaqTranslate } from '../app/utils/packageFaq';
 import { formatDate } from '../app/utils/packageDate';
 import { evidence, pageOf } from './packageFixtures';
+import { faqItems as mainFaqItems } from './fixtures/packageFaq.main';
+import { slimPackage } from '../app/utils/packageFacts';
 
 const LOCALES = ['zh-CN', 'en-US', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
 type Code = (typeof LOCALES)[number];
@@ -276,14 +278,14 @@ describe('App questions', () => {
     const price = items.find(item => item.key === 'price')!;
     expect(price.question).toBe('Docker Desktop 免费吗？');
     expect(price.answer).toBe(
-      'Mac App Store（美国）上的“Keka”售价 US$6.49。Homebrew 安装的是开发者网站提供的版本，价格和功能可能与 App Store 版不同。来源：apps.apple.com。'
+      'Mac App Store（美国）上的“Keka”售价 US$6.49。Homebrew 安装的是开发者网站提供的版本，价格和功能可能与 App Store 版不同。来源：apps.apple.com，核查于 2025年12月1日。'
     );
     const free = faqItems(pageOf(docker({ appStore: { ...appStore, price: 0 } })), translator('en-US'), 'en-US');
     expect(free.find(item => item.key === 'price')!.answer).toMatch(
       /^“Keka” is free to download on the Mac App Store\. Homebrew installs the version/
     );
     expect(items.find(item => item.key === 'language')!.answer).toBe(
-      'Mac App Store 页面列出的界面语言包括中文。来源：apps.apple.com。'
+      'Mac App Store 页面列出的界面语言包括中文。来源：apps.apple.com，核查于 2025年12月1日。'
     );
     const ru = faqItems(
       pageOf(docker({ appStore: { ...appStore, languages: ['EN', 'DE', 'FR'] } })),
@@ -310,7 +312,7 @@ describe('App questions', () => {
     };
     const priced = faqItems(pageOf(docker({ appStore, price: verified })), translator('en-US'), 'en-US');
     expect(priced.find(item => item.key === 'price')!.answer).toBe(
-      'Yes, Docker Desktop is free to use. Source: vendor.example/pricing.'
+      'Yes, Docker Desktop is free to use. Source: vendor.example/pricing, checked Dec 1, 2025.'
     );
   });
 
@@ -410,7 +412,7 @@ describe('App questions', () => {
     expect(neither.some(item => item.key === 'openSource')).toBe(false);
   });
 
-  it('uses the OSI archived fallback but never its check date for repository signals', () => {
+  it('preserves main’s OSI archived answer independently of new repository signals', () => {
     const sample = docker({
       openSource: {
         repo: 'acme/osi',
@@ -428,7 +430,7 @@ describe('App questions', () => {
     const current = Object.assign(sample, { repository: { archived: false } });
     expect(
       faqItems(pageOf(current), translator('en-US'), 'en-US').find(item => item.key === 'openSource')!.answer
-    ).not.toContain('repository is archived');
+    ).toContain('repository is archived');
   });
 
   it.each([
@@ -478,7 +480,7 @@ describe('App questions', () => {
     expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
   });
 
-  it.each(LOCALES)('keeps star counts and evidence check dates out of every FAQ answer in %s', code => {
+  it.each(LOCALES)('keeps only the new repository Q&A free of check dates in %s', code => {
     const pkg = pageOf(
       docker({
         appStore,
@@ -521,20 +523,28 @@ describe('App questions', () => {
       t('package.faq.openSourceQ', { name: pkg.displayName })
     );
     expect(verified.find(item => item.key === 'chips')?.answer).toContain('vendor.example/requirements');
+    const checkedDate = formatDate('2025-12-01T08:00:00Z', { locale: code });
+    for (const key of ['price', 'chips', ...(code === 'en-US' ? [] : ['language'])])
+      expect(verified.find(item => item.key === key)?.answer).toContain(checkedDate);
     const prices = faqItems(
       { ...pkg, facts: { ...pkg.facts, prices: pkg.facts.prices.filter(price => price.channel === 'app_store') } },
       t,
       code
     );
+    expect(prices.find(item => item.key === 'price')?.answer).toContain(checkedDate);
+    expect(prices.find(item => item.key === 'price')?.answer).toContain('apps.apple.com');
     pkg.openSource = null;
+    pkg.facts.overview.artifacts.binaries = [];
+    pkg.conflictsWith = { casks: [], formulae: [] };
     const publicOnly = faqItems(pkg, t, code);
     expect(publicOnly.find(item => item.key === 'openSource')?.question).toBe(
       t('package.faq.repositoryQ', { name: pkg.displayName })
     );
+    const repositoryAnswer = publicOnly.find(item => item.key === 'openSource')!.answer;
+    expect(repositoryAnswer).not.toContain(checkedDate);
     for (const item of [...verified, ...prices, ...publicOnly]) {
       expect(item.answer).not.toMatch(/★|12[,.]?345|12[,.]3K|\{\w+\}/);
-      for (const checkedAt of ['2025-12-01T08:00:00Z', '2026-10-02T00:00:00Z'])
-        expect(item.answer).not.toContain(formatDate(checkedAt, { locale: code }));
+      expect(item.answer).not.toContain(formatDate('2026-10-02T00:00:00Z', { locale: code }));
     }
   });
 
@@ -542,6 +552,36 @@ describe('App questions', () => {
     const pkg = pageOf(docker());
     pkg.repository = { stars: 12345, signalsCheckedAt: '2026-10-02T00:00:00Z' };
     expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
+  });
+
+  it.each(LOCALES)('preserves main’s questions at the FAQ limit in %s', locale => {
+    const pkg = pageOf(
+      docker({
+        appStore,
+        price: {
+          type: 'free',
+          amount: null,
+          currency: null,
+          region: null,
+          plan: null,
+          period: null,
+          appVersion: null,
+          sourceUrl: 'https://vendor.example/pricing',
+          method: 'vendor_site',
+          verifiedAt: '2025-12-01T08:00:00Z',
+          stale: false,
+          offer: true
+        }
+      })
+    );
+    const t = translator(locale);
+    const expected = mainFaqItems(pkg, t, locale);
+    pkg.repository = { url: 'https://github.com/acme/public-only' };
+    const result = faqItems(pkg, t, locale);
+    expect(result.length).toBeLessThanOrEqual(FAQ_LIMIT);
+    expect(result.filter(item => item.question !== t('package.faq.repositoryQ', { name: pkg.displayName }))).toEqual(
+      expected
+    );
   });
 
   it('Leaves out questions without facts, and fonts skip chips and extras', () => {
@@ -558,6 +598,42 @@ describe('App questions', () => {
     expect(items[0]!.answer).toBe('Run `brew uninstall --cask docker-desktop`.');
     const font = docker({ isFont: true });
     expect(faqItems(pageOf(font), t, 'en-US').map(item => item.key)).toEqual(['uninstall', 'data', 'version']);
+  });
+});
+
+// Public production records, projected to FAQ inputs without changing their facts. The frozen
+// implementation and existing translations come from main; only the new repository Q&A may differ.
+const production = JSON.parse(readFileSync(new URL('./fixtures/packageFaq.production.json', import.meta.url), 'utf8'))
+  .packages as Record<string, PackageDetail>;
+
+describe.each(['rectangle', 'iterm2', 'discord', 'ely-office'])('%s FAQ parity with main', token => {
+  it.each(LOCALES)('preserves every existing question and answer byte-for-byte in %s', locale => {
+    const pkg = slimPackage(production[token]!);
+    const t = translator(locale);
+    const expected = mainFaqItems(pkg, t, locale);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(JSON.stringify(faqItems(pkg, t, locale))).toBe(JSON.stringify(expected));
+
+    // Simulate the future repository contract using only the record's real repository URL.
+    if (pkg.repoUrl) {
+      pkg.repository = {
+        url: pkg.repoUrl,
+        stars: 12345,
+        archived: !pkg.openSource?.archived,
+        signalsCheckedAt: '2026-10-02T00:00:00Z'
+      };
+      const result = faqItems(pkg, t, locale);
+      const addedQuestion = t('package.faq.repositoryQ', { name: pkg.displayName });
+      const unchanged = result.filter(item => item.question !== addedQuestion);
+      expect(JSON.stringify(unchanged)).toBe(JSON.stringify(expected));
+      if (!pkg.openSource && expected.length < FAQ_LIMIT) {
+        const added = result.find(item => item.question === addedQuestion)!;
+        expect(added).toBeDefined();
+        expect(added.answer).toContain(pkg.repoUrl);
+        expect(added.answer).not.toMatch(/★|12[,.]?345|12[,.]3K/);
+        expect(added.answer).not.toContain(formatDate('2026-10-02T00:00:00Z', { locale }));
+      }
+    }
   });
 });
 
@@ -704,7 +780,7 @@ describe('Answers from the facts model (T2, T3)', () => {
     };
     const answer = (pkg: ReturnType<typeof pageOf>) => faqItems(pkg, t, 'en-US').find(item => item.key === 'price');
     expect(answer(pageOf(docker({ price: verified })))!.answer).toBe(
-      'No, Docker Desktop requires a subscription. Pro · United States · $9.99 per month Source: vendor.example/pricing.'
+      'No, Docker Desktop requires a subscription. Pro · United States · $9.99 per month Source: vendor.example/pricing, checked Dec 1, 2025.'
     );
     // Stale or disputed evidence keeps its block but answers nothing here.
     expect(answer(pageOf(docker({ price: { ...verified, stale: true } })))).toBeUndefined();
@@ -732,7 +808,7 @@ describe('Answers from the facts model (T2, T3)', () => {
     const chips = (pkg: ReturnType<typeof pageOf>) =>
       faqItems(pkg, t, 'en-US').find(item => item.key === 'chips')!.answer;
     expect(chips(pageOf(docker({ macosSupplement: supplement })))).toBe(
-      'Yes. The vendor states it runs natively on Apple silicon. Source: vendor.example/requirements.'
+      'Yes. The vendor states it runs natively on Apple silicon. Source: vendor.example/requirements, checked Dec 1, 2025.'
     );
     // Any disagreement with Homebrew puts the whole statement under review.
     expect(chips(pageOf(docker({ macosSupplement: { ...supplement, conflicts: ['minimum'] } })))).toBe(

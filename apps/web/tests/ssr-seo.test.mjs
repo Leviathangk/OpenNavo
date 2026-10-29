@@ -3350,7 +3350,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.match(faq, /<details[\s\S]*?<summary[^>]*><h3[^>]*>Is Facts App safe\?<\/h3>/);
     // Inline code renders each word in its own element (OnCodeText), so compare the text without tags.
     const faqText = faq.replace(/<[^>]*>/g, '');
-    assert.ok(!faqText.includes('checked Dec 1, 2025'), 'FAQ source attribution excludes evidence check dates');
+    assert.ok(faqText.includes('checked Dec 1, 2025'), 'existing FAQ source attribution retains evidence check dates');
     assert.ok(faqText.includes('Is Facts App free?') && faqText.includes('requires a subscription'), faqText);
     assert.ok(faqText.includes('brew uninstall --zap --cask facts-app'), 'collapsed answers are in the HTML');
     assert.ok(faqText.includes('Its settings are in ~/Library/Preferences/facts.plist.'), faqText);

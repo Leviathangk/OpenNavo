@@ -1,4 +1,4 @@
-import { formatDate, formatVersion, sharedMessages } from '@opennavo/shared';
+import { formatDate, formatVersion, packageAliases, sharedMessages } from '@opennavo/shared';
 import type { SiteLocale } from '@opennavo/shared';
 import {
   architectures,
@@ -164,7 +164,7 @@ export function packageSpec(
   const bundleIds = detail?.bundleIds ?? local?.bundleIds ?? [];
   if (value.kind === 'link' && bundleIds.length)
     rows.push({ key: 'bundle', label: 'Bundle ID', value: bundleIds.join(' '), mono: true });
-  const names = value.names?.filter(name => name !== (detail?.displayName ?? local?.name)) ?? [];
+  const names = packageAliases(value.names ?? [], detail?.displayName ?? local?.name ?? '', locale);
   if (names.length) rows.push({ key: 'names', label: t('package.details.names'), value: names.join(', ') });
   if (value.kind !== 'link') {
     const binaries = detail?.artifacts?.binaries ?? local?.binaries ?? [];

@@ -645,8 +645,7 @@
       "alternativesQ": "Чем можно заменить {name}?",
       "alternativesA": "Например, {list}.",
       "titleFor": "Частые вопросы о {name}",
-      "repositoryQ": "Есть ли у {name} публичный репозиторий на GitHub?",
-      "source": "Источник: {source}."
+      "repositoryQ": "Есть ли у {name} публичный репозиторий на GitHub?"
     },
     "securityPromo": {
       "title": "OpenNavo: проверка на вирусы и брандмауэр приложений",

@@ -201,3 +201,22 @@ describe('quick-info field parity with main', () => {
     expect(packageSpec(pkg, t, 'en-US').rows.some(row => row.key === 'version')).toBe(false);
   });
 });
+
+describe('spec card alternate names', () => {
+  const locales = ['en-US', 'zh-CN', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
+  it.each(locales)('filters aliases in %s for all package kinds', locale => {
+    for (const kind of ['cask', 'formula', 'link'] as const) {
+      const pkg = page({
+        kind,
+        displayName: 'Visual Studio Code',
+        names: ['Visual Studio Code', 'vscode', 'VS Code 编辑器']
+      });
+      const value = packageSpec(pkg, t, locale).rows.find(row => row.key === 'names')?.value;
+      expect(value).toBe(['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? 'vscode, VS Code 编辑器' : 'vscode');
+      pkg.names = ['Visual Studio Code', 'VS Code 编辑器'];
+      expect(packageSpec(pkg, t, locale).rows.some(row => row.key === 'names')).toBe(
+        ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale)
+      );
+    }
+  });
+});

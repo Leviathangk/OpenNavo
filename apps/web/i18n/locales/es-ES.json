@@ -645,8 +645,7 @@
       "alternativesQ": "¿Qué alternativas hay a {name}?",
       "alternativesA": "Algunas alternativas son {list}.",
       "titleFor": "Preguntas frecuentes sobre {name}",
-      "repositoryQ": "¿{name} tiene un repositorio público en GitHub?",
-      "source": "Fuente: {source}."
+      "repositoryQ": "¿{name} tiene un repositorio público en GitHub?"
     },
     "securityPromo": {
       "title": "OpenNavo: análisis de virus y cortafuegos de apps",

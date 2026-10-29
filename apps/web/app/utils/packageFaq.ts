@@ -9,9 +9,8 @@ import { formatDate } from './packageDate';
 // without a page-specific fact is left out, so no two apps share a boilerplate answer. Link apps
 // (T3) never get a Homebrew command.
 import { formatVersion } from '@opennavo/shared';
-import { displayUrl, toPackageRepoSignals } from '@opennavo/ui';
 import type { SiteLocale as Locale } from '@opennavo/shared';
-import { joinSentences } from './appAnswer';
+import { evidenceLine, joinSentences } from './appAnswer';
 import {
   capabilities,
   currentVersion,
@@ -212,8 +211,6 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
   const series = (values: string[]) => (locale === 'zh-CN' || locale === 'zh-Hant' ? values.join('、') : list(values));
   const count = (value: number) => new Intl.NumberFormat(locale).format(value);
   const date = (value: string) => formatDate(value, { locale });
-  // FAQ answers are indexed and quoted. Keep repository stars and evidence check dates in the spec card and Sources.
-  const source = (url: string) => t('package.faq.source', { source: displayUrl(url) });
   // Abbreviated dates already end with a period ("14 окт."), so a sentence ending in one keeps one.
   const sentences = (values: (string | false | null | undefined)[]) =>
     joinSentences(
@@ -282,7 +279,7 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
               .filter(Boolean)
               .join(' · ')
           ),
-        source(vendor.evidence.sourceUrl)
+        evidenceLine({ sourceUrl: vendor.evidence.sourceUrl, verifiedAt: vendor.evidence.checkedAt }, t, locale)
       ])
     );
   else if (!usages.length && store?.evidence.checkedAt) {
@@ -299,14 +296,19 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
     add(
       'price',
       t('package.faq.priceQ', { name }),
-      sentences([price, can.homebrew && t('package.faq.priceStoreNote'), source('https://apps.apple.com')])
+      sentences([
+        price,
+        can.homebrew && t('package.faq.priceStoreNote'),
+        appStoreSource(store.evidence.checkedAt, t, locale)
+      ])
     );
   }
 
   // An OSI record must match a verified identity before the FAQ calls an app open source.
   const repository = pkg.repository;
   const openSource = pkg.openSource;
-  const repoSignals = toPackageRepoSignals(pkg);
+  const repositoryPosition = items.length;
+  let repositoryQuestion: FaqItem | undefined;
   const openIdentity = verifiedIdentities(pkg).some(
     identity => identity.openSource === 'yes' && identity.repositoryUrl === openSource?.url
   );
@@ -316,18 +318,18 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
       t('package.faq.openSourceQ', { name }),
       sentences([
         t('package.faq.openSourceA', { name, repo: openSource.repo, license: openSource.license }),
-        (repoSignals?.archived ?? openSource.archived) && t('package.faq.openSourceArchived')
+        openSource.archived && t('package.faq.openSourceArchived')
       ])
     );
   else if (!openSource && repository?.url)
-    add(
-      'openSource',
-      t('package.faq.repositoryQ', { name }),
-      sentences([
+    repositoryQuestion = {
+      key: 'openSource',
+      question: t('package.faq.repositoryQ', { name }),
+      answer: sentences([
         t('package.faq.openSourceNoLicenseA', { name, repo: repository.url ?? '' }),
-        repoSignals?.archived && t('package.faq.openSourceArchived')
+        repository.archived && t('package.faq.openSourceArchived')
       ])
-    );
+    };
 
   // How to remove it completely: what uninstall does, then --zap with how much it clears.
   const steps = uninstallSteps(pkg);
@@ -376,7 +378,10 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
     add(
       'chips',
       t('package.faq.chipsQ', { name }),
-      sentences([t(`package.faq.siliconA.${arm.support}`), source(vendorRow.evidence.sourceUrl)])
+      sentences([
+        t(`package.faq.siliconA.${arm.support}`),
+        evidenceLine({ sourceUrl: vendorRow.evidence.sourceUrl, verifiedAt: vendorRow.evidence.checkedAt }, t, locale)
+      ])
     );
   else if (!pkg.isFont && chips)
     add(
@@ -396,7 +401,7 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
         languages.includes(language)
           ? t('package.faq.languageYes')
           : t('package.faq.languageNo', { count: languages.length }, languages.length),
-        source('https://apps.apple.com')
+        appStoreSource(pkg.appStore.checkedAt, t, locale)
       ])
     );
   }
@@ -467,7 +472,10 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
       t('package.faq.alternativesA', { list: list(alternatives) })
     );
 
-  return items.slice(0, FAQ_LIMIT);
+  const result = items.slice(0, FAQ_LIMIT);
+  // The optional new question must not displace any of main's existing answers.
+  if (repositoryQuestion && result.length < FAQ_LIMIT) result.splice(repositoryPosition, 0, repositoryQuestion);
+  return result;
 }
 
 function hostOf(url: string): string {
@@ -492,4 +500,8 @@ function regionName(region: string, locale: Locale): string {
   } catch {
     return region;
   }
+}
+
+function appStoreSource(checkedAt: string, t: FaqTranslate, locale: Locale): string {
+  return evidenceLine({ sourceUrl: 'https://apps.apple.com', verifiedAt: checkedAt }, t, locale);
 }
