@@ -215,11 +215,11 @@ func TestParseCaskSourceHeredocs(t *testing.T) {
 					terminator = "    " + terminator
 				}
 				heredoc := operator + quote + "EOS" + quote + "\n" + body + terminator
-				// A bare method argument remains a heredoc in ordinary metadata. Inside
-				// guarded hooks, assignment makes the heredoc unambiguous in both branches.
+				// Heredocs remain supported in ordinary metadata; guarded hooks reject every
+				// heredoc or left shift because either can hide a branch boundary.
 				source := flightGuardBase + "  if respond_to?(:postflight_steps)\n" +
-					"    postflight_steps do\n      message = " + heredoc + "    end\n  else\n" +
-					"    postflight do\n      message = " + heredoc + "    end\n  end\n" +
+					"    postflight_steps do\n    end\n  else\n" +
+					"    postflight do\n    end\n  end\n" +
 					"  caveats " + heredoc + "  depends_on arch: :arm64\nend\n"
 				out := parseSource(t, source, "demo")
 				want := body

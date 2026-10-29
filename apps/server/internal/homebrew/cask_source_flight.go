@@ -103,10 +103,9 @@ func (p *caskParser) flightGuardBranch(want string) error {
 // than ordinary opaque flight bodies instead of guessing at arbitrary Ruby syntax.
 // Supported constructs are balanced calls/arrays/hashes, method do blocks, and standalone
 // multiline if/unless with else/elsif. Modifiers, inline conditionals, definitions, loops,
-// left shifts, and ambiguous bare-argument heredocs are rejected. Heredocs in assignments
-// or parenthesized arguments remain supported.
+// left shifts, and heredocs are rejected because either form can hide a guard boundary.
 func (p *caskParser) validateFlightGuardToken(token, previous rbToken, closer string) error {
-	if token.ambiguousHeredoc || isPunct(token, "<<") {
+	if token.heredoc || token.kind == rbPunct && strings.HasPrefix(token.text, "<<") {
 		return p.fail(token.line, "ambiguous heredoc or left shift in flight compatibility guard")
 	}
 	if token.kind != rbKeyword {

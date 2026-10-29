@@ -36,14 +36,13 @@ type rbPart struct {
 }
 
 type rbToken struct {
-	kind   rbKind
-	text   string
-	parts  []rbPart
-	words  []string
-	line   int
-	spaced bool // whitespace precedes the token
-	// A bare identifier before a heredoc may instead be the left operand of a shift.
-	ambiguousHeredoc bool
+	kind    rbKind
+	text    string
+	parts   []rbPart
+	words   []string
+	line    int
+	spaced  bool // whitespace precedes the token
+	heredoc bool // token originated from a << heredoc start
 }
 
 var rbKeywords = map[string]bool{
@@ -595,7 +594,6 @@ func (l *rbLexer) startsHeredoc() bool {
 }
 
 func (l *rbLexer) readHeredocStart(spaced bool) error {
-	ambiguous := l.valueEnded()
 	l.pos += 2
 	heredoc := rbHeredoc{index: len(l.tokens)}
 	switch l.peek(0) {
@@ -623,7 +621,7 @@ func (l *rbLexer) readHeredocStart(spaced bool) error {
 	if heredoc.ident == "" {
 		return l.fail("invalid heredoc")
 	}
-	l.emit(rbToken{kind: rbString, line: l.line, spaced: spaced, ambiguousHeredoc: ambiguous})
+	l.emit(rbToken{kind: rbString, line: l.line, spaced: spaced, heredoc: true})
 	l.pending = append(l.pending, heredoc)
 	return nil
 }

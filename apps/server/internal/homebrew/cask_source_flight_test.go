@@ -122,33 +122,22 @@ func TestParseCaskSourceFlightGuards(t *testing.T) {
 func TestParseCaskSourceFlightGuardsWithArchitectureSelectors(t *testing.T) {
 	source := caskFixture(t, "orca.rb")
 	want := parseSource(t, strings.Replace(source, "  url ", "  postflight_steps do\n  end\n\n  url ", 1), "orca")
-	for _, operator := range []string{"<<", "<<-", "<<~"} {
-		for _, argument := range []string{"assignment", "parenthesized"} {
-			t.Run(operator+"/"+argument, func(t *testing.T) {
-				heredoc := "      message = " + operator + "EOS\n"
-				if argument == "parenthesized" {
-					heredoc = "      run(\"/bin/echo\", args: [" + operator + "EOS])\n"
-				}
-				// Ruby-looking heredoc content must not hide the guard boundaries or
-				// the architecture-specific URL and checksum metadata that follow it.
-				heredoc += "else end on_arm on_intel #{arch}\nEOS\n"
-				guard := `  if respond_to?(:postflight_steps)
+	guard := `  if respond_to?(:postflight_steps)
     app_path = "#{appdir}/Orca-#{arch}.app"
     postflight_steps do
-` + heredoc + `    end
+      run "/bin/echo", args: [app_path]
+    end
   else
     legacy_path = "#{staged_path}/Orca-#{arch}.app"
     postflight do
-` + heredoc + `    end
+      system_command "/bin/echo", args: [legacy_path]
+    end
   end
 
 `
-				got := parseSource(t, strings.Replace(source, "  url ", guard+"  url ", 1), "orca")
-				if jsonText(got) != jsonText(want) {
-					t.Fatalf("flight guard changed architecture metadata:\ngot %s\nwant %s", jsonText(got), jsonText(want))
-				}
-			})
-		}
+	got := parseSource(t, strings.Replace(source, "  url ", guard+"  url ", 1), "orca")
+	if jsonText(got) != jsonText(want) {
+		t.Fatalf("flight guard changed architecture metadata:\ngot %s\nwant %s", jsonText(got), jsonText(want))
 	}
 }
 
@@ -333,6 +322,40 @@ func TestParseCaskSourceRejectsBacktickShiftBoundarySmuggling(t *testing.T) {
 				t.Fatalf("expected a line-specific left-shift rejection at line %d, got %v", wantLine, err)
 			}
 		})
+	}
+}
+
+func TestParseCaskSourceRejectsAmbiguousFlightShiftForms(t *testing.T) {
+	for _, branch := range []string{"modern", "legacy"} {
+		for _, tc := range []struct {
+			name       string
+			expression string
+		}{
+			{"number method", "1.~<<~Float::DIG"},
+			{"question punctuation", `?!<<-"Float"`},
+			{"symbol punctuation", `:~<<-"Float"`},
+		} {
+			t.Run(branch+"/"+tc.name, func(t *testing.T) {
+				prefix := flightGuardBase + "  if respond_to?(:postflight_steps)\n"
+				flight, nextFlight := "postflight_steps", "preflight_steps"
+				suffix := "  else\n    postflight do\n    end\n  end\nend\n"
+				if branch == "legacy" {
+					prefix += "    postflight_steps do\n    end\n  else\n"
+					flight, nextFlight = "postflight", "preflight"
+					suffix = "  end\nend\n"
+				}
+				prefix += "    " + flight + " do\n"
+				// These valid Ruby left shifts are lexed as heredocs when the left
+				// operand is not recognized as a completed value.
+				source := prefix + "      " + tc.expression + "\n    end\n    depends_on arch: :arm64\n    " + nextFlight + " do\n      Float\n    end\nFloat\n" + suffix
+				_, err := ParseCaskSource(source, CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+				var unsupported *UnsupportedCaskError
+				wantLine := strings.Count(prefix, "\n") + 1
+				if !errors.As(err, &unsupported) || unsupported.Line != wantLine || !strings.Contains(unsupported.Reason, "ambiguous heredoc or left shift") {
+					t.Fatalf("expected a line-specific ambiguous shift rejection at line %d, got %v", wantLine, err)
+				}
+			})
+		}
 	}
 }
 
