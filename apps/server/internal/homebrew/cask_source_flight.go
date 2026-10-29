@@ -90,7 +90,40 @@ func (p *caskParser) flightGuardBranch(want string) error {
 		if block == "" || len(args.positional) != 0 || len(args.options.keys) != 0 {
 			return p.fail(name.line, "expected %s block without arguments", want)
 		}
-		_, err = p.skipBlock(block)
+		if isPunct(p.tokens[p.pos-1], "|") {
+			return p.fail(name.line, "block parameters are not supported in flight compatibility guards")
+		}
+		_, err = p.skipRubyBlock(block, true)
 		return err
 	}
+}
+
+// Guarded hooks must have unambiguous boundaries: a phantom or missing end could hide
+// metadata or a second hook in the same branch. Keep this subset deliberately smaller
+// than ordinary opaque flight bodies instead of guessing at arbitrary Ruby syntax.
+func (p *caskParser) validateFlightGuardKeyword(token, previous rbToken, closer string) error {
+	standalone := previous.kind == rbNewline && closer == "end"
+	if standalone && p.pos >= 3 {
+		// Ruby continues a line after an operator. A control expression on the next
+		// line is still inline even though the lexer emitted a newline token.
+		beforeNewline := p.tokens[p.pos-3]
+		if beforeNewline.kind == rbPunct && beforeNewline.text != ")" && beforeNewline.text != "]" && beforeNewline.text != "}" {
+			standalone = false
+		}
+	}
+	switch token.text {
+	case "true", "false", "nil", "self":
+		return nil
+	case "if", "unless", "else", "elsif", "end":
+		if standalone {
+			return nil
+		}
+	case "do":
+		// Loops are rejected below, so every accepted do opens its own block.
+		// Receiver methods named do are already lexed as identifiers.
+		if previous.kind != rbNewline {
+			return nil
+		}
+	}
+	return p.fail(token.line, "unsupported %q construct in flight compatibility guard", token.text)
 }

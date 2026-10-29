@@ -722,6 +722,11 @@ func unsupportedStanza(name string) string {
 // skipBlock consumes tokens up to the end matching an already consumed opener and
 // returns the identifiers that start statements directly inside the block.
 func (p *caskParser) skipBlock(opener string) ([]string, error) {
+	return p.skipRubyBlock(opener, false)
+}
+
+// Guarded flights reject syntax whose boundaries the permissive Ruby skipper cannot establish.
+func (p *caskParser) skipRubyBlock(opener string, guardedFlight bool) ([]string, error) {
 	closers := []string{"end"}
 	if opener == "{" {
 		closers = []string{"}"}
@@ -732,6 +737,11 @@ func (p *caskParser) skipBlock(opener string) ([]string, error) {
 		// The opener was consumed before the call, so a previous token always exists.
 		previous := p.tokens[p.pos-1]
 		token := p.next()
+		if guardedFlight && token.kind == rbKeyword {
+			if err := p.validateFlightGuardKeyword(token, previous, closers[len(closers)-1]); err != nil {
+				return nil, err
+			}
+		}
 		startsStatement := previous.kind == rbNewline ||
 			previous.kind == rbPunct && slices.Contains([]string{"(", "[", "{", ",", "=", "|", "&&", "||", "=>", "+=", "-=", "||=", "&&=", "!", "?", ":"}, previous.text) ||
 			previous.kind == rbKeyword && slices.Contains([]string{"do", "then", "else", "elsif", "begin", "and", "or", "not", "when", "in", "ensure", "rescue"}, previous.text)

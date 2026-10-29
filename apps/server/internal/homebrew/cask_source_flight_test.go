@@ -87,10 +87,16 @@ func TestParseCaskSourceFlightGuards(t *testing.T) {
 	for _, flight := range []string{"preflight", "postflight", "uninstall_preflight", "uninstall_postflight"} {
 		t.Run(flight, func(t *testing.T) {
 			modern := flight + "_steps"
-			// These bodies remain opaque, like ordinary flight blocks. Nested Ruby and strings
-			// containing end/else must not hide the metadata after the compatibility guard.
+			// Supported nested blocks and strings containing end/else must not hide
+			// the metadata after the compatibility guard.
 			hook := modern + ` do
-    run "/bin/echo", args: ["end", app_path]
+    ["end"].each do
+      unless File.exist?(app_path)
+        run "/bin/echo", args: ["end", app_path]
+      else
+        run "/bin/echo", args: ["else", app_path]
+      end
+    end
   end
 `
 			guard := "  if respond_to?(:" + modern + ")\n" + `    app_path = "#{appdir}/Demo.app"
@@ -145,6 +151,7 @@ func TestParseCaskSourceRejectsUnsafeFlightGuards(t *testing.T) {
 		"missing else":           "  if respond_to?(:postflight_steps)\n    postflight_steps do\n    end\n  end\n",
 		"duplicate hook":         strings.Replace(guard, "  else\n", "    postflight_steps do\n    end\n  else\n", 1),
 		"hook arguments":         strings.Replace(guard, "postflight_steps do", "postflight_steps :extra do", 1),
+		"block parameters":       strings.Replace(guard, "postflight_steps do", "postflight_steps do |helper|", 1),
 		"dynamic helper":         strings.Replace(guard, `"#{appdir}/Demo.app"`, `File.read("path")`, 1),
 		"dynamic interpolation":  strings.Replace(guard, "#{appdir}", `#{system("echo")}`, 1),
 		"non-string helper":      strings.Replace(guard, `"#{appdir}/Demo.app"`, "nil", 1),
@@ -181,5 +188,80 @@ func TestParseCaskSourceRejectsUnsafeFlightGuards(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestParseCaskSourceRejectsAmbiguousFlightBlocks(t *testing.T) {
+	for _, branch := range []string{"modern", "legacy"} {
+		for _, tc := range []struct {
+			name string
+			code string
+			line int
+		}{
+			{"endless def", "def helper = 1", 1},
+			{"method definition", "def helper\n        1\n      end", 1},
+			{"singleton def", "def self.helper = 1", 1},
+			{"inline if", "x = 1 + if true\n        1\n      end", 1},
+			{"inline unless", "x = 1 + unless false\n        1\n      end", 1},
+			{"inline case", "x = case 1\n      when 1\n        1\n      end", 1},
+			{"inline while", "x = 1 + while false\n        1\n      end", 1},
+			{"inline until", "x = 1 + until true\n        1\n      end", 1},
+			{"continued inline if", "x = 1 +\n      if true\n        1\n      end", 2},
+			{"parenthesized inline if", "x = (\n      if true\n        1\n      end\n      )", 2},
+			{"begin expression", "x = begin\n        1\n      end", 1},
+			{"loop with do", "while false do\n        run \"/bin/echo\"\n      end", 1},
+		} {
+			t.Run(branch+"/"+tc.name, func(t *testing.T) {
+				prefix := flightGuardBase + "  if respond_to?(:postflight_steps)\n"
+				flight := "postflight_steps"
+				suffix := "  else\n    postflight do\n    end\n  end\nend\n"
+				if branch == "legacy" {
+					prefix += "    postflight_steps do\n    end\n  else\n"
+					flight = "postflight"
+					suffix = "  end\nend\n"
+				}
+				prefix += "    " + flight + " do\n"
+				source := prefix + "      " + tc.code + "\n    end\n" + suffix
+				_, err := ParseCaskSource(source, CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+				var unsupported *UnsupportedCaskError
+				wantLine := strings.Count(prefix, "\n") + tc.line
+				if !errors.As(err, &unsupported) || unsupported.Line != wantLine {
+					t.Fatalf("expected UnsupportedCaskError at line %d, got %v", wantLine, err)
+				}
+			})
+		}
+	}
+}
+
+func TestParseCaskSourceRejectsFlightBoundarySmuggling(t *testing.T) {
+	for _, branch := range []string{"modern", "legacy"} {
+		t.Run(branch, func(t *testing.T) {
+			prefix := flightGuardBase + "  if respond_to?(:postflight_steps)\n"
+			flight := "postflight_steps"
+			suffix := "  else\n    postflight do\n    end\n  end\nend\n"
+			if branch == "legacy" {
+				prefix += "    postflight_steps do\n    end\n  else\n"
+				flight = "postflight"
+				suffix = "  end\nend\n"
+			}
+			// An endless def adds a phantom level to the permissive skipper; an inline if
+			// cancels it. Together they used to hide a second hook and catalog metadata.
+			prefix += "    " + flight + " do\n"
+			source := prefix + `      def helper = 1
+    end
+    depends_on arch: :arm64
+    ` + flight + ` do
+      x = 1 + if true
+        1
+      end
+    end
+` + suffix
+			_, err := ParseCaskSource(source, CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+			var unsupported *UnsupportedCaskError
+			wantLine := strings.Count(prefix, "\n") + 1
+			if !errors.As(err, &unsupported) || unsupported.Line != wantLine {
+				t.Fatalf("expected UnsupportedCaskError at line %d, got %v", wantLine, err)
+			}
+		})
 	}
 }
