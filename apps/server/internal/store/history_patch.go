@@ -27,6 +27,7 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 		desiredRows := target[table]
 		oldByKey, newByKey, wantByKey := historyRows(oldRows), historyRows(newRows), historyRows(desiredRows)
 		currentByKey := historyRows(out[table])
+		lifecycleTable := table == "packages" && (HistoryStateIncludesPackageLifecycle(before) || HistoryStateIncludesPackageLifecycle(after))
 		keys := map[string]bool{}
 		for key := range oldByKey {
 			keys[key] = true
@@ -64,6 +65,16 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 				}
 				if previous == nil || !reflect.DeepEqual(previous[field], next[field]) {
 					currentByKey[key][field] = value
+				}
+			}
+			if lifecycleTable {
+				// A clear-disabled revision deliberately captures the complete
+				// package lifecycle. Restore that snapshot as a unit so the
+				// corresponding undo cannot leave stale or override columns behind.
+				for _, field := range packageLifecycleFields {
+					if value, exists := desired[field]; exists {
+						currentByKey[key][field] = value
+					}
 				}
 			}
 		}

@@ -122,11 +122,12 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 				var upstream struct {
 					Disabled           bool
 					StaleDisabled      bool
+					Version            string
 					DisableDate        *string
 					DisableReason      *string
 					DisableReplacement *string
 				}
-				if err := st.DB.WithContext(ctx).Raw(`SELECT disabled,stale_disabled,disable_date::text,disable_reason,disable_replacement FROM packages WHERE id=?`, in.ID).Scan(&upstream).Error; err != nil {
+				if err := st.DB.WithContext(ctx).Raw(`SELECT disabled,stale_disabled,version,disable_date::text,disable_reason,disable_replacement FROM packages WHERE id=?`, in.ID).Scan(&upstream).Error; err != nil {
 					return nil, err
 				}
 				if upstream.Disabled || upstream.StaleDisabled {
@@ -138,10 +139,11 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 						"disabled_override_date":        upstream.DisableDate,
 						"disabled_override_reason":      upstream.DisableReason,
 						"disabled_override_replacement": upstream.DisableReplacement,
-						// The explicit clear also opts out of the stale-version policy;
-						// the override is released when the upstream signature changes.
-						"disabled_override_stale": true,
-						"updated_at":              now,
+						// Only a stale-disabled package opts out of the stale-version
+						// policy. The override is released when this version changes.
+						"disabled_override_stale":   upstream.StaleDisabled,
+						"disabled_override_version": upstream.Version,
+						"updated_at":                now,
 					}).Error; err != nil {
 						return nil, err
 					}

@@ -173,6 +173,11 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
 	require.False(t, packageDisabled(703))
 	require.NoError(t, st.DB.Raw("SELECT disabled_override_at FROM packages WHERE id=703").Scan(&overrideAt).Error)
 	require.True(t, overrideAt.Valid)
+	var staleOverride bool
+	var overrideVersion sql.NullString
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_stale,disabled_override_version FROM packages WHERE id=703").Row().Scan(&staleOverride, &overrideVersion))
+	require.False(t, staleOverride, "an upstream-disabled clear does not opt out of stale refresh")
+	require.Equal(t, "1", overrideVersion.String)
 	var audit struct {
 		Before string
 		After  string
@@ -190,9 +195,17 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
 	_, err = svc.Execute(ctx, "UpdatePackageMeta", Input{ID: 704, Body: map[string]any{"hidden": true, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}})
 	require.NoError(t, err)
 	require.False(t, packageDisabled(704))
-	var staleOverride bool
 	require.NoError(t, st.DB.Raw("SELECT disabled_override_stale FROM packages WHERE id=704").Scan(&staleOverride).Error)
 	require.True(t, staleOverride)
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_version FROM packages WHERE id=704").Scan(&overrideVersion).Error)
+	require.Equal(t, "1", overrideVersion.String)
+	// An active package has no upstream lifecycle state to override. The clear
+	// request must not create a stale override row for it.
+	_, err = svc.Execute(ctx, "UpdatePackageMeta", Input{ID: 701, Body: map[string]any{"hidden": true, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}})
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_stale,disabled_override_at FROM packages WHERE id=701").Row().Scan(&staleOverride, &overrideAt))
+	require.False(t, staleOverride)
+	require.False(t, overrideAt.Valid)
 	_, total, err := st.PublicPackages(ctx, store.PublicFilter{Locale: "en-US", Current: 1, Size: 100})
 	require.NoError(t, err)
 	require.Equal(t, 1, total, "cleared packages are visible while remaining disabled packages stay excluded")

@@ -3,10 +3,12 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -135,6 +137,10 @@ func (q *testQueue) Enqueue(_ context.Context, kind string, payload jobs.Payload
 func TestCatalogSyncHonorsDisabledOverrideUntilUpstreamSignatureChanges(t *testing.T) {
 	st := testutil.NewStore(t)
 	ctx := context.Background()
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 	source := &testSource{
 		Data:     map[string][]string{"cask": {`{"token":"manual-override","version":"1","name":["Manual Override"],"disabled":true,"disable_date":"2026-01-01","disable_reason":"unsafe"}`}},
 		Previous: map[string]homebrew.Conditional{},
@@ -172,6 +178,7 @@ WHERE id=?`, overrideAt, id).Error)
 	require.True(t, state.Disabled)
 	require.Nil(t, state.OverrideAt)
 	require.Nil(t, state.OverrideReason)
+	require.Contains(t, logs.String(), "catalog package re-disabled after upstream signature changed")
 }
 
 func TestCatalogIdempotenceRenameRemoveReviveAndDescriptionReview(t *testing.T) {

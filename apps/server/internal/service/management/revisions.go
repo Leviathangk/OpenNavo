@@ -258,7 +258,25 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 			if err != nil {
 				return err
 			}
-			current, err := st.HistorySnapshot(ctx, ref)
+			var originalBefore, originalAfter store.HistoryState
+			includePackageLifecycle := false
+			if opName != "RestoreTrash" {
+				originalBefore, err = revisionState(r.BeforeData)
+				if err != nil {
+					return err
+				}
+				originalAfter, err = revisionState(r.AfterData)
+				if err != nil {
+					return err
+				}
+				includePackageLifecycle = ref.Entity == "package" && (store.HistoryStateIncludesPackageLifecycle(originalBefore) || store.HistoryStateIncludesPackageLifecycle(originalAfter))
+			}
+			var current store.HistoryState
+			if includePackageLifecycle {
+				current, err = st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			} else {
+				current, err = st.HistorySnapshot(ctx, ref)
+			}
 			if err != nil {
 				return err
 			}
@@ -285,14 +303,6 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				}
 			}
 			if opName != "RestoreTrash" {
-				originalBefore, err := revisionState(r.BeforeData)
-				if err != nil {
-					return err
-				}
-				originalAfter, err := revisionState(r.AfterData)
-				if err != nil {
-					return err
-				}
 				target = store.HistoryPatch(current, originalBefore, originalAfter, target)
 			}
 			if restoresDeletedContent(r.Entity, current, target) && op != nil && !op.AllowDelete {
@@ -344,7 +354,12 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				}
 			}
 
-			after, err := st.HistorySnapshot(ctx, ref)
+			var after store.HistoryState
+			if includePackageLifecycle {
+				after, err = st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			} else {
+				after, err = st.HistorySnapshot(ctx, ref)
+			}
 			if err != nil {
 				return err
 			}

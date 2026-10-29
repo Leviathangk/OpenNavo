@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/homebrew"
@@ -48,6 +49,21 @@ func (s *Service) now() time.Time {
 		return s.Now().UTC()
 	}
 	return time.Now().UTC()
+}
+
+func nullableCatalogValueMatches(value string, previous *string) bool {
+	if value == "" {
+		return previous == nil
+	}
+	return previous != nil && *previous == value
+}
+
+func upstreamDisableSignatureChanged(mutation store.CatalogMutation) bool {
+	previous := mutation.Previous
+	return previous != nil && !previous.Disabled && previous.DisabledOverrideAt != nil && mutation.Package.Disabled &&
+		(!nullableCatalogValueMatches(mutation.Package.DisableDate, previous.DisabledOverrideDate) ||
+			!nullableCatalogValueMatches(mutation.Package.DisableReason, previous.DisabledOverrideReason) ||
+			!nullableCatalogValueMatches(mutation.Package.DisableReplacement, previous.DisabledOverrideReplacement))
 }
 
 func (s *Service) Run(ctx context.Context) (map[string]any, error) {
@@ -175,9 +191,18 @@ func (s *Service) syncKind(ctx context.Context, kind string) (stats Stats, resul
 	}
 	batch := make([]store.CatalogMutation, 0, 500)
 	flush := func() error {
+		reDisabled := make([]store.CatalogMutation, 0)
+		for _, mutation := range batch {
+			if upstreamDisableSignatureChanged(mutation) {
+				reDisabled = append(reDisabled, mutation)
+			}
+		}
 		lifecycle, err := s.Store.ApplyCatalogBatchWithLifecycle(ctx, batch, s.now())
 		if err != nil {
 			return err
+		}
+		for _, mutation := range reDisabled {
+			slog.InfoContext(ctx, "catalog package re-disabled after upstream signature changed", "kind", mutation.Package.Kind, "token", mutation.Package.Token, "version", mutation.Package.Version)
 		}
 		stats.AutoDisabled += lifecycle.AutoDisabled
 		stats.Reactivated += lifecycle.Reactivated

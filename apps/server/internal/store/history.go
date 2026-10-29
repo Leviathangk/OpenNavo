@@ -23,6 +23,8 @@ type historyTable struct {
 	Args                 []any
 }
 
+var packageLifecycleFields = [...]string{"disabled", "stale_disabled", "disable_date", "disable_reason", "disable_replacement", "disabled_override_at", "disabled_override_date", "disabled_override_reason", "disabled_override_replacement", "disabled_override_stale", "disabled_override_version"}
+
 func historyTables(ref content.Ref, includePackageLifecycle bool) []historyTable {
 	spec, ok := content.Registry[ref.Entity]
 	if !ok {
@@ -37,7 +39,7 @@ func historyTables(ref content.Ref, includePackageLifecycle bool) []historyTable
 	if ref.Entity == "package" {
 		cols = "id,source_locale,download_size"
 		if includePackageLifecycle {
-			cols += ",disabled,stale_disabled,disable_date,disable_reason,disable_replacement,disabled_override_at,disabled_override_date,disabled_override_reason,disabled_override_replacement,disabled_override_stale"
+			cols += ",disabled,stale_disabled,disable_date,disable_reason,disable_replacement,disabled_override_at,disabled_override_date,disabled_override_reason,disabled_override_replacement,disabled_override_stale,disabled_override_version"
 		}
 	}
 	if ref.Entity == "desktop_release" {
@@ -69,6 +71,20 @@ func (s *Store) HistorySnapshot(ctx context.Context, ref content.Ref) (HistorySt
 // explicit clear-disabled operation. Normal package history remains unchanged.
 func (s *Store) HistorySnapshotWithPackageLifecycle(ctx context.Context, ref content.Ref) (HistoryState, error) {
 	return s.historySnapshot(ctx, ref, true)
+}
+
+// HistoryStateIncludesPackageLifecycle identifies snapshots captured for an
+// explicit clear-disabled operation. Normal package history intentionally omits
+// upstream lifecycle fields so catalog synchronization remains authoritative.
+func HistoryStateIncludesPackageLifecycle(state HistoryState) bool {
+	for _, row := range state["packages"] {
+		for _, field := range packageLifecycleFields {
+			if _, ok := row[field]; ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *Store) historySnapshot(ctx context.Context, ref content.Ref, includePackageLifecycle bool) (HistoryState, error) {
@@ -255,11 +271,18 @@ func HistoryRef(entity, key string) (content.Ref, error) {
 
 // Restore snapshots only for the server's fixed table list; never use request-provided SQL identifiers.
 func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state HistoryState) error {
-	tables := historyTables(ref, false)
+	includePackageLifecycle := ref.Entity == "package" && HistoryStateIncludesPackageLifecycle(state)
+	tables := historyTables(ref, includePackageLifecycle)
 	if len(tables) == 0 {
 		return domain.RejectedDetail("history_entity_invalid", ref.Entity)
 	}
-	current, err := s.HistorySnapshot(ctx, ref)
+	var current HistoryState
+	var err error
+	if includePackageLifecycle {
+		current, err = s.HistorySnapshotWithPackageLifecycle(ctx, ref)
+	} else {
+		current, err = s.HistorySnapshot(ctx, ref)
+	}
 	if err != nil {
 		return err
 	}
