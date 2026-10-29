@@ -100,7 +100,7 @@ defineSlots<{
       <slot name="download" />
       <section
         v-if="command"
-        class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px"
+        class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px max-[640px]:hidden"
       >
         <OnInstallCommand :command="command" @copied="emit('copied', $event)" />
       </section>
