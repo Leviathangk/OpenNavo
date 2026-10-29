@@ -4226,6 +4226,7 @@
         "page.dashboard.githubReleases.dailyStart": "f5ffd9a11d625ae9067eae2c54dfee95cd31d2cee903aea1aac662fab12d1617",
         "page.dashboard.githubReleases.downloadsHint": "595a8ab9c75bd56311ac588d764e03724af74d283a8dc1170f5c6f62fc7db018",
         "page.dashboard.githubReleases.updatesHint": "b1a7f9185d68c8798102d2675dde0fbedac39f02dfd838271eb9ba9c46d398f6",
+        "page.dashboard.githubReleases.releasesHint": "b0d5b941518e6828e34cabcbf96011e829cb0de74ca1cf264911bbef289bd08d",
         "page.dashboard.githubReleases.dailyHint": "5943f7ebed05b35cbe8c37db434bb90daa63420a6b2bd99899a63c0a411c100f",
         "page.dashboard.usage.countries": "37a58d359c47aa2445019fce19aca88b70a17e40f615c771daf295c1997a3127",
         "page.dashboard.usage.countryOrder": "d29750b3bdbb4983e1ca46f67245a9a5c24df07b5fb837948e7af94b42654d7d",

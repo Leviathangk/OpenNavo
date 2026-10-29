@@ -63,6 +63,7 @@ const pages: PageMessages = {
         'Downloads count universal DMG transfers across all desktop releases, including Homebrew install and upgrade.',
       updatesHint:
         'Updates count .app.tar.gz transfers for Apple Silicon and Intel combined. Download counts, not people.',
+      releasesHint: 'Future beta/pre-release versions are counted together with stable releases.',
       dailyHint:
         'Days use Beijing time. — means no daily data. Missed days count toward the next successful snapshot day; history is not backfilled.'
     },

@@ -407,6 +407,7 @@
         "dailyStart": "Los datos diarios comienzan el {date}.",
         "downloadsHint": "Las descargas cuentan las transferencias del DMG universal de todas las versiones de escritorio, incluidas las instalaciones y actualizaciones con Homebrew.",
         "updatesHint": "Las actualizaciones suman las transferencias de .app.tar.gz para Apple Silicon e Intel. Son descargas, no personas.",
+        "releasesHint": "Las futuras versiones beta o preliminares se cuentan junto con las versiones estables.",
         "dailyHint": "Los días siguen la hora de Pekín. — indica que no hay datos diarios. Los días sin captura se acumulan en el siguiente día con una captura correcta; no se reconstruye el historial."
       }
     },

@@ -50,6 +50,7 @@ const pages = {
       dailyStart: '每日数据自 {date} 起开始统计。',
       downloadsHint: '下载统计所有桌面版本的通用 DMG 下载次数，包含 Homebrew 安装和升级。',
       updatesHint: '更新统计 Apple Silicon 和 Intel 的 .app.tar.gz 下载次数之和，下载次数不代表人数。',
+      releasesHint: '以后的 beta/预发布版与正式版一起算。',
       dailyHint: '按北京时间自然日统计。— 表示无每日数据。漏采期间的增量计入下一个成功采集日，不补算历史。'
     },
     usage: {

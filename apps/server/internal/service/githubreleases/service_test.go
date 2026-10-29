@@ -101,6 +101,42 @@ func TestSnapshotPaginatesAllReleasesAndAssetsAndReloadsToken(t *testing.T) {
 	require.Equal(t, 2, st.writes)
 }
 
+func TestSnapshotIncludesPrereleaseDesktopReleases(t *testing.T) {
+	st := &snapshotStore{token: strings.Repeat("x", 16)}
+	expected := []store.GitHubReleaseAsset{
+		{ReleaseTag: "desktop-v0.1.4", AssetID: 11, AssetName: "OpenNavo_0.1.4_universal.dmg", DownloadCount: 100},
+		{ReleaseTag: "desktop-v0.2.0-beta.1", AssetID: 21, AssetName: "OpenNavo_0.2.0-beta.1_universal.dmg", DownloadCount: 20},
+		{ReleaseTag: "desktop-v0.2.0-rc.1", AssetID: 31, AssetName: "OpenNavo_aarch64.app.tar.gz", DownloadCount: 5},
+	}
+	client := &http.Client{Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/repos/opennavo/OpenNavo/releases":
+			// Use GitHub's wire format so the prerelease flag is present even
+			// though the service currently needs only the release ID and tag.
+			return reply(t, 200, []map[string]any{
+				{"id": 1, "tag_name": "desktop-v0.1.4", "prerelease": false},
+				{"id": 2, "tag_name": "desktop-v0.2.0-beta.1", "prerelease": true},
+				{"id": 3, "tag_name": "desktop-v0.2.0-rc.1", "prerelease": true},
+				{"id": 4, "tag_name": "server-v0.2.0-beta.1", "prerelease": true},
+			}), nil
+		case "/repos/opennavo/OpenNavo/releases/1/assets":
+			return reply(t, 200, []map[string]any{{"id": 11, "name": expected[0].AssetName, "download_count": 100}}), nil
+		case "/repos/opennavo/OpenNavo/releases/2/assets":
+			return reply(t, 200, []map[string]any{{"id": 21, "name": expected[1].AssetName, "download_count": 20}}), nil
+		case "/repos/opennavo/OpenNavo/releases/3/assets":
+			return reply(t, 200, []map[string]any{{"id": 31, "name": expected[2].AssetName, "download_count": 5}}), nil
+		default:
+			t.Fatalf("unexpected request: %s", r.URL.Path)
+			return nil, errors.New("unexpected request")
+		}
+	})}
+	stats, err := (&Service{Store: st, HTTP: client}).Run(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"releases": 3, "assets": 3}, stats)
+	require.Equal(t, expected, st.assets, "stable, beta and RC assets enter the same snapshot")
+	require.Equal(t, 1, st.writes)
+}
+
 func TestSnapshotFailuresNeverWritePartialDataOrEchoCredentials(t *testing.T) {
 	for _, failure := range []string{"missing token", "token read", "connection", "403", "500", "malformed", "null", "missing count", "empty", "later asset page"} {
 		t.Run(failure, func(t *testing.T) {

@@ -6,7 +6,8 @@ every release and asset page of `opennavo/OpenNavo`. Only `desktop-v*` releases
 enter `github_release_snapshots`. Every asset is retained for auditing, with one
 complete observation per asset per Beijing natural day. No backfill is performed.
 
-The dashboard aggregates all desktop versions together:
+The dashboard aggregates all desktop versions together. Future beta/pre-release
+versions are counted together with stable releases:
 
 - **Downloads**: only `*_universal.dmg`. This includes the download page and
   Homebrew cask installs **and upgrades**.

@@ -102,6 +102,7 @@ const hasDaily = computed(() => days.value.some(day => day.downloads !== null ||
       <div class="flex-col gap-4px text-12px" :style="{ color: theme.textColor3 }">
         <p class="m-0">{{ text('downloadsHint') }}</p>
         <p class="m-0">{{ text('updatesHint') }}</p>
+        <p class="m-0">{{ text('releasesHint') }}</p>
         <p v-if="stats.dailyStartDate" class="m-0">{{ text('dailyStart', { date: stats.dailyStartDate }) }}</p>
         <p class="m-0">{{ text('dailyHint') }}</p>
       </div>

@@ -38,6 +38,7 @@ it('shows cumulative counts, actual zero daily counts, unavailable days and the 
   expect(card.text()).toContain('dailyStart(2026-10-26)');
   expect(card.text()).toContain('downloadsHint');
   expect(card.text()).toContain('updatesHint');
+  expect(card.text()).toContain('releasesHint');
   expect(card.text()).toContain('dailyHint');
   const rows = card.findAll('tbody tr');
   expect(rows).toHaveLength(4);

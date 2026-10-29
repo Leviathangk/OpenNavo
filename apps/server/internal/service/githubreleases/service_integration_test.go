@@ -29,7 +29,16 @@ func TestSnapshotUsesEncryptedSavedTokenAndPreservesDataOnFailure(t *testing.T) 
 			return reply(t, 503, "upstream unavailable"), nil
 		}
 		if r.URL.Path == "/repos/opennavo/OpenNavo/releases" {
-			return reply(t, 200, []release{{ID: 1, Tag: "desktop-v0.1.3"}}), nil
+			return reply(t, 200, []map[string]any{
+				{"id": 1, "tag_name": "desktop-v0.1.3", "prerelease": false},
+				{"id": 2, "tag_name": "desktop-v0.2.0-beta.1", "prerelease": true},
+			}), nil
+		}
+		if r.URL.Path == "/repos/opennavo/OpenNavo/releases/2/assets" {
+			return reply(t, 200, []map[string]any{
+				{"id": 2, "name": "OpenNavo_0.2.0-beta.1_universal.dmg", "download_count": 20},
+				{"id": 3, "name": "OpenNavo_aarch64.app.tar.gz", "download_count": 5},
+			}), nil
 		}
 		return reply(t, 200, []map[string]any{{"id": 1, "name": "OpenNavo_0.1.3_universal.dmg", "download_count": 953}}), nil
 	})}}
@@ -47,7 +56,8 @@ func TestSnapshotUsesEncryptedSavedTokenAndPreservesDataOnFailure(t *testing.T) 
 	require.NoError(t, err)
 	initial, err := st.GitHubReleaseOverview(ctx, at)
 	require.NoError(t, err)
-	require.EqualValues(t, 953, *initial.Downloads.Total)
+	require.EqualValues(t, 973, *initial.Downloads.Total, "stable and prerelease DMGs are combined")
+	require.EqualValues(t, 5, *initial.Updates.Total, "prerelease updater transfers are included")
 	expected = "rotated-test-credential"
 	save(expected)
 	at = at.Add(time.Hour)

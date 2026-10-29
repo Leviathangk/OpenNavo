@@ -58,6 +58,7 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	assets := []store.GitHubReleaseAsset{}
 	count := 0
 	for _, release := range releases {
+		// Include beta/prerelease desktop tags alongside stable releases.
 		if !strings.HasPrefix(release.Tag, "desktop-v") {
 			continue
 		}
