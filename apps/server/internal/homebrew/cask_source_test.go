@@ -300,6 +300,7 @@ func TestParseCaskSourceRejectsWhatItCannotEvaluate(t *testing.T) {
 	for name, tc := range map[string]struct{ body, reason string }{
 		"incomplete arch": {`  arch arm: "arm64"`, "expects arm: and intel:"},
 		"on_arm":          {"  on_arm do\n    app \"Demo.app\"\n  end", "`on_arm` blocks"},
+		"on_intel":        {"  on_intel do\n    app \"Demo.app\"\n  end", "`on_intel` blocks"},
 		"on_macos":        {"  on_sonoma :or_newer do\n    app \"Demo.app\"\n  end", "`on_sonoma` blocks"},
 		"language":        {"  language \"en\", default: true do\n    \"en\"\n  end", "`language` blocks"},
 		"local variable":  {`  folder = "demo"`, "local variables"},

@@ -119,6 +119,39 @@ func TestParseCaskSourceFlightGuards(t *testing.T) {
 	}
 }
 
+func TestParseCaskSourceFlightGuardsWithArchitectureSelectors(t *testing.T) {
+	source := caskFixture(t, "orca.rb")
+	want := parseSource(t, strings.Replace(source, "  url ", "  postflight_steps do\n  end\n\n  url ", 1), "orca")
+	for _, operator := range []string{"<<", "<<-", "<<~"} {
+		for _, argument := range []string{"assignment", "parenthesized"} {
+			t.Run(operator+"/"+argument, func(t *testing.T) {
+				heredoc := "      message = " + operator + "EOS\n"
+				if argument == "parenthesized" {
+					heredoc = "      run(\"/bin/echo\", args: [" + operator + "EOS])\n"
+				}
+				// Ruby-looking heredoc content must not hide the guard boundaries or
+				// the architecture-specific URL and checksum metadata that follow it.
+				heredoc += "else end on_arm on_intel #{arch}\nEOS\n"
+				guard := `  if respond_to?(:postflight_steps)
+    app_path = "#{appdir}/Orca-#{arch}.app"
+    postflight_steps do
+` + heredoc + `    end
+  else
+    legacy_path = "#{staged_path}/Orca-#{arch}.app"
+    postflight do
+` + heredoc + `    end
+  end
+
+`
+				got := parseSource(t, strings.Replace(source, "  url ", guard+"  url ", 1), "orca")
+				if jsonText(got) != jsonText(want) {
+					t.Fatalf("flight guard changed architecture metadata:\ngot %s\nwant %s", jsonText(got), jsonText(want))
+				}
+			})
+		}
+	}
+}
+
 func TestParseCaskSourceRejectsUnsafeFlightGuards(t *testing.T) {
 	const guard = `  if respond_to?(:postflight_steps)
     app_path = "#{appdir}/Demo.app"
@@ -175,7 +208,7 @@ func TestParseCaskSourceRejectsUnsafeFlightGuards(t *testing.T) {
 		})
 	}
 	// Assignments in either branch must not shadow the roots the static interpolator resolves.
-	for _, root := range []string{"version", "token", "appdir", "staged_path", "caskroom_path"} {
+	for _, root := range []string{"arch", "version", "token", "appdir", "staged_path", "caskroom_path"} {
 		for _, branch := range []string{"modern", "legacy"} {
 			t.Run("shadow "+root+" in "+branch, func(t *testing.T) {
 				body := strings.Replace(guard, "app_path =", root+" =", 1)
@@ -214,6 +247,9 @@ func TestParseCaskSourceRejectsAmbiguousFlightBlocks(t *testing.T) {
 			{"parenthesized inline if", "x = (\n      if true\n        1\n      end\n      )", 2},
 			{"begin expression", "x = begin\n        1\n      end", 1},
 			{"loop with do", "while false do\n        run \"/bin/echo\"\n      end", 1},
+			{"bare heredoc", "run <<EOS\nelse end on_arm\nEOS", 1},
+			{"bare dash heredoc", "run <<-EOS\nelse end on_intel\nEOS", 1},
+			{"bare squiggly heredoc", "run <<~EOS\nelse end arch\nEOS", 1},
 		} {
 			t.Run(branch+"/"+tc.name, func(t *testing.T) {
 				prefix := flightGuardBase + "  if respond_to?(:postflight_steps)\n"

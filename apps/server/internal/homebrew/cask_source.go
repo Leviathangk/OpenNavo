@@ -33,7 +33,7 @@ func (e *UnsupportedCaskError) Error() string {
 
 // ParseCaskSource statically reads the declarative subset of the cask DSL and returns the same JSON shape as
 // formulae.brew.sh/api/cask.json, so the result goes through Normalize like an official cask. Ruby is never
-// executed: architecture selectors are evaluated for both CPUs; per-OS blocks, local variables, language blocks
+// executed: architecture selectors are evaluated for both CPUs; per-OS/architecture blocks, language blocks
 // and unknown stanzas are rejected.
 // Flight blocks, livecheck and caveats blocks only run inside brew on the user's Mac, so they are skipped.
 // A flight-only respond_to?(:*_steps) compatibility guard may contain literal helper strings; other
@@ -445,7 +445,7 @@ var majorMinorPatch = regexp.MustCompile(`^([^.,:]+)(?:.([^.,:]+)(?:.([^.,:]+))?
 var dividerNames = map[string]string{"dots": ".", "hyphens": "-", "underscores": "_"}
 
 // evaluate supports the interpolations casks use for paths and download URLs: version (with the
-// Cask::DSL::Version helpers), token, appdir, staged_path, caskroom_path and HOMEBREW_PREFIX.
+// Cask::DSL::Version helpers), arch, token, appdir, staged_path, caskroom_path and HOMEBREW_PREFIX.
 func (p *caskParser) evaluate(part rbPart) (string, error) {
 	tokens, err := lexRuby(part.text)
 	if err != nil {

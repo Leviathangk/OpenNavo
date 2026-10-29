@@ -67,7 +67,7 @@ func (p *caskParser) flightGuardBranch(want string) error {
 			// Ruby locals can shadow DSL methods in later interpolations, even when declared
 			// in the unselected branch. Keep every root resolved by evaluate unambiguous.
 			switch name.text {
-			case "version", "token", "appdir", "staged_path", "caskroom_path":
+			case "arch", "version", "token", "appdir", "staged_path", "caskroom_path":
 				return p.fail(name.line, "flight helper shadows %s", name.text)
 			}
 			p.next()
