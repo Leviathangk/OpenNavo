@@ -418,11 +418,18 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
         self.assertFalse(any(call.args[0][1] in ('stop', 'rm') for call in run.call_args_list))
 
     def test_rollback_stops_undrained_candidates_by_default(self):
+        for sha in ['c' * 40, None]:
+            with self.subTest(sha=sha):
+                self.check_rollback_stops_undrained_candidates(sha)
+
+    def check_rollback_stops_undrained_candidates(self, sha):
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)
             obj = object.__new__(deploy.Deployment)
             obj.config = {'project': 'example-prod'}
-            obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
+            obj.state = {'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
+            if sha is not None:
+                obj.state['sha'] = sha
             obj.services = {k: k + '_new' for k in ['api', 'web', 'admin', 'mcp']}
             obj.directory = directory
             obj.live_caddy = directory / 'live'
@@ -439,7 +446,70 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             obj.drain_retired = lambda *args, **kwargs: False
             with patch.object(deploy, 'command', return_value='candidate'):
                 obj.rollback()
+            self.assertIn(('verify', sha[:12] if sha else ''), events)
             self.assertIn(('stop', '--timeout', '90', *obj.services.values()), events)
+
+    def test_failed_old_service_start_restores_candidate_config_and_reports_degraded(self):
+        for promoted in [False, True]:
+            with self.subTest(promoted=promoted), tempfile.TemporaryDirectory() as root:
+                obj, _ = prepare_on_host(root, {})
+                candidate_env = (obj.directory / 'release.env').read_bytes()
+                candidate_rolling = (obj.directory / 'rolling.compose.json').read_bytes()
+                if promoted:
+                    obj.env.write_bytes(candidate_env)
+                    obj.rolling.write_bytes(candidate_rolling)
+                obj.live_caddy.write_text('candidate route')
+                before_state = obj.state_path.read_bytes()
+
+                def fail_old_start(*args, **kwargs):
+                    self.assertEqual(obj.env.read_bytes(), (obj.directory / 'before-release.env').read_bytes())
+                    self.assertEqual(obj.rolling.read_bytes(), (obj.directory / 'before-rolling.json').read_bytes())
+                    self.assertFalse(kwargs['candidate'])
+                    raise RuntimeError('old services unavailable')
+
+                obj.compose = unittest.mock.Mock(side_effect=fail_old_start)
+                obj.reload = unittest.mock.Mock()
+                obj.verify = unittest.mock.Mock()
+                obj.update_monitoring = unittest.mock.Mock()
+                obj.drain_retired = unittest.mock.Mock()
+                with contextlib.redirect_stdout(io.StringIO()) as output, \
+                        patch.object(deploy, 'command') as run, \
+                        self.assertRaisesRegex(RuntimeError, 'degraded rollback'):
+                    obj.rollback()
+
+                self.assertEqual(obj.env.read_bytes(), candidate_env)
+                self.assertEqual(obj.rolling.read_bytes(), candidate_rolling)
+                self.assertEqual(obj.live_caddy.read_text(), 'candidate route')
+                self.assertEqual(obj.state_path.read_bytes(), before_state)
+                self.assertIn('DEGRADED', output.getvalue())
+                self.assertIn('Caddy still routes to the candidate', output.getvalue())
+                obj.compose.assert_called_once_with(
+                    'up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                    *obj.state['services'].values(), 'worker', candidate=False)
+                for mock in [obj.reload, obj.verify, obj.update_monitoring, obj.drain_retired, run]:
+                    mock.assert_not_called()
+
+    def test_verify_checks_legacy_routes_without_sha_and_requires_known_release_headers(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.payload = payload()
+        obj.config = {'local_origin': 'https://example.org', 'checks': [{'path': '/', 'host': 'example.org'}]}
+        cases = [('', 200, '', True), ('', 503, '', False),
+                 (None, 200, 'a' * 12, True), (None, 200, '', False),
+                 ('c' * 12, 200, 'a' * 12, False)]
+        for expected, status, header, success in cases:
+            with self.subTest(expected=expected, status=status, header=header):
+                def response(*args, **kwargs):
+                    body = io.BytesIO(b'healthy route')
+                    body.status = status
+                    body.headers = {'X-OpenNavo-Release': header}
+                    return body
+                with patch.object(deploy.urllib.request, 'urlopen', side_effect=response), \
+                        patch.object(deploy.time, 'sleep'):
+                    if success:
+                        obj.verify(expected=expected)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, 'post-deployment route checks failed'):
+                            obj.verify(expected=expected)
 
     def test_same_sha_short_circuit_skips_capacity_gate(self):
         obj = object.__new__(deploy.Deployment)

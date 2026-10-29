@@ -1,7 +1,9 @@
+import contextlib
 import importlib.util
+import io
 from pathlib import Path
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 import urllib.error
 
 
@@ -55,6 +57,65 @@ class EdgeWarmupTests(unittest.TestCase):
         with patch.object(warm.Path, 'read_text', side_effect=ValueError('bad json')):
             paths = warm.load_paths('/does/not/matter')
         self.assertEqual(paths[:len(warm.MANDATORY_PATHS)], warm.MANDATORY_PATHS)
+
+    def test_successful_warmup_uses_default_budget_and_cancels_timer(self):
+        previous_handler = warm.signal.getsignal(warm.signal.SIGALRM)
+        with patch.object(warm, 'load_paths', return_value=['/', '/apps']), \
+                patch.object(warm, 'warm_one', return_value=True) as request, \
+                patch.object(warm.time, 'sleep'), \
+                patch.object(warm.signal, 'setitimer') as timer, \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            warm.main(['paths.json'])
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(timer.call_args_list, [call(warm.signal.ITIMER_REAL, 300), call(warm.signal.ITIMER_REAL, 0)])
+        self.assertEqual(warm.signal.getsignal(warm.signal.SIGALRM), previous_handler)
+        self.assertIn('Public edge warmup passed: 2 paths', output.getvalue())
+
+    def test_configured_budget_interrupts_blocked_body_and_reports_skipped_paths(self):
+        sleep = warm.time.sleep
+        class BlockedResponse(Response):
+            def read(self, size=None):
+                sleep(30)
+                raise AssertionError('the total budget must interrupt a blocked response')
+
+        paths = ['/'] + [f'/apps/fixture-{index}' for index in range(65)]
+        opener = Mock()
+        opener.open.side_effect = [Response(200), BlockedResponse(200)]
+        previous_handler = warm.signal.getsignal(warm.signal.SIGALRM)
+        with patch.object(warm, 'load_paths', return_value=paths), \
+                patch.object(warm.urllib.request, 'build_opener', return_value=opener), \
+                patch.object(warm.time, 'sleep'), \
+                self.assertRaisesRegex(SystemExit, r'1s time budget; completed=1, failed=0, skipped=65'):
+            warm.main(['paths.json', '--max-seconds', '1'])
+        self.assertEqual(opener.open.call_count, 2)
+        self.assertEqual(warm.signal.getitimer(warm.signal.ITIMER_REAL)[0], 0)
+        self.assertEqual(warm.signal.getsignal(warm.signal.SIGALRM), previous_handler)
+
+    def test_expiration_during_retry_counts_current_path_as_skipped(self):
+        with patch.object(warm, 'load_paths', return_value=['/', '/apps']), \
+                patch.object(warm, 'warm_one', side_effect=[False, warm.WarmupBudgetExceeded()]) as request, \
+                patch.object(warm.time, 'sleep'), \
+                patch.object(warm.signal, 'setitimer') as timer, \
+                self.assertRaisesRegex(SystemExit, r'7s time budget; completed=0, failed=0, skipped=2'):
+            warm.main(['paths.json', '--max-seconds', '7'])
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(timer.call_args_list, [call(warm.signal.ITIMER_REAL, 7), call(warm.signal.ITIMER_REAL, 0)])
+
+    def test_completed_connection_failures_still_fail(self):
+        with patch.object(warm, 'load_paths', return_value=['/']), \
+                patch.object(warm, 'warm_one', return_value=False) as request, \
+                patch.object(warm.time, 'sleep'), \
+                self.assertRaisesRegex(SystemExit, 'edge warmup failed'):
+            warm.main(['paths.json'])
+        self.assertEqual(request.call_count, 2)
+
+    def test_invalid_budget_is_rejected_before_warmup(self):
+        for value in ['0', '-1', 'invalid']:
+            with self.subTest(value=value), patch.object(warm, 'load_paths') as load, \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                warm.main(['paths.json', '--max-seconds', value])
+            self.assertEqual(error.exception.code, 2)
+            load.assert_not_called()
 
 
 if __name__ == '__main__':

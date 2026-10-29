@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Bounded public HTML warmup; edge failures are reported to the caller without leaking bodies."""
 
+import argparse
 import json
+import signal
 import sys
 import time
 import urllib.error
@@ -17,6 +19,11 @@ WARM_ORIGIN = 'https://opennavo.com'
 WARM_HOST = 'opennavo.com'
 MAX_BODY_BYTES = 2 * 1024 * 1024
 PATH_LIMIT = 66
+DEFAULT_MAX_SECONDS = 300
+
+
+class WarmupBudgetExceeded(Exception):
+    pass
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -71,24 +78,44 @@ def warm_one(path, opener, *, origin=WARM_ORIGIN, host=WARM_HOST):
 
 
 def main(argv=None):
-    if argv is None:
-        argv = sys.argv[1:]
-    if len(argv) != 1:
-        raise SystemExit('usage: warm-edge.py warm-paths.json')
-    paths = load_paths(argv[0])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('paths_file')
+    parser.add_argument('--max-seconds', type=int, default=DEFAULT_MAX_SECONDS,
+                        help='total warmup time budget in seconds (default: 300)')
+    args = parser.parse_args(argv)
+    if args.max_seconds <= 0:
+        parser.error('--max-seconds must be positive')
+    paths = load_paths(args.paths_file)
     opener = urllib.request.build_opener(NoRedirect)
     failed = []
-    for path in paths:
-        success = False
-        for attempt in range(2):
-            if warm_one(path, opener):
-                success = True
-                break
-            if attempt == 0:
-                time.sleep(2)
-        if not success:
-            failed.append(path)
-        time.sleep(1)
+    completed = 0
+
+    def expire_budget(_signum, _frame):
+        raise WarmupBudgetExceeded()
+
+    previous_handler = signal.signal(signal.SIGALRM, expire_budget)
+    try:
+        # A socket timeout alone cannot bound retries or a response that trickles bytes.
+        signal.setitimer(signal.ITIMER_REAL, args.max_seconds)
+        for path in paths:
+            success = False
+            for attempt in range(2):
+                if warm_one(path, opener):
+                    success = True
+                    break
+                if attempt == 0:
+                    time.sleep(2)
+            if not success:
+                failed.append(path)
+            completed += 1
+            if completed < len(paths):
+                time.sleep(1)
+    except WarmupBudgetExceeded:
+        raise SystemExit(f'Warning: edge warmup exhausted its {args.max_seconds}s time budget; '
+                         f'completed={completed}, failed={len(failed)}, skipped={len(paths) - completed}.')
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
     if failed:
         raise SystemExit('edge warmup failed for approved public paths; inspect privately')
     print('Public edge warmup passed:', len(paths), 'paths')

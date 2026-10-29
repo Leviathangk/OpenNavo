@@ -708,14 +708,15 @@ class Deployment:
         self.switch_at = time.monotonic()
 
     def verify(self, expected=None):
-        expected = expected or self.payload['sha'][:12]
+        # A legacy deployment may have no recorded SHA; still check its routes without a header match.
+        expected = self.payload['sha'][:12] if expected is None else expected
         last_error = None
         for _ in range(30):
             try:
                 for check in self.config['checks']:
                     request = urllib.request.Request(self.config['local_origin'] + check['path'], headers={'Host': check['host']})
                     with urllib.request.urlopen(request, timeout=15) as response:
-                        if response.status != 200 or response.headers.get('X-OpenNavo-Release') != expected:
+                        if response.status != 200 or (expected and response.headers.get('X-OpenNavo-Release') != expected):
                             raise RuntimeError('route is not serving the new release')
                         while response.read(65536):
                             pass
@@ -730,13 +731,22 @@ class Deployment:
         self.rolling.write_bytes((self.directory / 'before-rolling.json').read_bytes())
         # Restore and verify the old services before changing the public route. This keeps a failed
         # candidate from being the only service available during rollback.
-        self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
-                     *self.state['services'].values(), 'worker', candidate=False)
+        try:
+            self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240',
+                         *self.state['services'].values(), 'worker', candidate=False)
+        except Exception as error:
+            # Caddy still serves the candidate, including when the switch failed before these
+            # files were promoted. Keep the active configuration consistent with that route.
+            self.env.write_bytes((self.directory / 'release.env').read_bytes())
+            self.rolling.write_bytes((self.directory / 'rolling.compose.json').read_bytes())
+            print('DEGRADED: previous services failed to start; Caddy still routes to the candidate, '
+                  'candidate env and rolling configuration restored; candidate containers retained.', flush=True)
+            raise RuntimeError('degraded rollback: previous services failed to start; candidate route retained') from error
         print('Previous release services are healthy; switching Caddy back.', flush=True)
         self.live_caddy.write_bytes((self.directory / 'before-caddy').read_bytes())
         self.reload()
         try:
-            self.verify(expected=self.state['sha'][:12])
+            self.verify(expected=self.state.get('sha', '')[:12])
             self.update_monitoring(self.state['services'])
         except Exception:
             print('WARNING: rollback verification or monitoring failed; candidate containers retained.', flush=True)

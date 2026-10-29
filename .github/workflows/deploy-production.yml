@@ -195,7 +195,8 @@ jobs:
         run: python3 .github/scripts/send-deployment.py
       - name: Warm approved public HTML at the edge after deployment
         continue-on-error: true
+        timeout-minutes: 6
         run: |
-          if ! python3 ops/warm-edge.py deployment/warm-paths.json; then
+          if ! python3 ops/warm-edge.py deployment/warm-paths.json --max-seconds 300; then
             echo '::warning::Edge warmup failed after the deployment; the release remains successful.'
           fi
