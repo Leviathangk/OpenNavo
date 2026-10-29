@@ -135,7 +135,13 @@ const tooltipStyle = computed(() => {
     <NSkeleton v-if="loading && !data" height="240px" />
     <template v-if="data">
       <div class="mb-8px flex flex-wrap items-center justify-between gap-12px">
-        <NRadioGroup v-model:value="mode" size="small" name="intraday-mode" :aria-label="text('measure')">
+        <NRadioGroup
+          v-model:value="mode"
+          size="small"
+          name="intraday-mode"
+          :aria-label="text('measure')"
+          class="max-w-full !flex flex-wrap"
+        >
           <NRadioButton value="hourly">{{ text('hourly') }}</NRadioButton>
           <NRadioButton value="cumulative">{{ text('cumulative') }}</NRadioButton>
         </NRadioGroup>
