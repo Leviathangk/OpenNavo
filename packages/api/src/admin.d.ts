@@ -305,6 +305,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/usage/intraday": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Intraday active trend
+         * @description Distribution of each device/browser's first activity today in Asia/Shanghai, from midnight through asOf. This is not an online-user count. Uses the same usage_daily day and platform filters as the overview's today-active cards. Returns 24 ordered hourly buckets; future hours have null counts, while elapsed hours without activity have zero counts. Cumulative series end at today's active counts for the sampled data. Devices on different platforms are counted separately. Historical rows use last_active_at at migration time because their original first activity cannot be recovered.
+         */
+        get: operations["getDashboardUsageIntraday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/packages": {
         parameters: {
             query?: never;
@@ -704,7 +724,7 @@ export interface paths {
         put?: never;
         /**
          * Add a third-party tap cask
-         * @description Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Per-architecture or per-OS blocks (arch, on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Literal arch arm:/intel: mappings and per-architecture sha256 values preserve both CPUs through Homebrew platform variations. Per-architecture and per-OS blocks (on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Optional siteToken chooses an unused site/catalog token to avoid collisions; upstream file paths and install names retain the original cask token. Without siteToken, tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         post: operations["addTapPackage"];
         delete?: never;
@@ -6820,6 +6840,173 @@ export interface components {
          *       "code": "0000",
          *       "msg": "ok",
          *       "data": {
+         *         "githubReleases": {
+         *           "timeZone": "Asia/Shanghai",
+         *           "downloads": {
+         *             "today": 12,
+         *             "yesterday": 9,
+         *             "total": 953
+         *           },
+         *           "updates": {
+         *             "today": 8,
+         *             "yesterday": 6,
+         *             "total": 582
+         *           },
+         *           "lastSnapshotAt": "2026-10-22T08:10:00Z",
+         *           "dailyStartDate": "2026-10-21",
+         *           "days": [
+         *             {
+         *               "date": "2026-09-23",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-24",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-25",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-26",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-27",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-28",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-29",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-30",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-01",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-02",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-03",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-04",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-05",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-06",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-07",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-08",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-09",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-10",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-11",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-12",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-13",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-14",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-15",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-16",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-17",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-18",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-19",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-20",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-21",
+         *               "downloads": 9,
+         *               "updates": 6
+         *             },
+         *             {
+         *               "date": "2026-10-22",
+         *               "downloads": 12,
+         *               "updates": 8
+         *             }
+         *           ]
+         *         },
          *         "packages": {
          *           "casks": 40,
          *           "formulae": 0,
@@ -7896,12 +8083,12 @@ export interface components {
          * @example catalog_sync
          * @enum {string}
          */
-        TriggerJobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "changelog_schedule" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync";
+        TriggerJobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "github-release_snapshot" | "changelog_schedule" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync";
         /**
          * @example catalog_sync
          * @enum {string}
          */
-        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync" | "links_sync" | "changelog_resolve" | "changelog_fetch" | "update-feeds_verify" | "seo_pages";
+        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "github-release_snapshot" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync" | "links_sync" | "changelog_resolve" | "changelog_fetch" | "update-feeds_verify" | "seo_pages";
         /**
          * @example {
          *       "code": "0000",
@@ -8160,6 +8347,8 @@ export interface components {
          * @example {
          *       "timeZone": "Asia/Shanghai",
          *       "asOf": "2026-10-22T08:00:00Z",
+         *       "desktopTotal": 12,
+         *       "webTotal": 25,
          *       "days": [
          *         {
          *           "date": "2026-10-22",
@@ -8182,6 +8371,16 @@ export interface components {
             timeZone: "Asia/Shanghai";
             /** Format: date-time */
             asOf: string;
+            /**
+             * Format: int64
+             * @description Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Identities are deduplicated by a locally persisted client installation UUID; upgrades and app-bundle reinstalls reuse it while app data remains. Clearing app data (including Homebrew zap) can create a new identity. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
+             */
+            desktopTotal: number;
+            /**
+             * Format: int64
+             * @description Cumulative web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.
+             */
+            webTotal: number;
             days: {
                 date: string;
                 /** Format: int64 */
@@ -8210,6 +8409,806 @@ export interface components {
         };
         /**
          * @example {
+         *       "today": 12,
+         *       "yesterday": 9,
+         *       "total": 953
+         *     }
+         */
+        GitHubReleaseCounts: {
+            /**
+             * Format: int64
+             * @description Increase on the current Beijing calendar day; null without a snapshot or on the first snapshot day.
+             */
+            today: number | null;
+            /**
+             * Format: int64
+             * @description Increase on the previous Beijing calendar day; null without a snapshot or on the first snapshot day.
+             */
+            yesterday: number | null;
+            /**
+             * Format: int64
+             * @description Sum of cumulative counts in the latest complete snapshot; null before the first successful snapshot.
+             */
+            total: number | null;
+        };
+        /**
+         * @example {
+         *       "date": "2026-10-22",
+         *       "downloads": 12,
+         *       "updates": 8
+         *     }
+         */
+        GitHubReleaseDay: {
+            /** Format: date */
+            date: string;
+            /** Format: int64 */
+            downloads: number | null;
+            /** Format: int64 */
+            updates: number | null;
+        };
+        /**
+         * @description Totals across all desktop-v* releases of opennavo/OpenNavo, sampled hourly. Downloads count only *_universal.dmg, including Homebrew install and upgrade. Updates count only *.app.tar.gz across both architectures; transfers, not people. Daily increases sum nonnegative per-asset differences from the previous snapshot day. New assets use zero as their previous count. The first snapshot day has cumulative data only. Missing days are null and their increases fall into the next snapshot day. No historical backfill. Failed snapshots preserve the last successful values and timestamp.
+         * @example {
+         *       "timeZone": "Asia/Shanghai",
+         *       "downloads": {
+         *         "today": 12,
+         *         "yesterday": 9,
+         *         "total": 953
+         *       },
+         *       "updates": {
+         *         "today": 8,
+         *         "yesterday": 6,
+         *         "total": 582
+         *       },
+         *       "lastSnapshotAt": "2026-10-22T08:10:00Z",
+         *       "dailyStartDate": "2026-10-21",
+         *       "days": [
+         *         {
+         *           "date": "2026-09-23",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-24",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-25",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-26",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-27",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-28",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-29",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-09-30",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-01",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-02",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-03",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-04",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-05",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-06",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-07",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-08",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-09",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-10",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-11",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-12",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-13",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-14",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-15",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-16",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-17",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-18",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-19",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-20",
+         *           "downloads": null,
+         *           "updates": null
+         *         },
+         *         {
+         *           "date": "2026-10-21",
+         *           "downloads": 9,
+         *           "updates": 6
+         *         },
+         *         {
+         *           "date": "2026-10-22",
+         *           "downloads": 12,
+         *           "updates": 8
+         *         }
+         *       ]
+         *     }
+         */
+        GitHubReleaseOverview: {
+            downloads: components["schemas"]["GitHubReleaseCounts"];
+            updates: components["schemas"]["GitHubReleaseCounts"];
+            /** @description The last 30 Beijing calendar days, oldest first. Null counts mean daily data is unavailable. */
+            days: components["schemas"]["GitHubReleaseDay"][];
+            /** @enum {string} */
+            timeZone: "Asia/Shanghai";
+            /** Format: date-time */
+            lastSnapshotAt: string | null;
+            /**
+             * Format: date
+             * @description First snapshot day with an earlier snapshot day; null until a second distinct snapshot day exists.
+             */
+            dailyStartDate: string | null;
+        };
+        /**
+         * @example {
+         *       "hour": 0,
+         *       "web": 2,
+         *       "desktop": 1,
+         *       "cumulativeWeb": 2,
+         *       "cumulativeDesktop": 1
+         *     }
+         */
+        UsageIntradayHour: {
+            /** @description Hour in Asia/Shanghai; the current hour is partial. */
+            hour: number;
+            /**
+             * Format: int64
+             * @description Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
+             */
+            web: number | null;
+            /**
+             * Format: int64
+             * @description Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.
+             */
+            desktop: number | null;
+            /**
+             * Format: int64
+             * @description Total active browsers from midnight through this hour; null for a future hour.
+             */
+            cumulativeWeb: number | null;
+            /**
+             * Format: int64
+             * @description Total active desktop installations from midnight through this hour; null for a future hour.
+             */
+            cumulativeDesktop: number | null;
+        };
+        /**
+         * @example {
+         *       "date": "2026-10-29",
+         *       "timeZone": "Asia/Shanghai",
+         *       "asOf": "2026-10-28T16:00:00Z",
+         *       "hours": [
+         *         {
+         *           "hour": 0,
+         *           "web": 2,
+         *           "desktop": 1,
+         *           "cumulativeWeb": 2,
+         *           "cumulativeDesktop": 1
+         *         },
+         *         {
+         *           "hour": 1,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 2,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 3,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 4,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 5,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 6,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 7,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 8,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 9,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 10,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 11,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 12,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 13,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 14,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 15,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 16,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 17,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 18,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 19,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 20,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 21,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 22,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         },
+         *         {
+         *           "hour": 23,
+         *           "web": null,
+         *           "desktop": null,
+         *           "cumulativeWeb": null,
+         *           "cumulativeDesktop": null
+         *         }
+         *       ]
+         *     }
+         */
+        UsageIntraday: {
+            /**
+             * Format: date
+             * @description Today's calendar date in Asia/Shanghai.
+             */
+            date: string;
+            /** @enum {string} */
+            timeZone: "Asia/Shanghai";
+            /** Format: date-time */
+            asOf: string;
+            hours: components["schemas"]["UsageIntradayHour"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "date": "2026-10-29",
+         *         "timeZone": "Asia/Shanghai",
+         *         "asOf": "2026-10-28T16:00:00Z",
+         *         "hours": [
+         *           {
+         *             "hour": 0,
+         *             "web": 2,
+         *             "desktop": 1,
+         *             "cumulativeWeb": 2,
+         *             "cumulativeDesktop": 1
+         *           },
+         *           {
+         *             "hour": 1,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 2,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 3,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 4,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 5,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 6,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 7,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 8,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 9,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 10,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 11,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 12,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 13,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 14,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 15,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 16,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 17,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 18,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 19,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 20,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 21,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 22,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           },
+         *           {
+         *             "hour": 23,
+         *             "web": null,
+         *             "desktop": null,
+         *             "cumulativeWeb": null,
+         *             "cumulativeDesktop": null
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        UsageIntradayResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data?: components["schemas"]["UsageIntraday"] | null;
+        };
+        /**
+         * @example {
+         *       "githubReleases": {
+         *         "timeZone": "Asia/Shanghai",
+         *         "downloads": {
+         *           "today": 12,
+         *           "yesterday": 9,
+         *           "total": 953
+         *         },
+         *         "updates": {
+         *           "today": 8,
+         *           "yesterday": 6,
+         *           "total": 582
+         *         },
+         *         "lastSnapshotAt": "2026-10-22T08:10:00Z",
+         *         "dailyStartDate": "2026-10-21",
+         *         "days": [
+         *           {
+         *             "date": "2026-09-23",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-24",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-25",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-26",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-27",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-28",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-29",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-09-30",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-01",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-02",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-03",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-04",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-05",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-06",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-07",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-08",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-09",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-10",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-11",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-12",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-13",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-14",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-15",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-16",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-17",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-18",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-19",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-20",
+         *             "downloads": null,
+         *             "updates": null
+         *           },
+         *           {
+         *             "date": "2026-10-21",
+         *             "downloads": 9,
+         *             "updates": 6
+         *           },
+         *           {
+         *             "date": "2026-10-22",
+         *             "downloads": 12,
+         *             "updates": 8
+         *           }
+         *         ]
+         *       },
          *       "packages": {
          *         "casks": 40,
          *         "formulae": 0,
@@ -8263,6 +9262,7 @@ export interface components {
          *     }
          */
         DashboardOverview: {
+            githubReleases: components["schemas"]["GitHubReleaseOverview"];
             usage?: components["schemas"]["UsageOverview"];
             packages: {
                 /**
@@ -10650,10 +11650,13 @@ export interface components {
              * @example 1
              */
             id: number;
-            /** @example swiftvm */
+            /**
+             * @description Site/catalog token; may differ from the upstream cask token.
+             * @example swiftvm
+             */
             token: string;
             /**
-             * @description Name brew installs, <owner>/<tap>/<token>
+             * @description Upstream name brew installs, <owner>/<tap>/<cask-token>, independent of the site token
              * @example swiftvm-app/tap/swiftvm
              */
             fullToken: string;
@@ -10726,6 +11729,11 @@ export interface components {
          *     }
          */
         TapPackageAdd: {
+            /**
+             * @description Optional unique site/catalog token, for example stablyai-orca. Defaults to the upstream cask token. Does not change the upstream cask name, tap, sync source or install target. An explicit token must be unused, including removed packages.
+             * @example stablyai-orca
+             */
+            siteToken?: string;
             /**
              * @description Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>
              * @example swiftvm-app/tap/swiftvm
@@ -11920,6 +12928,173 @@ export interface components {
          *       "code": "0000",
          *       "msg": "ok",
          *       "data": {
+         *         "githubReleases": {
+         *           "timeZone": "Asia/Shanghai",
+         *           "downloads": {
+         *             "today": 12,
+         *             "yesterday": 9,
+         *             "total": 953
+         *           },
+         *           "updates": {
+         *             "today": 8,
+         *             "yesterday": 6,
+         *             "total": 582
+         *           },
+         *           "lastSnapshotAt": "2026-10-22T08:10:00Z",
+         *           "dailyStartDate": "2026-10-21",
+         *           "days": [
+         *             {
+         *               "date": "2026-09-23",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-24",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-25",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-26",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-27",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-28",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-29",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-09-30",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-01",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-02",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-03",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-04",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-05",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-06",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-07",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-08",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-09",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-10",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-11",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-12",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-13",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-14",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-15",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-16",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-17",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-18",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-19",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-20",
+         *               "downloads": null,
+         *               "updates": null
+         *             },
+         *             {
+         *               "date": "2026-10-21",
+         *               "downloads": 9,
+         *               "updates": 6
+         *             },
+         *             {
+         *               "date": "2026-10-22",
+         *               "downloads": 12,
+         *               "updates": 8
+         *             }
+         *           ]
+         *         },
          *         "packages": {
          *           "casks": 40,
          *           "formulae": 0,
@@ -23903,6 +25078,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardOverviewResponseResult"];
+                };
+            };
+        };
+    };
+    getDashboardUsageIntraday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageIntradayResponse"] | components["schemas"]["BusinessErrorResponse"];
                 };
             };
         };

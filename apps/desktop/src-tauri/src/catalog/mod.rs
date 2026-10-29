@@ -190,6 +190,13 @@ fn upsert_impl(
     if let Some(tap) = &item.tap {
         crate::brew::args::validate_tap(tap)?;
     }
+    crate::brew::args::catalog_target(
+        &TaskTarget {
+            kind: item.kind.into(),
+            token: item.token.clone(),
+        },
+        Some(item),
+    )?;
     let changed = chrono::DateTime::parse_from_rfc3339(&item.version_changed_at)
         .map_err(|_| protocol("catalog_date"))?
         .timestamp_millis();
@@ -349,6 +356,33 @@ pub fn get(database: &Database, kind: Kind, token: &str) -> Result<Option<Catalo
             .optional()?;
         data.map(|data| serde_json::from_str(&data).map_err(AppError::from))
             .transpose()
+    })
+}
+
+/// Resolve an installed Homebrew identity to its site listing. The installed tap
+/// must match before a custom site alias can supply names, versions or actions.
+pub fn get_brew_cask(
+    database: &Database,
+    token: &str,
+    tap: Option<&str>,
+) -> Result<Option<CatalogItem>, AppError> {
+    let direct = get(database, Kind::Cask, token)?.filter(|item| {
+        item.brew_token.as_deref().unwrap_or(&item.token) == token
+            && tap.is_none_or(|tap| tap == item.tap.as_deref().unwrap_or("homebrew/cask"))
+    });
+    if direct.is_some() {
+        return Ok(direct);
+    }
+    let Some(tap) = tap.filter(|tap| !tap.starts_with("homebrew/")) else {
+        return Ok(None);
+    };
+    crate::brew::args::validate_tap(tap)?;
+    database.with(|connection| {
+        let data: Option<String> = connection.query_row(
+            "SELECT data FROM catalog_items WHERE kind='cask' AND json_extract(data,'$.brewToken')=?1 AND json_extract(data,'$.tap')=?2",
+            params![token, tap], |row| row.get(0),
+        ).optional()?;
+        data.map(|data| serde_json::from_str(&data).map_err(AppError::from)).transpose()
     })
 }
 fn descendants(

@@ -572,6 +572,111 @@ fn zap_expansion_and_never_touch_policy_do_not_follow_links() {
     );
 }
 #[tokio::test]
+async fn site_alias_uninstalls_the_upstream_cask_with_an_official_name_collision() {
+    use opennavo_desktop_lib::{brew::json::Info, catalog, library};
+    for has_bundle in [true, false] {
+        let f = Fixture::new();
+        let fixtures =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../apps/server/testdata/desktop");
+        let mut snapshot: catalog::Snapshot = serde_json::from_reader(
+            flate2::read::GzDecoder::new(fs::File::open(fixtures.join("catalog.json.gz")).unwrap()),
+        )
+        .unwrap();
+        let mut official = snapshot
+            .items
+            .iter()
+            .find(|i| i.kind == Kind::Cask)
+            .unwrap()
+            .clone();
+        official.token = "orca".into();
+        official.name = "Plotly Orca".into();
+        official.tap = None;
+        official.brew_token = None;
+        official.apps = vec!["Plotly.app".into()];
+        let mut alias = official.clone();
+        alias.token = "stablyai-orca".into();
+        alias.name = "Stably Orca".into();
+        alias.tap = Some("stablyai/orca".into());
+        alias.brew_token = Some("orca".into());
+        alias.apps = vec!["Orca.app".into()];
+        snapshot.items = vec![official, alias];
+        let mut meta: catalog::SnapshotInfo =
+            serde_json::from_slice(&fs::read(fixtures.join("latest.json")).unwrap()).unwrap();
+        meta.item_count = 2;
+        catalog::import_snapshot(&f.engine.database, &snapshot, &meta, 1).unwrap();
+
+        let plotly = f.app("Plotly", "com.example.plotly");
+        let app = has_bundle.then(|| f.app("Orca", "com.example.stably"));
+        let caskroom = f.engine.roots.caskrooms[0].join("orca");
+        fs::create_dir_all(caskroom.join("1.0")).unwrap();
+        let raw = serde_json::json!({"casks": [{
+            "token": "orca", "tap": "stablyai/orca", "name": ["Stably Orca"],
+            "version": "1.0", "installed": "1.0", "artifacts": app.as_ref().map(|p| vec![serde_json::json!({"app": ["Orca.app"], "target": p})]).unwrap_or_default()
+        }]});
+        let info: Info = serde_json::from_value(raw.clone()).unwrap();
+        let installed = library::scan(
+            &f.engine.database,
+            &info,
+            f.base.to_str().unwrap(),
+            Locale::EnUs,
+        )
+        .unwrap()
+        .items;
+        assert_eq!(installed[0].token, "stablyai-orca");
+        f.engine
+            .database
+            .set_meta(
+                "installed_cache",
+                &serde_json::to_string(&installed).unwrap(),
+            )
+            .unwrap();
+        f.engine
+            .database
+            .set_meta("cask_rules_cache", &raw.to_string())
+            .unwrap();
+        f.engine
+            .seed_rule("stablyai/orca/orca", raw["casks"][0].clone())
+            .unwrap();
+
+        let script = f.base.join("brew-simulator");
+        let recorded = f.base.join("brew-args.json");
+        fs::write(&script, format!(
+            "#!/usr/bin/python3 -I\nimport sys,json,shutil\na=sys.argv[1:]\nif a==['--version']: print('Homebrew 7.0.7')\nelif a in (['--prefix'],['--cache']): print({prefix:?})\nelif a==['uninstall','--cask','stablyai/orca/orca']:\n open({recorded:?},'w').write(json.dumps(a))\n shutil.rmtree({caskroom:?})\nelse: sys.exit(2)\n",
+            prefix = f.base.to_string_lossy(), recorded = recorded.to_string_lossy(), caskroom = caskroom.to_string_lossy(),
+        )).unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o700)).unwrap();
+        f.engine.settings.write().unwrap().brew_path = Some(script.to_string_lossy().into_owned());
+
+        let apps = f.engine.refresh(LocalAppsChangedReason::Refresh).unwrap();
+        let owned: Vec<_> = apps
+            .iter()
+            .filter(|a| a.source == AppSource::Homebrew)
+            .collect();
+        assert_eq!(
+            owned.len(),
+            1,
+            "the site alias must not create a second Caskroom record"
+        );
+        assert_eq!(owned[0].cask.as_deref(), Some("stablyai/orca/orca"));
+        assert_eq!(owned[0].catalog_token.as_deref(), Some("stablyai-orca"));
+        let path = app.as_ref().unwrap_or(&caskroom);
+        assert_eq!(owned[0].path, path.to_string_lossy());
+        let plan = f.plan(path).await;
+        assert_eq!(
+            plan.apps[0].brew_command.as_deref(),
+            Some("brew uninstall --cask stablyai/orca/orca")
+        );
+        let task = f.execute(&plan, DeleteMode::Trash, false, None).await;
+        assert_eq!(task.target.as_ref().unwrap().token, "stablyai-orca");
+        assert_eq!(task.state, TaskState::Succeeded, "{:?}", task.error);
+        let args: Vec<String> = serde_json::from_slice(&fs::read(&recorded).unwrap()).unwrap();
+        assert_eq!(args, ["uninstall", "--cask", "stablyai/orca/orca"]);
+        assert!(!caskroom.exists());
+        assert!(plotly.exists());
+    }
+}
+
+#[tokio::test]
 async fn all_sources_cask_without_bundle_and_protected_apps() {
     let f = Fixture::new();
     let direct = f.app("Direct", "com.example.direct");
@@ -1279,6 +1384,7 @@ async fn brew_plan_invokes_only_simulator_without_zap_and_uses_cached_zap_paths(
         let record = InstalledItem {
             kind: Kind::Cask,
             token: "docker-desktop".into(),
+            full_token: None,
             name: "Docker".into(),
             installed_version: "1.0".into(),
             actual_version: None,
@@ -1642,6 +1748,7 @@ async fn cask_companions_are_required_sized_quit_and_revalidated() {
         let companion = f.app("Suite Viewer", "com.example.suite.viewer");
         fs::create_dir_all(f.engine.roots.caskrooms[0].join("suite/1.0")).unwrap();
         let installed = InstalledItem {
+            full_token: None,
             kind: Kind::Cask,
             token: "suite".into(),
             name: "Suite".into(),
@@ -1735,6 +1842,7 @@ async fn cask_with_protected_companion_is_blocked_and_duplicate_cask_stays_rejec
         );
         fs::create_dir_all(f.engine.roots.caskrooms[0].join("suite/1.0")).unwrap();
         let installed = InstalledItem {
+            full_token: None,
             kind: Kind::Cask,
             token: "suite".into(),
             name: "Suite".into(),

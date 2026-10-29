@@ -664,12 +664,12 @@ class PackageChangelogSettingsResponse(BaseModel):
     data: Annotated[PackageChangelogSettings | None, Field(...)]
 
 
-class TriggerJobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync']]):
-    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync'], Field(examples=['catalog_sync'])]
+class TriggerJobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'github-release_snapshot', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync']]):
+    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'github-release_snapshot', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync'], Field(examples=['catalog_sync'])]
 
 
-class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync', 'links_sync', 'changelog_resolve', 'changelog_fetch', 'update-feeds_verify', 'seo_pages']]):
-    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync', 'links_sync', 'changelog_resolve', 'changelog_fetch', 'update-feeds_verify', 'seo_pages'], Field(examples=['catalog_sync'])]
+class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'github-release_snapshot', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync', 'links_sync', 'changelog_resolve', 'changelog_fetch', 'update-feeds_verify', 'seo_pages']]):
+    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'github-release_snapshot', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync', 'links_sync', 'changelog_resolve', 'changelog_fetch', 'update-feeds_verify', 'seo_pages'], Field(examples=['catalog_sync'])]
 
 
 class EmptyResponse(BaseModel):
@@ -766,9 +766,53 @@ class Version1(BaseModel):
 class UsageOverview(BaseModel):
     timeZone: Literal['Asia/Shanghai']
     asOf: AwareDatetime
+    desktopTotal: Annotated[int, Field(description='Cumulative desktop installation identities since the 2026-10-22 stats launch, including test/CI/bot identities. Identities are deduplicated by a locally persisted client installation UUID; upgrades and app-bundle reinstalls reuse it while app data remains. Clearing app data (including Homebrew zap) can create a new identity. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.', ge=0)]
+    webTotal: Annotated[int, Field(description='Cumulative web browser identities since the 2026-10-22 stats launch, including test/CI/bot identities. Forged UUID reports can inflate the count. Identities and their first and most recent activity times are kept permanently; daily usage details are kept for 90 days.', ge=0)]
     days: list[Day]
     countries: Annotated[list[Country] | MISSING, Field(description="Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.")] = MISSING
     versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]
+
+
+class GitHubReleaseCounts(BaseModel):
+    today: Annotated[int | None, Field(description='Increase on the current Beijing calendar day; null without a snapshot or on the first snapshot day.', ge=0)]
+    yesterday: Annotated[int | None, Field(description='Increase on the previous Beijing calendar day; null without a snapshot or on the first snapshot day.', ge=0)]
+    total: Annotated[int | None, Field(description='Sum of cumulative counts in the latest complete snapshot; null before the first successful snapshot.', ge=0)]
+
+
+class GitHubReleaseDay(BaseModel):
+    date: date_aliased
+    downloads: Annotated[int | None, Field(ge=0)]
+    updates: Annotated[int | None, Field(ge=0)]
+
+
+class GitHubReleaseOverview(BaseModel):
+    downloads: GitHubReleaseCounts
+    updates: GitHubReleaseCounts
+    days: Annotated[list[GitHubReleaseDay], Field(description='The last 30 Beijing calendar days, oldest first. Null counts mean daily data is unavailable.', max_length=30, min_length=30)]
+    timeZone: Literal['Asia/Shanghai']
+    lastSnapshotAt: Annotated[AwareDatetime | None, Field(...)]
+    dailyStartDate: Annotated[date_aliased | None, Field(description='First snapshot day with an earlier snapshot day; null until a second distinct snapshot day exists.')]
+
+
+class UsageIntradayHour(BaseModel):
+    hour: Annotated[int, Field(description='Hour in Asia/Shanghai; the current hour is partial.', ge=0, le=23)]
+    web: Annotated[int | None, Field(description='Browsers whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    desktop: Annotated[int | None, Field(description='Desktop installations whose earliest first_active_at falls in this hour; an out-of-order event may move it earlier. Null for a future hour.', ge=0)]
+    cumulativeWeb: Annotated[int | None, Field(description='Total active browsers from midnight through this hour; null for a future hour.', ge=0)]
+    cumulativeDesktop: Annotated[int | None, Field(description='Total active desktop installations from midnight through this hour; null for a future hour.', ge=0)]
+
+
+class UsageIntraday(BaseModel):
+    date: Annotated[date_aliased, Field(description="Today's calendar date in Asia/Shanghai.")]
+    timeZone: Literal['Asia/Shanghai']
+    asOf: AwareDatetime
+    hours: Annotated[list[UsageIntradayHour], Field(max_length=24, min_length=24)]
+
+
+class UsageIntradayResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: UsageIntraday | None | MISSING = MISSING
 
 
 class Packages(BaseModel):
@@ -1008,8 +1052,8 @@ class TapPackage(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(description='Package ID', examples=[1])]
-    token: Annotated[str, Field(examples=['swiftvm'])]
-    fullToken: Annotated[str, Field(description='Name brew installs, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'])]
+    token: Annotated[str, Field(description='Site/catalog token; may differ from the upstream cask token.', examples=['swiftvm'])]
+    fullToken: Annotated[str, Field(description='Upstream name brew installs, <owner>/<tap>/<cask-token>, independent of the site token', examples=['swiftvm-app/tap/swiftvm'])]
     tap: Annotated[str, Field(examples=['swiftvm-app/tap'])]
     name: Annotated[str, Field(examples=['SwiftVM'])]
     version: Annotated[str, Field(examples=['1.3.0'])]
@@ -1033,6 +1077,7 @@ class TapPackageAdd(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    siteToken: Annotated[str | MISSING, Field(description='Optional unique site/catalog token, for example stablyai-orca. Defaults to the upstream cask token. Does not change the upstream cask name, tap, sync source or install target. An explicit token must be unused, including removed packages.', examples=['stablyai-orca'], max_length=128, min_length=1, pattern='^[a-z0-9][a-z0-9+_.@-]*$')] = MISSING
     cask: Annotated[str, Field(description='Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'], max_length=300, min_length=5, pattern='^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9+_.@-]*$')]
 
 
@@ -5042,6 +5087,7 @@ class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]
 
 
 class DashboardOverview(BaseModel):
+    githubReleases: GitHubReleaseOverview
     usage: UsageOverview | MISSING = MISSING
     packages: Packages
     coverage: Annotated[Coverage, Field(description='All coverage metrics use all valid apps (Homebrew Casks and link apps), including fonts, as denominator, excluding disabled, hidden and removed packages.')]
@@ -5905,7 +5951,7 @@ class CategoryTreeResponseResult(RootModel[CategoryTreeResponse | BusinessErrorR
 
 
 class DashboardOverviewResponseResult(RootModel[DashboardOverviewResponse | BusinessErrorResponse]):
-    root: Annotated[DashboardOverviewResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'packages': {'casks': 40, 'formulae': 0, 'fonts': 3, 'libraries': 0, 'hidden': 1, 'deprecated': 1, 'disabled': 1}, 'coverage': {'primaryCategory': {'done': 1, 'total': 1}, 'icon': {'done': 1, 'total': 1}, 'latestVersionNotes': {'done': 1, 'total': 1}, 'sixLocaleContent': {'done': 1, 'total': 1}, 'siteLocaleContent': {'done': 1, 'total': 1}}, 'feedbackOpen': 1, 'jobs': {'failed24h': 1, 'lastCatalogSyncAt': None, 'lastAnalyticsSyncAt': None, 'lastSnapshotAt': None}, 'snapshot': {'cursor': 1, 'itemCount': 60, 'url': None}, 'hermes': {'date': '2026-10-07', 'timeZone': 'UTC', 'writes': 300, 'translations': 180, 'failures': 2}}}])]
+    root: Annotated[DashboardOverviewResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'githubReleases': {'timeZone': 'Asia/Shanghai', 'downloads': {'today': 12, 'yesterday': 9, 'total': 953}, 'updates': {'today': 8, 'yesterday': 6, 'total': 582}, 'lastSnapshotAt': '2026-10-22T08:10:00Z', 'dailyStartDate': '2026-10-21', 'days': [{'date': '2026-09-23', 'downloads': None, 'updates': None}, {'date': '2026-09-24', 'downloads': None, 'updates': None}, {'date': '2026-09-25', 'downloads': None, 'updates': None}, {'date': '2026-09-26', 'downloads': None, 'updates': None}, {'date': '2026-09-27', 'downloads': None, 'updates': None}, {'date': '2026-09-28', 'downloads': None, 'updates': None}, {'date': '2026-09-29', 'downloads': None, 'updates': None}, {'date': '2026-09-30', 'downloads': None, 'updates': None}, {'date': '2026-10-01', 'downloads': None, 'updates': None}, {'date': '2026-10-02', 'downloads': None, 'updates': None}, {'date': '2026-10-03', 'downloads': None, 'updates': None}, {'date': '2026-10-04', 'downloads': None, 'updates': None}, {'date': '2026-10-05', 'downloads': None, 'updates': None}, {'date': '2026-10-06', 'downloads': None, 'updates': None}, {'date': '2026-10-07', 'downloads': None, 'updates': None}, {'date': '2026-10-08', 'downloads': None, 'updates': None}, {'date': '2026-10-09', 'downloads': None, 'updates': None}, {'date': '2026-10-10', 'downloads': None, 'updates': None}, {'date': '2026-10-11', 'downloads': None, 'updates': None}, {'date': '2026-10-12', 'downloads': None, 'updates': None}, {'date': '2026-10-13', 'downloads': None, 'updates': None}, {'date': '2026-10-14', 'downloads': None, 'updates': None}, {'date': '2026-10-15', 'downloads': None, 'updates': None}, {'date': '2026-10-16', 'downloads': None, 'updates': None}, {'date': '2026-10-17', 'downloads': None, 'updates': None}, {'date': '2026-10-18', 'downloads': None, 'updates': None}, {'date': '2026-10-19', 'downloads': None, 'updates': None}, {'date': '2026-10-20', 'downloads': None, 'updates': None}, {'date': '2026-10-21', 'downloads': 9, 'updates': 6}, {'date': '2026-10-22', 'downloads': 12, 'updates': 8}]}, 'packages': {'casks': 40, 'formulae': 0, 'fonts': 3, 'libraries': 0, 'hidden': 1, 'deprecated': 1, 'disabled': 1}, 'coverage': {'primaryCategory': {'done': 1, 'total': 1}, 'icon': {'done': 1, 'total': 1}, 'latestVersionNotes': {'done': 1, 'total': 1}, 'sixLocaleContent': {'done': 1, 'total': 1}, 'siteLocaleContent': {'done': 1, 'total': 1}}, 'feedbackOpen': 1, 'jobs': {'failed24h': 1, 'lastCatalogSyncAt': None, 'lastAnalyticsSyncAt': None, 'lastSnapshotAt': None}, 'snapshot': {'cursor': 1, 'itemCount': 60, 'url': None}, 'hermes': {'date': '2026-10-07', 'timeZone': 'UTC', 'writes': 300, 'translations': 180, 'failures': 2}}}])]
 
 
 class DesktopReleasePageResponseResult(RootModel[DesktopReleasePageResponse | BusinessErrorResponse]):

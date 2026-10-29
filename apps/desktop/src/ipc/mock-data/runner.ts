@@ -6,6 +6,7 @@ import { HOMEBREW_ROW } from './updater';
 import type { AppError, InstalledItem, OutdatedItem, Task, TaskOp, TaskPhase } from '../bindings';
 import { packageKey } from '../client';
 import { downloadSizeOf, findItem, nextTaskId } from './fixtures';
+import { createMockScheduler } from './scheduler';
 
 export interface MockState {
   installed: InstalledItem[];
@@ -69,7 +70,9 @@ function withScan(plan: Step[], scan: Step | undefined): Step[] {
 }
 
 function steps(task: Task, appName: string | undefined, url: string, installerUrl: string): Step[] {
-  const token = task.target?.token ?? '';
+  const catalog = task.target?.kind === 'cask' ? findItem('cask', task.target.token) : undefined;
+  const upstream = catalog?.brewToken ?? task.target?.token ?? '';
+  const token = catalog?.tap ? `${catalog.tap}/${upstream}` : upstream;
   const target = task.target?.kind === 'cask' ? `--cask ${token}` : token;
   const download: Step = {
     phase: 'downloading',
@@ -200,6 +203,12 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
 
 export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks = {}) {
   let running: Task | undefined;
+  let stopped = false;
+  const scheduler = createMockScheduler();
+  const later = (advance: () => void) => {
+    if (stopped) return;
+    scheduler.later(advance, tickMs);
+  };
 
   const emitTask = (task: Task) => void events.taskUpdated.emit({ ...task });
   const log = (task: Task, lines: string[]) => {
@@ -237,14 +246,20 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     const target = task.target;
     // Local apps outside Homebrew and App Store apps are not library entries; hooks.completed applies their results.
     if (!target || target.kind === 'app' || target.kind === 'mas') return;
-    const index = state.installed.findIndex(item => item.kind === target.kind && item.token === target.token);
-    const catalogItem = findItem(target.kind, target.token);
+    const index = state.installed.findIndex(
+      item => item.kind === target.kind && (item.token === target.token || item.fullToken === target.token)
+    );
+    const catalogItem = findItem(target.kind, state.installed[index]?.token ?? target.token);
     switch (task.op) {
       case 'install':
         if (index < 0 && catalogItem) {
           state.installed.push({
             kind: target.kind,
             token: target.token,
+            fullToken:
+              target.kind === 'cask'
+                ? `${catalogItem.tap ?? 'homebrew/cask'}/${catalogItem.brewToken ?? target.token}`
+                : undefined,
             name: catalogItem.displayName['en-US'] ?? catalogItem.name,
             installedVersion: catalogItem.version,
             actualVersion: target.kind === 'cask' ? catalogItem.version : null,
@@ -341,7 +356,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     plan[0]?.enter?.();
 
     const advance = () => {
-      if (task.state === 'canceled') return;
+      if (stopped || task.state === 'canceled') return;
       const step = plan[stepIndex];
       if (!step) {
         finish(task, 'succeeded');
@@ -389,14 +404,14 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
           next.enter?.();
         }
       }
-      setTimeout(advance, tickMs);
+      later(advance);
     };
     emitTask(task);
-    setTimeout(advance, tickMs);
+    later(advance);
   }
 
   function schedule() {
-    if (running) return;
+    if (stopped || running) return;
     const next = [...state.active]
       .filter(task => task.state === 'queued')
       .sort((a, b) => PRIORITY[a.trigger] - PRIORITY[b.trigger] || a.createdAt - b.createdAt)[0];
@@ -460,5 +475,11 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     finish(task, 'canceled');
   }
 
-  return { enqueue, cancel, outdated };
+  /** Retire this session without emitting task results or starting any queued work. */
+  function stop() {
+    stopped = true;
+    scheduler.stop();
+  }
+
+  return { enqueue, cancel, outdated, stop };
 }

@@ -93,21 +93,31 @@ pub fn parse(
                     .or_else(|| captures.get(3))
                     .map(|m| m.as_str())
                     .unwrap_or("");
-                if validate_token(token).is_ok() {
-                    entry.token = Some(token.into());
-                    entry.status = if !seen.insert((kind, token.to_owned())) {
-                        BrewfileEntryStatus::Skipped
-                    } else if installed.iter().any(|i| i.kind == kind && i.token == token) {
-                        BrewfileEntryStatus::Installed
+                if crate::brew::args::split_cask_token(token).is_ok() {
+                    let local = installed
+                        .iter()
+                        .find(|i| i.kind == kind && i.matches_token(token));
+                    let (site_token, status) = if let Some(local) = local {
+                        (local.token.clone(), BrewfileEntryStatus::Installed)
                     } else {
                         match catalog(kind, token)? {
-                            Some(item) if !item.disabled && !item.hidden => {
-                                BrewfileEntryStatus::Ready
-                            }
-                            Some(_) => BrewfileEntryStatus::Unsupported,
-                            None => BrewfileEntryStatus::NotFound,
+                            Some(item) => (
+                                item.token,
+                                if !item.disabled && !item.hidden {
+                                    BrewfileEntryStatus::Ready
+                                } else {
+                                    BrewfileEntryStatus::Unsupported
+                                },
+                            ),
+                            None => (token.into(), BrewfileEntryStatus::NotFound),
                         }
                     };
+                    entry.status = if seen.insert((kind, site_token.clone())) {
+                        status
+                    } else {
+                        BrewfileEntryStatus::Skipped
+                    };
+                    entry.token = Some(site_token);
                     if entry.status == BrewfileEntryStatus::Unsupported {
                         entry.reason = Some("other".into());
                     }
@@ -138,7 +148,12 @@ pub async fn preview(core: Arc<DesktopCore>, path: String) -> Result<BrewfilePre
     crate::blocking(move || {
         let content = read(Path::new(&path))?;
         parse(&content, &core.library_list()?, |kind, token| {
-            crate::catalog::get(&core.database, kind, token)
+            let (tap, upstream) = crate::brew::args::split_cask_token(token)?;
+            if tap.is_some() {
+                crate::catalog::get_brew_cask(&core.database, upstream, tap)
+            } else {
+                crate::catalog::get(&core.database, kind, token)
+            }
         })
     })
     .await
@@ -181,11 +196,99 @@ pub fn export_list(path: &str, targets: &[TaskTarget]) -> Result<u32, AppError> 
         if target.kind != Kind::Cask {
             return Err(AppError::new("E_INVALID_ARG", "unsupported_kind"));
         }
-        validate_token(&target.token)?;
+        crate::brew::args::split_cask_token(&target.token)?;
         if seen.insert(&target.token) {
             output.push_str(&format!("cask \"{}\"\n", target.token));
         }
     }
     std::fs::write(path, output)?;
     Ok(seen.len() as u32)
+}
+
+/// Saved lists use site aliases in the UI; Brewfiles must contain Homebrew names.
+pub fn export_catalog_list(
+    database: &crate::db::Database,
+    path: &str,
+    targets: &[TaskTarget],
+) -> Result<u32, AppError> {
+    let resolved = targets
+        .iter()
+        .map(|target| {
+            validate_token(&target.token)?;
+            let item = crate::catalog::get(database, target.kind.brew_kind()?, &target.token)?;
+            let mut upstream = crate::brew::args::catalog_target(target, item.as_ref())?;
+            upstream.token = crate::brew::args::qualified_token(
+                item.as_ref().and_then(|i| i.tap.as_deref()),
+                &upstream.token,
+            )?;
+            Ok(upstream)
+        })
+        .collect::<Result<Vec<_>, AppError>>()?;
+    export_list(path, &resolved)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn alias_brewfile_export_and_preview_keep_upstream_and_catalog_names_separate() {
+        let temp = tempfile::tempdir().unwrap();
+        let database = crate::db::Database::open(&temp.path().join("catalog.db")).unwrap();
+        let mut official = crate::catalog::links::tests::item();
+        official.kind = Kind::Cask;
+        official.token = "orca".into();
+        let mut alias = official.clone();
+        alias.token = "stablyai-orca".into();
+        alias.brew_token = Some("orca".into());
+        alias.tap = Some("stablyai/orca".into());
+        database
+            .with(|c| {
+                crate::catalog::upsert(c, &official)?;
+                crate::catalog::upsert(c, &alias)
+            })
+            .unwrap();
+        let path = temp.path().join("Brewfile");
+        let targets = ["stablyai-orca", "orca"].map(|token| TaskTarget {
+            kind: TaskKind::Cask,
+            token: token.into(),
+        });
+        assert_eq!(
+            export_catalog_list(&database, path.to_str().unwrap(), &targets).unwrap(),
+            2
+        );
+        let text = read(&path).unwrap();
+        assert_eq!(text, "cask \"stablyai/orca/orca\"\ncask \"orca\"\n");
+        let preview = parse(&text, &[], |kind, token| {
+            let (tap, upstream) = crate::brew::args::split_cask_token(token)?;
+            if tap.is_some() {
+                crate::catalog::get_brew_cask(&database, upstream, tap)
+            } else {
+                crate::catalog::get(&database, kind, token)
+            }
+        })
+        .unwrap();
+        assert_eq!(preview.ready, 2);
+        assert_eq!(preview.entries[0].token.as_deref(), Some("stablyai-orca"));
+        assert_eq!(preview.entries[1].token.as_deref(), Some("orca"));
+        let info = serde_json::from_value(serde_json::json!({"casks":[
+            {"token":"orca", "tap":"stablyai/orca", "version":"1", "installed":"1"},
+            {"token":"orca", "tap":"homebrew/cask", "version":"1", "installed":"1"}
+        ]}))
+        .unwrap();
+        let installed = crate::library::scan(
+            &database,
+            &info,
+            temp.path().to_str().unwrap(),
+            Locale::EnUs,
+        )
+        .unwrap()
+        .items;
+        let preview = parse(&text, &installed, |_, _| {
+            panic!("installed identity must suffice")
+        })
+        .unwrap();
+        assert_eq!(preview.installed, 2);
+        assert_eq!(preview.entries[0].token.as_deref(), Some("stablyai-orca"));
+    }
 }

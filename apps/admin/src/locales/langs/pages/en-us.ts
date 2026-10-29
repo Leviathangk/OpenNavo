@@ -44,6 +44,48 @@ const pages: PageMessages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    githubReleases: {
+      title: 'GitHub downloads / updates',
+      downloads: 'Downloads',
+      updates: 'Updates',
+      total: 'Total across all releases',
+      today: 'Today {value}',
+      yesterday: 'Yesterday {value}',
+      snapshot: 'Last snapshot {time} · Asia/Shanghai · Hourly',
+      never: 'No successful snapshot yet · Asia/Shanghai · Hourly',
+      trend: 'Daily downloads / updates · Last 30 days',
+      details: 'Daily counts',
+      date: 'Date',
+      empty: 'Waiting for the first GitHub snapshot. Configure the GitHub token in system settings.',
+      pending: 'Daily counts appear after a snapshot on another Beijing calendar day.',
+      dailyStart: 'Daily data starts from {date}.',
+      downloadsHint:
+        'Downloads count universal DMG transfers across all desktop releases, including Homebrew install and upgrade.',
+      updatesHint:
+        'Updates count .app.tar.gz transfers for Apple Silicon and Intel combined. Download counts, not people.',
+      releasesHint: 'Future beta/pre-release versions are counted together with stable releases.',
+      dailyHint:
+        'Days use Beijing time. — means no daily data. Missed days count toward the next successful snapshot day; history is not backfilled.'
+    },
+    intraday: {
+      title: 'Intraday active trend',
+      description:
+        'Each device/browser is counted once per day, in the hour of its first activity; these are not online users.',
+      asOf: 'As of {date} {time} (Beijing time)',
+      measure: 'Activity measure',
+      hourly: 'First active this hour',
+      cumulative: 'Cumulative today',
+      desktop: 'Client',
+      web: 'Web',
+      loadFailed: 'Intraday active trend could not be loaded. Please retry.',
+      keyboardHint: 'Use arrow keys to inspect hours, Home for the first hour, and End for the current hour',
+      details: 'Hourly counts',
+      hour: 'Hour (Beijing time)',
+      hourlyDesktop: 'First active clients',
+      hourlyWeb: 'First active browsers',
+      cumulativeDesktop: 'Cumulative active clients',
+      cumulativeWeb: 'Cumulative active browsers'
+    },
     usage: {
       countries: 'Country distribution today',
       countryOrder: 'Sorted by total DAU',
@@ -55,6 +97,9 @@ const pages: PageMessages = {
       asOf: 'Asia/Shanghai · Today through {time}',
       yesterday: 'Yesterday {value}',
       date: 'Date',
+      desktopTotal: 'Client cumulative users',
+      desktopTotalHint:
+        'Deduplicated by local installation ID; clearing app data may count as a new ID. Cumulative since Oct 22. The reporting endpoint can be inflated with forged UUIDs.',
       desktop: 'Client DAU',
       web: 'Web DAU',
       newDesktop: 'New client IDs',
@@ -66,7 +111,7 @@ const pages: PageMessages = {
       trend: 'Daily activity · {start} to {end}',
       details: 'Daily counts',
       newHint:
-        'New means first observed with this ID. Clearing local data or returning after 90 days without activity may count as new.'
+        'New means first observed with this ID. Client reinstalls and upgrades reuse it while app data remains; clearing app or browser data may create a new ID.'
     },
     scale: 'Catalog',
     total: 'Apps',
@@ -539,6 +584,7 @@ const pages: PageMessages = {
         catalog_sync: 'Catalog sync',
         analytics_sync: 'Install stats sync',
         snapshot_build: 'Desktop snapshot',
+        'github-release_snapshot': 'GitHub release download snapshot',
         enrich_schedule: 'Enrichment scheduler (retired)',
         translate_schedule: 'Release summary scheduler (retired)',
         changelog_schedule: 'Homebrew commit scheduler',

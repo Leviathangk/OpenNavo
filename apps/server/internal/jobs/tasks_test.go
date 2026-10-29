@@ -29,4 +29,7 @@ func TestScheduledJobsReleaseUniquenessWithinAboutOnePeriod(t *testing.T) {
 			require.Less(t, ttl, 24*time.Hour, definition.Type)
 		}
 	}
+	definition, err := DefinitionFor("github-release:snapshot")
+	require.NoError(t, err)
+	require.Equal(t, 20*time.Minute, uniqueTTL(definition), "the hourly lock must expire before the extra 23:59 tick")
 }

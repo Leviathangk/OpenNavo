@@ -36,6 +36,7 @@ import type {
 } from '../bindings';
 import { MOCK_HOME } from './uninstall';
 import type { MockState, Step } from './runner';
+import { createMockScheduler } from './scheduler';
 
 const KB = 1e3;
 const MB = 1e6;
@@ -45,7 +46,6 @@ const REPORT_TTL = 10 * 60 * 1000;
 const VOLUME_TOTAL = 494.4 * GB;
 
 const expand = (path: string) => path.replace(/^~(?=\/|$)/, MOCK_HOME);
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const appError = (code: string, message: string): AppError => ({ code, message, detail: null });
 
 interface ItemSpec {
@@ -826,6 +826,7 @@ export function createCleanupMock({
   flags,
   enqueue
 }: CleanupMockOptions) {
+  const scheduler = createMockScheduler();
   const reports = new Map<string, { report: CleanupReport; items: Map<string, CleanupItem> }>();
   const canceled = new Set<string>();
   const executions = new Map<string, { reportId: string; items: CleanupItem[] }>();
@@ -1060,7 +1061,7 @@ export function createCleanupMock({
           total: SCAN_STEPS.length,
           foundBytes
         });
-        await delay(tickMs);
+        if (!(await scheduler.delay(tickMs))) return null;
       }
       if (canceled.has(requestId)) throw appError('E_SCAN_CANCELED', 'scan_canceled');
       reports.set(report.reportId, {
@@ -1150,5 +1151,5 @@ export function createCleanupMock({
     return entry.bytes;
   }
 
-  return { handlers, hooks: { steps, completed }, restore, purge };
+  return { handlers, hooks: { steps, completed }, restore, purge, stop: scheduler.stop };
 }

@@ -527,7 +527,7 @@ impl TaskQueue {
                 .unwrap_or_default();
             let installed = cached
                 .iter()
-                .find(|i| i.kind == target.kind && i.token == target.token);
+                .find(|i| i.kind == target.kind && i.matches_token(&target.token));
             task.from_version = installed.map(|i| {
                 i.actual_version
                     .clone()
@@ -716,22 +716,24 @@ impl TaskQueue {
                 .ok()
                 .map(PathBuf::from);
             // Installs use the catalog; upgrades/reinstalls retain the installed source and reject catalog conflicts.
-            let catalog_tap = match (&task.target, task.op) {
-                (Some(target), TaskOp::Install | TaskOp::Reinstall | TaskOp::Upgrade)
-                    if target.kind == Kind::Cask =>
-                {
+            let catalog_cask = match &task.target {
+                Some(target) if target.kind == Kind::Cask => {
                     let database = self.database.clone();
                     let token = target.token.clone();
-                    crate::blocking(move || {
-                        Ok(crate::catalog::get(&database, Kind::Cask, &token)?.map(|i| i.tap))
-                    })
-                    .await?
+                    crate::blocking(move || crate::catalog::get(&database, Kind::Cask, &token))
+                        .await?
                 }
                 _ => None,
             };
+            let catalog_tap = catalog_cask.as_ref().map(|i| i.tap.clone());
+            let command_target = task
+                .target
+                .as_ref()
+                .map(|target| crate::brew::args::catalog_target(target, catalog_cask.as_ref()))
+                .transpose()?;
             let mut tap = catalog_tap.clone().flatten();
             if matches!(task.op, TaskOp::Upgrade | TaskOp::Reinstall)
-                && let Some(target) = &task.target
+                && let Some(target) = &command_target
                 && target.kind == Kind::Cask
             {
                 let json =
@@ -746,7 +748,12 @@ impl TaskQueue {
             }
             (
                 PathBuf::from(brew.path),
-                write_args_in_tap(task.op, task.target.as_ref(), &task.options, tap.as_deref())?,
+                write_args_in_tap(
+                    task.op,
+                    command_target.as_ref(),
+                    &task.options,
+                    tap.as_deref(),
+                )?,
                 brew.prefix,
                 cache,
             )
@@ -2232,6 +2239,43 @@ else:
     }
 
     #[tokio::test]
+    async fn site_alias_install_uses_upstream_token() {
+        let (directory, queue, _) = fixture("install_ok");
+        let wrapper = directory.path().join("brew");
+        let source = std::fs::read_to_string(&wrapper).unwrap();
+        let source = source.replace("    os.execv", "    if sys.argv[1] == 'install' and sys.argv[-1] != 'stablyai/orca/orca': sys.exit(99)\n    os.execv");
+        std::fs::write(&wrapper, source).unwrap();
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../apps/server/testdata/desktop/v2/catalog.json.gz");
+        let file = std::fs::File::open(fixture_path).unwrap();
+        let json: serde_json::Value =
+            serde_json::from_reader(flate2::read::GzDecoder::new(file)).unwrap();
+        let mut json = json["items"][0].clone();
+        json["kind"] = "cask".into();
+        json["token"] = "stablyai-orca".into();
+        json["brewToken"] = "orca".into();
+        json["tap"] = "stablyai/orca".into();
+        let item: CatalogItem = serde_json::from_value(json).unwrap();
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        let task = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target("stablyai-orca")),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        queue.start();
+        let ended = terminal(&queue, &task.id).await;
+        assert_eq!(ended.state, TaskState::Succeeded, "{:?}", ended.error);
+        assert_eq!(ended.target.unwrap().token, "stablyai-orca");
+        queue.shutdown();
+    }
+
+    #[tokio::test]
     async fn history_export_is_persistent_and_filtered() {
         let (directory, queue, _) = fixture("install_ok");
         let task = queue
@@ -2720,7 +2764,11 @@ fn verify_installed_cask_tap(
     let source = installed
         .casks
         .iter()
-        .find(|cask| cask.token == token)
+        .find(|cask| {
+            cask.token == token
+                && catalog_tap
+                    .is_none_or(|tap| cask.tap.as_deref() == Some(tap.unwrap_or("homebrew/cask")))
+        })
         .and_then(|cask| cask.tap.as_deref());
     if source.is_none()
         || catalog_tap.is_some_and(|tap| source != Some(tap.unwrap_or("homebrew/cask")))
@@ -2743,6 +2791,35 @@ fn verify_installed_cask_tap(
 #[cfg(test)]
 mod tap_source_tests {
     use super::*;
+    #[test]
+    fn alias_upgrade_selects_the_installed_tap_among_same_named_casks() {
+        let info = serde_json::from_value(serde_json::json!({"casks": [
+            {"token": "orca", "tap": "homebrew/cask", "version": "1", "installed": "1"},
+            {"token": "orca", "tap": "stablyai/orca", "version": "2", "installed": "2"}
+        ]}))
+        .unwrap();
+        let mut alias = crate::catalog::links::tests::item();
+        alias.kind = Kind::Cask;
+        alias.token = "stablyai-orca".into();
+        alias.tap = Some("stablyai/orca".into());
+        alias.brew_token = Some("orca".into());
+        let target = crate::brew::args::catalog_target(
+            &TaskTarget {
+                kind: TaskKind::Cask,
+                token: alias.token.clone(),
+            },
+            Some(&alias),
+        )
+        .unwrap();
+        let tap =
+            verify_installed_cask_tap(&info, &target.token, Some(Some("stablyai/orca"))).unwrap();
+        for op in [TaskOp::Upgrade, TaskOp::Reinstall] {
+            let args =
+                write_args_in_tap(op, Some(&target), &TaskOptions::default(), tap.as_deref())
+                    .unwrap();
+            assert_eq!(args.last().unwrap(), "stablyai/orca/orca");
+        }
+    }
     #[test]
     fn upgrade_and_reinstall_require_known_matching_installed_source() {
         for (source, catalog, allowed) in [

@@ -161,6 +161,9 @@ pub struct CatalogItem {
     /// Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tap: Option<String>,
+    /// Upstream Homebrew token when the catalog uses a site alias.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brew_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Copy, Eq, Hash)]
@@ -257,6 +260,9 @@ pub struct Page<T> {
 pub struct InstalledItem {
     pub kind: Kind,
     pub token: String,
+    /// Installed Homebrew identity, independent of the site's catalog alias.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full_token: Option<String>,
     pub name: String,
     pub installed_version: String,      // Version recorded by brew.
     pub actual_version: Option<String>, // Cask: actual version from Info.plist.
@@ -270,6 +276,31 @@ pub struct InstalledItem {
     pub icon_path: Option<String>, // Locally extracted PNG, displayed through the asset protocol.
     pub auto_updates: bool,
     pub pinned: bool,
+}
+
+impl InstalledItem {
+    pub fn install_token(&self) -> &str {
+        self.full_token.as_deref().unwrap_or(&self.token)
+    }
+
+    /// Task targets may carry the catalog alias or a complete installed identity.
+    pub fn matches_token(&self, token: &str) -> bool {
+        self.token == token || self.install_token() == token
+    }
+
+    pub fn brew_token(&self) -> &str {
+        self.full_token
+            .as_deref()
+            .and_then(|token| token.rsplit('/').next())
+            .unwrap_or(&self.token)
+    }
+
+    pub fn brew_tap(&self) -> Option<&str> {
+        self.full_token
+            .as_deref()?
+            .rsplit_once('/')
+            .map(|(tap, _)| tap)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]

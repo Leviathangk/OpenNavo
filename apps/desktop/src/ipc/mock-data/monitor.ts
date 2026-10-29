@@ -24,6 +24,7 @@ import type {
   SystemInfo
 } from '../bindings';
 import type { AppSettings } from '../client';
+import { createMockScheduler } from './scheduler';
 
 const GB = 1e9;
 const MB = 1e6;
@@ -310,6 +311,7 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
     targetRpm: null,
     mode: 'auto'
   }));
+  const scheduler = createMockScheduler();
   let timer: ReturnType<typeof setInterval> | null = null;
   const sampleMs = Math.max(4, tickMs * 4);
 
@@ -460,14 +462,14 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
     void events.monitorSample.emit(history[history.length - 1]!);
   }
   function reschedule() {
-    if (views.size && !timer) timer = setInterval(tick, sampleMs);
+    if (views.size && !timer) timer = scheduler.repeat(tick, sampleMs) ?? null;
     if (!views.size && timer) {
-      clearInterval(timer);
+      scheduler.cancelRepeat(timer);
       timer = null;
     }
   }
   const stop = () => {
-    if (timer) clearInterval(timer);
+    scheduler.stop();
     timer = null;
     views.clear();
   };

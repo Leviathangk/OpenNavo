@@ -138,10 +138,14 @@ impl Engine {
             .find(|a| {
                 let record = entry.app_records.get(&a.app_id);
                 if target.kind == TaskKind::Cask {
-                    record.is_some_and(|r| r.app.cask.as_deref() == Some(&target.token))
-                        && options.item_ids.as_ref().is_some_and(|ids| {
-                            ids.iter().all(|id| a.items.iter().any(|i| i.id == *id))
-                        })
+                    record.is_some_and(|r| {
+                        r.app.cask.as_deref() == Some(&target.token)
+                            || (r.app.cask.is_some()
+                                && r.app.catalog_token.as_deref() == Some(&target.token))
+                    }) && options
+                        .item_ids
+                        .as_ref()
+                        .is_some_and(|ids| ids.iter().all(|id| a.items.iter().any(|i| i.id == *id)))
                 } else {
                     target.kind == TaskKind::App && a.app_id == target.token
                 }
@@ -211,9 +215,18 @@ impl Engine {
                 } else {
                     TaskKind::App
                 },
-                token: record.app.cask.clone().unwrap_or(choice.app_id),
+                token: record
+                    .app
+                    .catalog_token
+                    .as_ref()
+                    .filter(|_| record.app.cask.is_some())
+                    .or(record.app.cask.as_ref())
+                    .cloned()
+                    .unwrap_or(choice.app_id),
             };
-            if target.kind == TaskKind::Cask && !casks.insert(target.token.clone()) {
+            if let Some(identity) = &record.app.cask
+                && !casks.insert(identity.clone())
+            {
                 return Err(AppError::new("E_INVALID_ARG", "duplicate_cask"));
             }
             let options = TaskOptions {
@@ -534,28 +547,24 @@ pub async fn run(
                 }
             }
         }
+        let identity = entry
+            .app_records
+            .get(&app.app_id)
+            .and_then(|record| record.app.cask.as_deref())
+            .ok_or_else(|| AppError::new("E_PLAN_EXPIRED", "cask_identity"))?;
+        let (_, upstream) = crate::brew::args::split_cask_token(identity)?;
         queue.uninstall_progress(
             &task.id,
             TaskPhase::Uninstalling,
             1,
             10.0,
-            Some(format!(
-                "==> Homebrew: brew uninstall --cask {}",
-                task.target
-                    .as_ref()
-                    .map(|t| t.token.as_str())
-                    .unwrap_or_default()
-            )),
+            Some(format!("==> Homebrew: brew uninstall --cask {}", identity)),
         )?;
         let settings = queue.settings()?;
         let brew = crate::brew::locate::locate(&settings).await?;
         let request = crate::brew::pty::Execution {
             executable: brew.path.into(),
-            args: crate::brew::args::write_args(
-                TaskOp::Uninstall,
-                task.target.as_ref(),
-                &TaskOptions::default(),
-            )?,
+            args: vec!["uninstall".into(), "--cask".into(), identity.to_owned()],
             env: {
                 let mut env = crate::brew::env::construct(&settings, &brew.prefix, &queue.askpass);
                 crate::brew::env::explain(
@@ -601,18 +610,12 @@ pub async fn run(
         }
         // A successful process exit is not proof of removal (e.g. a no-op wrapper). Verify every bundle, and
         // Homebrew's own record (bundles may already be in our Trash), before reporting success or removing data.
-        let records: Vec<String> = task
-            .target
-            .as_ref()
-            .map(|target| {
-                engine
-                    .roots
-                    .caskrooms
-                    .iter()
-                    .map(|root| root.join(&target.token).to_string_lossy().into_owned())
-                    .collect()
-            })
-            .unwrap_or_default();
+        let records: Vec<String> = engine
+            .roots
+            .caskrooms
+            .iter()
+            .map(|root| root.join(upstream).to_string_lossy().into_owned())
+            .collect();
         let remaining = items
             .iter()
             .filter(|i| i.category == ItemCategory::App)

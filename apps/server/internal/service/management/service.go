@@ -514,6 +514,8 @@ func (s *Service) execute(ctx context.Context, op string, in Input) (any, error)
 		return s.categoryWrite(ctx, op, in)
 	case "GetDashboardOverview":
 		return s.dashboard(ctx)
+	case "GetDashboardUsageIntraday":
+		return s.Store.UsageIntraday(ctx, s.now())
 	case "ListAssets", "ListFeedback", "GetFeedback", "ListSynonyms", "ListTopQueries", "ListZeroResultQueries", "ListJobRuns", "GetJobRun", "ListMirrors", "ListAppConfig", "ListAdminUsers", "ListRoles", "ListPermissions", "ListAuditLogs":
 		return s.read(ctx, op, in)
 	case "CreateMirror", "UpdateMirror", "DeleteMirror", "UpdateAppConfig", "CreateSynonym", "UpdateSynonym", "DeleteSynonym", "UpdateFeedback", "CreateAdminUser", "UpdateAdminUser", "DeleteAdminUser", "ResetAdminUserPassword", "ForceLogoutAdminUser", "CreateRole", "UpdateRole", "DeleteRole", "SetRolePermissions":

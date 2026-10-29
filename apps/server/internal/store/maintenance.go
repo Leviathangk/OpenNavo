@@ -43,8 +43,8 @@ func (s *Store) PruneLogs(ctx context.Context, before time.Time) (map[string]int
 			arg              any
 		}{
 			{"agent_call_logs", "created_at<?", before.AddDate(0, 0, -90)},
+			// Delete daily details only; their ON DELETE CASCADE parent identities are kept permanently for cumulative totals.
 			{"usage_daily", "day<?::date", before.In(usageZone).Format("2006-01-02")},
-			{"usage_identities", "last_seen_at<?", before},
 			{"content_trash", "expires_at<?", before.AddDate(0, 0, 90)},
 			// Idempotency records only need to outlive client retries: 30 days.
 			{"agent_write_controls", "created_at<?", before.AddDate(0, 0, 60)},

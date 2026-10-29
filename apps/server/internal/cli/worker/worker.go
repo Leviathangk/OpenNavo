@@ -22,6 +22,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/assets"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/changelog"
+	"github.com/opennavo/opennavo/server/internal/service/githubreleases"
 	"github.com/opennavo/opennavo/server/internal/service/links"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
@@ -85,6 +86,8 @@ func run(ctx context.Context) error {
 	handlers["cleanup"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return cleanup.Run(ctx) }
 	snapshots := &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}
 	handlers["snapshot:build"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return snapshots.Build(ctx) }
+	githubReleases := &githubreleases.Service{Store: st, Config: cfg, ObserveQuota: st.ObserveGitHubQuota}
+	handlers["github-release:snapshot"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return githubReleases.Run(ctx) }
 	releaseService := &changelog.Service{Store: st, Resolver: pipeline.NewResolver(cfg.FetchUserAgent), Fetcher: pipeline.NewFetcher(cfg.FetchUserAgent), Queue: queue}
 	releaseService.Resolver.ObserveQuota = st.ObserveGitHubQuota
 	releaseService.Fetcher.HTTP.ObserveQuota = st.ObserveGitHubQuota

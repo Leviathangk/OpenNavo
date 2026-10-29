@@ -191,7 +191,11 @@ impl Database {
             return Err(AppError::new("E_INVALID_ARG", "history_query"));
         }
         if let Some(target) = &query.target {
-            crate::brew::args::validate_token(&target.token)?;
+            if target.kind == TaskKind::Cask {
+                crate::brew::args::split_cask_token(&target.token)?;
+            } else {
+                crate::brew::args::validate_token(&target.token)?;
+            }
         }
         let q = query.q.as_ref().map(|q| q.to_lowercase());
         let matching_names: std::collections::HashSet<(String, String)> = if let Some(q) = &q {
