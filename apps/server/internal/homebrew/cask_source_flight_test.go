@@ -311,6 +311,31 @@ func TestParseCaskSourceRejectsFlightHeredocBoundarySmuggling(t *testing.T) {
 	}
 }
 
+func TestParseCaskSourceRejectsBacktickShiftBoundarySmuggling(t *testing.T) {
+	for _, branch := range []string{"modern", "legacy"} {
+		t.Run(branch, func(t *testing.T) {
+			prefix := flightGuardBase + "  if respond_to?(:postflight_steps)\n"
+			flight, nextFlight := "postflight_steps", "preflight_steps"
+			suffix := "  else\n    postflight do\n    end\n  end\nend\n"
+			if branch == "legacy" {
+				prefix += "    postflight_steps do\n    end\n  else\n"
+				flight, nextFlight = "postflight", "preflight"
+				suffix = "  end\nend\n"
+			}
+			prefix += "    " + flight + " do\n"
+			// Ruby parses this as a string append. Without rbCommand in valueEnded,
+			// the lexer treats it as a heredoc and swallows the boundaries below.
+			source := prefix + "      `printf x` <<-\"String\"\n    end\n    depends_on arch: :arm64\n    " + nextFlight + " do\n      Float\n    end\nString\n" + suffix
+			_, err := ParseCaskSource(source, CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+			var unsupported *UnsupportedCaskError
+			wantLine := strings.Count(prefix, "\n") + 1
+			if !errors.As(err, &unsupported) || unsupported.Line != wantLine || !strings.Contains(unsupported.Reason, "ambiguous heredoc or left shift") {
+				t.Fatalf("expected a line-specific left-shift rejection at line %d, got %v", wantLine, err)
+			}
+		})
+	}
+}
+
 func TestParseCaskSourceRejectsFlightBoundarySmuggling(t *testing.T) {
 	for _, branch := range []string{"modern", "legacy"} {
 		t.Run(branch, func(t *testing.T) {

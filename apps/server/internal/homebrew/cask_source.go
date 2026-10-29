@@ -33,8 +33,8 @@ func (e *UnsupportedCaskError) Error() string {
 
 // ParseCaskSource statically reads the declarative subset of the cask DSL and returns the same JSON shape as
 // formulae.brew.sh/api/cask.json, so the result goes through Normalize like an official cask. Ruby is never
-// executed: architecture selectors are evaluated for both CPUs; per-OS/architecture blocks, language blocks
-// and unknown stanzas are rejected.
+// executed: architecture selectors are evaluated for both CPUs; per-OS/architecture blocks, local variables,
+// language blocks and unknown stanzas are rejected.
 // Flight blocks, livecheck and caveats blocks only run inside brew on the user's Mac, so they are skipped.
 // A flight-only respond_to?(:*_steps) compatibility guard may contain literal helper strings; other
 // conditionals and local variables are rejected.

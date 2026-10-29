@@ -117,7 +117,7 @@ func (l *rbLexer) valueEnded() bool {
 		return false
 	}
 	switch last.kind {
-	case rbIdent, rbConst, rbString, rbWords, rbRegexp, rbNumber, rbSymbol:
+	case rbIdent, rbConst, rbString, rbWords, rbRegexp, rbCommand, rbNumber, rbSymbol:
 		return true
 	case rbKeyword:
 		return last.text == "end" || last.text == "self" || last.text == "true" || last.text == "false" || last.text == "nil"
