@@ -114,6 +114,7 @@ pub fn scan(
         items.push(InstalledItem {
             kind: Kind::Formula,
             token: formula.name.clone(),
+            full_token: formula.full_name.clone(),
             name: display_name(catalog.as_ref(), &formula.name, locale),
             installed_version: installed.version.clone(),
             actual_version: None,
@@ -175,6 +176,10 @@ pub fn scan(
                 .as_ref()
                 .map(|item| item.token.clone())
                 .unwrap_or_else(|| cask.token.clone()),
+            full_token: Some(match cask.tap.as_deref() {
+                Some(tap) => format!("{tap}/{}", cask.token),
+                None => cask.token.clone(),
+            }),
             name: display_name(catalog.as_ref(), fallback, locale),
             installed_version,
             actual_version: actual,

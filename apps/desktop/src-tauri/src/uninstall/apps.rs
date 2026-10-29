@@ -227,18 +227,17 @@ impl Engine {
             }
         }
         for item in installed.iter().filter(|i| i.kind == Kind::Cask) {
+            let token = item.brew_token();
             // Cached brew records can outlive an uninstall. Only enrich packages
             // with physical installation evidence; never resurrect a cached row.
-            if !casks.contains_key(&item.token)
-                && !item.app_paths.iter().any(|p| Path::new(p).is_dir())
-            {
+            if !casks.contains_key(token) && !item.app_paths.iter().any(|p| Path::new(p).is_dir()) {
                 continue;
             }
             let path = self
                 .roots
                 .caskrooms
                 .iter()
-                .map(|r| r.join(&item.token))
+                .map(|r| r.join(token))
                 .find(|p| p.is_dir())
                 .unwrap_or_else(|| {
                     self.roots
@@ -246,9 +245,9 @@ impl Engine {
                         .first()
                         .cloned()
                         .unwrap_or_else(|| self.roots.home.join("Caskroom"))
-                        .join(&item.token)
+                        .join(token)
                 });
-            casks.insert(item.token.clone(), (path, Some(item.clone())));
+            casks.insert(token.to_owned(), (path, Some(item.clone())));
         }
         // Read each installed cask's rule once per enumeration instead of once per app and cask.
         let rules = self.installed_rules();

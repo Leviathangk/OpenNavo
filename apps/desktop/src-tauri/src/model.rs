@@ -260,6 +260,9 @@ pub struct Page<T> {
 pub struct InstalledItem {
     pub kind: Kind,
     pub token: String,
+    /// Installed Homebrew identity, independent of the site's catalog alias.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full_token: Option<String>,
     pub name: String,
     pub installed_version: String,      // Version recorded by brew.
     pub actual_version: Option<String>, // Cask: actual version from Info.plist.
@@ -273,6 +276,22 @@ pub struct InstalledItem {
     pub icon_path: Option<String>, // Locally extracted PNG, displayed through the asset protocol.
     pub auto_updates: bool,
     pub pinned: bool,
+}
+
+impl InstalledItem {
+    pub fn brew_token(&self) -> &str {
+        self.full_token
+            .as_deref()
+            .and_then(|token| token.rsplit('/').next())
+            .unwrap_or(&self.token)
+    }
+
+    pub fn brew_tap(&self) -> Option<&str> {
+        self.full_token
+            .as_deref()?
+            .rsplit_once('/')
+            .map(|(tap, _)| tap)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]

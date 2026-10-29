@@ -93,3 +93,39 @@ func TestCaskArchitectureSelectors(t *testing.T) {
 		}
 	}
 }
+
+func TestRejectArchitectureDependentRequirements(t *testing.T) {
+	base := "cask \"demo\" do\n  arch arm: \"arm64\", intel: \"x86_64\"\n  version \"1\"\n  sha256 :no_check\n  url \"https://example.com/#{arch}.dmg\"\n  app \"Demo.app\"\n  name \"Demo\"\n"
+	for _, requirement := range []string{
+		`depends_on arch: "#{arch}"`,
+		`depends_on arch: ["#{ arch }"]`,
+		"depends_on(\n    arch: \"#{arch}\"\n  )",
+		`depends_on arch: "#{arch # comment
+}"`,
+	} {
+		t.Run(requirement, func(t *testing.T) {
+			_, err := ParseCaskSource(base+"  "+requirement+"\nend\n", CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+			var unsupported *UnsupportedCaskError
+			line := 8
+			if strings.HasPrefix(requirement, "depends_on(\n") {
+				line++
+			}
+			if !errors.As(err, &unsupported) || unsupported.Line != line || !strings.Contains(unsupported.Reason, "arch interpolation in depends_on") {
+				t.Fatalf("want architecture requirement rejection at line %d, got %v", line, err)
+			}
+		})
+	}
+	for _, arch := range []string{"arm64", "intel"} {
+		raw, err := ParseCaskSource(base+"  depends_on arch: :"+arch+"\nend\n", CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		item, err := Normalize("cask", raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if item.SupportsArm64 != (arch == "arm64") || item.SupportsX8664 != (arch == "intel") {
+			t.Fatalf("literal %s restriction was lost: arm64=%v x86_64=%v", arch, item.SupportsArm64, item.SupportsX8664)
+		}
+	}
+}

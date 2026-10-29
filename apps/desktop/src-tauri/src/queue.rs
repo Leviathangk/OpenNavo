@@ -2764,7 +2764,11 @@ fn verify_installed_cask_tap(
     let source = installed
         .casks
         .iter()
-        .find(|cask| cask.token == token)
+        .find(|cask| {
+            cask.token == token
+                && catalog_tap
+                    .is_none_or(|tap| cask.tap.as_deref() == Some(tap.unwrap_or("homebrew/cask")))
+        })
         .and_then(|cask| cask.tap.as_deref());
     if source.is_none()
         || catalog_tap.is_some_and(|tap| source != Some(tap.unwrap_or("homebrew/cask")))
@@ -2787,6 +2791,35 @@ fn verify_installed_cask_tap(
 #[cfg(test)]
 mod tap_source_tests {
     use super::*;
+    #[test]
+    fn alias_upgrade_selects_the_installed_tap_among_same_named_casks() {
+        let info = serde_json::from_value(serde_json::json!({"casks": [
+            {"token": "orca", "tap": "homebrew/cask", "version": "1", "installed": "1"},
+            {"token": "orca", "tap": "stablyai/orca", "version": "2", "installed": "2"}
+        ]}))
+        .unwrap();
+        let mut alias = crate::catalog::links::tests::item();
+        alias.kind = Kind::Cask;
+        alias.token = "stablyai-orca".into();
+        alias.tap = Some("stablyai/orca".into());
+        alias.brew_token = Some("orca".into());
+        let target = crate::brew::args::catalog_target(
+            &TaskTarget {
+                kind: TaskKind::Cask,
+                token: alias.token.clone(),
+            },
+            Some(&alias),
+        )
+        .unwrap();
+        let tap =
+            verify_installed_cask_tap(&info, &target.token, Some(Some("stablyai/orca"))).unwrap();
+        for op in [TaskOp::Upgrade, TaskOp::Reinstall] {
+            let args =
+                write_args_in_tap(op, Some(&target), &TaskOptions::default(), tap.as_deref())
+                    .unwrap();
+            assert_eq!(args.last().unwrap(), "stablyai/orca/orca");
+        }
+    }
     #[test]
     fn upgrade_and_reinstall_require_known_matching_installed_source() {
         for (source, catalog, allowed) in [

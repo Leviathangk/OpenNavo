@@ -716,12 +716,39 @@ impl DesktopCore {
             let info = self.installed_info.read().map_err(poisoned)?;
             !info.formulae.is_empty() || !info.casks.is_empty()
         };
+        let brew_target = target
+            .map(|target| {
+                let library = self.library.read().map_err(poisoned)?;
+                let installed = library
+                    .iter()
+                    .find(|i| i.kind == target.kind && i.token == target.token);
+                let mut resolved = target.clone();
+                let name = if target.kind == TaskKind::Cask {
+                    installed
+                        .map(|i| {
+                            crate::brew::args::qualified_token(
+                                i.brew_tap().filter(|tap| *tap != "homebrew/cask"),
+                                i.brew_token(),
+                            )
+                        })
+                        .transpose()?
+                        .unwrap_or_else(|| target.token.clone())
+                } else {
+                    target.token.clone()
+                };
+                if let Some(installed) = installed {
+                    resolved.token = installed.brew_token().to_owned();
+                }
+                Ok::<_, AppError>((resolved, name))
+            })
+            .transpose()?;
         let (op, token) = if has_info {
-            target
-                .map(|t| {
+            brew_target
+                .as_ref()
+                .map(|(t, name)| {
                     t.kind
                         .brew_kind()
-                        .map(|kind| (ReadOp::Info(kind), Some(t.token.as_str())))
+                        .map(|kind| (ReadOp::Info(kind), Some(name.as_str())))
                 })
                 .transpose()?
                 .unwrap_or((ReadOp::Installed, None))
@@ -736,7 +763,7 @@ impl DesktopCore {
             self.database.set_meta("cask_rules_cache", &raw)?;
         }
         let core = self.clone();
-        let target = target.cloned();
+        let target = brew_target.map(|(target, _)| target);
         let prefix = brew.prefix.clone();
         let mut scan = crate::blocking(move || {
             let incoming: Info = serde_json::from_str(&raw)?;
@@ -959,14 +986,27 @@ impl DesktopCore {
         };
         let core = self.clone();
         crate::blocking(move || {
-            let matches = |item: &OutdatedItem| item.kind == kind && item.token == target.token;
+            let library = core.library.read().map_err(poisoned)?;
+            let local = library.iter().find(|i| {
+                i.kind == kind && (i.token == target.token || i.brew_token() == target.token)
+            });
+            let source_token = local
+                .map(|i| i.brew_token())
+                .unwrap_or(&target.token)
+                .to_owned();
+            let site_token = local
+                .map(|i| i.token.as_str())
+                .unwrap_or(&target.token)
+                .to_owned();
+            drop(library);
+            let matches = |item: &OutdatedItem| item.kind == kind && item.token == site_token;
             let mut source = core.outdated_source.write().map_err(poisoned)?;
             let entries = match kind {
                 Kind::Cask => &mut source.casks,
                 Kind::Formula => &mut source.formulae,
                 Kind::Link => return Ok(()),
             };
-            let Some(index) = entries.iter().position(|entry| entry.name == target.token) else {
+            let Some(index) = entries.iter().position(|entry| entry.name == source_token) else {
                 return Ok(());
             };
             match pinned {
@@ -1093,6 +1133,110 @@ impl DesktopCore {
         self.notice(crate::scheduler::Notice::TaskFinished(Box::new(
             task.clone(),
         )));
+    }
+}
+
+#[cfg(test)]
+mod alias_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn targeted_refresh_and_settlement_preserve_installed_cask_identity() {
+        use std::os::unix::fs::PermissionsExt;
+        for (tap, site_token, read_token) in [
+            ("stablyai/orca", "stablyai-orca", "stablyai/orca/orca"),
+            ("homebrew/cask", "orca", "orca"),
+        ] {
+            let temp = tempfile::tempdir().unwrap();
+            let core = DesktopCore::open(
+                temp.path().join("data"),
+                temp.path().join("cache"),
+                temp.path().join("askpass"),
+                Arc::new(|_| {}),
+            )
+            .unwrap();
+            let mut official = crate::catalog::links::tests::item();
+            official.kind = Kind::Cask;
+            official.token = "orca".into();
+            official.tap = None;
+            official.brew_token = None;
+            let mut alias = official.clone();
+            alias.token = "stablyai-orca".into();
+            alias.tap = Some("stablyai/orca".into());
+            alias.brew_token = Some("orca".into());
+            core.database
+                .with(|c| {
+                    crate::catalog::upsert(c, &official)?;
+                    crate::catalog::upsert(c, &alias)
+                })
+                .unwrap();
+            let raw = serde_json::json!({"casks": [{"token": "orca", "tap": tap, "version": "1", "installed": "1", "artifacts": []}]}).to_string();
+            let info = serde_json::from_str(&raw).unwrap();
+            *core.library.write().unwrap() = library::scan(
+                &core.database,
+                &info,
+                temp.path().to_str().unwrap(),
+                Locale::EnUs,
+            )
+            .unwrap()
+            .items;
+            *core.installed_info.write().unwrap() = info;
+            let script = temp.path().join("brew");
+            std::fs::write(&script, format!(
+                "#!/usr/bin/python3 -I\nimport sys\na=sys.argv[1:]\nif a==['--version']: print('Homebrew 7.0.7')\nelif a in (['--prefix'],['--cache']): print({prefix:?})\nelif a==['info','--json=v2','--cask',{read_token:?}]: print({raw:?})\nelse: sys.exit(2)\n",
+                prefix = temp.path().join("cache").to_string_lossy(),
+            )).unwrap();
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+            core.settings.write().unwrap().brew_path = Some(script.to_string_lossy().into_owned());
+            let target = TaskTarget {
+                kind: TaskKind::Cask,
+                token: site_token.into(),
+            };
+            let refreshed = core
+                .refresh_library(LibraryChangeReason::Task, Some(&target))
+                .await
+                .unwrap();
+            assert_eq!(refreshed.len(), 1);
+            assert_eq!(refreshed[0].token, site_token);
+            assert_eq!(refreshed[0].full_token, Some(format!("{tap}/orca")));
+            let source: crate::updates::Outdated = serde_json::from_value(
+                serde_json::json!({"casks": [{"name": "orca", "current_version": "2"}]}),
+            )
+            .unwrap();
+            let mut task = core
+                .queue
+                .enqueue(
+                    TaskOp::Upgrade,
+                    Some(target),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .unwrap();
+            task.state = TaskState::Succeeded;
+            for op in [TaskOp::Upgrade, TaskOp::Uninstall] {
+                *core.outdated_source.write().unwrap() = source.clone();
+                // Build the Homebrew list without enumerating this Mac's native apps.
+                let updates = crate::updates::build(
+                    &core.database,
+                    &source,
+                    &mut core.library.write().unwrap(),
+                    Locale::EnUs,
+                    1,
+                )
+                .unwrap();
+                assert_eq!(updates[0].token, site_token);
+                *core.updates.write().unwrap() = updates;
+                task.op = op;
+                task.target.as_mut().unwrap().token = if op == TaskOp::Uninstall {
+                    "orca"
+                } else {
+                    site_token
+                }
+                .into();
+                core.settle_updates(&task).await.unwrap();
+                assert!(core.rebuild_updates().await.unwrap().is_empty());
+            }
+        }
     }
 }
 

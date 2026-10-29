@@ -6,6 +6,26 @@ import (
 	"strings"
 )
 
+// Architecture-dependent requirements cannot be represented by the ARM base's
+// shared supported_platforms list. Reject them before either pass loses a CPU.
+func (p *caskParser) rejectArchitectureRequirement(name rbToken, start int) error {
+	if name.text != "depends_on" {
+		return nil
+	}
+	for _, token := range p.tokens[start:p.pos] {
+		for _, part := range token.parts {
+			if !part.interp {
+				continue
+			}
+			expression, err := lexRuby(part.text)
+			if err == nil && expression[0].kind == rbIdent && expression[0].text == "arch" {
+				return p.fail(part.line, "arch interpolation in depends_on is not supported")
+			}
+		}
+	}
+	return nil
+}
+
 // architectureValue accepts only complete literal selectors. Validate both values even
 // when only one will be used, so unsupported Ruby cannot hide in the other architecture.
 func (p *caskParser) architectureValue(name rbToken, args rbArgs, checksum bool) (rbValue, error) {

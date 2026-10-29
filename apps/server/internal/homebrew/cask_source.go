@@ -684,8 +684,12 @@ func (p *caskParser) statement() error {
 		}
 		p.seen[name.text] = true
 	}
+	start := p.pos
 	args, block, err := p.parseCall(name)
 	if err != nil {
+		return err
+	}
+	if err := p.rejectArchitectureRequirement(name, start); err != nil {
 		return err
 	}
 	if block != "" {

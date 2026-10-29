@@ -70,13 +70,23 @@ pub fn build(
             if !identities.insert((kind, entry.name.as_str())) {
                 continue;
             }
-            if ignored(database, kind, &entry.name, &entry.current_version, now)? {
-                continue;
-            }
             let mut local = library
                 .iter_mut()
-                .find(|i| i.kind == kind && i.token == entry.name);
-            let catalog = crate::catalog::get(database, kind, &entry.name)?;
+                .find(|i| i.kind == kind && i.brew_token() == entry.name);
+            let catalog = if kind == Kind::Cask {
+                let tap = local.as_ref().and_then(|i| i.brew_tap());
+                crate::catalog::get_brew_cask(database, &entry.name, tap)?
+            } else {
+                crate::catalog::get(database, kind, &entry.name)?
+            };
+            let token = local
+                .as_ref()
+                .map(|i| i.token.as_str())
+                .unwrap_or(&entry.name);
+            if ignored(database, kind, token, &entry.current_version, now)? {
+                continue;
+            }
+            let token = token.to_owned();
             let auto = local
                 .as_ref()
                 .map(|i| i.auto_updates)
@@ -133,7 +143,7 @@ pub fn build(
                 unsigned_update: None,
                 expected_team_match: None,
                 kind,
-                token: entry.name.clone(),
+                token,
                 name: display_name(catalog.as_ref(), fallback, locale),
                 installed_version: installed,
                 current_version: entry.current_version.clone(),
@@ -156,4 +166,76 @@ pub fn build(
             .then_with(|| a.token.cmp(&b.token))
     });
     Ok(items)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn updates_use_the_installed_tap_and_return_the_site_alias() {
+        let temp = tempfile::tempdir().unwrap();
+        let database = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let mut official = crate::catalog::links::tests::item();
+        official.kind = Kind::Cask;
+        official.token = "orca".into();
+        official.tap = None;
+        official.brew_token = None;
+        official.display_name = LocalizedText::default();
+        official.download_size = Some(999);
+        let mut alias = official.clone();
+        alias.token = "stablyai-orca".into();
+        alias.tap = Some("stablyai/orca".into());
+        alias.brew_token = Some("orca".into());
+        alias.download_size = Some(123);
+        database
+            .with(|c| {
+                crate::catalog::upsert(c, &official)?;
+                crate::catalog::upsert(c, &alias)
+            })
+            .unwrap();
+
+        for (tap, token, size) in [
+            ("stablyai/orca", "stablyai-orca", 123),
+            ("homebrew/cask", "orca", 999),
+        ] {
+            let info = serde_json::from_value(serde_json::json!({"casks": [{
+                "token": "orca", "tap": tap, "name": ["Installed Orca"],
+                "version": "1", "installed": "1", "artifacts": [], "pinned": true
+            }]}))
+            .unwrap();
+            let mut library = crate::library::scan(
+                &database,
+                &info,
+                temp.path().to_str().unwrap(),
+                Locale::EnUs,
+            )
+            .unwrap()
+            .items;
+            assert_eq!(library[0].full_token, Some(format!("{tap}/orca")));
+            let outdated: Outdated = serde_json::from_value(serde_json::json!({"casks": [{
+                "name": "orca", "installed_versions": [], "current_version": "2"
+            }]}))
+            .unwrap();
+            let items = build(&database, &outdated, &mut library, Locale::EnUs, 100).unwrap();
+            assert_eq!(items.len(), 1);
+            let item = &items[0];
+            assert_eq!(item.token, token);
+            assert_eq!(item.name, "Installed Orca");
+            assert_eq!(item.installed_version, "1");
+            assert_eq!(item.download_size, Some(size));
+            assert!(item.pinned);
+            let target = TaskTarget {
+                kind: TaskKind::Cask,
+                token: token.into(),
+            };
+            ignore(&database, &target, Some("2"), None, 100).unwrap();
+            assert!(
+                build(&database, &outdated, &mut library, Locale::EnUs, 101)
+                    .unwrap()
+                    .is_empty()
+            );
+            unignore(&database, &target).unwrap();
+        }
+    }
 }
