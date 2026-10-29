@@ -158,7 +158,10 @@ impl Fixture {
         })).unwrap()
     }
     fn cache_candidate(&self, source: UpdateSource) {
-        let mut item = self.brew(Kind::Cask, "fixture");
+        let mut item = self.brew(
+            Kind::Cask,
+            self.app.catalog_token.as_deref().unwrap_or("fixture"),
+        );
         item.source = source;
         item.app_id = Some(self.app.id.clone());
         item.bundle_id = self.app.bundle_id.clone();
@@ -640,6 +643,99 @@ fn direct_app_navigation_token_is_not_a_homebrew_installation_identity() {
 }
 
 impl Fixture {
+    fn alias(source: UpdateSource) -> Self {
+        let mut fixture = Self::new(source, "https://fixture.example/releases/");
+        let official_path = fixture.root.join("Applications/Plotly.app");
+        fs::create_dir_all(official_path.join("Contents/Resources")).unwrap();
+        let mut info = plist::Value::from_file(fixture.path.join("Contents/Info.plist")).unwrap();
+        info.as_dictionary_mut()
+            .unwrap()
+            .insert("CFBundleIdentifier".into(), "org.fixture.Official".into());
+        info.to_file_xml(official_path.join("Contents/Info.plist"))
+            .unwrap();
+        if source == UpdateSource::Electron {
+            fs::copy(
+                fixture.path.join("Contents/Resources/app-update.yml"),
+                official_path.join("Contents/Resources/app-update.yml"),
+            )
+            .unwrap();
+        }
+        let mut official = crate::catalog::get(&fixture.database, Kind::Cask, "fixture")
+            .unwrap()
+            .unwrap();
+        official.token = "orca".into();
+        official.name = "Plotly Orca".into();
+        official.display_name =
+            serde_json::from_value(serde_json::json!({"en-US":"Plotly Orca"})).unwrap();
+        official.auto_updates = false;
+        let mut alias = official.clone();
+        alias.token = "stablyai-orca".into();
+        alias.name = "Stably Orca".into();
+        alias.display_name =
+            serde_json::from_value(serde_json::json!({"en-US":"Stably Orca"})).unwrap();
+        alias.tap = Some("stablyai/orca".into());
+        alias.brew_token = Some("orca".into());
+        alias.auto_updates = true;
+        fixture
+            .database
+            .with(|c| {
+                crate::catalog::upsert(c, &official)?;
+                crate::catalog::upsert(c, &alias)
+            })
+            .unwrap();
+        let raw = serde_json::json!({"casks": [
+            {"token":"orca", "tap":"stablyai/orca", "version":"1.0", "installed":"1.0", "auto_updates":true,
+             "artifacts":[{"app":["Fixture.app", {"target": fixture.path}]}]},
+            {"token":"orca", "tap":"homebrew/cask", "version":"1.0", "installed":"1.0", "auto_updates":false,
+             "artifacts":[{"app":["Plotly.app", {"target": official_path}]}]}
+        ]});
+        let info = serde_json::from_value(raw.clone()).unwrap();
+        let installed = crate::library::scan(
+            &fixture.database,
+            &info,
+            fixture.root.to_str().unwrap(),
+            Locale::EnUs,
+        )
+        .unwrap()
+        .items;
+        fixture
+            .database
+            .set_meta(
+                "installed_cache",
+                &serde_json::to_string(&installed).unwrap(),
+            )
+            .unwrap();
+        fixture
+            .database
+            .set_meta("cask_rules_cache", &raw.to_string())
+            .unwrap();
+        let apps = fixture
+            .service
+            .apps
+            .refresh(LocalAppsChangedReason::Refresh)
+            .unwrap();
+        fixture.app = apps
+            .into_iter()
+            .find(|app| app.path == fixture.path.to_str().unwrap())
+            .unwrap();
+        fixture
+    }
+    fn alias_brew(&self) -> Vec<OutdatedItem> {
+        let mut installed: Vec<InstalledItem> =
+            serde_json::from_str(&self.database.meta("installed_cache").unwrap().unwrap()).unwrap();
+        let outdated = serde_json::from_value(serde_json::json!({"casks":[
+            {"name":"stablyai/orca/orca", "installed_versions":["1.0"], "current_version":"2.0"},
+            {"name":"homebrew/cask/orca", "installed_versions":["1.0"], "current_version":"2.0"}
+        ]}))
+        .unwrap();
+        let brew =
+            crate::updates::build(&self.database, &outdated, &mut installed, Locale::EnUs, 100)
+                .unwrap();
+        assert_eq!(brew.len(), 2);
+        assert!(brew.iter().any(|item| item.token == "stablyai-orca"));
+        assert!(brew.iter().any(|item| item.token == "orca"));
+        brew
+    }
     fn source_enabled(&self, source: UpdateSource, enabled: bool) {
         self.settings
             .write()
@@ -716,6 +812,159 @@ impl Fixture {
                 &serde_json::to_string(&candidates).unwrap(),
             )
             .unwrap();
+    }
+}
+
+#[test]
+fn alias_and_official_cask_keep_separate_display_detail_and_auto_update_routes() {
+    for source in [UpdateSource::Sparkle, UpdateSource::Electron] {
+        let fixture = Fixture::alias(source);
+        let apps = fixture.service.apps.list().unwrap();
+        assert_eq!(apps.len(), 2);
+        for (identity, token, name, route) in [
+            ("stablyai/orca/orca", "stablyai-orca", "Stably Orca", source),
+            (
+                "homebrew/cask/orca",
+                "orca",
+                "Plotly Orca",
+                UpdateSource::Homebrew,
+            ),
+        ] {
+            let app = apps
+                .iter()
+                .find(|app| app.cask.as_deref() == Some(identity))
+                .unwrap();
+            assert_eq!(app.catalog_token.as_deref(), Some(token));
+            let catalog = crate::catalog::get(
+                &fixture.database,
+                Kind::Cask,
+                app.catalog_token.as_deref().unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                crate::library::display_name(catalog.as_ref(), &app.name, Locale::EnUs),
+                name
+            );
+            assert_eq!(
+                fixture.service.catalog_identity(app, None).unwrap(),
+                (Kind::Cask, token.into())
+            );
+            assert_eq!(app.updater, Some(route));
+            assert_eq!(
+                fixture.service.apps.local_rule(identity).unwrap()["tap"],
+                identity.rsplit_once('/').unwrap().0
+            );
+        }
+        // Opposite flags prove that neither route inherited the other catalog entry's policy.
+        let entries: Vec<_> = ["orca", "stablyai-orca"]
+            .into_iter()
+            .map(|token| {
+                crate::catalog::get(&fixture.database, Kind::Cask, token)
+                    .unwrap()
+                    .unwrap()
+            })
+            .collect();
+        fixture
+            .database
+            .with(|c| {
+                for mut item in entries {
+                    item.auto_updates = !item.auto_updates;
+                    crate::catalog::upsert(c, &item)?;
+                }
+                Ok(())
+            })
+            .unwrap();
+        let apps = fixture.service.apps.list().unwrap();
+        assert_eq!(
+            apps.iter()
+                .find(|a| a.catalog_token.as_deref() == Some("stablyai-orca"))
+                .unwrap()
+                .updater,
+            Some(UpdateSource::Homebrew)
+        );
+        assert_eq!(
+            apps.iter()
+                .find(|a| a.catalog_token.as_deref() == Some("orca"))
+                .unwrap()
+                .updater,
+            Some(source)
+        );
+    }
+}
+
+#[test]
+fn alias_native_ownership_suppresses_only_its_homebrew_update_even_after_restart() {
+    for source in [UpdateSource::Sparkle, UpdateSource::Electron] {
+        let mut fixture = Fixture::alias(source);
+        let merged = fixture.service.merge(fixture.alias_brew()).unwrap();
+        assert_eq!(
+            merged.len(),
+            1,
+            "ownership must survive an empty native check"
+        );
+        assert_eq!(merged[0].token, "orca");
+        fixture.cache_candidate(source);
+        for restart in [false, true] {
+            if restart {
+                fixture.restart();
+            }
+            let merged = fixture.service.merge(fixture.alias_brew()).unwrap();
+            assert_eq!(merged.len(), 2);
+            assert!(
+                merged
+                    .iter()
+                    .any(|i| i.source == source && i.token == "stablyai-orca")
+            );
+            assert!(
+                merged
+                    .iter()
+                    .any(|i| i.source == UpdateSource::Homebrew && i.token == "orca")
+            );
+        }
+        fixture.skip(Some("2.0"));
+        assert_eq!(
+            fixture.service.merge(fixture.alias_brew()).unwrap().len(),
+            1
+        );
+    }
+}
+
+#[test]
+fn alias_awaiting_restart_suppresses_homebrew_after_route_changes_and_restart() {
+    for source in [UpdateSource::Sparkle, UpdateSource::Electron] {
+        let mut fixture = Fixture::alias(source);
+        fixture.pending(source);
+        fixture.running(true);
+        fixture.source_enabled(source, false);
+        for restart in [false, true] {
+            if restart {
+                fixture.restart();
+            }
+            assert_eq!(
+                fixture
+                    .service
+                    .apps
+                    .list()
+                    .unwrap()
+                    .iter()
+                    .find(|a| a.id == fixture.app.id)
+                    .unwrap()
+                    .updater,
+                Some(UpdateSource::Homebrew)
+            );
+            let merged = fixture.service.merge(fixture.alias_brew()).unwrap();
+            assert_eq!(merged.len(), 2);
+            assert!(
+                merged.iter().any(|i| i.source == source
+                    && i.token == "stablyai-orca"
+                    && i.relaunch_pending)
+            );
+            assert!(
+                merged
+                    .iter()
+                    .any(|i| i.source == UpdateSource::Homebrew && i.token == "orca")
+            );
+        }
     }
 }
 

@@ -438,7 +438,7 @@ export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[]
         source: 'homebrew',
         updater: 'homebrew',
         homebrewCask: null,
-        cask: item.token,
+        cask: item.fullToken ?? item.token,
         catalogToken: item.token,
         teamId: null,
         vendor: null,
@@ -733,7 +733,9 @@ export function createUninstallMock({ state, tickMs, permissions, enqueue }: Uni
         const items = [...entry.items.values()].filter(
           item => item.id.startsWith(`${app.id}:`) && (item.required || chosen.has(item.id))
         );
-        const target: TaskTarget = app.cask ? { kind: 'cask', token: app.cask } : { kind: 'app', token: app.id };
+        const target: TaskTarget = app.cask
+          ? { kind: 'cask', token: app.catalogToken ?? app.cask }
+          : { kind: 'app', token: app.id };
         const task = enqueue(
           'uninstall',
           target,
@@ -759,8 +761,7 @@ export function createUninstallMock({ state, tickMs, permissions, enqueue }: Uni
         ? {
             ...execution.app,
             source: 'direct' as const,
-            cask: null,
-            catalogToken: execution.app.cask
+            cask: null
           }
         : execution.app;
       apps = [...apps, back];

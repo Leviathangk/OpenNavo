@@ -52,7 +52,7 @@ pub fn select(
         return Ok(enabled(UpdateSource::Mas).then_some(UpdateSource::Mas));
     }
     let cask = app
-        .cask
+        .catalog_token
         .as_ref()
         .map(|token| crate::catalog::get(db, Kind::Cask, token))
         .transpose()?

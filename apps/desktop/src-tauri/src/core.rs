@@ -393,7 +393,7 @@ impl DesktopCore {
         for current in library.iter_mut() {
             if let Some(item) = items
                 .iter()
-                .find(|i| i.kind == current.kind && i.token == current.token)
+                .find(|i| i.kind == current.kind && i.install_token() == current.install_token())
             {
                 current.size_bytes = item.size_bytes;
                 current.icon_path = item.icon_path.clone();
@@ -427,16 +427,17 @@ impl DesktopCore {
                 )?;
                 let mut cached = core.library.write().map_err(poisoned)?;
                 for current in cached.iter_mut() {
-                    if let Some(item) = scan
-                        .items
-                        .iter()
-                        .find(|i| i.kind == current.kind && i.token == current.token)
-                    {
+                    if let Some(item) = scan.items.iter().find(|i| {
+                        i.kind == current.kind && i.install_token() == current.install_token()
+                    }) {
+                        current.token = item.token.clone();
                         current.name = item.name.clone();
                         current.latest_version = item.latest_version.clone();
                         current.status = item.status;
                     }
                 }
+                core.database
+                    .set_meta("installed_cache", &serde_json::to_string(&*cached)?)?;
             }
             Ok(())
         })
@@ -721,22 +722,29 @@ impl DesktopCore {
                 let library = self.library.read().map_err(poisoned)?;
                 let installed = library
                     .iter()
-                    .find(|i| i.kind == target.kind && i.token == target.token);
+                    .find(|i| i.kind == target.kind && i.matches_token(&target.token));
                 let mut resolved = target.clone();
                 let name = if target.kind == TaskKind::Cask {
-                    installed
-                        .map(|i| {
-                            crate::brew::args::qualified_token(
-                                i.brew_tap().filter(|tap| *tap != "homebrew/cask"),
-                                i.brew_token(),
-                            )
-                        })
-                        .transpose()?
-                        .unwrap_or_else(|| target.token.clone())
+                    if let Some(installed) = installed {
+                        installed.install_token().to_owned()
+                    } else if target.token.contains('/') {
+                        crate::brew::args::split_cask_token(&target.token)?;
+                        target.token.clone()
+                    } else {
+                        let catalog =
+                            crate::catalog::get(&self.database, Kind::Cask, &target.token)?;
+                        let upstream = crate::brew::args::catalog_target(target, catalog.as_ref())?;
+                        crate::brew::args::qualified_token(
+                            catalog.as_ref().and_then(|i| i.tap.as_deref()),
+                            &upstream.token,
+                        )?
+                    }
                 } else {
                     target.token.clone()
                 };
-                if let Some(installed) = installed {
+                if target.kind == TaskKind::Cask {
+                    resolved.token = name.clone();
+                } else if let Some(installed) = installed {
                     resolved.token = installed.brew_token().to_owned();
                 }
                 Ok::<_, AppError>((resolved, name))
@@ -775,13 +783,15 @@ impl DesktopCore {
                 match target.kind.brew_kind()? {
                     Kind::Link => return Err(AppError::new("E_NOT_INSTALLABLE", "link_target")),
                     Kind::Cask => {
-                        info.casks.retain(|i| i.token != target.token);
-                        info.casks.extend(
-                            incoming
-                                .casks
-                                .into_iter()
-                                .filter(|i| i.token == target.token),
-                        );
+                        let (tap, upstream) = crate::brew::args::split_cask_token(&target.token)?;
+                        let matches = |i: &crate::brew::json::Cask| {
+                            i.token == upstream
+                                && i.tap.as_deref().unwrap_or("homebrew/cask")
+                                    == tap.unwrap_or("homebrew/cask")
+                        };
+                        info.casks.retain(|i| !matches(i));
+                        info.casks
+                            .extend(incoming.casks.into_iter().filter(matches));
                     }
                     Kind::Formula => {
                         info.formulae.retain(|i| i.name != target.token);
@@ -926,14 +936,31 @@ impl DesktopCore {
                 .target
                 .as_ref()
                 .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task_target"))?;
+            let catalog = if target.kind == Kind::Cask && !target.token.contains('/') {
+                crate::catalog::get(&self.database, Kind::Cask, &target.token)?
+            } else {
+                None
+            };
+            let upstream = crate::brew::args::catalog_target(target, catalog.as_ref())?;
+            let (tap, token) = if target.kind == Kind::Cask {
+                let (tap, token) = crate::brew::args::split_cask_token(&upstream.token)?;
+                (
+                    tap.or_else(|| catalog.as_ref().and_then(|i| i.tap.as_deref())),
+                    token,
+                )
+            } else {
+                (None, upstream.token.as_str())
+            };
             // With cached artifacts, exclude fonts/pkg Casks without app artifacts; without metadata, approximate using Cask kind.
-            if let Some(cask) = info.casks.iter().find(|cask| cask.token == target.token)
-                && cask.artifacts.as_ref().is_some_and(|artifacts| {
-                    !artifacts
-                        .iter()
-                        .any(|artifact| artifact.get("app").is_some())
-                })
-            {
+            if let Some(cask) = info.casks.iter().find(|cask| {
+                cask.token == token
+                    && cask.tap.as_deref().unwrap_or("homebrew/cask")
+                        == tap.unwrap_or("homebrew/cask")
+            }) && cask.artifacts.as_ref().is_some_and(|artifacts| {
+                !artifacts
+                    .iter()
+                    .any(|artifact| artifact.get("app").is_some())
+            }) {
                 return Ok(());
             }
             PermissionState::Granted
@@ -987,13 +1014,26 @@ impl DesktopCore {
         let core = self.clone();
         crate::blocking(move || {
             let library = core.library.read().map_err(poisoned)?;
-            let local = library.iter().find(|i| {
-                i.kind == kind && (i.token == target.token || i.brew_token() == target.token)
-            });
-            let source_token = local
-                .map(|i| i.brew_token())
+            let local = library
+                .iter()
+                .find(|i| i.kind == kind && i.matches_token(&target.token));
+            let source_identity = local
+                .map(|i| {
+                    if kind == Kind::Cask {
+                        i.install_token()
+                    } else {
+                        i.brew_token()
+                    }
+                })
                 .unwrap_or(&target.token)
                 .to_owned();
+            let ambiguous = local.is_some_and(|local| {
+                library
+                    .iter()
+                    .filter(|other| other.kind == kind && other.brew_token() == local.brew_token())
+                    .count()
+                    > 1
+            });
             let site_token = local
                 .map(|i| i.token.as_str())
                 .unwrap_or(&target.token)
@@ -1006,7 +1046,24 @@ impl DesktopCore {
                 Kind::Formula => &mut source.formulae,
                 Kind::Link => return Ok(()),
             };
-            let Some(index) = entries.iter().position(|entry| entry.name == source_token) else {
+            let Some(index) = entries.iter().position(|entry| {
+                if kind != Kind::Cask {
+                    return entry.name == source_identity;
+                }
+                let Ok((tap, upstream)) = crate::brew::args::split_cask_token(&entry.name) else {
+                    return false;
+                };
+                let Ok((source_tap, source_token)) =
+                    crate::brew::args::split_cask_token(&source_identity)
+                else {
+                    return false;
+                };
+                upstream == source_token
+                    && match tap {
+                        Some(tap) => Some(tap) == source_tap,
+                        None => !ambiguous,
+                    }
+            }) else {
                 return Ok(());
             };
             match pinned {
@@ -1145,7 +1202,7 @@ mod alias_tests {
         use std::os::unix::fs::PermissionsExt;
         for (tap, site_token, read_token) in [
             ("stablyai/orca", "stablyai-orca", "stablyai/orca/orca"),
-            ("homebrew/cask", "orca", "orca"),
+            ("homebrew/cask", "orca", "homebrew/cask/orca"),
         ] {
             let temp = tempfile::tempdir().unwrap();
             let core = DesktopCore::open(
@@ -1171,7 +1228,15 @@ mod alias_tests {
                 })
                 .unwrap();
             let raw = serde_json::json!({"casks": [{"token": "orca", "tap": tap, "version": "1", "installed": "1", "artifacts": []}]}).to_string();
-            let info = serde_json::from_str(&raw).unwrap();
+            let mut info: Info = serde_json::from_str(&raw).unwrap();
+            let (other_tap, other_token) = if tap == "stablyai/orca" {
+                ("homebrew/cask", "orca")
+            } else {
+                ("stablyai/orca", "stablyai-orca")
+            };
+            let mut other = info.casks[0].clone();
+            other.tap = Some(other_tap.into());
+            info.casks.push(other);
             *core.library.write().unwrap() = library::scan(
                 &core.database,
                 &info,
@@ -1196,13 +1261,25 @@ mod alias_tests {
                 .refresh_library(LibraryChangeReason::Task, Some(&target))
                 .await
                 .unwrap();
-            assert_eq!(refreshed.len(), 1);
-            assert_eq!(refreshed[0].token, site_token);
-            assert_eq!(refreshed[0].full_token, Some(format!("{tap}/orca")));
-            let source: crate::updates::Outdated = serde_json::from_value(
-                serde_json::json!({"casks": [{"name": "orca", "current_version": "2"}]}),
-            )
-            .unwrap();
+            assert_eq!(refreshed.len(), 2);
+            let refreshed = refreshed
+                .iter()
+                .find(|item| item.token == site_token)
+                .unwrap();
+            assert_eq!(refreshed.full_token, Some(format!("{tap}/orca")));
+            assert!(
+                core.library
+                    .read()
+                    .unwrap()
+                    .iter()
+                    .any(|item| item.token == other_token)
+            );
+            let source: crate::updates::Outdated =
+                serde_json::from_value(serde_json::json!({"casks": [
+                    {"name": format!("{tap}/orca"), "current_version": "2"},
+                    {"name": format!("{other_tap}/orca"), "current_version": "2"}
+                ]}))
+                .unwrap();
             let mut task = core
                 .queue
                 .enqueue(
@@ -1224,17 +1301,23 @@ mod alias_tests {
                     1,
                 )
                 .unwrap();
-                assert_eq!(updates[0].token, site_token);
+                assert_eq!(updates.len(), 2);
+                assert!(updates.iter().any(|item| item.token == site_token));
                 *core.updates.write().unwrap() = updates;
                 task.op = op;
                 task.target.as_mut().unwrap().token = if op == TaskOp::Uninstall {
-                    "orca"
+                    read_token
                 } else {
                     site_token
                 }
                 .into();
                 core.settle_updates(&task).await.unwrap();
-                assert!(core.rebuild_updates().await.unwrap().is_empty());
+                let source = core.outdated_source.read().unwrap();
+                assert_eq!(source.casks.len(), 1);
+                assert_eq!(source.casks[0].name, format!("{other_tap}/orca"));
+                let updates = core.updates.read().unwrap();
+                assert_eq!(updates.len(), 1);
+                assert_eq!(updates[0].token, other_token);
             }
         }
     }

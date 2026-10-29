@@ -279,6 +279,15 @@ pub struct InstalledItem {
 }
 
 impl InstalledItem {
+    pub fn install_token(&self) -> &str {
+        self.full_token.as_deref().unwrap_or(&self.token)
+    }
+
+    /// Task targets may carry the catalog alias or a complete installed identity.
+    pub fn matches_token(&self, token: &str) -> bool {
+        self.token == token || self.install_token() == token
+    }
+
     pub fn brew_token(&self) -> &str {
         self.full_token
             .as_deref()

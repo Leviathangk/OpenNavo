@@ -48,6 +48,24 @@ pub fn qualified_token(tap: Option<&str>, token: &str) -> Result<String, AppErro
     }
 }
 
+/// Split a local Homebrew installation identity, including Homebrew's own tap.
+/// Catalog tokens and catalog-supplied taps keep their stricter validators.
+pub fn split_cask_token(identity: &str) -> Result<(Option<&str>, &str), AppError> {
+    match identity.rsplit_once('/') {
+        Some((tap, token)) => {
+            validate_token(token)?;
+            if tap != "homebrew/cask" {
+                validate_tap(tap)?;
+            }
+            Ok((Some(tap), token))
+        }
+        None => {
+            validate_token(identity)?;
+            Ok((None, identity))
+        }
+    }
+}
+
 /// Resolve a catalog site alias for brew while keeping the task/navigation identity intact.
 pub fn catalog_target(
     target: &TaskTarget,
@@ -171,12 +189,10 @@ pub enum ReadOp {
 pub fn read_args(op: ReadOp, token: Option<&str>) -> Result<Vec<String>, AppError> {
     if let ReadOp::Info(kind) = op {
         let token = token.ok_or_else(|| AppError::new("E_INVALID_ARG", "token"))?;
-        match token.rsplit_once('/') {
-            // Install preflight reads third-party casks by their qualified name.
-            Some((tap, name)) if kind == Kind::Cask => {
-                qualified_token(Some(tap), name)?;
-            }
-            _ => validate_token(token)?,
+        if kind == Kind::Cask {
+            split_cask_token(token)?;
+        } else {
+            validate_token(token)?;
         }
         return Ok(vec![
             "info".into(),
@@ -354,7 +370,7 @@ mod tests {
             write_args_in_tap(TaskOp::Reinstall, Some(&target), &none, tap).expect("args"),
             ["reinstall", "--cask", "swiftvm-app/tap/swiftvm"]
         );
-        // The Caskroom keys installed casks by token, so removal never names the tap.
+        // Generic arguments qualify installs and upgrades; planned removals use their verified installed identity.
         assert_eq!(
             write_args_in_tap(TaskOp::Uninstall, Some(&target), &none, tap).expect("args"),
             ["uninstall", "--cask", "swiftvm"]
@@ -375,7 +391,11 @@ mod tests {
             read_args(ReadOp::Info(Kind::Cask), Some("swiftvm-app/tap/swiftvm")).expect("args"),
             ["info", "--json=v2", "--cask", "swiftvm-app/tap/swiftvm"]
         );
-        for bad in ["a/b", "x/y/--help", "homebrew/cask/firefox", "a/b/c/d"] {
+        assert_eq!(
+            read_args(ReadOp::Info(Kind::Cask), Some("homebrew/cask/firefox")).expect("args"),
+            ["info", "--json=v2", "--cask", "homebrew/cask/firefox"]
+        );
+        for bad in ["a/b", "x/y/--help", "homebrew/core/firefox", "a/b/c/d"] {
             assert!(
                 read_args(ReadOp::Info(Kind::Cask), Some(bad)).is_err(),
                 "{bad}"

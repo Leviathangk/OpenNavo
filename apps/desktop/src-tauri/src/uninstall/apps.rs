@@ -247,7 +247,9 @@ impl Engine {
                         .unwrap_or_else(|| self.roots.home.join("Caskroom"))
                         .join(token)
                 });
-            casks.insert(token.to_owned(), (path, Some(item.clone())));
+            // Caskroom directories use the short token; ownership keeps the tap.
+            casks.remove(token);
+            casks.insert(item.install_token().to_owned(), (path, Some(item.clone())));
         }
         // Read each installed cask's rule once per enumeration instead of once per app and cask.
         let rules = self.installed_rules();
@@ -440,7 +442,10 @@ impl Engine {
                 seen_casks.insert(t.clone());
             }
             // A file-name match alone is insufficient: confirm bundle identity from locally cached cask metadata.
-            let catalog_token = if token.is_none() {
+            let catalog_token = if let Some(token) = &token {
+                let (tap, upstream) = crate::brew::args::split_cask_token(token)?;
+                crate::catalog::get_brew_cask(&self.database, upstream, tap)?.map(|item| item.token)
+            } else {
                 path.file_name()
                     .and_then(|file| catalog.by_file.get(file))
                     .into_iter()
@@ -452,8 +457,6 @@ impl Engine {
                             })
                             .map(|_| candidate.clone())
                     })
-            } else {
-                None
             };
             let name = identity.name.clone().unwrap_or_else(|| {
                 path.file_stem()
@@ -526,6 +529,9 @@ impl Engine {
         }
         for (token, (path, installed)) in casks {
             if !seen_casks.contains(&token) {
+                let (tap, upstream) = crate::brew::args::split_cask_token(&token)?;
+                let catalog_token = crate::catalog::get_brew_cask(&self.database, upstream, tap)?
+                    .map(|item| item.token);
                 let id = stable_id(&path);
                 let key = BundleKey::read(&path);
                 let size_bytes = key.as_ref().and_then(|key| {
@@ -551,7 +557,7 @@ impl Engine {
                     updater: None,
                     homebrew_cask: None,
                     cask: Some(token),
-                    catalog_token: None,
+                    catalog_token,
                     team_id: None,
                     vendor: None,
                     arch: None,

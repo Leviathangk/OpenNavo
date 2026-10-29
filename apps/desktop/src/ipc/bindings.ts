@@ -1256,7 +1256,9 @@ export type LocalApp = {
 	source: AppSource,
 	updater: UpdateSource | null,
 	homebrewCask: string | null,
+	/**  Installed Homebrew full_token; never use this for catalog navigation. */
 	cask: string | null,
+	/**  Verified site listing, independent of the installed Homebrew identity. */
 	catalogToken: string | null,
 	teamId: string | null,
 	vendor: string | null,

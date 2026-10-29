@@ -527,7 +527,7 @@ impl TaskQueue {
                 .unwrap_or_default();
             let installed = cached
                 .iter()
-                .find(|i| i.kind == target.kind && i.token == target.token);
+                .find(|i| i.kind == target.kind && i.matches_token(&target.token));
             task.from_version = installed.map(|i| {
                 i.actual_version
                     .clone()

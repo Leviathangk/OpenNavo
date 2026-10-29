@@ -66,23 +66,41 @@ pub fn build(
     let mut identities = std::collections::HashSet::new();
     for (kind, entries) in [(Kind::Cask, &data.casks), (Kind::Formula, &data.formulae)] {
         for entry in entries {
-            crate::brew::args::validate_token(&entry.name)?;
-            if !identities.insert((kind, entry.name.as_str())) {
+            let (tap, upstream) = if kind == Kind::Cask {
+                crate::brew::args::split_cask_token(&entry.name)?
+            } else {
+                crate::brew::args::validate_token(&entry.name)?;
+                (None, entry.name.as_str())
+            };
+            let mut matching = library.iter_mut().filter(|i| {
+                i.kind == kind
+                    && i.brew_token() == upstream
+                    && tap.is_none_or(|tap| i.brew_tap() == Some(tap))
+            });
+            let mut local = matching.next();
+            // A short outdated name cannot distinguish two installed taps. Await
+            // an unambiguous Homebrew record instead of updating the wrong app.
+            if matching.next().is_some() {
                 continue;
             }
-            let mut local = library
-                .iter_mut()
-                .find(|i| i.kind == kind && i.brew_token() == entry.name);
+            let identity = local
+                .as_ref()
+                .map(|i| i.install_token())
+                .unwrap_or(&entry.name);
+            if !identities.insert((kind, identity.to_owned())) {
+                continue;
+            }
             let catalog = if kind == Kind::Cask {
-                let tap = local.as_ref().and_then(|i| i.brew_tap());
-                crate::catalog::get_brew_cask(database, &entry.name, tap)?
+                let tap = local.as_ref().and_then(|i| i.brew_tap()).or(tap);
+                crate::catalog::get_brew_cask(database, upstream, tap)?
             } else {
                 crate::catalog::get(database, kind, &entry.name)?
             };
             let token = local
                 .as_ref()
                 .map(|i| i.token.as_str())
-                .unwrap_or(&entry.name);
+                .or_else(|| catalog.as_ref().map(|i| i.token.as_str()))
+                .unwrap_or(upstream);
             if ignored(database, kind, token, &entry.current_version, now)? {
                 continue;
             }

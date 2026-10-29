@@ -41,6 +41,11 @@ export function localAppIcon(app: LocalApp | undefined): string | null {
   return app?.iconPath && isTauri() ? convertFileSrc(app.iconPath) : null;
 }
 
+/** Cask task targets carry a site alias or the complete Homebrew installation identity. */
+export function matchesCask(app: LocalApp, token: string): boolean {
+  return Boolean((app.cask || app.source === 'homebrew') && (app.cask === token || app.catalogToken === token));
+}
+
 /** Every app on this Mac (Installed, uninstall): local_apps_list returns the cache immediately; reread on local-apps:changed. */
 export const useLocalAppsStore = defineStore('localApps', () => {
   const items = ref<LocalApp[]>([]);
@@ -63,7 +68,8 @@ export const useLocalAppsStore = defineStore('localApps', () => {
   const adoptions = new Map<string, { cask: string; at: number; signal: number }>();
   const adopted = (app: LocalApp): LocalApp => {
     const adoption = adoptions.get(app.id);
-    return adoption ? { ...app, cask: adoption.cask, source: 'homebrew' } : app;
+    // The alias is known now; the full Homebrew identity arrives with the inventory reread.
+    return adoption ? { ...app, catalogToken: adoption.cask, homebrewCask: null, source: 'homebrew' } : app;
   };
   const occupiedBytes = (id: string): number | null => {
     const value = footprints.value[id];
@@ -137,7 +143,18 @@ export const useLocalAppsStore = defineStore('localApps', () => {
   }
 
   const byId = computed(() => new Map(items.value.map(app => [app.id, app])));
-  const byCask = computed(() => new Map(items.value.flatMap(app => (app.cask ? [[app.cask, app] as const] : []))));
+  const byCask = computed(
+    () =>
+      new Map(
+        items.value.flatMap(app =>
+          app.cask || app.source === 'homebrew'
+            ? [app.cask, app.catalogToken]
+                .filter((token): token is string => Boolean(token))
+                .map(token => [token, app] as const)
+            : []
+        )
+      )
+  );
   const find = (id: string) => byId.value.get(id);
   const findCask = (token: string) => byCask.value.get(token);
 
@@ -150,7 +167,7 @@ export const useLocalAppsStore = defineStore('localApps', () => {
     for (const [id, removal] of removals) if (!listed.has(id) || settled(removal)) removals.delete(id);
     for (const [id, adoption] of adoptions) {
       const app = listed.get(id);
-      if (!app || app.cask === adoption.cask || settled(adoption)) adoptions.delete(id);
+      if (!app || matchesCask(app, adoption.cask) || settled(adoption)) adoptions.delete(id);
     }
     const list = result.filter(app => !removals.has(app.id)).map(adopted);
     items.value = list;
@@ -176,7 +193,9 @@ export const useLocalAppsStore = defineStore('localApps', () => {
       return;
     }
     if (task.op !== 'uninstall') return;
-    const gone = items.value.filter(app => (kind === 'app' ? app.id === token : kind === 'cask' && app.cask === token));
+    const gone = items.value.filter(app =>
+      kind === 'app' ? app.id === token : kind === 'cask' && matchesCask(app, token)
+    );
     if (!gone.length) return;
     for (const app of gone) removals.set(app.id, { at, signal });
     items.value = items.value.filter(app => !removals.has(app.id));
