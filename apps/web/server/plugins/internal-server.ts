@@ -45,7 +45,7 @@ export default defineNitroPlugin(nitroApp => {
     event.context.releaseInternalHTTP?.();
   });
   const config = useRuntimeConfig();
-  const probePages = createPageProbe(config.probeConcurrency);
+  const probePages = createPageProbe(config.probeConcurrency, config.probeMaxRetryAfterSeconds);
   const port = Number(config.metricsPort);
   if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
   const activeHTTP = new InFlightCounter();

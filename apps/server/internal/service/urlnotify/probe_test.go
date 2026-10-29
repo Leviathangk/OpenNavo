@@ -14,12 +14,16 @@ import (
 
 func TestProbeRetryDelay(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	require.Equal(t, 120*time.Second, probeRetryDelay("120", 0, now))
-	require.Equal(t, 120*time.Second, probeRetryDelay(now.Add(120*time.Second).Format(http.TimeFormat), 0, now))
-	require.Equal(t, 100*time.Millisecond, probeRetryDelay("0", 0, now))
+	require.Equal(t, 120*time.Second, probeRetryDelay("120", 0, now, 0))
+	require.Equal(t, 120*time.Second, probeRetryDelay(now.Add(120*time.Second).Format(http.TimeFormat), 0, now, 0))
+	require.Equal(t, 100*time.Millisecond, probeRetryDelay("0", 0, now, 0))
+	for _, header := range []string{"2147483647", "Fri, 31 Dec 9999 23:59:59 GMT"} {
+		require.Equal(t, 15*time.Minute, probeRetryDelay(header, 0, now, 0))
+		require.Equal(t, 45*time.Second, probeRetryDelay(header, 0, now, 45*time.Second))
+	}
 	for attempt := range 3 {
-		for _, header := range []string{"", "invalid", "-1", now.Add(-time.Hour).Format(http.TimeFormat)} {
-			delay := probeRetryDelay(header, attempt, now)
+		for _, header := range []string{"", "invalid", "-1", "-0", "+1", "-9999", "9999999999", now.Add(-time.Hour).Format(http.TimeFormat)} {
+			delay := probeRetryDelay(header, attempt, now, 0)
 			base := 500 * time.Millisecond * time.Duration(1<<attempt)
 			require.GreaterOrEqual(t, delay, base)
 			require.Less(t, delay, 2*base)
@@ -39,6 +43,8 @@ func TestPublicProbeBoundedRetries(t *testing.T) {
 		{"exhausted", []int{503}, "", 3, 0},
 		{"long wait", []int{429}, "120", 1, 0},
 		{"date wait", []int{503}, "Thu, 01 Jan 2026 00:02:00 GMT", 1, 0},
+		{"huge wait", []int{429}, "2147483647", 1, 0},
+		{"far future date", []int{503}, "Fri, 31 Dec 9999 23:59:59 GMT", 1, 0},
 		{"missing", []int{404}, "", 1, 404},
 		{"gone", []int{410}, "", 1, 410},
 		{"other error", []int{500}, "", 1, 500},
@@ -69,6 +75,7 @@ func TestPublicProbeBoundedRetries(t *testing.T) {
 				var wait *probeWait
 				require.ErrorAs(t, err, &wait)
 				require.True(t, wait.until.After(now))
+				require.LessOrEqual(t, wait.until.Sub(now), 15*time.Minute)
 				return
 			}
 			require.NoError(t, err)

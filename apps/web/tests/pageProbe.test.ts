@@ -31,7 +31,34 @@ describe('bounded internal page probes', () => {
     expect(probeRetryDelay('invalid', 1, now, 0.5)).toBe(1500);
     expect(probeRetryDelay('9'.repeat(4000), 0, now, 0.5)).toBe(750);
     expect(probeRetryDelay('0', 0, now, 0)).toBe(100);
+    for (const header of ['-1', '-9999', '+9999', '9999999999', 'Thu, 01 Jan 2026 00:00:00 GMT']) {
+      expect(probeRetryDelay(header, 0, now, 0.5)).toBe(750);
+    }
+    for (const header of ['2147483647', 'Fri, 31 Dec 9999 23:59:59 GMT']) {
+      expect(probeRetryDelay(header, 0, now, 0)).toBe(15 * 60_000);
+      expect(probeRetryDelay(header, 0, now, 0, 45_000)).toBe(45_000);
+    }
   });
+
+  it.each(['2147483647', 'Fri, 31 Dec 9999 23:59:59 GMT'])(
+    'caps Retry-After %s across batches and resumes after the bounded cooldown',
+    async header => {
+      for (const configured of [undefined, 45, '60', 0, -1, 'invalid', Infinity]) {
+        const seconds = configured === 45 ? 45 : configured === '60' ? 60 : 900;
+        const time = clock();
+        const fetch = vi.fn(async () => response(503, header));
+        const probe = createPageProbe(1, configured);
+        const first = await probe(['/recent'], fetch, time);
+        expect(first.temporaryFailures['/recent']).toEqual({ retryAfterSeconds: seconds });
+        const waiting = await probe(['/ja/recent'], fetch, time);
+        expect(waiting.temporaryFailures['/ja/recent']).toEqual({ retryAfterSeconds: seconds });
+        expect(fetch).toHaveBeenCalledTimes(1);
+        time.advance(seconds * 1000);
+        const recovered = await probe(['/recent'], async () => response(200), time);
+        expect(recovered.statuses['/recent']).toBe(200);
+      }
+    }
+  );
 
   it('retries 429/503, releases response bodies and recovers without marking a page missing', async () => {
     const time = clock();
@@ -156,4 +183,45 @@ describe('bounded internal page probes', () => {
       expect((await probe(['/recent'], async () => response(200))).statuses['/recent']).toBe(200);
     }
   });
+
+  it.each(['resolve', 'reject'])(
+    'holds capacity after timeout until an uncancellable request settles by %s',
+    async settlement => {
+      vi.useFakeTimers();
+      try {
+        const probe = createPageProbe(2);
+        const settlers: Array<() => void> = [];
+        const cancel = vi.fn(async () => {});
+        const success = { ...response(200), body: { cancel } as unknown as ReadableStream };
+        const fetch = vi.fn(
+          async () =>
+            new Promise<typeof success>((resolve, reject) => {
+              const shouldReject = settlement === 'reject' && settlers.length < 2;
+              settlers.push(() => (shouldReject ? reject(new Error('late failure')) : resolve(success)));
+            })
+        );
+        const runs = [probe(['/one'], fetch), probe(['/two'], fetch)];
+        await vi.advanceTimersByTimeAsync(PROBE_BUDGET_MS);
+        expect((await Promise.all(runs)).map(result => Object.values(result.statuses))).toEqual([[503], [503]]);
+        const extra = vi.fn(async () => response(200));
+        await expect(probe(['/extra'], extra)).rejects.toBeInstanceOf(ProbeBusyError);
+        expect(extra).not.toHaveBeenCalled();
+        settlers[0]();
+        await vi.advanceTimersByTimeAsync(0);
+        // Retain the second hung request while admitting one replacement.
+        await vi.advanceTimersByTimeAsync(2000);
+        const replacement = probe(['/replacement'], fetch);
+        expect(fetch).toHaveBeenCalledTimes(3);
+        await expect(probe(['/extra'], extra)).rejects.toBeInstanceOf(ProbeBusyError);
+        settlers[1]();
+        settlers[2]();
+        await replacement;
+        expect((await probe(['/extra'], extra)).statuses['/extra']).toBe(200);
+        expect(cancel).toHaveBeenCalledTimes(settlement === 'resolve' ? 3 : 1);
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
 });

@@ -34,9 +34,11 @@ successful page instead of replacing it with an error.
   defaults to two seconds (previously one); zero selects the default, with
   positive overrides up to five seconds. A page gets at most three HTTP
   attempts within ten seconds, including pacing. 429 and every 503 honor
-  `Retry-After` seconds or HTTP dates; absent/invalid headers use exponential
-  backoff with jitter. A delay beyond the budget is persisted, never shortened
-  to fit. Exhaustion and transport failures defer the existing outbox row
+  `Retry-After` seconds or HTTP dates up to `INDEXNOW_PROBE_MAX_RETRY_AFTER`
+  (default `15m`; zero selects the default); absent, invalid or negative headers
+  use exponential backoff with jitter. The capped delay is persisted when it
+  exceeds the run budget. Exhaustion and transport failures defer the existing
+  outbox row
   without spending delivery attempts or declaring the page removed. The
   existing durable exponential cooldown survives worker restarts.
 - The internal `/cache/probe` endpoint shares one active batch per web process
@@ -45,11 +47,15 @@ successful page instead of replacing it with an error.
   and ten seconds across the whole batch. It returns `temporaryFailures` with
   retry delays alongside HTTP statuses. A single process-wide cooldown also
   prevents later batches from ignoring a long `Retry-After`, without retaining
-  per-URL state. Capacity refusals are uncached 503s.
+  per-URL state. `NUXT_PROBE_MAX_RETRY_AFTER_SECONDS` caps server-provided
+  cooldowns at 900 seconds by default. Capacity refusals are uncached 503s.
+  Timed-out local requests retain their concurrency slot until the underlying
+  request settles, even though the endpoint returns the timeout result early.
 - The optional Prometheus HTTP exporter changes from four workers to one.
   Its local JSON accepts `"probe": {"concurrency": 1, "maxAttempts": 3,
-  "budgetSeconds": 12}`. Concurrency is bounded to 1–4, attempts to 1–3 and
-  the entire scrape to 1–12 seconds, below its documented 15-second timeout.
+  "budgetSeconds": 12, "maxRetryAfterSeconds": 900}`. Concurrency is bounded to
+  1–4, attempts to 1–3 and the entire scrape to 1–12 seconds, below its documented
+  15-second timeout. Server-provided cooldowns default to a 15-minute cap.
   Per-target cooldown slots are bounded by the eight configured targets and
   retained across scrapes. Long waits skip HTTP requests on subsequent scrapes.
   `temporary_failure` and `retry_after_seconds` metrics distinguish deferred

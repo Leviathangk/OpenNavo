@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,6 +16,48 @@ import (
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestProbeRetryAfterCapIsPersisted(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	for _, status := range []int{429, 503, 500} {
+		for _, header := range []string{"2147483647", "Fri, 31 Dec 9999 23:59:59 GMT"} {
+			for _, configured := range []time.Duration{0, 45 * time.Second} {
+				t.Run(fmt.Sprintf("%d/%s/%s", status, header, configured), func(t *testing.T) {
+					require.NoError(t, st.DB.Exec("UPDATE url_notify_state SET probe_ready_at=NULL,probe_failures=0").Error)
+					now := time.Now().UTC().Truncate(time.Microsecond)
+					var requests atomic.Int32
+					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						if requests.Add(1) == 1 {
+							w.Header().Set("Retry-After", header)
+							w.WriteHeader(status)
+						}
+					}))
+					defer server.Close()
+					makeNotifier := func() *Notifier {
+						return &Notifier{Store: st, Config: config.Config{WebBaseURL: server.URL, IndexNowProbeMaxRetryAfter: configured}, HTTP: server.Client(), Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
+					}
+					row := store.URLNotificationRow{}
+					row.URL, row.Announce = server.URL+"/apps/example", true
+					require.Error(t, makeNotifier().probeNotification(ctx, row))
+					due, err := st.URLProbeReadyAt(ctx)
+					require.NoError(t, err)
+					cap := configured
+					if cap == 0 {
+						cap = 15 * time.Minute
+					}
+					require.Equal(t, now.Add(cap), due.UTC())
+					var wait *probeWait
+					require.ErrorAs(t, makeNotifier().probeNotification(ctx, row), &wait)
+					require.Equal(t, int32(1), requests.Load(), "a new notifier must honor the persisted cooldown")
+					now = due
+					require.NoError(t, makeNotifier().probeNotification(ctx, row))
+					require.Equal(t, int32(2), requests.Load(), "probing resumes when the cap expires")
+				})
+			}
+		}
+	}
+}
 
 func TestProbePacingAndDurableCooldown(t *testing.T) {
 	st := testutil.NewFactsStore(t)

@@ -102,6 +102,8 @@ export default defineNuxtConfig({
     internalSecret: '',
     // NUXT_PROBE_CONCURRENCY limits all internal warmup callers together.
     probeConcurrency: 1,
+    // NUXT_PROBE_MAX_RETRY_AFTER_SECONDS caps server-provided cooldowns.
+    probeMaxRetryAfterSeconds: 15 * 60,
     redisUrl: '',
     // Separate Redis process: database numbers do not isolate eviction or memory.
     imageRedisUrl: '',

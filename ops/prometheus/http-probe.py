@@ -10,6 +10,8 @@ import time
 from email.utils import parsedate_to_datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+DEFAULT_MAX_RETRY_AFTER_SECONDS = 15 * 60
+
 
 class ProbePolicy:
     def __init__(self, config=None):
@@ -17,22 +19,25 @@ class ProbePolicy:
         self.concurrency = config.get('concurrency', 1)
         self.attempts = config.get('maxAttempts', 3)
         self.budget = config.get('budgetSeconds', 12)
+        self.max_retry_after = config.get('maxRetryAfterSeconds', DEFAULT_MAX_RETRY_AFTER_SECONDS)
         if (type(self.concurrency) is not int or not 1 <= self.concurrency <= 4
                 or type(self.attempts) is not int or not 1 <= self.attempts <= 3
                 or type(self.budget) not in (int, float) or not math.isfinite(self.budget)
-                or not 1 <= self.budget <= 12):
+                or not 1 <= self.budget <= 12
+                or type(self.max_retry_after) not in (int, float) or not math.isfinite(self.max_retry_after)
+                or self.max_retry_after <= 0):
             raise ValueError('invalid bounded probe policy')
 
 
-def retry_delay(header, failures):
+def retry_delay(header, failures, max_retry_after=DEFAULT_MAX_RETRY_AFTER_SECONDS):
     if header and len(header.strip()) <= 10 and header.strip().isascii() and header.strip().isdigit():
         seconds = int(header)
         if seconds <= 2147483647:
-            return max(0.1, seconds)
+            return min(max_retry_after, max(0.1, seconds))
     try:
         due = parsedate_to_datetime(header).timestamp() - time.time()
         if due > 0:
-            return due
+            return min(max_retry_after, due)
     except (TypeError, ValueError, OverflowError):
         pass
     base = min(60, 2 ** min(failures, 6))
@@ -79,7 +84,7 @@ def probe(target, policy=None, state=None, deadline=None):
             state.update(failures=0, due=0)
             break
         failures = min(state.get('failures', 0) + 1, 7)
-        delay = retry_delay(retry_after, failures)
+        delay = retry_delay(retry_after, failures, policy.max_retry_after)
         state.update(failures=failures, due=time.monotonic() + delay)
         if attempt + 1 == policy.attempts or state['due'] >= deadline:
             break

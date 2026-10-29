@@ -13,6 +13,7 @@ import (
 
 const probeBudget = 10 * time.Second
 const probeMaxAttempts = 3
+const defaultProbeMaxRetryAfter = 15 * time.Minute
 
 func maxProbeTime(a, b time.Time) time.Time {
 	if a.After(b) {
@@ -42,13 +43,17 @@ func (n *Notifier) probePause(ctx context.Context, delay time.Duration) error {
 	}
 }
 
-// Retry-After is a lower bound. Long waits go back to the durable outbox instead of blocking a run.
-func probeRetryDelay(header string, attempt int, now time.Time) time.Duration {
-	if seconds, err := strconv.ParseInt(strings.TrimSpace(header), 10, 32); err == nil && seconds >= 0 {
-		return max(100*time.Millisecond, time.Duration(seconds)*time.Second)
+// Honor Retry-After up to the configured cap. Long waits go back to the durable outbox.
+func probeRetryDelay(header string, attempt int, now time.Time, maxRetryAfter time.Duration) time.Duration {
+	if maxRetryAfter <= 0 {
+		maxRetryAfter = defaultProbeMaxRetryAfter
+	}
+	header = strings.TrimSpace(header)
+	if seconds, err := strconv.ParseUint(header, 10, 31); err == nil {
+		return min(maxRetryAfter, max(100*time.Millisecond, time.Duration(seconds)*time.Second))
 	}
 	if due, err := http.ParseTime(header); err == nil && due.After(now) {
-		return due.Sub(now)
+		return min(maxRetryAfter, due.Sub(now))
 	}
 	base := 500 * time.Millisecond * time.Duration(1<<min(attempt, 6))
 	return base + time.Duration(rand.Int64N(int64(base))) // #nosec G404 -- Retry jitter is not a security decision.
@@ -96,7 +101,7 @@ func (n *Notifier) probeHTTP(ctx context.Context, rawURL string) (*http.Response
 			response.Body = &probeBody{ReadCloser: response.Body, cancel: cancel}
 			return response, nil
 		}
-		delay := max(interval, probeRetryDelay(response.Header.Get("Retry-After"), attempt, n.Now()))
+		delay := max(interval, probeRetryDelay(response.Header.Get("Retry-After"), attempt, n.Now(), n.Config.IndexNowProbeMaxRetryAfter))
 		_ = response.Body.Close()
 		if attempt+1 == probeMaxAttempts || !n.Now().Add(delay).Before(deadline) || ctx.Err() != nil {
 			cancel()

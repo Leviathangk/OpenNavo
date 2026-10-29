@@ -11,7 +11,7 @@ Create `/opt/opennavo-monitoring/probes.json` outside the repository:
 {
   "listen": "<monitoring Docker bridge gateway>",
   "port": 19192,
-  "probe": {"concurrency": 1, "maxAttempts": 3, "budgetSeconds": 12},
+  "probe": {"concurrency": 1, "maxAttempts": 3, "budgetSeconds": 12, "maxRetryAfterSeconds": 900},
   "targets": [
     {"service": "web", "layer": "origin", "url": "https://example.org/", "resolve": "example.org:443:127.0.0.1"},
     {"service": "web", "layer": "edge", "url": "https://example.org/"}
@@ -27,8 +27,10 @@ These are availability checks, not full functional/database checks.
 
 The default concurrency is one. Retries for 429/503 and transport failures share
 a twelve-second scrape budget and never exceed three attempts per target.
-`Retry-After` seconds/dates take precedence over exponential backoff with jitter;
-long cooldowns persist across scrapes in at most eight target slots. Deferred
+`Retry-After` seconds/dates take precedence over exponential backoff with jitter,
+up to `maxRetryAfterSeconds` (default 900 seconds, or 15 minutes). Invalid or
+negative headers use the default backoff. Capped cooldowns persist across
+scrapes in at most eight target slots. Deferred
 checks export `temporary_failure=1` and `retry_after_seconds` while `success=0`
 keeps the existing availability alert active. See [the cache and probe policy](../hot-path-cache.md)
 for limits and the slow-target coverage tradeoff.

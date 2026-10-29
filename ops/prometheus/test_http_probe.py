@@ -57,9 +57,31 @@ class ProbeTest(unittest.TestCase):
 
     def test_invalid_retry_after_falls_back_to_bounded_jitter(self):
         with patch.object(module.random, 'uniform', return_value=0.5):
-            for header in [None, 'invalid', '-1', '9' * 4000, '9999999999', '\u00b2']:
+            for header in [None, 'invalid', '-1', '-9999', '9' * 4000, '9999999999', '\u00b2',
+                           formatdate(time.time() - 120, usegmt=True)]:
                 with self.subTest(header_length=len(header or '')):
                     self.assertEqual(module.retry_delay(header, 2), 4.5)
+
+    def test_retry_after_cap_bounds_cooldown_and_allows_recovery(self):
+        target = dict(service='web', layer='origin', url='https://example.org/')
+        for header in ['2147483647', 'Fri, 31 Dec 9999 23:59:59 GMT']:
+            for configured in [None, 45]:
+                with self.subTest(header=header, configured=configured), patch.object(module.subprocess, 'run') as run:
+                    policy = module.ProbePolicy({} if configured is None else {'maxRetryAfterSeconds': configured})
+                    cap = configured or 900
+                    self.assertEqual(module.retry_delay(header, 2, policy.max_retry_after), cap)
+                    state = {}
+                    run.return_value = subprocess.CompletedProcess([], 0, stdout=f'HTTP/1.1 503 Busy\r\nRetry-After: {header}\r\n\r\n503 0.1')
+                    result = module.probe(target, policy=policy, state=state)
+                    self.assertEqual(state['due'], self.now + cap)
+                    self.assertIn(f'retry_after_seconds{{service="web",layer="origin"}} {float(cap)}', result)
+                    module.probe(target, policy=policy, state=state)
+                    self.assertEqual(run.call_count, 1)
+                    self.advance(cap)
+                    run.return_value = subprocess.CompletedProcess([], 0, stdout='200 0.1')
+                    self.assertIn('success{service="web",layer="origin"} 1', module.probe(target, policy=policy, state=state))
+                    self.assertEqual(run.call_count, 2)
+                    self.assertEqual(state['due'], 0)
 
     def test_bounded_retries_jitter_and_recovery(self):
         target = dict(service='web', layer='origin', url='https://example.org/')
@@ -112,6 +134,9 @@ class ProbeTest(unittest.TestCase):
         for config in [{'concurrency': 0}, {'concurrency': 100}, {'maxAttempts': 4}, {'budgetSeconds': 100}, {'budgetSeconds': float('nan')}]:
             with self.subTest(config=config), self.assertRaises(ValueError):
                 module.ProbePolicy(config)
+        for cap in [0, -1, 'invalid', True, float('nan'), float('inf')]:
+            with self.subTest(cap=cap), self.assertRaises(ValueError):
+                module.ProbePolicy({'maxRetryAfterSeconds': cap})
 
 
 if __name__ == '__main__':

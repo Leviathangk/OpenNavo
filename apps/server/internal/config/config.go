@@ -19,6 +19,7 @@ type Config struct {
 	IndexNowContentGate         bool          `env:"INDEXNOW_CONTENT_GATE" envDefault:"true"`
 	IndexNowDailyLimit          int           `env:"INDEXNOW_DAILY_LIMIT" envDefault:"5000"`
 	IndexNowProbeInterval       time.Duration `env:"INDEXNOW_PROBE_INTERVAL" envDefault:"2s"`
+	IndexNowProbeMaxRetryAfter  time.Duration `env:"INDEXNOW_PROBE_MAX_RETRY_AFTER" envDefault:"15m"`
 	UsageCountryTrustedProxies  []string      `env:"USAGE_COUNTRY_TRUSTED_PROXIES" envSeparator:","`
 	AgentGatewaySecret          string        `env:"AGENT_GATEWAY_SECRET"`
 	AppEnv                      string        `env:"APP_ENV,required"`
@@ -128,6 +129,9 @@ var publicExampleSecrets = []string{
 }
 
 func (c Config) Validate() error {
+	if c.IndexNowProbeMaxRetryAfter < 0 {
+		return errors.New("INDEXNOW_PROBE_MAX_RETRY_AFTER must not be negative")
+	}
 	if c.IndexNowProbeInterval < 0 || c.IndexNowProbeInterval > 5*time.Second {
 		return errors.New("INDEXNOW_PROBE_INTERVAL must be between zero and five seconds")
 	}

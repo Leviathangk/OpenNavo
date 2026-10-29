@@ -588,7 +588,7 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	overloaded := response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500
 	retryAt := n.Now()
 	if overloaded {
-		retryAt = purgeRetryAt(response.Header.Get("Retry-After"), n.Now())
+		retryAt = n.Now().Add(probeRetryDelay(response.Header.Get("Retry-After"), 0, n.Now(), n.Config.IndexNowProbeMaxRetryAfter))
 	}
 	if err := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, overloaded); err != nil {
 		return err
