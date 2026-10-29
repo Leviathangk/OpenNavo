@@ -6,13 +6,15 @@ import markdownMiddleware from '../server/middleware/markdown-alternate';
 import { edgeCacheHeader, LONG_EDGE_CACHE_VALUE, SHORT_EDGE_CACHE_VALUE } from '../server/utils/edgeCache';
 import { GEO_SAMPLES } from './geoFixtures';
 
-function eventFor(path: string, accept?: string) {
+function eventFor(path: string, accept?: string, edgeCacheEnabled = true) {
   const socket = new Socket();
   const request = new IncomingMessage(socket);
   request.url = path;
   request.method = 'GET';
   request.headers = accept ? { accept } : {};
-  return { event: createEvent(request, new ServerResponse(request)), socket };
+  const event = createEvent(request, new ServerResponse(request));
+  event.context.siteSettings = { edgeCache: { enabled: edgeCacheEnabled } };
+  return { event, socket };
 }
 
 afterEach(() => {
@@ -61,9 +63,7 @@ describe('Accept-negotiated Markdown', () => {
           expect(getResponseHeader(event, 'cache-control')).toBe('s-maxage=21600, stale-while-revalidate');
           expect(getResponseHeader(event, 'cdn-cache-control')).toBeUndefined();
           expect(getResponseHeader(event, 'vary')).toBeUndefined();
-          expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(
-            'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800'
-          );
+          expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(LONG_EDGE_CACHE_VALUE);
         } else {
           expect(getResponseHeader(event, 'cache-control')).toBe('private, no-store');
           expect(getResponseHeader(event, 'cdn-cache-control')).toBe('no-store');
@@ -74,6 +74,27 @@ describe('Accept-negotiated Markdown', () => {
       }
     }
     expect(log).toHaveBeenCalledTimes(2);
+  });
+
+  it('follows the HTML edge-cache switch for explicit Markdown URLs', async () => {
+    const detail = GEO_SAMPLES[0]!.detail;
+    vi.stubGlobal('useRuntimeConfig', () => ({
+      apiBaseInternal: 'https://api.example',
+      public: { markdownAlternates: true, apiBase: 'https://api.example', siteUrl: 'https://opennavo.example' }
+    }));
+    vi.stubGlobal('$fetch', async () => ({ data: detail }));
+    for (const enabled of [true, false]) {
+      const { event, socket } = eventFor(`/apps/${detail.token}.md`, undefined, enabled);
+      try {
+        await markdownMiddleware(event);
+        expect(getResponseHeader(event, 'cache-control')).toBe('s-maxage=21600, stale-while-revalidate');
+        expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(
+          enabled ? LONG_EDGE_CACHE_VALUE : 'no-store'
+        );
+      } finally {
+        socket.destroy();
+      }
+    }
   });
 
   it('renders the app named by each URL, so one Markdown request cannot borrow another page', async () => {

@@ -10,6 +10,7 @@ import { agentLabel } from '../utils/crawlerMetrics';
 import { LONG_EDGE_CACHE_VALUE } from '../utils/edgeCache';
 import { renderHomeMarkdown } from '../utils/homeMarkdown';
 import { packageMarkdown } from '../utils/packageMarkdown';
+import { getSiteSettings } from '../utils/siteSettings';
 
 // Keep the explicit .md projection on the same origin cache policy as the app overview route
 // (/apps/** in nuxt.config.ts). Negotiated Markdown is private and never cacheable.
@@ -30,8 +31,9 @@ export default defineEventHandler(async event => {
   if (page?.kind === 'app' && brandDownloadPath(path)) return;
   const negotiated = !explicit && prefersMarkdown(getHeader(event, 'accept')) ? page : undefined;
   const target = explicit ? { kind: 'app' as const, ...explicit } : negotiated;
+  if (!markdownAlternatesEnabled(useRuntimeConfig(event).public.markdownAlternates)) return;
   if (supportsMarkdownNegotiation(path)) setHeader(event, 'Vary', 'Accept');
-  if (!target || !markdownAlternatesEnabled(useRuntimeConfig(event).public.markdownAlternates)) return;
+  if (!target) return;
   const userAgent = getHeader(event, 'user-agent') ?? '';
   console.info(
     `[x4] markdown fetch ${JSON.stringify({
@@ -56,9 +58,13 @@ export default defineEventHandler(async event => {
     setHeader(event, 'Cloudflare-CDN-Cache-Control', 'no-store');
   } else {
     // The explicit .md URL is a public app projection. It is served by this middleware before the
-    // Nitro route cache, so carry the same six-hour origin and two-day Cloudflare policy explicitly.
+    // Nitro route cache, so carry the same six-hour origin policy explicitly. The edge switch also
+    // controls the Cloudflare header, matching HTML responses when edge caching is disabled.
+    const settings =
+      (event.context.siteSettings as Awaited<ReturnType<typeof getSiteSettings>> | undefined) ??
+      (await getSiteSettings());
     setHeader(event, 'Cache-Control', APP_PAGE_CACHE_CONTROL);
-    setHeader(event, 'Cloudflare-CDN-Cache-Control', LONG_EDGE_CACHE_VALUE);
+    setHeader(event, 'Cloudflare-CDN-Cache-Control', settings.edgeCache.enabled ? LONG_EDGE_CACHE_VALUE : 'no-store');
   }
   return body;
 });

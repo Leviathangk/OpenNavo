@@ -26,18 +26,26 @@ export function prefersMarkdown(accept: string | undefined): boolean {
   if (!accept) return false;
   let markdown: { quality: number; order: number } | undefined;
   let html: { quality: number; order: number } | undefined;
+  let textWildcard: { quality: number; order: number } | undefined;
+  let anyWildcard: { quality: number; order: number } | undefined;
   accept.split(',').forEach((part, order) => {
-    const [mediaType, ...parameters] = part.trim().toLowerCase().split(';');
+    const [rawMediaType, ...parameters] = part.trim().toLowerCase().split(';');
+    const mediaType = rawMediaType?.trim();
     if (!mediaType) return;
     const qualityParameter = parameters.find(parameter => parameter.trim().startsWith('q='));
     const parsedQuality = qualityParameter ? Number(qualityParameter.trim().slice(2)) : 1;
     const quality = Number.isFinite(parsedQuality) ? Math.max(0, Math.min(1, parsedQuality)) : 0;
     if (mediaType === 'text/markdown') markdown = { quality, order };
     if (mediaType === 'text/html') html = { quality, order };
+    if (mediaType === 'text/*') textWildcard = { quality, order };
+    if (mediaType === '*/*') anyWildcard = { quality, order };
   });
   if (!markdown || markdown.quality <= 0) return false;
-  if (!html || html.quality <= 0) return true;
-  return markdown.quality > html.quality || (markdown.quality === html.quality && markdown.order < html.order);
+  const htmlMatch = html ?? textWildcard ?? anyWildcard;
+  if (!htmlMatch || htmlMatch.quality <= 0) return true;
+  return (
+    markdown.quality > htmlMatch.quality || (markdown.quality === htmlMatch.quality && markdown.order < htmlMatch.order)
+  );
 }
 
 /** The page represented by a negotiable Markdown request, or undefined for other routes. */

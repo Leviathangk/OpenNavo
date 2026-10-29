@@ -255,9 +255,8 @@ export default defineNuxtConfig({
   // Route caching applies only to production builds; development renders every request (05 §4).
   $production: {
     routeRules: localizedRules({
-      // Nitro must keep the HTML route cache key separate for each negotiated Accept value. Markdown itself
-      // is returned by server middleware before this cached page handler runs.
-      '/': { cache: { swr: true, maxAge: 300, varies: ['accept'] } },
+      // Markdown itself is returned by server middleware before this cached page handler runs.
+      '/': { cache: { swr: true, maxAge: 300 } },
       '/discover': { swr: 300 },
       '/about': { swr: 900 },
       // The form posts from the browser; the page itself has nothing per visitor (no cookies or
@@ -280,7 +279,7 @@ export default defineNuxtConfig({
       // Also the per-app release feeds (F6) at /apps/{token}/feed.xml. An app's changes drop its pages
       // by prefix (internal-server /cache/invalidate), and every web build caches under its own Redis
       // namespace (cache-storage.ts), so six hours never serves the previous build's HTML.
-      '/apps/**': { cache: { swr: true, maxAge: 21600, varies: ['accept'] } },
+      '/apps/**': { cache: { swr: true, maxAge: 21600 } },
       '/apps/*/versions': { cache: { maxAge: 21600, swr: true, staleMaxAge: 64800 } },
       // X5: collections are cached like other lists; editing one purges its pages by prefix (S6 outbox,
       // BE-1), and error responses are never cached (route-cache-errors.ts, error-cache-control.ts).

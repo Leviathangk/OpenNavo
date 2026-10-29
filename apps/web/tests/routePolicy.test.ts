@@ -62,9 +62,9 @@ describe('localized route policies', () => {
       const actualPath = path === '/' ? prefix || '/' : `${prefix}${path}`;
       const expected =
         path === '/'
-          ? { cache: { swr: true, maxAge: swr, varies: ['accept'] } }
+          ? { cache: { swr: true, maxAge: swr } }
           : path === '/apps/**'
-            ? { cache: { swr: true, maxAge: swr, varies: ['accept'] } }
+            ? { cache: { swr: true, maxAge: swr } }
             : { swr };
       expect(config.$production?.routeRules?.[actualPath], actualPath).toEqual(expected);
       expect(config.routeRules?.[actualPath]?.swr).toBeUndefined();

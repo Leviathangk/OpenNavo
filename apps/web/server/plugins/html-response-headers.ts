@@ -1,5 +1,9 @@
 import { getResponseHeader, type H3Event } from 'h3';
-import { markdownPageTarget, supportsMarkdownNegotiation } from '../../shared/utils/markdownAlternate';
+import {
+  markdownAlternatesEnabled,
+  markdownPageTarget,
+  supportsMarkdownNegotiation
+} from '../../shared/utils/markdownAlternate';
 
 function appendHeaderValue(event: H3Event, name: string, value: string) {
   const previous = getResponseHeader(event, name);
@@ -15,6 +19,8 @@ export default defineNitroPlugin(nitroApp => {
     const contentType = String(event.node.res.getHeader('content-type') ?? '');
     if (!contentType.includes('text/html')) return;
     setHeader(event, 'Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    if (event.node.res.statusCode !== 200) return;
+    if (!markdownAlternatesEnabled(useRuntimeConfig(event).public.markdownAlternates)) return;
     appendHeaderValue(event, 'Link', '</llms.txt>; rel="describedby"');
 
     const path = String(event.path ?? '').split('?', 1)[0] ?? '';

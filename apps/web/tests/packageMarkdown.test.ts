@@ -134,8 +134,11 @@ describe('Markdown alternates (X4)', () => {
 
   it.each([
     ['text/markdown', true],
+    ['text/markdown ; q=1', true],
     ['text/markdown, text/html;q=0.8', true],
     ['text/html, text/markdown;q=0.5', false],
+    ['text/markdown;q=0.5, */*;q=0.9', false],
+    ['text/markdown;q=0.9, text/*;q=0.5', true],
     ['text/html', false],
     ['*/*', false],
     ['text/markdown;q=0, text/html', false],

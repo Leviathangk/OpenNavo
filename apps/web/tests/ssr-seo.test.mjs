@@ -1608,6 +1608,42 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const result = await invalidatePaths(['/', '/apps/font-sample', '/sitemap_index.xml', fontBucketPath], true);
     assert.equal(result.settingsCleared, true);
   };
+  await t.test('Nitro route cache keeps negotiated Markdown out of the HTML cache', async () => {
+    const path = '/apps/ordinary-app';
+    const detailPath = '/api/v1/packages/cask/ordinary-app';
+    const request = accept => fetch(`${origin}${path}`, { headers: { accept } });
+    const markdown = async () => {
+      const response = await request('text/markdown');
+      const body = await response.text();
+      assert.equal(response.status, 200, body.slice(0, 300));
+      assert.match(response.headers.get('content-type') ?? '', /text\/markdown/);
+      assert.match(body, /^# Example App @11\n/);
+      assert.ok(!body.includes('<html'), 'Markdown response must not contain the HTML document');
+      return body;
+    };
+    const html = async () => {
+      const response = await request('text/html');
+      const body = await response.text();
+      assert.equal(response.status, 200, body.slice(0, 300));
+      assert.match(response.headers.get('content-type') ?? '', /text\/html/);
+      assert.match(body, /<html\b/);
+      assert.ok(!body.startsWith('# Example App @11\n'), 'HTML response must not be Markdown');
+      return body;
+    };
+
+    await invalidatePaths([path]);
+    await markdown();
+    const afterFirstMarkdown = hotReads.get(detailPath) ?? 0;
+    await markdown();
+    assert.ok((hotReads.get(detailPath) ?? 0) > afterFirstMarkdown, 'each Markdown request reaches the API handler');
+    await html();
+
+    await invalidatePaths([path]);
+    await html();
+    const afterHtml = hotReads.get(detailPath) ?? 0;
+    await markdown();
+    assert.ok((hotReads.get(detailPath) ?? 0) > afterHtml, 'Markdown after cached HTML still reaches the API handler');
+  });
   await t.test(
     'SSR images keep descriptive alternatives and explicitly decorative empty alt in both languages',
     async () => {
