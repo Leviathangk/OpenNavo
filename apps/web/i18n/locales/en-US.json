@@ -583,8 +583,6 @@
       "openSourceA": "{name}’s source code is public on GitHub ({repo}) under the {license} license.",
       "openSourceNoLicenseA": "{name} has a public GitHub repository ({repo}), but OpenNavo has not verified an OSI license.",
       "openSourceArchived": "The repository is archived and no longer updated.",
-      "openSourceStars": "Repository stars: {stars}.",
-      "openSourceChecked": "Repository data checked {date}.",
       "uninstallQ": "How do I completely uninstall {name} on a Mac?",
       "uninstallRun": "Run `brew uninstall --cask {token}`.",
       "uninstallDoes": "It {actions}.",
@@ -646,7 +644,9 @@
       },
       "alternativesQ": "What are some alternatives to {name}?",
       "alternativesA": "Alternatives include {list}.",
-      "titleFor": "Questions about {name}"
+      "titleFor": "Questions about {name}",
+      "repositoryQ": "Does {name} have a public GitHub repository?",
+      "source": "Source: {source}."
     },
     "securityPromo": {
       "title": "OpenNavo: virus scanning and an app firewall",

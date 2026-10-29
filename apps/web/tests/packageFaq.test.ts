@@ -4,12 +4,13 @@ import { selectPlural } from '@opennavo/shared';
 import { describe, expect, it } from 'vitest';
 import { chipSupport, dataLocations, FAQ_LIMIT, faqItems, uninstallSteps, zapPaths } from '../app/utils/packageFaq';
 import type { FaqTranslate } from '../app/utils/packageFaq';
+import { formatDate } from '../app/utils/packageDate';
 import { evidence, pageOf } from './packageFixtures';
 
-const LOCALES = ['zh-CN', 'en-US', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'] as const;
+const LOCALES = ['zh-CN', 'en-US', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
 type Code = (typeof LOCALES)[number];
 
-// Real messages, plural forms picked like vue-i18n, so every template runs in all six languages.
+// Real messages, plural forms picked like vue-i18n, so every template runs in all ten languages.
 function translator(code: Code): FaqTranslate {
   const messages = JSON.parse(readFileSync(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8'));
   return (key, named = {}, plural) => {
@@ -275,14 +276,14 @@ describe('App questions', () => {
     const price = items.find(item => item.key === 'price')!;
     expect(price.question).toBe('Docker Desktop 免费吗？');
     expect(price.answer).toBe(
-      'Mac App Store（美国）上的“Keka”售价 US$6.49。Homebrew 安装的是开发者网站提供的版本，价格和功能可能与 App Store 版不同。来源：apps.apple.com，核查于 2025年12月1日。'
+      'Mac App Store（美国）上的“Keka”售价 US$6.49。Homebrew 安装的是开发者网站提供的版本，价格和功能可能与 App Store 版不同。来源：apps.apple.com。'
     );
     const free = faqItems(pageOf(docker({ appStore: { ...appStore, price: 0 } })), translator('en-US'), 'en-US');
     expect(free.find(item => item.key === 'price')!.answer).toMatch(
       /^“Keka” is free to download on the Mac App Store\. Homebrew installs the version/
     );
     expect(items.find(item => item.key === 'language')!.answer).toBe(
-      'Mac App Store 页面列出的界面语言包括中文。来源：apps.apple.com，核查于 2025年12月1日。'
+      'Mac App Store 页面列出的界面语言包括中文。来源：apps.apple.com。'
     );
     const ru = faqItems(
       pageOf(docker({ appStore: { ...appStore, languages: ['EN', 'DE', 'FR'] } })),
@@ -309,7 +310,7 @@ describe('App questions', () => {
     };
     const priced = faqItems(pageOf(docker({ appStore, price: verified })), translator('en-US'), 'en-US');
     expect(priced.find(item => item.key === 'price')!.answer).toBe(
-      'Yes, Docker Desktop is free to use. Source: vendor.example/pricing, checked Dec 1, 2025.'
+      'Yes, Docker Desktop is free to use. Source: vendor.example/pricing.'
     );
   });
 
@@ -360,7 +361,7 @@ describe('App questions', () => {
       'en-US'
     );
     expect(items.find(item => item.key === 'openSource')!.answer).toBe(
-      'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license. Repository stars: ★12.3K. Repository data checked Oct 2, 2026.'
+      'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license.'
     );
   });
 
@@ -383,7 +384,8 @@ describe('App questions', () => {
       translator('en-US'),
       'en-US'
     );
-    expect(osi.find(item => item.key === 'openSource')!.answer).toContain('★999');
+    expect(osi.find(item => item.key === 'openSource')!.answer).toContain('under the MIT license.');
+    expect(osi.find(item => item.key === 'openSource')!.answer).not.toMatch(/★|999/);
 
     const publicOnly = faqItems(
       pageOf(
@@ -427,6 +429,119 @@ describe('App questions', () => {
     expect(
       faqItems(pageOf(current), translator('en-US'), 'en-US').find(item => item.key === 'openSource')!.answer
     ).not.toContain('repository is archived');
+  });
+
+  it.each([
+    {
+      status: 'stale',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'yes',
+      repositoryUrl: 'https://github.com/acme/osi'
+    },
+    {
+      status: 'needs_review',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'yes',
+      repositoryUrl: 'https://github.com/acme/osi'
+    },
+    { status: 'verified', checkedAt: null, openSource: 'yes', repositoryUrl: 'https://github.com/acme/osi' },
+    {
+      status: 'verified',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'unknown',
+      repositoryUrl: 'https://github.com/acme/osi'
+    },
+    {
+      status: 'verified',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'yes',
+      repositoryUrl: 'https://github.com/acme/other'
+    }
+  ] as const)('rejects OSI data without a matching verified identity: %j', proof => {
+    const pkg = pageOf(
+      docker({
+        openSource: {
+          repo: 'acme/osi',
+          url: 'https://github.com/acme/osi',
+          license: 'MIT',
+          archived: false,
+          checkedAt: '2025-12-01T08:00:00Z'
+        }
+      })
+    );
+    const identity = pkg.facts.security!.identities[0]!;
+    Object.assign(identity, { openSource: proof.openSource, repositoryUrl: proof.repositoryUrl });
+    Object.assign(identity.evidence, { status: proof.status, checkedAt: proof.checkedAt });
+    pkg.repository = { url: 'https://github.com/acme/osi', stars: 12345 };
+    expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
+    pkg.facts.security!.identities = [];
+    expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
+  });
+
+  it.each(LOCALES)('keeps star counts and evidence check dates out of every FAQ answer in %s', code => {
+    const pkg = pageOf(
+      docker({
+        appStore,
+        price: {
+          type: 'free',
+          amount: null,
+          currency: null,
+          region: null,
+          plan: null,
+          period: null,
+          appVersion: null,
+          sourceUrl: 'https://vendor.example/pricing',
+          method: 'vendor_site',
+          verifiedAt: '2025-12-01T08:00:00Z',
+          stale: false,
+          offer: true
+        },
+        openSource: {
+          repo: 'acme/osi',
+          url: 'https://github.com/acme/osi',
+          license: 'MIT',
+          archived: false,
+          checkedAt: '2025-12-01T08:00:00Z'
+        },
+        macosSupplement: {
+          ranges: [{ arch: 'arm64', support: 'native', minimum: '12', maximum: null }],
+          appVersion: '4.95.0,242831',
+          sourceUrl: 'https://vendor.example/requirements',
+          method: 'vendor_docs',
+          verifiedAt: '2025-12-01T08:00:00Z',
+          stale: false,
+          conflicts: []
+        }
+      })
+    );
+    pkg.repository = { url: 'https://github.com/acme/osi', stars: 12345, signalsCheckedAt: '2026-10-02T00:00:00Z' };
+    const t = translator(code);
+    const verified = faqItems(pkg, t, code);
+    expect(verified.find(item => item.key === 'openSource')?.question).toBe(
+      t('package.faq.openSourceQ', { name: pkg.displayName })
+    );
+    expect(verified.find(item => item.key === 'chips')?.answer).toContain('vendor.example/requirements');
+    const prices = faqItems(
+      { ...pkg, facts: { ...pkg.facts, prices: pkg.facts.prices.filter(price => price.channel === 'app_store') } },
+      t,
+      code
+    );
+    pkg.openSource = null;
+    const publicOnly = faqItems(pkg, t, code);
+    expect(publicOnly.find(item => item.key === 'openSource')?.question).toBe(
+      t('package.faq.repositoryQ', { name: pkg.displayName })
+    );
+    for (const item of [...verified, ...prices, ...publicOnly]) {
+      expect(item.answer).not.toMatch(/★|12[,.]?345|12[,.]3K|\{\w+\}/);
+      for (const checkedAt of ['2025-12-01T08:00:00Z', '2026-10-02T00:00:00Z'])
+        expect(item.answer).not.toContain(formatDate(checkedAt, { locale: code }));
+    }
+  });
+
+  it('omits repository-only questions without a repository URL', () => {
+    const pkg = pageOf(docker());
+    pkg.repository = { stars: 12345, signalsCheckedAt: '2026-10-02T00:00:00Z' };
+    expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
   });
 
   it('Leaves out questions without facts, and fonts skip chips and extras', () => {
@@ -589,7 +704,7 @@ describe('Answers from the facts model (T2, T3)', () => {
     };
     const answer = (pkg: ReturnType<typeof pageOf>) => faqItems(pkg, t, 'en-US').find(item => item.key === 'price');
     expect(answer(pageOf(docker({ price: verified })))!.answer).toBe(
-      'No, Docker Desktop requires a subscription. Pro · United States · $9.99 per month Source: vendor.example/pricing, checked Dec 1, 2025.'
+      'No, Docker Desktop requires a subscription. Pro · United States · $9.99 per month Source: vendor.example/pricing.'
     );
     // Stale or disputed evidence keeps its block but answers nothing here.
     expect(answer(pageOf(docker({ price: { ...verified, stale: true } })))).toBeUndefined();
@@ -617,7 +732,7 @@ describe('Answers from the facts model (T2, T3)', () => {
     const chips = (pkg: ReturnType<typeof pageOf>) =>
       faqItems(pkg, t, 'en-US').find(item => item.key === 'chips')!.answer;
     expect(chips(pageOf(docker({ macosSupplement: supplement })))).toBe(
-      'Yes. The vendor states it runs natively on Apple silicon. Source: vendor.example/requirements, checked Dec 1, 2025.'
+      'Yes. The vendor states it runs natively on Apple silicon. Source: vendor.example/requirements.'
     );
     // Any disagreement with Homebrew puts the whole statement under review.
     expect(chips(pageOf(docker({ macosSupplement: { ...supplement, conflicts: ['minimum'] } })))).toBe(

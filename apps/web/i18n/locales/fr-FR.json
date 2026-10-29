@@ -583,8 +583,6 @@
       "openSourceA": "{name} publie son code source sur GitHub ({repo}), sous licence {license}.",
       "openSourceNoLicenseA": "{name} possède un dépôt GitHub public ({repo}), mais OpenNavo n’a pas vérifié de licence OSI.",
       "openSourceArchived": "Le dépôt est archivé et n’est plus mis à jour.",
-      "openSourceStars": "Étoiles du dépôt : {stars}.",
-      "openSourceChecked": "Données du dépôt vérifiées le {date}.",
       "uninstallQ": "Comment désinstaller complètement {name} sur Mac ?",
       "uninstallRun": "Exécutez `brew uninstall --cask {token}`.",
       "uninstallDoes": "Cette commande {actions}.",
@@ -646,7 +644,9 @@
       },
       "alternativesQ": "Quelles sont les alternatives à {name} ?",
       "alternativesA": "Parmi les alternatives, on trouve {list}.",
-      "titleFor": "Questions fréquentes sur {name}"
+      "titleFor": "Questions fréquentes sur {name}",
+      "repositoryQ": "{name} possède-t-il un dépôt GitHub public ?",
+      "source": "Source : {source}."
     },
     "securityPromo": {
       "title": "OpenNavo : analyse antivirus et pare-feu d’apps",

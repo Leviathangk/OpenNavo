@@ -583,8 +583,6 @@
       "openSourceA": "Исходный код {name} открыт на GitHub ({repo}) под лицензией {license}.",
       "openSourceNoLicenseA": "У {name} есть публичный репозиторий GitHub ({repo}), но OpenNavo не подтвердил наличие лицензии OSI.",
       "openSourceArchived": "Репозиторий архивирован и больше не обновляется.",
-      "openSourceStars": "Звёзды репозитория: {stars}.",
-      "openSourceChecked": "Данные репозитория проверены {date}.",
       "uninstallQ": "Как полностью удалить {name} с Mac?",
       "uninstallRun": "Выполните `brew uninstall --cask {token}`.",
       "uninstallDoes": "Команда {actions}.",
@@ -646,7 +644,9 @@
       },
       "alternativesQ": "Чем можно заменить {name}?",
       "alternativesA": "Например, {list}.",
-      "titleFor": "Частые вопросы о {name}"
+      "titleFor": "Частые вопросы о {name}",
+      "repositoryQ": "Есть ли у {name} публичный репозиторий на GitHub?",
+      "source": "Источник: {source}."
     },
     "securityPromo": {
       "title": "OpenNavo: проверка на вирусы и брандмауэр приложений",

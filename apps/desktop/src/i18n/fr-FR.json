@@ -468,7 +468,9 @@
       "installLocation": "Emplacement d’installation",
       "yes": "Oui",
       "no": "Non",
-      "checked": "Vérifié le"
+      "checked": "Vérifié le",
+      "downloadSource": "Source de téléchargement",
+      "fontFiles": "Fichiers de police"
     },
     "repo": {
       "stars": "★",

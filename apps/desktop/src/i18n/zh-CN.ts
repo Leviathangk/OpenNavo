@@ -447,6 +447,8 @@ export default {
       license: '许可证'
     },
     spec: {
+      downloadSource: '下载来源',
+      fontFiles: '字体文件',
       title: '基本信息',
       price: '价格',
       system: '系统',

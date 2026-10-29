@@ -468,7 +468,9 @@
       "installLocation": "Путь установки",
       "yes": "Да",
       "no": "Нет",
-      "checked": "Проверено"
+      "checked": "Проверено",
+      "downloadSource": "Источник загрузки",
+      "fontFiles": "Файлы шрифта"
     },
     "repo": {
       "stars": "★",

@@ -468,7 +468,9 @@
       "installLocation": "インストール先",
       "yes": "はい",
       "no": "いいえ",
-      "checked": "確認日"
+      "checked": "確認日",
+      "downloadSource": "ダウンロード元",
+      "fontFiles": "フォントファイル"
     },
     "repo": {
       "stars": "★",

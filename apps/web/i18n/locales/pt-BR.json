@@ -583,8 +583,6 @@
       "openSourceA": "O código-fonte do {name} é público no GitHub ({repo}), sob a licença {license}.",
       "openSourceNoLicenseA": "{name} tem um repositório público no GitHub ({repo}), mas o OpenNavo não verificou uma licença OSI.",
       "openSourceArchived": "O repositório está arquivado e não recebe mais atualizações.",
-      "openSourceStars": "Estrelas do repositório: {stars}.",
-      "openSourceChecked": "Dados do repositório verificados em {date}.",
       "uninstallQ": "Como desinstalar o {name} completamente no Mac?",
       "uninstallRun": "Execute `brew uninstall --cask {token}`.",
       "uninstallDoes": "Esse comando {actions}.",
@@ -646,7 +644,9 @@
       },
       "alternativesQ": "Quais são as alternativas ao {name}?",
       "alternativesA": "Algumas alternativas são {list}.",
-      "titleFor": "Perguntas frequentes sobre o {name}"
+      "titleFor": "Perguntas frequentes sobre o {name}",
+      "repositoryQ": "{name} tem um repositório público no GitHub?",
+      "source": "Fonte: {source}."
     },
     "securityPromo": {
       "title": "OpenNavo: verificação de vírus e firewall de apps",

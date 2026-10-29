@@ -468,7 +468,9 @@
       "installLocation": "Local de instalação",
       "yes": "Sim",
       "no": "Não",
-      "checked": "Verificado"
+      "checked": "Verificado",
+      "downloadSource": "Origem do download",
+      "fontFiles": "Arquivos de fonte"
     },
     "repo": {
       "stars": "★",

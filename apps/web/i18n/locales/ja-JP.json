@@ -583,8 +583,6 @@
       "openSourceA": "{name} のソースコードは GitHub（{repo}）で公開されており、ライセンスは {license} です。",
       "openSourceNoLicenseA": "{name} には公開 GitHub リポジトリ（{repo}）がありますが、OpenNavo は OSI ライセンスを確認していません。",
       "openSourceArchived": "このリポジトリはアーカイブされていて、更新されていません。",
-      "openSourceStars": "リポジトリのスター数：{stars}。",
-      "openSourceChecked": "リポジトリ情報の確認日：{date}。",
       "uninstallQ": "Mac から {name} を完全にアンインストールするには？",
       "uninstallRun": "`brew uninstall --cask {token}` を実行します。",
       "uninstallDoes": "これにより{actions}が行われます。",
@@ -646,7 +644,9 @@
       },
       "alternativesQ": "{name} の代わりになるアプリは？",
       "alternativesA": "{list} などがあります。",
-      "titleFor": "{name} についてよくある質問"
+      "titleFor": "{name} についてよくある質問",
+      "repositoryQ": "{name} には公開 GitHub リポジトリがありますか？",
+      "source": "出典：{source}。"
     },
     "securityPromo": {
       "title": "OpenNavo：ウイルススキャンとApp ファイアウォール",

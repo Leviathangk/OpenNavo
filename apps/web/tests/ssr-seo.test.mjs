@@ -1810,6 +1810,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     });
     const html = await response.text();
     assert.equal(response.status, 200, logs);
+    const spec = JSDOM.fragment(html).querySelector('[data-testid="package-spec-card"]');
+    const valueOf = label =>
+      [...spec.querySelectorAll('dt')]
+        .find(term => term.textContent.trim() === label)
+        ?.nextElementSibling?.textContent.trim();
+    assert.equal(valueOf('Latest version'), '2.4.1', 'link quick-info version survives in the SSR spec card');
+    assert.equal(
+      valueOf('Download source'),
+      'lumen.app',
+      'link quick-info download source survives in the SSR spec card'
+    );
+    assert.equal(valueOf('Developer signature'), '7Q2XK4M9PL');
+    assert.equal(valueOf('Bundle ID'), 'app.lumen.notes');
     // S1/C3: preserve the exact name while allowing the absent subtitle's Vue comment.
     assert.match(html, /<h1\b[^>]*>Lumen Notes(?:<!--(?:v-if)?-->)?<\/h1>/);
     assert.doesNotMatch(html, /brew install/, 'no install command');
@@ -3337,6 +3350,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.match(faq, /<details[\s\S]*?<summary[^>]*><h3[^>]*>Is Facts App safe\?<\/h3>/);
     // Inline code renders each word in its own element (OnCodeText), so compare the text without tags.
     const faqText = faq.replace(/<[^>]*>/g, '');
+    assert.ok(!faqText.includes('checked Dec 1, 2025'), 'FAQ source attribution excludes evidence check dates');
     assert.ok(faqText.includes('Is Facts App free?') && faqText.includes('requires a subscription'), faqText);
     assert.ok(faqText.includes('brew uninstall --zap --cask facts-app'), 'collapsed answers are in the HTML');
     assert.ok(faqText.includes('Its settings are in ~/Library/Preferences/facts.plist.'), faqText);

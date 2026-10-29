@@ -583,8 +583,6 @@
       "openSourceA": "{name} 的原始碼公開在 GitHub 上（{repo}），使用 {license} 許可證。",
       "openSourceNoLicenseA": "{name} 有公開的 GitHub 倉庫（{repo}），但 OpenNavo 尚未核實其 OSI 許可證。",
       "openSourceArchived": "這個倉庫已經歸檔，不再更新。",
-      "openSourceStars": "倉庫星標數：{stars}。",
-      "openSourceChecked": "倉庫資料核查於 {date}。",
       "uninstallQ": "怎樣在 Mac 上徹底解除安裝 {name}？",
       "uninstallRun": "執行 `brew uninstall --cask {token}`。",
       "uninstallDoes": "它會{actions}。",
@@ -646,7 +644,9 @@
       },
       "alternativesQ": "{name} 有哪些替代品？",
       "alternativesA": "可以考慮 {list}。",
-      "titleFor": "關於 {name} 的常見問題"
+      "titleFor": "關於 {name} 的常見問題",
+      "repositoryQ": "{name} 有公開的 GitHub 倉庫嗎？",
+      "source": "來源：{source}。"
     },
     "securityPromo": {
       "title": "OpenNavo：病毒掃描與應用防火牆",

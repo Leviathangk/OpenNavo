@@ -16,9 +16,11 @@ const t = (key: string, named: Record<string, unknown> = {}) => {
     'package.spec.token': 'Token',
     'package.spec.yes': 'Yes',
     'package.spec.no': 'No',
+    'package.stats.latest': 'Latest version',
+    'package.quick.source': 'Download source',
     'package.repo.stars': '★',
     'package.repo.updated': `Updated ${named.days ?? 0} days ago`,
-    'package.faq.openSourceChecked': `Repository data checked ${named.date}.`
+    'package.repo.checked': `Repository data checked ${named.date}.`
   };
   return values[key] ?? key;
 };
@@ -28,6 +30,8 @@ function page(overrides: Record<string, unknown> = {}): PackagePage {
     kind: 'cask',
     token: 'fixture-app',
     displayName: 'Fixture App',
+    names: ['Fixture App'],
+    version: '1.0.0',
     supports: { status: 'known', arm64: true, x86_64: true },
     autoUpdates: false,
     developer: 'Example',
@@ -117,5 +121,83 @@ describe('package specification repository rows', () => {
     expect(fallback.checkedAt).toBeNull();
     const current = packageSpec(page({ openSource: osi, repository: { archived: false } }), t, 'en-US');
     expect(current.rows.find(row => row.key === 'openSource')?.badge).toBeUndefined();
+  });
+});
+
+describe('quick-info field parity with main', () => {
+  it('restores Ely Office link version and download source', () => {
+    const pkg = page({
+      kind: 'link',
+      token: 'ely-office',
+      version: '0.1.12',
+      facts: { ...page().facts, overview: { ...page().facts.overview, version: '0.1.12' } },
+      link: { github: { repo: 'ELY-Open-Source/ElyOffice' }, pricing: 'unknown' },
+      bundleIds: ['org.example.ely-office']
+    });
+    const rows = packageSpec(pkg, t, 'en-US').rows;
+    expect(rows.find(row => row.key === 'version')).toMatchObject({ label: 'Latest version', value: '0.1.12' });
+    expect(rows.find(row => row.key === 'source')).toMatchObject({
+      label: 'Download source',
+      value: 'github.com/ELY-Open-Source/ElyOffice'
+    });
+    expect(rows.find(row => row.key === 'openSource')?.href).toBe('https://github.com/ELY-Open-Source/ElyOffice');
+    expect(rows.find(row => row.key === 'bundle')?.value).toBe('org.example.ely-office');
+    expect(rows.some(row => ['auto', 'homebrew', 'install'].includes(row.key))).toBe(false);
+  });
+
+  it.each(['cask', 'formula', 'link'] as const)(
+    'preserves verified developer, signature, license and alternate names for %s',
+    kind => {
+      const pkg = page({
+        kind,
+        license: 'Apache-2.0',
+        names: ['Fixture App', 'Former App'],
+        facts: {
+          ...page().facts,
+          security: {
+            identities: [
+              {
+                developer: 'Verified Developer',
+                teamId: 'EXAMPLE123',
+                evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z' }
+              }
+            ]
+          }
+        }
+      });
+      const rows = packageSpec(pkg, t, 'en-US').rows;
+      expect(rows.find(row => row.key === 'developer')?.value).toBe('Verified Developer');
+      expect(rows.find(row => row.key === 'teamId')?.value).toBe('EXAMPLE123');
+      expect(rows.find(row => row.key === 'license')?.value).toBe('Apache-2.0');
+      expect(rows.find(row => row.key === 'names')?.value).toBe('Former App');
+      expect(rows.some(row => row.key === 'homebrew')).toBe(kind === 'cask');
+      expect(rows.some(row => row.key === 'install')).toBe(false);
+    }
+  );
+
+  it('preserves font files, formats and the declared install location', () => {
+    const pkg = page({ isFont: true });
+    pkg.facts.overview.artifacts.entries = [
+      {
+        type: 'font',
+        phase: 'install',
+        sources: ['Example.otf', 'Example.ttf', 'Example.otf'],
+        target: null,
+        declaration: { font: ['Example.otf', 'Example.ttf'] }
+      }
+    ];
+    const rows = packageSpec(pkg, t, 'en-US').rows;
+    expect(rows.find(row => row.key === 'files')?.value).toBe('2 · OTF, TTF');
+    expect(rows.find(row => row.key === 'location')).toMatchObject({ value: '~/Library/Fonts', mono: true });
+    expect(rows.some(row => ['chip', 'macos'].includes(row.key))).toBe(false);
+  });
+
+  it('includes a release date only for the current link version and omits unknown versions', () => {
+    const pkg = page({ kind: 'link', latestRelease: { version: '1.0.0', publishedAt: '2025-10-01T00:00:00Z' } });
+    expect(packageSpec(pkg, t, 'en-US').rows.find(row => row.key === 'version')?.value).toContain('2025');
+    pkg.latestRelease!.version = '0.9.0';
+    expect(packageSpec(pkg, t, 'en-US').rows.find(row => row.key === 'version')?.value).toBe('1.0.0');
+    pkg.facts.overview.version = 'latest';
+    expect(packageSpec(pkg, t, 'en-US').rows.some(row => row.key === 'version')).toBe(false);
   });
 });

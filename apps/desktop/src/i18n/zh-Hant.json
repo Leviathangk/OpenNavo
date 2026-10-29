@@ -453,6 +453,8 @@
       "license": "許可證"
     },
     "spec": {
+      "downloadSource": "下載來源",
+      "fontFiles": "字型檔案",
       "title": "基本資訊",
       "price": "價格",
       "system": "系統",

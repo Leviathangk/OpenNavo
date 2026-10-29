@@ -10,6 +10,7 @@ import {
   oldestCheck,
   priceAmount,
   priceUsage,
+  quickFacts,
   verifiedIdentities,
   verifiedPrices
 } from './packageFacts';
@@ -47,6 +48,12 @@ function repoText(
 export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale): PackageSpecModel {
   const signals = toPackageRepoSignals(pkg);
   const rows: OnPackageSpecRow[] = [];
+  const quick = quickFacts(pkg, t, locale);
+  const originalRows = (keys: string[]) =>
+    quick.rows
+      .filter(row => keys.includes(row.key))
+      .map(row => ({ key: row.key, label: row.label, value: row.value, mono: row.code }));
+  rows.push(...originalRows(['version', 'source', 'files', 'location']));
   const prices = verifiedPrices(pkg);
   const price = prices.length
     ? [
@@ -58,7 +65,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
   if (price) rows.push({ key: 'price', label: t('package.spec.price'), value: price });
 
   const range = macosText(macosRange(pkg), t);
-  if (range) rows.push({ key: 'macos', label: t('package.spec.system'), value: range });
+  if (!pkg.isFont && range) rows.push({ key: 'macos', label: t('package.spec.system'), value: range });
 
   const chipValues = chipsOf(pkg);
   const chips = chipValues.length
@@ -66,7 +73,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
     : architectures(pkg.supports)
         .map(arch => t(`package.arch.${arch}`))
         .join(' · ');
-  if (chips) rows.push({ key: 'chip', label: t('package.spec.chip'), value: chips });
+  if (!pkg.isFont && chips) rows.push({ key: 'chip', label: t('package.spec.chip'), value: chips });
 
   if (pkg.kind === 'cask')
     rows.push({
@@ -77,7 +84,9 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
 
   const repository = pkg.repository;
   const osi = pkg.openSource;
-  if (osi || repository) {
+  const github = pkg.kind === 'link' && pkg.link?.github;
+  const repositoryUrl = repository?.url ?? osi?.url ?? (github ? `https://github.com/${github.repo}` : undefined);
+  if (osi || repository || github) {
     const repo = repoText(signals, {
       updated: days => t('package.repo.updated', { days }),
       unmaintained: t('package.repo.unmaintained'),
@@ -89,7 +98,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
       value: [osi ? t('package.spec.openSource') : t('package.spec.githubRepository'), osi?.license, repo.value]
         .filter(Boolean)
         .join(' · '),
-      href: repository?.url ?? osi?.url,
+      href: repositoryUrl,
       stars:
         signals?.stars === undefined
           ? undefined
@@ -97,15 +106,17 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
               label: `★${formatRepoStars(signals.stars)}`,
               href: repository?.url ?? undefined,
               checked: signals.checkedAt
-                ? t('package.faq.openSourceChecked', { date: formatDate(signals.checkedAt, { locale }) })
+                ? t('package.repo.checked', { date: formatDate(signals.checkedAt, { locale }) })
                 : undefined
             },
       badge: repo.badge
     });
   }
 
-  if (pkg.developer) rows.push({ key: 'developer', label: t('package.spec.developer'), value: pkg.developer });
-  const homepage = httpsUrl(pkg.homepage);
+  rows.push(...originalRows(['developer', 'teamId', 'license', 'homebrew', 'names']));
+  if (pkg.kind === 'link' && pkg.bundleIds?.length)
+    rows.push({ key: 'bundle', label: 'Bundle ID', value: pkg.bundleIds.join(' '), mono: true });
+  const homepage = httpsUrl(pkg.kind === 'link' ? pkg.link?.homepage : pkg.homepage) ?? httpsUrl(pkg.homepage);
   if (homepage)
     rows.push({ key: 'homepage', label: t('package.spec.homepage'), value: displayUrl(homepage), href: homepage });
   rows.push({ key: 'token', label: t('package.spec.token'), value: pkg.token, mono: true });

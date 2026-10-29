@@ -468,7 +468,9 @@
       "installLocation": "Percorso di installazione",
       "yes": "Sì",
       "no": "No",
-      "checked": "Verificato"
+      "checked": "Verificato",
+      "downloadSource": "Fonte del download",
+      "fontFiles": "File dei font"
     },
     "repo": {
       "stars": "★",
