@@ -33,8 +33,10 @@ func (e *UnsupportedCaskError) Error() string {
 
 // ParseCaskSource statically reads the declarative subset of the cask DSL and returns the same JSON shape as
 // formulae.brew.sh/api/cask.json, so the result goes through Normalize like an official cask. Ruby is never
-// executed: per-architecture or per-OS blocks, local variables, language blocks and unknown stanzas are rejected.
+// executed: per-architecture or per-OS blocks, language blocks and unknown stanzas are rejected.
 // Flight blocks, livecheck and caveats blocks only run inside brew on the user's Mac, so they are skipped.
+// A flight-only respond_to?(:*_steps) compatibility guard may contain literal helper strings; other
+// conditionals and local variables are rejected.
 func ParseCaskSource(source string, ref CaskSource, today time.Time) (json.RawMessage, error) {
 	tokens, err := lexRuby(source)
 	if err != nil {
@@ -658,7 +660,10 @@ var versionCharacters = regexp.MustCompile(`^[0-9a-zA-Z.,:\-_+ ]+$`)
 
 func (p *caskParser) statement() error {
 	name := p.next()
-	if name.kind == rbKeyword && (name.text == "if" || name.text == "unless" || name.text == "case") {
+	if isKeyword(name, "if") {
+		return p.flightGuard(name)
+	}
+	if name.kind == rbKeyword && (name.text == "unless" || name.text == "case") {
 		return p.fail(name.line, "conditionals are not supported")
 	}
 	if name.kind != rbIdent {

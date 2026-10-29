@@ -1,0 +1,83 @@
+{
+  "artifacts": [
+    {
+      "uninstall": [
+        {
+          "login_item": "Rectangle",
+          "quit": "com.knollsoft.Rectangle"
+        }
+      ]
+    },
+    {
+      "app": [
+        "Rectangle.app"
+      ],
+      "target": "/Applications/Rectangle.app"
+    },
+    {
+      "zap": [
+        {
+          "trash": [
+            "~/Library/Application Scripts/com.knollsoft.RectangleLauncher",
+            "~/Library/Application Support/Rectangle",
+            "~/Library/Caches/com.knollsoft.Rectangle",
+            "~/Library/Containers/com.knollsoft.RectangleLauncher",
+            "~/Library/HTTPStorages/com.knollsoft.Rectangle",
+            "~/Library/Preferences/com.knollsoft.Rectangle.plist",
+            "~/Library/WebKit/com.knollsoft.Rectangle"
+          ]
+        }
+      ]
+    }
+  ],
+  "auto_updates": true,
+  "caveats": null,
+  "caveats_rosetta": null,
+  "conflicts_with": null,
+  "container": null,
+  "depends_on": {
+    "macos": {
+      "\u003e=": [
+        "14"
+      ]
+    }
+  },
+  "deprecated": false,
+  "deprecation_date": null,
+  "deprecation_reason": null,
+  "deprecation_replacement_cask": null,
+  "deprecation_replacement_formula": null,
+  "desc": "Move and resize windows using keyboard shortcuts or snap areas",
+  "disable_date": null,
+  "disable_reason": null,
+  "disable_replacement_cask": null,
+  "disable_replacement_formula": null,
+  "disabled": false,
+  "full_token": "homebrew/cask/rectangle",
+  "homepage": "https://rectangleapp.com/",
+  "languages": [],
+  "name": [
+    "Rectangle"
+  ],
+  "old_tokens": [],
+  "rename": [],
+  "ruby_source_path": "Casks/r/rectangle.rb",
+  "sha256": "9f820a2e56bd2c27cdda4fb4556de3cbcfcbac052d9eeb2179d49e2dae277abc",
+  "supported_platforms": [
+    "golden_gate",
+    "arm64_golden_gate",
+    "tahoe",
+    "arm64_tahoe",
+    "sequoia",
+    "arm64_sequoia",
+    "sonoma",
+    "arm64_sonoma"
+  ],
+  "tap": "homebrew/cask",
+  "tap_git_head": "62514aa815052bc35a8fd17d2e7fadff8784c85a",
+  "token": "rectangle",
+  "url": "https://github.com/rxhanson/Rectangle/releases/download/v2.0.4/Rectangle2.0.4.dmg",
+  "url_specs": {},
+  "variations": {},
+  "version": "2.0.4"
+}

@@ -1,0 +1,80 @@
+{
+  "artifacts": [
+    {
+      "uninstall": [
+        {
+          "quit": "com.noahelhadedy.DoubleShot"
+        }
+      ]
+    },
+    {
+      "app": [
+        "Double Shot.app"
+      ],
+      "target": "/Applications/Double Shot.app"
+    },
+    {
+      "postflight_steps": null
+    },
+    {
+      "zap": [
+        {
+          "trash": [
+            "~/Library/Application Support/DoubleShot",
+            "~/Library/Preferences/com.noahelhadedy.DoubleShot.plist"
+          ]
+        }
+      ]
+    }
+  ],
+  "auto_updates": null,
+  "caveats": "If you turned on lid closed mode, remove its permission before uninstalling:\nopen Double Shot \u003e Settings \u003e Lid Closed \u003e Remove Permission.\n",
+  "caveats_rosetta": null,
+  "conflicts_with": null,
+  "container": null,
+  "depends_on": {
+    "macos": {
+      "\u003e=": [
+        "14"
+      ]
+    }
+  },
+  "deprecated": false,
+  "deprecation_date": null,
+  "deprecation_reason": null,
+  "deprecation_replacement_cask": null,
+  "deprecation_replacement_formula": null,
+  "desc": "Keeps your Mac awake, with the lid closed too, while your AI agents work",
+  "disable_date": null,
+  "disable_reason": null,
+  "disable_replacement_cask": null,
+  "disable_replacement_formula": null,
+  "disabled": false,
+  "full_token": "noahelhadedy/tap/double-shot",
+  "homepage": "https://github.com/noahelhadedy/double-shot",
+  "languages": [],
+  "name": [
+    "Double Shot"
+  ],
+  "old_tokens": [],
+  "rename": [],
+  "ruby_source_path": "Casks/double-shot.rb",
+  "sha256": "67a67dd6b61b1766307595c349e8932dbc00de8b2708dd43eb7fd771daddc33e",
+  "supported_platforms": [
+    "golden_gate",
+    "arm64_golden_gate",
+    "tahoe",
+    "arm64_tahoe",
+    "sequoia",
+    "arm64_sequoia",
+    "sonoma",
+    "arm64_sonoma"
+  ],
+  "tap": "noahelhadedy/tap",
+  "tap_git_head": "68fb39413dbaa57e20ffa4c3b977f7ac76b9f53f",
+  "token": "double-shot",
+  "url": "https://github.com/noahelhadedy/double-shot/releases/download/v1.0.6/DoubleShot-1.0.6.zip",
+  "url_specs": {},
+  "variations": {},
+  "version": "1.0.6"
+}
