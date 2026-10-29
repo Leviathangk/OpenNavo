@@ -297,8 +297,6 @@ pub fn run() {
     raise_open_file_limit();
     let specta = specta_builder();
     let hidden = lifecycle::hidden_launch(&std::env::args().collect::<Vec<_>>());
-    #[cfg(target_os = "macos")]
-    let relaunch_links = deeplink::validated_links(std::env::args());
 
     // Export bindings synchronously on development startup to match frontend types and commands; failure does not prevent running.
     #[cfg(debug_assertions)]
@@ -415,10 +413,10 @@ pub fn run() {
                 core::DesktopCore::open(data, cache, askpass, core_sink)
             }))?;
             #[cfg(target_os = "macos")]
-            if relaunch::self_heal(app.handle(), &core, hidden, &relaunch_links) {
+            if relaunch::self_heal(app.handle(), &core, hidden) {
                 return Ok(());
             }
-            deeplink::install(app.handle(), sink);
+            deeplink::install(app.handle(), sink, core.take_relaunch_links());
             let app_handle = app.handle().clone();
             let store_path = core.data_dir.join("settings.json");
             let save = tauri::async_runtime::block_on(blocking(move || {
