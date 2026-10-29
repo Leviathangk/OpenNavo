@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage } from 'node:http';
 import { RequestCounter, countResponse } from '../utils/crawlerMetrics';
 import { loadShedState } from '../utils/loadShed';
 import { renderMemoryMetrics } from '../utils/memoryMetrics';
+import { clearSitemapStorage } from '../utils/sitemapStorage';
 import { cacheBuildIdentity } from './cache-storage';
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -71,6 +72,7 @@ export default defineNitroPlugin(nitroApp => {
         const settings = body.settings === true;
         const settingsCleared = settings ? await reloadSiteSettings() : undefined;
         if (settings && !settingsCleared) return reply(503, { removed: 0, settingsCleared: false });
+        if (settings) await clearSitemapStorage();
         // getKeys takes a namespace, not a string prefix: list the route caches and filter.
         const storage = useStorage('cache');
         const matches = pageCacheMatcher(paths);

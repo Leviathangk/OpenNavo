@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -60,6 +61,97 @@ def prepare_on_host(root, api_environment):
 
 
 class DeployTests(unittest.TestCase):
+    def test_merge_web_assets_keeps_recent_old_files_and_expires_stale_files(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            previous, current, destination = (root / name for name in ['previous', 'current', 'destination'])
+            previous.mkdir(); current.mkdir(); destination.mkdir()
+            now = deploy.WEB_ASSET_RETENTION_SECONDS + 100
+            (previous / 'old.js').write_text('old')
+            (previous / 'stale.js').write_text('stale')
+            os.utime(previous / 'old.js', (now - 86400, now - 86400))
+            os.utime(previous / 'stale.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS - 1, now - deploy.WEB_ASSET_RETENTION_SECONDS - 1))
+            shutil.copytree(previous, destination, dirs_exist_ok=True)
+            (current / 'new.js').write_text('new')
+            deploy.merge_web_assets(current, destination, now=now, previous_current={'old.js'})
+            self.assertTrue((destination / 'old.js').exists())
+            self.assertTrue((destination / 'new.js').exists())
+            self.assertFalse((destination / 'stale.js').exists())
+            self.assertEqual((destination / 'new.js').stat().st_mtime, now)
+
+    def test_merge_web_assets_refreshes_the_previous_live_release_after_eight_days(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            current, destination = (root / name for name in ['current', 'destination'])
+            current.mkdir(); destination.mkdir()
+            now = deploy.WEB_ASSET_RETENTION_SECONDS * 2
+            (destination / 'previous.js').write_text('previous')
+            (destination / 'earlier.js').write_text('earlier')
+            os.utime(destination / 'previous.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS - 86400,) * 2)
+            os.utime(destination / 'earlier.js', (now - deploy.WEB_ASSET_RETENTION_SECONDS * 2,) * 2)
+            (current / 'new.js').write_text('new')
+
+            deploy.merge_web_assets(current, destination, now=now, previous_current={'previous.js'})
+
+            self.assertTrue((destination / 'previous.js').exists())
+            self.assertEqual((destination / 'previous.js').stat().st_mtime, now)
+            self.assertTrue((destination / 'new.js').exists())
+            self.assertFalse((destination / 'earlier.js').exists())
+
+    def test_merge_web_assets_does_not_refresh_older_retained_assets(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            current, destination = (root / name for name in ['current', 'destination'])
+            current.mkdir(); destination.mkdir()
+            now = deploy.WEB_ASSET_RETENTION_SECONDS + 100
+            (destination / 'live.js').write_text('live')
+            (destination / 'retained.js').write_text('retained')
+            retained_mtime = now - deploy.WEB_ASSET_RETENTION_SECONDS - 1
+            os.utime(destination / 'live.js', (now - 86400,) * 2)
+            os.utime(destination / 'retained.js', (retained_mtime,) * 2)
+            (current / 'new.js').write_text('new')
+
+            deploy.merge_web_assets(current, destination, now=now, previous_current={'live.js'})
+
+            self.assertTrue((destination / 'live.js').exists())
+            self.assertFalse((destination / 'retained.js').exists())
+
+    def test_merge_web_assets_refreshes_all_files_when_legacy_manifest_is_missing(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            current, destination = (root / name for name in ['current', 'release/web-assets'])
+            current.mkdir(); destination.mkdir(parents=True)
+            now = deploy.WEB_ASSET_RETENTION_SECONDS + 100
+            for index, name in enumerate(['old-a.js', 'old-b.js', 'old-c.js']):
+                path = destination / name
+                path.write_text(name)
+                # Keep each file on a different whole-second timestamp, all
+                # older than the retention window.
+                mtime = now - deploy.WEB_ASSET_RETENTION_SECONDS - 10 - index
+                os.utime(path, (mtime, mtime))
+            (current / 'new.js').write_text('new')
+
+            deploy.merge_web_assets(current, destination, now=now)
+
+            for name in ['old-a.js', 'old-b.js', 'old-c.js']:
+                path = destination / name
+                self.assertTrue(path.exists())
+                self.assertEqual(path.stat().st_mtime, now)
+            self.assertTrue((destination / 'new.js').exists())
+
+    def test_previous_web_asset_paths_uses_the_release_manifest(self):
+        with tempfile.TemporaryDirectory() as root:
+            release = Path(root) / 'release'
+            destination = release / 'web-assets'
+            destination.mkdir(parents=True)
+            (destination / 'live.js').write_text('live')
+            (destination / 'retained.js').write_text('retained')
+            os.utime(destination / 'live.js', (1, 1))
+            os.utime(destination / 'retained.js', (2, 2))
+            (release / 'manifest.json').write_text(json.dumps({'web_assets': ['live.js']}))
+
+            self.assertEqual(deploy.previous_web_asset_paths(destination), {'live.js'})
+
     def test_prepare_moves_cache_notifier_to_new_web_and_preserves_rollback(self):
         for use_alias in [False, True]:
             with self.subTest(use_alias=use_alias), tempfile.TemporaryDirectory() as root:
@@ -264,6 +356,51 @@ scrape_configs:
         self.assertEqual(obj.services, obj.state['services'])
         self.assertEqual(events, ['verify', 'monitoring', ('cleanup', previous), ('prune', previous)])
 
+    def test_retry_continues_when_live_release_directory_is_missing(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj = object.__new__(deploy.Deployment)
+            obj.root = Path(root)
+            obj.payload = payload()
+            previous = {'services': {'api': 'api_previous'}}
+            obj.state = {
+                'sha': obj.payload['sha'],
+                'release': 'missing-release',
+                'services': {'api': 'api_live'},
+                'previous': previous,
+            }
+            events = []
+            obj.verify = lambda: events.append('verify')
+            obj.update_monitoring = lambda services: events.append('monitoring')
+            obj.cleanup = lambda state: events.append(('cleanup', state))
+            obj.prune = lambda state: events.append(('prune', state))
+            with patch('builtins.print') as output:
+                obj.apply(archive())
+
+            self.assertEqual(events, ['verify', 'monitoring', ('cleanup', previous), ('prune', previous)])
+            output.assert_any_call('Live release manifest repair skipped; continuing deployment.', flush=True)
+
+    def test_retry_rebuilds_a_missing_live_manifest_without_sensitive_fields(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            release = root / 'releases/live'
+            (release / 'web-assets').mkdir(parents=True)
+            (release / 'web-assets/live.js').write_text('live')
+            obj = object.__new__(deploy.Deployment)
+            obj.root = root
+            obj.payload = {**payload(), 'registry_token': 'secret-token', 'admin_archive': 'secret-archive'}
+            obj.state = {'sha': obj.payload['sha'], 'release': 'live', 'services': {'api': 'api_live'}}
+            obj.verify = lambda: None
+            obj.update_monitoring = lambda services: None
+            obj.cleanup = lambda state: None
+            obj.prune = lambda state: None
+
+            obj.apply(archive())
+
+            manifest = json.loads((release / 'manifest.json').read_text())
+            self.assertEqual(manifest['web_assets'], ['live.js'])
+            self.assertNotIn('registry_token', manifest)
+            self.assertNotIn('admin_archive', manifest)
+
     def test_prune_keeps_recent_live_previous_and_mounted_release_snapshots(self):
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
             releases = Path(root) / 'releases'
@@ -438,6 +575,7 @@ scrape_configs:
             obj.state_path = directory / 'state.json'
             obj.release = 'test'
             obj.services = {k: k + '_new' for k in ['api', 'web', 'admin', 'mcp']}
+            obj.current_web_assets = ['legacy.js']
             obj.live_caddy = directory / 'live'
             obj.env = directory / 'env'
             obj.rolling = directory / 'rolling'
@@ -461,6 +599,8 @@ scrape_configs:
                 return ''
             with patch.object(deploy, 'command', side_effect=cmd), self.assertRaises(RuntimeError):
                 obj.apply(archive())
+            manifest = json.loads((directory / 'manifest.json').read_text())
+            self.assertEqual(manifest['web_assets'], ['legacy.js'])
             self.assertEqual(obj.live_caddy.read_text(), 'old')
             self.assertEqual(obj.env.read_text(), 'old')
             self.assertEqual(obj.rolling.read_text(), 'old')
@@ -496,6 +636,8 @@ scrape_configs:
             obj.cleanup = cleanup
             with patch.object(deploy, 'command', side_effect=cmd):
                 obj.apply(archive())
+            manifest = json.loads((directory / 'manifest.json').read_text())
+            self.assertEqual(manifest['web_assets'], ['legacy.js'])
             self.assertEqual(events.count('verify'), 2)
             self.assertEqual(events[-2:], ['cleanup', 'prune'])
             self.assertLess(events.index(('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker')), len(events) - 1)

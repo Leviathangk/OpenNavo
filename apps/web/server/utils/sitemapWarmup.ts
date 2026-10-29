@@ -8,6 +8,7 @@ export const SITEMAP_WARMUP_PATHS = [
 export interface WarmupOptions {
   signal?: AbortSignal;
   ready?: (signal: AbortSignal) => Promise<boolean>;
+  includeVersions?: boolean | (() => Promise<boolean>);
 }
 
 /** Abort both waits and our ownership of in-flight work, even if a transport ignores cancellation. */
@@ -93,16 +94,27 @@ export async function warmSitemaps(
       }
       if (!ready && !cancelled()) {
         outcome = 'readiness_timeout';
-        failed =
-          typeof includeFonts === 'boolean' && !includeFonts
-            ? paths.filter(path => !path.includes('/fonts-bucket-')).length
-            : paths.length;
+        const versionsEnabled = typeof options.includeVersions !== 'boolean' || options.includeVersions;
+        failed = paths.filter(
+          path =>
+            (typeof includeFonts !== 'boolean' || includeFonts || !path.includes('/fonts-bucket-')) &&
+            (versionsEnabled || !path.includes('/versions-bucket-'))
+        ).length;
         return;
       }
     }
     if (cancelled()) return;
     const fontsEnabled = typeof includeFonts === 'function' ? await cancellable(includeFonts(), signal) : includeFonts;
-    paths = paths.filter(path => fontsEnabled || !path.includes('/fonts-bucket-'));
+    const versionsEnabled =
+      options.includeVersions === undefined
+        ? true
+        : typeof options.includeVersions === 'function'
+          ? await cancellable(options.includeVersions(), signal)
+          : options.includeVersions;
+    paths = paths.filter(
+      path =>
+        (fontsEnabled || !path.includes('/fonts-bucket-')) && (versionsEnabled || !path.includes('/versions-bucket-'))
+    );
     for (const path of paths) {
       if (cancelled()) return;
       let ok = false;

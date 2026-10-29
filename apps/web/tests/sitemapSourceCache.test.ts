@@ -53,11 +53,9 @@ async function setup(records: Record<string, unknown>[], fontsSitemap = true, fo
         }
       })
   );
-  vi.stubGlobal('useRuntimeConfig', () => ({
-    apiBaseInternal: 'https://example.test',
-    public: {}
-  }));
-  vi.stubGlobal('getSiteSettings', async () => ({ pages: { versionsSitemap: true, fontsSitemap } }));
+  vi.stubGlobal('useRuntimeConfig', () => ({ apiBaseInternal: 'https://example.test', public: {} }));
+  const settings = { revision: 1, pages: { versionsSitemap: true, fontsSitemap } };
+  vi.stubGlobal('getSiteSettings', async () => settings);
   vi.stubGlobal('$fetch', fetch);
   const plugin = await import('../server/plugins/sitemap-sources');
   const index = async (sitemaps = Object.keys(packageSitemaps).map(_sitemapName => ({ _sitemapName }))) => {
@@ -79,6 +77,7 @@ async function setup(records: Record<string, unknown>[], fontsSitemap = true, fo
     fetch,
     storage,
     packageCalls,
+    settings,
     idle: plugin.sitemapSourcesIdle,
     // Past these the snapshot is stale, or a failed refresh may be retried.
     stale: () => vi.setSystemTime(Date.now() + plugin.SNAPSHOT_FRESH_MS + 1000),
@@ -102,9 +101,44 @@ describe('sitemap source snapshot cache', () => {
     expect(versions.some(entry => entry.loc === '/apps/font-sample/versions')).toBe(Boolean(enabled));
     if (enabled) expect(await bucket(fontName)).toContainEqual(expect.objectContaining({ loc: '/apps/font-sample' }));
     else {
-      await expect(bucket(fontName)).rejects.toMatchObject({ statusCode: 404 });
+      await expect(bucket(fontName)).rejects.toMatchObject({ statusCode: 410 });
       expect(fetch.mock.calls.some(([, options]) => options?.query?.group === 'fonts')).toBe(false);
     }
+  });
+
+  it('checks source switches even with a warm populated index and restores enabled buckets', async () => {
+    const record = {
+      kind: 'cask',
+      token: 'sample',
+      notesCount: 5,
+      locales: [
+        {
+          locale: 'en-US',
+          pages: {
+            overview: { inSitemap: false },
+            versions: { inSitemap: false }
+          }
+        }
+      ]
+    };
+    const { index, bucket, settings } = await setup([record], true, [record]);
+    const names = [packageSitemapName('fonts', record.token), packageSitemapName('versions', record.token)];
+    expect((await index()).some(entry => names.includes(entry['_sitemapName']))).toBe(false);
+
+    settings.revision += 1;
+    settings.pages.fontsSitemap = false;
+    settings.pages.versionsSitemap = false;
+    expect((await index()).some(entry => names.includes(entry['_sitemapName']))).toBe(false);
+
+    record.locales[0]!.pages.overview.inSitemap = true;
+    record.locales[0]!.pages.versions.inSitemap = true;
+    settings.revision += 1;
+    settings.pages.fontsSitemap = true;
+    settings.pages.versionsSitemap = true;
+    const opened = await index();
+    for (const name of names) expect(opened).toContainEqual({ _sitemapName: name });
+    expect(await bucket(names[0]!)).toContainEqual(expect.objectContaining({ loc: '/apps/sample' }));
+    expect(await bucket(names[1]!)).toContainEqual(expect.objectContaining({ loc: '/apps/sample/versions' }));
   });
 
   it('serves the first external index and every bucket from startup-warmed snapshots', async () => {
