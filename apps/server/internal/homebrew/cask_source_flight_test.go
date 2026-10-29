@@ -206,6 +206,10 @@ func TestParseCaskSourceRejectsAmbiguousFlightBlocks(t *testing.T) {
 			{"inline case", "x = case 1\n      when 1\n        1\n      end", 1},
 			{"inline while", "x = 1 + while false\n        1\n      end", 1},
 			{"inline until", "x = 1 + until true\n        1\n      end", 1},
+			{"modifier if", `run "/bin/echo" if true`, 1},
+			{"modifier unless", `run "/bin/echo" unless false`, 1},
+			{"single-line if then end", `if true then run "/bin/echo" end`, 1},
+			{"begin end while", "begin\n        run \"/bin/echo\"\n      end while false", 1},
 			{"continued inline if", "x = 1 +\n      if true\n        1\n      end", 2},
 			{"parenthesized inline if", "x = (\n      if true\n        1\n      end\n      )", 2},
 			{"begin expression", "x = begin\n        1\n      end", 1},
@@ -229,6 +233,44 @@ func TestParseCaskSourceRejectsAmbiguousFlightBlocks(t *testing.T) {
 					t.Fatalf("expected UnsupportedCaskError at line %d, got %v", wantLine, err)
 				}
 			})
+		}
+	}
+}
+
+func TestParseCaskSourceRejectsFlightHeredocBoundarySmuggling(t *testing.T) {
+	for _, branch := range []string{"modern", "legacy"} {
+		for _, operator := range []string{"<<~", "<<-"} {
+			for _, operand := range []string{"1", "value"} {
+				t.Run(branch+"/"+operator+"/"+operand, func(t *testing.T) {
+					prefix := flightGuardBase + "  if respond_to?(:postflight_steps)\n"
+					flight, nextFlight := "postflight_steps", "preflight_steps"
+					suffix := "  else\n    postflight do\n    end\n  end\nend\n"
+					if branch == "legacy" {
+						prefix += "    postflight_steps do\n    end\n  else\n"
+						flight, nextFlight = "postflight", "preflight"
+						suffix = "  end\nend\n"
+					}
+					prefix += "    " + flight + " do\n"
+					if operand == "value" {
+						prefix += "      value = 1\n"
+					}
+					// Misreading the shift as a heredoc used to hide the first hook's end,
+					// the architecture restriction, and the second hook's start up to Float.
+					source := prefix + "      " + operand + " " + operator + `Float::DIG
+    end
+    depends_on arch: :arm64
+    ` + nextFlight + ` do
+      Float
+    end
+` + suffix
+					_, err := ParseCaskSource(source, CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+					var unsupported *UnsupportedCaskError
+					wantLine := strings.Count(prefix, "\n") + 1
+					if !errors.As(err, &unsupported) || unsupported.Line != wantLine {
+						t.Fatalf("expected UnsupportedCaskError at line %d, got %v", wantLine, err)
+					}
+				})
+			}
 		}
 	}
 }

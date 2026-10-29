@@ -42,6 +42,8 @@ type rbToken struct {
 	words  []string
 	line   int
 	spaced bool // whitespace precedes the token
+	// A bare identifier before a heredoc may instead be the left operand of a shift.
+	ambiguousHeredoc bool
 }
 
 var rbKeywords = map[string]bool{
@@ -583,15 +585,17 @@ func (l *rbLexer) startsHeredoc() bool {
 	}
 	c := rest[0]
 	if c == '~' || c == '-' {
-		return len(rest) > 1 && (isIdentStart(rest[1]) || rest[1] == '"' || rest[1] == '\'')
-	}
-	if (c < 'A' || c > 'Z') && c != '_' && c != '"' && c != '\'' {
+		if len(rest) <= 1 || !isIdentStart(rest[1]) && rest[1] != '"' && rest[1] != '\'' {
+			return false
+		}
+	} else if (c < 'A' || c > 'Z') && c != '_' && c != '"' && c != '\'' {
 		return false
 	}
 	return !l.valueEnded() || l.last().kind == rbIdent && l.pos > 0 && l.src[l.pos-1] == ' '
 }
 
 func (l *rbLexer) readHeredocStart(spaced bool) error {
+	ambiguous := l.valueEnded()
 	l.pos += 2
 	heredoc := rbHeredoc{index: len(l.tokens)}
 	switch l.peek(0) {
@@ -619,7 +623,7 @@ func (l *rbLexer) readHeredocStart(spaced bool) error {
 	if heredoc.ident == "" {
 		return l.fail("invalid heredoc")
 	}
-	l.emit(rbToken{kind: rbString, line: l.line, spaced: spaced})
+	l.emit(rbToken{kind: rbString, line: l.line, spaced: spaced, ambiguousHeredoc: ambiguous})
 	l.pending = append(l.pending, heredoc)
 	return nil
 }

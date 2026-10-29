@@ -101,7 +101,17 @@ func (p *caskParser) flightGuardBranch(want string) error {
 // Guarded hooks must have unambiguous boundaries: a phantom or missing end could hide
 // metadata or a second hook in the same branch. Keep this subset deliberately smaller
 // than ordinary opaque flight bodies instead of guessing at arbitrary Ruby syntax.
-func (p *caskParser) validateFlightGuardKeyword(token, previous rbToken, closer string) error {
+// Supported constructs are balanced calls/arrays/hashes, method do blocks, and standalone
+// multiline if/unless with else/elsif. Modifiers, inline conditionals, definitions, loops,
+// left shifts, and ambiguous bare-argument heredocs are rejected. Heredocs in assignments
+// or parenthesized arguments remain supported.
+func (p *caskParser) validateFlightGuardToken(token, previous rbToken, closer string) error {
+	if token.ambiguousHeredoc || isPunct(token, "<<") {
+		return p.fail(token.line, "ambiguous heredoc or left shift in flight compatibility guard")
+	}
+	if token.kind != rbKeyword {
+		return nil
+	}
 	standalone := previous.kind == rbNewline && closer == "end"
 	if standalone && p.pos >= 3 {
 		// Ruby continues a line after an operator. A control expression on the next

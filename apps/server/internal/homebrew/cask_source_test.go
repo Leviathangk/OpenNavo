@@ -205,6 +205,69 @@ end
 	}
 }
 
+func TestParseCaskSourceHeredocs(t *testing.T) {
+	for _, operator := range []string{"<<", "<<-", "<<~"} {
+		for _, quote := range []string{"", "'", `"`} {
+			t.Run(operator+quote, func(t *testing.T) {
+				body := "  else end #{version}\n"
+				terminator := "EOS\n"
+				if operator != "<<" {
+					terminator = "    " + terminator
+				}
+				heredoc := operator + quote + "EOS" + quote + "\n" + body + terminator
+				// A bare method argument remains a heredoc in ordinary metadata. Inside
+				// guarded hooks, assignment makes the heredoc unambiguous in both branches.
+				source := flightGuardBase + "  if respond_to?(:postflight_steps)\n" +
+					"    postflight_steps do\n      message = " + heredoc + "    end\n  else\n" +
+					"    postflight do\n      message = " + heredoc + "    end\n  end\n" +
+					"  caveats " + heredoc + "  depends_on arch: :arm64\nend\n"
+				out := parseSource(t, source, "demo")
+				want := body
+				if operator == "<<~" {
+					want = strings.TrimLeft(want, " ")
+				}
+				if quote != "'" {
+					want = strings.ReplaceAll(want, "#{version}", "1.0")
+				}
+				if got := out["caveats"]; got != want {
+					t.Fatalf("caveats = %q, want %q", got, want)
+				}
+				if got := jsonText(out["depends_on"]); got != `{"arch":[{"bits":64,"type":"arm"}]}` {
+					t.Fatalf("depends_on = %s", got)
+				}
+			})
+		}
+	}
+}
+
+func TestParseCaskSourceShiftPreservesMetadata(t *testing.T) {
+	for _, operator := range []string{"<<~", "<<-"} {
+		for _, operand := range []string{"1", "Float::DIG", "(1)"} {
+			t.Run(operator+"/"+operand, func(t *testing.T) {
+				source := flightGuardBase + "  postflight do\n    " + operand + " " + operator + `Float::DIG
+  end
+  depends_on arch: :arm64
+  preflight do
+    Float
+  end
+end
+`
+				raw, err := ParseCaskSource(source, CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
+				if err != nil {
+					t.Fatal(err)
+				}
+				item, err := Normalize("cask", raw)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !item.SupportsArm64 || item.SupportsX8664 {
+					t.Fatalf("shift hid architecture restriction: arm64=%t, x86_64=%t", item.SupportsArm64, item.SupportsX8664)
+				}
+			})
+		}
+	}
+}
+
 func TestParseCaskSourceDependsOnAndLifecycle(t *testing.T) {
 	base := "cask \"demo\" do\n  version \"1\"\n  sha256 :no_check\n  url \"https://example.com/demo.dmg\"\n  name \"Demo\"\n  app \"Demo.app\"\n"
 	out := parseSource(t, base+"  depends_on :macos\n  depends_on arch: [:intel], cask: \"helper\"\n  depends_on formula: [\"jq\", \"yq\"]\nend\n", "demo")

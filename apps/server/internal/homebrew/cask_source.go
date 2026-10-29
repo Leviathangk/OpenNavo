@@ -737,8 +737,8 @@ func (p *caskParser) skipRubyBlock(opener string, guardedFlight bool) ([]string,
 		// The opener was consumed before the call, so a previous token always exists.
 		previous := p.tokens[p.pos-1]
 		token := p.next()
-		if guardedFlight && token.kind == rbKeyword {
-			if err := p.validateFlightGuardKeyword(token, previous, closers[len(closers)-1]); err != nil {
+		if guardedFlight {
+			if err := p.validateFlightGuardToken(token, previous, closers[len(closers)-1]); err != nil {
 				return nil, err
 			}
 		}
