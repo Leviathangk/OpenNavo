@@ -74,7 +74,12 @@ async function save() {
   const fields = Object.fromEntries(
     textKeys.value.map(key => [key, values.value[key].trim() || null])
   ) as Schemas['ContentFields'];
-  const { error } = await fixTranslation({ ref: props.item.ref, locale: locale.value, fields });
+  const { error } = await fixTranslation({
+    ref: props.item.ref,
+    ...(props.item.ref.entity === 'article' ? { articleId: props.item.articleId } : {}),
+    locale: locale.value,
+    fields
+  });
   saving.value = false;
   if (error) return;
   window.$message?.success($t('page.changelog.translations.fixed'));

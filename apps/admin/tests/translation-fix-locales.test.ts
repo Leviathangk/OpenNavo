@@ -1,6 +1,7 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { expect, it, vi } from 'vitest';
+import { fixTranslation } from '../src/service/api';
 import FixDrawer from '../src/views/changelog/review/modules/fix-drawer.vue';
 import { APP_CONTENT_LOCALES, CONTENT_LOCALES } from '../src/utils/content-locale';
 
@@ -53,5 +54,46 @@ it.each(['desktop_release', 'package'])('limits %s fixes to its supported langua
   const selected = (wrapper.find('select').element as HTMLSelectElement).value;
   expect(options).toContain(selected);
   if (entity === 'desktop_release') expect(APP_CONTENT_LOCALES).toContain(selected);
+  wrapper.unmount();
+});
+
+it('sends the owning article ID when fixing a colliding published revision', async () => {
+  vi.mocked(fixTranslation).mockResolvedValue({ error: null } as any);
+  const i18n = Object.fromEntries(
+    CONTENT_LOCALES.map(locale => [
+      locale,
+      { status: locale === 'en-US' ? 'source' : 'manual', fields: { title: 'Translated title' } }
+    ])
+  );
+  const button = defineComponent({
+    emits: ['click'],
+    setup: (_, { slots, emit }) => () => h('button', { onClick: () => emit('click') }, slots.default?.())
+  });
+  const wrapper = mount(FixDrawer, {
+    props: {
+      show: true,
+      item: { ref: { entity: 'article', id: 31 }, articleId: 32, sourceLocale: 'en-US', i18n, label: 'Article' } as any
+    },
+    global: {
+      stubs: {
+        NDrawer: passthrough,
+        NDrawerContent: passthrough,
+        NText: passthrough,
+        NSelect: select,
+        NInput: true,
+        NButton: button,
+        NEmpty: true
+      }
+    }
+  });
+  await wrapper.findAll('button')[1].trigger('click');
+  await flushPromises();
+  expect(fixTranslation).toHaveBeenLastCalledWith({
+    ref: { entity: 'article', id: 31 },
+    articleId: 32,
+    locale: 'zh-CN',
+    fields: { title: 'Translated title' }
+  });
+  expect(wrapper.emitted('saved')).toHaveLength(1);
   wrapper.unmount();
 });

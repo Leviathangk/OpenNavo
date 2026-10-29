@@ -12,6 +12,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
@@ -44,6 +45,7 @@ type Input struct {
 	Actor                                    store.AuditActor
 	CI                                       bool
 	tapCandidate                             *taps.Candidate
+	translationRef                           *content.Ref // pinned inside the agent write transaction
 }
 
 func Decode(request any, body []byte, actor store.AuditActor, ci bool) (Input, error) {
@@ -379,7 +381,7 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 	}
 	// SEO and intent-page views attach their own revisions inside execute; they need
 	// the same snapshot boundary as reads augmented by withReadRevision.
-	if _, ok := readRevisionWrites[op]; ok || op == "GetPackageSeo" || op == "GetPackageIntentPages" {
+	if _, ok := readRevisionWrites[op]; ok || op == "GetPackageSeo" || op == "GetPackageIntentPages" || op == "GetTranslationStatus" {
 		return s.readWithRevision(ctx, op, in)
 	}
 	return s.execute(ctx, op, in)
