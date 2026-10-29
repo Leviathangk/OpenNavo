@@ -1,10 +1,20 @@
 # GitHub release download statistics
 
-The `github-release:snapshot` worker runs hourly at minute 10. It reads the
-encrypted token from `github_settings` through `Store.GitHubToken`, then fetches
-every release and asset page of `opennavo/OpenNavo`. Only `desktop-v*` releases
-enter `github_release_snapshots`. Every asset is retained for auditing, with one
-complete observation per asset per Beijing natural day. No backfill is performed.
+The `github-release:snapshot` worker runs hourly at minute 10 and once more at
+23:59 Beijing time to capture the end of the calendar day. The worker loads
+`TZ_SCHEDULE` (default and deployment setting: `Asia/Shanghai`) and passes it as
+asynq's scheduler location. The additional `CRON_TZ=Asia/Shanghai 59 23 * * *`
+schedule explicitly fixes that run to Beijing time (15:59 UTC), even if the
+scheduler location changes. Both schedules share the same job type and
+deduplication, with a 20-minute uniqueness lock matching the run timeout.
+
+It reads the encrypted token from `github_settings` through `Store.GitHubToken`,
+then fetches every release page and the asset pages of published `desktop-v*`
+releases from `opennavo/OpenNavo`. Releases with `draft: true` are skipped before
+fetching assets and never enter snapshots or totals. Every published asset is
+retained for auditing, with one complete observation per asset per Beijing
+natural day. Migration `00123_github_release_snapshots.sql` creates the snapshot
+table. No backfill is performed.
 
 The dashboard aggregates all desktop versions together. Future beta/pre-release
 versions are counted together with stable releases:

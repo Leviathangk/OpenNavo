@@ -101,7 +101,7 @@ func TestSnapshotPaginatesAllReleasesAndAssetsAndReloadsToken(t *testing.T) {
 	require.Equal(t, 2, st.writes)
 }
 
-func TestSnapshotIncludesPrereleaseDesktopReleases(t *testing.T) {
+func TestSnapshotIncludesOnlyPublishedStableAndPrereleaseDesktopReleases(t *testing.T) {
 	st := &snapshotStore{token: strings.Repeat("x", 16)}
 	expected := []store.GitHubReleaseAsset{
 		{ReleaseTag: "desktop-v0.1.4", AssetID: 11, AssetName: "OpenNavo_0.1.4_universal.dmg", DownloadCount: 100},
@@ -111,13 +111,14 @@ func TestSnapshotIncludesPrereleaseDesktopReleases(t *testing.T) {
 	client := &http.Client{Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/repos/opennavo/OpenNavo/releases":
-			// Use GitHub's wire format so the prerelease flag is present even
-			// though the service currently needs only the release ID and tag.
+			// Use GitHub's wire format to cover both publication flags.
 			return reply(t, 200, []map[string]any{
-				{"id": 1, "tag_name": "desktop-v0.1.4", "prerelease": false},
-				{"id": 2, "tag_name": "desktop-v0.2.0-beta.1", "prerelease": true},
-				{"id": 3, "tag_name": "desktop-v0.2.0-rc.1", "prerelease": true},
+				{"id": 1, "tag_name": "desktop-v0.1.4", "prerelease": false, "draft": false},
+				{"id": 2, "tag_name": "desktop-v0.2.0-beta.1", "prerelease": true, "draft": false},
+				{"id": 3, "tag_name": "desktop-v0.2.0-rc.1", "prerelease": true, "draft": false},
 				{"id": 4, "tag_name": "server-v0.2.0-beta.1", "prerelease": true},
+				{"id": 5, "tag_name": "desktop-v0.2.0", "prerelease": false, "draft": true},
+				{"id": 6, "tag_name": "desktop-v0.3.0-beta.1", "prerelease": true, "draft": true},
 			}), nil
 		case "/repos/opennavo/OpenNavo/releases/1/assets":
 			return reply(t, 200, []map[string]any{{"id": 11, "name": expected[0].AssetName, "download_count": 100}}), nil
@@ -135,6 +136,20 @@ func TestSnapshotIncludesPrereleaseDesktopReleases(t *testing.T) {
 	require.Equal(t, map[string]any{"releases": 3, "assets": 3}, stats)
 	require.Equal(t, expected, st.assets, "stable, beta and RC assets enter the same snapshot")
 	require.Equal(t, 1, st.writes)
+}
+
+func TestSnapshotWithOnlyDraftReleasesDoesNotWrite(t *testing.T) {
+	st := &snapshotStore{token: "draft-test-credential"}
+	calls := 0
+	client := &http.Client{Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		require.Equal(t, "/repos/opennavo/OpenNavo/releases", r.URL.Path, "draft assets must not be fetched")
+		return reply(t, 200, []map[string]any{{"id": 1, "tag_name": "desktop-v0.2.0", "draft": true}}), nil
+	})}
+	_, err := (&Service{Store: st, HTTP: client}).Run(context.Background())
+	require.Error(t, err)
+	require.Equal(t, 1, calls)
+	require.Zero(t, st.writes)
 }
 
 func TestSnapshotFailuresNeverWritePartialDataOrEchoCredentials(t *testing.T) {

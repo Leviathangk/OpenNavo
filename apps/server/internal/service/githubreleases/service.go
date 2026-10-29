@@ -58,8 +58,8 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	assets := []store.GitHubReleaseAsset{}
 	count := 0
 	for _, release := range releases {
-		// Include beta/prerelease desktop tags alongside stable releases.
-		if !strings.HasPrefix(release.Tag, "desktop-v") {
+		// Include published beta/prerelease desktop tags alongside stable releases.
+		if release.Draft || !strings.HasPrefix(release.Tag, "desktop-v") {
 			continue
 		}
 		if release.ID <= 0 {
@@ -88,8 +88,9 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 }
 
 type release struct {
-	ID  int64  `json:"id"`
-	Tag string `json:"tag_name"`
+	ID    int64  `json:"id"`
+	Tag   string `json:"tag_name"`
+	Draft bool   `json:"draft"`
 }
 
 type asset struct {

@@ -10,6 +10,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/content"
 
 	"github.com/hibiken/asynq"
+	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -152,4 +153,68 @@ func TestDefinitionsSchedulesAndRetryOptions(t *testing.T) {
 	require.Error(t, err)
 	_, err = NextSchedule("bad", now, location)
 	require.Error(t, err)
+}
+
+func TestGitHubReleaseSnapshotScheduleClosesBeijingDay(t *testing.T) {
+	beijing, err := time.LoadLocation("Asia/Shanghai")
+	require.NoError(t, err)
+	for _, location := range []*time.Location{beijing, time.UTC} {
+		t.Run(location.String(), func(t *testing.T) {
+			now := time.Date(2026, 10, 29, 14, 10, 0, 0, time.UTC)
+			for _, want := range []time.Time{
+				time.Date(2026, 10, 29, 15, 10, 0, 0, time.UTC),
+				time.Date(2026, 10, 29, 15, 59, 0, 0, time.UTC),
+				time.Date(2026, 10, 29, 16, 10, 0, 0, time.UTC),
+			} {
+				next, err := NextSchedule("github-release:snapshot", now, location)
+				require.NoError(t, err)
+				require.True(t, want.Equal(next), "after %s: want %s, got %s", now, want, next)
+				now = next
+			}
+		})
+	}
+}
+
+type testScheduler struct {
+	cron    *cron.Cron
+	entries map[string][]cron.EntryID
+}
+
+func (s *testScheduler) Register(spec string, task *asynq.Task, _ ...asynq.Option) (string, error) {
+	id, err := s.cron.AddFunc(spec, func() {})
+	if err == nil {
+		s.entries[task.Type()] = append(s.entries[task.Type()], id)
+	}
+	return task.Type(), err
+}
+
+func TestRegisterSchedulesKeepsHourlySnapshotsAndOneBeijingDayEndRun(t *testing.T) {
+	beijing, err := time.LoadLocation("Asia/Shanghai")
+	require.NoError(t, err)
+	for _, location := range []*time.Location{beijing, time.UTC} {
+		t.Run(location.String(), func(t *testing.T) {
+			// Asynq uses the same cron parser and WithLocation option.
+			scheduler := &testScheduler{cron: cron.New(cron.WithLocation(location)), entries: map[string][]cron.EntryID{}}
+			require.NoError(t, RegisterSchedules(scheduler))
+			entries := scheduler.entries["github-release:snapshot"]
+			require.Len(t, entries, 2)
+			now := time.Date(2026, 10, 29, 0, 0, 0, 0, beijing)
+			var expected []time.Time
+			for hour := range 24 {
+				expected = append(expected, time.Date(2026, 10, 29, hour, 10, 0, 0, beijing))
+			}
+			expected = append(expected, time.Date(2026, 10, 29, 23, 59, 0, 0, beijing), time.Date(2026, 10, 30, 0, 10, 0, 0, beijing))
+			for _, want := range expected {
+				var next time.Time
+				for _, id := range entries {
+					candidate := scheduler.cron.Entry(id).Schedule.Next(now.In(location))
+					if next.IsZero() || candidate.Before(next) {
+						next = candidate
+					}
+				}
+				require.True(t, want.Equal(next), "after %s: want %s, got %s", now, want, next)
+				now = next
+			}
+		})
+	}
 }

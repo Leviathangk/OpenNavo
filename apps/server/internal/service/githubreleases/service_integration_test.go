@@ -30,8 +30,20 @@ func TestSnapshotUsesEncryptedSavedTokenAndPreservesDataOnFailure(t *testing.T) 
 		}
 		if r.URL.Path == "/repos/opennavo/OpenNavo/releases" {
 			return reply(t, 200, []map[string]any{
-				{"id": 1, "tag_name": "desktop-v0.1.3", "prerelease": false},
-				{"id": 2, "tag_name": "desktop-v0.2.0-beta.1", "prerelease": true},
+				{"id": 1, "tag_name": "desktop-v0.1.3", "prerelease": false, "draft": false},
+				{"id": 2, "tag_name": "desktop-v0.2.0-beta.1", "prerelease": true, "draft": false},
+				{"id": 3, "tag_name": "desktop-v0.2.0", "prerelease": false, "draft": true},
+				{"id": 4, "tag_name": "desktop-v0.3.0-beta.1", "prerelease": true, "draft": true},
+			}), nil
+		}
+		if r.URL.Path == "/repos/opennavo/OpenNavo/releases/3/assets" || r.URL.Path == "/repos/opennavo/OpenNavo/releases/4/assets" {
+			assetID := 4
+			if r.URL.Path == "/repos/opennavo/OpenNavo/releases/4/assets" {
+				assetID = 6
+			}
+			return reply(t, 200, []map[string]any{
+				{"id": assetID, "name": "OpenNavo_draft_universal.dmg", "download_count": 1000},
+				{"id": assetID + 1, "name": "OpenNavo_draft.app.tar.gz", "download_count": 500},
 			}), nil
 		}
 		if r.URL.Path == "/repos/opennavo/OpenNavo/releases/2/assets" {
@@ -58,6 +70,9 @@ func TestSnapshotUsesEncryptedSavedTokenAndPreservesDataOnFailure(t *testing.T) 
 	require.NoError(t, err)
 	require.EqualValues(t, 973, *initial.Downloads.Total, "stable and prerelease DMGs are combined")
 	require.EqualValues(t, 5, *initial.Updates.Total, "prerelease updater transfers are included")
+	var drafts int64
+	require.NoError(t, st.DB.Table("github_release_snapshots").Where("release_tag IN ?", []string{"desktop-v0.2.0", "desktop-v0.3.0-beta.1"}).Count(&drafts).Error)
+	require.Zero(t, drafts, "draft assets must not enter snapshots or totals")
 	expected = "rotated-test-credential"
 	save(expected)
 	at = at.Add(time.Hour)
