@@ -240,7 +240,7 @@ impl TaskQueue {
         }
         if matches!(
             trigger,
-            TaskTrigger::Manual | TaskTrigger::Deeplink | TaskTrigger::Retry
+            TaskTrigger::Manual | TaskTrigger::Deeplink | TaskTrigger::Mcp | TaskTrigger::Retry
         ) {
             self.paused.store(false, Ordering::Release);
         }

@@ -685,6 +685,8 @@ export function installMockIpc(
         }));
     },
     task_enqueue: args => {
+      if (args.trigger === 'deeplink' || args.trigger === 'mcp')
+        throw { code: 'E_CONFIRMATION_REQUIRED', message: 'write_confirmation_required', detail: null };
       // Like Rust's queue: link apps are refused at the door, before anything is stored.
       if ((args.target as TaskTarget | null)?.kind === 'link')
         throw { code: 'E_NOT_INSTALLABLE', message: 'link_app', detail: null };
@@ -696,9 +698,21 @@ export function installMockIpc(
       );
     },
     task_enqueue_many: args =>
-      (args.targets as TaskTarget[]).map(target =>
-        runner.enqueue(args.op as Task['op'], target, args.options as Task['options'], args.trigger as Task['trigger'])
-      ),
+      args.trigger === 'deeplink' || args.trigger === 'mcp'
+        ? (() => {
+            throw { code: 'E_CONFIRMATION_REQUIRED', message: 'write_confirmation_required', detail: null };
+          })()
+        : (args.targets as TaskTarget[]).map(target =>
+            runner.enqueue(
+              args.op as Task['op'],
+              target,
+              args.options as Task['options'],
+              args.trigger as Task['trigger']
+            )
+          ),
+    deeplink_install_confirm: () => {
+      throw { code: 'E_CONFIRMATION_DENIED', message: 'confirmation_denied', detail: null };
+    },
     task_cancel: args => {
       runner.cancel(args.id as string);
       return null;

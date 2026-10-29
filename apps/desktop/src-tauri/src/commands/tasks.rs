@@ -2,6 +2,16 @@ use crate::{AppError, core::DesktopCore, model::*};
 use std::{io::Write, path::Path, sync::Arc};
 use tauri::State;
 
+pub(crate) fn reject_unconfirmed_trigger(trigger: TaskTrigger) -> Result<(), AppError> {
+    if matches!(trigger, TaskTrigger::Deeplink | TaskTrigger::Mcp) {
+        return Err(AppError::new(
+            "E_CONFIRMATION_REQUIRED",
+            "write_confirmation_required",
+        ));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn task_enqueue(
@@ -11,6 +21,7 @@ pub async fn task_enqueue(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Task, AppError> {
+    reject_unconfirmed_trigger(trigger)?;
     if op == TaskOp::Clean {
         return Err(AppError::new("E_INVALID_ARG", "cleanup_execute_required"));
     }
@@ -26,8 +37,33 @@ pub async fn task_enqueue_many(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Vec<Task>, AppError> {
+    reject_unconfirmed_trigger(trigger)?;
     let queue = state.queue.clone();
     crate::blocking(move || queue.enqueue_many(op, targets, options, trigger)).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::reject_unconfirmed_trigger;
+    use crate::model::TaskTrigger;
+
+    #[test]
+    fn generic_task_commands_reject_external_write_triggers() {
+        assert_eq!(
+            reject_unconfirmed_trigger(TaskTrigger::Deeplink)
+                .unwrap_err()
+                .code,
+            "E_CONFIRMATION_REQUIRED"
+        );
+        assert_eq!(
+            reject_unconfirmed_trigger(TaskTrigger::Mcp)
+                .unwrap_err()
+                .code,
+            "E_CONFIRMATION_REQUIRED"
+        );
+        assert!(reject_unconfirmed_trigger(TaskTrigger::Manual).is_ok());
+        assert!(reject_unconfirmed_trigger(TaskTrigger::Bundle).is_ok());
+    }
 }
 #[tauri::command]
 #[specta::specta]

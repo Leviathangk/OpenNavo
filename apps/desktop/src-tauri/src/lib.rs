@@ -4,6 +4,7 @@ pub mod brewfile;
 pub mod catalog;
 pub mod cleanup;
 mod commands;
+pub mod confirmation;
 pub mod core;
 pub mod db;
 pub mod deeplink;
@@ -188,6 +189,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::tasks::history_list,
             commands::tasks::history_clear,
             commands::tasks::history_export_csv,
+            commands::deeplink::deeplink_install_confirm,
             commands::maintenance::brewfile_export,
             commands::maintenance::brewfile_preview,
             commands::maintenance::brewfile_install,
@@ -412,6 +414,9 @@ pub fn run() {
             let core = tauri::async_runtime::block_on(blocking(move || {
                 core::DesktopCore::open(data, cache, askpass, core_sink)
             }))?;
+            app.manage(std::sync::Arc::new(
+                confirmation::ConfirmationService::default(),
+            ));
             #[cfg(target_os = "macos")]
             if relaunch::self_heal(app.handle(), &core, hidden) {
                 return Ok(());

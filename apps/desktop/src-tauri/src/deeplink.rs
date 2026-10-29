@@ -1,14 +1,16 @@
 use crate::{
     brew::args::validate_token,
+    error::AppError,
     events::{CoreEvent, EventSink},
     model::*,
 };
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 use tauri::Manager;
+use uuid::Uuid;
 
 pub fn parse(input: &str) -> Option<DeepLinkEvent> {
     if input.len() > 8192 || input.chars().any(char::is_control) || input.trim() != input {
@@ -141,6 +143,7 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
         url: input.into(),
         route,
         action,
+        pending_id: None,
     })
 }
 
@@ -178,7 +181,43 @@ struct State {
     ready: bool,
     pending: VecDeque<DeepLinkEvent>,
     recent: VecDeque<(String, Instant)>,
+    installs: HashMap<String, PendingInstallState>,
 }
+
+#[derive(Debug, Clone)]
+enum PendingInstallKind {
+    Single {
+        target: TaskTarget,
+    },
+    Collection {
+        slug: String,
+        targets: Option<Vec<TaskTarget>>,
+        index: usize,
+        resolving: bool,
+    },
+}
+
+#[derive(Debug, Clone)]
+struct PendingInstallState {
+    source: String,
+    current: bool,
+    kind: PendingInstallKind,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct InstallTarget {
+    pub source: String,
+    pub target: TaskTarget,
+    pub index: usize,
+    pub total: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum InstallStep {
+    ResolveCollection { source: String, slug: String },
+    Target(InstallTarget),
+}
+
 pub struct Router {
     state: Mutex<State>,
     sink: EventSink,
@@ -191,6 +230,7 @@ impl Router {
                 ready: false,
                 pending: VecDeque::new(),
                 recent: VecDeque::new(),
+                installs: HashMap::new(),
             }),
             sink,
             show,
@@ -198,7 +238,7 @@ impl Router {
     }
     pub fn receive(&self, input: &str) {
         (self.show)();
-        let Some(event) = parse(input) else {
+        let Some(mut event) = parse(input) else {
             return;
         };
         let Ok(mut state) = self.state.lock() else {
@@ -215,6 +255,19 @@ impl Router {
             state.recent.pop_front();
         }
         state.recent.push_back((event.url.clone(), now));
+        if event.action == Some(DeepLinkAction::Install) {
+            let Some(install) = pending_install(&event) else {
+                return;
+            };
+            if state.installs.len() >= 32
+                && let Some(oldest) = state.installs.keys().next().cloned()
+            {
+                state.installs.remove(&oldest);
+            }
+            let pending_id = Uuid::new_v4().to_string();
+            state.installs.insert(pending_id.clone(), install);
+            event.pending_id = Some(pending_id);
+        }
         if state.ready {
             drop(state);
             (self.sink)(CoreEvent::Deeplink(event));
@@ -259,6 +312,7 @@ impl Router {
             url: format!("opennavo://{}", route.trim_start_matches('/')),
             route: route.into(),
             action: None,
+            pending_id: None,
         };
         let Ok(mut state) = self.state.lock() else {
             return;
@@ -273,6 +327,168 @@ impl Router {
             state.pending.push_back(event);
         }
     }
+
+    /// Reserve the next target for an opaque deep-link id. The reservation prevents concurrent frontend calls from
+    /// asking for the same item twice while a native dialog is open.
+    pub fn begin_install(&self, pending_id: &str) -> Result<InstallStep, AppError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| AppError::new("E_UNKNOWN", "deeplink_state"))?;
+        let pending = state
+            .installs
+            .get_mut(pending_id)
+            .ok_or_else(|| AppError::new("E_INVALID_ARG", "deeplink_pending_missing"))?;
+        if pending.current {
+            return Err(AppError::new("E_BUSY", "confirmation_busy"));
+        }
+        match &mut pending.kind {
+            PendingInstallKind::Single { target } => {
+                pending.current = true;
+                Ok(InstallStep::Target(InstallTarget {
+                    source: pending.source.clone(),
+                    target: target.clone(),
+                    index: 0,
+                    total: 1,
+                }))
+            }
+            PendingInstallKind::Collection {
+                slug,
+                targets,
+                index,
+                resolving,
+            } => {
+                let Some(targets) = targets.as_ref() else {
+                    if *resolving {
+                        return Err(AppError::new("E_BUSY", "confirmation_busy"));
+                    }
+                    *resolving = true;
+                    return Ok(InstallStep::ResolveCollection {
+                        source: pending.source.clone(),
+                        slug: slug.clone(),
+                    });
+                };
+                if *index >= targets.len() {
+                    state.installs.remove(pending_id);
+                    return Err(AppError::new("E_CONFIRMATION_REUSED", "deeplink_consumed"));
+                }
+                pending.current = true;
+                Ok(InstallStep::Target(InstallTarget {
+                    source: pending.source.clone(),
+                    target: targets[*index].clone(),
+                    index: *index,
+                    total: targets.len(),
+                }))
+            }
+        }
+    }
+
+    pub fn set_collection_targets(
+        &self,
+        pending_id: &str,
+        targets: Vec<TaskTarget>,
+    ) -> Result<(), AppError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| AppError::new("E_UNKNOWN", "deeplink_state"))?;
+        let pending = state
+            .installs
+            .get_mut(pending_id)
+            .ok_or_else(|| AppError::new("E_INVALID_ARG", "deeplink_pending_missing"))?;
+        match &mut pending.kind {
+            PendingInstallKind::Collection {
+                targets: stored,
+                resolving,
+                ..
+            } => {
+                *stored = Some(targets);
+                *resolving = false;
+                Ok(())
+            }
+            PendingInstallKind::Single { .. } => {
+                Err(AppError::new("E_INVALID_ARG", "deeplink_not_collection"))
+            }
+        }
+    }
+
+    /// Release a reservation after a busy/error result so the same id can be retried. Denials cancel the id via
+    /// cancel_install, which also drops the remaining collection items.
+    pub fn release_install(&self, pending_id: &str) {
+        if let Ok(mut state) = self.state.lock()
+            && let Some(pending) = state.installs.get_mut(pending_id)
+        {
+            pending.current = false;
+            if let PendingInstallKind::Collection { resolving, .. } = &mut pending.kind {
+                *resolving = false;
+            }
+        }
+    }
+
+    pub fn finish_install(&self, pending_id: &str) -> Result<usize, AppError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| AppError::new("E_UNKNOWN", "deeplink_state"))?;
+        let Some(pending) = state.installs.get_mut(pending_id) else {
+            return Err(AppError::new("E_CONFIRMATION_REUSED", "deeplink_consumed"));
+        };
+        if !pending.current {
+            return Err(AppError::new("E_INVALID_ARG", "deeplink_not_reserved"));
+        }
+        pending.current = false;
+        match &mut pending.kind {
+            PendingInstallKind::Single { .. } => {
+                state.installs.remove(pending_id);
+                Ok(0)
+            }
+            PendingInstallKind::Collection { targets, index, .. } => {
+                *index += 1;
+                let remaining = targets
+                    .as_ref()
+                    .map_or(0, |items| items.len().saturating_sub(*index));
+                if remaining == 0 {
+                    state.installs.remove(pending_id);
+                }
+                Ok(remaining)
+            }
+        }
+    }
+
+    pub fn cancel_install(&self, pending_id: &str) {
+        if let Ok(mut state) = self.state.lock() {
+            state.installs.remove(pending_id);
+        }
+    }
+}
+
+fn pending_install(event: &DeepLinkEvent) -> Option<PendingInstallState> {
+    let parts: Vec<_> = event.route.trim_start_matches('/').split('/').collect();
+    let kind = match parts.as_slice() {
+        ["package", "cask", _token] => TaskKind::Cask,
+        ["package", "formula", _token] => TaskKind::Formula,
+        ["collection", slug] => {
+            return Some(PendingInstallState {
+                source: event.url.clone(),
+                current: false,
+                kind: PendingInstallKind::Collection {
+                    slug: (*slug).into(),
+                    targets: None,
+                    index: 0,
+                    resolving: false,
+                },
+            });
+        }
+        _ => return None,
+    };
+    let token = parts.get(2)?.to_string();
+    Some(PendingInstallState {
+        source: event.url.clone(),
+        current: false,
+        kind: PendingInstallKind::Single {
+            target: TaskTarget { kind, token },
+        },
+    })
 }
 struct WindowFit {
     minimum: tauri::LogicalSize<f64>,
@@ -499,5 +715,95 @@ mod safety_preview_tests {
         ] {
             assert!(super::parse(url).is_none(), "{url}");
         }
+    }
+}
+
+#[cfg(test)]
+mod install_request_tests {
+    use super::*;
+
+    fn router(events: Arc<Mutex<Vec<CoreEvent>>>) -> Arc<Router> {
+        Router::new(
+            Arc::new(move |event| events.lock().unwrap().push(event)),
+            Arc::new(|| {}),
+        )
+    }
+
+    #[test]
+    fn package_install_is_opaque_and_requires_the_rust_pending_id() {
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let router = router(events.clone());
+        router.ready();
+        router.receive("opennavo://package/cask/ghostty?action=install");
+        let event = match &events.lock().unwrap()[0] {
+            CoreEvent::Deeplink(event) => event.clone(),
+            _ => panic!("expected deep link"),
+        };
+        let pending_id = event.pending_id.expect("Rust creates an opaque pending id");
+        let InstallStep::Target(step) = router.begin_install(&pending_id).unwrap() else {
+            panic!("single package must be ready");
+        };
+        assert_eq!(
+            step.target,
+            TaskTarget {
+                kind: TaskKind::Cask,
+                token: "ghostty".into()
+            }
+        );
+        assert_eq!(
+            router.begin_install(&pending_id).unwrap_err().code,
+            "E_BUSY"
+        );
+        assert_eq!(router.finish_install(&pending_id).unwrap(), 0);
+        assert_eq!(
+            router.begin_install(&pending_id).unwrap_err().code,
+            "E_INVALID_ARG"
+        );
+    }
+
+    #[test]
+    fn collection_install_reserves_each_item_individually() {
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let router = router(events.clone());
+        router.ready();
+        router.receive("opennavo://collection/dev-setup?action=install");
+        let event = match &events.lock().unwrap()[0] {
+            CoreEvent::Deeplink(event) => event.clone(),
+            _ => panic!("expected deep link"),
+        };
+        let pending_id = event.pending_id.unwrap();
+        assert!(matches!(
+            router.begin_install(&pending_id).unwrap(),
+            InstallStep::ResolveCollection { .. }
+        ));
+        router
+            .set_collection_targets(
+                &pending_id,
+                vec![
+                    TaskTarget {
+                        kind: TaskKind::Cask,
+                        token: "zed".into(),
+                    },
+                    TaskTarget {
+                        kind: TaskKind::Formula,
+                        token: "ripgrep".into(),
+                    },
+                ],
+            )
+            .unwrap();
+        let InstallStep::Target(first) = router.begin_install(&pending_id).unwrap() else {
+            panic!("first item must be ready");
+        };
+        assert_eq!(first.index, 0);
+        assert_eq!(router.finish_install(&pending_id).unwrap(), 1);
+        let InstallStep::Target(second) = router.begin_install(&pending_id).unwrap() else {
+            panic!("second item must be ready");
+        };
+        assert_eq!(second.index, 1);
+        assert_eq!(router.finish_install(&pending_id).unwrap(), 0);
+        assert_eq!(
+            router.begin_install(&pending_id).unwrap_err().code,
+            "E_INVALID_ARG"
+        );
     }
 }

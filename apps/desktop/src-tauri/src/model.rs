@@ -398,6 +398,7 @@ pub enum TaskTrigger {
     Manual,
     Schedule,
     Deeplink,
+    Mcp,
     Bundle,
     Retry,
 }
@@ -969,6 +970,9 @@ pub struct DeepLinkEvent {
     pub url: String,
     pub route: String, // Frontend route, e.g. /package/cask/visual-studio-code, /collection/dev-setup, /search?q=…, /updates.
     pub action: Option<DeepLinkAction>,
+    /// Rust-owned write intent. The frontend may pass this opaque id back to the guarded command, but never a target.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending_id: Option<String>,
 }
 
 impl Kind {

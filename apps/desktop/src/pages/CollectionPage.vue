@@ -17,8 +17,9 @@ import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useTasksStore } from '@/stores';
 import { useNamesStore } from '@/stores/names';
 
-// Collection details (API): body, items, recommendations; after confirmation, enqueue batch installs individually (trigger=bundle), skipping installed/disabled items.
-// ?install=1 (opennavo://collection/{slug}?action=install) opens confirmation immediately; the dialog lists all brew commands to execute (06 §10).
+// Collection details (API): body, items, recommendations; the app UI keeps its own batch preview and enqueues
+// installs individually (trigger=bundle), skipping installed/disabled items. Deep-link collection installs are
+// handled by Rust from the opaque pending id and never reach this batch path.
 // Shared with the web view (ADR-017).
 const props = defineProps<{ slug: string }>();
 

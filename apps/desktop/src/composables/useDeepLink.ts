@@ -1,17 +1,21 @@
 import { ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import type { Router } from 'vue-router';
-import type { DeepLinkEvent, TaskTarget } from '@/ipc/bindings';
-import { events } from '@/ipc/client';
+import type { DeepLinkEvent } from '@/ipc/bindings';
+import { commands, events, unwrap } from '@/ipc/client';
 import { useToasts } from '@/composables/useToasts';
 import { i18n } from '@/i18n';
-import { useEnvStore, useLibraryStore, useTasksStore, useSettingsStore } from '@/stores';
+import { useSettingsStore } from '@/stores';
 
 const PENDING_KEY = 'opennavo.pendingDeepLink';
 
 function readPending(): DeepLinkEvent | null {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(PENDING_KEY) ?? 'null');
+    const pendingId =
+      value && typeof value === 'object' && 'pendingId' in value && typeof value.pendingId === 'string'
+        ? value.pendingId
+        : undefined;
     if (
       value &&
       typeof value === 'object' &&
@@ -21,6 +25,8 @@ function readPending(): DeepLinkEvent | null {
       typeof value.route === 'string' &&
       typeof value.url === 'string' &&
       (value.action === null || value.action === 'install') &&
+      (!('pendingId' in value) ||
+        (typeof value.pendingId === 'string' && value.pendingId.length > 0 && value.pendingId.length <= 128)) &&
       (/^\/package\/(cask|formula)\/[a-z0-9][a-z0-9+@._-]{0,127}$/.test(value.route) ||
         /^\/collection\/[a-z0-9][a-z0-9-]{0,63}$/.test(value.route) ||
         ((value.route.startsWith('/search?q=') ||
@@ -33,7 +39,12 @@ function readPending(): DeepLinkEvent | null {
           value.route === '/settings/monitor') &&
           value.action === null))
     ) {
-      return { route: value.route, url: value.url, action: value.action };
+      return {
+        route: value.route,
+        url: value.url,
+        action: value.action,
+        ...(pendingId ? { pendingId } : {})
+      };
     }
     localStorage.removeItem(PENDING_KEY);
   } catch {
@@ -42,11 +53,9 @@ function readPending(): DeepLinkEvent | null {
   return null;
 }
 
-/** Deep-link install request awaiting confirmation (one global dialog; see DeepLinkConfirm). */
+/** Rust owns install requests; this store only persists links deferred by onboarding. */
 export const useDeepLinkStore = defineStore('deeplink', () => {
-  const install = ref<TaskTarget | null>(null);
   const pending = ref<DeepLinkEvent | null>(readPending());
-  // Persist synchronously so immediate process termination during system authorization cannot lose the target; do not persist installation consent.
   watch(
     pending,
     value => {
@@ -59,7 +68,7 @@ export const useDeepLinkStore = defineStore('deeplink', () => {
     },
     { flush: 'sync' }
   );
-  return { install, pending };
+  return { pending };
 });
 
 const PACKAGE_ROUTE = /^\/package\/(cask|formula)\/([^/?#]+)$/;
@@ -73,8 +82,8 @@ export function deepLinkOpened(): boolean {
 }
 
 /**
- * Deep links (06 §10): Rust sends validated routes and actions; navigate here. Install actions open confirmation and enqueue only after consent.
- * Batch collection installs navigate to the collection and open its confirmation. `ready` is the initial local-state read; await it before deciding whether confirmation is needed.
+ * Rust sends validated routes and opaque install ids. The frontend navigates and asks Rust to run the native
+ * confirmation/guarded enqueue flow; it never supplies a target or confirmation flag.
  */
 export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: Promise<unknown> = Promise.resolve()) {
   await ready.catch(() => undefined);
@@ -86,26 +95,36 @@ export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: 
   opened = true;
   const collection = COLLECTION_ROUTE.exec(event.route);
   if (collection) {
-    await router.push({
-      path: `/collections/${collection[1]}`,
-      query: event.action === 'install' ? { install: '1' } : {}
-    });
+    await router.push('/collections/' + collection[1]);
+    if (event.action === 'install' && event.pendingId) await confirmDeepLink(event.pendingId);
     return;
   }
   const target = PACKAGE_ROUTE.exec(event.route);
-  // Cask-only catalog (ADR-018): command-line tool deep links neither open details nor install; show one notice.
-  if (target?.[1] === 'formula') {
+  // Keep the existing cask-only notice for legacy/read-only formula links. Rust-issued install ids are authoritative.
+  if (target?.[1] === 'formula' && !(event.action === 'install' && event.pendingId)) {
     await router.push('/discover');
     useToasts().push({ tone: 'warning', title: i18n.global.t('deeplink.formulaUnsupported') });
     return;
   }
   await router.push(event.route);
-  if (event.action !== 'install' || !target) return;
-  const kind = 'cask';
-  const token = decodeURIComponent(target[2] ?? '');
-  // No confirmation without Homebrew, for installed packages, or for queued packages; the detail button shows the corresponding state.
-  if (!useEnvStore().hasBrew || useLibraryStore().find(kind, token) || useTasksStore().forPackage(kind, token)) return;
-  useDeepLinkStore().install = { kind, token };
+  if (event.action === 'install' && target && event.pendingId) await confirmDeepLink(event.pendingId);
+}
+
+async function confirmDeepLink(pendingId: string) {
+  try {
+    let remaining = 1;
+    while (remaining > 0) {
+      const result = await unwrap(commands.deeplinkInstallConfirm(pendingId));
+      remaining = result.remaining;
+    }
+  } catch (cause) {
+    const toasts = useToasts();
+    toasts.push({
+      tone: 'danger',
+      title: i18n.global.t('errors.actionFailed'),
+      description: cause instanceof Error ? cause.message : String(cause)
+    });
+  }
 }
 
 /** Subscribe before mounting: on cold start, Rust buffers command-line deep links until the main window loads. */
@@ -113,7 +132,7 @@ export function startDeepLinks(router: Router, ready?: Promise<unknown>) {
   return events.deeplinkReceived.listen(event => void openDeepLink(router, event.payload, ready));
 }
 
-/** Replay deep links after onboarding; install actions still use the existing confirmation dialog. */
+/** Replay deep links after onboarding; Rust still owns any install confirmation. */
 export async function resumeDeepLink(router: Router): Promise<boolean> {
   const store = useDeepLinkStore();
   const event = store.pending;
