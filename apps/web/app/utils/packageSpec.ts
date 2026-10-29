@@ -24,20 +24,6 @@ export interface PackageSpecModel {
   repoSignals: PackageRepoSignals | null;
 }
 
-function mergeRepoSignals(pkg: PackagePage): PackageRepoSignals | null {
-  const fallback = pkg.repository?.url ?? pkg.openSource?.url ?? pkg.repoUrl;
-  const adapted = toPackageRepoSignals(pkg, { repoUrl: fallback, archived: pkg.openSource?.archived });
-  if (!adapted && pkg.openSource) {
-    return {
-      repoUrl: fallback ?? undefined,
-      archived: pkg.openSource.archived,
-      checkedAt: pkg.openSource.checkedAt
-    };
-  }
-  if (!adapted) return null;
-  return adapted;
-}
-
 function repoText(
   signals: PackageRepoSignals | null,
   labels: {
@@ -60,7 +46,7 @@ function repoText(
 }
 
 export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale): PackageSpecModel {
-  const signals = mergeRepoSignals(pkg);
+  const signals = toPackageRepoSignals(pkg);
   const rows: OnPackageSpecRow[] = [];
   const prices = verifiedPrices(pkg);
   const price = prices.length
@@ -121,7 +107,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale):
     ...prices.map(item => item.evidence),
     ...verifiedIdentities(pkg).map(item => item.evidence)
   ];
-  const checkedAt = [oldestCheck(factCheckDates), osi?.checkedAt, signals?.checkedAt]
+  const checkedAt = [oldestCheck(factCheckDates), signals?.checkedAt]
     .filter((value): value is string => Boolean(value))
     .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
   return {

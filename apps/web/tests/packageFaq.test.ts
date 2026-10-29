@@ -408,6 +408,27 @@ describe('App questions', () => {
     expect(neither.some(item => item.key === 'openSource')).toBe(false);
   });
 
+  it('uses the OSI archived fallback but never its check date for repository signals', () => {
+    const sample = docker({
+      openSource: {
+        repo: 'acme/osi',
+        url: 'https://github.com/acme/osi',
+        license: 'MIT',
+        archived: true,
+        checkedAt: '2025-12-01T08:00:00Z'
+      }
+    });
+    const answer = faqItems(pageOf(sample), translator('en-US'), 'en-US').find(
+      item => item.key === 'openSource'
+    )!.answer;
+    expect(answer).toContain('repository is archived');
+    expect(answer).not.toContain('Repository data checked');
+    const current = Object.assign(sample, { repository: { archived: false } });
+    expect(
+      faqItems(pageOf(current), translator('en-US'), 'en-US').find(item => item.key === 'openSource')!.answer
+    ).not.toContain('repository is archived');
+  });
+
   it('Leaves out questions without facts, and fonts skip chips and extras', () => {
     const t = translator('en-US');
     const bare = docker({

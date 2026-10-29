@@ -58,12 +58,7 @@ const arch = computed(() =>
         .join(' · ')
     : ''
 );
-const repoSignals = computed(() =>
-  toPackageRepoSignals(props.detail, {
-    repoUrl: props.detail?.openSource?.url ?? props.detail?.repoUrl,
-    archived: props.detail?.openSource?.archived
-  })
-);
+const repoSignals = computed(() => toPackageRepoSignals(props.detail));
 
 const installed = computed(() => library.find(props.kind, props.token));
 const outdated = computed(() => updates.find(props.kind, props.token));
@@ -97,7 +92,7 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   if (props.detail?.autoUpdates ?? props.local?.autoUpdates)
     list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
   if (arch.value) list.push({ key: 'arch', label: arch.value });
-  if (props.detail?.openSource?.archived || repoSignals.value?.archived)
+  if (repoSignals.value?.archived)
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (installedChip.value) list.push({ key: 'installed', label: installedChip.value, tone: 'success', dot: true });
   if (installed.value?.pinned) list.push({ key: 'pinned', label: t('package.pinned') });

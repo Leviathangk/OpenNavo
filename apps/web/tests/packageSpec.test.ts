@@ -92,4 +92,20 @@ describe('package specification repository rows', () => {
     const result = packageSpec(page(), t, 'en-US');
     expect(result.rows.some(row => row.key === 'openSource')).toBe(false);
   });
+
+  it('falls back only to OSI archived and never to the OSI signal check date', () => {
+    const osi = {
+      repo: 'acme/osi',
+      url: 'https://github.com/acme/osi',
+      license: 'MIT',
+      archived: true,
+      checkedAt: '2020-01-01T00:00:00Z'
+    };
+    const fallback = packageSpec(page({ openSource: osi, repository: { stars: 999 } }), t, 'en-US');
+    expect(fallback.rows.find(row => row.key === 'openSource')?.badge?.label).toBe('package.repo.archived');
+    expect(fallback.repoSignals?.checkedAt).toBeUndefined();
+    expect(fallback.checkedAt).toBeNull();
+    const current = packageSpec(page({ openSource: osi, repository: { archived: false } }), t, 'en-US');
+    expect(current.rows.find(row => row.key === 'openSource')?.badge).toBeUndefined();
+  });
 });

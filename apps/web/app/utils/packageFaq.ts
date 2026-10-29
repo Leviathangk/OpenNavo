@@ -307,10 +307,7 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
   // Is it open source? OSI facts remain separate from the optional repository signals.
   const repository = pkg.repository;
   const openSource = pkg.openSource;
-  const repoSignals = toPackageRepoSignals(pkg, {
-    repoUrl: repository?.url ?? openSource?.url,
-    archived: openSource?.archived
-  });
+  const repoSignals = toPackageRepoSignals(pkg);
   if (openSource)
     add(
       'openSource',

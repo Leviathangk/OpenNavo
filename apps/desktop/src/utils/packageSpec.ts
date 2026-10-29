@@ -19,20 +19,6 @@ export interface DesktopPackageSpec {
 
 type Translate = (key: string, named?: Record<string, unknown>) => string;
 
-function repoSignals(detail: PackageDetail): PackageRepoSignals | null {
-  const repository = (detail as PackageDetail & { repository?: PackageRepositoryInput }).repository;
-  const fallback = repository?.url ?? detail.openSource?.url ?? detail.repoUrl;
-  const value = toPackageRepoSignals(detail, { repoUrl: fallback, archived: detail.openSource?.archived });
-  if (!value && detail.openSource)
-    return {
-      repoUrl: fallback ?? undefined,
-      archived: detail.openSource.archived,
-      checkedAt: detail.openSource.checkedAt
-    };
-  if (!value) return null;
-  return value;
-}
-
 function repoSummary(signals: PackageRepoSignals | null, t: Translate) {
   if (!signals) return { value: '', badge: undefined };
   const values = signals.stars === undefined ? [] : [`★${formatRepoStars(signals.stars)}`];
@@ -56,7 +42,7 @@ export function packageSpec(
   t: Translate,
   locale: SiteLocale
 ): DesktopPackageSpec {
-  const signals = repoSignals(detail);
+  const signals = toPackageRepoSignals(detail);
   const rows: OnPackageSpecRow[] = [];
   const price =
     detail.link?.pricing && detail.link.pricing !== 'unknown'
@@ -112,7 +98,7 @@ export function packageSpec(
   const location = installed?.appPaths?.filter(Boolean).join(' · ');
   if (location) rows.push({ key: 'location', label: t('package.spec.installLocation'), value: location, mono: true });
 
-  const checked = signals?.checkedAt ?? detail.openSource?.checkedAt ?? null;
+  const checked = signals?.checkedAt ?? null;
   return {
     rows,
     checkedAt: checked ? { iso: checked.slice(0, 10), label: formatDate(checked, { locale }) } : null,

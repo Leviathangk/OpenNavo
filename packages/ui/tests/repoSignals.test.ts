@@ -14,20 +14,18 @@ describe('repository signals', () => {
 
   it('reads only the optional repository object and ignores legacy field spellings', () => {
     expect(
-      toPackageRepoSignals(
-        {
-          stargazers_count: 999,
-          pushed_at: '2020-01-01T00:00:00Z',
-          repository: {
-            url: 'https://github.com/example/app',
-            stars: 12345,
-            pushedAt: '2026-10-01T00:00:00Z',
-            archived: false,
-            signalsCheckedAt: '2026-10-02T00:00:00Z'
-          }
-        },
-        { archived: true }
-      )
+      toPackageRepoSignals({
+        stargazers_count: 999,
+        pushed_at: '2020-01-01T00:00:00Z',
+        openSource: { archived: true, stars: 77, checkedAt: '2020-01-01T00:00:00Z' },
+        repository: {
+          url: 'https://github.com/example/app',
+          stars: 12345,
+          pushedAt: '2026-10-01T00:00:00Z',
+          archived: false,
+          signalsCheckedAt: '2026-10-02T00:00:00Z'
+        }
+      })
     ).toEqual({
       stars: 12345,
       pushedAt: '2026-10-01T00:00:00Z',
@@ -35,16 +33,23 @@ describe('repository signals', () => {
       archived: false,
       repoUrl: 'https://github.com/example/app'
     });
-    expect(toPackageRepoSignals({}, null)).toBeNull();
+    expect(toPackageRepoSignals({})).toBeNull();
+    expect(
+      toPackageRepoSignals({ stargazers_count: 999, openSource: { stars: 77, checkedAt: '2020-01-01' } })
+    ).toBeNull();
   });
 
-  it('uses open-source archived status only as the explicit archived fallback', () => {
-    expect(toPackageRepoSignals({}, { repoUrl: 'https://github.com/example/app', archived: true })).toEqual({
+  it('uses only open-source archived status as the archived fallback', () => {
+    expect(
+      toPackageRepoSignals({
+        openSource: { url: 'https://github.com/example/app', archived: true, checkedAt: '2020-01-01' }
+      })
+    ).toEqual({
       stars: undefined,
       pushedAt: undefined,
       checkedAt: undefined,
       archived: true,
-      repoUrl: 'https://github.com/example/app'
+      repoUrl: undefined
     });
   });
 

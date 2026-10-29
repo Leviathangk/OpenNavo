@@ -45,18 +45,21 @@ function stringValue(value: unknown): string | undefined {
  * Missing or malformed optional fields are ignored; a null result means the
  * page has no repository signal to show yet.
  */
-export function toPackageRepoSignals(
-  input: unknown,
-  fallback?: { repoUrl?: string | null; archived?: boolean } | null
-): PackageRepoSignals | null {
+export function toPackageRepoSignals(input: unknown): PackageRepoSignals | null {
   const source = record(input);
   const value = source ? record(source.repository) : null;
+  const osi = source ? record(source.openSource) : null;
   const signals: PackageRepoSignals = {
     stars: numberValue(value?.stars),
     pushedAt: stringValue(value?.pushedAt),
     checkedAt: stringValue(value?.signalsCheckedAt),
-    archived: typeof value?.archived === 'boolean' ? value.archived : fallback?.archived,
-    repoUrl: stringValue(value?.url) ?? stringValue(fallback?.repoUrl)
+    archived:
+      typeof value?.archived === 'boolean'
+        ? value.archived
+        : typeof osi?.archived === 'boolean'
+          ? osi.archived
+          : undefined,
+    repoUrl: stringValue(value?.url)
   };
   const hasSignal =
     signals.stars !== undefined ||
