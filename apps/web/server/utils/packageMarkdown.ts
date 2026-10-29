@@ -128,13 +128,6 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
   const lines: string[] = [`# ${mdText(pkg.displayName)}`, ''];
   if (pkg.summary) lines.push(mdText(pkg.summary), '');
   if (pkg.isFont) lines.push(m('package.answer.font', { name: mdText(pkg.displayName) }), '');
-  if (pkg.machineTranslated) {
-    const source = pkg.sourceLocale ? LOCALE_METADATA[pkg.sourceLocale].prefix : '';
-    lines.push(
-      `${sharedMessages[locale].about.machineTranslated} · [${sharedMessages[locale].about.viewOriginal}](${siteUrl}${source}/apps/${pkg.token})`,
-      ''
-    );
-  }
   lines.push(`> ${m('markdown.note', { name: mdText(pkg.displayName) })} ${page}`, '');
 
   const facts: [string, string][] = [];

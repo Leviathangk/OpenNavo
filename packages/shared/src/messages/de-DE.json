@@ -69,8 +69,6 @@
   },
   "about": {
     "title": "Beschreibung",
-    "machineTranslated": "KI-übersetzt",
-    "viewOriginal": "Original ansehen",
     "expand": "Mehr anzeigen",
     "collapse": "Weniger anzeigen"
   },
@@ -149,9 +147,7 @@
     "installed": "Installiert",
     "patch": "Patch",
     "prerelease": "Vorabversion",
-    "machineTranslation": "KI-übersetzt",
     "noNotes": "Keine eigenen Versionshinweise für diese Version",
-    "viewOriginal": "Original ansehen",
     "expand": "Einblenden",
     "collapse": "Ausblenden",
     "updateTo": "Auf diese Version aktualisieren",

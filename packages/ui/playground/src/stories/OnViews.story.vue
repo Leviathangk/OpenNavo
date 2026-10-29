@@ -319,8 +319,6 @@ const detail = samplePackages[1] as PackageSummary;
           />
           <OnPackageOverview
             has-about
-            about-machine-translated
-            :about-original-href="env === 'web' ? '#' : undefined"
             command="brew install --cask visual-studio-code"
             :info="[
               { key: 'token', label: 'Token', value: 'visual-studio-code', mono: true },

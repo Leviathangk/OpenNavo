@@ -500,15 +500,14 @@ describe('Detail views', () => {
     expect(wrapper.text()).toContain('MB');
   });
 
-  it('Introductions include title and body slots, label machine translations with original links, and omit expansion below 12 lines', () => {
+  it('Introductions include title and body slots and omit expansion below 12 lines', () => {
     const wrapper = mount(OnAboutSection, {
-      props: { machineTranslated: true, originalHref: '/apps/a', linkAs: RouterLinkStub },
       slots: { default: () => h('p', '介绍正文') },
       global: withLocale('zh-CN')
     });
     expect(wrapper.get('h2').text()).toBe('介绍');
-    expect(wrapper.text()).toContain('AI 翻译');
-    expect(wrapper.get('a').attributes('href')).toBe('#/apps/a');
+    expect(wrapper.text()).not.toContain('AI 翻译');
+    expect(wrapper.find('a').exists()).toBe(false);
     expect(wrapper.text()).toContain('介绍正文');
     expect(wrapper.find('button').exists()).toBe(false);
 

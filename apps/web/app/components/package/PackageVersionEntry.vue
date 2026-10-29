@@ -10,7 +10,7 @@ import { OnIcon } from '@opennavo/ui';
 import { useUiLocale, useUiMessages } from '@opennavo/ui';
 import { releaseAnchorId, releaseCompatibilityText as compatibilityText } from '~/utils/packageFacts';
 import type { OnVersionCompatibilityLabels } from '@opennavo/ui';
-import { isMachineTranslated, isPatchVersion, parseInline } from '@opennavo/ui';
+import { isPatchVersion, parseInline } from '@opennavo/ui';
 
 export interface OnVersionEntryProps {
   entry: ReleaseEntry;
@@ -20,8 +20,6 @@ export interface OnVersionEntryProps {
   collapsed?: boolean;
   /** Allow collapsing expanded entries that the timeline initially collapsed. */
   collapsible?: boolean;
-  /** Original-language body selected: hide AI translated badge. */
-  showOriginal?: boolean;
   /** Show Update to this version on desktop when newer than installed. */
   canUpdate?: boolean;
   headingLevel?: 2 | 3 | 4;
@@ -123,7 +121,6 @@ const sources = computed(() => {
   return items;
 });
 
-const machine = computed(() => !props.showOriginal && isMachineTranslated(props.entry));
 const patch = computed(() => isPatchVersion(props.entry.version));
 const sections = computed(() =>
   props.entry.sections.map(section => ({
@@ -202,7 +199,7 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
         </span>
       </summary>
       <p
-        v-if="sources.length || machine"
+        v-if="sources.length"
         class="m-0 mt-8px flex flex-wrap items-center gap-x-16px gap-y-4px text-12.5px text-ink-tertiary"
       >
         <span v-for="item in sources" :key="item.key" class="flex items-center gap-6px">
@@ -225,7 +222,6 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
             >{{ item.label }} <time v-if="item.at" :datetime="item.at">{{ stamp(item.at) }}</time></span
           >
         </span>
-        <OnChip v-if="machine" tone="outline">{{ text.machineTranslation }}</OnChip>
       </p>
       <p
         v-if="compatibility && compatibilityLabels"
@@ -237,17 +233,6 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
 
       <div v-if="!entry.hasNotes" class="mt-12px flex flex-wrap items-center gap-12px text-13px text-ink-tertiary">
         <span>{{ text.noNotes }}</span>
-        <a
-          v-if="entry.sourceUrl"
-          :href="entry.sourceUrl"
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          class="flex items-center gap-2px text-ink-secondary no-underline hover:underline"
-          @click="event => emit('openSource', event)"
-        >
-          {{ text.viewOriginal }}
-          <OnIcon name="lucide:arrow-up-right" :size="13" />
-        </a>
       </div>
       <div v-else :lang="bodyLang">
         <p v-if="titleDetail" class="m-0 mt-12px text-14px font-semibold text-ink-primary">

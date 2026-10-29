@@ -33,9 +33,6 @@ export interface OnPackageOverviewProps {
   screenshotsName?: string;
   /** Whether introduction exists, rendered through about slot. */
   hasAbout?: boolean;
-  /** Show AI translated / View original for machine-translated introduction. */
-  aboutMachineTranslated?: boolean;
-  aboutOriginalHref?: string;
   caveats?: string | null;
   caveatsTitle?: string;
   /** Install command; link apps have none and fill the `download` slot instead. */
@@ -49,7 +46,6 @@ export interface OnPackageOverviewProps {
 const props = withDefaults(defineProps<OnPackageOverviewProps>(), {
   screenshots: () => [],
   hasAbout: false,
-  aboutMachineTranslated: false,
   related: () => [],
   linkAs: 'a'
 });
@@ -84,12 +80,7 @@ defineSlots<{
         :label="screenshotsLabel"
         :name="screenshotsName"
       />
-      <OnAboutSection
-        v-if="hasAbout"
-        :machine-translated="aboutMachineTranslated"
-        :original-href="aboutOriginalHref"
-        :link-as="linkAs"
-      >
+      <OnAboutSection v-if="hasAbout">
         <slot name="about" />
       </OnAboutSection>
       <slot name="main" />

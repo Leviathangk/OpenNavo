@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { buildDeepLink, formatDate, isInstallableKind, LOCALE_METADATA } from '@opennavo/shared';
-import { OnButton, OnChip, OnCollectionView, OnErrorState, OnIcon, useUiMessages } from '@opennavo/ui';
+import { buildDeepLink, formatDate, isInstallableKind } from '@opennavo/shared';
+import { OnButton, OnCollectionView, OnErrorState, OnIcon } from '@opennavo/ui';
 import type { OnCollectionEntry } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { launchDeepLink } from '~/utils/deepLink';
@@ -14,8 +14,6 @@ import { withVariantNames } from '~/utils/seoTitles';
 // the link apps to download from their developers, price totals and compatibility (CollectionSetupSections).
 // F6: the collection's update feed is linked in the head and on the page.
 const { t, locale } = useI18n();
-const ui = useUiMessages();
-const switchLocalePath = useSwitchLocalePath();
 const api = useApi();
 const route = useRoute();
 const config = useRuntimeConfig();
@@ -102,14 +100,6 @@ function installAll() {
   }, DETECT_MS);
 }
 
-// S8: text Hermes translated says so, with a link to the collection in the language it was written in.
-const original = computed(() => {
-  const value = data.value;
-  if (!value?.machineTranslated || !value.sourceLocale || value.sourceLocale === toAppLocale(locale.value)) return null;
-  const href = switchLocalePath(toRouteLocale(value.sourceLocale));
-  return href ? { href, lang: LOCALE_METADATA[value.sourceLocale].hreflang } : null;
-});
-
 // F6: the collection's release feed (server/handlers/collectionFeed.ts).
 const feedHref = useReleaseFeed(() =>
   data.value
@@ -168,14 +158,8 @@ usePageSeo({
           {{ t('collections.export') }}
         </OnButton>
       </template>
-      <template v-if="data?.body || data?.setup?.criteria || original" #body>
+      <template v-if="data?.body || data?.setup?.criteria" #body>
         <div class="flex flex-col gap-24px">
-          <p v-if="original" class="m-0 inline-flex items-center gap-8px text-12px text-ink-tertiary">
-            <OnChip tone="outline">{{ ui.about.machineTranslated }}</OnChip>
-            <NuxtLink :to="original.href" :hreflang="original.lang" :lang="original.lang" class="text-ink-secondary">{{
-              ui.about.viewOriginal
-            }}</NuxtLink>
-          </p>
           <MarkdownContent v-if="data?.body" size="md" :heading-level="2" :source="data.body" />
           <CollectionCriteria v-if="data?.setup?.criteria" :criteria="data.setup.criteria" />
         </div>
