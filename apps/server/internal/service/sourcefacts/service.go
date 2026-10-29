@@ -234,7 +234,8 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	haveFirst := false
 	sawUnavailable := false
 	sawSignalFailure := false
-	for _, repo := range item.items {
+	for index := 0; index < len(item.items); index++ {
+		repo := item.items[index]
 		if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
 			return fact, low, errGitHubRequestCap
 		}
@@ -309,6 +310,13 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			// must be checked before publishing a new open-source decision.
 			fullCheck = true
 			fact = licenseCheck
+			// Restore any candidates omitted from the daily refresh so a non-OSI
+			// redirect does not hide another repository's OSI-approved license.
+			for _, candidate := range candidates(GitHub, item.pkg) {
+				if !contains(item.items, candidate) {
+					item.items = append(item.items, candidate)
+				}
+			}
 		}
 		if !fullCheck {
 			// A daily refresh of the same repository keeps its OSI judgment and

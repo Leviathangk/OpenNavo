@@ -224,6 +224,66 @@ func TestSourceFactsSignalsRefreshOnlyFoundAppsDaily(t *testing.T) {
 	require.Nil(t, detail.Repository.Stars, "GitHub omitted stargazers_count in this response")
 }
 
+func TestSourceFactsSignalRedirectChecksAllLicenseCandidates(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	addCask(t, st, `{"token":"redirect","name":["Redirect"],"version":"1","homepage":"https://github.com/acme/a","url":"https://github.com/acme/c/releases/download/v1/Redirect.dmg","artifacts":[{"app":["Redirect.app"]}]}`)
+	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+	redirected := false
+	github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+		if redirected && repo == "acme/a" {
+			require.Equal(t, `W/"e1"`, etag)
+			result := mitRepo("acme/b")
+			result.Repository.License.SPDXID = "BUSL-1.1"
+			result.Requests = 2
+			return result, nil
+		}
+		if repo == "acme/c" {
+			require.Empty(t, etag, "the previous repository's ETag must not be reused")
+			result := mitRepo(repo)
+			result.Repository.License.SPDXID = "Apache-2.0"
+			result.ETag = `W/"c"`
+			return result, nil
+		}
+		require.Equal(t, "acme/a", repo)
+		return mitRepo(repo), nil
+	}}
+	svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"acme/a"}, github.calls)
+	rows, err := st.SourceFacts(ctx)
+	require.NoError(t, err)
+	initial := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.Equal(t, "acme/a", initial.Subject)
+	require.Equal(t, "found", initial.Status)
+
+	redirected = true
+	github.calls, github.etags = nil, nil
+	now = now.Add(25 * time.Hour)
+	require.True(t, initial.NextCheckAt.After(now), "only the daily signal refresh is due")
+	stats, err := svc.Run(ctx)
+	require.NoError(t, err)
+	rows, err = st.SourceFacts(ctx)
+	require.NoError(t, err)
+	refreshed := rows[store.SourceFactKey{PackageID: 1, Source: GitHub}]
+	require.Equal(t, "found", refreshed.Status, "a non-OSI redirect must not hide another candidate's OSI license")
+	require.Equal(t, "acme/c", refreshed.Subject)
+	require.Equal(t, now, refreshed.CheckedAt.UTC())
+	require.Equal(t, next(now, recheck, 1), refreshed.NextCheckAt.UTC())
+	require.NotNil(t, refreshed.ETag)
+	require.Equal(t, `W/"c"`, *refreshed.ETag)
+	require.Equal(t, []string{"acme/a", "acme/c"}, github.calls)
+	require.EqualValues(t, 3, stats["githubRequests"])
+	detail, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "redirect", "en-US")
+	require.NoError(t, err)
+	require.NotNil(t, detail.OpenSource)
+	require.Equal(t, "acme/c", detail.OpenSource.Repo)
+	require.Equal(t, "Apache-2.0", detail.OpenSource.License)
+	require.NotNil(t, detail.Repository)
+	require.Equal(t, "https://github.com/acme/c", detail.Repository.Url)
+}
+
 func TestSourceFactsSignalRefreshUsesSignalsUpdate(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewFactsStore(t)
