@@ -1,6 +1,6 @@
 # OpenNavo MCP
 
-Python 3.13 + uv, using FastMCP 4.0.x. The 102 tools and 9 resources adapt only the internal `/agent-api`.
+Python 3.13 + uv, using FastMCP 4.0.x. The 103 tools and 9 resources adapt only the internal `/agent-api`.
 
 Run `uv sync --locked` in this directory. From the repository root, run `make gen-mcp lint-mcp test-mcp build-mcp` to generate and check artifacts. `make gen` and `make lint test` also include MCP. The authoritative tool manifest is `src/opennavo_mcp/tools/manifest.py`.
 
@@ -31,6 +31,17 @@ Optional `expected_state` and `expected_revision` checks run in that same transa
 the original arguments and retry key after a lost response, including any explicit guards.
 Package content revisions include screenshot edits and deletions; use the revision from
 `package_get` for screenshot writes too.
+
+`package_set_enabled(package="pearcleaner", enabled=true, dry_run=true)` previews enabling
+catalog visibility; omit `dry_run` (or set it to false) to apply it. It requires
+`catalog:package:edit`; token lookup also requires `catalog:package:view` (a numeric admin ID
+needs only edit permission). This is the admin UI's visibility switch: `enabled=true` writes
+`hidden=false`, and `enabled=false` writes `hidden=true`. Homebrew/stale-version disabling and
+removed state still apply; inspect `hidden`, `disabled` and `removed` with `package_get` before
+expecting an app to appear publicly. The tool sends only the visibility patch through
+`updatePackageMeta`, retaining audit logs, restorable revisions, optional write-safety headers,
+cache invalidation and the catalog change feed used for sitemap/URL updates. Dry runs return
+the existing metadata preview's before/after state without persisting business changes.
 
 `listing_gaps` defaults to visible, enabled, current non-font apps (`hidden=false`,
 `disabled=false`, `removed=false`, `is_font=false`). Override those filters to inspect another

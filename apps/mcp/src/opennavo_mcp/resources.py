@@ -23,7 +23,7 @@ results; the agent plans and edits; these tools read, change and publish site co
    why the page is indexable; content reasons can be fixed below, policy reasons cannot.
    Only languages open for indexing count for search (site_settings_get, read-only).
 3. Fix through business tools:
-   - App pages: package_set_text, package_update_meta, package_set_categories,
+   - App pages: package_set_text, package_update_meta, package_set_enabled, package_set_categories,
      package_set_alternatives, package_set_icon and screenshots. New software: search
      first, then link_app_add, or tap_package_add for a supported third-party cask.
    - Overview title/description: package_seo_set overrides the template for one language

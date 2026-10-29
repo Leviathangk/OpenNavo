@@ -35,6 +35,8 @@ def arguments(spec: ToolSpec) -> dict[str, Any]:
         args = {"url": "https://example.com/icon.png", "kind": "icon"}
     if spec.name == "package_text_get":
         args |= {"locale": "en-US", "field": "summary"}
+    if spec.name == "package_set_enabled":
+        args = {"package": 1, "enabled": True}
     if spec.write:
         args["dry_run"] = True
     for key in LEGACY:  # Spec examples may still carry retired task metadata.
