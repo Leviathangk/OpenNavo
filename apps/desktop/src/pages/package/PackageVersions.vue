@@ -283,7 +283,6 @@ const pinHint = computed(() =>
         v-else
         :entries="entries"
         :installed-version="installedVersion"
-        :show-original="data.original"
         :can-update="canUpdate"
         :more-count="moreCount"
         :has-local="entry => Boolean(localText(entry))"

@@ -182,29 +182,26 @@ describe('desktop article browsing', () => {
     expect(wrapper.find('[data-testid="article-body"]').exists()).toBe(false);
   });
 
-  it('loads the original language without changing the UI locale, and refetches on language changes', async () => {
+  it('renders translated articles without provenance controls, and refetches on language changes', async () => {
     const requests: URL[] = [];
     stubFetch(url => {
       requests.push(url);
-      const original = url.searchParams.get('locale') === 'en-US';
       return ok({
         state: 'published',
         slug: article.slug,
         article: {
           ...article,
-          title: original ? 'Original title' : 'Translated title',
-          locale: original ? 'en-US' : 'zh-CN',
-          machineTranslated: !original
+          title: 'Translated title',
+          machineTranslated: true
         }
       });
     });
     const { wrapper } = await mounted(`/articles/${article.slug}`);
-    await wrapper
-      .findAll('button')
-      .find(button => button.text() === '查看原文')!
-      .trigger('click');
-    await flushPromises();
-    expect(wrapper.get('h1').text()).toBe('Original title');
+    expect(wrapper.get('h1').text()).toBe('Translated title');
+    expect(wrapper.get('article').attributes('lang')).toBe('zh-CN');
+    expect(wrapper.get('header').text()).not.toMatch(/AI 翻译|查看原文|查看译文/);
+    expect(wrapper.get('header').findAll('button')).toHaveLength(0);
+    expect(requests).toHaveLength(1);
     expect(i18n.global.locale.value).toBe('zh-CN');
     const count = requests.length;
     i18n.global.locale.value = 'ja-JP';
