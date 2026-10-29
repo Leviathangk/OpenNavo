@@ -161,6 +161,9 @@ pub struct CatalogItem {
     /// Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tap: Option<String>,
+    /// Upstream Homebrew token when the catalog uses a site alias.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brew_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Copy, Eq, Hash)]

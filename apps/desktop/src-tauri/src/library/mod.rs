@@ -145,11 +145,7 @@ pub fn scan(
             continue;
         }
         // A cask installed from another tap under the same token is a different app.
-        let catalog = crate::catalog::get(database, Kind::Cask, &cask.token)?.filter(|item| {
-            cask.tap
-                .as_deref()
-                .is_none_or(|installed| installed == item.tap.as_deref().unwrap_or("homebrew/cask"))
-        });
+        let catalog = crate::catalog::get_brew_cask(database, &cask.token, cask.tap.as_deref())?;
         let latest = catalog.as_ref().map(|i| i.version.clone());
         let app_paths = app_paths(cask);
         let actual = app_paths
@@ -175,7 +171,10 @@ pub fn scan(
         let fallback = cask.name.first().unwrap_or(&cask.token);
         items.push(InstalledItem {
             kind: Kind::Cask,
-            token: cask.token.clone(),
+            token: catalog
+                .as_ref()
+                .map(|item| item.token.clone())
+                .unwrap_or_else(|| cask.token.clone()),
             name: display_name(catalog.as_ref(), fallback, locale),
             installed_version,
             actual_version: actual,
@@ -274,6 +273,52 @@ pub fn storage(items: &[InstalledItem], cache_bytes: u64, complete: bool) -> Sto
 #[cfg(test)]
 mod app_path_tests {
     use super::*;
+
+    #[test]
+    fn installed_site_alias_matches_upstream_token_and_tap() {
+        let temp = tempfile::tempdir().unwrap();
+        let database = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let mut official = crate::catalog::links::tests::item();
+        official.kind = Kind::Cask;
+        official.token = "orca".into();
+        official.tap = None;
+        official.brew_token = None;
+        official.name = "Plotly Orca".into();
+        official.display_name = LocalizedText::default();
+        let mut alias = official.clone();
+        alias.token = "stablyai-orca".into();
+        alias.tap = Some("stablyai/orca".into());
+        alias.brew_token = Some("orca".into());
+        alias.name = "Stably Orca".into();
+        database
+            .with(|c| {
+                crate::catalog::upsert(c, &official)?;
+                crate::catalog::upsert(c, &alias)
+            })
+            .unwrap();
+        for (tap, token, catalog_version) in [
+            ("stablyai/orca", "stablyai-orca", true),
+            ("homebrew/cask", "orca", true),
+            ("homebrew/cask-fonts", "orca", false),
+            ("another/tap", "orca", false),
+        ] {
+            let info: Info = serde_json::from_value(serde_json::json!({"casks": [{"token":"orca", "tap":tap, "version":"1", "installed":"1", "artifacts":[]}]})).unwrap();
+            let result = scan(&database, &info, "/tmp/opennavo_fake_prefix", Locale::EnUs).unwrap();
+            assert_eq!(result.items.len(), 1);
+            assert_eq!(result.items[0].token, token);
+            assert_eq!(result.items[0].latest_version.is_some(), catalog_version);
+        }
+        assert!(
+            crate::catalog::get_brew_cask(&database, "orca", None)
+                .unwrap()
+                .is_some_and(|item| item.token == "orca")
+        );
+        assert!(
+            crate::catalog::get_brew_cask(&database, "stablyai-orca", Some("stablyai/orca"))
+                .unwrap()
+                .is_none()
+        );
+    }
 
     #[test]
     fn app_artifacts_resolve_install_destinations_not_archive_paths() {

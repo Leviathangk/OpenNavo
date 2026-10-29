@@ -166,6 +166,8 @@ export const commands = {
 	onRequest: OnRequest | null,
 	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
 	tap?: string | null,
+	/**  Upstream Homebrew token when the catalog uses a site alias. */
+	brewToken?: string | null,
 } | null, AppError>(__TAURI_INVOKE("catalog_get", { kind, token })),
 	catalogCategories: () => typedError<CategoryItem[], AppError>(__TAURI_INVOKE("catalog_categories")),
 	libraryList: () => typedError<InstalledItem[], AppError>(__TAURI_INVOKE("library_list")),
@@ -548,6 +550,8 @@ export type CatalogItem_Deserialize = {
 	onRequest: OnRequest | null,
 	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
 	tap?: string | null,
+	/**  Upstream Homebrew token when the catalog uses a site alias. */
+	brewToken?: string | null,
 };
 
 /**  Date strings retain the HTTP catalog format; local IPC times use Unix milliseconds. */
@@ -588,6 +592,8 @@ export type CatalogItem_Serialize = {
 	onRequest: OnRequest | null,
 	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
 	tap?: string | null,
+	/**  Upstream Homebrew token when the catalog uses a site alias. */
+	brewToken?: string | null,
 };
 
 export type CatalogStatus = {

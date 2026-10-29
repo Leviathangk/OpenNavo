@@ -33,18 +33,19 @@ func (e *UnsupportedCaskError) Error() string {
 
 // ParseCaskSource statically reads the declarative subset of the cask DSL and returns the same JSON shape as
 // formulae.brew.sh/api/cask.json, so the result goes through Normalize like an official cask. Ruby is never
-// executed: per-architecture or per-OS blocks, local variables, language blocks and unknown stanzas are rejected.
+// executed: architecture selectors are evaluated for both CPUs; per-OS/architecture blocks, local variables,
+// language blocks and unknown stanzas are rejected.
 // Flight blocks, livecheck and caveats blocks only run inside brew on the user's Mac, so they are skipped.
 func ParseCaskSource(source string, ref CaskSource, today time.Time) (json.RawMessage, error) {
 	tokens, err := lexRuby(source)
 	if err != nil {
 		return nil, err
 	}
-	parser := &caskParser{tokens: tokens, ref: ref, today: today.UTC(), dependsOn: map[string]any{}, seen: map[string]bool{}}
+	parser := &caskParser{tokens: tokens, ref: ref, today: today.UTC(), architecture: "arm", dependsOn: map[string]any{}, seen: map[string]bool{}}
 	if err := parser.parse(); err != nil {
 		return nil, err
 	}
-	return parser.render()
+	return parser.renderArchitectures()
 }
 
 type rbValueKind uint8
@@ -103,11 +104,13 @@ func (v rbValue) get(key string) (rbValue, bool) {
 }
 
 type caskParser struct {
-	tokens []rbToken
-	pos    int
-	depth  int
-	ref    CaskSource
-	today  time.Time
+	tokens                []rbToken
+	pos                   int
+	depth                 int
+	ref                   CaskSource
+	today                 time.Time
+	architecture, arch    string
+	hasArchitectureValues bool
 
 	token, version, sha256, url, desc, homepage string
 	hasVersion, hasSHA256, hasURL, rosetta      bool
@@ -456,6 +459,11 @@ func (p *caskParser) evaluate(part rbPart) (string, error) {
 	var list []string
 	isList := false
 	switch {
+	case root.kind == rbIdent && root.text == "arch":
+		if p.arch == "" {
+			return "", p.fail(part.line, "arch is used before the arch stanza")
+		}
+		scalar = p.arch
 	case root.kind == rbIdent && root.text == "version":
 		if !p.hasVersion {
 			return "", p.fail(part.line, "version is used before the version stanza")
@@ -704,7 +712,7 @@ func (p *caskParser) statement() error {
 
 func unsupportedStanza(name string) string {
 	switch {
-	case name == "arch" || name == "os" || name == "on_arch_conditional" || name == "on_system_conditional":
+	case name == "os" || name == "on_arch_conditional" || name == "on_system_conditional":
 		return "`" + name + "` (per-architecture or per-OS values) is not supported"
 	case strings.HasPrefix(name, "on_"):
 		return "`" + name + "` blocks (per-architecture or per-OS values) are not supported"
@@ -789,6 +797,15 @@ func (p *caskParser) stringArg(name rbToken, args rbArgs) (string, error) {
 
 func (p *caskParser) apply(name rbToken, args rbArgs) error {
 	switch name.text {
+	case "arch":
+		if p.arch != "" {
+			return p.fail(name.line, "arch is declared more than once")
+		}
+		value, err := p.architectureValue(name, args, false)
+		if err != nil {
+			return err
+		}
+		p.arch = value.text
 	case "version":
 		if len(args.positional) == 1 && args.positional[0].kind == vSymbol && args.positional[0].text == "latest" && len(args.options.keys) == 0 {
 			p.version, p.hasVersion = "latest", true
@@ -804,7 +821,11 @@ func (p *caskParser) apply(name rbToken, args rbArgs) error {
 		p.version, p.hasVersion = version, true
 	case "sha256":
 		if len(args.options.keys) > 0 {
-			return p.fail(name.line, "per-architecture sha256 values are not supported")
+			value, err := p.architectureValue(name, args, true)
+			if err != nil {
+				return err
+			}
+			args = rbArgs{positional: []rbValue{value}}
 		}
 		if len(args.positional) == 1 && args.positional[0].kind == vSymbol && args.positional[0].text == "no_check" {
 			p.sha256, p.hasSHA256 = "no_check", true

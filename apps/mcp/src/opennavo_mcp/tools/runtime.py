@@ -243,8 +243,11 @@ USAGE = {
     "tap_package_add": (
         " cask is what brew install --cask takes, e.g. swiftvm-app/tap/swiftvm (tap"
         " swiftvm-app/tap = github.com/swiftvm-app/homebrew-tap). The cask file is read from"
-        " GitHub without running Ruby; arch, on_arm, on_intel, on_<macos> and language blocks or"
-        " local variables are rejected with their line. Official Homebrew tokens cannot be added."
+        " GitHub without running Ruby; literal arch arm:/intel: and matching sha256 selectors"
+        " preserve both CPUs. on_arm, on_intel, on_<macos>, language blocks and local variables"
+        " are rejected with their line. Optional site_token selects a unique catalog token for"
+        " collisions, e.g. cask stablyai/orca/orca with site_token stablyai-orca. Install and sync"
+        " keep the upstream name. Omitting site_token retains the existing token collision rules."
         " Adding records every version the file's newest 100 commits declare (the dry run lists"
         " them as versions), so release notes can be written for them right away."
     ),

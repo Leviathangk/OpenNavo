@@ -235,18 +235,18 @@ func TestParseCaskSourceDependsOnAndLifecycle(t *testing.T) {
 func TestParseCaskSourceRejectsWhatItCannotEvaluate(t *testing.T) {
 	base := "cask \"demo\" do\n  version \"1.0\"\n  sha256 :no_check\n  url \"https://example.com/demo.dmg\"\n  name \"Demo\"\n"
 	for name, tc := range map[string]struct{ body, reason string }{
-		"arch":           {`  arch arm: "arm64", intel: "x64"`, "`arch`"},
-		"on_arm":         {"  on_arm do\n    app \"Demo.app\"\n  end", "`on_arm` blocks"},
-		"on_macos":       {"  on_sonoma :or_newer do\n    app \"Demo.app\"\n  end", "`on_sonoma` blocks"},
-		"language":       {"  language \"en\", default: true do\n    \"en\"\n  end", "`language` blocks"},
-		"local variable": {`  folder = "demo"`, "local variables"},
-		"conditional":    {"  if MacOS.version > :big_sur\n    app \"Demo.app\"\n  end", "conditionals"},
-		"unknown":        {`  something_new "x"`, "`something_new`"},
-		"interpolation":  {`  app "Demo #{name}.app"`, "unsupported interpolation"},
-		"expression":     {`  app "Demo.app", target: staged_path`, "only literal values"},
-		"arch sha256":    {`  sha256 arm: "x", intel: "y"`, "declared more than once"},
-		"url block":      {"  livecheck\n", "requires a block"},
-		"caveats code":   {`  caveats File.read("x")`, "only literal values"},
+		"incomplete arch": {`  arch arm: "arm64"`, "expects arm: and intel:"},
+		"on_arm":          {"  on_arm do\n    app \"Demo.app\"\n  end", "`on_arm` blocks"},
+		"on_macos":        {"  on_sonoma :or_newer do\n    app \"Demo.app\"\n  end", "`on_sonoma` blocks"},
+		"language":        {"  language \"en\", default: true do\n    \"en\"\n  end", "`language` blocks"},
+		"local variable":  {`  folder = "demo"`, "local variables"},
+		"conditional":     {"  if MacOS.version > :big_sur\n    app \"Demo.app\"\n  end", "conditionals"},
+		"unknown":         {`  something_new "x"`, "`something_new`"},
+		"interpolation":   {`  app "Demo #{name}.app"`, "unsupported interpolation"},
+		"expression":      {`  app "Demo.app", target: staged_path`, "only literal values"},
+		"arch sha256":     {`  sha256 arm: "x", intel: "y"`, "declared more than once"},
+		"url block":       {"  livecheck\n", "requires a block"},
+		"caveats code":    {`  caveats File.read("x")`, "only literal values"},
 	} {
 		_, err := ParseCaskSource(base+tc.body+"\nend\n", CaskSource{Tap: "example/tap", Token: "demo"}, sourceDay)
 		var unsupported *UnsupportedCaskError

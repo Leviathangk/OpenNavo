@@ -716,22 +716,24 @@ impl TaskQueue {
                 .ok()
                 .map(PathBuf::from);
             // Installs use the catalog; upgrades/reinstalls retain the installed source and reject catalog conflicts.
-            let catalog_tap = match (&task.target, task.op) {
-                (Some(target), TaskOp::Install | TaskOp::Reinstall | TaskOp::Upgrade)
-                    if target.kind == Kind::Cask =>
-                {
+            let catalog_cask = match &task.target {
+                Some(target) if target.kind == Kind::Cask => {
                     let database = self.database.clone();
                     let token = target.token.clone();
-                    crate::blocking(move || {
-                        Ok(crate::catalog::get(&database, Kind::Cask, &token)?.map(|i| i.tap))
-                    })
-                    .await?
+                    crate::blocking(move || crate::catalog::get(&database, Kind::Cask, &token))
+                        .await?
                 }
                 _ => None,
             };
+            let catalog_tap = catalog_cask.as_ref().map(|i| i.tap.clone());
+            let command_target = task
+                .target
+                .as_ref()
+                .map(|target| crate::brew::args::catalog_target(target, catalog_cask.as_ref()))
+                .transpose()?;
             let mut tap = catalog_tap.clone().flatten();
             if matches!(task.op, TaskOp::Upgrade | TaskOp::Reinstall)
-                && let Some(target) = &task.target
+                && let Some(target) = &command_target
                 && target.kind == Kind::Cask
             {
                 let json =
@@ -746,7 +748,12 @@ impl TaskQueue {
             }
             (
                 PathBuf::from(brew.path),
-                write_args_in_tap(task.op, task.target.as_ref(), &task.options, tap.as_deref())?,
+                write_args_in_tap(
+                    task.op,
+                    command_target.as_ref(),
+                    &task.options,
+                    tap.as_deref(),
+                )?,
                 brew.prefix,
                 cache,
             )
@@ -2229,6 +2236,43 @@ else:
             assert_eq!(terminal(&queue, &task.id).await.state, TaskState::Succeeded);
             queue.shutdown();
         }
+    }
+
+    #[tokio::test]
+    async fn site_alias_install_uses_upstream_token() {
+        let (directory, queue, _) = fixture("install_ok");
+        let wrapper = directory.path().join("brew");
+        let source = std::fs::read_to_string(&wrapper).unwrap();
+        let source = source.replace("    os.execv", "    if sys.argv[1] == 'install' and sys.argv[-1] != 'stablyai/orca/orca': sys.exit(99)\n    os.execv");
+        std::fs::write(&wrapper, source).unwrap();
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../apps/server/testdata/desktop/v2/catalog.json.gz");
+        let file = std::fs::File::open(fixture_path).unwrap();
+        let json: serde_json::Value =
+            serde_json::from_reader(flate2::read::GzDecoder::new(file)).unwrap();
+        let mut json = json["items"][0].clone();
+        json["kind"] = "cask".into();
+        json["token"] = "stablyai-orca".into();
+        json["brewToken"] = "orca".into();
+        json["tap"] = "stablyai/orca".into();
+        let item: CatalogItem = serde_json::from_value(json).unwrap();
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        let task = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target("stablyai-orca")),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        queue.start();
+        let ended = terminal(&queue, &task.id).await;
+        assert_eq!(ended.state, TaskState::Succeeded, "{:?}", ended.error);
+        assert_eq!(ended.target.unwrap().token, "stablyai-orca");
+        queue.shutdown();
     }
 
     #[tokio::test]
