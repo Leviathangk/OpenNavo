@@ -236,7 +236,7 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		d.InstallCommand = "brew install --" + kind + " " + token
 		if !homebrew.IsOfficialTap(p.Tap) {
 			// brew taps the repository on first install when given the qualified name.
-			d.InstallCommand = "brew install --" + kind + " " + p.Tap + "/" + token
+			d.InstallCommand = "brew install --" + kind + " " + p.FullToken
 		}
 		d.Installs = publicapi.InstallStats{D30: p.Installs30d, D90: p.Installs90d, D365: p.Installs365d}
 		if kind == "formula" {

@@ -2,7 +2,8 @@
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { formatVersion, formatVersionChange, installCommand } from '@opennavo/shared';
+import { formatVersion, formatVersionChange } from '@opennavo/shared';
+import { catalogInstallCommand } from '@/utils/brew';
 import { OnCommandPalette } from '@opennavo/ui';
 import type { OnCommandGroup, OnCommandItem } from '@opennavo/ui';
 import type { Kind } from '@/ipc/bindings';
@@ -80,7 +81,7 @@ watch([query, appLocale, () => catalog.revision], async ([value]) => {
 });
 
 type Payload =
-  | { type: 'package'; kind: Kind; token: string; tap: string | null }
+  | { type: 'package'; kind: Kind; token: string; tap: string | null; brewToken: string | null }
   | { type: 'mas'; adamId: number }
   | { type: 'update'; kind: Kind; token: string }
   | { type: 'reveal'; kind: Kind; token: string }
@@ -98,7 +99,13 @@ function packageItem(hit: LocalSearchHit): OnCommandItem {
     : pick(item.summary, '', item.sourceLocale);
   const current = stateOf(item.kind, item.token, item.disabled);
   const key = `package:${item.kind}/${item.token}`;
-  payloads.set(key, { type: 'package', kind: item.kind, token: item.token, tap: item.tap ?? null });
+  payloads.set(key, {
+    type: 'package',
+    kind: item.kind,
+    token: item.token,
+    tap: item.tap ?? null,
+    brewToken: item.brewToken ?? null
+  });
   return {
     key,
     label: pick(item.displayName, item.name, item.sourceLocale),
@@ -233,7 +240,7 @@ async function copy(item: OnCommandItem) {
   const payload = payloads.get(item.key);
   // Link apps have no brew command (store/security plan §4); their row copies nothing.
   if (!payload || payload.type !== 'package' || payload.kind === 'link') return;
-  const command = installCommand(payload.kind, payload.token, payload.tap);
+  const command = catalogInstallCommand(payload.kind, payload.token, payload);
   await navigator.clipboard.writeText(command);
   toasts.push({ tone: 'success', title: t('palette.copied', { command }) });
 }

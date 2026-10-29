@@ -27,17 +27,18 @@ import (
 
 // fakeGitHub serves one tap repository: the commits of each cask path and file contents per commit.
 type fakeGitHub struct {
-	mu      sync.Mutex
-	history map[string][]string // path -> commit shas, newest first
-	dates   map[string]time.Time
-	files   map[string]string // sha + "/" + path -> contents
-	broken  map[string]bool   // shas whose file reads fail
-	calls   []string
-	limited bool
+	mu         sync.Mutex
+	repository string
+	history    map[string][]string // path -> commit shas, newest first
+	dates      map[string]time.Time
+	files      map[string]string // sha + "/" + path -> contents
+	broken     map[string]bool   // shas whose file reads fail
+	calls      []string
+	limited    bool
 }
 
 func newFakeGitHub() *fakeGitHub {
-	return &fakeGitHub{history: map[string][]string{}, dates: map[string]time.Time{}, files: map[string]string{}, broken: map[string]bool{}}
+	return &fakeGitHub{repository: "swiftvm-app/homebrew-tap", history: map[string][]string{}, dates: map[string]time.Time{}, files: map[string]string{}, broken: map[string]bool{}}
 }
 
 // commit adds a commit touching path; empty contents delete the file and an empty sha drops the path's history.
@@ -67,7 +68,7 @@ func (f *fakeGitHub) Get(_ context.Context, target string, _ int64, headers http
 	}
 	switch parsed.Host {
 	case "api.github.com":
-		if parsed.Path != "/repos/swiftvm-app/homebrew-tap/commits" {
+		if parsed.Path != "/repos/"+f.repository+"/commits" {
 			return nil, http.StatusNotFound, http.Header{}, nil
 		}
 		shas := f.history[parsed.Query().Get("path")]
@@ -88,7 +89,7 @@ func (f *fakeGitHub) Get(_ context.Context, target string, _ int64, headers http
 		body, _ := json.Marshal(entries)
 		return body, http.StatusOK, http.Header{"Etag": {etag}}, nil
 	case "raw.githubusercontent.com":
-		key := strings.TrimPrefix(parsed.Path, "/swiftvm-app/homebrew-tap/")
+		key := strings.TrimPrefix(parsed.Path, "/"+f.repository+"/")
 		if f.broken[strings.SplitN(key, "/", 2)[0]] {
 			return nil, http.StatusBadGateway, http.Header{}, nil
 		}
@@ -269,7 +270,7 @@ func TestTapCaskLifecycle(t *testing.T) {
 	require.WithinDuration(t, updated, committed, 0)
 
 	// DSL the reader cannot evaluate keeps the last good version and reports the line.
-	github.commit("Casks/swiftvm.rb", sha(2), swiftvm("1.4.0", `  arch arm: "arm64", intel: "x64"`), updated.Add(time.Hour))
+	github.commit("Casks/swiftvm.rb", sha(2), swiftvm("1.4.0", `  on_arch_conditional arm: "arm64", intel: "x64"`), updated.Add(time.Hour))
 	stats, err = tapService.Run(ctx, 0)
 	require.NoError(t, err)
 	require.Equal(t, 1, stats["failed"])
@@ -277,7 +278,7 @@ func TestTapCaskLifecycle(t *testing.T) {
 	require.Equal(t, "1.3.0", row.Version)
 	cask, err := st.TapCask(ctx, id)
 	require.NoError(t, err)
-	require.Contains(t, cask.LastError, "line 9: `arch`")
+	require.Contains(t, cask.LastError, "line 9: `on_arch_conditional`")
 
 	// Rate limits are recorded without touching the catalog.
 	github.limited = true
@@ -346,7 +347,7 @@ func TestTapCaskVersionHistory(t *testing.T) {
 	github.commit(path, sha(0), swiftvm("1.0.0", ""), day)
 	github.commit(path, sha(1), swiftvm("1.1.0", ""), day.Add(24*time.Hour))
 	github.commit(path, sha(2), swiftvm("1.1.0", "  auto_updates true\n"), day.Add(30*time.Hour))
-	github.commit(path, sha(3), swiftvm("1.2.0", `  arch arm: "arm64", intel: "x64"`), day.Add(36*time.Hour))
+	github.commit(path, sha(3), swiftvm("1.2.0", `  on_arch_conditional arm: "arm64", intel: "x64"`), day.Add(36*time.Hour))
 	github.commit(path, sha(4), swiftvm("1.3.0", ""), day.Add(48*time.Hour))
 	tapService := &taps.Service{Store: st, GitHub: github}
 	admin := &management.Service{Store: st, Taps: tapService, Queue: &queue{}}
@@ -591,7 +592,7 @@ func TestFailedTapSyncPreservesNewRegistration(t *testing.T) {
 				return added.(map[string]any)["id"].(int64)
 			}
 			id := add()
-			github.commit("Casks/swiftvm.rb", sha(1), swiftvm("2", `  arch arm: "arm64", intel: "x64"`), now)
+			github.commit("Casks/swiftvm.rb", sha(1), swiftvm("2", `  on_arch_conditional arm: "arm64", intel: "x64"`), now)
 			client.after = func() {
 				require.NoError(t, st.UnregisterTapCask(ctx, id))
 				github.commit("Casks/swiftvm.rb", sha(2), "", now)

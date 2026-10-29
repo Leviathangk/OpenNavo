@@ -2,7 +2,7 @@
 use crate::{
     AppError,
     brew::{
-        args::{ReadOp, validate_token},
+        args::{ReadOp, split_cask_token},
         json::Info,
         locate,
     },
@@ -175,7 +175,7 @@ pub async fn identity(
     settings: &Settings,
     target: &TaskTarget,
 ) -> Result<Identity, AppError> {
-    validate_token(&target.token)?;
+    split_cask_token(&target.token)?;
     if target.kind != Kind::Cask {
         return Err(AppError::new("E_INVALID_ARG", "cask_only"));
     }
@@ -189,28 +189,47 @@ pub async fn identity(
     })
     .await
     .map_err(|_| check_failed())?;
-    let mut paths: Vec<PathBuf> = cached
+    let local = cached
         .iter()
-        .find(|i| i.kind == target.kind && i.token == target.token)
+        .find(|i| i.kind == target.kind && i.matches_token(&target.token));
+    let mut paths: Vec<PathBuf> = local
         .map(|i| i.app_paths.iter().map(PathBuf::from).collect())
         .unwrap_or_default();
     let mut bundle_ids = Vec::new();
     if paths.is_empty() {
         // pkg apps may lack app artifacts; read Cask quit identifiers. Fonts and other non-app artifacts need no blocking.
+        let catalog_db = database.clone();
+        let site_token = target.token.clone();
+        let name = if let Some(local) = local {
+            local.install_token().to_owned()
+        } else if site_token.contains('/') {
+            site_token
+        } else {
+            let item =
+                crate::blocking(move || crate::catalog::get(&catalog_db, Kind::Cask, &site_token))
+                    .await
+                    .map_err(|_| check_failed())?;
+            let brew_target = crate::brew::args::catalog_target(target, item.as_ref())
+                .map_err(|_| check_failed())?;
+            crate::brew::args::qualified_token(
+                item.as_ref().and_then(|item| item.tap.as_deref()),
+                &brew_target.token,
+            )
+            .map_err(|_| check_failed())?
+        };
+        let (tap, upstream) = split_cask_token(&name).map_err(|_| check_failed())?;
         let brew = locate::locate(settings).await.map_err(|_| check_failed())?;
-        let json = locate::read(
-            &brew,
-            settings,
-            ReadOp::Info(Kind::Cask),
-            Some(&target.token),
-        )
-        .await
-        .map_err(|_| check_failed())?;
+        let json = locate::read(&brew, settings, ReadOp::Info(Kind::Cask), Some(&name))
+            .await
+            .map_err(|_| check_failed())?;
         let info: Info = serde_json::from_str(&json).map_err(|_| check_failed())?;
         let cask = info
             .casks
             .iter()
-            .find(|c| c.token == target.token)
+            .find(|c| {
+                c.token == upstream
+                    && c.tap.as_deref().unwrap_or("homebrew/cask") == tap.unwrap_or("homebrew/cask")
+            })
             .ok_or_else(check_failed)?;
         let artifacts = cask.artifacts.as_ref().ok_or_else(check_failed)?;
         paths = crate::library::app_paths(cask)
@@ -314,7 +333,12 @@ pub async fn inspect(
             .await?
             .is_empty()
         {
-            let name = crate::catalog::get(database, target.kind.brew_kind()?, &target.token)?;
+            let (tap, upstream) = split_cask_token(&target.token)?;
+            let name = if tap.is_some() {
+                crate::catalog::get_brew_cask(database, upstream, tap)?
+            } else {
+                crate::catalog::get(database, target.kind.brew_kind()?, &target.token)?
+            };
             let name = crate::library::display_name(name.as_ref(), &target.token, settings.locale);
             result.push(RunningApp { target, name });
         }
@@ -392,6 +416,47 @@ pub async fn prepare(
 pub(crate) mod tests {
     use super::*;
     use std::sync::Mutex;
+    #[tokio::test]
+    async fn site_alias_running_app_check_reads_upstream() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let database = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let mut item = crate::catalog::links::tests::item();
+        item.kind = Kind::Cask;
+        item.token = "stablyai-orca".into();
+        item.tap = Some("stablyai/orca".into());
+        item.brew_token = Some("orca".into());
+        database.with(|c| crate::catalog::upsert(c, &item)).unwrap();
+        let brew = temp.path().join("brew");
+        std::fs::write(&brew, r#"#!/usr/bin/python3 -I
+import json, sys
+if sys.argv[1:] == ['--version']:
+    print('Homebrew 7.0.7')
+elif sys.argv[1:] == ['--prefix']:
+    print('/tmp/opennavo_fake_prefix')
+elif sys.argv[1:] == ['info', '--json=v2', '--cask', 'stablyai/orca/orca']:
+    print(json.dumps({'casks': [{'token': 'orca', 'tap': 'stablyai/orca', 'version': '1', 'artifacts': [{'uninstall': [{'quit': 'com.example.Orca'}]}]}]}))
+else:
+    sys.exit(99)
+"#).unwrap();
+        std::fs::set_permissions(&brew, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let settings = Settings {
+            brew_path: Some(brew.to_string_lossy().into()),
+            ..Default::default()
+        };
+        let result = super::identity(
+            &database,
+            &settings,
+            &TaskTarget {
+                kind: TaskKind::Cask,
+                token: "stablyai-orca".into(),
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.bundle_ids, ["com.example.Orca"]);
+    }
+
     #[derive(Default)]
     pub struct FakeApps {
         pub processes: Mutex<Vec<Process>>,

@@ -64,5 +64,5 @@ export function matchStartupItems(items: readonly StartupItem[], label: string):
 
 /** Apps on this Mac installed by the cask, or matched to it by file name and bundle identity (Rust). */
 export function matchLocalApps(apps: readonly LocalApp[], token: string): LocalApp[] {
-  return apps.filter(app => app.cask === token || app.catalogToken === token);
+  return apps.filter(app => app.catalogToken === token);
 }

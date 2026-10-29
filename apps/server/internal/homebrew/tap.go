@@ -16,6 +16,11 @@ func IsOfficialTap(tap string) bool {
 	return tap == "" || strings.HasPrefix(tap, "homebrew/")
 }
 
+// ValidCaskToken checks the shared catalog and Homebrew token syntax without normalizing input.
+func ValidCaskToken(token string) bool {
+	return len(token) <= 128 && tokenPattern.MatchString(token)
+}
+
 // ParseTapCask splits a fully qualified cask name such as swiftvm-app/tap/swiftvm the way brew does:
 // names are case-insensitive and a homebrew- prefix on the repository part is optional.
 func ParseTapCask(fullToken string) (tap, token string, err error) {
@@ -30,7 +35,7 @@ func ParseTapCask(fullToken string) (tap, token string, err error) {
 	if owner == "homebrew" {
 		return "", "", errors.New("official Homebrew taps are synced automatically")
 	}
-	if !tokenPattern.MatchString(token) || len(token) > 128 {
+	if !ValidCaskToken(token) {
 		return "", "", errors.New("invalid cask token")
 	}
 	return owner + "/" + name, token, nil

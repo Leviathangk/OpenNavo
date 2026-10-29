@@ -14396,10 +14396,17 @@ components:
         token:
           type: string
           example: visual-studio-code
+        brewToken:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[a-z0-9][a-z0-9+_.@-]*$'
+          description: 'Upstream Homebrew cask token when different from the site token. Install with <tap>/<brewToken>; otherwise use <tap>/<token>. Absent for official casks and casks without a site alias.'
+          example: orca
         tap:
           type: string
           pattern: '^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9_.-]*$'
-          description: 'Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.'
+          description: 'Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>; when brewToken is present, use it instead of token.'
           example: swiftvm-app/tap
         name:
           type: string
@@ -14819,10 +14826,17 @@ components:
         token:
           type: string
           example: visual-studio-code
+        brewToken:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[a-z0-9][a-z0-9+_.@-]*$'
+          description: 'Upstream Homebrew cask token when different from the site token. Install with <tap>/<brewToken>; otherwise use <tap>/<token>. Absent for official casks and casks without a site alias.'
+          example: orca
         tap:
           type: string
           pattern: '^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9_.-]*$'
-          description: 'Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.'
+          description: 'Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>; when brewToken is present, use it instead of token.'
           example: swiftvm-app/tap
         name:
           type: string
