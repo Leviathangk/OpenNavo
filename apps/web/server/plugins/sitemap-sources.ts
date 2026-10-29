@@ -228,11 +228,8 @@ type PackageCacheKey = `${PackageGroup}:${number}`;
 const packageReads = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
 const packageRebuilds = new Map<PackageCacheKey, Promise<SitemapRecord[]>>();
 const rebuildFailedAt = new Map<PackageCacheKey, number>();
-/** One immutable copy per package group and settings revision. */
-const packageSnapshots = new Map<
-  PackageCacheKey,
-  { records: SitemapRecord[]; keys: string[]; expires: number; staleUntil: number }
->();
+// Full records belong only to active requests/rebuilds. Storage owns the snapshots, so an idle
+// process retains no assembled catalog and a refresh cannot pin the previous catalog in a local cache.
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
@@ -259,19 +256,11 @@ function cachedPackages(group: PackageGroup, revision: number): Promise<SitemapR
 }
 
 async function readPackages(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
-  const cacheKey: PackageCacheKey = `${group}:${revision}`;
-  const inProcess = packageSnapshots.get(cacheKey);
-  const reuse = inProcess && inProcess.staleUntil > Date.now() ? inProcess : undefined;
-  if (inProcess && !reuse) packageSnapshots.delete(cacheKey);
   // A live rebuild reads every catalog page. Do not amplify a Redis outage with that work.
   // Missing/evicted snapshots still use the existing live rebuild below.
-  const snapshot = await retrySnapshotRead(() => readSnapshot(group, revision, reuse), group);
+  const snapshot = await retrySnapshotRead(() => readSnapshot(group, revision), group);
   // Without a complete snapshot the request waits for the catalog and fails if the API does.
   if (!snapshot) return rebuildPackages(group, revision);
-  packageSnapshots.set(cacheKey, {
-    ...snapshot,
-    staleUntil: snapshot.expires + SNAPSHOT_TTL_SECONDS * 1000
-  });
   if (snapshot.expires <= Date.now()) refreshPackages(group, revision);
   return snapshot.records;
 }
@@ -292,11 +281,7 @@ async function retrySnapshotRead<T>(read: () => Promise<T>, group: PackageGroup)
   }
 }
 
-async function readSnapshot(
-  group: PackageGroup,
-  revision: number,
-  reuse?: { records: SitemapRecord[]; keys: string[] }
-) {
+async function readSnapshot(group: PackageGroup, revision: number) {
   const storage = useStorage('cache');
   // A rebuild that publishes between reading the manifest and its chunks reclaims those chunks:
   // read the manifest once more before treating the snapshot as lost (evicted).
@@ -306,9 +291,7 @@ async function readSnapshot(
     if (!manifest || manifest.keys.join() === seen) return undefined;
     // Read sequentially so only one chunk is live beside the assembled snapshot. Promise.all + flat()
     // briefly retained every chunk and then copied every record a second time during crawler bursts.
-    const sameKeys =
-      reuse?.keys.length === manifest.keys.length && reuse.keys.every((key, index) => key === manifest.keys[index]);
-    const records: SitemapRecord[] = sameKeys ? reuse.records : [];
+    const records: SitemapRecord[] = [];
     let complete = true;
     for (const key of manifest.keys) {
       const chunk = await storage.getItem<SitemapRecord[]>(key);
@@ -316,12 +299,11 @@ async function readSnapshot(
         complete = false;
         break;
       }
-      if (sameKeys) continue;
       if (records.length + chunk.length > MAX_SNAPSHOT_RECORDS)
         throw new Error(`Sitemap ${group} snapshot exceeds the ${MAX_SNAPSHOT_RECORDS}-record limit`);
       records.push(...chunk);
     }
-    if (complete) return { records, keys: manifest.keys, expires: manifest.expires };
+    if (complete) return { records, expires: manifest.expires };
     seen = manifest.keys.join();
   }
   return undefined;
@@ -331,15 +313,7 @@ function rebuildPackages(group: PackageGroup, revision: number): Promise<Sitemap
   const cacheKey: PackageCacheKey = `${group}:${revision}`;
   const pending = packageRebuilds.get(cacheKey);
   if (pending) return pending;
-  const rebuild = writeSnapshot(group, revision)
-    .then(snapshot => {
-      packageSnapshots.set(cacheKey, {
-        ...snapshot,
-        staleUntil: snapshot.expires + SNAPSHOT_TTL_SECONDS * 1000
-      });
-      return snapshot.records;
-    })
-    .finally(() => packageRebuilds.delete(cacheKey));
+  const rebuild = writeSnapshot(group, revision).finally(() => packageRebuilds.delete(cacheKey));
   packageRebuilds.set(cacheKey, rebuild);
   return rebuild;
 }
@@ -358,19 +332,11 @@ function refreshPackages(group: PackageGroup, revision: number) {
   );
 }
 
-async function writeSnapshot(
-  group: PackageGroup,
-  revision: number
-): Promise<{
-  records: SitemapRecord[];
-  keys: string[];
-  expires: number;
-}> {
+async function writeSnapshot(group: PackageGroup, revision: number): Promise<SitemapRecord[]> {
   const storage = useStorage('cache');
   const version = randomUUID();
   const keys: string[] = [];
   const records: SitemapRecord[] = [];
-  let expires = 0;
   let previous: PackageSnapshot | null;
   try {
     // Fetch, slim, and persist one API page at a time. The old implementation retained every chunk and
@@ -389,8 +355,11 @@ async function writeSnapshot(
     // Read the manifest being replaced right before replacing it, so a snapshot another server
     // published in the meantime is reclaimed as well.
     previous = await storage.getItem<PackageSnapshot>(manifestKey(group, revision));
-    expires = Date.now() + SNAPSHOT_FRESH_MS;
-    await storage.setItem(manifestKey(group, revision), { keys, expires }, { ttl: SNAPSHOT_TTL_SECONDS });
+    await storage.setItem(
+      manifestKey(group, revision),
+      { keys, expires: Date.now() + SNAPSHOT_FRESH_MS },
+      { ttl: SNAPSHOT_TTL_SECONDS }
+    );
   } catch (error) {
     await Promise.all(keys.map(key => storage.removeItem(key)));
     throw error;
@@ -398,7 +367,7 @@ async function writeSnapshot(
   // Explicit reclamation is required: the default memory driver ignores TTL.
   // Readers racing this cleanup move on to the new manifest (readSnapshot).
   if (previous) await Promise.all(previous.keys.map(key => storage.removeItem(key)));
-  return { records, keys, expires };
+  return records;
 }
 
 /** Streams API pages as bounded chunks; callers decide whether to persist or consume each chunk. */
