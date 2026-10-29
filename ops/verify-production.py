@@ -243,6 +243,10 @@ def check_routes():
         status, headers, script = http(src, 'admin.opennavo.localhost')
         assert status == 200 and 'javascript' in headers.get('Content-Type', '') and script
     assert all(http(path, 'admin.opennavo.localhost')[0] == 200 for path in BROWSER_PAGES), 'admin SPA fallback'
+    for path in ['/api/health', '/readyz']:
+        status, headers, body = http(path, 'admin.opennavo.localhost')
+        assert status == 200 and headers.get('Content-Type', '').split(';', 1)[0] == 'application/json'
+        assert json.loads(body) == {'status': 'ok'}, f'admin health response: {path}'
     status, _, body = http('/api/v1/packages')
     assert status == 200 and json.loads(body)['code'] == '0000'
     status, _, body = http('/api/v1/config/client?platform=desktop&version=0.3.0')

@@ -122,6 +122,12 @@
 	handle @mcpOther {
 		respond 404
 	}
+	@adminHealth path /api/health /readyz
+	handle @adminHealth {
+		header Content-Type application/json
+		root * /srv/admin
+		file_server
+	}
 	handle /admin-api/* {
 		reverse_proxy {
 			dynamic a {
