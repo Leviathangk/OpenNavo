@@ -24,6 +24,9 @@ type URLNotificationRow struct {
 	State        string
 	Attempts     int
 	LeaseToken   string
+	// ContentBaseline is the page content date checked before delivery, never a receipt time.
+	// Zero means no verified content snapshot and cannot suppress later edits.
+	ContentBaseline time.Time `gorm:"-"`
 }
 
 func QueueURLNotification(ctx context.Context, tx *gorm.DB, n URLNotification) error {

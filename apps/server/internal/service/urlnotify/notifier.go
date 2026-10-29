@@ -56,6 +56,8 @@ type Notifier struct {
 	CloudflareAPI    string
 	// Sleep waits between retries; tests replace it.
 	Sleep func(time.Duration)
+	// Reset for each drain; Run includes skips in its persisted delivery status.
+	contentGate contentGateStats
 }
 
 type Result struct {
@@ -195,8 +197,12 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 		problem = err.Error()
 	}
 	statusUpdate := map[string]any{"last_error": problem}
-	if announced > 0 {
-		statusUpdate["last_indexnow_status"] = fmt.Sprintf("outbox: %d announced", announced)
+	if announced > 0 || n.contentGate.skippedUnchanged > 0 {
+		status := fmt.Sprintf("outbox: %d announced", announced)
+		if n.contentGate.skippedUnchanged > 0 {
+			status += fmt.Sprintf(", %d unchanged skipped", n.contentGate.skippedUnchanged)
+		}
+		statusUpdate["last_indexnow_status"] = status
 	}
 	if result.Purged > 0 {
 		statusUpdate["last_purge_status"] = fmt.Sprintf("outbox: %d purged", result.Purged)

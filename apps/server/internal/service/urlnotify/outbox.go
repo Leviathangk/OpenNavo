@@ -18,6 +18,96 @@ import (
 	"golang.org/x/net/html"
 )
 
+const (
+	// The page refresher runs every two minutes; allow it another cycle to catch up.
+	contentGateDirtyWait = 3 * time.Minute
+	// A stalled refresher must not hold announcements indefinitely.
+	contentGateDirtyStalled = 6 * time.Hour
+	// Merge version, download-size and release-note updates arriving close together.
+	contentGateQuiet = 30 * time.Minute
+)
+
+type contentGateStats struct {
+	skippedUnchanged, waitingPageState, waitingQuiet int
+}
+
+// contentGatePage maps public app paths to the same first-page dates as sitemap.
+// Intent pages share overview dates; supporting tabs stay outside this gate.
+func contentGatePage(path string) (token, kind string, ok bool) {
+	for _, locale := range seo.Locales {
+		prefix := localePrefix(locale)
+		if prefix != "" && strings.HasPrefix(path, prefix+"/") {
+			path = strings.TrimPrefix(path, prefix)
+			break
+		}
+	}
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if !strings.HasPrefix(path, "/") || len(parts) < 2 || len(parts) > 3 || parts[0] != "apps" || parts[1] == "" {
+		return "", "", false
+	}
+	kind = "overview"
+	if len(parts) == 3 {
+		switch parts[2] {
+		case "versions":
+			kind = "versions"
+		case "alternatives", "uninstall", "troubleshooting":
+		default:
+			return "", "", false
+		}
+	}
+	return parts[1], kind, true
+}
+
+func (n *Notifier) retainChangedAnnouncement(ctx context.Context, row *store.URLNotificationRow) (bool, error) {
+	row.ContentBaseline = time.Time{}
+	if !n.Config.IndexNowContentGate || !row.Announce || row.Robots == "" {
+		return true, nil
+	}
+	token, kind, ok := contentGatePage(row.Path)
+	if !ok {
+		return true, nil
+	}
+	state, err := n.Store.IndexNowPageState(ctx, token, row.Locale, kind, row.URL)
+	if err != nil {
+		return false, err
+	}
+	if state.PackageID == 0 {
+		return true, nil
+	}
+	now := n.Now()
+	if state.ChangedAt != nil && !state.ChangedAt.IsZero() {
+		if !state.ChangedAt.Before(now.Add(-contentGateDirtyStalled)) {
+			err := n.Store.DeferURLNotification(ctx, *row, now, now.Add(contentGateDirtyWait))
+			if err == nil {
+				n.contentGate.waitingPageState++
+			}
+			return false, err
+		}
+		n.Logger.Warn("IndexNow page state refresh stalled", "url", row.URL, "changed_at", *state.ChangedAt)
+		return true, nil
+	}
+	if state.ContentModifiedAt == nil {
+		return true, nil
+	}
+	if state.AnnouncedAt != nil && state.Robots != "" && seo.DecisionRobots(state.Robots) == seo.DecisionRobots(row.Robots) &&
+		state.CanonicalPath == row.CanonicalPath && !state.ContentModifiedAt.After(*state.AnnouncedAt) {
+		skipped, err := n.Store.SkipUnchangedURLAnnouncement(ctx, *row, now)
+		if skipped {
+			n.contentGate.skippedUnchanged++
+		}
+		return false, err
+	}
+	if due := state.ContentModifiedAt.Add(contentGateQuiet); due.After(now) {
+		err := n.Store.DeferURLNotification(ctx, *row, now, due)
+		if err == nil {
+			n.contentGate.waitingQuiet++
+		}
+		return false, err
+	}
+	row.ContentBaseline = *state.ContentModifiedAt
+	return true, nil
+}
+
 func (n *Notifier) notifications(ctx context.Context, plan Plan) ([]store.URLNotification, error) {
 	settings, err := n.Store.SEOSettings(ctx)
 	if err != nil {
@@ -109,6 +199,14 @@ func (n *Notifier) notifications(ctx context.Context, plan Plan) ([]store.URLNot
 }
 
 func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, announced int, resultErr error) {
+	n.contentGate = contentGateStats{}
+	defer func() {
+		stats := n.contentGate
+		if stats.skippedUnchanged+stats.waitingPageState+stats.waitingQuiet > 0 {
+			n.Logger.Info("IndexNow content gate", "skipped_unchanged", stats.skippedUnchanged,
+				"waiting_page_state", stats.waitingPageState, "waiting_quiet", stats.waitingQuiet)
+		}
+	}()
 	settings, err := n.Store.SEOSettings(ctx)
 	if err != nil {
 		return 0, 0, err
@@ -216,6 +314,9 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 				continue
 			}
 			keep, decisionErr := n.retainAnnouncement(ctx, row, settings)
+			if decisionErr == nil && keep {
+				keep, decisionErr = n.retainChangedAnnouncement(ctx, &row)
+			}
 			if decisionErr != nil {
 				if e := n.Store.CompleteURLNotification(ctx, row, row.State, decisionErr, n.Now()); e != nil {
 					return purged, announced, e
@@ -263,6 +364,9 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 				}
 				if owned {
 					keep, err := n.retainAnnouncement(ctx, row, settings)
+					if err == nil && keep {
+						keep, err = n.retainChangedAnnouncement(ctx, &row)
+					}
 					if err != nil {
 						return purged, announced, err
 					}
@@ -342,6 +446,9 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 				continue
 			}
 			status, count := n.announce(ctx, settings, urls)
+			if err := n.Store.RecordIndexNowURLs(ctx, ready[:count]); err != nil {
+				return purged, announced, err
+			}
 			total, recordErr := n.Store.RecordIndexNowAccepted(ctx, budgetDay, count)
 			if recordErr != nil {
 				return purged, announced, recordErr
