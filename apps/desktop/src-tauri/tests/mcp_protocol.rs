@@ -149,7 +149,10 @@ fn initialize_falls_back_to_latest_for_unusable_protocol_version() {
 
 #[test]
 fn initialize_captures_and_sanitizes_client_name() {
-    let hostile = format!("\u{0007}\u{202E}\u{2066}{}", "a".repeat(80));
+    let hostile = format!(
+        "\u{0007}\u{202E}\u{2066}\u{200B}\u{FEFF}\u{E0000}\u{E007F}{}",
+        "a".repeat(80)
+    );
     let input = format!(
         "{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{{\"clientInfo\":{{\"name\":{}}}}}}}\n",
         serde_json::to_string(&hostile).expect("encode client name")
@@ -162,12 +165,55 @@ fn initialize_captures_and_sanitizes_client_name() {
     assert!(!captured.chars().any(char::is_control));
     assert!(!captured.contains('\u{202E}'));
     assert!(!captured.contains('\u{2066}'));
+    assert!(!captured.contains('\u{200B}'));
+    assert!(!captured.contains('\u{FEFF}'));
+    assert!(
+        !captured
+            .chars()
+            .any(|c| ('\u{E0000}'..='\u{E007F}').contains(&c))
+    );
     assert_eq!(captured.chars().count(), 64);
     assert_eq!(captured, "a".repeat(64));
 
     // Truncation counts scalar values, not bytes, and drops bidi controls.
     let multibyte = format!("\u{061C}{}", "é".repeat(70));
     assert_eq!(protocol::sanitize_client_name(&multibyte), "é".repeat(64));
+}
+
+#[test]
+fn sanitize_client_name_strips_invisible_and_tag_characters() {
+    let hostile = "a\u{200B}b\u{FEFF}c\u{E0000}d\u{E007F}e\u{E0080}f";
+    assert_eq!(protocol::sanitize_client_name(hostile), "abcde\u{E0080}f");
+
+    let padded = format!("\u{200B}\u{FEFF}\u{E0041}{}", "z".repeat(70));
+    assert_eq!(
+        protocol::sanitize_client_name(&padded),
+        "z".repeat(64),
+        "stripping happens before truncation"
+    );
+}
+
+#[test]
+fn rejects_jsonrpc_that_is_not_exactly_2_0() {
+    for (request, expected_id) in [
+        (r#"{"id":1,"method":"ping"}"#, json!(1)),
+        (r#"{"jsonrpc":"1.0","id":2,"method":"ping"}"#, json!(2)),
+        (r#"{"jsonrpc":"2.0 ","id":3,"method":"ping"}"#, json!(3)),
+        (r#"{"jsonrpc":2.0,"id":4,"method":"ping"}"#, json!(4)),
+        (r#"{"jsonrpc":null,"id":5,"method":"initialize"}"#, json!(5)),
+        (r#"{"jsonrpc":"1.0","method":"ping"}"#, Value::Null),
+    ] {
+        let input = format!("{request}\n");
+        let (responses, _) = run(&input, Availability::Enabled);
+        assert_eq!(responses.len(), 1, "request {request}");
+        let error = &responses[0];
+        assert_eq!(error["id"], expected_id, "request {request}");
+        assert_eq!(error["error"]["code"], -32600, "request {request}");
+        assert_eq!(
+            error["error"]["message"], "Invalid Request",
+            "request {request}"
+        );
+    }
 }
 
 #[test]
@@ -185,6 +231,26 @@ fn ping_and_unknown_method() {
     assert_eq!(responses[1]["id"], 3);
     assert_eq!(responses[1]["error"]["code"], -32601);
     assert_eq!(responses[1]["error"]["message"], "Method not found");
+}
+
+#[test]
+fn maximum_length_line_is_processed_but_one_byte_more_disconnects() {
+    let exact = format!(
+        "{}\n{}\n",
+        "x".repeat(MAX_LINE_BYTES),
+        r#"{"jsonrpc":"2.0","id":2,"method":"ping"}"#
+    );
+    let (responses, _) = run(&exact, Availability::Enabled);
+    assert_eq!(responses.len(), 2, "exact-size line must be processed");
+    assert_eq!(responses[0]["error"]["code"], -32700);
+    assert_eq!(responses[1]["result"], json!({}));
+
+    let oversized = format!("{}\n", "x".repeat(MAX_LINE_BYTES + 1));
+    let (responses, _) = run(&oversized, Availability::Enabled);
+    assert!(
+        responses.is_empty(),
+        "one byte over the limit must disconnect"
+    );
 }
 
 #[test]

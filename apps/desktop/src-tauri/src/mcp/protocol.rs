@@ -93,11 +93,16 @@ impl Session {
     }
 }
 
-/// Strip control and bidirectional formatting characters, then truncate to 64
-/// Unicode scalar values. The client-supplied name is never echoed.
+/// Strip control, bidirectional formatting, and other invisible formatting
+/// characters, then truncate to 64 Unicode scalar values. The client-supplied
+/// name is never echoed.
 pub fn sanitize_client_name(name: &str) -> String {
     name.chars()
-        .filter(|character| !character.is_control() && !is_bidi_control(*character))
+        .filter(|character| {
+            !character.is_control()
+                && !is_bidi_control(*character)
+                && !is_invisible_format(*character)
+        })
         .take(64)
         .collect()
 }
@@ -106,6 +111,14 @@ fn is_bidi_control(character: char) -> bool {
     matches!(
         character,
         '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+    )
+}
+
+/// Zero-width space, byte-order mark, and the Unicode tag block.
+fn is_invisible_format(character: char) -> bool {
+    matches!(
+        character,
+        '\u{200B}' | '\u{FEFF}' | '\u{E0000}'..='\u{E007F}'
     )
 }
 
@@ -178,6 +191,16 @@ fn handle_line<W: Write>(
     };
 
     let id = object.get("id").cloned();
+    if object.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
+        return write_error(
+            output,
+            id.unwrap_or(Value::Null),
+            -32600,
+            "Invalid Request",
+            None,
+        );
+    }
+
     let Some(method) = object.get("method").and_then(Value::as_str) else {
         return match id {
             Some(id) => write_error(output, id, -32600, "Invalid Request", None),
@@ -408,6 +431,15 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_client_name_strips_invisible_and_tag_characters() {
+        let hostile = "a\u{200B}b\u{FEFF}c\u{E0000}d\u{E007F}e\u{E0080}f";
+        assert_eq!(sanitize_client_name(hostile), "abcde\u{E0080}f");
+
+        let padded = format!("\u{200B}\u{FEFF}\u{E0041}{}", "z".repeat(70));
+        assert_eq!(sanitize_client_name(&padded), "z".repeat(64));
+    }
+
+    #[test]
     fn ping_and_unknown_method() {
         let input = concat!(
             r#"{"jsonrpc":"2.0","id":2,"method":"ping"}"#,
@@ -485,9 +517,55 @@ mod tests {
     }
 
     #[test]
+    fn rejects_jsonrpc_that_is_not_exactly_2_0() {
+        for (request, expected_id) in [
+            (r#"{"id":1,"method":"ping"}"#, json!(1)),
+            (r#"{"jsonrpc":"1.0","id":2,"method":"ping"}"#, json!(2)),
+            (r#"{"jsonrpc":"2.0 ","id":3,"method":"ping"}"#, json!(3)),
+            (r#"{"jsonrpc":2.0,"id":4,"method":"ping"}"#, json!(4)),
+            (r#"{"jsonrpc":null,"id":5,"method":"initialize"}"#, json!(5)),
+            (r#"{"jsonrpc":"1.0","method":"ping"}"#, Value::Null),
+        ] {
+            let input = format!("{request}\n");
+            let (responses, _) = run(&input, Availability::Enabled);
+            assert_eq!(responses.len(), 1, "request {request}");
+            let error = &responses[0];
+            assert_eq!(error["id"], expected_id, "request {request}");
+            assert_eq!(error["error"]["code"], -32600, "request {request}");
+            assert_eq!(
+                error["error"]["message"], "Invalid Request",
+                "request {request}"
+            );
+        }
+
+        // A bad jsonrpc version is rejected even for a notification-shaped
+        // message, which would normally produce no response.
+        let notification = "{\"jsonrpc\":\"1.0\",\"method\":\"notifications/initialized\"}\n";
+        let (responses, _) = run(notification, Availability::Enabled);
+        assert_eq!(responses.len(), 1);
+        assert_eq!(responses[0]["id"], Value::Null);
+        assert_eq!(responses[0]["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn maximum_length_line_is_processed() {
+        let input = format!(
+            "{}\n{}\n",
+            "x".repeat(MAX_LINE_BYTES),
+            r#"{"jsonrpc":"2.0","id":2,"method":"ping"}"#
+        );
+        let (responses, _) = run(&input, Availability::Enabled);
+        assert_eq!(responses.len(), 2);
+        assert_eq!(responses[0]["error"]["code"], -32700);
+        assert_eq!(responses[1]["result"], json!({}));
+    }
+
+    #[test]
     fn oversized_line_disconnects_without_response_or_panic() {
-        let oversized = format!("{}\n", "x".repeat(MAX_LINE_BYTES + 1));
-        let (responses, _) = run(&oversized, Availability::Enabled);
-        assert!(responses.is_empty());
+        for size in [MAX_LINE_BYTES + 1, MAX_LINE_BYTES + 2] {
+            let oversized = format!("{}\n", "x".repeat(size));
+            let (responses, _) = run(&oversized, Availability::Enabled);
+            assert!(responses.is_empty(), "size {size}");
+        }
     }
 }
