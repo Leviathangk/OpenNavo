@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { PackageInstallState } from '@opennavo/shared';
 import OnChip from './OnChip.vue';
 import OnTooltip from './OnTooltip.vue';
@@ -9,7 +10,14 @@ export interface OnPackageSourceBadgeProps {
   state: PackageInstallState;
   verified: boolean;
 }
-defineProps<OnPackageSourceBadgeProps>();
+const props = defineProps<OnPackageSourceBadgeProps>();
+
+// Verified labels already carry a visible check, so only older labels without one keep the icon.
+const icon = computed(() => {
+  if (props.state !== 'active') return 'triangle-alert';
+  if (!props.verified) return 'info';
+  return props.label.includes('✓') ? undefined : 'check';
+});
 </script>
 
 <template>
@@ -26,7 +34,7 @@ defineProps<OnPackageSourceBadgeProps>();
         size="md"
         :tone="state === 'disabled' ? 'danger' : state !== 'active' ? 'warning' : verified ? 'success' : 'neutral'"
         outline
-        :icon="state !== 'active' ? 'triangle-alert' : verified ? 'check' : 'info'"
+        :icon="icon"
         >{{ label }}</OnChip
       >
     </button>

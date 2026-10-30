@@ -105,7 +105,7 @@ const glow = computed(() => ({ background: detailGlow(props.accent ?? undefined)
       <div
         v-if="$slots.actions"
         class="items-center gap-8px"
-        :class="stretchActions ? 'grid w-full grid-cols-2 md:w-auto md:flex' : 'flex'"
+        :class="stretchActions ? 'grid w-full grid-cols-2 md:w-auto md:flex md:justify-end' : 'flex'"
         data-testid="package-header-actions"
       >
         <slot name="actions" />

@@ -36,6 +36,12 @@ const repoSignals = computed(() => toPackageRepoSignals(props.pkg));
 const installState = computed(() => packageInstallState(props.pkg));
 const unavailable = computed(() => installState.value === 'disabled');
 const source = computed(() => officialSource(props.pkg));
+// Pair actions in equal columns only when the header actually has Get/Download and Homepage.
+const actionCount = computed(() => {
+  if (isLink.value) return Number(Boolean(downloadUrl.value)) + Number(Boolean(homepage.value));
+  return 1 + Number(Boolean(homepage.value));
+});
+const stretchActions = computed(() => actionCount.value === 2);
 
 const chips = computed<OnPackageHeaderChip[]>(() => {
   const kind = isLink.value
@@ -85,7 +91,7 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
     :chips="chips"
     :meta="meta"
     :link-as="NuxtLink"
-    :stretch-actions="Boolean(homepage && (!isLink || downloadUrl))"
+    :stretch-actions="stretchActions"
     priority
   >
     <template #tags>

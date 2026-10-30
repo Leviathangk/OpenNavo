@@ -1988,16 +1988,17 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     }
   );
 
-  await t.test('source badges retain full source domains, SHA-256, lifecycle and check-date text in SSR', async () => {
+  await t.test('source badge tooltip lines are in server HTML before hydration', async () => {
     for (const [prefix, label, domain, checked] of [
-      ['', 'Official source · Verified', 'Source: vendor.example', 'Checked:'],
-      ['/zh', '官方来源 · 已核查', '来源域名：vendor.example', '核查日期：']
+      ['', '✓ Official source · Verified', 'Source: vendor.example', 'Checked:'],
+      ['/zh', '✓ 官方来源 · 已核查', '来源域名：vendor.example', '核查日期：']
     ]) {
       const response = await fetch(`${origin}${prefix}/apps/facts-app`);
       assert.equal(response.status, 200, logs);
       const page = JSDOM.fragment(await response.text());
       const badge = page.querySelector('[data-testid="package-source-badge"]');
       assert.equal(badge?.textContent.trim(), label);
+      assert.equal(badge?.getAttribute('aria-label'), label);
       assert.equal(badge.tagName, 'BUTTON');
       assert.equal(badge.getAttribute('type'), 'button');
       assert.ok(badge.closest('[data-testid="package-header-tags"]'));

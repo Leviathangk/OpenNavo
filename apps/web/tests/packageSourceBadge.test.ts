@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { computed, createApp, createSSRApp, h, nextTick, ref, resolveComponent } from 'vue';
 import type { App } from 'vue';
 import { renderToString } from 'vue/server-renderer';
@@ -16,6 +17,18 @@ import production from './fixtures/packageFaq.production.json';
 let locale: SiteLocale = 'en-US';
 let mounted: App | undefined;
 const pkg = () => structuredClone(production.packages.iterm2) as unknown as PackagePage;
+const verifiedLabels: Record<SiteLocale, string> = {
+  'en-US': '✓ Official source · Verified',
+  'zh-CN': '✓ 官方来源 · 已核查',
+  'zh-Hant': '✓ 官方來源 · 已核查',
+  'ja-JP': '✓ 公式配布元 · 確認済み',
+  'de-DE': '✓ Offizielle Quelle · Geprüft',
+  'es-ES': '✓ Fuente oficial · Verificada',
+  'fr-FR': '✓ Source officielle · Vérifiée',
+  'it-IT': '✓ Fonte ufficiale · Verificata',
+  'pt-BR': '✓ Fonte oficial · Verificada',
+  'ru-RU': '✓ Официальный источник · Проверен'
+};
 const translate = (key: string, named?: Record<string, unknown>) =>
   siteMessage(locale, key, named as Record<string, string | number>);
 
@@ -58,26 +71,38 @@ async function render(value = pkg()) {
   return page;
 }
 
-it('keeps Get and Homepage together and places the source badge beside the header tags', async () => {
+it('keeps Get and Homepage in one right-aligned row inside the header actions', async () => {
   const page = await render();
   const actions = page.querySelector('[data-testid="package-header-actions"]')!;
   expect(actions.children).toHaveLength(2);
-  expect(actions.querySelector('button')?.getAttribute('aria-label')).toBe('Get iTerm2');
-  expect(actions.querySelector('a')?.textContent).toContain('Homepage');
-  const badge = page.querySelector('[data-testid="package-source-badge"]')!;
-  expect(badge.closest('[data-testid="package-header-tags"]')).not.toBeNull();
-  expect(actions.contains(badge)).toBe(false);
+  expect(actions.children[0].querySelector('button')?.getAttribute('aria-label')).toBe('Get iTerm2');
+  expect(actions.children[1].tagName).toBe('A');
+  expect(actions.children[1].textContent).toContain('Homepage');
+  expect(actions.classList.contains('grid')).toBe(true);
+  expect(actions.classList.contains('grid-cols-2')).toBe(true);
+  expect(actions.classList.contains('w-full')).toBe(true);
+  expect(actions.classList.contains('md:flex')).toBe(true);
+  expect(actions.classList.contains('md:justify-end')).toBe(true);
   expect(page.querySelector('section')?.textContent).not.toContain('From homebrew/cask');
   expect(actions.textContent).not.toMatch(/Official download|SHA-256|Checked/);
 });
 
-it('renders a keyboard-accessible source trigger and its full description in SSR HTML', async () => {
+it('renders the exact verified source badge in the header tag row', async () => {
+  const page = await render();
+  const badge = page.querySelector('[data-testid="package-source-badge"]')!;
+  expect(badge.textContent).toBe('✓ Official source · Verified');
+  expect(badge.getAttribute('aria-label')).toBe('✓ Official source · Verified');
+  expect(badge.querySelector('svg')).toBeNull();
+  expect(badge.closest('[data-testid="package-header-tags"]')).not.toBeNull();
+  expect(page.querySelector('[data-testid="package-header-actions"]')?.contains(badge)).toBe(false);
+});
+
+it('server HTML contains every tooltip line before hydration', async () => {
   const value = pkg();
   const page = await render(value);
   const badge = page.querySelector<HTMLButtonElement>('[data-testid="package-source-badge"]')!;
   expect(badge.tagName).toBe('BUTTON');
   expect(badge.type).toBe('button');
-  expect(badge.getAttribute('aria-label')).toBe('Official source · Verified');
   const id = badge.getAttribute('aria-describedby');
   expect(id).toBeTruthy();
   const tooltip = page.querySelector(`[id="${id}"][role="tooltip"]`)!;
@@ -116,6 +141,7 @@ it.each(lifecycleCases)('source badge follows shared lifecycle priority: $name',
             : 'text-status-warning'
       )
   ).toBe(true);
+  expect(badge.querySelector('svg') !== null).toBe(expected !== 'active');
   if (expected === 'disabled') {
     expect(page.querySelector('[data-testid="package-header-actions"] button')?.hasAttribute('disabled')).toBe(true);
     expect(page.querySelector(`[id="${badge.getAttribute('aria-describedby')}"]`)?.textContent).toContain(
@@ -128,9 +154,17 @@ it.each(SITE_LOCALES)('uses real source-badge messages without fallback in %s', 
   locale = code;
   const page = await render();
   const badge = page.querySelector('[data-testid="package-source-badge"]')!;
-  expect(badge.textContent).toBe(translate('package.sourceBadge.verified'));
+  expect(badge.textContent).toBe(verifiedLabels[code]);
+  expect(badge.getAttribute('aria-label')).toBe(verifiedLabels[code]);
   expect(page.textContent).not.toMatch(/package\.sourceBadge\.|\{domain\}|\{sha256\}|\{date\}/);
   expect(page.querySelector(`[id="${badge.getAttribute('aria-describedby')}"]`)?.textContent).toContain('2026');
+});
+
+it('defines the exact verified source badge text in every web locale', () => {
+  for (const code of SITE_LOCALES) {
+    const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
+    expect(messages.package.sourceBadge.verified, code).toBe(verifiedLabels[code]);
+  }
 });
 
 it.each(['missing checksum', 'missing check date', 'stale evidence', 'invalid check date'])(

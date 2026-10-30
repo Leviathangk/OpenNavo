@@ -846,7 +846,7 @@
     },
     "sourceBadge": {
       "label": "Source officielle",
-      "verified": "Source officielle · Vérifiée",
+      "verified": "✓ Source officielle · Vérifiée",
       "disabled": "Source officielle · App désactivée",
       "deprecated": "Source officielle · App obsolète",
       "paused": "Source officielle · En pause",
