@@ -2251,6 +2251,8 @@
         "deeplink.installDescription": "0a270e4244010232f98235885551ce68083ca65cc456a2a10d63b8959997c688",
         "deeplink.installConfirm": "e8f88f51ccb085ea870b413bf5c4a6425690a42450cfc462ed8450a165dcc57e",
         "deeplink.formulaUnsupported": "4f1ff1669edf397fadfbd1cd9e8151bbd403b2c0553f8041d7049a34011a8976",
+        "deeplink.confirmationBusy": "e0fef468a75b53406a6aecb7e169a73dd148a94ed06e5c91c8bc659e09f0165a",
+        "deeplink.confirmationTimeout": "73e599ecb8c6cd48a0551c1e99978dbd8be522394cd8e4605c14b1130ddd285d",
         "deeplink.preview.invalid": "ed95fc9dcea12bfbc29870406149e1098ea5ec6a8182ffeae4e356d7955d0991",
         "deeplink.preview.invalidBody": "e66379cd0a71b9394d4c4d42fbdde2827efdd00cfc9fe641b317fc426ec09dfe",
         "deeplink.preview.startup.looking": "c85fe40df12f7a86bc6392197eca084fbfc9794de9b5578d3b9d9ab76d9490b6",

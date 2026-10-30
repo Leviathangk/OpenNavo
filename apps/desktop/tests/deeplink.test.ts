@@ -3,7 +3,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openDeepLink, resumeDeepLink, startDeepLinks, useDeepLinkStore } from '@/composables/useDeepLink';
 import { useToasts } from '@/composables/useToasts';
-import { commands, events, unwrap } from '@/ipc/client';
+import { IpcError, commands, events, unwrap } from '@/ipc/client';
 import { startLocalState, useSettingsStore } from '@/stores';
 import { setup } from './helpers';
 import { routes } from '@/router';
@@ -112,11 +112,9 @@ describe('Deep links', () => {
     const context = await setup('/discover');
     await startLocalState();
     await useSettingsStore().update('onboardingCompleted', true);
-    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue({
-      code,
-      message: code,
-      detail: null
-    });
+    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue(
+      new IpcError({ code, message: code, detail: null })
+    );
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
     await openDeepLink(context.router, {
       url: 'opennavo://package/cask/zed?action=install',
@@ -127,6 +125,29 @@ describe('Deep links', () => {
     expect(confirm).toHaveBeenCalledWith('pending-denied');
     expect(enqueue).not.toHaveBeenCalled();
     expect(useToasts().items.value.at(-1)?.tone).toBe('danger');
+  });
+
+  it.each([
+    ['E_BUSY', '另一个确认窗口还开着。请先关闭它，再重试。'],
+    ['E_CONFIRMATION_TIMEOUT', '确认窗口已超时。请先关闭它，再重试。']
+  ])('shows a localized message when a deep-link confirmation fails with %s', async (code, message) => {
+    const context = await setup('/discover');
+    await startLocalState();
+    await useSettingsStore().update('onboardingCompleted', true);
+    vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue(
+      new IpcError({ code, message: code, detail: null })
+    );
+    await openDeepLink(context.router, {
+      url: 'opennavo://package/cask/zed?action=install',
+      route: '/package/cask/zed',
+      action: 'install',
+      pendingId: 'pending-confirmation-error'
+    });
+    const toast = useToasts().items.value.at(-1);
+    expect(toast?.tone).toBe('danger');
+    expect(toast?.title).toBe(i18n.global.t('errors.actionFailed'));
+    expect(toast?.description).toBe(message);
+    expect(toast?.description).not.toContain(code);
   });
 
   it('read-only and legacy links never invoke the confirmation command', async () => {

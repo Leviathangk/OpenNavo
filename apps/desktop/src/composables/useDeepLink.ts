@@ -2,7 +2,7 @@ import { ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import type { Router } from 'vue-router';
 import type { DeepLinkEvent } from '@/ipc/bindings';
-import { commands, events, unwrap } from '@/ipc/client';
+import { IpcError, commands, events, unwrap } from '@/ipc/client';
 import { useToasts } from '@/composables/useToasts';
 import { i18n } from '@/i18n';
 import { useSettingsStore } from '@/stores';
@@ -109,6 +109,19 @@ export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: 
   if (event.action === 'install' && target && event.pendingId) await confirmDeepLink(event.pendingId);
 }
 
+const CONFIRMATION_ERROR_KEYS: Record<string, string> = {
+  E_BUSY: 'deeplink.confirmationBusy',
+  E_CONFIRMATION_TIMEOUT: 'deeplink.confirmationTimeout'
+};
+
+function confirmationErrorMessage(cause: unknown): string {
+  if (cause instanceof IpcError) {
+    const key = CONFIRMATION_ERROR_KEYS[cause.code];
+    if (key) return i18n.global.t(key);
+  }
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
 async function confirmDeepLink(pendingId: string) {
   try {
     await unwrap(commands.deeplinkInstallConfirm(pendingId));
@@ -117,7 +130,7 @@ async function confirmDeepLink(pendingId: string) {
     toasts.push({
       tone: 'danger',
       title: i18n.global.t('errors.actionFailed'),
-      description: cause instanceof Error ? cause.message : String(cause)
+      description: confirmationErrorMessage(cause)
     });
   }
 }

@@ -1055,6 +1055,8 @@
     "installDescription": "Una pagina web ha richiesto questa installazione sul Mac. Conferma per eseguire il comando qui sotto; annulla per non eseguire alcuna operazione.",
     "installConfirm": "Installa",
     "formulaUnsupported": "OpenNavo elenca solo app (Homebrew Cask). Questo link rimanda a uno strumento da riga di comando.",
+    "confirmationBusy": "Un’altra finestra di conferma è ancora aperta. Chiudila e riprova.",
+    "confirmationTimeout": "La finestra di conferma è scaduta. Chiudila e riprova.",
     "preview": {
       "invalid": "Impossibile aprire questo link",
       "invalidBody": "I parametri del link sono incompleti o non validi. OpenNavo non ha eseguito alcuna operazione.",
