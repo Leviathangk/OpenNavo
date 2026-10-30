@@ -1,6 +1,11 @@
 [
   { "name": "active", "fields": { "homebrewStatus": { "state": "active" } }, "expected": "active" },
   {
+    "name": "paused by catalog disabled flag while Homebrew stays active",
+    "fields": { "homebrewStatus": { "state": "active" }, "disabled": true },
+    "expected": "paused"
+  },
+  {
     "name": "paused without disable object",
     "fields": { "homebrewStatus": { "state": "active" }, "recommendationPaused": true },
     "expected": "paused"

@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { createSSRApp, h } from 'vue';
+import { renderToString } from 'vue/server-renderer';
+import { OnPackageSpecCard } from '@opennavo/ui';
 import { packageSpec } from '../app/utils/packageSpec';
 import type { PackagePage } from '../app/utils/packageFacts';
 
 const SPEC_NOW = Date.parse('2026-10-30T00:00:00Z');
+
+const identityOnlyFixture = {
+  channels: [],
+  openSource: 'yes',
+  repositoryUrl: 'https://github.com/acme/identity-only',
+  evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z' }
+};
 
 const t = (key: string, named: Record<string, unknown> = {}) => {
   const values: Record<string, string> = {
@@ -110,6 +120,43 @@ describe('package specification repository rows', () => {
   it('hides the repository row when neither repository nor OSI data exists', () => {
     const result = packageSpec(page(), t, 'en-US', SPEC_NOW);
     expect(result.rows.some(row => row.key === 'openSource')).toBe(false);
+  });
+
+  it('falls back to the first verified identity for identity-only open-source evidence', () => {
+    const pkg = page({
+      facts: {
+        ...page().facts,
+        security: {
+          identities: [
+            {
+              channels: [],
+              openSource: 'yes',
+              repositoryUrl: 'https://github.com/acme/unverified',
+              evidence: { status: 'stale', checkedAt: '2026-09-01T00:00:00Z' }
+            },
+            identityOnlyFixture
+          ]
+        }
+      }
+    });
+    const result = packageSpec(pkg, t, 'en-US', SPEC_NOW);
+    expect(result.rows.find(row => row.key === 'openSource')).toMatchObject({
+      value: 'Open source',
+      href: identityOnlyFixture.repositoryUrl
+    });
+    expect(result.checkedAt?.iso).toBe('2026-10-01');
+  });
+
+  it('renders no link for javascript: repository URLs', async () => {
+    const pkg = page({
+      repository: { url: 'javascript:alert(1)', stars: 42 },
+      homepage: 'https://example.com/'
+    });
+    const rows = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows;
+    const html = await renderToString(createSSRApp({ render: () => h(OnPackageSpecCard, { rows }) }));
+    expect(html).not.toContain('javascript:');
+    expect(html).toContain('href="https://example.com/"');
+    expect(html).toContain('GitHub repository');
   });
 
   it('falls back only to OSI archived and never to the OSI signal check date', () => {

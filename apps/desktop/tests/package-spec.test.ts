@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { OnPackageSpecCard } from '@opennavo/ui';
 import type { PackageDetail } from '@opennavo/api';
 import type { LocalItem } from '@/ipc/client';
 import { packageSpec } from '@/utils/packageSpec';
@@ -157,6 +159,50 @@ describe('desktop alternate names', () => {
 });
 
 describe('QA spec card regressions', () => {
+  it('falls back to the first verified identity for identity-only open-source evidence', () => {
+    const pkg = detail({
+      facts: {
+        overview: { artifacts: { entries: [] } },
+        security: {
+          identities: [
+            {
+              channels: [],
+              openSource: 'yes',
+              repositoryUrl: 'https://github.com/acme/unverified',
+              evidence: { status: 'stale', checkedAt: '2026-09-01T00:00:00Z' }
+            },
+            {
+              channels: [],
+              openSource: 'yes',
+              repositoryUrl: 'https://github.com/acme/identity-only',
+              evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z' }
+            }
+          ]
+        }
+      }
+    } as unknown as Partial<PackageDetail>);
+    const spec = packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW);
+    expect(spec.rows.find(row => row.key === 'openSource')).toMatchObject({
+      value: 'package.spec.openSource',
+      href: 'https://github.com/acme/identity-only'
+    });
+  });
+
+  it('renders no link for javascript: repository URLs', () => {
+    const pkg = Object.assign(detail(), {
+      repository: { url: 'javascript:alert(1)', stars: 42 },
+      homepage: 'https://example.com/'
+    });
+    const spec = packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW);
+    const wrapper = mount(OnPackageSpecCard, { props: { rows: spec.rows } });
+    try {
+      expect(wrapper.html()).not.toContain('javascript:');
+      expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['https://example.com/']);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it.each(['cask', 'formula', 'link'] as const)(
     'keeps a standalone top-level license without OSI data for %s',
     kind => {

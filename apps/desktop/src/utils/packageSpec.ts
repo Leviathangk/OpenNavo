@@ -124,15 +124,31 @@ export function packageSpec(
     ?.repository;
   const osi = detail?.openSource;
   const github = value.kind === 'link' && link?.github;
-  if (repository || osi || github) {
+  const repoIdentity = detail?.facts?.security?.identities.find(
+    item =>
+      item.evidence.status === 'verified' &&
+      item.evidence.checkedAt &&
+      (item.openSource === 'yes' || item.repositoryUrl)
+  );
+  const identityOpenSource = !osi && repoIdentity?.openSource === 'yes';
+  const repositoryUrl =
+    repository?.url ??
+    osi?.url ??
+    (github ? `https://github.com/${github.repo}` : undefined) ??
+    repoIdentity?.repositoryUrl;
+  if (repository || osi || github || identityOpenSource || repoIdentity?.repositoryUrl) {
     const summary = repoSummary(signals, t, now);
     rows.push({
       key: 'openSource',
       label: t('package.spec.repository'),
-      value: [osi ? t('package.spec.openSource') : t('package.spec.githubRepository'), osi?.license, summary.value]
+      value: [
+        osi || identityOpenSource ? t('package.spec.openSource') : t('package.spec.githubRepository'),
+        osi?.license,
+        summary.value
+      ]
         .filter(Boolean)
         .join(' · '),
-      href: repository?.url ?? osi?.url ?? (github ? `https://github.com/${github.repo}` : undefined),
+      href: repositoryUrl,
       stars:
         signals?.stars === undefined
           ? undefined

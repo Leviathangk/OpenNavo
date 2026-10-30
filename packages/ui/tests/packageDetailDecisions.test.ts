@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { createSSRApp, defineComponent, h, nextTick } from 'vue';
+import { createSSRApp, h, nextTick } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { describe, expect, it } from 'vitest';
 import OnPackageSpecCard from '../src/components/OnPackageSpecCard.vue';
@@ -34,17 +34,9 @@ describe('Package detail product decisions', () => {
     expect(description?.textContent).toContain('Repository data checked October 2, 2026.');
   });
 
-  it('uses standard external-link attributes and styling without routing external URLs', () => {
-    const RouterLink = defineComponent({
-      props: ['to'],
-      setup:
-        (props, { slots }) =>
-        () =>
-          h('a', { href: props.to, 'data-router': 'true' }, slots.default?.())
-    });
+  it('uses standard external-link attributes and styling for https URLs', () => {
     const wrapper = mount(OnPackageSpecCard, {
       props: {
-        linkAs: RouterLink,
         rows: [
           {
             key: 'repository',
@@ -53,26 +45,49 @@ describe('Package detail product decisions', () => {
             href: 'https://github.com/acme/app',
             stars: { label: '★12.3K', href: 'https://github.com/acme/app' }
           },
-          { key: 'homepage', label: 'Homepage', value: 'example.com', href: 'https://example.com/' },
-          { key: 'internal', label: 'Related', value: 'Related app', href: '/apps/example' }
+          { key: 'homepage', label: 'Homepage', value: 'example.com', href: 'https://example.com/' }
         ]
       }
     });
     try {
-      const links = wrapper.findAll('a').filter(link => link.attributes('href')?.startsWith('https://'));
+      const links = wrapper.findAll('a');
       expect(links).toHaveLength(3);
       for (const link of links) {
+        expect(link.attributes('href')?.startsWith('https://')).toBe(true);
         expect(link.attributes('target')).toBe('_blank');
         expect(link.attributes('rel')).toBe('noopener noreferrer');
-        expect(link.attributes('data-router')).toBeUndefined();
         expect(link.classes()).toEqual(
           expect.arrayContaining(['inline-flex', 'gap-4px', 'no-underline', 'hover:underline'])
         );
         expect(link.find('svg').exists()).toBe(true);
       }
-      const internal = wrapper.get('[data-router]');
-      expect(internal.attributes('href')).toBe('/apps/example');
-      expect(internal.attributes('target')).toBeUndefined();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('renders no link unless href and stars.href use the https scheme', () => {
+    const wrapper = mount(OnPackageSpecCard, {
+      props: {
+        rows: [
+          {
+            key: 'repository',
+            label: 'Repository',
+            value: 'Open source',
+            href: 'javascript:alert(1)',
+            stars: { label: '★12.3K', href: 'javascript:alert(1)' }
+          },
+          { key: 'homepage', label: 'Homepage', value: 'Insecure example', href: 'http://example.com/' },
+          { key: 'internal', label: 'Related', value: 'Related app', href: '/apps/example' }
+        ]
+      }
+    });
+    try {
+      expect(wrapper.findAll('a')).toHaveLength(0);
+      expect(wrapper.html()).not.toContain('javascript:');
+      expect(wrapper.text()).toContain('Open source · ★12.3K');
+      expect(wrapper.text()).toContain('Insecure example');
+      expect(wrapper.text()).toContain('Related app');
     } finally {
       wrapper.unmount();
     }

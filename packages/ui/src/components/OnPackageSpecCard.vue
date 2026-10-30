@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Component } from 'vue';
 import OnChip from './OnChip.vue';
 import OnIcon from './OnIcon.vue';
 import OnTooltip from './OnTooltip.vue';
@@ -19,23 +18,15 @@ export interface OnPackageSpecCardProps {
   title?: string;
   checkedAt?: { iso: string; label: string } | null;
   checkedLabel?: string;
-  linkAs?: string | Component;
 }
 
-const props = withDefaults(defineProps<OnPackageSpecCardProps>(), {
+withDefaults(defineProps<OnPackageSpecCardProps>(), {
   title: undefined,
   checkedAt: null,
-  checkedLabel: undefined,
-  linkAs: 'a'
+  checkedLabel: undefined
 });
 
-const external = (href: string) => /^https?:\/\//i.test(href);
-const linkAttrs = (href: string) =>
-  external(href)
-    ? { href, target: '_blank', rel: 'noopener noreferrer' }
-    : props.linkAs === 'a'
-      ? { href }
-      : { to: href };
+const isHttps = (href: string | undefined): href is string => Boolean(href && /^https:\/\//i.test(href));
 </script>
 
 <template>
@@ -56,20 +47,21 @@ const linkAttrs = (href: string) =>
           class="m-0 min-w-0 text-ink-primary [overflow-wrap:anywhere]"
           :class="row.mono ? 'font-mono text-12px' : ''"
         >
-          <component
-            :is="external(row.href) ? 'a' : linkAs"
-            v-if="row.href"
-            v-bind="linkAttrs(row.href)"
+          <a
+            v-if="isHttps(row.href)"
+            :href="row.href"
+            target="_blank"
+            rel="noopener noreferrer"
             class="inline-flex max-w-full items-center gap-4px text-ink-primary no-underline hover:underline"
           >
             <span class="min-w-0">{{ row.value }}</span>
-            <OnIcon v-if="external(row.href)" name="lucide:arrow-up-right" :size="13" />
-          </component>
+            <OnIcon name="lucide:arrow-up-right" :size="13" />
+          </a>
           <template v-else>{{ row.value }}</template>
           <span v-if="row.stars" class="inline-flex items-center gap-4px">
             <span aria-hidden="true"> · </span>
             <a
-              v-if="row.stars.href"
+              v-if="isHttps(row.stars.href)"
               :href="row.stars.href"
               target="_blank"
               rel="noopener noreferrer"
