@@ -34,7 +34,90 @@ func TestMigration126BackfillsLegacyHiddenReasons(t *testing.T) {
 		require.Equal(t, "Legacy setting; reason not recorded.", row.VisibilityReason)
 	}
 	require.Empty(t, rows[2].VisibilityReason)
-	require.Error(t, st.DB.Exec("UPDATE package_meta SET private=true WHERE package_id=903").Error)
+	require.NoError(t, st.DB.Exec("UPDATE package_meta SET private=true WHERE package_id=903").Error)
+	require.NoError(t, st.DB.Raw("SELECT visibility_reason FROM package_meta WHERE package_id=903").Scan(&rows[2].VisibilityReason).Error)
+	require.Equal(t, "Legacy setting; reason not recorded.", rows[2].VisibilityReason)
+}
+
+func TestMigration126DefaultsReasonForLegacyHiddenWrites(t *testing.T) {
+	st := testutil.NewSEOStoreAtVersion(t, 125)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES
+ (911,'cask','legacy-hidden-write','legacy-hidden-write','homebrew/cask','Fixture','1','1','{}','fixture'),
+ (912,'cask','legacy-private-write','legacy-private-write','homebrew/cask','Fixture','1','1','{}','fixture'),
+ (913,'cask','legacy-reason-write','legacy-reason-write','homebrew/cask','Fixture','1','1','{}','fixture');
+ INSERT INTO package_meta(package_id) VALUES(911),(912),(913)`).Error)
+	db, err := st.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, goose.UpToContext(context.Background(), db, ".", 126))
+
+	require.NoError(t, st.DB.Exec("UPDATE package_meta SET hidden=true WHERE package_id=911").Error)
+	var hidden bool
+	var reason string
+	require.NoError(t, st.DB.Raw("SELECT hidden,visibility_reason FROM package_meta WHERE package_id=911").Row().Scan(&hidden, &reason))
+	require.True(t, hidden)
+	require.Equal(t, "Legacy setting; reason not recorded.", reason)
+
+	require.NoError(t, st.DB.Exec("UPDATE package_meta SET private=true,visibility_reason='' WHERE package_id=912").Error)
+	var private bool
+	require.NoError(t, st.DB.Raw("SELECT private,visibility_reason FROM package_meta WHERE package_id=912").Row().Scan(&private, &reason))
+	require.True(t, private)
+	require.Equal(t, "Legacy setting; reason not recorded.", reason)
+
+	require.NoError(t, st.DB.Exec("UPDATE package_meta SET hidden=true,visibility_reason='Owner recorded reason' WHERE package_id=913").Error)
+	require.NoError(t, st.DB.Raw("SELECT visibility_reason FROM package_meta WHERE package_id=913").Scan(&reason).Error)
+	require.Equal(t, "Owner recorded reason", reason)
+}
+
+func TestMigration126DownRestoresLegacySchema(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStoreAtVersion(t, 125)
+	db, err := st.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 126))
+
+	hasColumn := func(name string) bool {
+		var exists bool
+		require.NoError(t, st.DB.Raw(`SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='package_meta' AND column_name=?)`, name).Scan(&exists).Error)
+		return exists
+	}
+	hasTrigger := func(name string) bool {
+		var exists bool
+		require.NoError(t, st.DB.Raw(`SELECT EXISTS(SELECT 1 FROM pg_trigger WHERE tgname=? AND NOT tgisinternal)`, name).Scan(&exists).Error)
+		return exists
+	}
+	hasFunction := func(name string) bool {
+		var exists bool
+		require.NoError(t, st.DB.Raw(`SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname=?)`, name).Scan(&exists).Error)
+		return exists
+	}
+	hasCatalogVisibility := func() bool {
+		var exists bool
+		require.NoError(t, st.DB.Raw(`SELECT to_regclass('public.catalog_visibility') IS NOT NULL`).Scan(&exists).Error)
+		return exists
+	}
+	assertUp := func() {
+		require.True(t, hasColumn("private"))
+		require.True(t, hasColumn("visibility_reason"))
+		require.True(t, hasTrigger("package_visibility_reason_default"))
+		require.True(t, hasFunction("fill_package_visibility_reason"))
+		require.True(t, hasTrigger("package_visibility_generation"))
+		require.True(t, hasFunction("bump_catalog_visibility"))
+		require.True(t, hasCatalogVisibility())
+	}
+	assertDown := func() {
+		require.False(t, hasColumn("private"))
+		require.False(t, hasColumn("visibility_reason"))
+		require.False(t, hasTrigger("package_visibility_reason_default"))
+		require.False(t, hasFunction("fill_package_visibility_reason"))
+		require.False(t, hasTrigger("package_visibility_generation"))
+		require.False(t, hasFunction("bump_catalog_visibility"))
+		require.False(t, hasCatalogVisibility())
+	}
+	assertUp()
+	require.NoError(t, goose.DownToContext(ctx, db, ".", 125))
+	assertDown()
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 126))
+	assertUp()
 }
 
 func TestMigration126ProductionScaleLockTime(t *testing.T) {
