@@ -3,7 +3,7 @@ import type { VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { ApiError } from '@opennavo/api';
-import { OnEmpty } from '@opennavo/ui';
+import { OnEmpty, OnSkeleton } from '@opennavo/ui';
 import { api } from '@/api';
 import RequestError from '@/components/common/RequestError.vue';
 import OutdatedList from '@/components/updates/OutdatedList.vue';
@@ -67,6 +67,21 @@ describe('Installed packages absent from the public catalog', () => {
     await flushPromises();
     expect(wrapper.text()).toContain(installed.name);
     expect(wrapper.text()).toContain('1.0');
+    expect(wrapper.findComponent(RequestError).exists()).toBe(false);
+  });
+
+  it('detail 404 without a local entry renders unavailable instead of skeletons', async () => {
+    const context = await setup('/package/cask/absent-private');
+    const wrapper = mount(PackageLayout, {
+      props: { kind: 'cask', token: 'absent-private' },
+      global: { plugins: [context.pinia, context.router, i18n] }
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+    await flushPromises();
+    expect(wrapper.find('[data-testid="package-unavailable"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('本地目录里没有这个包');
+    expect(wrapper.findComponent(OnSkeleton).exists()).toBe(false);
     expect(wrapper.findComponent(RequestError).exists()).toBe(false);
   });
 

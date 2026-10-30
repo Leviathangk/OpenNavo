@@ -24,6 +24,8 @@ export interface PackageContext {
   local: Ref<LocalItem | null | undefined>;
   releaseStats: ComputedRef<ReleaseStats | null | undefined>;
   error: Ref<unknown>;
+  /** True while the public detail or local catalog read is still in flight. */
+  loading: ComputedRef<boolean>;
   reload: () => Promise<void>;
 }
 
@@ -39,7 +41,8 @@ export function providePackage(props: { kind: Kind; token: string }): PackageCon
   const {
     data: detail,
     error,
-    reload
+    reload,
+    loading: detailLoading
   } = useRemoteLoader(
     'package',
     () =>
@@ -53,7 +56,7 @@ export function providePackage(props: { kind: Kind; token: string }): PackageCon
     [kind, token, appLocale]
   );
 
-  const { data: catalog } = useCatalogLoader(
+  const { data: catalog, loading: catalogLoading } = useCatalogLoader(
     async () => {
       const item = await unwrapIpc(commands.catalogGet(kind.value, token.value));
       return item;
@@ -80,7 +83,9 @@ export function providePackage(props: { kind: Kind; token: string }): PackageCon
   }, [detail]);
 
   const releaseStats = computed(() => detail.value?.releaseStats ?? fallbackStats.value);
-  const context: PackageContext = { kind, token, detail, local, releaseStats, error, reload };
+  // Both sources settle to undefined/null on a missing package; only then is the skeleton done.
+  const loading = computed(() => detailLoading.value || catalogLoading.value);
+  const context: PackageContext = { kind, token, detail, local, releaseStats, error, loading, reload };
   provide(key, context);
   return context;
 }
