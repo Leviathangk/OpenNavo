@@ -51,13 +51,21 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
  INSERT INTO article_revisions(id,article_id,number,source_locale,type) VALUES(901,901,1,'en-US','roundup');
  INSERT INTO article_revision_i18n(revision_id,locale,source_locale,title) VALUES(901,'en-US','en-US','Visibility fixture');
  INSERT INTO article_revision_packages(revision_id,package_id,sort) SELECT 901,id,0 FROM packages;`).Error)
+	// Real article text shape, including the Markdown forms the public renderer linkifies.
 	articleBody := strings.Join([]string{
-		"## Visibility fixture",
-		"[Tencent Meeting](/apps/private-sample) and [x](/zh/apps/private-sample) stay as text.",
-		"[Public child](/apps/public-child) stays a link.",
+		"## What to compare",
+		"Pick by task. Compare the [Tencent Meeting](/apps/private-sample) and [x](/zh/apps/private-sample) notes.",
+		"The public [Public child](/apps/public-child) link stays.",
 		"Read [Absolute Meeting](https://opennavo.com/apps/private-sample?tab=releases#top) as text.",
+		"An autolink <https://opennavo.com/apps/private-sample> disappears.",
+		"Bare https://www.opennavo.com/zh/apps/private-sample and opennavo.com/apps/private-sample disappear too.",
+		"Reference-style [Tencent Meeting][meeting], collapsed [meeting][], and shortcut [meeting] references keep their text.",
+		"Raw <a href=\"https://opennavo.com/zh/apps/private-sample\">Tencent Meeting</a> also keeps only its text.",
 		"::app[private-sample]",
 		"::app[public-child]",
+		"",
+		"[meeting]: https://opennavo.com/apps/private-sample \"Private sample\"",
+		"[public]: https://opennavo.com/apps/public-child",
 	}, "\n")
 	require.NoError(t, st.DB.Exec("UPDATE article_revision_i18n SET body_markdown=? WHERE revision_id=901 AND locale='en-US'", articleBody).Error)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -128,13 +136,19 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 		require.NotNil(t, response.Data.Article)
 		require.NotNil(t, response.Data.Article.BodyMarkdown)
 		body := *response.Data.Article.BodyMarkdown
-		require.Contains(t, body, "Tencent Meeting and x stay as text.")
-		require.Contains(t, body, "[Public child](/apps/public-child) stays a link.")
+		require.Contains(t, body, "Tencent Meeting and x notes.")
+		require.Contains(t, body, "[Public child](/apps/public-child) link stays.")
 		require.Contains(t, body, "Read Absolute Meeting as text.")
+		require.Contains(t, body, "An autolink  disappears.")
+		require.Contains(t, body, "Bare  and  disappear too.")
+		require.Contains(t, body, "Reference-style Tencent Meeting, collapsed meeting, and shortcut meeting references keep their text.")
+		require.Contains(t, body, "Raw Tencent Meeting also keeps only its text.")
 		require.Contains(t, body, "::app[public-child]")
+		require.Contains(t, body, "[public]: https://opennavo.com/apps/public-child")
 		require.NotContains(t, body, "private-sample")
 		require.NotContains(t, body, "::app[private-sample]")
 		require.NotContains(t, body, "/apps/private-sample")
+		require.NotContains(t, body, "<a href")
 	})
 	t.Run("lookup", func(t *testing.T) {
 		body := call(t, "POST", "/packages/lookup", `{"items":[{"kind":"cask","token":"public-parent"},{"kind":"cask","token":"private-sample"},{"kind":"link","token":"private-link"},{"kind":"cask","token":"unknown-sample"}]}`, 200)
