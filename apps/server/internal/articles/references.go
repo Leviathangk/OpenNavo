@@ -408,7 +408,16 @@ func appPathToken(raw string) (string, bool) {
 		return "", false
 	}
 	if parsed.Scheme != "" || parsed.Host != "" {
-		if !strings.EqualFold(parsed.Scheme, "https") || parsed.Port() != "" && parsed.Port() != "443" {
+		switch scheme := strings.ToLower(parsed.Scheme); scheme {
+		case "https":
+			if port := parsed.Port(); port != "" && port != "443" {
+				return "", false
+			}
+		case "http":
+			if port := parsed.Port(); port != "" && port != "80" {
+				return "", false
+			}
+		default:
 			return "", false
 		}
 		host := strings.ToLower(parsed.Hostname())

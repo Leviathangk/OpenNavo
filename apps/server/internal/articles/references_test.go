@@ -29,6 +29,16 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 			want: "Tencent Meeting and Web.",
 		},
 		{
+			name: "http links",
+			body: "See [Tencent Meeting](http://opennavo.com/apps/private-sample) and [Web](http://www.opennavo.com/zh/apps/private-sample).",
+			want: "See Tencent Meeting and Web.",
+		},
+		{
+			name: "scheme-less links",
+			body: "See [Tencent Meeting](opennavo.com/apps/private-sample) and [Web](www.opennavo.com/zh/apps/private-sample).",
+			want: "See Tencent Meeting and Web.",
+		},
+		{
 			name: "trailing segment query and fragment",
 			body: "[Releases](/apps/private-sample/releases?tab=versions#v2) and [Localized](/ja/apps/private-sample/?page=2#top).",
 			want: "Releases and Localized.",
@@ -69,8 +79,18 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 			want: "See  and  for details.",
 		},
 		{
+			name: "http autolinks",
+			body: "See <http://opennavo.com/apps/private-sample> and <http://www.opennavo.com/ja/apps/private-alias?tab=releases#top> for details.",
+			want: "See  and  for details.",
+		},
+		{
 			name: "bare linkified URLs",
 			body: "Read https://opennavo.com/apps/private-sample, https://www.opennavo.com/zh/apps/private-alias. Then open opennavo.com/apps/private-sample for the rest.",
+			want: "Read , . Then open  for the rest.",
+		},
+		{
+			name: "http bare linkified URLs",
+			body: "Read http://opennavo.com/apps/private-sample, http://www.opennavo.com/zh/apps/private-alias. Then open www.opennavo.com/apps/private-sample for the rest.",
 			want: "Read , . Then open  for the rest.",
 		},
 		{
@@ -89,6 +109,11 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 			want: "Tencent Meeting and Alias and tm.\n",
 		},
 		{
+			name: "http reference links and definitions",
+			body: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: http://opennavo.com/apps/private-sample\n[Alias]: http://www.opennavo.com/ja/apps/private-alias",
+			want: "Tencent Meeting and Alias and tm.\n",
+		},
+		{
 			name: "public reference links kept",
 			body: "[Public child][pub] stays.\n[pub]: https://opennavo.com/apps/public-child",
 			want: "[Public child][pub] stays.\n[pub]: https://opennavo.com/apps/public-child",
@@ -99,9 +124,14 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 			want: "Raw Tencent Meeting and <a href='/apps/public-child'>Public child</a>.",
 		},
 		{
+			name: "http raw HTML anchor guard keeps text",
+			body: "Raw <a href=\"http://opennavo.com/apps/private-sample\" class=\"x\">Tencent Meeting</a> and <a href='http://www.opennavo.com/zh/apps/private-sample'>Web</a>.",
+			want: "Raw Tencent Meeting and Web.",
+		},
+		{
 			name: "other paths hosts and syntax untouched",
-			body: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) [HTTP](http://opennavo.com/apps/private-sample) ![Image](https://opennavo.com/apps/private-sample/icon.png)",
-			want: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) [HTTP](http://opennavo.com/apps/private-sample) ![Image](https://opennavo.com/apps/private-sample/icon.png)",
+			body: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) ![Image](https://opennavo.com/apps/private-sample/icon.png)",
+			want: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) ![Image](https://opennavo.com/apps/private-sample/icon.png)",
 		},
 		{
 			name: "formatted link text kept",
@@ -126,16 +156,18 @@ Pick by task. Compare the [Tencent Meeting](/apps/private-sample) and [x](/zh/ap
 
 The public [Public child](/apps/public-child) link stays.
 
-An autolink <https://opennavo.com/apps/private-sample> and the bare https://www.opennavo.com/ja/apps/private-sample URL disappear.
+An autolink <https://opennavo.com/apps/private-sample>, an http autolink <http://www.opennavo.com/apps/private-sample>, and the bare https://www.opennavo.com/ja/apps/private-sample and http://opennavo.com/apps/private-sample URLs disappear.
+
+A scheme-less [WWW Meeting](www.opennavo.com/apps/private-sample) and an http [HTTP Meeting](http://opennavo.com/zh/apps/private-sample) keep only their text.
 
 Reference-style [Tencent Meeting][meeting], collapsed [meeting][], and shortcut [meeting] references keep their text.
 
-Raw HTML <a href="https://opennavo.com/zh/apps/private-sample">Tencent Meeting</a> also keeps only its text.
+Raw HTML <a href="https://opennavo.com/zh/apps/private-sample">Tencent Meeting</a> and <a href="http://opennavo.com/apps/private-sample">HTTP Meeting</a> also keep only their text.
 
 ::app[private-sample]
 ::app[public-child]
 
-[meeting]: https://opennavo.com/apps/private-sample "Private sample"
+[meeting]: http://opennavo.com/apps/private-sample "Private sample"
 [public]: https://opennavo.com/apps/public-child
 `
 	require.ElementsMatch(t, []string{"private-sample", "public-child"}, AppReferences(body))
@@ -145,6 +177,8 @@ Raw HTML <a href="https://opennavo.com/zh/apps/private-sample">Tencent Meeting</
 	require.NotContains(t, got, "::app[private-sample]")
 	require.NotContains(t, got, "<a href")
 	require.Contains(t, got, "Tencent Meeting")
+	require.Contains(t, got, "HTTP Meeting")
+	require.Contains(t, got, "WWW Meeting")
 	require.Contains(t, got, "[Public child](/apps/public-child)")
 	require.Contains(t, got, "::app[public-child]")
 	require.Contains(t, got, "[public]: https://opennavo.com/apps/public-child")

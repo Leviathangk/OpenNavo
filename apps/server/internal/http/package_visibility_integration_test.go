@@ -56,15 +56,16 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 		"## What to compare",
 		"Pick by task. Compare the [Tencent Meeting](/apps/private-sample) and [x](/zh/apps/private-sample) notes.",
 		"The public [Public child](/apps/public-child) link stays.",
-		"Read [Absolute Meeting](https://opennavo.com/apps/private-sample?tab=releases#top) as text.",
-		"An autolink <https://opennavo.com/apps/private-sample> disappears.",
-		"Bare https://www.opennavo.com/zh/apps/private-sample and opennavo.com/apps/private-sample disappear too.",
+		"Read [Absolute Meeting](https://opennavo.com/apps/private-sample?tab=releases#top) and an http [HTTP Meeting](http://opennavo.com/apps/private-sample) as text.",
+		"A scheme-less [WWW Meeting](www.opennavo.com/zh/apps/private-sample) also reads as text.",
+		"An autolink <https://opennavo.com/apps/private-sample> and an http autolink <http://www.opennavo.com/apps/private-sample> disappear.",
+		"Bare https://www.opennavo.com/zh/apps/private-sample, opennavo.com/apps/private-sample, http://opennavo.com/apps/private-sample and www.opennavo.com/apps/private-sample disappear too.",
 		"Reference-style [Tencent Meeting][meeting], collapsed [meeting][], and shortcut [meeting] references keep their text.",
-		"Raw <a href=\"https://opennavo.com/zh/apps/private-sample\">Tencent Meeting</a> also keeps only its text.",
+		"Raw <a href=\"https://opennavo.com/zh/apps/private-sample\">Tencent Meeting</a> and <a href=\"http://opennavo.com/apps/private-sample\">HTTP Meeting</a> also keep only their text.",
 		"::app[private-sample]",
 		"::app[public-child]",
 		"",
-		"[meeting]: https://opennavo.com/apps/private-sample \"Private sample\"",
+		"[meeting]: http://opennavo.com/apps/private-sample \"Private sample\"",
 		"[public]: https://opennavo.com/apps/public-child",
 	}, "\n")
 	require.NoError(t, st.DB.Exec("UPDATE article_revision_i18n SET body_markdown=? WHERE revision_id=901 AND locale='en-US'", articleBody).Error)
@@ -138,11 +139,12 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 		body := *response.Data.Article.BodyMarkdown
 		require.Contains(t, body, "Tencent Meeting and x notes.")
 		require.Contains(t, body, "[Public child](/apps/public-child) link stays.")
-		require.Contains(t, body, "Read Absolute Meeting as text.")
-		require.Contains(t, body, "An autolink  disappears.")
-		require.Contains(t, body, "Bare  and  disappear too.")
+		require.Contains(t, body, "Read Absolute Meeting and an http HTTP Meeting as text.")
+		require.Contains(t, body, "A scheme-less WWW Meeting also reads as text.")
+		require.Contains(t, body, "An autolink  and an http autolink  disappear.")
+		require.Contains(t, body, "Bare , ,  and  disappear too.")
 		require.Contains(t, body, "Reference-style Tencent Meeting, collapsed meeting, and shortcut meeting references keep their text.")
-		require.Contains(t, body, "Raw Tencent Meeting also keeps only its text.")
+		require.Contains(t, body, "Raw Tencent Meeting and HTTP Meeting also keep only their text.")
 		require.Contains(t, body, "::app[public-child]")
 		require.Contains(t, body, "[public]: https://opennavo.com/apps/public-child")
 		require.NotContains(t, body, "private-sample")
