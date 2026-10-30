@@ -20,6 +20,8 @@ const props = withDefaults(
     link?: LinkInfo | null;
     /** chip is the small card pill; primary is the hero/detail main button. */
     variant?: 'chip' | 'primary';
+    /** Fill the detail header's action column on small screens. */
+    block?: boolean;
   }>(),
   { variant: 'chip', link: null }
 );
@@ -84,6 +86,7 @@ function onSelect(key: string) {
         v-else
         :aria-label="t('get.label', { name })"
         variant="primary"
+        :block="block"
         shape="round"
         icon="download"
         v-bind="attrs"

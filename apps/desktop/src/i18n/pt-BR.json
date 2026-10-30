@@ -315,8 +315,21 @@
     "autoUpdates": "Atualização integrada",
     "disabled": "Desativado",
     "deprecated": "Descontinuado",
+    "paused": "Pausado pelo OpenNavo",
     "homepage": "Página inicial",
-    "fromTap": "Fonte",
+    "sourceBadge": {
+      "label": "Fonte oficial",
+      "verified": "✓ Fonte oficial · Verificada",
+      "disabled": "Fonte oficial · App desativado",
+      "deprecated": "Fonte oficial · App obsoleto",
+      "paused": "Fonte oficial · Em pausa",
+      "domain": "Origem: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 não registrado",
+      "checked": "Verificação: {date}",
+      "unchecked": "Data de verificação não registrada",
+      "active": "Não desativado pelo Homebrew"
+    },
     "thirdPartyTap": "Repositório de terceiros",
     "stats": {
       "label": "Dados",
@@ -451,6 +464,34 @@
       "uninstall": "Ao desinstalar",
       "arch": "Arquitetura",
       "license": "Licença"
+    },
+    "spec": {
+      "title": "Em resumo",
+      "price": "Preço",
+      "system": "Sistema",
+      "chip": "Chip",
+      "autoUpdates": "Atualização automática",
+      "openSource": "Código aberto",
+      "repository": "Repositório",
+      "githubRepository": "Repositório do GitHub",
+      "developer": "Desenvolvedor",
+      "homepage": "Site",
+      "token": "Identificador",
+      "installedVersion": "Versão instalada",
+      "installLocation": "Local de instalação",
+      "yes": "Sim",
+      "no": "Não",
+      "checked": "Verificado",
+      "downloadSource": "Origem do download",
+      "fontFiles": "Arquivos de fonte",
+      "bundleId": "Bundle ID"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Atualizado há {days} dia | Atualizado há {days} dias",
+      "unmaintained": "Pode não receber mais manutenção",
+      "archived": "Arquivado",
+      "checked": "Dados do repositório verificados em {date}."
     },
     "deps": {
       "macos": "Requisitos do sistema",

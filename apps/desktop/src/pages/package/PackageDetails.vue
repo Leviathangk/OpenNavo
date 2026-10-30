@@ -2,16 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { isThirdPartyTap } from '@opennavo/shared';
-import { catalogInstallCommand } from '@/utils/brew';
-import {
-  displayUrl,
-  OnButton,
-  OnCaskArtifacts,
-  OnCodeText,
-  OnInstallCommand,
-  OnKeyValueList,
-  useUiMessages
-} from '@opennavo/ui';
+import { displayUrl, OnButton, OnCaskArtifacts, OnCodeText, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
 import OfflineNotice from '@/components/common/OfflineNotice.vue';
 import { usePackage } from '@/composables/usePackageDetail';
@@ -22,7 +13,7 @@ import { useLibraryStore } from '@/stores';
 const { t } = useI18n();
 const toasts = useToasts();
 const library = useLibraryStore();
-const { kind, token, detail, local, error } = usePackage();
+const { kind, token, detail, error } = usePackage();
 
 const messages = useUiMessages();
 const downloadSha = computed(() => detail.value?.downloadSha256);
@@ -115,18 +106,6 @@ const items = computed<OnKeyValueItem[]>(() => {
   return list;
 });
 
-// Link apps have no install command; their page shows download links instead (store/security plan §4).
-const command = computed(() => {
-  const value = kind.value;
-  return value === 'link'
-    ? ''
-    : (detail.value?.installCommand ?? catalogInstallCommand(value, token.value, local.value));
-});
-
-function onCopied(text: string) {
-  toasts.push({ tone: 'success', title: t('common.copied'), description: text });
-}
-
 async function copySha() {
   const sha = downloadSha.value;
   if (!sha) return;
@@ -137,7 +116,7 @@ async function copySha() {
 
 <template>
   <OfflineNotice v-if="error && !detail" />
-  <div v-else-if="detail" class="grid grid-cols-[minmax(0,1fr)_320px] gap-20px pt-4px">
+  <div v-else-if="detail" class="pt-4px">
     <div class="flex min-w-0 flex-col gap-16px">
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px">
         <OnKeyValueList :items="items" />
@@ -156,10 +135,5 @@ async function copySha() {
         /></pre>
       </section>
     </div>
-    <aside class="min-w-0">
-      <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px">
-        <OnInstallCommand :command="command" @copied="onCopied" />
-      </section>
-    </aside>
   </div>
 </template>

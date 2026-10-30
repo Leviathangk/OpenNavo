@@ -315,8 +315,21 @@
     "autoUpdates": "自帶更新",
     "disabled": "已停用",
     "deprecated": "已棄用",
+    "paused": "暫停更新",
     "homepage": "主頁",
-    "fromTap": "來自",
+    "sourceBadge": {
+      "label": "官方來源",
+      "verified": "✓ 官方來源 · 已核查",
+      "disabled": "官方來源 · 已停用",
+      "deprecated": "官方來源 · 已棄用",
+      "paused": "官方來源 · 暫停推薦",
+      "domain": "來源域名：{domain}",
+      "checksum": "SHA-256：{sha256}",
+      "checksumUnknown": "未記錄 SHA-256",
+      "checked": "核查日期：{date}",
+      "unchecked": "暫無核查日期",
+      "active": "未被 Homebrew 停用"
+    },
     "thirdPartyTap": "第三方倉庫",
     "stats": {
       "label": "資料",
@@ -451,6 +464,34 @@
       "uninstall": "解除安裝時",
       "arch": "架構",
       "license": "許可證"
+    },
+    "spec": {
+      "downloadSource": "下載來源",
+      "fontFiles": "字型檔案",
+      "title": "基本資訊",
+      "price": "價格",
+      "system": "系統",
+      "chip": "晶片",
+      "autoUpdates": "自動更新",
+      "openSource": "開源",
+      "repository": "倉庫",
+      "githubRepository": "GitHub 倉庫",
+      "checked": "核查日期",
+      "developer": "開發者",
+      "homepage": "主頁",
+      "token": "套件識別碼",
+      "bundleId": "Bundle ID",
+      "installedVersion": "已安裝版本",
+      "installLocation": "安裝位置",
+      "yes": "是",
+      "no": "否"
+    },
+    "repo": {
+      "stars": "星標數",
+      "checked": "倉庫資料核查於 {date}。",
+      "updated": "{days} 天前更新",
+      "unmaintained": "可能已停止維護",
+      "archived": "已歸檔"
     },
     "deps": {
       "macos": "系統要求",

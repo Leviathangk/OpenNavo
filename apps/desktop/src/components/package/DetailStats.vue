@@ -11,7 +11,7 @@ import {
   formatRelativeTime,
   formatVersion
 } from '@opennavo/shared';
-import { architectures, OnPackageStats, useUiMessages } from '@opennavo/ui';
+import { OnPackageStats, useUiMessages } from '@opennavo/ui';
 import type { OnPackageStatsCell } from '@opennavo/ui';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { splitValue } from '@/utils/stat';
@@ -63,7 +63,7 @@ const cells = computed<OnPackageStatsCell[]>(() => {
       ...(props.pkg.downloadSize
         ? splitValue(formatBytes(props.pkg.downloadSize, { locale: formattingLocale.value }))
         : { value: '—' }),
-      hint: [architectures(props.pkg.supports).join(' / '), fileType.value].filter(Boolean).join(' · ') || undefined
+      hint: fileType.value
     },
     {
       key: 'cadence',

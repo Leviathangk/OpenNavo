@@ -2,7 +2,7 @@
 import { formatDate } from '~/utils/packageDate';
 import type { PublicComponents } from '@opennavo/api';
 import { formatBytes, formatCount, formatCountCompact, formatVersion } from '@opennavo/shared';
-import { architectures, useUiMessages } from '@opennavo/ui';
+import { useUiMessages } from '@opennavo/ui';
 import type { OnPackageStatsCell } from '@opennavo/ui';
 import { latestVersionDate } from '~/utils/indexing';
 import type { PackagePage } from '~/utils/packageFacts';
@@ -59,7 +59,7 @@ const cells = computed<OnPackageStatsCell[]>(() => {
       label: t('package.stats.size'),
       value: size.value.value,
       unit: size.value.unit,
-      hint: [architectures(props.pkg.supports).join(' / '), fileType.value].filter(Boolean).join(' · ') || undefined
+      hint: fileType.value
     },
     {
       key: 'cadence',

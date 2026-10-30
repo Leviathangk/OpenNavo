@@ -315,8 +315,21 @@
     "autoUpdates": "自動更新",
     "disabled": "無効化済み",
     "deprecated": "非推奨",
+    "paused": "一時停止中",
     "homepage": "ホームページ",
-    "fromTap": "提供元",
+    "sourceBadge": {
+      "label": "公式配布元",
+      "verified": "✓ 公式配布元 · 確認済み",
+      "disabled": "公式配布元 · 無効化済み",
+      "deprecated": "公式配布元 · 非推奨",
+      "paused": "公式配布元 · おすすめを一時停止",
+      "domain": "配布元：{domain}",
+      "checksum": "SHA-256：{sha256}",
+      "checksumUnknown": "SHA-256 の記録なし",
+      "checked": "確認日：{date}",
+      "unchecked": "確認日の記録なし",
+      "active": "Homebrew で無効化されていません"
+    },
     "thirdPartyTap": "サードパーティのリポジトリ",
     "stats": {
       "label": "データ",
@@ -451,6 +464,34 @@
       "uninstall": "アンインストール時",
       "arch": "アーキテクチャ",
       "license": "ライセンス"
+    },
+    "spec": {
+      "title": "基本情報",
+      "price": "価格",
+      "system": "システム要件",
+      "chip": "チップ",
+      "autoUpdates": "自動更新",
+      "openSource": "オープンソース",
+      "repository": "リポジトリ",
+      "githubRepository": "GitHub リポジトリ",
+      "developer": "開発元",
+      "homepage": "ホームページ",
+      "token": "パッケージ識別子",
+      "installedVersion": "インストール済みのバージョン",
+      "installLocation": "インストール先",
+      "yes": "はい",
+      "no": "いいえ",
+      "checked": "確認日",
+      "downloadSource": "ダウンロード元",
+      "fontFiles": "フォントファイル",
+      "bundleId": "Bundle ID"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "{days} 日前に更新",
+      "unmaintained": "メンテナンスが終了している可能性があります",
+      "archived": "アーカイブ済み",
+      "checked": "リポジトリ情報の確認日：{date}。"
     },
     "deps": {
       "macos": "システム要件",

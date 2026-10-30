@@ -214,7 +214,6 @@
     "disabled": "Disabled",
     "deprecated": "Deprecated",
     "homepage": "Homepage",
-    "fromTap": "From",
     "stats": {
       "label": "Stats",
       "installs30d": "30-day installs",
@@ -438,7 +437,6 @@
       "downloadVaries": "The download differs by macOS version, so choose one on the official website:",
       "downloadOfficial": "Download it from the official website:",
       "sha": "SHA-256 only checks that the download is complete; it is not a security certification.",
-      "shaLink": "See the SHA-256 and download address",
       "uninstallTitle": "Uninstall command",
       "uninstall": "A regular uninstall removes the app and keeps its settings and caches.",
       "zapTitle": "Deep clean (optional)",
@@ -581,6 +579,7 @@
       "priceStoreNote": "Homebrew installs the version from the developer’s website, which can differ from the App Store edition in price and features.",
       "openSourceQ": "Is {name} open source?",
       "openSourceA": "{name}’s source code is public on GitHub ({repo}) under the {license} license.",
+      "openSourceNoLicenseA": "{name} has a public GitHub repository ({repo}), but OpenNavo has not verified an OSI license.",
       "openSourceArchived": "The repository is archived and no longer updated.",
       "uninstallQ": "How do I completely uninstall {name} on a Mac?",
       "uninstallRun": "Run `brew uninstall --cask {token}`.",
@@ -643,7 +642,8 @@
       },
       "alternativesQ": "What are some alternatives to {name}?",
       "alternativesA": "Alternatives include {list}.",
-      "titleFor": "Questions about {name}"
+      "titleFor": "Questions about {name}",
+      "repositoryQ": "Does {name} have a public GitHub repository?"
     },
     "securityPromo": {
       "title": "OpenNavo: virus scanning and an app firewall",
@@ -658,6 +658,30 @@
     "lead": {
       "developer": "It is made by {developer}.",
       "source": "You download it from {source}."
+    },
+    "spec": {
+      "title": "At a glance",
+      "price": "Price",
+      "system": "System",
+      "chip": "Chip",
+      "autoUpdates": "Auto-updates",
+      "openSource": "Open source",
+      "repository": "Repository",
+      "githubRepository": "GitHub repository",
+      "developer": "Developer",
+      "homepage": "Homepage",
+      "token": "Token",
+      "yes": "Yes",
+      "no": "No",
+      "checked": "Checked",
+      "bundleId": "Bundle ID"
+    },
+    "repo": {
+      "stars": "★",
+      "checked": "Repository data checked {date}.",
+      "updated": "Updated {days} day ago | Updated {days} days ago",
+      "unmaintained": "May no longer be maintained",
+      "archived": "Archived"
     },
     "quick": {
       "title": "Quick facts",
@@ -714,8 +738,7 @@
       "builtFor": "Build for macOS {versions}"
     },
     "install": {
-      "title": "How to install {name} on Mac",
-      "run": "In Terminal, run:"
+      "title": "How to install {name} on Mac"
     },
     "uninstall": {
       "title": "Uninstall {name} and optional data cleanup",
@@ -818,6 +841,18 @@
       "label": "Official download · {host}",
       "checksum": "SHA-256 recorded by Homebrew",
       "active": "Not disabled by Homebrew"
+    },
+    "sourceBadge": {
+      "label": "Official source",
+      "verified": "✓ Official source · Verified",
+      "disabled": "Official source · Disabled",
+      "deprecated": "Official source · Deprecated",
+      "paused": "Official source · Paused by OpenNavo",
+      "domain": "Source: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 not recorded",
+      "checked": "Checked: {date}",
+      "unchecked": "No check date recorded"
     }
   },
   "collections": {

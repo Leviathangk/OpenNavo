@@ -315,8 +315,21 @@
     "autoUpdates": "Встроенное обновление",
     "disabled": "Отключено",
     "deprecated": "Устарело",
+    "paused": "Приостановлено",
     "homepage": "Главная",
-    "fromTap": "Источник",
+    "sourceBadge": {
+      "label": "Официальный источник",
+      "verified": "✓ Официальный источник · Проверен",
+      "disabled": "Официальный источник · Отключено",
+      "deprecated": "Официальный источник · Устарело",
+      "paused": "Официальный источник · Приостановлено",
+      "domain": "Источник: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 не указан",
+      "checked": "Дата проверки: {date}",
+      "unchecked": "Дата проверки не указана",
+      "active": "Не отключено в Homebrew"
+    },
     "thirdPartyTap": "Сторонний репозиторий",
     "stats": {
       "label": "Данные",
@@ -451,6 +464,34 @@
       "uninstall": "При удалении",
       "arch": "Архитектура",
       "license": "Лицензия"
+    },
+    "spec": {
+      "title": "Основные сведения",
+      "price": "Цена",
+      "system": "Система",
+      "chip": "Процессор",
+      "autoUpdates": "Автообновление",
+      "openSource": "Открытый исходный код",
+      "repository": "Репозиторий",
+      "githubRepository": "Репозиторий GitHub",
+      "developer": "Разработчик",
+      "homepage": "Сайт",
+      "token": "Идентификатор",
+      "installedVersion": "Установленная версия",
+      "installLocation": "Путь установки",
+      "yes": "Да",
+      "no": "Нет",
+      "checked": "Проверено",
+      "downloadSource": "Источник загрузки",
+      "fontFiles": "Файлы шрифта",
+      "bundleId": "Bundle ID"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Обновлено {days} день назад | Обновлено {days} дня назад | Обновлено {days} дней назад | Обновлено {days} дня назад",
+      "unmaintained": "Возможно, больше не поддерживается",
+      "archived": "В архиве",
+      "checked": "Данные репозитория проверены {date}."
     },
     "deps": {
       "macos": "Системные требования",

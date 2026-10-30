@@ -6,6 +6,7 @@ export * from './deeplink';
 export * from './format';
 export * from './icons';
 export * from './lifecycle';
+export * from './packageSource';
 export * from './linkAssets';
 export * from './locale';
 export * from './plural';

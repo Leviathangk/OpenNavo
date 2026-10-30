@@ -4,11 +4,19 @@ import { formatDate } from './packageDate';
 // of the page can state what another contradicts. Evidence decides the wording: a verified fact is
 // stated with its check date, a stale one only "as of" its date and never as current, and anything
 // pending review or without a dated source is left out.
-import type { PackageDetail, PublicComponents } from '@opennavo/api';
-import { disabledByHomebrew, formatVersion, isThirdPartyTap } from '@opennavo/shared';
+import type { PackageDetail, PackageRepository, PublicComponents } from '@opennavo/api';
+import {
+  disabledByHomebrew,
+  formatVersion,
+  isThirdPartyTap,
+  packageAliases,
+  packageInstallState
+} from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { httpsUrl, linkSource } from './linkApp';
 import type { Translate } from './seoTitles';
+
+export { toPackageSource as officialSource } from '@opennavo/shared';
 
 type Schemas = PublicComponents['schemas'];
 export type AppFacts = Schemas['AppFacts'];
@@ -47,10 +55,12 @@ const DROPPED = [
 /** The detail as app pages keep it: slimmed, and always with a facts model. */
 export type PackagePage = Omit<PackageDetail, (typeof DROPPED)[number] | 'facts'> & {
   facts: AppFacts;
+  /** Optional repository signals from the follow-up public API contract. */
+  repository?: PackageRepository;
 };
 
 /** useAsyncData transform for the detail payload (T6). */
-export function slimPackage(detail: PackageDetail): PackagePage {
+export function slimPackage(detail: PackageDetail & { repository?: PackageRepository }): PackagePage {
   const facts: AppFacts = { ...(detail.facts ?? fallbackFacts(detail)) };
   // The legacy price object lives on in facts.prices, which the blocks, questions and JSON-LD read.
   delete facts.price;
@@ -434,17 +444,19 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
       value: pkg.installCommand,
       code: true
     });
-    const status = disabledByHomebrew(pkg)
-      ? t('package.quick.homebrewDisabled')
-      : pausedByOpenNavo(pkg)
-        ? t('package.quick.homebrewPaused')
-        : pkg.deprecation
+    const state = packageInstallState(pkg);
+    const status =
+      state === 'disabled'
+        ? t('package.quick.homebrewDisabled')
+        : state === 'deprecated'
           ? t('package.deprecated')
-          : t(pkg.autoUpdates ? 'package.quick.homebrewAuto' : 'package.quick.homebrewAvailable');
+          : state === 'paused'
+            ? t('package.quick.homebrewPaused')
+            : t(pkg.autoUpdates ? 'package.quick.homebrewAuto' : 'package.quick.homebrewAvailable');
     add({ key: 'homebrew', label: 'Homebrew', value: status });
   }
 
-  const names = pkg.names.filter(name => name !== pkg.displayName);
+  const names = packageAliases(pkg.names, pkg.displayName, locale);
   if (names.length) add({ key: 'names', label: t('package.details.names'), value: names.join(', ') });
 
   return { rows, checkedAt: oldestCheck(evidence) };
@@ -608,29 +620,6 @@ export function releaseCompatibilityText(
     );
   if (value.appleSilicon === 'yes' || value.appleSilicon === 'no') parts.push(labels.appleSilicon[value.appleSilicon]);
   return parts.join(' · ');
-}
-
-/** A direct Homebrew URL, with only checks backed by current, dated evidence. */
-export function officialDownload(pkg: PackagePage) {
-  if (pkg.kind !== 'cask' || disabledByHomebrew(pkg) || pkg.homebrewStatus?.state === 'disabled') return null;
-  const choice = downloadChoice(pkg);
-  if (choice?.kind !== 'direct') return null;
-  const url = httpsUrl(choice.url);
-  if (!url) return null;
-  const rows = homebrewRows(pkg).filter(
-    row => isVerified(row.evidence) && row.versions.includes(currentVersion(pkg)) && row.downloadUrl === url
-  );
-  const checksums = rows
-    .map(row => row.sha256)
-    .filter((sha): sha is string => Boolean(sha && /^[a-f0-9]{64}$/i.test(sha)));
-  const checksum = checksums.length === rows.length && new Set(checksums.map(sha => sha.toLowerCase())).size === 1;
-  return {
-    url,
-    host: new URL(url).hostname,
-    checksum,
-    checkedAt: oldestCheck(rows.map(row => row.evidence)),
-    active: pkg.homebrewStatus?.state === 'active' || pkg.homebrewStatus?.state === 'deprecated'
-  };
 }
 
 /** Subpages reference a complete, minimal application node without offers or ratings. */

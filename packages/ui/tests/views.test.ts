@@ -445,7 +445,43 @@ describe('List views', () => {
 });
 
 describe('Detail views', () => {
-  it('Headers include names, labels, action slots, and source captions', () => {
+  it('keeps tags and actions in separate header rows', () => {
+    const wrapper = mount(OnPackageHeader, {
+      props: {
+        kind: 'cask',
+        token: 'example',
+        name: 'Example',
+        chips: [{ key: 'kind', label: 'Cask' }],
+        stretchActions: true
+      },
+      slots: {
+        tags: () => h('button', { class: 'source' }, 'Official source'),
+        actions: () => [h('button', 'Get'), h('a', { href: 'https://example.com/' }, 'Homepage')]
+      }
+    });
+    const tags = wrapper.get('[data-testid="package-header-tags"]');
+    const actions = wrapper.get('[data-testid="package-header-actions"]');
+    expect(tags.text()).toBe('CaskOfficial source');
+    expect(tags.find('.source').exists()).toBe(true);
+    expect(actions.find('.source').exists()).toBe(false);
+    expect(actions.element.children).toHaveLength(2);
+    expect(actions.element.children[0]!.textContent).toBe('Get');
+    expect(actions.element.children[1]!.textContent).toBe('Homepage');
+  });
+  it('stretches exactly two header actions into equal columns', () => {
+    const props = { kind: 'cask' as const, token: 'example', name: 'Example', chips: [] };
+    const actions = () => [h('button', 'Get'), h('a', { href: 'https://example.com/' }, 'Homepage')];
+    const wrapper = mount(OnPackageHeader, { props: { ...props, stretchActions: true }, slots: { actions } });
+    const stretched = wrapper.get('[data-testid="package-header-actions"]');
+    for (const name of ['grid', 'grid-cols-2', 'w-full', 'md:flex', 'md:justify-end'])
+      expect(stretched.classes()).toContain(name);
+
+    const natural = mount(OnPackageHeader, { props: { ...props, stretchActions: false }, slots: { actions } });
+    const column = natural.get('[data-testid="package-header-actions"]');
+    expect(column.classes()).toContain('flex');
+    expect(column.classes()).not.toContain('grid');
+  });
+  it('Headers include names, labels, action slots, and captions', () => {
     const wrapper = mount(OnPackageHeader, {
       props: {
         kind: 'cask',
@@ -456,14 +492,15 @@ describe('Detail views', () => {
           { key: 'kind', label: 'Cask' },
           { key: 'installed', label: '已安装 1.3.1', tone: 'success', dot: true }
         ],
-        meta: '来自 homebrew/cask'
+        meta: 'Installed on 2026-10-01'
       },
       slots: { actions: () => h('button', { class: 'get' }, '获取') }
     });
     expect(wrapper.get('h1').text()).toBe('Ghostty');
     expect(wrapper.text()).toContain('已安装 1.3.1');
     expect(wrapper.find('.get').exists()).toBe(true);
-    expect(wrapper.text()).toContain('来自 homebrew/cask');
+    expect(wrapper.text()).toContain('Installed on 2026-10-01');
+    expect(wrapper.text()).not.toContain('homebrew/cask');
   });
 
   it('Notices link replacement packages with detail pages and otherwise show names only', () => {

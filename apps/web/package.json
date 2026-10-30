@@ -14,7 +14,7 @@
     "typecheck": "nuxt typecheck",
     "test": "vitest run",
     "test:ssr": "node --test tests/ssr-seo.test.mjs tests/cache-cleanup.test.mjs",
-    "dev:e2e": "NUXT_PUBLIC_API_BASE=${E2E_API_BASE:-http://127.0.0.1:18082/api/v1} NUXT_API_BASE_INTERNAL=${E2E_API_BASE:-http://127.0.0.1:18082/api/v1} nuxt dev --port 3000",
+    "dev:e2e": "NUXT_PUBLIC_API_BASE=${E2E_API_BASE:-http://127.0.0.1:18082/api/v1} NUXT_API_BASE_INTERNAL=${E2E_API_BASE:-http://127.0.0.1:18082/api/v1} nuxt dev --port ${E2E_WEB_PORT:-3000}",
     "e2e": "playwright test",
     "gen:og-font": "node scripts/og-font.mjs",
     "lighthouse": "lhci autorun"

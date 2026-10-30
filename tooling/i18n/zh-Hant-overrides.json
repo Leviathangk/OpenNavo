@@ -2,6 +2,12 @@
   "about": "Single Traditional Chinese strings whose wording depends on context the converter cannot see. Each entry keeps the Simplified source it was written for; when that source changes the check fails until the entry is updated or removed.",
   "apps/desktop/src/i18n/zh-Hant.json": [
     {
+      "key": ["package", "spec", "token"],
+      "source": "软件包标识符",
+      "text": "套件識別碼",
+      "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
+    },
+    {
       "key": [
         "firewall",
         "activity",
@@ -37,6 +43,12 @@
     }
   ],
   "apps/web/i18n/locales/zh-Hant.json": [
+    {
+      "key": ["package", "spec", "token"],
+      "source": "软件包标识符",
+      "text": "套件識別碼",
+      "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
+    },
     {
       "key": [
         "package",
