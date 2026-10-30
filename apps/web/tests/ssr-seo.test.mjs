@@ -896,6 +896,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'versioned-app@11',
         'plus-app++',
         'ordinary-app',
+        'unlisted-sample',
         'image-alt-app',
         'dependency-content-app',
         'reverse-dependency-app',
@@ -1338,6 +1339,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           data.isFont,
           siteSettings.pages.fontsSitemap
         );
+      if (data.token === 'unlisted-sample') {
+        data.indexing.reason = 'hidden';
+        data.indexing.locales = [];
+        for (const page of Object.values(data.indexing.pages)) {
+          Object.assign(page, {
+            indexable: false,
+            robots: 'noindex, follow',
+            inSitemap: false,
+            announce: false,
+            hreflang: []
+          });
+        }
+      }
       if (data.token === 'variant-app@beta') {
         // Three verified known issues open the troubleshooting page; the other intent pages follow the overview.
         data.facts.issues = ['Sync stalls', 'The window opens off-screen', 'Sign-in loops'].map(title => ({
@@ -4090,6 +4104,39 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       }
     }
   );
+  await t.test(
+    'visibility: private pages are 404; unlisted pages are 200 with noindex and absent from Markdown and discovery',
+    async () => {
+      for (const prefix of ['', '/zh']) {
+        for (const suffix of ['', '/versions', '/details', '/dependencies']) {
+          assert.equal((await fetch(`${origin}${prefix}/apps/private-sample${suffix}`)).status, 404);
+        }
+        const response = await fetch(`${origin}${prefix}/apps/unlisted-sample`);
+        assert.equal(response.status, 200);
+        assert.match(response.headers.get('x-robots-tag') ?? '', /noindex/);
+        const document = JSDOM.fragment(await response.text());
+        assert.match(document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? '', /noindex/);
+        for (const token of ['private-sample', 'unlisted-sample']) {
+          assert.equal((await fetch(`${origin}${prefix}/apps/${token}.md`)).status, 404);
+          assert.equal(
+            (await fetch(`${origin}${prefix}/apps/${token}`, { headers: { accept: 'text/markdown' } })).status,
+            404
+          );
+        }
+      }
+      const llms = await (await fetch(`${origin}/llms.txt`)).text();
+      const sitemap = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+      for (const token of ['private-sample', 'unlisted-sample']) {
+        assert.ok(!llms.includes(token));
+        assert.ok(!sitemap.includes(token));
+        for (const group of ['apps', 'versions', 'fonts']) {
+          const shard = await fetch(`${origin}/__sitemap__/${packageSitemapName(group, token)}.xml`);
+          assert.ok([200, 404, 410].includes(shard.status));
+          assert.ok(!(await shard.text()).includes(`/apps/${token}`));
+        }
+      }
+    }
+  );
   assert.deepEqual(seoApiRequests, []);
   assert.deepEqual(
     [...requestedTokens].sort(),
@@ -4101,6 +4148,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'guard-app',
       'image-alt-app',
       'ordinary-app',
+      'unlisted-sample',
       'plus-app++',
       'reverse-dependency-app',
       'opennavo',

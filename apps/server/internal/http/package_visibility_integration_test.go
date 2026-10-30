@@ -89,9 +89,12 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 		}
 	})
 	t.Run("discovery_and_references", func(t *testing.T) {
-		for _, path := range []string{"/home", "/packages?includeFonts=true&includeDisabled=true", "/rankings?kind=cask", "/search?q=private", "/search/suggest?q=private", "/browse?kind=apps", "/sitemap/packages?group=apps", "/sitemap/packages?group=fonts", "/packages/cask/public-parent", "/packages/cask/public-parent/related", "/packages/cask/public-parent/dependencies?depth=3", "/collections", "/collections/visibility-fixture", "/articles/visibility-fixture"} {
+		for _, path := range []string{"/home", "/packages?includeFonts=true&includeDisabled=true", "/rankings?kind=cask", "/search?q=private", "/search/suggest?q=private", "/browse?kind=apps", "/sitemap/packages?group=apps", "/sitemap/packages?group=fonts", "/packages/cask/public-parent", "/packages/cask/public-parent/related", "/packages/cask/public-parent/dependencies?depth=3", "/collections", "/collections/visibility-fixture", "/collections/visibility-fixture/brewfile", "/articles", "/articles/visibility-fixture"} {
 			t.Run(path, func(t *testing.T) {
 				body := call(t, "GET", path, "", 200)
+				if strings.Contains(path, "public-parent") {
+					require.Contains(t, body, "public-child", "public references must remain available")
+				}
 				for _, token := range []string{"private-sample", "private-font", "private-link"} {
 					require.NotContains(t, body, token)
 				}
