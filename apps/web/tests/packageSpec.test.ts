@@ -308,25 +308,79 @@ describe('quick-info field parity with main', () => {
 });
 
 describe('spec card alternate names', () => {
-  const locales = ['en-US', 'zh-CN', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
   const names = [
     'Visual Studio Code',
     'vscode',
+    'VS Code',
     'VS Code 编辑器',
     'VS Code エディター',
+    'コード',
+    '編集',
     'Редактор VS Code',
     'VS Code 편집기'
   ];
-  const aliases = 'vscode, VS Code 编辑器, VS Code エディター, Редактор VS Code, VS Code 편집기';
-  it.each(locales)('keeps every alias except the displayed name in %s for all package kinds', locale => {
+  const allAliases = [
+    'vscode',
+    'VS Code',
+    'VS Code 编辑器',
+    'VS Code エディター',
+    'コード',
+    '編集',
+    'Редактор VS Code',
+    'VS Code 편집기'
+  ];
+  const latinAliases = ['vscode', 'VS Code'];
+  const japaneseAliases = ['vscode', 'VS Code', 'VS Code エディター', 'コード'];
+  it.each([
+    ['en-US', latinAliases],
+    ['es-ES', latinAliases],
+    ['pt-BR', latinAliases],
+    ['ru-RU', latinAliases],
+    ['de-DE', latinAliases],
+    ['fr-FR', latinAliases],
+    ['it-IT', latinAliases],
+    ['ja-JP', japaneseAliases],
+    ['zh-CN', allAliases],
+    ['zh-Hant', allAliases]
+  ] as const)('filters aliases by page locale in %s for all package kinds', (locale, expected) => {
     for (const kind of ['cask', 'formula', 'link'] as const) {
       const pkg = page({ kind, displayName: 'Visual Studio Code', names });
-      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(aliases);
+      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(
+        expected.join(', ')
+      );
     }
   });
-  it('keeps aliases in their original languages on English pages, like main Quick facts', () => {
+  it('hides a kanji-only alias on Japanese pages and shows a kana alias', () => {
     const pkg = page({ kind: 'cask', displayName: 'Visual Studio Code', names });
-    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(aliases);
+    const value = packageSpec(pkg, t, 'ja-JP', SPEC_NOW).rows.find(row => row.key === 'names')?.value;
+    expect(value).toContain('コード');
+    expect(value).not.toContain('編集');
+  });
+  it.each(['C++', 'Notepad++', 'Ｃ＋＋', '$', '®™'])('keeps the symbol alias %s on en, de and ja pages', alias => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      const pkg = page({ kind: 'cask', displayName: 'Editor', names: ['Editor', alias] });
+      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(alias);
+    }
+  });
+  it('keeps fullwidth Latin on en, de and ja pages', () => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      const pkg = page({ kind: 'cask', displayName: 'Editor', names: ['Editor', 'ＶＳ Ｃｏｄｅ'] });
+      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe('ＶＳ Ｃｏｄｅ');
+    }
+  });
+  it('shows halfwidth katakana on Japanese pages but hides it elsewhere', () => {
+    const pkg = page({ kind: 'cask', displayName: 'Editor', names: ['Editor', 'ｺｰﾄﾞ'] });
+    expect(packageSpec(pkg, t, 'ja-JP', SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe('ｺｰﾄﾞ');
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+    expect(packageSpec(pkg, t, 'de-DE', SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+  });
+  it('omits the names row when every alias is filtered out', () => {
+    for (const kind of ['cask', 'formula', 'link'] as const) {
+      for (const locale of ['en-US', 'ja-JP'] as const) {
+        const pkg = page({ kind, displayName: 'Editor', names: ['Editor', '編集', 'Редактор'] });
+        expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+      }
+    }
   });
 });
 

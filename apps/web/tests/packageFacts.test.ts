@@ -282,6 +282,13 @@ describe('T2 one facts model', () => {
     expect(node).not.toHaveProperty('offers');
   });
 
+  it('keeps aliases of every script in Quick facts', () => {
+    const page = pageOf(app({ names: ['Editor', 'Editor Pro', '编辑器', 'エディター', 'Редактор'] }));
+    expect(quickFacts(page, translator('en-US'), 'en-US').rows.find(row => row.key === 'names')?.value).toBe(
+      'Editor Pro, 编辑器, エディター, Редактор'
+    );
+  });
+
   it('Lists link apps’ version, source and signature, and fonts’ files', () => {
     const t = translator('zh-CN');
     const link = pageOf(

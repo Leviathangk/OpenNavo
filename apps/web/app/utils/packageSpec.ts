@@ -16,6 +16,7 @@ import {
 } from './packageFacts';
 import type { PackagePage } from './packageFacts';
 import { httpsUrl } from './linkApp';
+import { packageAliases } from '@opennavo/shared';
 import type { SiteLocale } from '@opennavo/shared';
 import type { Translate } from './seoTitles';
 
@@ -128,7 +129,10 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
     });
   }
 
-  rows.push(...originalRows(['developer', 'teamId', 'license', 'homebrew', 'names']));
+  rows.push(...originalRows(['developer', 'teamId', 'license', 'homebrew']));
+  // The spec card filters aliases by page locale; Quick facts keeps the unfiltered list.
+  const names = packageAliases(pkg.names, pkg.displayName, locale);
+  if (names.length) rows.push({ key: 'names', label: t('package.details.names'), value: names.join(', ') });
   if (pkg.kind === 'link' && pkg.bundleIds?.length)
     rows.push({ key: 'bundle', label: t('package.spec.bundleId'), value: pkg.bundleIds.join(' '), mono: true });
   const homepage = httpsUrl(pkg.kind === 'link' ? pkg.link?.homepage : pkg.homepage) ?? httpsUrl(pkg.homepage);
