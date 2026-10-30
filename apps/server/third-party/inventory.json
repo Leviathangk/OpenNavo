@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "lockDigests": {
-    "pnpm-lock.yaml": "7f5077200e9a1c31696f46b44b43ed4999900d2de39752f16448ff68d4a98368",
+    "pnpm-lock.yaml": "23084ecb73f05889a236276c4dbe0e94f6769deb4214bf9489b3db6d36a94b51",
     "apps/server/go.mod": "c709a8153cea115e70132c1887dbc10e7d3bf1f61d465f50d107b1627bca72ae",
     "apps/server/go.sum": "f435b6582a31c4569095a98bfc084855b2aad610255acc66caa9eeb71066a1ee",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
@@ -1237,6 +1237,30 @@
           "source": "NOTICE",
           "path": "licenses/600244c8052c8c1d307043fafacbc83b429c171dd8e08f5a537c0a54014585ee.txt",
           "sha256": "600244c8052c8c1d307043fafacbc83b429c171dd8e08f5a537c0a54014585ee"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Go",
+      "name": "github.com/prometheus/procfs",
+      "version": "v0.22.0",
+      "license": "Apache-2.0",
+      "url": "https://pkg.go.dev/github.com/prometheus/procfs@v0.22.0",
+      "scope": "runtime",
+      "evidence": {
+        "source": "Go module download verified by go.sum / checksum database",
+        "sum": "h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0oics="
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "source": "NOTICE",
+          "path": "licenses/497fcdb9fae55924c12f55f05cbe83a096662e5c591d79b74e4a8f23bab5ffee.txt",
+          "sha256": "497fcdb9fae55924c12f55f05cbe83a096662e5c591d79b74e4a8f23bab5ffee"
         }
       ]
     },

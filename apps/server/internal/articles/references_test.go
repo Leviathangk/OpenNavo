@@ -491,6 +491,68 @@ func TestRedactPrivateAppReferencesReviewRound2(t *testing.T) {
 	})
 }
 
+func TestRedactPrivateAppReferencesReviewRound3(t *testing.T) {
+	// The private map is built from AppReferences, as catalog/articles.go does in production.
+	redact := func(body string) string {
+		private := map[string]bool{}
+		for _, token := range AppReferences(body) {
+			if strings.HasPrefix(token, "private-") {
+				private[token] = true
+			}
+		}
+		return RedactPrivateAppReferences(body, private)
+	}
+	noLive := func(t *testing.T, got string) {
+		t.Helper()
+		html := renderArticleHTMLBoth(t, got)
+		require.NotRegexp(t, `(?i)<a[^>]+href="[^"]*private-sample`, html, "got=%q", got)
+		require.NotRegexp(t, `(?i)<(img|source)[^>]+src(set)?="[^"]*private-sample`, html, "got=%q", got)
+	}
+
+	t.Run("F1 encoded and ideographic host dots", func(t *testing.T) {
+		for _, body := range []string{
+			"[x](https://opennavo%2Ecom/apps/private-sample)",
+			"![i](https://opennavo%2ecom/apps/private-sample/i.png)",
+			"see https://opennavo%2Ecom/apps/private-sample now",
+			"[x](https://opennavo\u3002com/apps/private-sample)",
+			"see opennavo\u3002com/apps/private-sample now",
+			"see www\uff0eopennavo\uff61com/apps/private-sample now",
+			"[x][r]\n\n[r]: https://opennavo%2Ecom/apps/private-sample",
+		} {
+			got := redact(body)
+			require.NotContains(t, got, "private-sample", "body=%q", body)
+			noLive(t, got)
+		}
+		keep := "[p](https://opennavo%2Ecom/apps/public-child)"
+		require.Equal(t, keep, redact(keep))
+	})
+
+	t.Run("F2 discovery decodes text and accepts default ports", func(t *testing.T) {
+		require.Contains(t, AppReferences("opennavo.com/apps/private&#45;sample"), "private-sample")
+		require.Contains(t, AppReferences("opennavo.com:443/apps/private-sample"), "private-sample")
+		require.Contains(t, AppReferences("opennavo.com/apps/private\\-sample"), "private-sample")
+		for _, body := range []string{
+			"see opennavo.com/apps/private&#45;sample now",
+			"see opennavo.com:443/apps/private-sample now",
+			"see opennavo.com&#47;apps/private-sample now",
+		} {
+			got := redact(body)
+			require.NotContains(t, got, "private", "body=%q", body)
+			noLive(t, got)
+		}
+	})
+
+	t.Run("low: srcset source and star-bullet thematic break", func(t *testing.T) {
+		pv := map[string]bool{"private-sample": true}
+		got := RedactPrivateAppReferences(`<picture><source srcset="/apps/private-sample/a.png 2x"><img srcset="/x.png 1x, /apps/private-sample/b.png 2x" src="/x.png"></picture> <img srcset="/apps/public-child/c.png">`, pv)
+		require.NotContains(t, got, "private-sample")
+		require.Contains(t, got, "/apps/public-child/c.png")
+		got = RedactPrivateAppReferences("* item\n\n  ***\n* next\n\n[z](/apps/private-sample)", pv)
+		require.NotContains(t, renderArticleHTML(got), "<hr>\n<ul>")
+		require.Contains(t, renderArticleHTML(got), "<li>")
+	})
+}
+
 // renderArticleHTMLBoth renders with goldmark and, when available, production markdown-it
 // (html:false, linkify:true, fuzzyLink:true) so scheme-less private URLs are exercised.
 func renderArticleHTMLBoth(t *testing.T, source string) string {
@@ -534,6 +596,8 @@ func renderArticleHTMLMarkdownIt(t *testing.T, source string) string {
 	}
 	cmd := exec.Command("node", "-e", `const MarkdownIt = require('markdown-it');
 const md = new MarkdownIt({ html: false, linkify: true });
+// fuzzyLink is stricter than production (default false): scheme-less hosts become links too,
+// so anything that passes here also passes the real renderer.
 md.linkify.set({ fuzzyLink: true });
 let input = '';
 process.stdin.setEncoding('utf8');

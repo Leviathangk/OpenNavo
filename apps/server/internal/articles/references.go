@@ -24,9 +24,9 @@ var (
 	appPath = regexp.MustCompile(`(?i)^/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/([a-z0-9][a-z0-9@+._-]*)(?:/.*)?$`)
 	// schemeLessAppURL covers bare opennavo.com / www.opennavo.com app URLs that linkify does not catch.
 	// Optional trailing dot on the host matches DNS absolute-form hosts (opennavo.com.).
-	schemeLessAppURL = regexp.MustCompile(`(?i)(?:www\.)?opennavo\.com\.?/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/[^\s<>()\[\]{}"']+`)
+	schemeLessAppURL = regexp.MustCompile(`(?i)(?:www(?:\.|%2[eE]|。|．|｡))?opennavo(?:\.|%2[eE]|。|．|｡)com(?:\.|%2[eE]|。|．|｡)?(?::\d+)?/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/[^\s<>()\[\]{}"']+`)
 	// plainAppURL finds absolute or site-relative app URLs in plain text (invalid ref-def lines, etc.).
-	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?://)?(?:www\.)?opennavo\.com\.?(?::\d+)?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/[a-z0-9%&\\][a-z0-9@+._%&#;\\-]*(?:/[^\s<>()\[\]{}"']*)?`)
+	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?:)?(?://)?(?:www(?:\.|%2[eE]|。|．|｡))?opennavo(?:\.|%2[eE]|。|．|｡)com(?:\.|%2[eE]|。|．|｡)?(?::\d+)?)?(?:/|&#47;|&#x2[fF];|\\/)(?:[a-z]{2}(?:-[a-z0-9]{2,8})?(?:/|&#47;|&#x2[fF];|\\/))?apps(?:/|&#47;|&#x2[fF];|\\/)[a-z0-9%&\\][a-z0-9@+._%&#;\\-]*(?:/[^\s<>()\[\]{}"']*)?`)
 	// linkifyURLRegexp mirrors markdown-it linkify: case-insensitive scheme/host, optional port.
 	linkifyURLRegexp = regexp.MustCompile(`(?i)^(?:https?|ftp)://[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
 	linkifyWWWRegexp = regexp.MustCompile(`(?i)^www\.[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?:[/#?][-a-zA-Z0-9@:%_+.~#!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
@@ -101,7 +101,18 @@ func AppReferences(body string) []string {
 			continue
 		}
 		end := trimBareURLEnd(body, match[0], match[1])
-		if token, ok := appPathToken(body[match[0]:end]); ok {
+		if token, ok := appPathToken(decodeTextURL(body[match[0]:end])); ok {
+			add(token)
+		}
+	}
+	// Plain-text app URLs in any spelling the renderer decodes (entities, escapes, ports),
+	// matched exactly like the redaction pass so discovery never misses what redaction removes.
+	for _, match := range plainAppURL.FindAllStringIndex(body, -1) {
+		if insideSpans(match[0], code) || !bareURLStartOK(body, match[0]) || insideHTMLAttr(body, match[0]) {
+			continue
+		}
+		end := trimBareURLEnd(body, match[0], match[1])
+		if token, ok := appPathToken(decodeTextURL(body[match[0]:end])); ok {
 			add(token)
 		}
 	}
@@ -769,7 +780,12 @@ func writeListIndented(b *strings.Builder, list *ast.List, source []byte, depth 
 					writeQuotePrefix(b, inQuote, depth)
 					b.WriteString(strings.Repeat(" ", contentIndent))
 				}
-				b.WriteString("***\n")
+				// Use a break character unlike the bullet so "* ***" is not read as a top-level hr.
+				if list.Marker == '*' {
+					b.WriteString("---\n")
+				} else {
+					b.WriteString("***\n")
+				}
 			case *ast.LinkReferenceDefinition:
 				if !first {
 					writeQuotePrefix(b, inQuote, depth)
@@ -987,16 +1003,29 @@ func rewriteHTMLAnchors(segment string, private map[string]bool) string {
 		switch kind {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			name, hasAttributes := tokenizer.TagName()
-			if string(name) == "img" {
-				src := ""
+			if tag := string(name); tag == "img" || tag == "source" {
+				drop := false
 				for hasAttributes {
 					key, value, more := tokenizer.TagAttr()
-					if string(key) == "src" {
-						src = string(value)
+					switch string(key) {
+					case "src":
+						if token, ok := appPathToken(string(value)); ok && private[token] {
+							drop = true
+						}
+					case "srcset":
+						for _, candidate := range strings.Split(string(value), ",") {
+							fields := strings.Fields(candidate)
+							if len(fields) == 0 {
+								continue
+							}
+							if token, ok := appPathToken(fields[0]); ok && private[token] {
+								drop = true
+							}
+						}
 					}
 					hasAttributes = more
 				}
-				if token, ok := appPathToken(src); ok && private[token] {
+				if drop {
 					continue
 				}
 				b.WriteString(raw)
@@ -1173,24 +1202,20 @@ func appToken(raw []byte) (string, bool) {
 }
 
 func appPathToken(raw string) (string, bool) {
-	lower := strings.ToLower(raw)
 	// Protocol-relative //opennavo.com/... is in scope (same as absolute https).
 	if strings.HasPrefix(raw, "//") {
 		raw = "https:" + raw
-		lower = strings.ToLower(raw)
 	}
 	if !strings.Contains(raw, "://") && !strings.HasPrefix(raw, "/") {
-		for _, prefix := range []string{
-			"opennavo.com/", "www.opennavo.com/",
-			"opennavo.com./", "www.opennavo.com./",
-			"opennavo.com:", "www.opennavo.com:", "opennavo.com.:", "www.opennavo.com.:",
-		} {
-			if strings.HasPrefix(lower, prefix) {
-				raw = "https://" + raw
-				break
-			}
+		authority := raw
+		if k := strings.IndexAny(authority, "/?#"); k >= 0 {
+			authority = authority[:k]
+		}
+		if h, _, ok := splitHostPort(authority); ok && isSiteHost(h) {
+			raw = "https://" + raw
 		}
 	}
+	raw = decodeAuthority(raw)
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return "", false
@@ -1217,9 +1242,7 @@ func appPathToken(raw string) (string, bool) {
 		default:
 			return "", false
 		}
-		// Trim a trailing DNS dot so opennavo.com. still matches.
-		host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
-		if host != "opennavo.com" && host != "www.opennavo.com" {
+		if !isSiteHost(parsed.Hostname()) {
 			return "", false
 		}
 	} else if !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") {
@@ -1280,4 +1303,65 @@ func decodeTextURL(raw string) string {
 		b.WriteByte(raw[i])
 	}
 	return html.UnescapeString(b.String())
+}
+
+// normalizeHost canonicalizes a host the way browsers do before comparing: percent-decode,
+// map ideographic/fullwidth dots (U+3002, U+FF0E, U+FF61) to '.', lowercase and drop a
+// trailing dot. Shared by discovery and redaction.
+func normalizeHost(host string) string {
+	if decoded, err := url.PathUnescape(host); err == nil {
+		host = decoded
+	}
+	host = strings.NewReplacer("\u3002", ".", "\uff0e", ".", "\uff61", ".").Replace(host)
+	return strings.TrimSuffix(strings.ToLower(host), ".")
+}
+
+func isSiteHost(host string) bool {
+	host = normalizeHost(host)
+	return host == "opennavo.com" || host == "www.opennavo.com"
+}
+
+// splitHostPort splits an authority and accepts only the default ports (80/443) or none.
+func splitHostPort(authority string) (string, string, bool) {
+	host, port := authority, ""
+	if k := strings.LastIndexByte(authority, ':'); k >= 0 {
+		host, port = authority[:k], authority[k+1:]
+		if n, err := strconv.Atoi(port); err != nil || (n != 443 && n != 80) {
+			return "", "", false
+		}
+	}
+	return host, port, true
+}
+
+// decodeAuthority percent-decodes and dot-normalizes the authority of scheme://authority/...
+// so url.Parse accepts hosts like opennavo%2Ecom that browsers resolve to opennavo.com.
+func decodeAuthority(raw string) string {
+	k := strings.Index(raw, "://")
+	if k < 0 {
+		return raw
+	}
+	rest := raw[k+3:]
+	end := strings.IndexAny(rest, "/?#")
+	if end < 0 {
+		end = len(rest)
+	}
+	authority := rest[:end]
+	if !strings.ContainsAny(authority, "%\u3002\uff0e\uff61") {
+		return raw
+	}
+	host, port := authority, ""
+	if c := strings.LastIndexByte(authority, ':'); c >= 0 && !strings.Contains(authority[c:], "%") {
+		host, port = authority[:c], authority[c:]
+	}
+	return raw[:k+3] + normalizeHost(host) + port + rest[end:]
+}
+
+// insideHTMLAttr reports whether pos starts a quoted attribute value (attr="..."); raw HTML
+// attributes are discovered through htmlHrefs, so data-href and the like stay out.
+func insideHTMLAttr(body string, pos int) bool {
+	if pos < 2 {
+		return false
+	}
+	q := body[pos-1]
+	return (q == '"' || q == '\'') && body[pos-2] == '='
 }
