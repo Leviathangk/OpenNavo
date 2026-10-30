@@ -29,7 +29,16 @@ const downloadSha = computed(() => detail.value?.downloadSha256);
 
 const items = computed<OnKeyValueItem[]>(() => {
   const value = detail.value;
-  if (!value) return [];
+  if (!value) {
+    if (!local.value) return [];
+    const paths = library.find(kind.value, token.value)?.appPaths ?? [];
+    return [
+      { key: 'names', label: t('package.details.names'), value: local.value.names.join(' · ') },
+      ...(paths.length
+        ? [{ key: 'apps', label: t('package.details.location'), value: paths.join('  '), mono: true }]
+        : [])
+    ];
+  }
   const artifacts = value.artifacts;
   const installed = library.find(kind.value, token.value);
   const list: OnKeyValueItem[] = [{ key: 'tap', label: t('package.details.tap'), value: value.tap, mono: true }];
@@ -137,7 +146,7 @@ async function copySha() {
 
 <template>
   <OfflineNotice v-if="error && !detail" />
-  <div v-else-if="detail" class="grid grid-cols-[minmax(0,1fr)_320px] gap-20px pt-4px">
+  <div v-else-if="detail || local" class="grid grid-cols-[minmax(0,1fr)_320px] gap-20px pt-4px">
     <div class="flex min-w-0 flex-col gap-16px">
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px">
         <OnKeyValueList :items="items" />
@@ -145,9 +154,9 @@ async function copySha() {
           <OnButton size="xs" icon="copy" @click="copySha">{{ t('common.copy') }} SHA-256</OnButton>
         </div>
       </section>
-      <OnCaskArtifacts v-if="detail.artifacts.entries?.length" :entries="detail.artifacts.entries" />
+      <OnCaskArtifacts v-if="detail?.artifacts.entries?.length" :entries="detail.artifacts.entries" />
       <section
-        v-if="detail.caveats"
+        v-if="detail?.caveats"
         class="rounded-big border border-solid border-status-warning bg-surface-card px-18px py-14px"
       >
         <h2 class="m-0 text-13.5px font-600 text-status-warning">{{ t('package.caveats') }}</h2>

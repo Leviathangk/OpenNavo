@@ -13,6 +13,7 @@ import { api } from '@/api';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { useRemoteLoader } from '@/composables/useRemoteLoader';
 import { usePackage } from '@/composables/usePackageDetail';
+import { optionalPublicPackage } from '@/utils/publicCatalog';
 
 const { appLocale: formattingLocale } = useFormattingLocale();
 
@@ -27,10 +28,19 @@ const platforms = computed(() => detail.value?.platforms ?? []);
 const { data, error } = useRemoteLoader(
   'dependencies',
   () =>
-    unwrap(
-      api.GET('/packages/{kind}/{token}/dependencies', {
-        params: { path: { kind: kind.value, token: token.value } }
-      })
+    optionalPublicPackage(
+      unwrap(
+        api.GET('/packages/{kind}/{token}/dependencies', {
+          params: { path: { kind: kind.value, token: token.value } }
+        })
+      )
+    ).then(
+      value =>
+        value ?? {
+          dependencies: [],
+          dependents: { count: 0, top: [] },
+          conflictsWith: { casks: [], formulae: [] }
+        }
     ),
   [kind, token, appLocale]
 );
