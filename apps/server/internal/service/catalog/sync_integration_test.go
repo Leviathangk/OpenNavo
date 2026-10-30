@@ -3,10 +3,12 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -130,6 +132,53 @@ func (q *testQueue) Enqueue(_ context.Context, kind string, payload jobs.Payload
 	}
 	q.Events = append(q.Events, fmt.Sprintf("%s:%d:%d", kind, payload.PackageID, payload.SourceID))
 	return "test", nil
+}
+
+func TestCatalogSyncHonorsDisabledOverrideUntilUpstreamSignatureChanges(t *testing.T) {
+	st := testutil.NewStore(t)
+	ctx := context.Background()
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	source := &testSource{
+		Data:     map[string][]string{"cask": {`{"token":"manual-override","version":"1","name":["Manual Override"],"disabled":true,"disable_date":"2026-01-01","disable_reason":"unsafe"}`}},
+		Previous: map[string]homebrew.Conditional{},
+	}
+	service := &Service{Store: st, Source: source, Queue: &testQueue{}}
+	_, err := service.Run(ctx)
+	require.NoError(t, err)
+
+	var id int64
+	require.NoError(t, st.DB.Raw("SELECT id FROM packages WHERE token='manual-override'").Scan(&id).Error)
+	overrideAt := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, st.DB.Exec(`UPDATE packages
+SET disabled=false,disabled_override_at=?,disabled_override_date='2026-01-01',disabled_override_reason='unsafe'
+WHERE id=?`, overrideAt, id).Error)
+
+	// A changed definition with the same upstream disable signature remains manually enabled.
+	source.Data["cask"] = []string{`{"token":"manual-override","version":"2","name":["Manual Override Updated"],"disabled":true,"disable_date":"2026-01-01","disable_reason":"unsafe"}`}
+	_, err = service.Run(ctx)
+	require.NoError(t, err)
+	var state struct {
+		Disabled       bool
+		OverrideAt     *time.Time `gorm:"column:disabled_override_at"`
+		OverrideReason *string    `gorm:"column:disabled_override_reason"`
+	}
+	require.NoError(t, st.DB.Raw("SELECT disabled,disabled_override_at,disabled_override_reason FROM packages WHERE id=?", id).Scan(&state).Error)
+	require.False(t, state.Disabled)
+	require.NotNil(t, state.OverrideAt)
+	require.Equal(t, "unsafe", *state.OverrideReason)
+
+	// A new upstream disable reason is authoritative and clears the manual override.
+	source.Data["cask"] = []string{`{"token":"manual-override","version":"3","name":["Manual Override Updated"],"disabled":true,"disable_date":"2026-02-01","disable_reason":"security"}`}
+	_, err = service.Run(ctx)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Raw("SELECT disabled,disabled_override_at,disabled_override_reason FROM packages WHERE id=?", id).Scan(&state).Error)
+	require.True(t, state.Disabled)
+	require.Nil(t, state.OverrideAt)
+	require.Nil(t, state.OverrideReason)
+	require.Contains(t, logs.String(), "catalog package re-disabled after upstream signature changed")
 }
 
 func TestCatalogIdempotenceRenameRemoveReviveAndDescriptionReview(t *testing.T) {

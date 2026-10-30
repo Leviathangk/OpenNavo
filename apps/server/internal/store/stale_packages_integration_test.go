@@ -67,3 +67,36 @@ func TestStaleTransitionRollsBackStatusRanksCursorAndNotification(t *testing.T) 
 	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='cache:invalidate'").Count(&outbox).Error)
 	require.EqualValues(t, 1, outbox)
 }
+
+func TestStaleOverrideOnlySkipsMatchingPackageVersion(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"stale-override-version","version":"1"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	var id int64
+	require.NoError(t, st.DB.Raw("SELECT id FROM packages WHERE token='stale-override-version'").Scan(&id).Error)
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	oldDate := now.Add(-store.StalePackageAge - time.Second)
+	require.NoError(t, st.DB.Exec(`UPDATE package_versions SET brew_committed_at=? WHERE package_id=?`, oldDate, id).Error)
+	require.NoError(t, st.DB.Exec(`UPDATE packages
+SET stale_disabled=false,disabled_override_at=?,disabled_override_stale=true,disabled_override_version='1'
+WHERE id=?`, now, id).Error)
+
+	stats, err := st.RefreshStalePackages(ctx, now)
+	require.NoError(t, err)
+	require.Zero(t, stats.AutoDisabled, "a valid stale override keeps the current version active")
+	var stale bool
+	require.NoError(t, st.DB.Raw("SELECT stale_disabled FROM packages WHERE id=?", id).Scan(&stale).Error)
+	require.False(t, stale)
+
+	// A new package version invalidates the stale override even when its commit
+	// date is still old enough to trigger the policy.
+	require.NoError(t, st.DB.Exec(`UPDATE packages SET version='2' WHERE id=?`, id).Error)
+	require.NoError(t, st.DB.Exec(`UPDATE package_versions SET version='2',version_base='2' WHERE package_id=?`, id).Error)
+	stats, err = st.RefreshStalePackages(ctx, now)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats.AutoDisabled)
+	require.NoError(t, st.DB.Raw("SELECT stale_disabled FROM packages WHERE id=?", id).Scan(&stale).Error)
+	require.True(t, stale)
+}

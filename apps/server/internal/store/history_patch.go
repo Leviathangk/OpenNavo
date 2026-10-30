@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"sort"
 )
 
@@ -27,6 +28,7 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 		desiredRows := target[table]
 		oldByKey, newByKey, wantByKey := historyRows(oldRows), historyRows(newRows), historyRows(desiredRows)
 		currentByKey := historyRows(out[table])
+		lifecycleTable := table == "packages" && (HistoryStateIncludesPackageLifecycle(before) || HistoryStateIncludesPackageLifecycle(after))
 		keys := map[string]bool{}
 		for key := range oldByKey {
 			keys[key] = true
@@ -64,6 +66,33 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 				}
 				if previous == nil || !reflect.DeepEqual(previous[field], next[field]) {
 					currentByKey[key][field] = value
+				}
+			}
+			if lifecycleTable {
+				overrideChanged := false
+				for _, field := range packageDisabledOverrideFields {
+					if !reflect.DeepEqual(previous[field], next[field]) {
+						overrideChanged = true
+						break
+					}
+				}
+				// A clear-disabled revision captures the complete package lifecycle,
+				// but an undo must only restore lifecycle fields changed by that
+				// revision. Upstream may have changed an untouched field since then.
+				for _, field := range packageLifecycleFields {
+					if slices.Contains(packageDisabledOverrideFields[:], field) {
+						continue
+					}
+					if value, exists := desired[field]; exists && !reflect.DeepEqual(previous[field], next[field]) {
+						currentByKey[key][field] = value
+					}
+				}
+				if overrideChanged {
+					for _, field := range packageDisabledOverrideFields {
+						if value, exists := desired[field]; exists {
+							currentByKey[key][field] = value
+						}
+					}
 				}
 			}
 		}

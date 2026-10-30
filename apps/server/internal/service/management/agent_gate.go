@@ -69,7 +69,7 @@ func (s *Service) agentSnapshot(ctx context.Context, name, object string, in Inp
 	// Release notes are addressed by package and version, so in.ID is the package.
 	// A version without editorial notes yet has an empty state, never release #in.ID.
 	if name == "UpsertReleaseNotes" {
-		return captureHistory(ctx, s.Store, refs)
+		return captureHistory(ctx, s.Store, refs, packageLifecycle(in))
 	}
 	if object == "article" {
 		if in.ID == 0 {
@@ -78,7 +78,7 @@ func (s *Service) agentSnapshot(ctx context.Context, name, object string, in Inp
 		return s.articleView(ctx, s.Store, in.ID)
 	}
 	if len(refs) > 0 {
-		return captureHistory(ctx, s.Store, refs)
+		return captureHistory(ctx, s.Store, refs, packageLifecycle(in))
 	}
 	return snapshotEntity(ctx, s.Store, object, in)
 }
