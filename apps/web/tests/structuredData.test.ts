@@ -106,6 +106,11 @@ describe('WP10 SoftwareApplication from the facts model (T2)', () => {
     expect(node).not.toHaveProperty('aggregateRating');
   });
 
+  it('keeps alternate names of every script in structured data', () => {
+    const node = softwareAppNode(pageOf(app({ names: ['Editor', '编辑器', 'エディター', 'Редактор'] })), url, t)!;
+    expect(node.alternateName).toEqual(['编辑器', 'エディター', 'Редактор']);
+  });
+
   it('Never turns a price into an offer by itself', () => {
     const price = {
       type: 'free' as const,

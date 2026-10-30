@@ -6,10 +6,10 @@ import { formatDate } from './packageDate';
 // pending review or without a dated source is left out.
 import type { PackageDetail, PackageRepository, PublicComponents } from '@opennavo/api';
 import {
+  allPackageAliases,
   disabledByHomebrew,
   formatVersion,
   isThirdPartyTap,
-  packageAliases,
   packageInstallState
 } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
@@ -456,7 +456,8 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
     add({ key: 'homebrew', label: 'Homebrew', value: status });
   }
 
-  const names = packageAliases(pkg.names, pkg.displayName, locale);
+  // Quick facts keep every alias in its original language; the spec card filters by locale.
+  const names = allPackageAliases(pkg.names, pkg.displayName);
   if (names.length) add({ key: 'names', label: t('package.details.names'), value: names.join(', ') });
 
   return { rows, checkedAt: oldestCheck(evidence) };

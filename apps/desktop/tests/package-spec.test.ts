@@ -168,17 +168,41 @@ describe('desktop quick-info field parity', () => {
 });
 
 describe('desktop alternate names', () => {
-  const locales = ['en-US', 'zh-CN', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
   const names = [
     'Visual Studio Code',
     'vscode',
+    'VS Code',
     'VS Code 编辑器',
     'VS Code エディター',
+    'コード',
+    '編集',
     'Редактор VS Code',
     'VS Code 편집기'
   ];
-  const aliases = 'vscode, VS Code 编辑器, VS Code エディター, Редактор VS Code, VS Code 편집기';
-  it.each(locales)('keeps every alias except the displayed name in %s for all package kinds', locale => {
+  const allAliases = [
+    'vscode',
+    'VS Code',
+    'VS Code 编辑器',
+    'VS Code エディター',
+    'コード',
+    '編集',
+    'Редактор VS Code',
+    'VS Code 편집기'
+  ];
+  const latinAliases = ['vscode', 'VS Code'];
+  const japaneseAliases = ['vscode', 'VS Code', 'VS Code エディター', 'コード'];
+  it.each([
+    ['en-US', latinAliases],
+    ['es-ES', latinAliases],
+    ['pt-BR', latinAliases],
+    ['ru-RU', latinAliases],
+    ['de-DE', latinAliases],
+    ['fr-FR', latinAliases],
+    ['it-IT', latinAliases],
+    ['ja-JP', japaneseAliases],
+    ['zh-CN', allAliases],
+    ['zh-Hant', allAliases]
+  ] as const)('filters aliases by page locale in %s for all package kinds', (locale, expected) => {
     for (const kind of ['cask', 'formula', 'link'] as const) {
       const pkg = detail({ kind, displayName: 'Visual Studio Code', names });
       const local = { ...pkg, name: pkg.displayName } as unknown as LocalItem;
@@ -186,7 +210,36 @@ describe('desktop alternate names', () => {
         packageSpec(pkg, null, null, t, locale, SPEC_NOW),
         packageSpec(null, local, null, t, locale, SPEC_NOW)
       ])
-        expect(spec.rows.find(row => row.key === 'names')?.value).toBe(aliases);
+        expect(spec.rows.find(row => row.key === 'names')?.value).toBe(expected.join(', '));
+    }
+  });
+
+  it('renders the filtered aliases in the spec card', () => {
+    const english = packageSpec(detail({ displayName: 'Visual Studio Code', names }), null, null, t, 'en-US', SPEC_NOW);
+    const enCard = mount(OnPackageSpecCard, { props: { rows: english.rows } });
+    try {
+      expect(enCard.text()).toContain('vscode');
+      expect(enCard.text()).not.toContain('VS Code 编辑器');
+      expect(enCard.text()).not.toContain('VS Code エディター');
+    } finally {
+      enCard.unmount();
+    }
+
+    const japanese = packageSpec(
+      detail({ displayName: 'Visual Studio Code', names }),
+      null,
+      null,
+      t,
+      'ja-JP',
+      SPEC_NOW
+    );
+    const jaCard = mount(OnPackageSpecCard, { props: { rows: japanese.rows } });
+    try {
+      expect(jaCard.text()).toContain('VS Code エディター');
+      expect(jaCard.text()).toContain('コード');
+      expect(jaCard.text()).not.toContain('編集');
+    } finally {
+      jaCard.unmount();
     }
   });
 });

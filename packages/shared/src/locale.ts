@@ -44,11 +44,29 @@ export function pick(
   return fallback;
 }
 
+// Japanese kana, including halfwidth katakana and the prolonged sound mark; punctuation and marks
+// are allowed separately below, so an alias such as エディター keeps its ー.
+const KANA = '\\u3040-\\u30ff\\u31f0-\\u31ff\\uff66-\\uff9f';
+const LATIN_ALIAS = /^[\p{Script=Latin}\p{M}\p{Nd}\p{Z}\p{P}]*$/u;
+const JAPANESE_ALIAS = new RegExp(`^[\\p{Script=Latin}\\p{M}\\p{Nd}\\p{Z}\\p{P}${KANA}]*$`, 'u');
+
 /**
- * Alternate names, using main's Quick facts rule literally: every name except the displayed one.
- * Aliases stay in their original language; the locale is accepted for call-site compatibility but
- * deliberately does not filter scripts.
+ * Alternate names for the package detail spec card, filtered by the page locale: Chinese pages keep
+ * every alias; Japanese pages keep kana and/or Latin aliases (Han names are hidden); every other
+ * locale keeps only Latin aliases. Digits, spaces and punctuation are allowed in either script.
  */
-export function packageAliases(names: readonly string[], displayName: string, _locale?: SiteLocaleCode): string[] {
+export function packageAliases(names: readonly string[], displayName: string, locale?: SiteLocaleCode): string[] {
+  const language = (locale ?? DEFAULT_LOCALE).toLowerCase().split('-')[0];
+  const aliases = names.filter(name => name !== displayName);
+  if (language === 'zh') return aliases;
+  const allowed = language === 'ja' ? JAPANESE_ALIAS : LATIN_ALIAS;
+  return aliases.filter(name => allowed.test(name));
+}
+
+/**
+ * Every alias except the displayed name, for surfaces outside the spec card: Quick facts and
+ * structured data keep names in their original languages instead of filtering by page locale.
+ */
+export function allPackageAliases(names: readonly string[], displayName: string): string[] {
   return names.filter(name => name !== displayName);
 }
