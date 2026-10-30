@@ -20,7 +20,9 @@ const DIALOG_TIMEOUT: Duration = Duration::from_secs(60);
 const GRANT_TTL: Duration = Duration::from_secs(30);
 
 // tauri-plugin-dialog's async `MessageDialogBuilder::show` returns no dialog handle (rfd exposes only `show`), so
-// a timeout can invalidate the grant but cannot programmatically dismiss the native dialog. A late click is ignored.
+// a timeout cannot programmatically dismiss the native dialog. A timeout revokes that confirmation's grants but
+// keeps the single slot occupied until the native callback arrives; a late click only releases the slot and never
+// produces a grant.
 
 /// A write request presented to the user. Install callers bind an immutable resolved execution plan;
 /// deletion callers can bind their own plan digest.
@@ -147,6 +149,7 @@ fn app_locale<R: Runtime>(app: &tauri::AppHandle<R>) -> Locale {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmationGrant {
     token: String,
+    confirmation_id: u64,
     digest: String,
     plan_digest: Option<String>,
     expires_at: Instant,
@@ -157,6 +160,7 @@ struct ActiveConfirmation {
     id: u64,
     request: ConfirmationRequest,
     digest: String,
+    timed_out: bool,
     _cancel: oneshot::Sender<()>,
 }
 
@@ -267,20 +271,37 @@ impl ConfirmationService {
         &self,
         pending: PendingConfirmation,
         receiver: oneshot::Receiver<Result<ConfirmationGrant, AppError>>,
-        _guard: ConfirmationDropGuard,
+        guard: ConfirmationDropGuard,
     ) -> Result<ConfirmationGrant, AppError> {
+        self.wait_for_reply_within(pending, receiver, guard, DIALOG_TIMEOUT)
+            .await
+    }
+
+    async fn wait_for_reply_within(
+        &self,
+        pending: PendingConfirmation,
+        receiver: oneshot::Receiver<Result<ConfirmationGrant, AppError>>,
+        _guard: ConfirmationDropGuard,
+        timeout: Duration,
+    ) -> Result<ConfirmationGrant, AppError> {
+        let id = pending.id;
         tokio::select! {
             biased;
-            result = tokio::time::timeout(DIALOG_TIMEOUT, receiver) => match result {
+            result = tokio::time::timeout(timeout, receiver) => match result {
                 Ok(Ok(result)) => result,
                 Ok(Err(_)) => Err(AppError::new("E_CONFIRMATION_DENIED", "confirmation_denied")),
-                Err(_) => Err(AppError::new("E_CONFIRMATION_TIMEOUT", "confirmation_timeout")),
+                Err(_) => {
+                    self.timeout(id);
+                    Err(AppError::new("E_CONFIRMATION_TIMEOUT", "confirmation_timeout"))
+                }
             },
             _ = pending.cancelled => Err(AppError::new("E_CONFIRMATION_DENIED", "confirmation_denied")),
         }
     }
 
-    /// A destroyed webview cannot keep a command waiting on a native callback.
+    /// A destroyed webview cannot keep a command waiting on a native callback. Clearing the slot also
+    /// drops timed-out confirmations on purpose: once the window is gone, any later native interaction
+    /// is invalid.
     pub fn cancel_active(&self) {
         if let Ok(mut state) = self.state.lock() {
             state.active = None;
@@ -309,6 +330,7 @@ impl ConfirmationService {
             id: pending.id,
             request,
             digest,
+            timed_out: false,
             _cancel: cancel,
         });
         Ok(pending)
@@ -336,7 +358,12 @@ impl ConfirmationService {
             .active
             .take()
             .expect("active confirmation id was checked above");
-        let result = if !allowed {
+        let result = if active.timed_out {
+            Err(AppError::new(
+                "E_CONFIRMATION_TIMEOUT",
+                "confirmation_timeout",
+            ))
+        } else if !allowed {
             Err(AppError::new(
                 "E_CONFIRMATION_DENIED",
                 "confirmation_denied",
@@ -344,6 +371,7 @@ impl ConfirmationService {
         } else {
             let grant = ConfirmationGrant {
                 token: uuid::Uuid::new_v4().to_string(),
+                confirmation_id: active.id,
                 digest: active.digest.clone(),
                 plan_digest: active.request.plan_digest.clone(),
                 expires_at: Instant::now() + GRANT_TTL,
@@ -358,9 +386,25 @@ impl ConfirmationService {
         drop(active);
     }
 
+    /// A timed-out confirmation keeps the single slot until its native callback releases it, but its
+    /// already-issued grants must not stay usable.
+    fn timeout(&self, id: u64) {
+        if let Ok(mut state) = self.state.lock() {
+            if let Some(active) = state.active.as_mut()
+                && active.id == id
+            {
+                active.timed_out = true;
+            }
+            state.grants.retain(|_, grant| grant.confirmation_id != id);
+        }
+    }
+
     fn expire(&self, id: u64) {
         if let Ok(mut state) = self.state.lock()
-            && state.active.as_ref().is_some_and(|active| active.id == id)
+            && state
+                .active
+                .as_ref()
+                .is_some_and(|active| active.id == id && !active.timed_out)
         {
             state.active = None;
         }
@@ -424,6 +468,11 @@ impl ConfirmationService {
     }
 
     #[cfg(test)]
+    fn test_timeout(&self, id: u64) {
+        self.timeout(id)
+    }
+
+    #[cfg(test)]
     fn test_issue_expired(&self, request: ConfirmationRequest) -> ConfirmationGrant {
         let pending = self.begin(request).expect("test confirmation starts");
         let mut grant = self
@@ -482,6 +531,18 @@ mod tests {
             target: target.into(),
             plan_digest: None,
         }
+    }
+
+    async fn wait_until_timeout(
+        service: &std::sync::Arc<ConfirmationService>,
+        pending: PendingConfirmation,
+        timeout: Duration,
+    ) -> Result<ConfirmationGrant, AppError> {
+        let guard = ConfirmationDropGuard::new(std::sync::Arc::clone(service), pending.id);
+        let (_sender, receiver) = oneshot::channel();
+        service
+            .wait_for_reply_within(pending, receiver, guard, timeout)
+            .await
     }
 
     #[test]
@@ -696,6 +757,63 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn timed_out_dialog_keeps_slot_until_native_callback() {
+        let service = std::sync::Arc::new(ConfirmationService::default());
+        let pending = service.test_begin(request("cask/ghostty")).unwrap();
+        let id = pending.id;
+        assert_eq!(
+            wait_until_timeout(&service, pending, Duration::from_millis(50))
+                .await
+                .unwrap_err()
+                .code,
+            "E_CONFIRMATION_TIMEOUT"
+        );
+        assert_eq!(
+            service.test_begin(request("cask/zed")).unwrap_err().code,
+            "E_BUSY"
+        );
+
+        assert_eq!(
+            service.test_finish(id, true).unwrap_err().code,
+            "E_CONFIRMATION_TIMEOUT"
+        );
+        assert!(service.test_begin(request("cask/zed")).is_ok());
+    }
+
+    #[tokio::test]
+    async fn late_allow_after_timeout_never_issues_a_grant() {
+        let service = std::sync::Arc::new(ConfirmationService::default());
+        let pending = service.test_begin(request("cask/ghostty")).unwrap();
+        let id = pending.id;
+        assert_eq!(
+            wait_until_timeout(&service, pending, Duration::from_millis(50))
+                .await
+                .unwrap_err()
+                .code,
+            "E_CONFIRMATION_TIMEOUT"
+        );
+
+        let late = service.test_finish(id, true).unwrap_err();
+        assert_eq!(late.code, "E_CONFIRMATION_TIMEOUT");
+        assert_eq!(late.message, "confirmation_timeout");
+        assert!(service.state.lock().unwrap().grants.is_empty());
+        assert!(service.test_begin(request("cask/zed")).is_ok());
+    }
+
+    #[test]
+    fn timeout_revokes_grant_from_the_same_confirmation() {
+        let service = ConfirmationService::default();
+        let original = request("cask/ghostty");
+        let pending = service.test_begin(original.clone()).unwrap();
+        let grant = service.test_finish(pending.id, true).unwrap();
+        service.test_timeout(pending.id);
+        assert_eq!(
+            service.consume(&grant, &original).unwrap_err().code,
+            "E_CONFIRMATION_REUSED"
+        );
+    }
+
     #[test]
     fn denial_and_timeout_never_create_a_grant() {
         let service = ConfirmationService::default();
@@ -705,7 +823,7 @@ mod tests {
             "E_CONFIRMATION_DENIED"
         );
         let timed_out = service.test_begin(request("cask/zed")).unwrap();
-        service.test_expire(timed_out.id);
+        service.test_timeout(timed_out.id);
         assert_eq!(
             service.test_finish(timed_out.id, true).unwrap_err().code,
             "E_CONFIRMATION_TIMEOUT"
