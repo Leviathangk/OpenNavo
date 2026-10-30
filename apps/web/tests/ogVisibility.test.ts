@@ -80,6 +80,15 @@ describe('package share-image visibility', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('answers 404, not 500, for a malformed percent-escape in the image path', async () => {
+    const fetch = vi.fn();
+    stubApi(fetch);
+    const path = '/_og/d/c_OgPackageSatori,locale_en-US,visibility_cask%3A%E0%A4%A,s_test-signature.png';
+    expect(packageOgGuard(path)).toBeNull();
+    await expect(checkPackageOgVisibility(event(path))).resolves.toEqual({ status: 404 });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('performs exactly one cached detail read per request', async () => {
     const fetch = vi.fn(async () => ({
       data: { kind: 'cask', token: 'public-app', displayName: 'Public App' }

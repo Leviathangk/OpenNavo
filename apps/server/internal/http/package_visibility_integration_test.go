@@ -73,6 +73,35 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 		testutil.ValidateResponse(t, spec, "/api/v1", r, w)
 		return w.Body.String()
 	}
+	t.Run("hidden_search_control", func(t *testing.T) {
+		// Prove the hidden-package search assertions can hit: the same queries find
+		// unlisted-sample while it is visible, and miss it once it is hidden again.
+		searchAt := func(t *testing.T, path string) string {
+			t.Helper()
+			svc := search.New(ctx, st, nil, logger)
+			defer svc.Close()
+			srv, err := httpserver.New(config.Config{}, logger, st, httpserver.Dependencies{Public: &public.Handler{Catalog: &catalog.PublicService{Store: st}, Search: svc}})
+			require.NoError(t, err)
+			r := httptest.NewRequest("GET", "/api/v1"+path, nil)
+			r.Header.Set("Accept-Language", "en-US")
+			w := httptest.NewRecorder()
+			srv.Engine.ServeHTTP(w, r)
+			require.Equal(t, 200, w.Code, w.Body.String())
+			return w.Body.String()
+		}
+		setHidden := func(hidden bool) {
+			require.NoError(t, st.DB.Exec("UPDATE package_meta SET hidden=? WHERE package_id=(SELECT id FROM packages WHERE token='unlisted-sample')", hidden).Error)
+		}
+		setHidden(false)
+		defer setHidden(true)
+		for _, path := range []string{"/search?q=unlisted", "/search/suggest?q=unlisted"} {
+			require.Contains(t, searchAt(t, path), "unlisted-sample", path)
+		}
+		setHidden(true)
+		for _, path := range []string{"/search?q=unlisted", "/search/suggest?q=unlisted"} {
+			require.NotContains(t, searchAt(t, path), "unlisted-sample", path)
+		}
+	})
 	t.Run("PublicPackage", func(t *testing.T) {
 		for _, token := range []string{"private-sample", "private-font"} {
 			_, err := st.PublicPackage(ctx, "cask", token, "en-US")
@@ -89,7 +118,7 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 		}
 	})
 	t.Run("discovery_and_references", func(t *testing.T) {
-		for _, path := range []string{"/home", "/packages?includeFonts=true&includeDisabled=true", "/rankings?kind=cask", "/search?q=private", "/search/suggest?q=private", "/browse?kind=apps", "/sitemap/packages?group=apps", "/sitemap/packages?group=fonts", "/packages/cask/public-parent", "/packages/cask/public-parent/related", "/packages/cask/public-parent/dependencies?depth=3", "/collections", "/collections/visibility-fixture", "/collections/visibility-fixture/brewfile", "/articles", "/articles/visibility-fixture"} {
+		for _, path := range []string{"/home", "/packages?includeFonts=true&includeDisabled=true", "/rankings?kind=cask", "/search?q=private", "/search/suggest?q=private", "/search?q=unlisted", "/search/suggest?q=unlisted", "/browse?kind=apps", "/sitemap/packages?group=apps", "/sitemap/packages?group=fonts", "/packages/cask/public-parent", "/packages/cask/public-parent/related", "/packages/cask/public-parent/dependencies?depth=3", "/collections", "/collections/visibility-fixture", "/collections/visibility-fixture/brewfile", "/articles", "/articles/visibility-fixture"} {
 			t.Run(path, func(t *testing.T) {
 				body := call(t, "GET", path, "", 200)
 				if strings.Contains(path, "public-parent") {

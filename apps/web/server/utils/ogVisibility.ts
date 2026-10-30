@@ -65,7 +65,15 @@ function parseOgParams(path: string): Map<string, string> | undefined {
  * null means it is one without a usable kind/token guard and must fail closed.
  */
 export function packageOgGuard(path: string): PackageOgGuard | null | undefined {
-  const params = parseOgParams(path);
+  let params: Map<string, string> | undefined;
+  try {
+    params = parseOgParams(path);
+  } catch (error) {
+    // A malformed percent-escape (decodeURIComponent URIError) cannot carry a usable guard:
+    // fail closed with 404 instead of letting the error surface as a 500.
+    if (error instanceof URIError) return null;
+    throw error;
+  }
   if (!params || params.get('component') !== OG_PACKAGE_COMPONENT) return undefined;
   const visibility = params.get('visibility');
   if (!visibility) return null;
