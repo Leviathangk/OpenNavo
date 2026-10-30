@@ -1631,6 +1631,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       const body = await response.text();
       assert.equal(response.status, 200, body.slice(0, 300));
       assert.match(response.headers.get('content-type') ?? '', /text\/markdown/);
+      assert.equal(response.headers.get('cache-control'), 'private, no-store');
+      assert.equal(response.headers.get('cdn-cache-control'), 'no-store');
+      assert.equal(response.headers.get('cloudflare-cdn-cache-control'), 'no-store');
+      assert.match(response.headers.get('vary') ?? '', /\bAccept\b/i);
+      assert.equal(response.headers.get('x-robots-tag'), 'noindex');
+      assert.equal(response.headers.get('link'), `<https://example.test${path}>; rel="canonical"`);
       assert.match(body, /^# Example App @11\n/);
       assert.ok(!body.includes('<html'), 'Markdown response must not contain the HTML document');
       return body;
@@ -1640,6 +1646,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       const body = await response.text();
       assert.equal(response.status, 200, body.slice(0, 300));
       assert.match(response.headers.get('content-type') ?? '', /text\/html/);
+      assert.match(response.headers.get('vary') ?? '', /\bAccept\b/i);
+      assert.match(response.headers.get('cache-control') ?? '', /s-maxage=21600/);
+      assert.match(response.headers.get('link') ?? '', /<\/llms\.txt>; rel="describedby"/);
       assert.match(body, /<html\b/);
       assert.ok(!body.startsWith('# Example App @11\n'), 'HTML response must not be Markdown');
       return body;
@@ -1657,6 +1666,52 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const afterHtml = hotReads.get(detailPath) ?? 0;
     await markdown();
     assert.ok((hotReads.get(detailPath) ?? 0) > afterHtml, 'Markdown after cached HTML still reaches the API handler');
+    await html();
+  });
+  await t.test('Markdown canonical and noindex headers follow the five open locales for GET and HEAD', async () => {
+    const openLocales = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'ru-RU'];
+    try {
+      siteSettings.pages.openLocales = openLocales;
+      await invalidatePaths(['/'], true);
+      for (const locale of SITE_LOCALES) {
+        const prefix = LOCALE_METADATA[locale].prefix;
+        for (const method of ['GET', 'HEAD'])
+          for (const path of [prefix || '/', `${prefix}/apps/versioned-app@11`, `${prefix}/apps/versioned-app@11.md`]) {
+            const explicit = path.endsWith('.md');
+            const response = await fetch(`${origin}${path}?tracking=fixture`, {
+              method,
+              headers: { accept: explicit ? 'text/html' : 'text/markdown' }
+            });
+            const body = await response.text();
+            if (!openLocales.includes(locale)) {
+              if (explicit) assert.equal(response.status, 404, path);
+              assert.doesNotMatch(response.headers.get('content-type') ?? '', /text\/markdown/, path);
+              continue;
+            }
+            assert.equal(response.status, 200, `${method} ${path}: ${body.slice(0, 200)}\n${logs}`);
+            assert.match(response.headers.get('content-type') ?? '', /text\/markdown/, path);
+            assert.equal(response.headers.get('x-robots-tag'), 'noindex', path);
+            assert.equal(
+              response.headers.get('link'),
+              `<https://example.test${explicit ? path.slice(0, -3) : path}>; rel="canonical"`,
+              path
+            );
+            if (method === 'HEAD') assert.equal(body, '', path);
+          }
+      }
+    } finally {
+      delete siteSettings.pages.openLocales;
+      await invalidatePaths(['/'], true);
+    }
+  });
+  await t.test('404 HTML responses omit agent discovery and Markdown negotiation headers', async () => {
+    for (let request = 0; request < 2; request++) {
+      const response = await fetch(`${origin}/apps/missing-app@0`, { headers: { accept: 'text/html' } });
+      await response.text();
+      assert.equal(response.status, 404, logs);
+      assert.doesNotMatch(response.headers.get('link') ?? '', /llms\.txt|text\/markdown/);
+      assert.doesNotMatch(response.headers.get('vary') ?? '', /(?:^|,)\s*Accept\s*(?:,|$)/i);
+    }
   });
   await t.test(
     'SSR images keep descriptive alternatives and explicitly decorative empty alt in both languages',
@@ -2329,6 +2384,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const apps = (
       await Promise.all(appsUrls.map(async url => (await fetch(url.replace('https://example.test', origin))).text()))
     ).join('');
+    assert.doesNotMatch(apps, /\.md[<"?]/, 'Markdown URLs never appear in sitemap loc or hreflang');
     const urlEntry = loc => new RegExp(`<url>\\s*<loc>${loc}</loc>([\\s\\S]*?)</url>`).exec(apps)?.[1];
     assert.match(urlEntry('https://example.test/apps/ordinary-app') ?? '', /<lastmod>2025-03-18T10:00:00Z<\/lastmod>/);
     assert.ok(!/<lastmod>/.test(urlEntry('https://example.test/zh/apps/ordinary-app') ?? 'missing <lastmod>'));
@@ -2342,6 +2398,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         versionsUrls.map(async url => (await fetch(url.replace('https://example.test', origin))).text())
       )
     ).join('');
+    assert.doesNotMatch(versions, /\.md[<"?]/, 'Markdown URLs never appear in versions sitemaps');
     assert.ok(!versions.includes('/apps/font-sample'), 'font versions are excluded');
     assert.ok(versions.includes('https://example.test/apps/ordinary-app/versions'));
     const undatedVersion =
@@ -3228,6 +3285,23 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       delete siteSettings.pages.openLocales;
       await invalidatePaths(['/robots.txt'], true);
     }
+  });
+  await t.test('Markdown URLs stay out of every sitemap and HTML hreflang', async () => {
+    const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+    const maps = [...index.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
+    assert.ok(maps.length > 0, index);
+    for (const map of maps) {
+      const response = await fetch(map.replace('https://example.test', origin));
+      assert.equal(response.status, 200, map);
+      assert.doesNotMatch(await response.text(), /\.md[<"?]/, map);
+    }
+    for (const prefix of ['', '/zh', '/ja', '/es', '/ru'])
+      for (const path of [prefix || '/', `${prefix}/apps/versioned-app@11`]) {
+        const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+        const alternates = html.match(/<link\b[^>]*\bhreflang="[^"]+"[^>]*>/g) ?? [];
+        assert.ok(alternates.length > 0, path);
+        for (const alternate of alternates) assert.doesNotMatch(alternate, /\.md["?]/, path);
+      }
   });
   await t.test('G6 llms is plain English text with public HTML links and a fixed origin metric', async () => {
     const response = await fetch(`${origin}/llms.txt?locale=de&tracking=fixture`, {

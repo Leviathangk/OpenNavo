@@ -1,4 +1,4 @@
-import { LOCALE_METADATA } from '@opennavo/shared';
+import { LOCALES, LOCALE_METADATA } from '@opennavo/shared';
 import { markdownAlternatesEnabled, markdownTarget } from '~~/shared/utils/markdownAlternate';
 
 // X4: while runtimeConfig.public.markdownAlternates is on, every app overview links its Markdown version
@@ -10,9 +10,12 @@ export default defineNuxtPlugin(() => {
   const siteUrl = config.public.siteUrl.replace(/\/$/, '');
   const route = useRouter().currentRoute;
   const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
+  const settings = useSiteSettings();
   useHead(() => {
     const target = markdownTarget(`${route.value.path}.md`);
-    return target && hreflangs.value?.includes(LOCALE_METADATA[target.locale].hreflang)
+    return target &&
+      (settings.value?.pages.openLocales ?? LOCALES).some(locale => locale === target.locale) &&
+      hreflangs.value?.includes(LOCALE_METADATA[target.locale].hreflang)
       ? {
           link: [
             {

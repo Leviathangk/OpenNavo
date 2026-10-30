@@ -72,6 +72,7 @@ func (s *Service) versions(ctx context.Context, in Input) (any, error) {
 var accentColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
 func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, error) {
+	clearDisabled := false
 	if op == "UpdatePackageMeta" {
 		if value, present := in.Body["visibilityReason"]; present {
 			reason, ok := value.(string)
@@ -84,6 +85,13 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 			reason, _ := in.Body["visibilityReason"].(string)
 			if strings.TrimSpace(reason) == "" {
 				return nil, domain.Rejected("visibility_reason_required:visibilityReason")
+			}
+		}
+		if value, present := in.Body["clearDisabled"]; present {
+			var ok bool
+			clearDisabled, ok = value.(bool)
+			if !ok {
+				return nil, domain.Rejected("field_type_invalid:clearDisabled")
 			}
 		}
 		if value := in.Body["downloadSize"]; value != nil {
@@ -121,6 +129,37 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 			if value, present := in.Body["downloadSize"]; present {
 				if err := st.DB.WithContext(ctx).Table("packages").Where("id=?", in.ID).Updates(map[string]any{"download_size": value, "updated_at": s.now()}).Error; err != nil {
 					return nil, err
+				}
+			}
+			if clearDisabled {
+				var upstream struct {
+					Disabled           bool
+					StaleDisabled      bool
+					Version            string
+					DisableDate        *string
+					DisableReason      *string
+					DisableReplacement *string
+				}
+				if err := st.DB.WithContext(ctx).Raw(`SELECT disabled,stale_disabled,version,disable_date::text,disable_reason,disable_replacement FROM packages WHERE id=?`, in.ID).Scan(&upstream).Error; err != nil {
+					return nil, err
+				}
+				if upstream.Disabled || upstream.StaleDisabled {
+					now := s.now()
+					if err := st.DB.WithContext(ctx).Table("packages").Where("id=?", in.ID).Updates(map[string]any{
+						"disabled":                      false,
+						"stale_disabled":                false,
+						"disabled_override_at":          now,
+						"disabled_override_date":        upstream.DisableDate,
+						"disabled_override_reason":      upstream.DisableReason,
+						"disabled_override_replacement": upstream.DisableReplacement,
+						// Only a stale-disabled package opts out of the stale-version
+						// policy. The override is released when this version changes.
+						"disabled_override_stale":   upstream.StaleDisabled,
+						"disabled_override_version": upstream.Version,
+						"updated_at":                now,
+					}).Error; err != nil {
+						return nil, err
+					}
 				}
 			}
 			fields := mapped(in.Body, map[string]string{"developer": "developer", "repoUrl": "repo_url", "hidden": "hidden", "private": "private", "visibilityReason": "visibility_reason", "editorChoice": "editor_choice", "notes": "notes", "accentColor": "accent_color"})

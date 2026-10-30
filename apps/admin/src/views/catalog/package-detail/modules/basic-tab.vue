@@ -19,7 +19,7 @@ const emit = defineEmits<{ saved: [] }>();
 const { hasAuth } = useAuth();
 const editable = computed(() => hasAuth('catalog:package:edit'));
 
-type Meta = Required<BodyOf<'updatePackageMeta'>>;
+type Meta = Required<Omit<BodyOf<'updatePackageMeta'>, 'clearDisabled'>>;
 const model = reactive<Meta>({
   downloadSize: null,
   accentColor: null,
@@ -72,6 +72,7 @@ async function save() {
     repoUrl: blankToNull(model.repoUrl),
     hidden: model.hidden,
     private: model.private,
+    clearDisabled: false,
     editorChoice: model.editorChoice,
     notes: blankToNull(model.notes),
     tags: model.tags.map(tag => tag.trim()).filter(Boolean)

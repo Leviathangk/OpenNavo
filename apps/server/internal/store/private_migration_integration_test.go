@@ -12,7 +12,7 @@ import (
 )
 
 func TestMigration126BackfillsLegacyHiddenReasons(t *testing.T) {
-	st := testutil.NewSEOStoreAtVersion(t, 123)
+	st := testutil.NewSEOStoreAtVersion(t, 125)
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES
  (901,'cask','legacy-hidden-one','legacy-hidden-one','homebrew/cask','Fixture','1','1','{}','fixture'),
  (902,'cask','legacy-hidden-two','legacy-hidden-two','homebrew/cask','Fixture','1','1','{}','fixture'),

@@ -49,7 +49,17 @@ SELECTORS: dict[str, dict[str, Any]] = {
         "limit": {"type": "integer", "minimum": 1, "maximum": 16000, "default": 8000},
     },
     "package_refresh": {"mode": {"type": "string", "enum": ["resync"], "default": "resync"}},
-    "package_set_enabled": {"enabled": {"type": "boolean"}},
+    "package_set_enabled": {
+        "enabled": {"type": "boolean"},
+        "clear_disabled": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "Explicitly clear Homebrew or stale-version disabled state and preserve the"
+                " upstream disable signature for future syncs."
+            ),
+        },
+    },
     "package_set_icon": {"remove": {"type": "boolean", "default": False}},
     "collection_publish": {
         "action": {"type": "string", "enum": ["publish", "unpublish"], "default": "publish"}
@@ -155,9 +165,11 @@ USAGE = {
         " Hidden packages remain reachable by direct link with noindex. Use package_update_meta"
         " with private=true and visibility_reason to remove a package from every public read."
         " Homebrew and stale-version disabled flags and removed"
-        " state remain in effect. dry_run returns the before/after hidden state without"
-        " persisting changes. Uses the same audit, revisions and cache/sitemap invalidation"
-        " as package_update_meta."
+        " state remain in effect unless clear_disabled=true. clear_disabled defaults to false;"
+        " when true it also clears the disabled state and records a manual override."
+        " dry_run returns the before/after hidden and disabled state, including the previous"
+        " disabled reason, without persisting changes. Uses the same audit, revisions and"
+        " cache/sitemap invalidation as package_update_meta."
     ),
     "listing_gaps": (
         " Defaults to visible, enabled, current non-font apps: hidden=false, disabled=false,"
@@ -344,6 +356,7 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
                 "package",
                 "enabled",
                 "visibility_reason",
+                "clear_disabled",
                 "dry_run",
                 "expected_revision",
                 "idempotency_key",

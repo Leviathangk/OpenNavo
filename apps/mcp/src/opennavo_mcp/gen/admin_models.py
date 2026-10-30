@@ -882,6 +882,7 @@ class PackageMetaUpdate(BaseModel):
     hidden: Annotated[bool | MISSING, Field(description='Unlisted but reachable by direct link. Setting true requires visibilityReason.', examples=[False])] = MISSING
     private: Annotated[bool | MISSING, Field(description='Absent from all public reads. Setting true requires visibilityReason.', examples=[False])] = MISSING
     visibilityReason: Annotated[str | MISSING, Field(description='Required and recorded in the audit log whenever hidden or private is set to true.', examples=['Catalog visibility review.'], max_length=2000, min_length=1)] = MISSING
+    clearDisabled: Annotated[bool, Field(description='When true, clears the effective Homebrew or stale-version disabled state and records a manual override; omitted or false leaves it unchanged.', examples=[False])] = False
     editorChoice: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     tags: Annotated[list[Tag] | MISSING, Field(max_length=10)] = MISSING
     notes: Annotated[str | None | MISSING, Field(examples=[None], max_length=2000)] = MISSING

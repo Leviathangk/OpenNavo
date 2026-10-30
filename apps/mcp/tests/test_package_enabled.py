@@ -15,12 +15,14 @@ async def test_package_enabled_discovery(backend: Backend) -> None:
         "package",
         "enabled",
         "visibility_reason",
+        "clear_disabled",
         "dry_run",
         "expected_revision",
         "idempotency_key",
     }
     assert set(tool.input_schema["required"]) == {"package", "enabled"}
     assert tool.input_schema["properties"]["enabled"]["type"] == "boolean"
+    assert tool.input_schema["properties"]["clear_disabled"]["default"] is False
     assert tool.annotations is not None and tool.annotations.read_only_hint is False
     assert "hidden" in (tool.description or "")
     assert "Homebrew" in (tool.description or "")
@@ -68,6 +70,31 @@ async def test_package_enabled_uses_metadata_write(
     assert request.headers["X-Expected-Revision"] == "0"
     assert request.headers["Idempotency-Key"] == "fixture-write-001"
     assert any(op == "listAdminPackages" for op, _ in backend.calls) == isinstance(package, str)
+
+
+async def test_package_enabled_clear_disabled_is_forwarded(backend: Backend) -> None:
+    preview = {
+        "dryRun": True,
+        "changes": [
+            {
+                "before": {"packages": [{"disabled": True, "disable_reason": "unsafe"}]},
+                "after": {"packages": [{"disabled": False, "disable_reason": "unsafe"}]},
+            }
+        ],
+    }
+    backend.responses["updatePackageMeta"] = preview
+    async with Client(backend.server) as client:
+        result = await client.call_tool(
+            "package_set_enabled",
+            execution_args(
+                "package_set_enabled",
+                {"package": 42, "enabled": True, "clear_disabled": True, "dry_run": True},
+            ),
+        )
+    assert result.structured_content == {"untrusted": preview}
+    writes = [request for operation, request in backend.calls if operation == "updatePackageMeta"]
+    assert len(writes) == 1
+    assert json.loads(writes[0].content) == {"hidden": False, "clearDisabled": True}
 
 
 @pytest.mark.parametrize(

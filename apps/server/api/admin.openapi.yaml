@@ -21381,6 +21381,11 @@ components:
           maxLength: 2000
           description: Required and recorded in the audit log whenever hidden or private is set to true.
           example: Catalog visibility review.
+        clearDisabled:
+          type: boolean
+          default: false
+          description: 'When true, clears the effective Homebrew or stale-version disabled state and records a manual override; omitted or false leaves it unchanged.'
+          example: false
         editorChoice:
           type: boolean
           example: false
@@ -21402,6 +21407,7 @@ components:
         developer: null
         repoUrl: null
         hidden: false
+        clearDisabled: false
         editorChoice: false
         tags:
           - 编辑器
