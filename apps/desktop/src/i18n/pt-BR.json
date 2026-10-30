@@ -319,7 +319,7 @@
     "homepage": "Página inicial",
     "sourceBadge": {
       "label": "Fonte oficial",
-      "verified": "Fonte oficial · Verificada",
+      "verified": "✓ Fonte oficial · Verificada",
       "disabled": "Fonte oficial · App desativado",
       "deprecated": "Fonte oficial · App obsoleto",
       "paused": "Fonte oficial · Em pausa",

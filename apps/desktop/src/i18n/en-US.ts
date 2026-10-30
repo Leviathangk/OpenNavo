@@ -326,7 +326,7 @@ const messages: MessageSchema = {
     homepage: 'Homepage',
     sourceBadge: {
       label: 'Official source',
-      verified: 'Official source · Verified',
+      verified: '✓ Official source · Verified',
       disabled: 'Official source · Disabled',
       deprecated: 'Official source · Deprecated',
       paused: 'Official source · Paused by OpenNavo',

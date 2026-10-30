@@ -319,7 +319,7 @@
     "homepage": "Website",
     "sourceBadge": {
       "label": "Offizielle Quelle",
-      "verified": "Offizielle Quelle · Geprüft",
+      "verified": "✓ Offizielle Quelle · Geprüft",
       "disabled": "Offizielle Quelle · Deaktiviert",
       "deprecated": "Offizielle Quelle · Veraltet",
       "paused": "Offizielle Quelle · Pausiert",

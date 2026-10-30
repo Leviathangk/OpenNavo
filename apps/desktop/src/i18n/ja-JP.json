@@ -319,7 +319,7 @@
     "homepage": "ホームページ",
     "sourceBadge": {
       "label": "公式配布元",
-      "verified": "公式配布元 · 確認済み",
+      "verified": "✓ 公式配布元 · 確認済み",
       "disabled": "公式配布元 · 無効化済み",
       "deprecated": "公式配布元 · 非推奨",
       "paused": "公式配布元 · おすすめを一時停止",

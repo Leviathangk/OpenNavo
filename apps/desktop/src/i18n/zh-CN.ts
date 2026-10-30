@@ -319,7 +319,7 @@ export default {
     homepage: '主页',
     sourceBadge: {
       label: '官方来源',
-      verified: '官方来源 · 已核查',
+      verified: '✓ 官方来源 · 已核查',
       disabled: '官方来源 · 已停用',
       deprecated: '官方来源 · 已弃用',
       paused: '官方来源 · 暂停推荐',

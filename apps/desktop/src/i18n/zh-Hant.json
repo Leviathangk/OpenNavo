@@ -319,7 +319,7 @@
     "homepage": "主頁",
     "sourceBadge": {
       "label": "官方來源",
-      "verified": "官方來源 · 已核查",
+      "verified": "✓ 官方來源 · 已核查",
       "disabled": "官方來源 · 已停用",
       "deprecated": "官方來源 · 已棄用",
       "paused": "官方來源 · 暫停推薦",

@@ -106,6 +106,12 @@ const source = computed(() => {
       : null;
 });
 
+const linkHomepage = computed(() =>
+  props.kind === 'link' ? ((props.detail?.link ?? props.local?.link)?.homepage ?? null) : null
+);
+// Only the link app's Get/Homepage pair stretches into equal columns; casks keep Brewfile/Get/More at natural widths.
+const stretchActions = computed(() => Boolean(linkHomepage.value));
+
 const meta = computed(() => {
   const parts: string[] = [];
   if (props.kind === 'link')
@@ -149,6 +155,7 @@ const onSelect = (key: string) => {
     :accent="accent"
     :chips="chips"
     :meta="meta"
+    :stretch-actions="stretchActions"
   >
     <template #tags>
       <DetailSourceBadge v-if="detail && officialSource" :pkg="detail" />
@@ -177,11 +184,7 @@ const onSelect = (key: string) => {
         {{ t('package.open') }}
       </OnButton>
       <!-- The arrow follows the label, as on Download beside it: both leave OpenNavo for the developer's site. -->
-      <OnButton
-        v-if="kind === 'link' && (detail?.link ?? local?.link)?.homepage"
-        variant="secondary"
-        @click="openHomepage"
-      >
+      <OnButton v-if="kind === 'link' && linkHomepage" variant="secondary" @click="openHomepage">
         {{ t('package.link.homepage') }}
         <OnIcon name="arrow-up-right" :size="15" />
       </OnButton>
