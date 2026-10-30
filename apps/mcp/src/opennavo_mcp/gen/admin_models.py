@@ -678,6 +678,26 @@ class EmptyResponse(BaseModel):
     data: dict[str, Any] | None | MISSING = MISSING
 
 
+class PackageMetaUpdateWarning(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    warning: Annotated[str | MISSING, Field(description='Present when the CDN purge is paused. The purge stays queued and share-image edge copies may persist until it is resumed.', examples=['CDN purge is pending; edge copies may persist until the purge is resumed.'])] = MISSING
+
+
+class PackageMetaUpdateResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: PackageMetaUpdateWarning
+
+
+class PackageMetaUpdateResult(RootModel[PackageMetaUpdateResponse | BusinessErrorResponse]):
+    root: Annotated[PackageMetaUpdateResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'warning': 'CDN purge is pending; edge copies may persist until the purge is resumed.'}}])]
+
+
 class Data2(BaseModel):
     id: Annotated[int, Field(examples=[1])]
 

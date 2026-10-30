@@ -15,6 +15,14 @@ import (
 // without the prefix.
 const shareImagePath = "/_og/"
 
+// ShareImagePurgeWarning tells an admin that a visibility change committed but the
+// edge purge is paused, so a previously public share image can stay cached.
+const ShareImagePurgeWarning = "CDN purge is pending; edge copies may persist until the purge is resumed."
+
+// purgePausedStatus is the existing URL change feed's paused status. The admin
+// settings page raises an alert for it instead of a new notification channel.
+const purgePausedStatus = "paused: Cloudflare purge disabled"
+
 // shareImagePurgePrefix is the Cloudflare prefix covering every share image.
 func shareImagePurgePrefix(siteURL string) string {
 	return purgeHost(siteURL) + shareImagePath
@@ -34,15 +42,29 @@ func shareImagePaths(token string) []string {
 // outbox retries the og:true web invalidation, and the existing purge queue
 // retries the Cloudflare /_og/ purge. Neither is awaited by the admin write.
 func (n *Notifier) QueueShareImagePurge(ctx context.Context, token string) error {
+	_, err := n.QueueShareImagePurgeWithWarning(ctx, token)
+	return err
+}
+
+// QueueShareImagePurgeWithWarning queues the same durable work and reports whether
+// Cloudflare purging is paused. The queued prefixes stay in the retry queue.
+func (n *Notifier) QueueShareImagePurgeWithWarning(ctx context.Context, token string) (string, error) {
 	if strings.TrimSpace(token) == "" {
-		return errors.New("share image purge requires a package token")
+		return "", errors.New("share image purge requires a package token")
 	}
-	return n.QueueShareImagePaths(ctx, shareImagePaths(token))
+	return n.QueueShareImagePathsWithWarning(ctx, shareImagePaths(token))
 }
 
 // QueueShareImagePaths enqueues the same work for callers that already resolved
 // the app page paths.
 func (n *Notifier) QueueShareImagePaths(ctx context.Context, paths []string) error {
+	_, err := n.QueueShareImagePathsWithWarning(ctx, paths)
+	return err
+}
+
+// QueueShareImagePathsWithWarning queues the paths and reports a paused CDN purge so
+// the admin write can return a warning without failing the committed change.
+func (n *Notifier) QueueShareImagePathsWithWarning(ctx context.Context, paths []string) (string, error) {
 	n.defaults()
 	seen := make(map[string]bool, len(paths))
 	unique := make([]string, 0, len(paths))
@@ -54,11 +76,11 @@ func (n *Notifier) QueueShareImagePaths(ctx context.Context, paths []string) err
 	}
 	paths = unique
 	if len(paths) == 0 {
-		return nil
+		return "", nil
 	}
 	prefix := shareImagePurgePrefix(n.Config.WebBaseURL)
 	if err := n.Store.QueueURLPurges(ctx, []string{prefix}, maxPurgePrefixes, sectionPrefixes(n.Config.WebBaseURL)); err != nil {
-		return fmt.Errorf("queue share image purge: %w", err)
+		return "", fmt.Errorf("queue share image purge: %w", err)
 	}
 	base := strings.TrimRight(n.Config.WebBaseURL, "/")
 	var problems []error
@@ -81,7 +103,15 @@ func (n *Notifier) QueueShareImagePaths(ctx context.Context, paths []string) err
 			problems = append(problems, err)
 		}
 	}
-	return errors.Join(problems...)
+	if err := errors.Join(problems...); err != nil {
+		return "", err
+	}
+	settings, err := n.Store.SEOSettings(ctx)
+	if err != nil || !settings.Settings.Cloudflare.PurgeEnabled || settings.Settings.Cloudflare.ZoneID == "" {
+		n.Logger.Error("share image CDN purge paused; queued purge will retry when enabled", "status", purgePausedStatus, "pending", len(paths))
+		return ShareImagePurgeWarning, nil
+	}
+	return "", nil
 }
 
 // notificationLocale finds the site language encoded in a localized page path.

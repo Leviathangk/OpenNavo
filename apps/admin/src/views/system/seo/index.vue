@@ -145,6 +145,8 @@ const feedAlerts = computed(() => {
   if (feed.oldestPendingAt && Date.now() - new Date(feed.oldestPendingAt).getTime() > STALE_PENDING_MS)
     alerts.push(text('changeFeed.staleAlert', { time: formatDateTime(feed.oldestPendingAt) }));
   if (feed.deadAnnouncements > 0) alerts.push(text('changeFeed.deadAlert', { count: feed.deadAnnouncements }));
+  if (feed.lastPurgeStatus.startsWith('paused:'))
+    alerts.push(text('changeFeed.purge', { status: feed.lastPurgeStatus }));
   return alerts;
 });
 

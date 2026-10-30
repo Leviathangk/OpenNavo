@@ -15,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/service/management"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -76,6 +77,56 @@ func TestVisibilityChangeQueuesShareImagePurge(t *testing.T) {
 		}
 	}
 	require.True(t, foundInvalidation, "the web receives og:true for the app paths")
+}
+
+func TestVisibilityChangeWarnsAndKeepsPurgeQueuedWhenPaused(t *testing.T) {
+	ctx := context.Background()
+	f := newFeed(t)
+	_, err := f.run(ctx)
+	require.NoError(t, err)
+	shareImageFixture(t, f, 1999, "share-image-paused")
+	configure(t, f.st, func(settings *store.SEOSettings) {
+		settings.Cloudflare.PurgeEnabled, settings.Cloudflare.ZoneID = false, ""
+	})
+	var logged bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logged, nil))
+	previous := slog.Default()
+	slog.SetDefault(logger)
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	f.notifier.Logger = logger
+	svc := &management.Service{Store: f.st, Config: config.Config{WebBaseURL: "https://opennavo.example"}, InvalidateShareImages: func(ctx context.Context, token string) (string, error) {
+		return f.notifier.QueueShareImagePurgeWithWarning(ctx, token)
+	}}
+	result, err := svc.Execute(ctx, "UpdatePackageMeta", management.Input{ID: 1999, Body: map[string]any{"private": true, "visibilityReason": "Visibility fixture"}})
+	require.NoError(t, err)
+	view, ok := result.(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, urlnotify.ShareImagePurgeWarning, view["warning"])
+	require.Contains(t, logged.String(), "share image CDN purge paused")
+	require.Contains(t, logged.String(), "paused:")
+
+	prefix := "opennavo.example/_og/"
+	require.Contains(t, queuedPurges(t, f.st), prefix, "the CDN purge stays queued while paused")
+
+	_, err = f.run(ctx)
+	require.NoError(t, err)
+	state, err := f.st.URLNotifyState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "paused: Cloudflare purge disabled", state.LastPurgeStatus)
+	require.Contains(t, queuedPurges(t, f.st), prefix, "a paused drain must not consume the queue")
+	require.Contains(t, logged.String(), "CDN purge paused; queued prefixes remain for retry")
+
+	configure(t, f.st, edgePurge)
+	_, err = f.run(ctx)
+	require.NoError(t, err)
+	require.Empty(t, queuedPurges(t, f.st), "resuming the purge drains the queued prefix")
+	found := false
+	for _, request := range f.cloudflare.requests {
+		for _, value := range request["prefixes"].([]any) {
+			found = found || value == prefix
+		}
+	}
+	require.True(t, found, "Cloudflare receives the queued share-image prefix after resume")
 }
 
 func TestShareImagePurgeFailureDoesNotBlockVisibilityChange(t *testing.T) {

@@ -423,19 +423,19 @@ func (s *Service) shareImagePackageIDs(ctx context.Context, op string, in Input)
 }
 
 // invalidateShareImages resolves the app paths and hands the purge to the
-// configured queue. Errors are logged but never returned: visibility already
-// committed, and the queue retries delivery.
-func (s *Service) invalidateShareImages(ctx context.Context, packageID int64) {
+// configured queue. Queue errors are logged but never returned: visibility already
+// committed, and the queue retries delivery. A paused purge returns a warning.
+func (s *Service) invalidateShareImages(ctx context.Context, packageID int64) (warning string) {
 	if s.InvalidateShareImages == nil || packageID <= 0 {
-		return
+		return ""
 	}
 	var row struct{ Token string }
 	if err := s.Store.DB.WithContext(ctx).Raw("SELECT token FROM packages WHERE id=?", packageID).Scan(&row).Error; err != nil {
 		slog.Default().Error("share image invalidation lookup failed", "package_id", packageID, "error", err)
-		return
+		return ""
 	}
 	if row.Token == "" {
-		return
+		return ""
 	}
 	paths := make([]string, 0, len(i18n.SiteLocales))
 	for _, locale := range i18n.SiteLocales {
@@ -455,12 +455,21 @@ func (s *Service) invalidateShareImages(ctx context.Context, packageID int64) {
 		problem = hook(ctx, packageID, row.Token)
 	case func(context.Context, string, []string) error:
 		problem = hook(ctx, row.Token, paths)
+	case func(context.Context, string) (string, error):
+		warning, problem = hook(ctx, row.Token)
+	case func(context.Context, []string) (string, error):
+		warning, problem = hook(ctx, paths)
 	default:
 		problem = fmt.Errorf("unsupported InvalidateShareImages hook %T", hook)
 	}
 	if problem != nil {
 		slog.Default().Error("share image invalidation failed", "package_id", packageID, "token", row.Token, "error", problem)
+		return ""
 	}
+	if warning != "" {
+		slog.Default().Error("share image CDN purge paused", "package_id", packageID, "token", row.Token, "status", "paused: Cloudflare purge disabled", "warning", warning)
+	}
+	return warning
 }
 
 func (s *Service) Execute(ctx context.Context, op string, in Input) (result any, err error) {
@@ -480,8 +489,18 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 			}
 			// Queue, never await, the share-image purge: a CDN or web outage must not
 			// turn a committed visibility change into a failed admin write.
+			var warning string
 			for _, packageID := range s.shareImagePackageIDs(ctx, op, in) {
-				s.invalidateShareImages(ctx, packageID)
+				if current := s.invalidateShareImages(ctx, packageID); current != "" && warning == "" {
+					warning = current
+				}
+			}
+			if warning != "" && err == nil && op == "UpdatePackageMeta" {
+				if view, ok := result.(map[string]any); ok {
+					view["warning"] = warning
+				} else {
+					result = map[string]any{"warning": warning}
+				}
 			}
 		}
 	}()

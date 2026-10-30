@@ -8104,6 +8104,43 @@ export interface components {
         };
         /**
          * @example {
+         *       "warning": "CDN purge is pending; edge copies may persist until the purge is resumed."
+         *     }
+         */
+        PackageMetaUpdateWarning: {
+            /**
+             * @description Present when the CDN purge is paused. The purge stays queued and share-image edge copies may persist until it is resumed.
+             * @example CDN purge is pending; edge copies may persist until the purge is resumed.
+             */
+            warning?: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "warning": "CDN purge is pending; edge copies may persist until the purge is resumed."
+         *       }
+         *     }
+         */
+        PackageMetaUpdateResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["PackageMetaUpdateWarning"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "warning": "CDN purge is pending; edge copies may persist until the purge is resumed."
+         *       }
+         *     }
+         */
+        PackageMetaUpdateResult: components["schemas"]["PackageMetaUpdateResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
          *       "code": "0000",
          *       "msg": "ok",
          *       "data": {
@@ -25267,7 +25304,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description On success data is null; see code for failures */
+            /** @description On success data is empty or carries a warning when the CDN purge is paused; see code for failures */
             200: {
                 headers: {
                     /**
@@ -25278,7 +25315,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EmptyResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                    "application/json": components["schemas"]["PackageMetaUpdateResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };

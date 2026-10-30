@@ -405,7 +405,8 @@ func (n *Notifier) drainPurges(ctx context.Context, state *store.URLNotifyState)
 		return "error: Cloudflare settings unavailable", 0
 	}
 	if !cdnPurgeEnabled(settings) {
-		return "paused: Cloudflare purge disabled", 0
+		n.Logger.Error("CDN purge paused; queued prefixes remain for retry", "status", purgePausedStatus, "pending", len(prefixes))
+		return purgePausedStatus, 0
 	}
 	token, err := n.Store.SEOSecret(ctx, n.Config, "cloudflare")
 	if err != nil || token == "" {

@@ -24,6 +24,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -94,4 +95,47 @@ func TestAdminVisibilityRequiresReasonAndAuditsIt(t *testing.T) {
 			read(t, 200)
 		})
 	}
+}
+
+func TestAdminVisibilityWriteWarnsWhenCDNPurgePaused(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	data, err := seeds.Load()
+	require.NoError(t, err)
+	hash, err := seed.HashPassword("isolated-test-only")
+	require.NoError(t, err)
+	require.NoError(t, st.Seed(ctx, data, "visibility-warning-fixture", hash))
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(902,'cask','visibility-warning','visibility-warning','homebrew/cask','Visibility warning','1','1','{}','fixture')`).Error)
+	cfg := config.Config{JWTSecret: strings.Repeat("w", 32), JWTAccessTTL: time.Hour, JWTRefreshTTL: time.Hour, WebBaseURL: "https://visibility.example"}
+	authentication, err := auth.New(st, cfg)
+	require.NoError(t, err)
+	pair, err := authentication.Login(ctx, "visibility-warning-fixture", "isolated-test-only", store.AuditActor{})
+	require.NoError(t, err)
+	manager := &management.Service{Store: st, Config: cfg, InvalidateShareImages: func(ctx context.Context, token string) (string, error) {
+		return (&urlnotify.Notifier{Store: st, Config: cfg}).QueueShareImagePurgeWithWarning(ctx, token)
+	}}
+	server, err := httpserver.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), st,
+		httpserver.Dependencies{Admin: &admin.Handler{Auth: authentication, Management: manager}})
+	require.NoError(t, err)
+	spec, err := adminapi.GetSpec()
+	require.NoError(t, err)
+	r := httptest.NewRequest("PUT", "/admin-api/packages/902/meta", strings.NewReader(`{"private":true,"visibilityReason":"Catalog visibility review."}`))
+	r.Header.Set("Authorization", "Bearer "+pair.Token)
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.Engine.ServeHTTP(w, r)
+	require.Equal(t, 200, w.Code, w.Body.String())
+	testutil.ValidateResponse(t, spec, "/admin-api", r, w)
+	var body struct {
+		Code string `json:"code"`
+		Data struct {
+			Warning string `json:"warning"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, domain.CodeOK, body.Code)
+	require.Equal(t, urlnotify.ShareImagePurgeWarning, body.Data.Warning, w.Body.String())
+	var pending string
+	require.NoError(t, st.DB.Raw("SELECT pending_purges::text FROM url_notify_state WHERE id=true").Scan(&pending).Error)
+	require.Contains(t, pending, "visibility.example/_og/", "the paused purge stays queued")
 }

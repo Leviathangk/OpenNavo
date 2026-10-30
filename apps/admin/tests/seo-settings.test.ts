@@ -302,6 +302,17 @@ describe('SEO settings page', () => {
     wrapper.unmount();
   });
 
+  it('Raises the change feed alert when the CDN purge is paused', async () => {
+    api.load.mockResolvedValueOnce(
+      response({ changeFeed: changeFeed({ lastPurgeStatus: 'paused: Cloudflare purge disabled' }) })
+    );
+    const wrapper = page();
+    await flushPromises();
+    const alert = wrapper.get('[data-testid="change-feed-alert"]');
+    expect(alert.text()).toContain('page.system.seo.changeFeed.purge');
+    wrapper.unmount();
+  });
+
   it('Warns when a change has waited over a day or announcements died, and shows a probe cooldown', async () => {
     const stale = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     for (const [overrides, alerts] of [
