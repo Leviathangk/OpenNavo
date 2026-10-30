@@ -46,6 +46,7 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 				}
 				previous["package_id"] = next["package_id"]
 				previous["hidden"], previous["editor_choice"] = false, false
+				previous["private"], previous["visibility_reason"] = false, ""
 				previous["tags"] = []any{}
 			}
 			desired := wantByKey[key]

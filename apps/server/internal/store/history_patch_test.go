@@ -8,12 +8,14 @@ import (
 
 func TestHistoryPatchPreservesFieldsOutsideOriginalMutation(t *testing.T) {
 	before := HistoryState{"package_meta": {}}
-	after := HistoryState{"package_meta": {{"package_id": float64(1), "icon_asset_id": float64(4), "notes": nil, "hidden": false, "editor_choice": false, "tags": []any{}}}}
-	current := HistoryState{"package_meta": {{"package_id": float64(1), "icon_asset_id": float64(8), "notes": "later private editorial notes", "hidden": true, "editor_choice": false, "tags": []any{"later"}}}}
+	after := HistoryState{"package_meta": {{"package_id": float64(1), "icon_asset_id": float64(4), "notes": nil, "hidden": false, "private": false, "visibility_reason": "", "editor_choice": false, "tags": []any{}}}}
+	current := HistoryState{"package_meta": {{"package_id": float64(1), "icon_asset_id": float64(8), "notes": "later private editorial notes", "hidden": true, "private": true, "visibility_reason": "Later privacy decision", "editor_choice": false, "tags": []any{"later"}}}}
 	patched := HistoryPatch(current, before, after, after)
 	require.Equal(t, float64(4), patched["package_meta"][0]["icon_asset_id"])
 	require.Equal(t, "later private editorial notes", patched["package_meta"][0]["notes"])
 	require.Equal(t, true, patched["package_meta"][0]["hidden"])
+	require.Equal(t, true, patched["package_meta"][0]["private"])
+	require.Equal(t, "Later privacy decision", patched["package_meta"][0]["visibility_reason"])
 	require.Equal(t, []any{"later"}, patched["package_meta"][0]["tags"])
 	require.Equal(t, float64(8), current["package_meta"][0]["icon_asset_id"])
 }

@@ -97,26 +97,50 @@ func HistoryHash(state HistoryState) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// HistoryHashMatches accepts snapshots from before build-specific release notes.
-// Only the new column's migration default may be omitted: a real build binding
-// or any other edit must still cause a conflict. Never mutate the snapshot.
+// HistoryHashMatches accepts snapshots from before build-specific notes and private visibility.
+// Only migration defaults/backfills may be omitted; real visibility, reason or build edits conflict.
+// Never mutate the snapshot.
 func HistoryHashMatches(state HistoryState, expected string) bool {
 	if HistoryHash(state) == expected {
 		return true
 	}
-	rows := state["releases"]
-	if len(rows) == 0 {
-		return false
+	candidates := []HistoryState{state}
+	if rows := state["package_meta"]; len(rows) > 0 {
+		legacy := maps.Clone(state)
+		legacy["package_meta"] = make([]map[string]any, len(rows))
+		for i, row := range rows {
+			copy := maps.Clone(row)
+			if row["private"] == false {
+				delete(copy, "private")
+			}
+			if row["visibility_reason"] == "" || row["hidden"] == true && row["visibility_reason"] == "Legacy setting; reason not recorded." {
+				delete(copy, "visibility_reason")
+			}
+			legacy["package_meta"][i] = copy
+		}
+		if HistoryHash(legacy) == expected {
+			return true
+		}
+		candidates = append(candidates, legacy)
 	}
-	legacy := maps.Clone(state)
-	legacy["releases"] = make([]map[string]any, len(rows))
-	for i, row := range rows {
-		legacy["releases"][i] = maps.Clone(row)
-		if row["package_version_id"] == nil {
-			delete(legacy["releases"][i], "package_version_id")
+	for _, candidate := range candidates {
+		rows := candidate["releases"]
+		if len(rows) == 0 {
+			continue
+		}
+		legacy := maps.Clone(candidate)
+		legacy["releases"] = make([]map[string]any, len(rows))
+		for i, row := range rows {
+			legacy["releases"][i] = maps.Clone(row)
+			if row["package_version_id"] == nil {
+				delete(legacy["releases"][i], "package_version_id")
+			}
+		}
+		if HistoryHash(legacy) == expected {
+			return true
 		}
 	}
-	return HistoryHash(legacy) == expected
+	return false
 }
 func historyAssets(states ...HistoryState) []int64 {
 	ids := []int64{}

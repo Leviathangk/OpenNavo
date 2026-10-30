@@ -361,7 +361,10 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 	defer func() {
 		_, hidden := in.Body["hidden"]
 		_, private := in.Body["private"]
-		if err == nil && op == "UpdatePackageMeta" && (hidden || private) && !domain.CurrentOperation(ctx).DryRun && !agentTransaction(ctx) && s.InvalidatePublic != nil {
+		visibility := op == "UpdatePackageMeta" && (hidden || private)
+		// A restore can also apply a recorded visibility change.
+		visibility = visibility || op == "RestoreRevision" || op == "RestoreTrash" || op == "RevertRequest"
+		if err == nil && visibility && !domain.CurrentOperation(ctx).DryRun && !agentTransaction(ctx) && s.InvalidatePublic != nil {
 			err = s.InvalidatePublic(ctx)
 		}
 	}()
