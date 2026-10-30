@@ -69,7 +69,7 @@
   "security.newStartupItem": "Neues Startobjekt",
   "confirmation.title": "OpenNavo-Bestätigung",
   "confirmation.request": "OpenNavo hat eine Anfrage zum Ändern dieses Macs erhalten.\n\nAnfragender: {caller}\nQuelle: {source}\nAktion: {action}\nZiel: {target}\n\nDiesen Vorgang erlauben?",
-  "confirmation.collection": "OpenNavo hat eine Anfrage zur Installation von {count} Apps aus dieser Sammlung erhalten.\n\n",
+  "confirmation.collection": "OpenNavo hat eine Anfrage zur Installation von Apps aus dieser Sammlung erhalten. Es werden {install} installiert und {skip} übersprungen.\n\n",
   "confirmation.footer": "Es werden nur aktivierte Apps aus dieser Liste installiert, die weder installiert sind noch in der Warteschlange stehen.",
   "confirmation.allow": "Erlauben",
   "confirmation.deny": "Ablehnen",

@@ -17,9 +17,9 @@ import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useTasksStore } from '@/stores';
 import { useNamesStore } from '@/stores/names';
 
-// Collection details (API): body, items, recommendations; the app UI keeps its own batch preview and enqueues
-// installs individually (trigger=bundle), skipping installed/disabled items. Deep-link collection installs are
-// handled by Rust from the opaque pending id and never reach this batch path.
+// Collection details (API): body, items, recommendations; the app UI previews the batch and sends trigger=bundle
+// unchanged through IPC, preserving the queue's unattended-run and pause policies. Installed, disabled and link
+// items stay out of the batch. Rust handles deep-link collection installs from the opaque pending id.
 // Shared with the web view (ADR-017).
 const props = defineProps<{ slug: string }>();
 

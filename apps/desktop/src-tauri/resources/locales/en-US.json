@@ -69,7 +69,7 @@
   "security.newStartupItem": "New startup item",
   "confirmation.title": "OpenNavo confirmation",
   "confirmation.request": "OpenNavo received a request to change this Mac.\n\nCaller: {caller}\nSource: {source}\nAction: {action}\nTarget: {target}\n\nAllow this one operation?",
-  "confirmation.collection": "OpenNavo received a request to install {count} apps from this collection.\n\n",
+  "confirmation.collection": "OpenNavo received a request to install apps from this collection. It will install {install}, skip {skip}.\n\n",
   "confirmation.footer": "Only enabled apps in this reviewed list will be installed.",
   "confirmation.allow": "Allow",
   "confirmation.deny": "Deny",

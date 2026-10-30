@@ -84,6 +84,21 @@ mod tests {
     }
 
     #[test]
+    fn shared_ui_external_links_require_the_system_opener() {
+        let dev = Url::parse("http://localhost:1420").unwrap();
+        // OnKeyValueList homepage and OnVersionEntry upstream-source hrefs.
+        for value in [
+            "https://code.visualstudio.com/",
+            "https://code.visualstudio.com/updates/v1_95",
+            "https://github.com/microsoft/vscode/releases/tag/1.95.0",
+        ] {
+            let url = Url::parse(value).unwrap();
+            assert!(!allowed(&url, None), "packaged: {value}");
+            assert!(!allowed(&url, Some(&dev)), "development: {value}");
+        }
+    }
+
+    #[test]
     fn navigation_guard_is_registered_globally_before_windows_are_built() {
         let source = include_str!("lib.rs");
         let guard = source

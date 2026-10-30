@@ -253,7 +253,7 @@ async fn confirm_collection(
         .collect();
     let grant = match context
         .confirmation
-        .confirm_collection(context.app, request.clone(), items)
+        .confirm_collection(context.app, request.clone(), items, plan.targets.len())
         .await
     {
         Ok(grant) => grant,

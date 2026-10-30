@@ -69,7 +69,7 @@
   "security.newStartupItem": "Новый элемент автозапуска",
   "confirmation.title": "Подтверждение OpenNavo",
   "confirmation.request": "OpenNavo получил запрос на изменение этого Mac.\n\nИнициатор: {caller}\nИсточник: {source}\nДействие: {action}\nОбъект: {target}\n\nРазрешить эту операцию?",
-  "confirmation.collection": "OpenNavo получил запрос на установку приложений из этой подборки. Количество: {count}.\n\n",
+  "confirmation.collection": "OpenNavo получил запрос на установку приложений из этой подборки. Будет установлено: {install}, пропущено: {skip}.\n\n",
   "confirmation.footer": "Будут установлены только доступные приложения из этого списка, которые ещё не установлены и не добавлены в очередь.",
   "confirmation.allow": "Разрешить",
   "confirmation.deny": "Отклонить",

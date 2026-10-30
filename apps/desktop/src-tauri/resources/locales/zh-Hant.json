@@ -69,7 +69,7 @@
   "security.newStartupItem": "發現新啟動項",
   "confirmation.title": "OpenNavo 操作確認",
   "confirmation.request": "OpenNavo 收到了更改這台 Mac 的請求。\n\n呼叫方：{caller}\n來源：{source}\n操作：{action}\n目標：{target}\n\n允許本次操作嗎？",
-  "confirmation.collection": "OpenNavo 收到了安裝此合集中 App 的請求，共 {count} 個。\n\n",
+  "confirmation.collection": "OpenNavo 收到了安裝此合集中 App 的請求。將安裝 {install} 個，跳過 {skip} 個。\n\n",
   "confirmation.footer": "僅安裝此列表中已啟用且尚未安裝或排隊的 App。",
   "confirmation.allow": "允許",
   "confirmation.deny": "拒絕",

@@ -9,3 +9,22 @@ export async function openExternal(url: string): Promise<void> {
   }
   window.open(url, '_blank', 'noopener,noreferrer');
 }
+
+/** Shared UI anchors keep normal browser behavior; the desktop routes their clicks through its scoped opener. */
+export function startExternalLinks(): () => void {
+  if (!isTauri()) return () => {};
+  const onClick = (event: MouseEvent) => {
+    if (event.defaultPrevented || event.button !== (event.type === 'auxclick' ? 1 : 0)) return;
+    const link = event.composedPath().find(node => node instanceof HTMLAnchorElement);
+    if (!(link instanceof HTMLAnchorElement) || link.target.toLowerCase() !== '_blank') return;
+    if (link.protocol !== 'https:') return;
+    event.preventDefault();
+    void openExternal(link.href);
+  };
+  document.addEventListener('click', onClick);
+  document.addEventListener('auxclick', onClick);
+  return () => {
+    document.removeEventListener('click', onClick);
+    document.removeEventListener('auxclick', onClick);
+  };
+}

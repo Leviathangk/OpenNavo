@@ -69,7 +69,7 @@
   "security.newStartupItem": "新しい起動項目",
   "confirmation.title": "OpenNavo の確認",
   "confirmation.request": "この Mac を変更するリクエストを OpenNavo が受け取りました。\n\n呼び出し元：{caller}\n送信元：{source}\n操作：{action}\n対象：{target}\n\n今回の操作を許可しますか？",
-  "confirmation.collection": "このコレクションの {count} 個のアプリをインストールするリクエストを OpenNavo が受け取りました。\n\n",
+  "confirmation.collection": "このコレクションのアプリをインストールするリクエストを OpenNavo が受け取りました。{install} 個をインストールし、{skip} 個をスキップします。\n\n",
   "confirmation.footer": "このリスト内の有効なアプリのうち、未インストールかつ未登録のものだけをインストールします。",
   "confirmation.allow": "許可",
   "confirmation.deny": "拒否",

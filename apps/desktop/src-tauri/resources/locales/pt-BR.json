@@ -69,7 +69,7 @@
   "security.newStartupItem": "Novo item de inicialização",
   "confirmation.title": "Confirmação do OpenNavo",
   "confirmation.request": "O OpenNavo recebeu uma solicitação para alterar este Mac.\n\nSolicitante: {caller}\nOrigem: {source}\nAção: {action}\nDestino: {target}\n\nPermitir esta operação?",
-  "confirmation.collection": "O OpenNavo recebeu uma solicitação para instalar {count} apps desta coleção.\n\n",
+  "confirmation.collection": "O OpenNavo recebeu uma solicitação para instalar apps desta coleção. Serão instalados {install} e ignorados {skip}.\n\n",
   "confirmation.footer": "Somente os apps habilitados desta lista que ainda não estão instalados nem na fila serão instalados.",
   "confirmation.allow": "Permitir",
   "confirmation.deny": "Negar",

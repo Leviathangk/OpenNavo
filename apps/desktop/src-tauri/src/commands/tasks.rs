@@ -2,6 +2,18 @@ use crate::{AppError, core::DesktopCore, model::*};
 use std::{io::Write, path::Path, sync::Arc};
 use tauri::State;
 
+fn validate_ipc_trigger(trigger: TaskTrigger) -> Result<(), AppError> {
+    // App-internal origins retain the queue's retry, unattended-run and pause policies.
+    // External origins must enter through Rust-owned paths that enforce native confirmation.
+    if matches!(trigger, TaskTrigger::Deeplink | TaskTrigger::Mcp) {
+        return Err(AppError::new(
+            "E_INVALID_ARG",
+            "external_trigger_requires_rust",
+        ));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn task_enqueue(
@@ -11,9 +23,7 @@ pub async fn task_enqueue(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Task, AppError> {
-    // IPC callers cannot assert an external or unattended origin. Internal Rust callers use the queue directly.
-    let _ = trigger;
-    let trigger = TaskTrigger::Manual;
+    validate_ipc_trigger(trigger)?;
     if op == TaskOp::Clean {
         return Err(AppError::new("E_INVALID_ARG", "cleanup_execute_required"));
     }
@@ -29,8 +39,7 @@ pub async fn task_enqueue_many(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Vec<Task>, AppError> {
-    let _ = trigger;
-    let trigger = TaskTrigger::Manual;
+    validate_ipc_trigger(trigger)?;
     let queue = state.queue.clone();
     crate::blocking(move || queue.enqueue_many(op, targets, options, trigger)).await
 }
@@ -40,58 +49,177 @@ mod tests {
     use super::*;
     use tauri::Manager;
 
-    #[tokio::test]
-    async fn generic_task_commands_always_persist_manual_origin() {
-        let tmp = tempfile::tempdir().unwrap();
-        let core = DesktopCore::open(
-            tmp.path().join("data"),
-            tmp.path().join("cache"),
-            tmp.path().join("askpass"),
+    const TRIGGERS: [TaskTrigger; 6] = [
+        TaskTrigger::Manual,
+        TaskTrigger::Bundle,
+        TaskTrigger::Retry,
+        TaskTrigger::Schedule,
+        TaskTrigger::Deeplink,
+        TaskTrigger::Mcp,
+    ];
+
+    fn open_core(tmp: &Path) -> Arc<DesktopCore> {
+        DesktopCore::open(
+            tmp.join("data"),
+            tmp.join("cache"),
+            tmp.join("askpass"),
             Arc::new(|_| {}),
         )
-        .unwrap();
-        let app = tauri::test::mock_app();
-        app.manage(core.clone());
-        for (index, trigger) in [
-            TaskTrigger::Manual,
-            TaskTrigger::Deeplink,
-            TaskTrigger::Mcp,
-            TaskTrigger::Schedule,
-            TaskTrigger::Retry,
-            TaskTrigger::Bundle,
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let target = |suffix| TaskTarget {
+        .unwrap()
+    }
+
+    async fn enqueue(
+        app: &tauri::App<tauri::test::MockRuntime>,
+        op: TaskOp,
+        many: bool,
+        trigger: TaskTrigger,
+        options: TaskOptions,
+    ) -> Result<Vec<Task>, AppError> {
+        let targets = (0..if many { 2 } else { 1 })
+            .map(|index| TaskTarget {
                 kind: TaskKind::Cask,
-                token: format!("fixture-{index}-{suffix}"),
-            };
-            let single = task_enqueue(
+                token: format!("fixture-{index}"),
+            })
+            .collect::<Vec<_>>();
+        if many {
+            task_enqueue_many(app.state(), op, targets, options, trigger).await
+        } else {
+            task_enqueue(
                 app.state(),
-                TaskOp::Install,
-                Some(target("one")),
-                TaskOptions::default(),
+                op,
+                targets.into_iter().next(),
+                options,
                 trigger,
             )
             .await
-            .unwrap();
-            let batch = task_enqueue_many(
-                app.state(),
-                TaskOp::Install,
-                vec![target("two"), target("three")],
-                TaskOptions::default(),
-                trigger,
-            )
-            .await
-            .unwrap();
-            for task in std::iter::once(single).chain(batch) {
-                assert_eq!(task.trigger, TaskTrigger::Manual);
+            .map(|task| vec![task])
+        }
+    }
+
+    async fn assert_trigger_policy(many: bool) {
+        for trigger in TRIGGERS {
+            let tmp = tempfile::tempdir().unwrap();
+            let core = open_core(tmp.path());
+            let mut parents = Vec::new();
+            for index in 0..if many { 2 } else { 1 } {
+                let mut parent = core
+                    .queue
+                    .enqueue(
+                        TaskOp::Install,
+                        Some(TaskTarget {
+                            kind: TaskKind::Cask,
+                            token: format!("fixture-{index}"),
+                        }),
+                        TaskOptions::default(),
+                        TaskTrigger::Manual,
+                    )
+                    .unwrap();
+                parent.state = TaskState::Failed;
+                core.database.save_task(&parent).unwrap();
+                parents.push(parent);
+            }
+            // Recover an unrelated pending task so enqueue must preserve or resume a paused queue.
+            core.queue
+                .enqueue(
+                    TaskOp::Install,
+                    Some(TaskTarget {
+                        kind: TaskKind::Cask,
+                        token: "pending-fixture".into(),
+                    }),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .unwrap();
+            drop(core);
+            let core = open_core(tmp.path());
+            assert!(core.queue.is_paused());
+            let app = tauri::test::mock_app();
+            app.manage(core.clone());
+            let before = core.database.tasks().unwrap().len();
+            let result =
+                enqueue(&app, TaskOp::Install, many, trigger, TaskOptions::default()).await;
+            if matches!(trigger, TaskTrigger::Deeplink | TaskTrigger::Mcp) {
+                let error = result.unwrap_err();
+                assert_eq!(error.code, "E_INVALID_ARG", "{trigger:?}");
+                assert_eq!(error.message, "external_trigger_requires_rust");
+                assert_eq!(core.database.tasks().unwrap().len(), before);
+                assert!(core.queue.is_paused());
+                continue;
+            }
+            let tasks = result.unwrap();
+            assert_eq!(tasks.len(), parents.len());
+            for (task, parent) in tasks.iter().zip(parents) {
+                assert_eq!(task.trigger, trigger);
                 assert_eq!(
                     core.database.task(&task.id).unwrap().unwrap().trigger,
-                    TaskTrigger::Manual
+                    trigger
+                );
+                assert_eq!(
+                    core.database
+                        .meta(&format!("task_retry_parent:{}", task.id))
+                        .unwrap(),
+                    (trigger == TaskTrigger::Retry).then_some(parent.id)
                 );
             }
+            assert_eq!(
+                core.queue.is_paused(),
+                matches!(trigger, TaskTrigger::Bundle | TaskTrigger::Schedule),
+                "{trigger:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn task_enqueue_preserves_internal_triggers_and_rejects_external_origins() {
+        assert_trigger_policy(false).await;
+    }
+
+    #[tokio::test]
+    async fn task_enqueue_many_preserves_internal_triggers_and_rejects_external_origins() {
+        assert_trigger_policy(true).await;
+    }
+
+    #[tokio::test]
+    async fn generic_task_commands_enforce_unattended_options() {
+        let tmp = tempfile::tempdir().unwrap();
+        let core = open_core(tmp.path());
+        let app = tauri::test::mock_app();
+        app.manage(core.clone());
+        for many in [false, true] {
+            for trigger in [TaskTrigger::Bundle, TaskTrigger::Schedule] {
+                for options in [
+                    TaskOptions {
+                        quit_running: true,
+                        ..TaskOptions::default()
+                    },
+                    TaskOptions {
+                        quit_running: true,
+                        reopen: true,
+                        ..TaskOptions::default()
+                    },
+                ] {
+                    let error = enqueue(&app, TaskOp::Upgrade, many, trigger, options)
+                        .await
+                        .unwrap_err();
+                    assert_eq!(error.code, "E_INVALID_ARG");
+                    assert_eq!(error.message, "unattended_quit");
+                }
+            }
+            let error = enqueue(
+                &app,
+                TaskOp::Install,
+                many,
+                TaskTrigger::Schedule,
+                TaskOptions {
+                    adopt: true,
+                    ..TaskOptions::default()
+                },
+            )
+            .await
+            .unwrap_err();
+            assert_eq!(error.code, "E_INVALID_ARG");
+            assert_eq!(error.message, "unattended_adopt");
+            assert!(core.database.tasks().unwrap().is_empty());
         }
     }
 }

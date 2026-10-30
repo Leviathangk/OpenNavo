@@ -86,9 +86,16 @@ impl ConfirmationRequest {
     fn collection_message(
         &self,
         items: &[ConfirmationListItem],
+        install_count: usize,
         locale: Locale,
     ) -> Result<String, AppError> {
-        let mut message = text(locale, "collection")?.replace("{count}", &items.len().to_string());
+        let skip_count = items
+            .len()
+            .checked_sub(install_count)
+            .ok_or_else(|| AppError::new("E_INVALID_ARG", "collection_counts"))?;
+        let mut message = text(locale, "collection")?
+            .replace("{install}", &install_count.to_string())
+            .replace("{skip}", &skip_count.to_string());
         for item in items {
             message.push_str("• ");
             message.push_str(&display_value(&item.name));
@@ -221,6 +228,7 @@ impl ConfirmationService {
         app: &tauri::AppHandle<R>,
         request: ConfirmationRequest,
         items: Vec<ConfirmationListItem>,
+        install_count: usize,
     ) -> Result<ConfirmationGrant, AppError> {
         let locale = app_locale(app);
         let pending = self.begin(request.clone())?;
@@ -229,7 +237,7 @@ impl ConfirmationService {
         let dialog_id = pending.id;
         let guard = ConfirmationDropGuard::new(std::sync::Arc::clone(self), dialog_id);
         app.dialog()
-            .message(request.collection_message(&items, locale)?)
+            .message(request.collection_message(&items, install_count, locale)?)
             .title(text(locale, "title")?)
             .kind(MessageDialogKind::Warning)
             .buttons(MessageDialogButtons::OkCancelCustom(
@@ -490,7 +498,7 @@ mod tests {
     }
 
     #[test]
-    fn collection_prompt_lists_every_app_and_marks_disabled_rows() {
+    fn collection_prompt_counts_planned_installs_and_marks_every_skip_reason() {
         let request = request("collection/dev-setup");
         let message = request
             .collection_message(
@@ -527,15 +535,65 @@ mod tests {
                         unsupported: false,
                         duplicate: false,
                     },
+                    ConfirmationListItem {
+                        name: "Duplicate app".into(),
+                        disabled: false,
+                        installed: false,
+                        already_queued: false,
+                        unsupported: false,
+                        duplicate: true,
+                    },
+                    ConfirmationListItem {
+                        name: "Formula".into(),
+                        disabled: false,
+                        installed: false,
+                        already_queued: false,
+                        unsupported: true,
+                        duplicate: false,
+                    },
                 ],
+                1,
                 Locale::EnUs,
             )
             .unwrap();
-        assert!(message.contains("install 4 apps"));
+        assert!(message.contains("will install 1, skip 5"));
         assert!(message.contains("Ghostty"));
         assert!(message.contains("Legacy app (disabled)"));
         assert!(message.contains("Installed app (already installed)"));
         assert!(message.contains("Queued app (already queued)"));
+        assert!(message.contains("Duplicate app (duplicate)"));
+        assert!(message.contains("Formula (not a cask)"));
+    }
+
+    #[test]
+    fn collection_prompt_handles_zero_and_all_installable_targets() {
+        let request = request("collection/dev-setup");
+        let item = ConfirmationListItem {
+            name: "Ghostty".into(),
+            disabled: false,
+            installed: false,
+            already_queued: false,
+            unsupported: false,
+            duplicate: false,
+        };
+        for (items, install_count, summary) in [
+            (vec![], 0, "will install 0, skip 0"),
+            (vec![item.clone(); 2], 2, "will install 2, skip 0"),
+            (
+                vec![ConfirmationListItem {
+                    installed: true,
+                    ..item
+                }],
+                0,
+                "will install 0, skip 1",
+            ),
+        ] {
+            let message = request
+                .collection_message(&items, install_count, Locale::EnUs)
+                .unwrap();
+            assert!(message.contains(summary), "{message}");
+        }
+        assert!(request.collection_message(&[], 1, Locale::EnUs).is_err());
     }
 
     #[test]
@@ -797,9 +855,24 @@ mod tests {
             for field in ["{caller}", "{source}", "{action}", "{target}"] {
                 assert!(!message.contains(field));
             }
-            let message = request.collection_message(&[], locale).unwrap();
-            assert!(message.contains('0'));
-            assert!(!message.contains("{count}"));
+            let items = vec![
+                ConfirmationListItem {
+                    name: "Fixture".into(),
+                    disabled: false,
+                    installed: false,
+                    already_queued: false,
+                    unsupported: false,
+                    duplicate: false,
+                };
+                12
+            ];
+            let message = request.collection_message(&items, 7, locale).unwrap();
+            assert!(message.contains('7'), "{locale:?}: {message}");
+            assert!(message.contains('5'), "{locale:?}: {message}");
+            assert!(!message.contains("12"), "{locale:?}: {message}");
+            for field in ["{install}", "{skip}", "{count}"] {
+                assert!(!message.contains(field), "{locale:?}: {message}");
+            }
         }
     }
 }

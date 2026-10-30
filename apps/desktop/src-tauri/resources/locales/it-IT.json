@@ -69,7 +69,7 @@
   "security.newStartupItem": "Nuovo elemento di avvio",
   "confirmation.title": "Conferma di OpenNavo",
   "confirmation.request": "OpenNavo ha ricevuto una richiesta di modifica di questo Mac.\n\nRichiedente: {caller}\nOrigine: {source}\nAzione: {action}\nDestinazione: {target}\n\nConsentire questa operazione?",
-  "confirmation.collection": "OpenNavo ha ricevuto una richiesta di installazione di {count} app da questa raccolta.\n\n",
+  "confirmation.collection": "OpenNavo ha ricevuto una richiesta di installazione di app da questa raccolta. Ne installerà {install} e ne salterà {skip}.\n\n",
   "confirmation.footer": "Verranno installate solo le app abilitate di questo elenco che non sono già installate o in coda.",
   "confirmation.allow": "Consenti",
   "confirmation.deny": "Nega",

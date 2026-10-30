@@ -157,13 +157,29 @@ describe('Deep links', () => {
   });
 
   it.each(['manual', 'deeplink', 'mcp', 'schedule', 'bundle', 'retry'] as const)(
-    'generic single and batch IPC ignore the self-reported %s trigger',
+    'generic single and batch IPC preserve internal origins and reject external origins (%s)',
     async trigger => {
       await setup('/discover');
+      const before = await unwrap(commands.taskListActive());
+      if (trigger === 'deeplink' || trigger === 'mcp') {
+        const error = { code: 'E_INVALID_ARG', message: 'external_trigger_requires_rust' };
+        await expect(
+          unwrap(commands.taskEnqueue('install', { kind: 'cask', token: 'zed' }, {}, trigger))
+        ).rejects.toMatchObject(error);
+        await expect(
+          unwrap(commands.taskEnqueueMany('install', [{ kind: 'cask', token: 'notion' }], {}, trigger))
+        ).rejects.toMatchObject(error);
+        await expect(unwrap(commands.taskEnqueueMany('install', [], {}, trigger))).rejects.toMatchObject(error);
+        expect(await unwrap(commands.taskListActive())).toEqual(before);
+        return;
+      }
       const task = await unwrap(commands.taskEnqueue('install', { kind: 'cask', token: 'zed' }, {}, trigger));
       const batch = await unwrap(commands.taskEnqueueMany('install', [{ kind: 'cask', token: 'notion' }], {}, trigger));
-      expect(task.trigger).toBe('manual');
-      expect(batch.every(item => item.trigger === 'manual')).toBe(true);
+      const active = await unwrap(commands.taskListActive());
+      for (const item of [task, ...batch]) {
+        expect(item.trigger).toBe(trigger);
+        expect(active.find(stored => stored.id === item.id)?.trigger).toBe(trigger);
+      }
     }
   );
 
