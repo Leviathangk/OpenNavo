@@ -2,16 +2,6 @@ use crate::{AppError, core::DesktopCore, model::*};
 use std::{io::Write, path::Path, sync::Arc};
 use tauri::State;
 
-pub(crate) fn reject_unconfirmed_trigger(trigger: TaskTrigger) -> Result<(), AppError> {
-    if matches!(trigger, TaskTrigger::Deeplink | TaskTrigger::Mcp) {
-        return Err(AppError::new(
-            "E_CONFIRMATION_REQUIRED",
-            "write_confirmation_required",
-        ));
-    }
-    Ok(())
-}
-
 #[tauri::command]
 #[specta::specta]
 pub async fn task_enqueue(
@@ -21,7 +11,9 @@ pub async fn task_enqueue(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Task, AppError> {
-    reject_unconfirmed_trigger(trigger)?;
+    // IPC callers cannot assert an external or unattended origin. Internal Rust callers use the queue directly.
+    let _ = trigger;
+    let trigger = TaskTrigger::Manual;
     if op == TaskOp::Clean {
         return Err(AppError::new("E_INVALID_ARG", "cleanup_execute_required"));
     }
@@ -37,32 +29,70 @@ pub async fn task_enqueue_many(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Vec<Task>, AppError> {
-    reject_unconfirmed_trigger(trigger)?;
+    let _ = trigger;
+    let trigger = TaskTrigger::Manual;
     let queue = state.queue.clone();
     crate::blocking(move || queue.enqueue_many(op, targets, options, trigger)).await
 }
 
 #[cfg(test)]
 mod tests {
-    use super::reject_unconfirmed_trigger;
-    use crate::model::TaskTrigger;
+    use super::*;
+    use tauri::Manager;
 
-    #[test]
-    fn generic_task_commands_reject_external_write_triggers() {
-        assert_eq!(
-            reject_unconfirmed_trigger(TaskTrigger::Deeplink)
-                .unwrap_err()
-                .code,
-            "E_CONFIRMATION_REQUIRED"
-        );
-        assert_eq!(
-            reject_unconfirmed_trigger(TaskTrigger::Mcp)
-                .unwrap_err()
-                .code,
-            "E_CONFIRMATION_REQUIRED"
-        );
-        assert!(reject_unconfirmed_trigger(TaskTrigger::Manual).is_ok());
-        assert!(reject_unconfirmed_trigger(TaskTrigger::Bundle).is_ok());
+    #[tokio::test]
+    async fn generic_task_commands_always_persist_manual_origin() {
+        let tmp = tempfile::tempdir().unwrap();
+        let core = DesktopCore::open(
+            tmp.path().join("data"),
+            tmp.path().join("cache"),
+            tmp.path().join("askpass"),
+            Arc::new(|_| {}),
+        )
+        .unwrap();
+        let app = tauri::test::mock_app();
+        app.manage(core.clone());
+        for (index, trigger) in [
+            TaskTrigger::Manual,
+            TaskTrigger::Deeplink,
+            TaskTrigger::Mcp,
+            TaskTrigger::Schedule,
+            TaskTrigger::Retry,
+            TaskTrigger::Bundle,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let target = |suffix| TaskTarget {
+                kind: TaskKind::Cask,
+                token: format!("fixture-{index}-{suffix}"),
+            };
+            let single = task_enqueue(
+                app.state(),
+                TaskOp::Install,
+                Some(target("one")),
+                TaskOptions::default(),
+                trigger,
+            )
+            .await
+            .unwrap();
+            let batch = task_enqueue_many(
+                app.state(),
+                TaskOp::Install,
+                vec![target("two"), target("three")],
+                TaskOptions::default(),
+                trigger,
+            )
+            .await
+            .unwrap();
+            for task in std::iter::once(single).chain(batch) {
+                assert_eq!(task.trigger, TaskTrigger::Manual);
+                assert_eq!(
+                    core.database.task(&task.id).unwrap().unwrap().trigger,
+                    TaskTrigger::Manual
+                );
+            }
+        }
     }
 }
 #[tauri::command]

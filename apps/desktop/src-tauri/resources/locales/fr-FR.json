@@ -66,5 +66,21 @@
   "security.threatsFound": "Menaces détectées",
   "security.signatureChanged": "La signature de l’app a changé",
   "security.downloadThreat": "Menace dans un téléchargement",
-  "security.newStartupItem": "Nouvel élément de démarrage"
+  "security.newStartupItem": "Nouvel élément de démarrage",
+  "confirmation.title": "Confirmation OpenNavo",
+  "confirmation.request": "OpenNavo a reçu une demande de modification de ce Mac.\n\nDemandeur : {caller}\nSource : {source}\nAction : {action}\nCible : {target}\n\nAutoriser cette opération ?",
+  "confirmation.collection": "OpenNavo a reçu une demande d’installation de {count} applications de cette collection.\n\n",
+  "confirmation.footer": "Seules les applications activées de cette liste qui ne sont ni installées ni en attente seront installées.",
+  "confirmation.allow": "Autoriser",
+  "confirmation.deny": "Refuser",
+  "confirmation.installAll": "Tout installer",
+  "confirmation.cancel": "Annuler",
+  "confirmation.disabled": "désactivée",
+  "confirmation.installed": "déjà installée",
+  "confirmation.queued": "déjà en attente",
+  "confirmation.duplicate": "doublon",
+  "confirmation.unsupported": "pas un cask",
+  "confirmation.deepLink": "lien profond",
+  "confirmation.install": "installer",
+  "confirmation.installCollection": "installer la collection"
 }

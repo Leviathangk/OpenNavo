@@ -3950,7 +3950,23 @@
         "security.threatsFound": "e760da57133630c9dc661e26b27e1b18fd09c1e8bc0adcbf972e05978548133c",
         "security.signatureChanged": "c59a36cc7651dcdb844f161a5156dab3c93423c65c2188b9726c8e20a9d51c49",
         "security.downloadThreat": "523e062958d3554ab17a936c6c5eb1e4544e7a5d08fa2f045df37713c0e5843a",
-        "security.newStartupItem": "9e21a8c8451baff4a7b4c9e00834455e317976de12ddae39bc2c8ab344efb88b"
+        "security.newStartupItem": "9e21a8c8451baff4a7b4c9e00834455e317976de12ddae39bc2c8ab344efb88b",
+        "confirmation.title": "fb3b715b780ac37f3ce4da2c9c6af8af867c7e068f25670db427737925b6d47e",
+        "confirmation.request": "1d2fcf0e5399ca1c1bc2aeecc73b082d78cea8fcb47d69850e39f6116590bfe2",
+        "confirmation.collection": "51fec61227fdb7ecdda84d029ac3b7db1d1cc4e27fabcdfef8b7bdb206171c32",
+        "confirmation.footer": "0fb55460e41e6b3822d19f8a3b459181bae9843289abf85debeb1d33fa011ae3",
+        "confirmation.allow": "ce7ef28b670ade5872ed7a6dd6077d20f63d6e5e9cbd275cb71cc6d1d6d455c2",
+        "confirmation.deny": "136de7a8c46fc8031b2243ef930866dba2e3bb42984596cb4e31824a0d050371",
+        "confirmation.installAll": "f88db649140415d99eca18c9269fa74c8c3d0882a47fb6f75791917f25c74a67",
+        "confirmation.cancel": "2cd0f3be8738a86cede1a1452f874f31d569864bbb00cacd4130990f4610cb5c",
+        "confirmation.disabled": "a8c3698b5b8c485d8bd403c226a3dc594cd3196b8229ebc02338bab31a7bea44",
+        "confirmation.installed": "a8b6c39dcabfc14bb136596e34a95b424257b82d54c3ac49a7728b876ae58526",
+        "confirmation.queued": "3cc8745436a73e7bc1322e7a559c5c7f0f39c0d1e578a5209b0b95edd4d1a76c",
+        "confirmation.duplicate": "5f80b5165d7c3b68df060fb36e89b329020175726ef8fce46db21616b2cddf2c",
+        "confirmation.unsupported": "0363c8b4c4f136fdaf7f025857a7de3321e6983587fb5eaeda73602ee0baa452",
+        "confirmation.deepLink": "44c9e61b8a4eb6291a9a72aaded26f01045a278fd6e3db14c784287d6fc89ab3",
+        "confirmation.install": "e8f88f51ccb085ea870b413bf5c4a6425690a42450cfc462ed8450a165dcc57e",
+        "confirmation.installCollection": "a154274d629c577901b3f0e9575f0cfc7d904fff0a9fb5d4bf752eea8d4a165e"
       }
     },
     "server": {

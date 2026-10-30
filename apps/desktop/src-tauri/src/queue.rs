@@ -28,6 +28,13 @@ use tokio::sync::Notify;
 
 type Completion = Arc<dyn Fn(Task) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
+fn active_task_matches(task: &Task, op: TaskOp, target: Option<&TaskTarget>) -> bool {
+    if !matches!(task.state, TaskState::Queued | TaskState::Running) || task.op != op {
+        return false;
+    }
+    task.target.as_ref() == target
+}
+
 /// The brew operations whose sudo prompt gets a sentence of its own; the rest keep the neutral one.
 fn password_reason(op: TaskOp) -> Option<Reason> {
     match op {
@@ -244,14 +251,10 @@ impl TaskQueue {
         ) {
             self.paused.store(false, Ordering::Release);
         }
-        if let Some(existing) = tasks.iter().find(|t| {
-            matches!(t.state, TaskState::Queued | TaskState::Running)
-                && if target.is_some() {
-                    t.target == target
-                } else {
-                    t.target.is_none() && t.op == op
-                }
-        }) {
+        if let Some(existing) = tasks
+            .iter()
+            .find(|task| active_task_matches(task, op, target.as_ref()))
+        {
             let task = existing.clone();
             drop(tasks);
             self.wake.notify_one();
@@ -1256,6 +1259,42 @@ else:
             token: token.into(),
         }
     }
+
+    #[test]
+    fn active_task_dedup_includes_operation_type() {
+        let (_directory, queue, _events) = fixture("install_ok");
+        let target = target("same-target");
+        let install = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target.clone()),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .expect("install");
+        let upgrade = queue
+            .enqueue(
+                TaskOp::Upgrade,
+                Some(target.clone()),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .expect("upgrade is a distinct operation");
+        assert_ne!(install.id, upgrade.id);
+        assert_eq!(
+            queue
+                .enqueue(
+                    TaskOp::Install,
+                    Some(target),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .expect("same operation deduplicates")
+                .id,
+            install.id
+        );
+    }
+
     #[test]
     fn unsigned_consent_is_rejected_outside_manual_app_upgrades_before_persistence() {
         let (_directory, queue, events) = fixture("install_ok");
@@ -1755,8 +1794,17 @@ else:
                     TaskOptions::default(),
                     TaskTrigger::Manual,
                 )
-                .expect("deduplicate");
-            assert_eq!(task.id, duplicate.id);
+                .expect("different operation is allowed");
+            assert_ne!(task.id, duplicate.id);
+            let same_operation = queue
+                .enqueue(
+                    TaskOp::Install,
+                    Some(target("inkscape")),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .expect("same operation deduplicates");
+            assert_eq!(task.id, same_operation.id);
             queue.start();
             if scenario == "slow" {
                 tokio::time::timeout(Duration::from_secs(2), async {

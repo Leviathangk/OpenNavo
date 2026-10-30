@@ -685,31 +685,20 @@ export function installMockIpc(
         }));
     },
     task_enqueue: args => {
-      if (args.trigger === 'deeplink' || args.trigger === 'mcp')
-        throw { code: 'E_CONFIRMATION_REQUIRED', message: 'write_confirmation_required', detail: null };
-      // Like Rust's queue: link apps are refused at the door, before anything is stored.
+      // Generic IPC records Manual; only Rust's dedicated path can assert deep-link origin.
       if ((args.target as TaskTarget | null)?.kind === 'link')
         throw { code: 'E_NOT_INSTALLABLE', message: 'link_app', detail: null };
       return runner.enqueue(
         args.op as Task['op'],
         (args.target as TaskTarget | null) ?? null,
         args.options as Task['options'],
-        args.trigger as Task['trigger']
+        'manual'
       );
     },
     task_enqueue_many: args =>
-      args.trigger === 'deeplink' || args.trigger === 'mcp'
-        ? (() => {
-            throw { code: 'E_CONFIRMATION_REQUIRED', message: 'write_confirmation_required', detail: null };
-          })()
-        : (args.targets as TaskTarget[]).map(target =>
-            runner.enqueue(
-              args.op as Task['op'],
-              target,
-              args.options as Task['options'],
-              args.trigger as Task['trigger']
-            )
-          ),
+      (args.targets as TaskTarget[]).map(target =>
+        runner.enqueue(args.op as Task['op'], target, args.options as Task['options'], 'manual')
+      ),
     // The approve switch is intentionally compile-time dev-only: Vite removes this branch from release bundles.
     deeplink_install_confirm: () => {
       if (import.meta.env.DEV && flags.has('deeplink-approve')) return { tasks: [] };

@@ -66,5 +66,21 @@
   "security.threatsFound": "Обнаружены угрозы",
   "security.signatureChanged": "Подпись приложения изменилась",
   "security.downloadThreat": "Угроза в загруженном файле",
-  "security.newStartupItem": "Новый элемент автозапуска"
+  "security.newStartupItem": "Новый элемент автозапуска",
+  "confirmation.title": "Подтверждение OpenNavo",
+  "confirmation.request": "OpenNavo получил запрос на изменение этого Mac.\n\nИнициатор: {caller}\nИсточник: {source}\nДействие: {action}\nОбъект: {target}\n\nРазрешить эту операцию?",
+  "confirmation.collection": "OpenNavo получил запрос на установку приложений из этой подборки. Количество: {count}.\n\n",
+  "confirmation.footer": "Будут установлены только доступные приложения из этого списка, которые ещё не установлены и не добавлены в очередь.",
+  "confirmation.allow": "Разрешить",
+  "confirmation.deny": "Отклонить",
+  "confirmation.installAll": "Установить все",
+  "confirmation.cancel": "Отмена",
+  "confirmation.disabled": "отключено",
+  "confirmation.installed": "уже установлено",
+  "confirmation.queued": "уже в очереди",
+  "confirmation.duplicate": "дубликат",
+  "confirmation.unsupported": "не cask",
+  "confirmation.deepLink": "глубокая ссылка",
+  "confirmation.install": "установка",
+  "confirmation.installCollection": "установка подборки"
 }

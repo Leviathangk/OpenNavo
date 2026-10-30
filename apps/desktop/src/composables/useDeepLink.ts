@@ -100,10 +100,9 @@ export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: 
     return;
   }
   const target = PACKAGE_ROUTE.exec(event.route);
-  // Cask-only catalog (ADR-018): formula links open the read-only Discover notice and never install.
+  // Formula deep links only open the read-only detail page, even if an old payload carries an install id.
   if (target?.[1] === 'formula') {
-    await router.push('/discover');
-    useToasts().push({ tone: 'warning', title: i18n.global.t('deeplink.formulaUnsupported') });
+    await router.push(event.route);
     return;
   }
   await router.push(event.route);

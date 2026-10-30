@@ -208,6 +208,10 @@ struct PendingInstallState {
 pub struct CollectionInstallItem {
     pub name: String,
     pub disabled: bool,
+    pub installed: bool,
+    pub already_queued: bool,
+    pub unsupported: bool,
+    pub duplicate: bool,
     pub installable: bool,
 }
 
@@ -282,10 +286,30 @@ impl Router {
                 return;
             };
             while state.installs.len() >= 32 {
-                let Some(oldest) = state.install_order.pop_front() else {
+                let Some(position) = state.install_order.iter().position(|id| {
+                    state.installs.get(id).is_none_or(|pending| {
+                        !pending.current
+                            && !matches!(
+                                pending.kind,
+                                PendingInstallKind::Collection {
+                                    resolving: true,
+                                    ..
+                                }
+                            )
+                    })
+                }) else {
+                    // Keep the request currently awaiting the native dialog. There can normally be only one
+                    // current entry because ConfirmationService has one global slot.
                     break;
                 };
+                let oldest = state
+                    .install_order
+                    .remove(position)
+                    .expect("install order position exists");
                 state.installs.remove(&oldest);
+            }
+            if state.installs.len() >= 32 {
+                return;
             }
             let pending_id = Uuid::new_v4().to_string();
             state.installs.insert(pending_id.clone(), install);
@@ -465,6 +489,29 @@ impl Router {
         }
     }
 
+    pub fn cancel_active_installs(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            let active: Vec<_> = state
+                .installs
+                .iter()
+                .filter(|(_, pending)| {
+                    pending.current
+                        || matches!(
+                            pending.kind,
+                            PendingInstallKind::Collection {
+                                resolving: true,
+                                ..
+                            }
+                        )
+                })
+                .map(|(id, _)| id.clone())
+                .collect();
+            for id in active {
+                Self::remove_install(&mut state, &id);
+            }
+        }
+    }
+
     fn remove_install(state: &mut State, pending_id: &str) {
         state.installs.remove(pending_id);
         if let Some(position) = state.install_order.iter().position(|id| id == pending_id) {
@@ -477,7 +524,6 @@ fn pending_install(event: &DeepLinkEvent) -> Option<PendingInstallState> {
     let parts: Vec<_> = event.route.trim_start_matches('/').split('/').collect();
     let kind = match parts.as_slice() {
         ["package", "cask", _token] => TaskKind::Cask,
-        ["package", "formula", _token] => TaskKind::Formula,
         ["collection", slug] => {
             return Some(PendingInstallState {
                 source: event.url.clone(),
@@ -793,6 +839,10 @@ mod install_request_tests {
                     items: vec![CollectionInstallItem {
                         name: "Zed".into(),
                         disabled: false,
+                        installed: false,
+                        already_queued: false,
+                        unsupported: false,
+                        duplicate: false,
                         installable: true,
                     }],
                     targets: vec![TaskTarget {

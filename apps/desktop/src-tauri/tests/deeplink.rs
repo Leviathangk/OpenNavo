@@ -3,6 +3,72 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicUsize, Ordering},
 };
+
+#[test]
+fn deeplink_confirmation_acl_is_main_local_only() {
+    let mut context: tauri::Context<tauri::Wry> = tauri::generate_context!();
+    let authority = context.runtime_authority_mut();
+    use tauri::ipc::Origin;
+    assert!(
+        authority
+            .resolve_access("deeplink_install_confirm", "main", "main", &Origin::Local)
+            .is_some()
+    );
+    for label in [
+        "tray",
+        "permission-guide",
+        "tray-monitor",
+        "firewall-alert",
+        "foreign",
+    ] {
+        assert!(
+            authority
+                .resolve_access("deeplink_install_confirm", label, label, &Origin::Local)
+                .is_none()
+        );
+    }
+    assert!(
+        authority
+            .resolve_access(
+                "deeplink_install_confirm",
+                "main",
+                "main",
+                &Origin::Remote {
+                    url: "https://example.test".parse().unwrap()
+                }
+            )
+            .is_none()
+    );
+}
+
+#[test]
+fn destroying_webview_clears_active_router_reservations() {
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let saved = events.clone();
+    let router = deeplink::Router::new(
+        Arc::new(move |event| saved.lock().unwrap().push(event)),
+        Arc::new(|| {}),
+    );
+    router.ready();
+    router.receive("opennavo://package/cask/zed?action=install");
+    router.receive("opennavo://collection/dev-setup?action=install");
+    let ids: Vec<_> = events
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|event| match event {
+            CoreEvent::Deeplink(event) => event.pending_id.clone().unwrap(),
+            _ => panic!("expected deep link"),
+        })
+        .collect();
+    for id in &ids {
+        router.begin_install(id).unwrap();
+    }
+    router.cancel_active_installs();
+    for id in &ids {
+        assert_eq!(router.begin_install(id).unwrap_err().code, "E_INVALID_ARG");
+    }
+}
 #[test]
 fn routes_actions_encoding_and_bounded_query() {
     for (url, route, install) in [
@@ -80,7 +146,7 @@ fn relaunch_carries_unique_valid_links_and_drops_invalid_or_missing_links() {
 }
 
 #[test]
-fn formula_install_links_are_read_only_and_install_intents_evict_oldest_first() {
+fn formula_install_links_are_read_only_and_install_intents_preserve_the_active_confirmation() {
     let formula = deeplink::parse("opennavo://package/formula/ripgrep?action=install").unwrap();
     assert!(formula.action.is_none());
 
@@ -91,7 +157,7 @@ fn formula_install_links_are_read_only_and_install_intents_evict_oldest_first() 
         Arc::new(|| {}),
     );
     router.ready();
-    for index in 0..33 {
+    for index in 0..32 {
         router.receive(&format!(
             "opennavo://package/cask/app-{index}?action=install"
         ));
@@ -106,11 +172,16 @@ fn formula_install_links_are_read_only_and_install_intents_evict_oldest_first() 
         _ => panic!("expected deep link"),
     };
     drop(events);
+    let _active = router
+        .begin_install(&first)
+        .expect("first request is active");
+    router.receive("opennavo://package/cask/app-32?action=install");
     assert_eq!(
-        router.begin_install(&first).unwrap_err().code,
+        router.begin_install(&second).unwrap_err().code,
         "E_INVALID_ARG"
     );
-    assert!(router.begin_install(&second).is_ok());
+    router.release_install(&first);
+    assert!(router.begin_install(&first).is_ok());
 }
 
 #[test]

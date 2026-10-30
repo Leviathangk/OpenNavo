@@ -1,10 +1,14 @@
-import { flushPromises } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openDeepLink, resumeDeepLink, startDeepLinks, useDeepLinkStore } from '@/composables/useDeepLink';
 import { useToasts } from '@/composables/useToasts';
 import { commands, events, unwrap } from '@/ipc/client';
 import { startLocalState, useSettingsStore } from '@/stores';
 import { setup } from './helpers';
+import { routes } from '@/router';
+import { i18n } from '@/i18n';
+import FormulaDetailPage from '@/pages/package/FormulaDetailPage.vue';
 
 type ConfirmResult = Awaited<ReturnType<typeof commands.deeplinkInstallConfirm>>;
 const confirmed = (): ConfirmResult => ({
@@ -138,11 +142,11 @@ describe('Deep links', () => {
     await openDeepLink(context.router, {
       url: '',
       route: '/package/formula/fzf',
+      pendingId: 'forged-formula-intent',
       action: 'install'
     });
-    expect(context.router.currentRoute.value.path).toBe('/discover');
+    expect(context.router.currentRoute.value.path).toBe('/package/formula/fzf');
     expect(confirm).not.toHaveBeenCalled();
-    expect(useToasts().items.value.at(-1)?.title).toContain('只收录 App');
 
     await openDeepLink(context.router, {
       url: '',
@@ -152,12 +156,35 @@ describe('Deep links', () => {
     expect(context.router.currentRoute.value.fullPath).toBe('/collections/dev-setup');
   });
 
-  it('the generic task command rejects deep-link writes while the normal UI trigger remains valid', async () => {
-    await setup('/discover');
-    await expect(
-      unwrap(commands.taskEnqueue('install', { kind: 'cask', token: 'zed' }, {}, 'deeplink'))
-    ).rejects.toMatchObject({ code: 'E_CONFIRMATION_REQUIRED' });
-    const task = await unwrap(commands.taskEnqueue('install', { kind: 'cask', token: 'zed' }, {}, 'manual'));
-    expect(task.trigger).toBe('manual');
+  it.each(['manual', 'deeplink', 'mcp', 'schedule', 'bundle', 'retry'] as const)(
+    'generic single and batch IPC ignore the self-reported %s trigger',
+    async trigger => {
+      await setup('/discover');
+      const task = await unwrap(commands.taskEnqueue('install', { kind: 'cask', token: 'zed' }, {}, trigger));
+      const batch = await unwrap(commands.taskEnqueueMany('install', [{ kind: 'cask', token: 'notion' }], {}, trigger));
+      expect(task.trigger).toBe('manual');
+      expect(batch.every(item => item.trigger === 'manual')).toBe(true);
+    }
+  );
+
+  it('the real formula detail route exposes no install or other write actions', async () => {
+    const context = await setup('/package/formula/fzf');
+    const router = createRouter({ history: createMemoryHistory(), routes });
+    const route = router.resolve('/package/formula/fzf').matched.at(-1)!;
+    const component = route.components!.default as () => Promise<{ default: unknown }>;
+    expect((await component()).default).toBe(FormulaDetailPage);
+    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm');
+    const enqueue = vi.spyOn(commands, 'taskEnqueue');
+    const wrapper = mount(FormulaDetailPage, {
+      props: { token: 'fzf' },
+      global: { plugins: [context.pinia, context.router, i18n] }
+    });
+    await flushPromises();
+    expect(wrapper.text()).toContain('fzf');
+    expect(wrapper.text()).toContain(i18n.global.t('deeplink.formulaUnsupported'));
+    expect(wrapper.find('button').exists()).toBe(false);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 });
