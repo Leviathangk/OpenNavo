@@ -26,6 +26,7 @@ const model = reactive<Meta>({
   developer: null,
   repoUrl: null,
   hidden: false,
+  clearDisabled: false,
   editorChoice: false,
   tags: [],
   notes: null
@@ -64,6 +65,7 @@ async function save() {
     developer: blankToNull(model.developer),
     repoUrl: blankToNull(model.repoUrl),
     hidden: model.hidden,
+    clearDisabled: false,
     editorChoice: model.editorChoice,
     notes: blankToNull(model.notes),
     tags: model.tags.map(tag => tag.trim()).filter(Boolean)
