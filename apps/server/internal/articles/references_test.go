@@ -1,6 +1,10 @@
 package articles
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -343,6 +347,111 @@ func TestRedactPrivateAppHTMLEncodingBypass(t *testing.T) {
 	}
 }
 
+func TestRedactPrivateAppReferencesReviewProbes(t *testing.T) {
+	private := map[string]bool{"private-sample": true}
+
+	t.Run("H1 tilde fence with embedded backticks stays inert code", func(t *testing.T) {
+		body := "~~~\n```\n[private](/apps/private-sample)\n```\n~~~\n\n[z](/apps/private-sample)"
+		got := RedactPrivateAppReferences(body, private)
+		require.Contains(t, got, "~~~")
+		require.Contains(t, got, "[private](/apps/private-sample)", "code fence must keep the literal")
+		require.NotContains(t, got, "[z](/apps/private-sample)", "outside-fence link must be unwrapped")
+		require.Contains(t, got, "z")
+		// Closing fence must still be tildes so the embedded ``` cannot reopen the link.
+		require.Regexp(t, `(?m)^~~~\s*$`, got)
+		html := renderArticleHTMLBoth(t, got)
+		require.NotRegexp(t, `(?i)<a[^>]+href="[^"]*/apps/private-sample`, stripCodeHTML(html))
+	})
+
+	t.Run("H1 four-backtick fence preserves length", func(t *testing.T) {
+		body := "````\n```\n[private](/apps/private-sample)\n```\n````\n\n[z](/apps/private-sample)"
+		got := RedactPrivateAppReferences(body, private)
+		require.Contains(t, got, "````")
+		require.Contains(t, got, "[private](/apps/private-sample)")
+		html := renderArticleHTMLBoth(t, got)
+		require.NotRegexp(t, `(?i)<a[^>]+href="[^"]*/apps/private-sample`, stripCodeHTML(html))
+	})
+
+	t.Run("H2 nested private raw HTML anchors do not panic", func(t *testing.T) {
+		body := `pre <a href="/apps/private-sample"><a href="/apps/private-sample">x</a></a> post`
+		require.NotPanics(t, func() {
+			got := RedactPrivateAppReferences(body, private)
+			require.Equal(t, "pre x post", strings.TrimSpace(got))
+			require.NotContains(t, got, "/apps/private-sample")
+		})
+	})
+
+	t.Run("H3 standalone scheme-less URL is scrubbed", func(t *testing.T) {
+		for _, body := range []string{
+			"opennavo.com/apps/private-sample",
+			"www.opennavo.com/apps/private-sample",
+			"opennavo.com./apps/private-sample",
+		} {
+			got := RedactPrivateAppReferences(body, private)
+			require.NotContains(t, got, "private-sample", "body=%q got=%q", body, got)
+			require.NotContains(t, got, "/apps/", "body=%q got=%q", body, got)
+			html := renderArticleHTMLBoth(t, got)
+			require.NotRegexp(t, `(?i)<a[^>]+href="[^"]*private-sample`, html)
+		}
+	})
+
+	t.Run("M1 external query embed is not truncated", func(t *testing.T) {
+		body := "See example.com/?next=/apps/private-sample for more."
+		got := RedactPrivateAppReferences(body, private)
+		require.Equal(t, body, got)
+	})
+
+	t.Run("M2 nested private image inside private link is removed", func(t *testing.T) {
+		body := "[![x](/apps/private-sample/icon.png)](/apps/private-sample)"
+		got := RedactPrivateAppReferences(body, private)
+		require.NotContains(t, got, "/apps/private-sample")
+		require.NotContains(t, got, "![")
+		html := renderArticleHTMLBoth(t, got)
+		require.NotRegexp(t, `(?i)<a[^>]+href="[^"]*private-sample`, html)
+		require.NotRegexp(t, `(?i)<img[^>]+src="[^"]*private-sample`, html)
+	})
+
+	t.Run("M3 protocol-relative and trailing-dot hosts are redacted", func(t *testing.T) {
+		for _, body := range []string{
+			"[x](//opennavo.com/apps/private-sample)",
+			"[x](https://opennavo.com./apps/private-sample)",
+			"[x](https://www.opennavo.com./zh/apps/private-sample)",
+		} {
+			got := RedactPrivateAppReferences(body, private)
+			require.Contains(t, got, "x")
+			require.NotContains(t, got, "/apps/private-sample", "body=%q got=%q", body, got)
+			require.NotContains(t, got, "//opennavo.com", "body=%q got=%q", body, got)
+		}
+	})
+
+	t.Run("M4 nested lists and list HTML are not flattened", func(t *testing.T) {
+		nested := "- one\n  - two\n  - three\n\n[z](/apps/private-sample)"
+		got := RedactPrivateAppReferences(nested, private)
+		require.Contains(t, got, "- one")
+		require.Contains(t, got, "  - two")
+		require.Contains(t, got, "  - three")
+		require.NotContains(t, got, "](/apps/private-sample)")
+
+		withHTML := "- item\n  <div>x</div>\n\n[z](/apps/private-sample)"
+		got = RedactPrivateAppReferences(withHTML, private)
+		require.Contains(t, got, "- item")
+		require.Contains(t, got, "<div>x</div>")
+		// Must not duplicate the item text the way the old default branch did.
+		require.Equal(t, 1, strings.Count(got, "item"))
+	})
+}
+
+// renderArticleHTMLBoth renders with goldmark and, when available, production markdown-it
+// (html:false, linkify:true, fuzzyLink:true) so scheme-less private URLs are exercised.
+func renderArticleHTMLBoth(t *testing.T, source string) string {
+	t.Helper()
+	gold := renderArticleHTML(source)
+	if mdit := renderArticleHTMLMarkdownIt(t, source); mdit != "" {
+		return gold + "\n" + mdit
+	}
+	return gold
+}
+
 func renderArticleHTML(source string) string {
 	md := goldmark.New(goldmark.WithExtensions(extension.Linkify))
 	var b strings.Builder
@@ -350,6 +459,38 @@ func renderArticleHTML(source string) string {
 		return ""
 	}
 	return b.String()
+}
+
+func renderArticleHTMLMarkdownIt(t *testing.T, source string) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return ""
+	}
+	// apps/server/internal/articles -> repo root
+	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", ".."))
+	script := filepath.Join(root, "node_modules", "markdown-it", "bin", "markdown-it.js")
+	// Prefer an inline node require so fuzzyLink matches the production concern.
+	cmd := exec.Command("node", "-e", `const MarkdownIt = require('markdown-it');
+const md = new MarkdownIt({ html: false, linkify: true });
+md.linkify.set({ fuzzyLink: true });
+let input = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', c => input += c);
+process.stdin.on('end', () => { process.stdout.write(md.render(input)); });`)
+	cmd.Dir = root
+	cmd.Stdin = strings.NewReader(source)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// markdown-it is optional in CI without node_modules; goldmark still covers structure.
+		if _, statErr := os.Stat(filepath.Join(root, "node_modules", "markdown-it")); statErr != nil {
+			return ""
+		}
+		t.Logf("markdown-it render skipped: %v (%s)", err, out)
+		_ = script
+		return ""
+	}
+	return string(out)
 }
 
 func stripCodeHTML(html string) string {

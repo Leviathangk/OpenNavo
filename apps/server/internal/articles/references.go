@@ -22,9 +22,10 @@ var (
 	// appPath matches /apps/<token> or /<locale>/apps/<token> with optional trailing path.
 	appPath = regexp.MustCompile(`(?i)^/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/([a-z0-9][a-z0-9@+._-]*)(?:/.*)?$`)
 	// schemeLessAppURL covers bare opennavo.com / www.opennavo.com app URLs that linkify does not catch.
-	schemeLessAppURL = regexp.MustCompile(`(?i)(?:www\.)?opennavo\.com/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/[^\s<>()\[\]{}"']+`)
+	// Optional trailing dot on the host matches DNS absolute-form hosts (opennavo.com.).
+	schemeLessAppURL = regexp.MustCompile(`(?i)(?:www\.)?opennavo\.com\.?/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/[^\s<>()\[\]{}"']+`)
 	// plainAppURL finds absolute or site-relative app URLs in plain text (invalid ref-def lines, etc.).
-	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?://)?(?:www\.)?opennavo\.com(?::\d+)?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/[a-z0-9][a-z0-9@+._-]*(?:/[^\s<>()\[\]{}"']*)?`)
+	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?://)?(?:www\.)?opennavo\.com\.?(?::\d+)?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/[a-z0-9][a-z0-9@+._-]*(?:/[^\s<>()\[\]{}"']*)?`)
 	// linkifyURLRegexp mirrors markdown-it linkify: case-insensitive scheme/host, optional port.
 	linkifyURLRegexp = regexp.MustCompile(`(?i)^(?:https?|ftp)://[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
 	linkifyWWWRegexp = regexp.MustCompile(`(?i)^www\.[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?:[/#?][-a-zA-Z0-9@:%_+.~#!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
@@ -199,7 +200,8 @@ func redactPrivateNodes(doc ast.Node, source []byte, private map[string]bool) {
 		case *ast.Link:
 			if token, ok := appToken(n.Destination); ok && private[token] {
 				unwrap = append(unwrap, n)
-				return ast.WalkSkipChildren, nil
+				// Keep walking so nested private images/autolinks are collected too.
+				return ast.WalkContinue, nil
 			}
 		case *ast.Image:
 			if token, ok := appToken(n.Destination); ok && private[token] {
@@ -221,13 +223,15 @@ func redactPrivateNodes(doc ast.Node, source []byte, private map[string]bool) {
 		}
 		return ast.WalkContinue, nil
 	})
-	for _, n := range unwrap {
-		unwrapMarkdownNode(n)
-	}
+	// Remove nested private images/autolinks before unwrapping links so they do not
+	// reappear as clickable fallbacks after the parent link is dropped.
 	for _, n := range remove {
 		if parent := n.Parent(); parent != nil {
 			parent.RemoveChild(parent, n)
 		}
+	}
+	for _, n := range unwrap {
+		unwrapMarkdownNode(n)
 	}
 }
 
@@ -280,11 +284,6 @@ func redactSchemeLessInText(doc ast.Node, source []byte, private map[string]bool
 			continue
 		}
 		if cursor < len(value) {
-			rest := ast.NewString([]byte(value[cursor:]))
-			if textNode.SoftLineBreak() {
-				// Preserve soft break on the trailing fragment.
-				_ = rest
-			}
 			parts = append(parts, ast.NewString([]byte(value[cursor:])))
 		}
 		// Soft/hard line breaks live on the Text node; keep a trailing empty Text if needed.
@@ -297,6 +296,12 @@ func redactSchemeLessInText(doc ast.Node, source []byte, private map[string]bool
 				tail.SetHardLineBreak(true)
 			}
 			parts = append(parts, tail)
+		}
+		// Entire Text was a private URL (e.g. opennavo.com/apps/private-sample): remove it so
+		// markdown-it linkify cannot turn the leftover into a clickable link.
+		if len(parts) == 0 {
+			parent.RemoveChild(parent, textNode)
+			continue
 		}
 		for i, part := range parts {
 			if i == 0 {
@@ -563,29 +568,125 @@ func writeQuotePrefix(b *strings.Builder, inQuote bool, depth int) {
 }
 
 func writeFencedCode(b *strings.Builder, n *ast.FencedCodeBlock, source []byte, inQuote bool, depth int) {
+	writeFencedCodeIndented(b, n, source, inQuote, depth, 0)
+}
+
+func writeFencedCodeIndented(b *strings.Builder, n *ast.FencedCodeBlock, source []byte, inQuote bool, depth, indent int) {
 	info := ""
 	if n.Info != nil {
 		seg := n.Info.Segment
 		info = string(seg.Value(source))
 	}
-	writeQuotePrefix(b, inQuote, depth)
-	b.WriteString("```")
-	b.WriteString(info)
-	b.WriteByte('\n')
+	var content strings.Builder
 	lines := n.Lines()
 	for i := 0; i < lines.Len(); i++ {
+		seg := lines.At(i)
+		content.Write(seg.Value(source))
+	}
+	body := content.String()
+	char, length := chooseFence(n, source, body, info)
+	fence := strings.Repeat(string(char), length)
+	writeQuotePrefix(b, inQuote, depth)
+	b.WriteString(strings.Repeat(" ", indent))
+	b.WriteString(fence)
+	b.WriteString(info)
+	b.WriteByte('\n')
+	for i := 0; i < lines.Len(); i++ {
 		writeQuotePrefix(b, inQuote, depth)
+		b.WriteString(strings.Repeat(" ", indent))
 		seg := lines.At(i)
 		b.Write(seg.Value(source))
 	}
 	writeQuotePrefix(b, inQuote, depth)
-	b.WriteString("```\n")
+	b.WriteString(strings.Repeat(" ", indent))
+	b.WriteString(fence)
+	b.WriteByte('\n')
+}
+
+// chooseFence preserves the original fence marker when possible, extending its length so the
+// content cannot close the fence early (e.g. a ~~~ fence that contains ``` lines).
+func chooseFence(n *ast.FencedCodeBlock, source []byte, body, info string) (byte, int) {
+	char := byte('`')
+	length := 3
+	if openChar, openLen, ok := recoverOpeningFence(n, source); ok {
+		char, length = openChar, openLen
+	}
+	needed := minFenceLength(char, body)
+	// Info strings for backtick fences cannot contain backticks; switch to tildes if needed.
+	if char == '`' && strings.Contains(info, "`") {
+		char = '~'
+		needed = minFenceLength(char, body)
+		length = needed
+	}
+	if length < needed {
+		length = needed
+	}
+	if length < 3 {
+		length = 3
+	}
+	return char, length
+}
+
+func recoverOpeningFence(n *ast.FencedCodeBlock, source []byte) (byte, int, bool) {
+	pos := -1
+	if n.Info != nil {
+		pos = lineStart(source, n.Info.Segment.Start)
+	} else if lines := n.Lines(); lines != nil && lines.Len() > 0 {
+		first := lineStart(source, lines.At(0).Start)
+		if first > 0 {
+			pos = lineStart(source, first-1)
+		}
+	}
+	if pos < 0 || pos >= len(source) {
+		return 0, 0, false
+	}
+	i := pos
+	for i < len(source) && (source[i] == ' ' || source[i] == '\t') {
+		i++
+	}
+	if i >= len(source) || (source[i] != '`' && source[i] != '~') {
+		return 0, 0, false
+	}
+	char := source[i]
+	length := 0
+	for i < len(source) && source[i] == char {
+		length++
+		i++
+	}
+	if length < 3 {
+		return 0, 0, false
+	}
+	return char, length, true
+}
+
+func minFenceLength(char byte, body string) int {
+	maxRun := 0
+	run := 0
+	for i := 0; i < len(body); i++ {
+		if body[i] == char {
+			run++
+			if run > maxRun {
+				maxRun = run
+			}
+		} else {
+			run = 0
+		}
+	}
+	if maxRun+1 < 3 {
+		return 3
+	}
+	return maxRun + 1
 }
 
 func writeIndentedCode(b *strings.Builder, n *ast.CodeBlock, source []byte, inQuote bool, depth int) {
+	writeIndentedCodeAt(b, n, source, inQuote, depth, 0)
+}
+
+func writeIndentedCodeAt(b *strings.Builder, n *ast.CodeBlock, source []byte, inQuote bool, depth, indent int) {
 	lines := n.Lines()
 	for i := 0; i < lines.Len(); i++ {
 		writeQuotePrefix(b, inQuote, depth)
+		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString("    ")
 		seg := lines.At(i)
 		b.Write(seg.Value(source))
@@ -593,42 +694,64 @@ func writeIndentedCode(b *strings.Builder, n *ast.CodeBlock, source []byte, inQu
 }
 
 func writeList(b *strings.Builder, list *ast.List, source []byte, depth int, inQuote bool) {
+	writeListIndented(b, list, source, depth, inQuote, 0)
+}
+
+func writeListIndented(b *strings.Builder, list *ast.List, source []byte, depth int, inQuote bool, baseIndent int) {
 	index := list.Start
 	if index == 0 {
 		index = 1
 	}
 	for item := list.FirstChild(); item != nil; item = item.NextSibling() {
-		writeQuotePrefix(b, inQuote, depth)
+		marker := ""
 		if list.IsOrdered() {
-			fmt.Fprintf(b, "%d%c ", index, list.Marker)
+			marker = fmt.Sprintf("%d%c ", index, list.Marker)
 			index++
 		} else {
-			b.WriteByte(list.Marker)
-			b.WriteByte(' ')
+			marker = string([]byte{list.Marker, ' '})
 		}
+		writeQuotePrefix(b, inQuote, depth)
+		b.WriteString(strings.Repeat(" ", baseIndent))
+		b.WriteString(marker)
+		contentIndent := baseIndent + len(marker)
 		// ListItem children are blocks; write first block's inlines on the same line when paragraph.
 		first := true
 		for child := item.FirstChild(); child != nil; child = child.NextSibling() {
+			if !first && !list.IsTight {
+				writeQuotePrefix(b, inQuote, depth)
+				b.WriteString(strings.Repeat(" ", contentIndent))
+				b.WriteByte('\n')
+			}
 			switch n := child.(type) {
 			case *ast.Paragraph, *ast.TextBlock:
 				if !first {
 					writeQuotePrefix(b, inQuote, depth)
-					b.WriteString("  ")
+					b.WriteString(strings.Repeat(" ", contentIndent))
 				}
 				writeInlines(b, n, source)
 				b.WriteByte('\n')
 			case *ast.List:
-				writeList(b, n, source, depth, inQuote)
+				writeListIndented(b, n, source, depth, inQuote, contentIndent)
 			case *ast.CodeBlock:
-				writeIndentedCode(b, n, source, inQuote, depth)
+				writeIndentedCodeAt(b, n, source, inQuote, depth, contentIndent)
 			case *ast.FencedCodeBlock:
-				writeFencedCode(b, n, source, inQuote, depth)
+				writeFencedCodeIndented(b, n, source, inQuote, depth, contentIndent)
 			case *ast.Blockquote:
 				writeBlocks(b, n, source, depth+1, true)
+			case *ast.HTMLBlock:
+				writeHTMLBlockIndented(b, n, source, inQuote, depth, contentIndent)
 			default:
-				writeBlocks(b, item, source, depth, inQuote)
-				first = false
-				continue
+				// Never rewrite the whole item (that duplicated already-emitted children).
+				if n.Type() == ast.TypeBlock {
+					writeBlocks(b, n, source, depth, inQuote)
+				} else {
+					if !first {
+						writeQuotePrefix(b, inQuote, depth)
+						b.WriteString(strings.Repeat(" ", contentIndent))
+					}
+					writeInlines(b, n, source)
+					b.WriteByte('\n')
+				}
 			}
 			first = false
 		}
@@ -651,9 +774,14 @@ func writeDefinition(b *strings.Builder, n *ast.LinkReferenceDefinition, _ []byt
 }
 
 func writeHTMLBlock(b *strings.Builder, n *ast.HTMLBlock, source []byte, inQuote bool, depth int) {
+	writeHTMLBlockIndented(b, n, source, inQuote, depth, 0)
+}
+
+func writeHTMLBlockIndented(b *strings.Builder, n *ast.HTMLBlock, source []byte, inQuote bool, depth, indent int) {
 	lines := n.Lines()
 	for i := 0; i < lines.Len(); i++ {
 		writeQuotePrefix(b, inQuote, depth)
+		b.WriteString(strings.Repeat(" ", indent))
 		seg := lines.At(i)
 		b.Write(seg.Value(source))
 	}
@@ -791,51 +919,39 @@ func neededTicks(content string) int {
 
 func redactHTMLAnchors(body string, private map[string]bool) string {
 	code := collectCodeSpans(parseAppMarkdown([]byte(body)), []byte(body))
-	edits := []struct {
-		start, end int
-		repl       string
-	}{}
+	var b strings.Builder
+	pos := 0
 	for _, segment := range outsideCode(body, code) {
-		edits = append(edits, htmlAnchorEdits(body, segment[0], segment[1], private)...)
+		if segment[0] > pos {
+			b.WriteString(body[pos:segment[0]])
+		}
+		b.WriteString(rewriteHTMLAnchors(body[segment[0]:segment[1]], private))
+		pos = segment[1]
 	}
-	if len(edits) == 0 {
-		return body
+	if pos < len(body) {
+		b.WriteString(body[pos:])
 	}
-	// Apply back to front.
-	sortEditsDesc(edits)
-	out := body
-	for _, edit := range edits {
-		out = out[:edit.start] + edit.repl + out[edit.end:]
-	}
-	return out
+	return b.String()
 }
 
-func htmlAnchorEdits(source string, segStart, segStop int, private map[string]bool) []struct {
-	start, end int
-	repl       string
-} {
-	tokenizer := html.NewTokenizer(strings.NewReader(source[segStart:segStop]))
-	type anchor struct {
-		start, innerStart int
-		private           bool
-	}
-	stack := []anchor{}
-	edits := []struct {
-		start, end int
-		repl       string
-	}{}
-	offset := segStart
+// rewriteHTMLAnchors streams HTML tokens and unwraps private <a> tags without using
+// precomputed absolute offsets (nested private anchors used to panic on slice bounds).
+func rewriteHTMLAnchors(segment string, private map[string]bool) string {
+	tokenizer := html.NewTokenizer(strings.NewReader(segment))
+	var b strings.Builder
+	type frame struct{ private bool }
+	stack := []frame{}
 	for {
 		kind := tokenizer.Next()
 		if kind == html.ErrorToken {
 			break
 		}
-		start := offset
-		offset += len(tokenizer.Raw())
+		raw := string(tokenizer.Raw())
 		switch kind {
-		case html.StartTagToken:
+		case html.StartTagToken, html.SelfClosingTagToken:
 			name, hasAttributes := tokenizer.TagName()
 			if string(name) != "a" {
+				b.WriteString(raw)
 				continue
 			}
 			href := ""
@@ -847,23 +963,29 @@ func htmlAnchorEdits(source string, segStart, segStop int, private map[string]bo
 				hasAttributes = more
 			}
 			token, ok := appPathToken(href)
-			stack = append(stack, anchor{start: start, innerStart: offset, private: ok && private[token]})
+			isPrivate := ok && private[token]
+			if kind == html.StartTagToken {
+				stack = append(stack, frame{private: isPrivate})
+			}
+			if !isPrivate {
+				b.WriteString(raw)
+			}
 		case html.EndTagToken:
 			name, _ := tokenizer.TagName()
-			if string(name) != "a" || len(stack) == 0 {
+			if string(name) == "a" && len(stack) > 0 {
+				current := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				if !current.private {
+					b.WriteString(raw)
+				}
 				continue
 			}
-			current := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
-			if current.private {
-				edits = append(edits, struct {
-					start, end int
-					repl       string
-				}{start: current.start, end: offset, repl: source[current.innerStart:start]})
-			}
+			b.WriteString(raw)
+		default:
+			b.WriteString(raw)
 		}
 	}
-	return edits
+	return b.String()
 }
 
 func htmlHrefs(body string, code [][2]int) []string {
@@ -921,19 +1043,6 @@ func outsideCode(source string, code [][2]int) [][2]int {
 	return out
 }
 
-func sortEditsDesc(edits []struct {
-	start, end int
-	repl       string
-}) {
-	for i := 0; i < len(edits); i++ {
-		for j := i + 1; j < len(edits); j++ {
-			if edits[j].start > edits[i].start {
-				edits[i], edits[j] = edits[j], edits[i]
-			}
-		}
-	}
-}
-
 func attrValue(n *html.Node, name string) (string, bool) {
 	for _, attr := range n.Attr {
 		if strings.EqualFold(attr.Key, name) {
@@ -980,7 +1089,10 @@ func bareURLStartOK(text string, start int) bool {
 	switch c := text[start-1]; {
 	case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
 		return false
-	case c == '.', c == '-', c == '_', c == '/', c == ':', c == '@', c == '%', c == '+':
+	case c == '.', c == '-', c == '_', c == '/', c == ':', c == '@', c == '%', c == '+',
+		c == '=', c == '?', c == '#', c == '&':
+		// Reject query/fragment separators so external embeds like
+		// example.com/?next=/apps/private-sample are not truncated.
 		return false
 	default:
 		return true
@@ -1010,9 +1122,21 @@ func appToken(raw []byte) (string, bool) {
 
 func appPathToken(raw string) (string, bool) {
 	lower := strings.ToLower(raw)
-	if !strings.Contains(raw, "://") && !strings.HasPrefix(raw, "/") &&
-		(strings.HasPrefix(lower, "opennavo.com/") || strings.HasPrefix(lower, "www.opennavo.com/")) {
-		raw = "https://" + raw
+	// Protocol-relative //opennavo.com/... is in scope (same as absolute https).
+	if strings.HasPrefix(raw, "//") {
+		raw = "https:" + raw
+		lower = strings.ToLower(raw)
+	}
+	if !strings.Contains(raw, "://") && !strings.HasPrefix(raw, "/") {
+		for _, prefix := range []string{
+			"opennavo.com/", "www.opennavo.com/",
+			"opennavo.com./", "www.opennavo.com./",
+		} {
+			if strings.HasPrefix(lower, prefix) {
+				raw = "https://" + raw
+				break
+			}
+		}
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -1040,7 +1164,8 @@ func appPathToken(raw string) (string, bool) {
 		default:
 			return "", false
 		}
-		host := strings.ToLower(parsed.Hostname())
+		// Trim a trailing DNS dot so opennavo.com. still matches.
+		host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
 		if host != "opennavo.com" && host != "www.opennavo.com" {
 			return "", false
 		}
