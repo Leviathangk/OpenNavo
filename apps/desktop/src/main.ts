@@ -23,6 +23,7 @@ import {
   useSettingsStore
 } from './stores';
 import { useStateSubscriptions } from './stores/stateSubscriptions';
+import { startExternalLinks } from './utils/external';
 
 // Regular browsers (pnpm dev:web) have no Tauri runtime; simulate IPC with fixtures (06 §16).
 if (!isTauri()) {
@@ -36,7 +37,7 @@ app.use(i18n);
 app.use(router);
 app.use(createOnUi({ locale: computed(() => i18n.global.locale.value) }));
 const subscriptions = useStateSubscriptions();
-const navigationCleanups: (() => void)[] = [];
+const navigationCleanups: (() => void)[] = [startExternalLinks()];
 await subscriptions.start('locale', async register => {
   await register(startAppLocale());
 });

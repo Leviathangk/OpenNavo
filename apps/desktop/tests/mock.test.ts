@@ -185,3 +185,12 @@ describe('Task queue simulation (06 §9)', () => {
     expect(history.items[0]?.error?.code).toBe('E_INTERRUPTED');
   });
 });
+
+describe('Debug-only deep-link mock gate', () => {
+  it('approves the guarded command only with the development switch', async () => {
+    window.history.replaceState(null, '', '/?mock=deeplink-approve');
+    await setup('/discover');
+    const result = await unwrap(commands.deeplinkInstallConfirm('mock-pending'));
+    expect(result.tasks).toEqual([]);
+  });
+});

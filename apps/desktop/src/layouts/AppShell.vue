@@ -12,7 +12,6 @@ import PermissionGateModal from '@/components/permissions/PermissionGateModal.vu
 import { usePermissionGateStore } from '@/stores/permissionGate';
 import { useTasksStore } from '@/stores/tasks';
 import PermissionPrompt from '@/components/shell/PermissionPrompt.vue';
-import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import InstallConfirm from '@/components/shell/InstallConfirm.vue';
 import TapConfirm from '@/components/shell/TapConfirm.vue';
@@ -119,7 +118,6 @@ watch(
     <template #overlay>
       <WindowControls v-if="inBrowser" />
       <CommandPalette v-model:open="paletteOpen" />
-      <DeepLinkConfirm />
       <PermissionPrompt />
       <PermissionGateModal />
       <QuitConfirm />

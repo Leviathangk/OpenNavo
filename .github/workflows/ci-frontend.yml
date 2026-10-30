@@ -115,6 +115,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @opennavo/web --filter @opennavo/admin --filter @opennavo/desktop --filter @opennavo/ui run build
+      - run: node tooling/scripts/check-desktop-mock-release.mjs
       - run: pnpm --filter @opennavo/web test:ssr
 
   # Admin menu/permission E2E (intercepted API; no backend required).

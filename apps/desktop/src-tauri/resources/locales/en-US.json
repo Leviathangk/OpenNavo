@@ -66,5 +66,21 @@
   "security.threatsFound": "Threats found",
   "security.signatureChanged": "App signature changed",
   "security.downloadThreat": "Threat in a download",
-  "security.newStartupItem": "New startup item"
+  "security.newStartupItem": "New startup item",
+  "confirmation.title": "OpenNavo confirmation",
+  "confirmation.request": "OpenNavo received a request to change this Mac.\n\nCaller: {caller}\nSource: {source}\nAction: {action}\nTarget: {target}\n\nAllow this one operation?",
+  "confirmation.collection": "OpenNavo received a request to install apps from this collection. It will install {install}, skip {skip}.\n\n",
+  "confirmation.footer": "Only enabled apps in this reviewed list will be installed.",
+  "confirmation.allow": "Allow",
+  "confirmation.deny": "Deny",
+  "confirmation.installAll": "Install All",
+  "confirmation.cancel": "Cancel",
+  "confirmation.disabled": "disabled",
+  "confirmation.installed": "already installed",
+  "confirmation.queued": "already queued",
+  "confirmation.duplicate": "duplicate",
+  "confirmation.unsupported": "not a cask",
+  "confirmation.deepLink": "deep link",
+  "confirmation.install": "install",
+  "confirmation.installCollection": "install collection"
 }

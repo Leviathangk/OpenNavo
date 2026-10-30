@@ -4,6 +4,7 @@ pub mod brewfile;
 pub mod catalog;
 pub mod cleanup;
 mod commands;
+pub mod confirmation;
 pub mod core;
 pub mod db;
 pub mod deeplink;
@@ -23,6 +24,7 @@ pub mod monitor;
 pub mod native_command;
 pub mod native_i18n;
 pub mod native_menu;
+mod navigation;
 pub mod notifications;
 pub mod permissions;
 pub mod queue;
@@ -188,6 +190,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::tasks::history_list,
             commands::tasks::history_clear,
             commands::tasks::history_export_csv,
+            commands::deeplink::deeplink_install_confirm,
             commands::maintenance::brewfile_export,
             commands::maintenance::brewfile_preview,
             commands::maintenance::brewfile_install,
@@ -292,6 +295,15 @@ pub fn raise_open_file_limit() {
     }
 }
 
+fn cancel_webview_confirmations<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(service) = app.try_state::<std::sync::Arc<confirmation::ConfirmationService>>() {
+        service.cancel_active();
+    }
+    if let Some(router) = app.try_state::<std::sync::Arc<deeplink::Router>>() {
+        router.cancel_active_installs();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     raise_open_file_limit();
@@ -314,6 +326,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(navigation::guard())
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Log Info and above by default; window/WebView debug logs are too noisy for log files.
         .plugin(
@@ -346,6 +359,9 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .invoke_handler(specta.invoke_handler())
         .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                cancel_webview_confirmations(window.app_handle());
+            }
             if matches!(event, tauri::WindowEvent::Focused(true)) {
                 if let Some(sampler) =
                     window.try_state::<std::sync::Arc<monitor::sampler::Sampler>>()
@@ -388,7 +404,10 @@ pub fn run() {
             }
             if let Some(router) = webview.try_state::<std::sync::Arc<deeplink::Router>>() {
                 match payload.event() {
-                    tauri::webview::PageLoadEvent::Started => router.loading(),
+                    tauri::webview::PageLoadEvent::Started => {
+                        cancel_webview_confirmations(webview.app_handle());
+                        router.loading();
+                    }
                     tauri::webview::PageLoadEvent::Finished => {
                         let router = router.inner().clone();
                         tauri::async_runtime::spawn(async move {
@@ -412,6 +431,9 @@ pub fn run() {
             let core = tauri::async_runtime::block_on(blocking(move || {
                 core::DesktopCore::open(data, cache, askpass, core_sink)
             }))?;
+            app.manage(std::sync::Arc::new(
+                confirmation::ConfirmationService::default(),
+            ));
             #[cfg(target_os = "macos")]
             if relaunch::self_heal(app.handle(), &core, hidden) {
                 return Ok(());
@@ -532,4 +554,16 @@ fn export_bindings() {
     ] {
         assert!(!bindings.contains(removed), "removed IPC export: {removed}");
     }
+}
+
+#[cfg(test)]
+#[test]
+fn native_main_permission_manifest_includes_deeplink_confirmation() {
+    let manifest = std::fs::read_to_string("permissions/native.toml")
+        .expect("native permission manifest must be readable");
+    let main = manifest
+        .split("[[permission]]")
+        .find(|entry| entry.contains("identifier = \"native-main\""))
+        .expect("native-main permission");
+    assert!(main.contains("\"deeplink_install_confirm\""));
 }

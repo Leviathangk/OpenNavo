@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { computed, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
 import { catalogInstallCommand } from '@/utils/brew';
@@ -17,15 +17,14 @@ import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useTasksStore } from '@/stores';
 import { useNamesStore } from '@/stores/names';
 
-// Collection details (API): body, items, recommendations; after confirmation, enqueue batch installs individually (trigger=bundle), skipping installed/disabled items.
-// ?install=1 (opennavo://collection/{slug}?action=install) opens confirmation immediately; the dialog lists all brew commands to execute (06 §10).
+// Collection details (API): body, items, recommendations; the app UI previews the batch and sends trigger=bundle
+// unchanged through IPC, preserving the queue's unattended-run and pause policies. Installed, disabled and link
+// items stay out of the batch. Rust handles deep-link collection installs from the opaque pending id.
 // Shared with the web view (ADR-017).
 const props = defineProps<{ slug: string }>();
 
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
-const route = useRoute();
-const router = useRouter();
 const library = useLibraryStore();
 const tasks = useTasksStore();
 const names = useNamesStore();
@@ -80,18 +79,6 @@ const entries = computed<OnCollectionEntry[]>(() =>
 const disabledOf = (token: string) => data.value?.items.find(item => item.package.token === token)?.package.disabled;
 const confirmOpen = ref(false);
 const queueing = ref(false);
-
-watch(
-  [() => route.query.install, data],
-  ([install, collection]) => {
-    if (install === '1' && collection) {
-      if (pending.value.length) confirmOpen.value = true;
-      else toasts.push({ tone: 'success', title: t('collections.allInstalled') });
-      void router.replace({ query: {} });
-    }
-  },
-  { immediate: true }
-);
 
 async function installAll() {
   queueing.value = true;
