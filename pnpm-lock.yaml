@@ -193,6 +193,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.3.0(jiti@2.7.0)
+      markdown-it:
+        specifier: 'catalog:'
+        version: 15.0.2
       oxfmt:
         specifier: 'catalog:'
         version: 0.49.0

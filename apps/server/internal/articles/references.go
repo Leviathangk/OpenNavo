@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,7 +26,7 @@ var (
 	// Optional trailing dot on the host matches DNS absolute-form hosts (opennavo.com.).
 	schemeLessAppURL = regexp.MustCompile(`(?i)(?:www\.)?opennavo\.com\.?/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/[^\s<>()\[\]{}"']+`)
 	// plainAppURL finds absolute or site-relative app URLs in plain text (invalid ref-def lines, etc.).
-	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?://)?(?:www\.)?opennavo\.com\.?(?::\d+)?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/[a-z0-9][a-z0-9@+._-]*(?:/[^\s<>()\[\]{}"']*)?`)
+	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?://)?(?:www\.)?opennavo\.com\.?(?::\d+)?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/[a-z0-9%&\\][a-z0-9@+._%&#;\\-]*(?:/[^\s<>()\[\]{}"']*)?`)
 	// linkifyURLRegexp mirrors markdown-it linkify: case-insensitive scheme/host, optional port.
 	linkifyURLRegexp = regexp.MustCompile(`(?i)^(?:https?|ftp)://[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
 	linkifyWWWRegexp = regexp.MustCompile(`(?i)^www\.[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?:[/#?][-a-zA-Z0-9@:%_+.~#!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
@@ -213,6 +214,20 @@ func redactPrivateNodes(doc ast.Node, source []byte, private map[string]bool) {
 				remove = append(remove, n)
 				return ast.WalkSkipChildren, nil
 			}
+			// goldmark linkify stops at a trailing host dot (www.opennavo.com./apps/x), leaving
+			// the path in the next Text node; join them before deciding.
+			if next, ok := n.NextSibling().(*ast.Text); ok {
+				label := string(n.Label(source))
+				rest := string(next.Segment.Value(source))
+				joined := label + rest
+				if m := plainAppURL.FindStringIndex(joined); m != nil && m[0] == 0 && m[1] > len(label) {
+					end := trimBareURLEnd(joined, 0, m[1])
+					if token, ok := appPathToken(decodeTextURL(joined[:end])); ok && private[token] {
+						remove = append(remove, n)
+						next.Segment = next.Segment.WithStart(next.Segment.Start + end - len(label))
+					}
+				}
+			}
 		case *ast.LinkReferenceDefinition:
 			if token, ok := appToken(n.Destination); ok && private[token] {
 				remove = append(remove, n)
@@ -270,7 +285,7 @@ func redactSchemeLessInText(doc ast.Node, source []byte, private map[string]bool
 				continue
 			}
 			end = trimBareURLEnd(value, start, end)
-			token, ok := appPathToken(value[start:end])
+			token, ok := appPathToken(decodeTextURL(value[start:end]))
 			if !ok || !private[token] {
 				continue
 			}
@@ -740,9 +755,31 @@ func writeListIndented(b *strings.Builder, list *ast.List, source []byte, depth 
 				writeBlocks(b, n, source, depth+1, true)
 			case *ast.HTMLBlock:
 				writeHTMLBlockIndented(b, n, source, inQuote, depth, contentIndent)
+			case *ast.Heading:
+				if !first {
+					writeQuotePrefix(b, inQuote, depth)
+					b.WriteString(strings.Repeat(" ", contentIndent))
+				}
+				b.WriteString(strings.Repeat("#", n.Level))
+				b.WriteByte(' ')
+				writeInlines(b, n, source)
+				b.WriteByte('\n')
+			case *ast.ThematicBreak:
+				if !first {
+					writeQuotePrefix(b, inQuote, depth)
+					b.WriteString(strings.Repeat(" ", contentIndent))
+				}
+				b.WriteString("***\n")
+			case *ast.LinkReferenceDefinition:
+				if !first {
+					writeQuotePrefix(b, inQuote, depth)
+					b.WriteString(strings.Repeat(" ", contentIndent))
+				}
+				writeDefinition(b, n, source)
+				b.WriteByte('\n')
 			default:
 				// Never rewrite the whole item (that duplicated already-emitted children).
-				if n.Type() == ast.TypeBlock {
+				if n.Type() == ast.TypeBlock && n.FirstChild() != nil && n.FirstChild().Type() == ast.TypeBlock {
 					writeBlocks(b, n, source, depth, inQuote)
 				} else {
 					if !first {
@@ -950,6 +987,21 @@ func rewriteHTMLAnchors(segment string, private map[string]bool) string {
 		switch kind {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			name, hasAttributes := tokenizer.TagName()
+			if string(name) == "img" {
+				src := ""
+				for hasAttributes {
+					key, value, more := tokenizer.TagAttr()
+					if string(key) == "src" {
+						src = string(value)
+					}
+					hasAttributes = more
+				}
+				if token, ok := appPathToken(src); ok && private[token] {
+					continue
+				}
+				b.WriteString(raw)
+				continue
+			}
 			if string(name) != "a" {
 				b.WriteString(raw)
 				continue
@@ -1131,6 +1183,7 @@ func appPathToken(raw string) (string, bool) {
 		for _, prefix := range []string{
 			"opennavo.com/", "www.opennavo.com/",
 			"opennavo.com./", "www.opennavo.com./",
+			"opennavo.com:", "www.opennavo.com:", "opennavo.com.:", "www.opennavo.com.:",
 		} {
 			if strings.HasPrefix(lower, prefix) {
 				raw = "https://" + raw
@@ -1185,7 +1238,13 @@ func pathCandidates(parsed *url.URL) []string {
 	seen := map[string]bool{}
 	out := []string{}
 	add := func(p string) {
-		if p == "" || seen[p] {
+		if p == "" {
+			return
+		}
+		// Resolve dot segments and backslashes the way browsers do before matching, so
+		// /apps/public-child/../private-sample is private and the reverse is not.
+		p = path.Clean("/" + strings.ReplaceAll(p, "\\", "/"))
+		if seen[p] {
 			return
 		}
 		seen[p] = true
@@ -1207,4 +1266,18 @@ func pathCandidates(parsed *url.URL) []string {
 		add(collapsed)
 	}
 	return out
+}
+
+// decodeTextURL undoes Markdown backslash escapes and HTML character references the renderer
+// would apply to plain text, so private%2Dsample, private&#45;sample and private\-sample match.
+// Percent-encoding is handled later by appPathToken's path candidates.
+func decodeTextURL(raw string) string {
+	var b strings.Builder
+	for i := 0; i < len(raw); i++ {
+		if raw[i] == '\\' && i+1 < len(raw) && strings.IndexByte("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", raw[i+1]) >= 0 {
+			i++
+		}
+		b.WriteByte(raw[i])
+	}
+	return html.UnescapeString(b.String())
 }

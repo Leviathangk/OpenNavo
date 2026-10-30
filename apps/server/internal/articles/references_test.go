@@ -1,11 +1,13 @@
 package articles
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +30,7 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 		require.NotContains(t, got, "::app[private-sample]")
 		require.NotContains(t, got, "::app[private-alias]")
 		// Rendered HTML must not expose a clickable private app URL.
-		html := renderArticleHTML(got)
+		html := renderArticleHTMLBoth(t, got)
 		require.NotContains(t, strings.ToLower(html), `href="/apps/private-sample`)
 		require.NotContains(t, strings.ToLower(html), `href="https://opennavo.com/apps/private-sample`)
 		require.NotContains(t, strings.ToLower(html), `href="http://opennavo.com/apps/private-sample`)
@@ -441,6 +443,54 @@ func TestRedactPrivateAppReferencesReviewProbes(t *testing.T) {
 	})
 }
 
+func TestRedactPrivateAppReferencesReviewRound2(t *testing.T) {
+	private := map[string]bool{"private-sample": true}
+
+	t.Run("N1 headings breaks and definitions inside list items survive", func(t *testing.T) {
+		body := "- item\n\n  # heading\n\n  ***\n\n  [r]: /docs\n\n  see [r]\n- next\n\n[z](/apps/private-sample)"
+		got := RedactPrivateAppReferences(body, private)
+		require.Contains(t, got, "  # heading")
+		require.Contains(t, got, "  ***")
+		require.Contains(t, got, "  [r]: /docs")
+		require.Contains(t, got, "- next")
+		html := renderArticleHTMLBoth(t, got)
+		require.Contains(t, html, "<h1>heading</h1>")
+		require.Contains(t, html, "<hr")
+		require.Contains(t, html, `href="/docs"`)
+	})
+
+	t.Run("N2 dot segments are resolved before matching", func(t *testing.T) {
+		got := RedactPrivateAppReferences("[x](/apps/public-child/../private-sample) [y](/apps/private-sample/../public-child) [w](/apps\\private-sample)", private)
+		require.NotContains(t, got, "public-child/../private-sample")
+		require.Contains(t, got, "[y](/apps/private-sample/../public-child)")
+		require.NotContains(t, got, "](/apps\\private-sample)")
+	})
+
+	t.Run("N3 encoded and escaped plain-text URLs are scrubbed", func(t *testing.T) {
+		for _, body := range []string{
+			"a opennavo.com/apps/private%2Dsample b",
+			"a opennavo.com/apps/private&#45;sample b",
+			"a opennavo.com/apps/private\\-sample b",
+			"a /apps/private&#x2d;sample b",
+		} {
+			got := RedactPrivateAppReferences(body, private)
+			require.NotContains(t, got, "private", "body=%q got=%q", body, got)
+			require.Contains(t, got, "a ")
+		}
+		keep := "a opennavo.com/apps/public&#45;child b"
+		require.Equal(t, keep, RedactPrivateAppReferences(keep, private))
+	})
+
+	t.Run("low: raw img, port and www trailing-dot text", func(t *testing.T) {
+		got := RedactPrivateAppReferences(`<img src="/apps/private-sample/i.png"> <img src="/apps/public-child/i.png">`, private)
+		require.NotContains(t, got, "private-sample")
+		require.Contains(t, got, `src="/apps/public-child/i.png"`)
+		got = RedactPrivateAppReferences("x www.opennavo.com./apps/private-sample and opennavo.com:443/apps/private-sample y", private)
+		require.NotContains(t, got, "private-sample")
+		require.Contains(t, got, " y")
+	})
+}
+
 // renderArticleHTMLBoth renders with goldmark and, when available, production markdown-it
 // (html:false, linkify:true, fuzzyLink:true) so scheme-less private URLs are exercised.
 func renderArticleHTMLBoth(t *testing.T, source string) string {
@@ -461,16 +511,27 @@ func renderArticleHTML(source string) string {
 	return b.String()
 }
 
+// renderArticleHTMLMarkdownIt renders with the production renderer (markdown-it, html:false,
+// linkify:true) plus fuzzyLink so scheme-less URLs are exercised. It never fails silently:
+// missing node/markdown-it is printed once to stderr and becomes a hard failure when
+// OPENNAVO_REQUIRE_MARKDOWN_IT=1 or CI is set; a render error is always a test failure.
 func renderArticleHTMLMarkdownIt(t *testing.T, source string) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
+		t.Fatal("markdown-it oracle: cannot locate test file")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", ".."))
+	_, nodeErr := exec.LookPath("node")
+	_, modErr := os.Stat(filepath.Join(root, "node_modules", "markdown-it"))
+	if nodeErr != nil || modErr != nil {
+		msg := fmt.Sprintf("markdown-it oracle unavailable (node: %v, module: %v); run pnpm install", nodeErr, modErr)
+		if os.Getenv("OPENNAVO_REQUIRE_MARKDOWN_IT") == "1" || os.Getenv("CI") != "" {
+			t.Fatal(msg)
+		}
+		markdownItWarn.Do(func() { fmt.Fprintln(os.Stderr, "WARNING: SKIPPING "+msg) })
 		return ""
 	}
-	// apps/server/internal/articles -> repo root
-	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", ".."))
-	script := filepath.Join(root, "node_modules", "markdown-it", "bin", "markdown-it.js")
-	// Prefer an inline node require so fuzzyLink matches the production concern.
 	cmd := exec.Command("node", "-e", `const MarkdownIt = require('markdown-it');
 const md = new MarkdownIt({ html: false, linkify: true });
 md.linkify.set({ fuzzyLink: true });
@@ -482,16 +543,12 @@ process.stdin.on('end', () => { process.stdout.write(md.render(input)); });`)
 	cmd.Stdin = strings.NewReader(source)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		// markdown-it is optional in CI without node_modules; goldmark still covers structure.
-		if _, statErr := os.Stat(filepath.Join(root, "node_modules", "markdown-it")); statErr != nil {
-			return ""
-		}
-		t.Logf("markdown-it render skipped: %v (%s)", err, out)
-		_ = script
-		return ""
+		t.Fatalf("markdown-it oracle failed: %v\n%s", err, out)
 	}
 	return string(out)
 }
+
+var markdownItWarn sync.Once
 
 func stripCodeHTML(html string) string {
 	for {
