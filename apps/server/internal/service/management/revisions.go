@@ -246,6 +246,22 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 						if err != nil {
 							return err
 						}
+						earlierAfter, err := revisionState(row.AfterData)
+						if err != nil {
+							return err
+						}
+						laterAfter, err := revisionState(merged[i].AfterData)
+						if err != nil {
+							return err
+						}
+						after := store.HistoryMergeAfter(earlierAfter, laterAfter)
+						merged[i].AfterData, err = json.Marshal(after)
+						if err != nil {
+							return err
+						}
+						// Current and after must include the same captured lifecycle
+						// fields when checking for changes since this request.
+						merged[i].AfterHash = store.HistoryHash(after)
 					}
 					merged[i].BeforeData = row.BeforeData
 				} else {

@@ -106,6 +106,13 @@ func HistoryMergeBefore(earlier, later HistoryState) HistoryState {
 	return earlier
 }
 
+// HistoryMergeAfter preserves the latest snapshot while carrying lifecycle
+// fields from the latest earlier revision that captured them. Explicit values,
+// including null, take precedence over fallback values just as for before.
+func HistoryMergeAfter(earlier, later HistoryState) HistoryState {
+	return HistoryMergeBefore(later, earlier)
+}
+
 func (s *Store) historySnapshot(ctx context.Context, ref content.Ref, includePackageLifecycle bool) (HistoryState, error) {
 	tables := historyTables(ref, includePackageLifecycle)
 	if len(tables) == 0 {
