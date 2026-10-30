@@ -8,5 +8,8 @@ fn main() {
     if let Some(code) = opennavo_desktop_lib::uninstall::execute::admin_entry() {
         std::process::exit(code);
     }
+    if let Some(code) = opennavo_desktop_lib::mcp::cli::entry() {
+        std::process::exit(code);
+    }
     opennavo_desktop_lib::run();
 }

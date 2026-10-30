@@ -18,6 +18,7 @@ pub mod library;
 pub mod lifecycle;
 pub mod locales_gen;
 pub mod maintenance;
+pub mod mcp;
 pub mod mirror;
 pub mod model;
 pub mod monitor;
