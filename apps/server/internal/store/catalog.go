@@ -34,6 +34,16 @@ type CatalogMutation struct {
 }
 
 func (s *Store) WithAdvisoryLock(ctx context.Context, key string, fn func(context.Context) error) (result error) {
+	return s.withAdvisoryLock(ctx, key, false, fn)
+}
+
+// WithBlockingAdvisoryLock joins an in-flight publisher before revoking its
+// output. The caller's context bounds both the lock wait and the work.
+func (s *Store) WithBlockingAdvisoryLock(ctx context.Context, key string, fn func(context.Context) error) error {
+	return s.withAdvisoryLock(ctx, key, true, fn)
+}
+
+func (s *Store) withAdvisoryLock(ctx context.Context, key string, blocking bool, fn func(context.Context) error) (result error) {
 	db, err := s.DB.DB()
 	if err != nil {
 		return fmt.Errorf("get database: %w", err)
@@ -44,7 +54,11 @@ func (s *Store) WithAdvisoryLock(ctx context.Context, key string, fn func(contex
 	}
 	defer func() { result = errors.Join(result, connection.Close()) }()
 	var locked bool
-	if err := connection.QueryRowContext(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1,0))", key).Scan(&locked); err != nil {
+	query := "SELECT pg_try_advisory_lock(hashtextextended($1,0))"
+	if blocking {
+		query = "SELECT true FROM pg_advisory_lock(hashtextextended($1,0))"
+	}
+	if err := connection.QueryRowContext(ctx, query, key).Scan(&locked); err != nil {
 		return fmt.Errorf("acquire job lock: %w", err)
 	}
 	if !locked {

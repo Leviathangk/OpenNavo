@@ -21,6 +21,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/service/assets"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/storage"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
@@ -96,7 +97,9 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	service := &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}
+	service := &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}, Purge: func(ctx context.Context, prefixes []string) error {
+		return (&urlnotify.Notifier{Store: st, Config: cfg}).PurgeSnapshots(ctx, prefixes)
+	}}
 	var stats map[string]any
 	handler := jobs.WrapHandler(st, nil, func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
 		var err error

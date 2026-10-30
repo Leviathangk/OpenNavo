@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/url"
 	"path"
 	"time"
 
@@ -25,6 +27,7 @@ type Service struct {
 	Store   *store.Store
 	Objects Objects
 	Now     func() time.Time
+	Purge   func(context.Context, []string) error
 }
 type Document struct {
 	FormatVersion int                      `json:"formatVersion"`
@@ -135,6 +138,13 @@ func item(zh, en store.PublicPackage) (publicapi.CatalogItem, error) {
 	return r, nil
 }
 func (s *Service) Latest(ctx context.Context) (publicapi.CatalogSnapshotInfo, error) {
+	visibility, err := s.Store.SnapshotVisibility(ctx)
+	if err != nil {
+		return publicapi.CatalogSnapshotInfo{}, err
+	}
+	if visibility.RevocationGeneration > visibility.SnapshotRevocation {
+		return publicapi.CatalogSnapshotInfo{}, &domain.AppError{Code: domain.CodeUpstreamUnavailable, HTTPStatus: 503}
+	}
 	r, err := s.Store.LatestSnapshot(ctx)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return publicapi.CatalogSnapshotInfo{}, &domain.AppError{Code: domain.CodeUpstreamUnavailable, HTTPStatus: 503}
@@ -146,8 +156,26 @@ func (s *Service) Latest(ctx context.Context) (publicapi.CatalogSnapshotInfo, er
 }
 func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 	var stats map[string]any
-	err := s.Store.WithAdvisoryLock(ctx, "snapshot:build", func(ctx context.Context) error {
-		bundle, skip, err := s.bundle(ctx, true)
+	err := s.Store.WithBlockingAdvisoryLock(ctx, "snapshot:build", func(ctx context.Context) error {
+		visibility, err := s.Store.SnapshotVisibility(ctx)
+		if err != nil {
+			return err
+		}
+		revoke := visibility.RevocationGeneration > visibility.SnapshotRevocation
+		var obsolete []string
+		var objects revocableObjects
+		if revoke {
+			var ok bool
+			objects, ok = s.Objects.(revocableObjects)
+			if !ok || s.Purge == nil {
+				return errors.New("snapshot revocation requires object deletion and CDN purge")
+			}
+			obsolete, err = objects.List(ctx, "snapshots/")
+			if err != nil {
+				return err
+			}
+		}
+		bundle, skip, err := s.bundle(ctx, !revoke)
 		if err != nil {
 			return err
 		}
@@ -172,10 +200,52 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 		if err = s.Store.SaveSnapshot(ctx, bundle.Record); err != nil {
 			return err
 		}
+		if revoke {
+			keep := map[string]bool{"snapshots/latest.json": true}
+			for _, file := range bundle.Files {
+				keep[file.Key] = true
+			}
+			for _, key := range obsolete {
+				if !keep[key] {
+					if err := objects.Delete(ctx, key); err != nil {
+						return fmt.Errorf("revoke snapshot object: %w", err)
+					}
+				}
+			}
+			prefix, err := url.Parse(s.Objects.URL("snapshots/"))
+			if err != nil || prefix.Host == "" {
+				return errors.New("invalid snapshot CDN URL")
+			}
+			if err = s.Purge(ctx, []string{prefix.Host + prefix.EscapedPath()}); err != nil {
+				return fmt.Errorf("purge revoked snapshots: %w", err)
+			}
+			if err = s.Store.CompleteSnapshotRevocation(ctx, visibility.RevocationGeneration, bundle.Record); err != nil {
+				return err
+			}
+		}
 		stats = map[string]any{"cursor": bundle.Info.Cursor, "items": bundle.Info.ItemCount, "bytes": bundle.Info.Bytes, "textPacks": bundle.Info.TextPacks, "sha256": bundle.Info.Sha256, "url": bundle.Info.Url}
 		return nil
 	})
 	return stats, err
+}
+
+type revocableObjects interface {
+	List(context.Context, string) ([]string, error)
+	Delete(context.Context, string) error
+}
+
+// RevokePrivate waits for older publishers and completes durable revocation
+// before acknowledging a visibility write. Build also retries it from the outbox.
+func (s *Service) RevokePrivate(ctx context.Context) error {
+	for {
+		state, err := s.Store.SnapshotVisibility(ctx)
+		if err != nil || state.RevocationGeneration <= state.SnapshotRevocation {
+			return err
+		}
+		if _, err := s.Build(ctx); err != nil {
+			return err
+		}
+	}
 }
 
 func encodeDocument(doc Document) ([]byte, []byte, error) {

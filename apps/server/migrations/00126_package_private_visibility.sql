@@ -14,7 +14,9 @@ CREATE INDEX package_meta_private ON package_meta(package_id) WHERE private;
 
 CREATE TABLE catalog_visibility (
     id boolean PRIMARY KEY DEFAULT true CHECK (id),
-    generation bigint NOT NULL DEFAULT 0
+    generation bigint NOT NULL DEFAULT 0,
+    revocation_generation bigint NOT NULL DEFAULT 0,
+    snapshot_revocation bigint NOT NULL DEFAULT 0
 );
 INSERT INTO catalog_visibility(id) VALUES(true);
 
@@ -31,6 +33,11 @@ BEGIN
         IF NOT OLD.hidden AND NOT OLD.private THEN RETURN OLD; END IF;
     END IF;
     UPDATE catalog_visibility SET generation=generation+1 WHERE id=true;
+    IF TG_OP <> 'DELETE' AND NEW.private AND (TG_OP = 'INSERT' OR NOT OLD.private) THEN
+        UPDATE catalog_visibility SET revocation_generation=revocation_generation+1 WHERE id=true;
+        INSERT INTO job_outbox(unique_key,job_type,payload) VALUES('snapshot:private','snapshot:build','{}'::jsonb)
+            ON CONFLICT(unique_key) DO UPDATE SET available_at=now();
+    END IF;
     RETURN COALESCE(NEW, OLD);
 END;
 $$;

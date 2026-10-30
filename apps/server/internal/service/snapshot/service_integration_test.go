@@ -33,6 +33,21 @@ func (m memoryObjects) Put(_ context.Context, k string, b []byte, _ string) erro
 	return nil
 }
 func (m memoryObjects) URL(k string) string { return "https://cdn.example.test/" + k }
+
+func (m memoryObjects) List(_ context.Context, prefix string) ([]string, error) {
+	keys := []string{}
+	for key := range m {
+		if strings.HasPrefix(key, prefix) {
+			keys = append(keys, key)
+		}
+	}
+	return keys, nil
+}
+
+func (m memoryObjects) Delete(_ context.Context, key string) error {
+	delete(m, key)
+	return nil
+}
 func TestSnapshotConsistencyIncrementalPaginationRetentionAndAnalytics(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewStore(t)

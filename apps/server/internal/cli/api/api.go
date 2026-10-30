@@ -30,6 +30,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/search"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/storage"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
@@ -107,9 +108,13 @@ func run(ctx context.Context) error {
 	adminService.InvalidatePublic = func(ctx context.Context) error {
 		return cache.Invalidate(ctx, cacheClient, []string{"c:*"})
 	}
+	snapshots := &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}, Purge: func(ctx context.Context, prefixes []string) error {
+		return (&urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}).PurgeSnapshots(ctx, prefixes)
+	}}
+	adminService.Snapshots = snapshots
 	queueMetrics := observability.NewQueueMetrics(st.Redis)
 	defer func() { _ = queueMetrics.Close() }()
-	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
+	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: snapshots, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)
 	}

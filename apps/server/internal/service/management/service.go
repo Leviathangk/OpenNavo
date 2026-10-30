@@ -17,6 +17,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
+	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/traditional"
@@ -38,6 +39,7 @@ type Service struct {
 	Taps       *taps.Service // reads third-party tap casks for AddTapPackage
 	// Visibility changes clear the public cache after commit, before acknowledging the write.
 	InvalidatePublic func(context.Context) error
+	Snapshots        *snapshot.Service
 }
 type Input struct {
 	ID, ScreenshotID                         int64
@@ -394,8 +396,13 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 		visibility := op == "UpdatePackageMeta" && (hidden || private)
 		// A restore can also apply a recorded visibility change.
 		visibility = visibility || op == "RestoreRevision" || op == "RestoreTrash" || op == "RevertRequest"
-		if err == nil && visibility && !domain.CurrentOperation(ctx).DryRun && !agentTransaction(ctx) && s.InvalidatePublic != nil {
-			err = s.InvalidatePublic(ctx)
+		if err == nil && visibility && !domain.CurrentOperation(ctx).DryRun && !agentTransaction(ctx) {
+			if s.InvalidatePublic != nil {
+				err = s.InvalidatePublic(ctx)
+			}
+			if s.Snapshots != nil {
+				err = errors.Join(err, s.Snapshots.RevokePrivate(ctx))
+			}
 		}
 	}()
 	// CI may carry all ten release-note languages as a consistency assertion.
