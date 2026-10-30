@@ -111,9 +111,9 @@ describe('WP10 SoftwareApplication from the facts model (T2)', () => {
     expect(node.alternateName).toEqual(['编辑器', 'エディター', 'Редактор']);
   });
 
-  it('keeps every alias, including one matching the cask token', () => {
+  it('excludes a name matching the cask token', () => {
     const node = softwareAppNode(pageOf(app({ names: ['Editor', 'Editor Pro', 'editor'] })), url, t)!;
-    expect(node.alternateName).toEqual(['Editor Pro', 'editor']);
+    expect(node.alternateName).toEqual(['Editor Pro']);
   });
 
   it('Never turns a price into an offer by itself', () => {
