@@ -315,6 +315,7 @@
     "autoUpdates": "自動更新",
     "disabled": "無効化済み",
     "deprecated": "非推奨",
+    "paused": "一時停止中",
     "homepage": "ホームページ",
     "fromTap": "提供元",
     "thirdPartyTap": "サードパーティのリポジトリ",

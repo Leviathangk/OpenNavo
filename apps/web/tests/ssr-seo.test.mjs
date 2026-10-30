@@ -1851,26 +1851,51 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.ok(!/Variant App(?! Beta)/.test(title(text) + description(text)), `${page} never says the bare name`);
     }
   });
-  await t.test('lifecycle banners and commands share disabled > deprecated > paused priority', async () => {
-    for (const [index, { name, expected }] of lifecycleCases.entries()) {
-      const response = await fetch(`${origin}/apps/qa-lifecycle-${index}`);
-      const html = await response.text();
-      assert.equal(response.status, 200, name + logs);
-      const page = JSDOM.fragment(html);
-      const banner = page.querySelector('[data-testid="package-lifecycle-banner"]');
-      const command = page.querySelector('[data-testid="package-install-command"]');
-      assert.equal(Boolean(banner), expected !== 'active', name);
-      assert.equal(Boolean(command?.querySelector('code')), expected !== 'disabled', name);
-      assert.equal(Boolean(command?.querySelector('button')), expected !== 'disabled', name);
-      if (banner) {
-        assert.ok(
-          banner.classList.contains(expected === 'disabled' ? 'text-status-danger' : 'text-status-warning'),
-          name
-        );
-        assert.equal(command.querySelector('[role="note"]').textContent.trim(), banner.textContent.trim(), name);
+  await t.test(
+    'lifecycle banners, commands, spec rows and header chips share disabled > deprecated > paused priority',
+    async () => {
+      for (const [index, { name, expected }] of lifecycleCases.entries()) {
+        const response = await fetch(`${origin}/apps/qa-lifecycle-${index}`);
+        const html = await response.text();
+        assert.equal(response.status, 200, name + logs);
+        const page = JSDOM.fragment(html);
+        const banner = page.querySelector('[data-testid="package-lifecycle-banner"]');
+        const command = page.querySelector('[data-testid="package-install-command"]');
+        const header = page.querySelector('h1').parentElement;
+        for (const [state, label] of Object.entries({
+          disabled: 'Disabled',
+          deprecated: 'Deprecated',
+          paused: 'Paused by OpenNavo'
+        }))
+          assert.equal(header.textContent.includes(label), expected === state, `${name}: ${state} chip`);
+        const card = page.querySelector('[data-testid="package-spec-card"]');
+        const homebrew = [...card.querySelectorAll('dt')].find(row => row.textContent === 'Homebrew');
+        const status = {
+          active: 'Available; updated by Homebrew',
+          disabled: 'Disabled by Homebrew',
+          deprecated: 'Deprecated',
+          paused: 'Still offered by Homebrew; paused by OpenNavo'
+        };
+        assert.equal(homebrew?.nextElementSibling?.textContent.trim(), status[expected], `${name}: Homebrew row`);
+        assert.equal(Boolean(banner), expected !== 'active', name);
+        assert.equal(Boolean(command?.querySelector('code')), expected !== 'disabled', name);
+        assert.equal(Boolean(command?.querySelector('button')), expected !== 'disabled', name);
+        if (banner) {
+          const notices = {
+            disabled: 'Homebrew has disabled this package:',
+            deprecated: 'Homebrew has deprecated this package:',
+            paused: 'No new version for more than 90 days'
+          };
+          assert.ok(banner.textContent.trim().startsWith(notices[expected]), `${name}: lifecycle banner`);
+          assert.ok(
+            banner.classList.contains(expected === 'disabled' ? 'text-status-danger' : 'text-status-warning'),
+            name
+          );
+          assert.equal(command.querySelector('[role="note"]').textContent.trim(), banner.textContent.trim(), name);
+        }
       }
     }
-  });
+  );
 
   await t.test(
     'deduplicated metadata keeps architectures, non-native status, older builds and identity IDs',

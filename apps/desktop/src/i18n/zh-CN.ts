@@ -315,6 +315,7 @@ export default {
     autoUpdates: '自带更新',
     disabled: '已停用',
     deprecated: '已弃用',
+    paused: '暂停更新',
     homepage: '主页',
     fromTap: '来自',
     thirdPartyTap: '第三方仓库',

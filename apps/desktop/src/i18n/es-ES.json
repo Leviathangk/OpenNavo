@@ -315,6 +315,7 @@
     "autoUpdates": "Actualización integrada",
     "disabled": "Desactivada",
     "deprecated": "Obsoleta",
+    "paused": "Pausada por OpenNavo",
     "homepage": "Inicio",
     "fromTap": "De",
     "thirdPartyTap": "Repositorio de terceros",

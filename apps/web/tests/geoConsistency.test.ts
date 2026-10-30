@@ -153,7 +153,8 @@ describe('G5 cross-export normalized facts', () => {
         expect(md).not.toContain(`**${t('package.stats.latest')}**`);
         break;
       case 'G5-05':
-        expect(plainHtml(html.quick!)).toContain(t('package.quick.homebrewPaused'));
+        expect(plainHtml(html.quick!)).toContain(t('package.deprecated'));
+        expect(plainHtml(html.quick!)).not.toContain(t('package.quick.homebrewPaused'));
         expect(md).toContain(t('package.faq.reasons.discontinued'));
         expect(md).toContain(page.installCommand);
         break;

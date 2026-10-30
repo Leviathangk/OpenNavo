@@ -47,7 +47,8 @@ const repoSignals = computed(() => toPackageRepoSignals(props.detail));
 
 const installed = computed(() => library.find(props.kind, props.token));
 const outdated = computed(() => updates.find(props.kind, props.token));
-const unavailable = computed(() => packageInstallState(props.detail ?? props.local ?? {}) === 'disabled');
+const installState = computed(() => packageInstallState(props.detail ?? props.local ?? {}));
+const unavailable = computed(() => installState.value === 'disabled');
 const state = computed(() => stateOf(props.kind, props.token, unavailable.value));
 const latest = computed(() => outdated.value?.currentVersion ?? props.detail?.version ?? props.local?.version ?? '');
 
@@ -81,12 +82,11 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (installedChip.value) list.push({ key: 'installed', label: installedChip.value, tone: 'success', dot: true });
   if (installed.value?.pinned) list.push({ key: 'pinned', label: t('package.pinned') });
-  if (unavailable.value) list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
-  else if (props.detail?.deprecation ?? props.local?.deprecated)
+  if (installState.value !== 'active')
     list.push({
-      key: 'deprecated',
-      label: t('package.deprecated'),
-      tone: 'warning',
+      key: installState.value,
+      label: t(`package.${installState.value}`),
+      tone: unavailable.value ? 'danger' : 'warning',
       outline: true
     });
   return list;

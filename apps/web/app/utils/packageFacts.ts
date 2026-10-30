@@ -5,7 +5,13 @@ import { formatDate } from './packageDate';
 // stated with its check date, a stale one only "as of" its date and never as current, and anything
 // pending review or without a dated source is left out.
 import type { PackageDetail, PackageRepository, PublicComponents } from '@opennavo/api';
-import { disabledByHomebrew, formatVersion, isThirdPartyTap, packageAliases } from '@opennavo/shared';
+import {
+  disabledByHomebrew,
+  formatVersion,
+  isThirdPartyTap,
+  packageAliases,
+  packageInstallState
+} from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { httpsUrl, linkSource } from './linkApp';
 import type { Translate } from './seoTitles';
@@ -436,13 +442,15 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
       value: pkg.installCommand,
       code: true
     });
-    const status = disabledByHomebrew(pkg)
-      ? t('package.quick.homebrewDisabled')
-      : pausedByOpenNavo(pkg)
-        ? t('package.quick.homebrewPaused')
-        : pkg.deprecation
+    const state = packageInstallState(pkg);
+    const status =
+      state === 'disabled'
+        ? t('package.quick.homebrewDisabled')
+        : state === 'deprecated'
           ? t('package.deprecated')
-          : t(pkg.autoUpdates ? 'package.quick.homebrewAuto' : 'package.quick.homebrewAvailable');
+          : state === 'paused'
+            ? t('package.quick.homebrewPaused')
+            : t(pkg.autoUpdates ? 'package.quick.homebrewAuto' : 'package.quick.homebrewAvailable');
     add({ key: 'homebrew', label: 'Homebrew', value: status });
   }
 

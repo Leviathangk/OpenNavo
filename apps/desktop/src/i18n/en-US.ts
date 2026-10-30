@@ -322,6 +322,7 @@ const messages: MessageSchema = {
     autoUpdates: 'Auto-updates',
     disabled: 'Disabled',
     deprecated: 'Deprecated',
+    paused: 'Paused by OpenNavo',
     homepage: 'Homepage',
     fromTap: 'From',
     thirdPartyTap: 'Third-party tap',

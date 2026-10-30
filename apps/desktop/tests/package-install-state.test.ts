@@ -1,7 +1,8 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import type { PackageDetail } from '@opennavo/api';
-import { OnMenu, OnPackageNotice } from '@opennavo/ui';
+import { OnMenu, OnPackageHeader, OnPackageNotice } from '@opennavo/ui';
+import { DESKTOP_LOCALES } from '@opennavo/shared';
 import lifecycleCasesData from '../../../packages/shared/tests/fixtures/packageInstallStates.json';
 import type { LocalItem } from '@/ipc/client';
 import PackageLayout from '@/pages/package/PackageLayout.vue';
@@ -94,41 +95,105 @@ const lifecycleCases = lifecycleCasesData as {
   expected: 'active' | 'disabled' | 'deprecated' | 'paused';
 }[];
 
-it.each(lifecycleCases)('desktop banner and command share lifecycle priority: $name', async ({ fields, expected }) => {
-  state.local = null;
-  state.detail = {
-    kind: 'cask',
-    token: 'iterm2',
-    displayName: 'iTerm2',
-    names: [],
-    version: '1.0.0',
-    installCommand: 'brew install --cask iterm2',
-    artifacts: { apps: [], binaries: [], pkgs: [], entries: [] },
-    supports: { status: 'known', arm64: true, x86_64: true },
-    installs: { d30: 0, d90: 0, d365: 0 },
-    ...fields
-  } as PackageDetail;
-  const { pinia, router } = await setup('/package/cask/iterm2');
-  const global = {
-    plugins: [pinia, router, i18n],
-    stubs: { MonthlyInstallsCard: true, MasAlsoPanel: true, DetailHeader: true, DetailStats: true }
-  };
-  const layout = mount(PackageLayout, { props: { kind: 'cask', token: 'iterm2' }, global });
-  const overview = mount(PackageOverview, { global });
-  try {
-    const banner = layout.findComponent(OnPackageNotice);
-    const command = overview.get('[data-testid="package-install-command"]');
-    expect(banner.exists()).toBe(expected !== 'active');
-    expect(command.find('code').exists()).toBe(expected !== 'disabled');
-    expect(command.find('button').exists()).toBe(expected !== 'disabled');
-    if (expected !== 'active') {
-      expect(banner.props('tone')).toBe(expected === 'disabled' ? 'danger' : 'warning');
-      expect(command.get('[role="note"]').text()).toBe(banner.props('text'));
-      expect(banner.text()).not.toBe('');
+it.each(lifecycleCases)(
+  'desktop banner, command and header chips share lifecycle priority: $name',
+  async ({ fields, expected }) => {
+    state.local = null;
+    state.detail = {
+      kind: 'cask',
+      token: 'iterm2',
+      displayName: 'iTerm2',
+      names: [],
+      version: '1.0.0',
+      installCommand: 'brew install --cask iterm2',
+      artifacts: { apps: [], binaries: [], pkgs: [], entries: [] },
+      supports: { status: 'known', arm64: true, x86_64: true },
+      installs: { d30: 0, d90: 0, d365: 0 },
+      ...fields
+    } as PackageDetail;
+    const { pinia, router } = await setup('/package/cask/iterm2');
+    const global = {
+      plugins: [pinia, router, i18n],
+      stubs: { MonthlyInstallsCard: true, MasAlsoPanel: true, DetailHeader: true, DetailStats: true }
+    };
+    const layout = mount(PackageLayout, { props: { kind: 'cask', token: 'iterm2' }, global });
+    const overview = mount(PackageOverview, { global });
+    const header = mount(DetailHeader, {
+      props: { kind: 'cask', token: 'iterm2', detail: state.detail },
+      global: { plugins: global.plugins }
+    });
+    try {
+      const banner = layout.findComponent(OnPackageNotice);
+      const command = overview.get('[data-testid="package-install-command"]');
+      expect(banner.exists()).toBe(expected !== 'active');
+      expect(command.find('code').exists()).toBe(expected !== 'disabled');
+      expect(command.find('button').exists()).toBe(expected !== 'disabled');
+      const chips = header.findComponent(OnPackageHeader).props('chips')!;
+      expect(chips.filter(chip => ['disabled', 'deprecated', 'paused'].includes(chip.key))).toEqual(
+        expected === 'active'
+          ? []
+          : [
+              {
+                key: expected,
+                label: i18n.global.t(`package.${expected}`),
+                tone: expected === 'disabled' ? 'danger' : 'warning',
+                outline: true
+              }
+            ]
+      );
+      if (expected !== 'active') {
+        expect(banner.props('tone')).toBe(expected === 'disabled' ? 'danger' : 'warning');
+        const noticeKeys = {
+          disabled: 'package.disabledNotice',
+          deprecated: 'package.deprecatedNotice',
+          paused: 'package.staleNotice'
+        };
+        const lifecycle = expected === 'deprecated' ? fields.deprecation : fields.disable;
+        expect(banner.props('text')).toBe(
+          i18n.global.t(noticeKeys[expected], {
+            reason: lifecycle?.reason ?? fields.homebrewStatus?.reason ?? i18n.global.t('package.noReason')
+          })
+        );
+        expect(command.get('[role="note"]').text()).toBe(banner.props('text'));
+        expect(banner.text()).not.toBe('');
+      }
+    } finally {
+      header.unmount();
+      overview.unmount();
+      layout.unmount();
     }
+  }
+);
+
+it.each(DESKTOP_LOCALES)('renders the paused chip from real desktop messages in %s', async locale => {
+  const { pinia, router } = await setup('/package/cask/iterm2');
+  i18n.global.locale.value = locale;
+  const header = mount(DetailHeader, {
+    props: {
+      kind: 'cask',
+      token: 'iterm2',
+      detail: {
+        kind: 'cask',
+        token: 'iterm2',
+        homebrewStatus: { state: 'active' },
+        recommendationPaused: true
+      } as PackageDetail
+    },
+    global: { plugins: [pinia, router, i18n] }
+  });
+  try {
+    const label = i18n.global.messages.value[locale].package.paused;
+    expect(label).toBeTruthy();
+    expect(header.findComponent(OnPackageHeader).props('chips')).toContainEqual({
+      key: 'paused',
+      label,
+      tone: 'warning',
+      outline: true
+    });
+    expect(header.text()).toContain(label);
   } finally {
-    overview.unmount();
-    layout.unmount();
+    header.unmount();
+    i18n.global.locale.value = 'zh-CN';
   }
 });
 

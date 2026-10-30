@@ -315,6 +315,7 @@
     "autoUpdates": "Встроенное обновление",
     "disabled": "Отключено",
     "deprecated": "Устарело",
+    "paused": "Приостановлено",
     "homepage": "Главная",
     "fromTap": "Источник",
     "thirdPartyTap": "Сторонний репозиторий",

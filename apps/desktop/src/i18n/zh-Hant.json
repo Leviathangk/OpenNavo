@@ -315,6 +315,7 @@
     "autoUpdates": "自帶更新",
     "disabled": "已停用",
     "deprecated": "已棄用",
+    "paused": "暫停更新",
     "homepage": "主頁",
     "fromTap": "來自",
     "thirdPartyTap": "第三方倉庫",

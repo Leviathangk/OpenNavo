@@ -1696,6 +1696,7 @@
         "package.autoUpdates": "9d2936e17c43497472f84f27142b1f378c4e9ebd594eabf76c0295066e8838ee",
         "package.disabled": "a8c3698b5b8c485d8bd403c226a3dc594cd3196b8229ebc02338bab31a7bea44",
         "package.deprecated": "d0d52ce21400c50433c8f9f95ede288b0a5f9805021e61515270109c21aa838a",
+        "package.paused": "8c78e736df180bf3f01276780134db2b5f688ac3426d784e7030ca773a261516",
         "package.homepage": "3e0d676d2d85073dbdf636d1e132dbbc3814c6cd906ba198b503e9106c0a32a9",
         "package.fromTap": "9b6a4a82e39df1059c799118aa5654dfefd82425c9d56027a1abd40aaa27f329",
         "package.thirdPartyTap": "a5bacafaa441db4890b0862636d983dd7472cdbe5c2fb82cef83f71172c6badd",

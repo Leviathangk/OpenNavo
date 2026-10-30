@@ -315,6 +315,7 @@
     "autoUpdates": "Integrierte Updates",
     "disabled": "Deaktiviert",
     "deprecated": "Veraltet",
+    "paused": "Von OpenNavo pausiert",
     "homepage": "Website",
     "fromTap": "Aus",
     "thirdPartyTap": "Drittanbieter-Tap",

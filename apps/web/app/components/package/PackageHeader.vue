@@ -4,7 +4,6 @@ import { OnButton, OnIcon, OnPackageHeader, toPackageRepoSignals, useUiMessages 
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { httpsUrl, linkDownloadUrl, linkSource } from '~/utils/linkApp';
-import { pausedByOpenNavo } from '~/utils/packageFacts';
 import type { PackagePage } from '~/utils/packageFacts';
 
 // Detail header (08 §10.5, 03-detail): shared OnPackageHeader (ADR-017), web Get menu/homepage right.
@@ -32,7 +31,8 @@ const meta = computed(() => {
 
 const subtitle = computed(() => [props.pkg.developer, props.pkg.summary].filter(Boolean).join(' · '));
 const repoSignals = computed(() => toPackageRepoSignals(props.pkg));
-const unavailable = computed(() => packageInstallState(props.pkg) === 'disabled');
+const installState = computed(() => packageInstallState(props.pkg));
+const unavailable = computed(() => installState.value === 'disabled');
 
 const chips = computed<OnPackageHeaderChip[]>(() => {
   const kind = isLink.value
@@ -58,11 +58,13 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   if (props.pkg.autoUpdates) list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
   if (repoSignals.value?.archived)
     list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
-  if (unavailable.value) list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
-  else if (pausedByOpenNavo(props.pkg))
-    list.push({ key: 'paused', label: t('package.paused'), tone: 'warning', outline: true });
-  else if (props.pkg.deprecation)
-    list.push({ key: 'deprecated', label: t('package.deprecated'), tone: 'warning', outline: true });
+  if (installState.value !== 'active')
+    list.push({
+      key: installState.value,
+      label: t(`package.${installState.value}`),
+      tone: unavailable.value ? 'danger' : 'warning',
+      outline: true
+    });
   return list;
 });
 </script>
