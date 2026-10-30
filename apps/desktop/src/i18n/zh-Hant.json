@@ -1096,6 +1096,8 @@
     "installDescription": "網頁請求在這台 Mac 上安裝它。確認後將執行下面的命令；取消則不做任何操作。",
     "installConfirm": "安裝",
     "formulaUnsupported": "OpenNavo 只收錄 App（Homebrew Cask），這個連結指向的是命令列工具。",
+    "confirmationBusy": "另一個確認視窗還開著。請先關閉它，再重試。",
+    "confirmationTimeout": "確認視窗已超時。請先關閉它，再重試。",
     "preview": {
       "invalid": "這個連結打不開",
       "invalidBody": "連結裡的引數不完整或不符合要求，OpenNavo 沒有做任何操作。",

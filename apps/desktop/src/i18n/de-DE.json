@@ -1096,6 +1096,8 @@
     "installDescription": "Eine Webseite möchte diese App auf Ihrem Mac installieren. Nach Bestätigung wird der folgende Befehl ausgeführt; beim Abbrechen passiert nichts.",
     "installConfirm": "Installieren",
     "formulaUnsupported": "OpenNavo führt nur Apps (Homebrew Cask). Dieser Link verweist auf ein Befehlszeilentool.",
+    "confirmationBusy": "Ein weiteres Bestätigungsfenster ist noch geöffnet. Schließen Sie es und versuchen Sie es erneut.",
+    "confirmationTimeout": "Das Bestätigungsfenster hat zu lange nicht geantwortet. Schließen Sie es und versuchen Sie es erneut.",
     "preview": {
       "invalid": "Dieser Link lässt sich nicht öffnen",
       "invalidBody": "Die Parameter fehlen oder sind ungültig. OpenNavo hat keine Aktion ausgeführt.",

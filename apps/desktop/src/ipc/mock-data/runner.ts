@@ -21,6 +21,7 @@ const FAILING = new Set(['firefox']);
 const PRIORITY: Record<Task['trigger'], number> = {
   manual: 0,
   deeplink: 0,
+  mcp: 0,
   retry: 0,
   schedule: 1,
   bundle: 1

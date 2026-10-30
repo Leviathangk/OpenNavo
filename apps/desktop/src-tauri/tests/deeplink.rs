@@ -3,6 +3,72 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicUsize, Ordering},
 };
+
+#[test]
+fn deeplink_confirmation_acl_is_main_local_only() {
+    let mut context: tauri::Context<tauri::Wry> = tauri::generate_context!();
+    let authority = context.runtime_authority_mut();
+    use tauri::ipc::Origin;
+    assert!(
+        authority
+            .resolve_access("deeplink_install_confirm", "main", "main", &Origin::Local)
+            .is_some()
+    );
+    for label in [
+        "tray",
+        "permission-guide",
+        "tray-monitor",
+        "firewall-alert",
+        "foreign",
+    ] {
+        assert!(
+            authority
+                .resolve_access("deeplink_install_confirm", label, label, &Origin::Local)
+                .is_none()
+        );
+    }
+    assert!(
+        authority
+            .resolve_access(
+                "deeplink_install_confirm",
+                "main",
+                "main",
+                &Origin::Remote {
+                    url: "https://example.test".parse().unwrap()
+                }
+            )
+            .is_none()
+    );
+}
+
+#[test]
+fn destroying_webview_clears_active_router_reservations() {
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let saved = events.clone();
+    let router = deeplink::Router::new(
+        Arc::new(move |event| saved.lock().unwrap().push(event)),
+        Arc::new(|| {}),
+    );
+    router.ready();
+    router.receive("opennavo://package/cask/zed?action=install");
+    router.receive("opennavo://collection/dev-setup?action=install");
+    let ids: Vec<_> = events
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|event| match event {
+            CoreEvent::Deeplink(event) => event.pending_id.clone().unwrap(),
+            _ => panic!("expected deep link"),
+        })
+        .collect();
+    for id in &ids {
+        router.begin_install(id).unwrap();
+    }
+    router.cancel_active_installs();
+    for id in &ids {
+        assert_eq!(router.begin_install(id).unwrap_err().code, "E_INVALID_ARG");
+    }
+}
 #[test]
 fn routes_actions_encoding_and_bounded_query() {
     for (url, route, install) in [
@@ -14,7 +80,7 @@ fn routes_actions_encoding_and_bounded_query() {
         (
             "opennavo://package/formula/ripgrep?action=install",
             "/package/formula/ripgrep",
-            true,
+            false,
         ),
         (
             "opennavo://collection/new-mac",
@@ -77,6 +143,45 @@ fn relaunch_carries_unique_valid_links_and_drops_invalid_or_missing_links() {
         deeplink::validated_links(["OpenNavo", valid, "opennavo://updates?action=remove", valid]);
     assert_eq!(links, vec![valid]);
     assert!(deeplink::validated_links(["OpenNavo", "--hidden"]).is_empty());
+}
+
+#[test]
+fn formula_install_links_are_read_only_and_install_intents_preserve_the_active_confirmation() {
+    let formula = deeplink::parse("opennavo://package/formula/ripgrep?action=install").unwrap();
+    assert!(formula.action.is_none());
+
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let saved = events.clone();
+    let router = deeplink::Router::new(
+        Arc::new(move |event| saved.lock().unwrap().push(event)),
+        Arc::new(|| {}),
+    );
+    router.ready();
+    for index in 0..32 {
+        router.receive(&format!(
+            "opennavo://package/cask/app-{index}?action=install"
+        ));
+    }
+    let events = events.lock().unwrap();
+    let first = match &events[0] {
+        CoreEvent::Deeplink(event) => event.pending_id.clone().unwrap(),
+        _ => panic!("expected deep link"),
+    };
+    let second = match &events[1] {
+        CoreEvent::Deeplink(event) => event.pending_id.clone().unwrap(),
+        _ => panic!("expected deep link"),
+    };
+    drop(events);
+    let _active = router
+        .begin_install(&first)
+        .expect("first request is active");
+    router.receive("opennavo://package/cask/app-32?action=install");
+    assert_eq!(
+        router.begin_install(&second).unwrap_err().code,
+        "E_INVALID_ARG"
+    );
+    router.release_install(&first);
+    assert!(router.begin_install(&first).is_ok());
 }
 
 #[test]

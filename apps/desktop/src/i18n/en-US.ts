@@ -1116,6 +1116,8 @@ const messages: MessageSchema = {
       'A web page asked to install this on your Mac. Confirm to run the command below; cancel to do nothing.',
     installConfirm: 'Install',
     formulaUnsupported: 'OpenNavo only lists apps (Homebrew casks). This link points to a command-line tool.',
+    confirmationBusy: 'Another confirmation is still open. Close it and try again.',
+    confirmationTimeout: 'The confirmation prompt timed out. Close it and try again.',
     preview: {
       invalid: 'This link can’t be opened',
       invalidBody: 'Its parameters are missing or not in the form OpenNavo accepts, so nothing was done.',

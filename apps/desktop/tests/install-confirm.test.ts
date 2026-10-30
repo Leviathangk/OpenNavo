@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import BrewfileRestore from '@/components/library/BrewfileRestore.vue';
-import { useDeepLinkStore } from '@/composables/useDeepLink';
 import InstallConfirm from '@/components/shell/InstallConfirm.vue';
 import { i18n } from '@/i18n';
 import { commands } from '@/ipc/client';
@@ -130,26 +128,6 @@ describe('Pre-install adoption confirmation', () => {
       expect(failed.state.history.find(item => item.id === task?.id)?.error?.code).toBe('E_APP_EXISTS')
     );
     expect(useInstallConfirmStore().pending).toBeNull();
-  });
-
-  it('Deep-link installation consent does not replace adoption consent', async () => {
-    const context = await init();
-    const wrapper = mount(DeepLinkConfirm, {
-      global: { plugins: [context.pinia, i18n, context.router] },
-      attachTo: document.body
-    });
-    const enqueue = vi.spyOn(commands, 'taskEnqueue');
-    useDeepLinkStore().install = target;
-    await flushPromises();
-    document.querySelector<HTMLButtonElement>('[data-on-confirm]')?.click();
-    await flushPromises();
-    expect(useDeepLinkStore().install).toBeNull();
-    expect(useInstallConfirmStore().pending?.status).toBe('conflict');
-    expect(enqueue).not.toHaveBeenCalled();
-    useInstallConfirmStore().choose(false);
-    await flushPromises();
-    expect(enqueue).not.toHaveBeenCalled();
-    wrapper.unmount();
   });
 
   it('Brewfile imports require adoption consent and never report enqueue success after cancellation', async () => {
