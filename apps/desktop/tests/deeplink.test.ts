@@ -112,9 +112,9 @@ describe('Deep links', () => {
     const context = await setup('/discover');
     await startLocalState();
     await useSettingsStore().update('onboardingCompleted', true);
-    const confirm = vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue(
-      new IpcError({ code, message: code, detail: null })
-    );
+    const confirm = vi
+      .spyOn(commands, 'deeplinkInstallConfirm')
+      .mockRejectedValue(new IpcError({ code, message: code, detail: null }));
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
     await openDeepLink(context.router, {
       url: 'opennavo://package/cask/zed?action=install',
@@ -134,9 +134,7 @@ describe('Deep links', () => {
     const context = await setup('/discover');
     await startLocalState();
     await useSettingsStore().update('onboardingCompleted', true);
-    vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue(
-      new IpcError({ code, message: code, detail: null })
-    );
+    vi.spyOn(commands, 'deeplinkInstallConfirm').mockRejectedValue(new IpcError({ code, message: code, detail: null }));
     await openDeepLink(context.router, {
       url: 'opennavo://package/cask/zed?action=install',
       route: '/package/cask/zed',

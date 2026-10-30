@@ -123,7 +123,7 @@ describe('Shared UI external links in the desktop app', () => {
         typeof permission !== 'string' && permission.identifier === 'opener:allow-open-url'
     );
     expect(opener).toBeDefined();
-    const allowed = opener?.allow.map(entry => entry.url) ?? [];
+    const allowed = opener?.allow.map(item => item.url) ?? [];
     for (const url of ['http://*', 'https://*', 'x-apple.systempreferences:*']) {
       expect(allowed).toContain(url);
     }
