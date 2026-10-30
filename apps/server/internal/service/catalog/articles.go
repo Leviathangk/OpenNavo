@@ -128,6 +128,14 @@ func (s *PublicService) articleDetail(ctx context.Context, row store.PublicArtic
 		out.Author = &view
 	}
 	scan := articles.ScanBody(body)
+	private, err := s.Store.PrivatePackageTokens(ctx, articles.AppReferences(body))
+	if err != nil {
+		return out, err
+	}
+	if row.BodyMarkdown != nil {
+		redacted := articles.RedactPrivateAppReferences(body, private)
+		out.BodyMarkdown = &redacted
+	}
 	ids, err := s.Store.ArticlePackageIDs(ctx, row.RevisionID)
 	if err != nil {
 		return out, err

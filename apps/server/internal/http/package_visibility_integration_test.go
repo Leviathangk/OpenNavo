@@ -51,6 +51,15 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
  INSERT INTO article_revisions(id,article_id,number,source_locale,type) VALUES(901,901,1,'en-US','roundup');
  INSERT INTO article_revision_i18n(revision_id,locale,source_locale,title) VALUES(901,'en-US','en-US','Visibility fixture');
  INSERT INTO article_revision_packages(revision_id,package_id,sort) SELECT 901,id,0 FROM packages;`).Error)
+	articleBody := strings.Join([]string{
+		"## Visibility fixture",
+		"[Tencent Meeting](/apps/private-sample) and [x](/zh/apps/private-sample) stay as text.",
+		"[Public child](/apps/public-child) stays a link.",
+		"Read [Absolute Meeting](https://opennavo.com/apps/private-sample?tab=releases#top) as text.",
+		"::app[private-sample]",
+		"::app[public-child]",
+	}, "\n")
+	require.NoError(t, st.DB.Exec("UPDATE article_revision_i18n SET body_markdown=? WHERE revision_id=901 AND locale='en-US'", articleBody).Error)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	searchService := search.New(ctx, st, nil, logger)
 	t.Cleanup(searchService.Close)
@@ -110,6 +119,22 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 			require.NotContains(t, row.Token, "private")
 			require.NotContains(t, string(row.Dependencies), "private-sample")
 		}
+	})
+	t.Run("article_body_redaction", func(t *testing.T) {
+		raw := call(t, "GET", "/articles/visibility-fixture", "", 200)
+		require.NotContains(t, raw, "private-sample")
+		var response publicapi.ArticleLookupResponse
+		require.NoError(t, json.Unmarshal([]byte(raw), &response))
+		require.NotNil(t, response.Data.Article)
+		require.NotNil(t, response.Data.Article.BodyMarkdown)
+		body := *response.Data.Article.BodyMarkdown
+		require.Contains(t, body, "Tencent Meeting and x stay as text.")
+		require.Contains(t, body, "[Public child](/apps/public-child) stays a link.")
+		require.Contains(t, body, "Read Absolute Meeting as text.")
+		require.Contains(t, body, "::app[public-child]")
+		require.NotContains(t, body, "private-sample")
+		require.NotContains(t, body, "::app[private-sample]")
+		require.NotContains(t, body, "/apps/private-sample")
 	})
 	t.Run("lookup", func(t *testing.T) {
 		body := call(t, "POST", "/packages/lookup", `{"items":[{"kind":"cask","token":"public-parent"},{"kind":"cask","token":"private-sample"},{"kind":"link","token":"private-link"},{"kind":"cask","token":"unknown-sample"}]}`, 200)
