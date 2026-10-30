@@ -571,6 +571,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   let articleSitemapState = 'ok';
   // Changes what ordinary-app's description says, to see whether a page came from the cache.
   let revision = 1;
+  // Lets the share-image test make ordinary-app private without disturbing the other fixtures.
+  let shareImagePrivate = false;
   let collectionState = 'empty';
   let collectionRequests = 0;
   const packageQueries = [];
@@ -889,6 +891,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           }
         ]
       };
+    } else if (shareImagePrivate && match?.[1] === 'ordinary-app' && !match[2]) {
+      status = 404;
+      data = null;
     } else if (
       match &&
       [
@@ -3535,6 +3540,37 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(plain && !plain.includes(',q_'), plain);
     for (const query of ['?utm_source=newsletter', '?returnTo=%2Frecent', '?nocache=1'])
       assert.equal(await shareImage(`/apps/ordinary-app${query}`), plain, query);
+  });
+  await t.test('a private app share image is not served from the old signed URL', async () => {
+    const response = await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } });
+    const page = await response.text();
+    assert.equal(response.status, 200, logs);
+    const signed = /<meta property="og:image" content="([^"]+)"/.exec(page)?.[1]?.replaceAll('&amp;', '&');
+    assert.ok(signed?.startsWith('https://example.test/_og/'), `${signed} ${page.slice(0, 300)}\n${logs}`);
+    const imageUrl = signed.replace('https://example.test', origin);
+    const first = await fetch(imageUrl);
+    assert.equal(first.status, 200, logs);
+    assert.equal(first.headers.get('content-type'), 'image/png');
+    await first.arrayBuffer();
+    try {
+      shareImagePrivate = true;
+      const invalidated = await fetch(`${internal}/cache/invalidate`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${internalSecret}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ paths: ['/apps/ordinary-app'], og: true })
+      });
+      assert.equal(invalidated.status, 200, logs);
+      assert.ok((await invalidated.json()).ogRemoved >= 1, logs);
+      const rejected = await fetch(imageUrl);
+      assert.equal(rejected.status, 404, logs);
+      assert.equal(rejected.headers.get('cache-control'), 'no-store');
+      await rejected.arrayBuffer();
+    } finally {
+      shareImagePrivate = false;
+    }
+    const restored = await fetch(imageUrl);
+    assert.equal(restored.status, 200, logs);
+    await restored.arrayBuffer();
   });
   await t.test('every shared page type has a 1200×630 share image', async () => {
     const image = async path => {

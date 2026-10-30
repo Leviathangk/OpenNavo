@@ -20,6 +20,8 @@ const props = defineProps<{
   build?: string;
   // eslint-disable-next-line vue/no-unused-properties -- Invalidate immutable images when the app version changes.
   contentVersion?: string;
+  // eslint-disable-next-line vue/no-unused-properties -- Request-time visibility guard checked by server/middleware/og-visibility.ts.
+  visibility?: string;
 }>();
 // Wide CJK characters and long names need smaller lettering within the fixed share-image canvas.
 const titleSize = computed(() => {

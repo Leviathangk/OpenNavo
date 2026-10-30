@@ -5,6 +5,7 @@ import { InFlightCounter, localReadinessStatus, readCgroupMemoryLimit } from '..
 import { loadShedState } from '../utils/loadShed';
 import { renderMemoryMetrics } from '../utils/memoryMetrics';
 import { clearSitemapStorage } from '../utils/sitemapStorage';
+import { clearOgImageCache } from '../utils/ogCache';
 import { cacheBuildIdentity } from './cache-storage';
 import { createPageProbe, ProbeBusyError } from '../utils/pageProbe';
 
@@ -111,7 +112,7 @@ export default defineNitroPlugin(nitroApp => {
     if (request.method === 'POST' && request.url === '/cache/invalidate') {
       if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);
       try {
-        const body = (await readJSON(request)) as { paths?: unknown; settings?: unknown };
+        const body = (await readJSON(request)) as { paths?: unknown; settings?: unknown; og?: unknown };
         const paths = Array.isArray(body.paths)
           ? body.paths.filter((path): path is string => typeof path === 'string')
           : [];
@@ -131,7 +132,14 @@ export default defineNitroPlugin(nitroApp => {
           await storage.removeItem(key);
           removed += 1;
         }
-        return reply(200, settings ? { removed, settingsCleared: true } : { removed });
+        // Share images are immutable for a month; the URL-change feed asks for their origin cache
+        // to be dropped too when a visibility change can have made an old signed image private.
+        const og = body.og === true;
+        const ogRemoved = await clearOgImageCache(useStorage('cache:nuxt-og-image'), paths, og);
+        const result: Record<string, unknown> = { removed };
+        if (settings) result.settingsCleared = true;
+        if (og) result.ogRemoved = ogRemoved;
+        return reply(200, result);
       } catch {
         return reply(400);
       }
