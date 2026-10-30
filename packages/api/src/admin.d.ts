@@ -9422,6 +9422,16 @@ export interface components {
             screenshotCount: number;
             /** @example false */
             hidden: boolean;
+            /**
+             * @description Whether the package is absent from public reads.
+             * @example false
+             */
+            private?: boolean;
+            /**
+             * @description Most recently recorded visibility reason; empty for packages with no recorded restriction.
+             * @example Catalog visibility review.
+             */
+            visibilityReason?: string;
             /** @example true */
             editorChoice: boolean;
             /** @example false */
@@ -9827,7 +9837,7 @@ export interface components {
             revision?: number;
             /**
              * Format: uri
-             * @description /apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.
+             * @description /apps/{token} under WEB_BASE_URL; null when hidden, private or removed. Casks and link apps only.
              * @example https://opennavo.example/apps/visual-studio-code
              */
             webUrl?: string | null;
@@ -9905,8 +9915,21 @@ export interface components {
             developer?: string | null;
             /** @example null */
             repoUrl?: string | null;
-            /** @example false */
+            /**
+             * @description Unlisted but reachable by direct link. Setting true requires visibilityReason.
+             * @example false
+             */
             hidden?: boolean;
+            /**
+             * @description Absent from all public reads. Setting true requires visibilityReason.
+             * @example false
+             */
+            private?: boolean;
+            /**
+             * @description Required and recorded in the audit log whenever hidden or private is set to true.
+             * @example Catalog visibility review.
+             */
+            visibilityReason?: string;
             /** @example false */
             editorChoice?: boolean;
             tags?: string[];

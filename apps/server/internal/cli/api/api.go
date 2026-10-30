@@ -104,6 +104,9 @@ func run(ctx context.Context) error {
 	tapGitHub.ObserveQuota = st.ObserveGitHubQuota
 	tapGitHub.TokenProvider = func(ctx context.Context) (string, error) { return st.GitHubToken(ctx, cfg) }
 	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent, Taps: &taps.Service{Store: st, GitHub: tapGitHub}}
+	adminService.InvalidatePublic = func(ctx context.Context) error {
+		return cache.Invalidate(ctx, cacheClient, []string{"c:*"})
+	}
 	queueMetrics := observability.NewQueueMetrics(st.Redis)
 	defer func() { _ = queueMetrics.Close() }()
 	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})

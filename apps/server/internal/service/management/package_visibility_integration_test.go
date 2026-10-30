@@ -61,7 +61,7 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
 			for _, hidden := range []bool{false, true} {
 				op := &domain.Operation{RequestID: uuid.NewString(), Name: "updatePackageMeta", Tool: "package_set_enabled", ActorID: &actorID, AgentClientID: 1, AgentTokenID: 2,
 					Permissions: []string{"catalog:package:edit"}, RequiredPermissions: []string{"catalog:package:edit"}, DryRun: true, Execution: &domain.AgentExecution{IdempotencyKey: uuid.NewString()}}
-				in := Input{ID: tc.id, Body: map[string]any{"hidden": hidden}, Actor: store.AuditActor{ID: &actorID}}
+				in := Input{ID: tc.id, Body: map[string]any{"hidden": hidden, "visibilityReason": "Visibility fixture"}, Actor: store.AuditActor{ID: &actorID}}
 				before := counts()
 				preview, err := svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
 				require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
 				}
 				require.NoError(t, st.DB.Raw("SELECT actor_id,after::text FROM audit_logs WHERE request_id=? AND action='UpdatePackageMeta'", op.RequestID).Scan(&audit).Error)
 				require.Equal(t, actorID, audit.ActorID)
-				require.JSONEq(t, fmt.Sprintf(`{"hidden":%t}`, hidden), audit.After)
+				require.JSONEq(t, fmt.Sprintf(`{"hidden":%t,"visibilityReason":"Visibility fixture"}`, hidden), audit.After)
 				var revisions int64
 				require.NoError(t, st.DB.Table("content_revisions").Where("request_id=? AND actor_type='agent' AND operation_id='updatePackageMeta'", op.RequestID).Count(&revisions).Error)
 				require.EqualValues(t, 1, revisions)

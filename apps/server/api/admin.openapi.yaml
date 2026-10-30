@@ -20786,6 +20786,14 @@ components:
         hidden:
           type: boolean
           example: false
+        private:
+          type: boolean
+          description: Whether the package is absent from public reads.
+          example: false
+        visibilityReason:
+          type: string
+          description: Most recently recorded visibility reason; empty for packages with no recorded restriction.
+          example: Catalog visibility review.
         editorChoice:
           type: boolean
           example: true
@@ -21098,7 +21106,7 @@ components:
               type: string
               format: uri
               nullable: true
-              description: '/apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.'
+              description: '/apps/{token} under WEB_BASE_URL; null when hidden, private or removed. Casks and link apps only.'
               example: https://opennavo.example/apps/visual-studio-code
             names:
               type: array
@@ -21361,7 +21369,18 @@ components:
           example: null
         hidden:
           type: boolean
+          description: Unlisted but reachable by direct link. Setting true requires visibilityReason.
           example: false
+        private:
+          type: boolean
+          description: Absent from all public reads. Setting true requires visibilityReason.
+          example: false
+        visibilityReason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Required and recorded in the audit log whenever hidden or private is set to true.
+          example: Catalog visibility review.
         editorChoice:
           type: boolean
           example: false

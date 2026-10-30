@@ -154,7 +154,8 @@ func linkSQL(ctx context.Context, query string) string {
 }
 
 const publicJoins = ` FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id`
-const publicVisible = `p.kind='cask' AND p.removed_at IS NULL AND NOT COALESCE(m.hidden,false)`
+const publicReadable = `NOT COALESCE(m.private,false)`
+const publicVisible = `p.kind='cask' AND p.removed_at IS NULL AND ` + publicReadable + ` AND NOT COALESCE(m.hidden,false)`
 
 // Empty categories may be curated in advance; subtrees containing only Formula entries do not enter the catalog.
 const publicCategoryVisible = `c.visible AND (NOT EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages legacy_package ON legacy_package.id=pc.package_id WHERE legacy_package.kind<>'link') OR EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages cp ON cp.id=pc.package_id WHERE cp.kind='cask')) AND c.applies_to<>'formula'`
@@ -169,8 +170,16 @@ const packageView = `SELECT (to_jsonb(p)-ARRAY['raw','raw_hash','search_text','s
 func (s *Store) publicRows(ctx context.Context, locale, condition, order string, args ...any) ([]PublicPackage, error) {
 	var rows []struct{ Data json.RawMessage }
 	params := append([]any{locale, locale}, args...)
-	if err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, packageView+" WHERE p.kind='cask' AND "+condition+" "+order), params...).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, packageView+" WHERE p.kind='cask' AND "+publicReadable+" AND "+condition+" "+order), params...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query public packages: %w", err)
+	}
+	private := map[string]map[string]bool{}
+	if len(rows) > 0 {
+		var err error
+		private, err = s.privateReferences(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 	out := make([]PublicPackage, 0, len(rows))
 	for _, row := range rows {
@@ -178,6 +187,15 @@ func (s *Store) publicRows(ctx context.Context, locale, condition, order string,
 		if err := json.Unmarshal(row.Data, &p); err != nil {
 			return nil, fmt.Errorf("decode package view: %w", err)
 		}
+		var err error
+		if p.Dependencies, err = filterPrivateReferences(p.Dependencies, private); err != nil {
+			return nil, err
+		}
+		if p.ConflictsWith, err = filterPrivateReferences(p.ConflictsWith, private); err != nil {
+			return nil, err
+		}
+		p.DeprecationReplacement = privateReplacement(p.DeprecationReplacement, private)
+		p.DisableReplacement = privateReplacement(p.DisableReplacement, private)
 		out = append(out, p)
 	}
 	return out, nil

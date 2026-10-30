@@ -60,9 +60,9 @@ func (s *Store) BrowseDirectory(ctx context.Context, kind, locale string, policy
 // the expensive part, which does not depend on the language. Only display names are read per language.
 func (s *Store) BrowseDirectories(ctx context.Context, kind string, locales []string, policy seo.Policy) (map[string]BrowseDirectory, error) {
 	out := map[string]BrowseDirectory{}
-	condition := "NOT COALESCE(m.hidden,false) AND NOT p.is_font"
+	condition := "NOT COALESCE(m.hidden,false) AND NOT COALESCE(m.private,false) AND NOT p.is_font"
 	if kind == "fonts" {
-		condition = "NOT COALESCE(m.hidden,false) AND p.is_font"
+		condition = "NOT COALESCE(m.hidden,false) AND NOT COALESCE(m.private,false) AND p.is_font"
 	}
 	rows, err := s.indexRowsQuery(ctx, indexOverviewSelect, condition, "ORDER BY p.id")
 	if err != nil {

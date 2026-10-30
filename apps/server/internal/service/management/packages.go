@@ -73,6 +73,19 @@ var accentColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
 func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, error) {
 	if op == "UpdatePackageMeta" {
+		if value, present := in.Body["visibilityReason"]; present {
+			reason, ok := value.(string)
+			if !ok || strings.TrimSpace(reason) == "" {
+				return nil, domain.Rejected("visibility_reason_required:visibilityReason")
+			}
+			in.Body["visibilityReason"] = strings.TrimSpace(reason)
+		}
+		if in.Body["hidden"] == true || in.Body["private"] == true {
+			reason, _ := in.Body["visibilityReason"].(string)
+			if strings.TrimSpace(reason) == "" {
+				return nil, domain.Rejected("visibility_reason_required:visibilityReason")
+			}
+		}
 		if value := in.Body["downloadSize"]; value != nil {
 			n, ok := value.(int64)
 			if !ok || n < 0 {
@@ -110,7 +123,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 					return nil, err
 				}
 			}
-			fields := mapped(in.Body, map[string]string{"developer": "developer", "repoUrl": "repo_url", "hidden": "hidden", "editorChoice": "editor_choice", "notes": "notes", "accentColor": "accent_color"})
+			fields := mapped(in.Body, map[string]string{"developer": "developer", "repoUrl": "repo_url", "hidden": "hidden", "private": "private", "visibilityReason": "visibility_reason", "editorChoice": "editor_choice", "notes": "notes", "accentColor": "accent_color"})
 			fields["updated_by"] = in.Actor.ID
 			fields["updated_at"] = s.now()
 			if value, ok := in.Body["tags"]; ok {

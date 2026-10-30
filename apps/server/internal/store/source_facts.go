@@ -53,7 +53,7 @@ func (s *Store) SourceFactPackages(ctx context.Context) ([]SourceFactPackage, er
 	}
 	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.token,to_jsonb(p.names) AS names,p.homepage,p.download_url,COALESCE(m.repo_url,'https://github.com/'||l.github_repo) AS repo_url,p.artifacts,to_jsonb(l.bundle_ids) AS bundle_ids
  FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN link_apps l ON l.package_id=p.id
- WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND NOT p.is_font AND NOT COALESCE(m.hidden,false)
+ WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND NOT p.is_font AND NOT COALESCE(m.hidden,false) AND NOT COALESCE(m.private,false)
  ORDER BY p.popularity DESC,p.id`).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("query source fact packages: %w", err)
