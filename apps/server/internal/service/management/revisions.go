@@ -233,6 +233,36 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 						}
 					}
 					merged[i].RequiredPermissions, _ = json.Marshal(a)
+					if row.Entity == "package" {
+						earlier, err := revisionState(row.BeforeData)
+						if err != nil {
+							return err
+						}
+						later, err := revisionState(merged[i].BeforeData)
+						if err != nil {
+							return err
+						}
+						row.BeforeData, err = json.Marshal(store.HistoryMergeBefore(earlier, later))
+						if err != nil {
+							return err
+						}
+						earlierAfter, err := revisionState(row.AfterData)
+						if err != nil {
+							return err
+						}
+						laterAfter, err := revisionState(merged[i].AfterData)
+						if err != nil {
+							return err
+						}
+						after := store.HistoryMergeAfter(earlierAfter, laterAfter)
+						merged[i].AfterData, err = json.Marshal(after)
+						if err != nil {
+							return err
+						}
+						// Current and after must include the same captured lifecycle
+						// fields when checking for changes since this request.
+						merged[i].AfterHash = store.HistoryHash(after)
+					}
 					merged[i].BeforeData = row.BeforeData
 				} else {
 					indices[key] = len(merged)
@@ -258,7 +288,25 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 			if err != nil {
 				return err
 			}
-			current, err := st.HistorySnapshot(ctx, ref)
+			var originalBefore, originalAfter store.HistoryState
+			includePackageLifecycle := false
+			if opName != "RestoreTrash" {
+				originalBefore, err = revisionState(r.BeforeData)
+				if err != nil {
+					return err
+				}
+				originalAfter, err = revisionState(r.AfterData)
+				if err != nil {
+					return err
+				}
+				includePackageLifecycle = ref.Entity == "package" && (store.HistoryStateIncludesPackageLifecycle(originalBefore) || store.HistoryStateIncludesPackageLifecycle(originalAfter))
+			}
+			var current store.HistoryState
+			if includePackageLifecycle {
+				current, err = st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			} else {
+				current, err = st.HistorySnapshot(ctx, ref)
+			}
 			if err != nil {
 				return err
 			}
@@ -285,14 +333,6 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				}
 			}
 			if opName != "RestoreTrash" {
-				originalBefore, err := revisionState(r.BeforeData)
-				if err != nil {
-					return err
-				}
-				originalAfter, err := revisionState(r.AfterData)
-				if err != nil {
-					return err
-				}
 				target = store.HistoryPatch(current, originalBefore, originalAfter, target)
 			}
 			if restoresDeletedContent(r.Entity, current, target) && op != nil && !op.AllowDelete {
@@ -344,7 +384,12 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				}
 			}
 
-			after, err := st.HistorySnapshot(ctx, ref)
+			var after store.HistoryState
+			if includePackageLifecycle {
+				after, err = st.HistorySnapshotWithPackageLifecycle(ctx, ref)
+			} else {
+				after, err = st.HistorySnapshot(ctx, ref)
+			}
 			if err != nil {
 				return err
 			}

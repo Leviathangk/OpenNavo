@@ -9,7 +9,7 @@ import {
   closedLocalePaths,
   type CrawlerPolicy
 } from '../src/robots';
-import { LOCALES, SITE_LOCALES } from '../src/locales.gen';
+import { SITE_LOCALES } from '../src/locales.gen';
 
 // Every site language open, so the closed-language rules stay out of the way unless a test names them.
 const open = { openLocales: SITE_LOCALES };
@@ -143,8 +143,7 @@ describe('robots.txt generation', () => {
       buildRobotsTxt({
         crawlers: DEFAULT_CRAWLER_POLICY,
         indexable: true,
-        // The six app languages, as before the site opened the others.
-        openLocales: LOCALES,
+        openLocales: ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'ru-RU'],
         sitemap: 'https://opennavo.example/sitemap_index.xml'
       })
     ).toBe(
@@ -174,6 +173,7 @@ describe('robots.txt generation', () => {
         'Disallow: /_og/',
         'Disallow: /*/feed.xml',
         'Disallow: /*?',
+        'Disallow: /pt/',
         'Disallow: /de/',
         'Disallow: /fr/',
         'Disallow: /it/',

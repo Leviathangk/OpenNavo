@@ -880,6 +880,7 @@ class PackageMetaUpdate(BaseModel):
     developer: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
     repoUrl: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
     hidden: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    clearDisabled: Annotated[bool, Field(description='When true, clears the effective Homebrew or stale-version disabled state and records a manual override; omitted or false leaves it unchanged.', examples=[False])] = False
     editorChoice: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     tags: Annotated[list[Tag] | MISSING, Field(max_length=10)] = MISSING
     notes: Annotated[str | None | MISSING, Field(examples=[None], max_length=2000)] = MISSING

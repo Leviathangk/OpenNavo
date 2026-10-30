@@ -188,10 +188,17 @@ func historyEntities(entity string) string {
 	}
 	return ""
 }
-func captureHistory(ctx context.Context, st *store.Store, refs []content.Ref) (map[string]store.HistoryState, error) {
+func captureHistory(ctx context.Context, st *store.Store, refs []content.Ref, packageLifecycle ...bool) (map[string]store.HistoryState, error) {
 	out := map[string]store.HistoryState{}
+	includePackageLifecycle := len(packageLifecycle) > 0 && packageLifecycle[0]
 	for _, r := range refs {
-		state, err := st.HistorySnapshot(ctx, r)
+		var state store.HistoryState
+		var err error
+		if includePackageLifecycle && r.Entity == "package" {
+			state, err = st.HistorySnapshotWithPackageLifecycle(ctx, r)
+		} else {
+			state, err = st.HistorySnapshot(ctx, r)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -199,14 +206,21 @@ func captureHistory(ctx context.Context, st *store.Store, refs []content.Ref) (m
 	}
 	return out, nil
 }
-func finishHistory(ctx context.Context, st *store.Store, refs []content.Ref, before map[string]store.HistoryState) (map[string]any, error) {
+func finishHistory(ctx context.Context, st *store.Store, refs []content.Ref, before map[string]store.HistoryState, packageLifecycle ...bool) (map[string]any, error) {
 	op := domain.CurrentOperation(ctx)
+	includePackageLifecycle := len(packageLifecycle) > 0 && packageLifecycle[0]
 	changes := []any{}
 	revisionIDs := []int64{}
 	affectedURLs := []string{}
 	for _, r := range refs {
 		previous := before[r.Entity+":"+r.Key()]
-		after, err := st.HistorySnapshot(ctx, r)
+		var after store.HistoryState
+		var err error
+		if includePackageLifecycle && r.Entity == "package" {
+			after, err = st.HistorySnapshotWithPackageLifecycle(ctx, r)
+		} else {
+			after, err = st.HistorySnapshot(ctx, r)
+		}
 		if err != nil {
 			return nil, err
 		}
