@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"slices"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
@@ -40,6 +42,10 @@ type Service struct {
 	// Visibility changes clear the public cache after commit, before acknowledging the write.
 	InvalidatePublic func(context.Context) error
 	Snapshots        *snapshot.Service
+	// InvalidateShareImages queues the origin and CDN share-image purge. It accepts
+	// func(context.Context, string) error for the package token, or the same
+	// function with []string app paths, int64 package ID, or no arguments.
+	InvalidateShareImages any
 }
 type Input struct {
 	ID, ScreenshotID                         int64
@@ -388,6 +394,48 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 	}
 	return result, nil
 }
+
+// invalidateShareImages resolves the app paths and hands the purge to the
+// configured queue. Errors are logged but never returned: visibility already
+// committed, and the queue retries delivery.
+func (s *Service) invalidateShareImages(ctx context.Context, packageID int64) {
+	if s.InvalidateShareImages == nil || packageID <= 0 {
+		return
+	}
+	var row struct{ Token string }
+	if err := s.Store.DB.WithContext(ctx).Raw("SELECT token FROM packages WHERE id=?", packageID).Scan(&row).Error; err != nil {
+		slog.Default().Error("share image invalidation lookup failed", "package_id", packageID, "error", err)
+		return
+	}
+	if row.Token == "" {
+		return
+	}
+	paths := make([]string, 0, len(i18n.SiteLocales))
+	for _, locale := range i18n.SiteLocales {
+		paths = append(paths, i18n.Metadata[locale].Prefix+"/apps/"+row.Token)
+	}
+	var problem error
+	switch hook := s.InvalidateShareImages.(type) {
+	case func(context.Context, string) error:
+		problem = hook(ctx, row.Token)
+	case func(context.Context, []string) error:
+		problem = hook(ctx, paths)
+	case func(context.Context, int64) error:
+		problem = hook(ctx, packageID)
+	case func(context.Context) error:
+		problem = hook(ctx)
+	case func(context.Context, int64, string) error:
+		problem = hook(ctx, packageID, row.Token)
+	case func(context.Context, string, []string) error:
+		problem = hook(ctx, row.Token, paths)
+	default:
+		problem = fmt.Errorf("unsupported InvalidateShareImages hook %T", hook)
+	}
+	if problem != nil {
+		slog.Default().Error("share image invalidation failed", "package_id", packageID, "token", row.Token, "error", problem)
+	}
+}
+
 func (s *Service) Execute(ctx context.Context, op string, in Input) (result any, err error) {
 	ctx = operationContext(ctx, op, in)
 	defer func() {
@@ -403,6 +451,9 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 			if s.Snapshots != nil {
 				err = errors.Join(err, s.Snapshots.RevokePrivate(ctx))
 			}
+			// Queue, never await, the share-image purge: a CDN or web outage must not
+			// turn a committed visibility change into a failed admin write.
+			s.invalidateShareImages(ctx, in.ID)
 		}
 	}()
 	// CI may carry all ten release-note languages as a consistency assertion.

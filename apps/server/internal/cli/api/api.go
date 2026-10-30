@@ -108,6 +108,9 @@ func run(ctx context.Context) error {
 	adminService.InvalidatePublic = func(ctx context.Context) error {
 		return cache.Invalidate(ctx, cacheClient, []string{"c:*"})
 	}
+	adminService.InvalidateShareImages = func(ctx context.Context, token string) error {
+		return (&urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}).QueueShareImagePurge(ctx, token)
+	}
 	snapshots := &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}, Purge: func(ctx context.Context, prefixes []string) error {
 		return (&urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}).PurgeSnapshots(ctx, prefixes)
 	}}

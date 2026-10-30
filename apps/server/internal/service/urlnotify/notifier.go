@@ -139,6 +139,9 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 		status, count := n.drainPurges(ctx, &state)
 		state.LastPurgeStatus = status
 		result.Purged += count
+		if strings.HasPrefix(status, "error:") || strings.HasPrefix(status, "pending:") {
+			n.Logger.Warn("queued URL purge not completed; will retry", "status", status, "purged", count)
+		}
 		if err := n.Store.SaveURLNotifyState(ctx, state); err != nil {
 			return result, err
 		}
@@ -307,6 +310,16 @@ func (n *Notifier) post(ctx context.Context, endpoint, bearer string, body any) 
 
 // invalidate removes page-cache entries through the web's internal port.
 func (n *Notifier) invalidate(ctx context.Context, paths []string) error {
+	return n.invalidatePaths(ctx, paths, false)
+}
+
+// invalidateShareImages also drops the origin cache entries for the app's share
+// images; the request-time visibility guard is the backstop.
+func (n *Notifier) invalidateShareImages(ctx context.Context, paths []string) error {
+	return n.invalidatePaths(ctx, paths, true)
+}
+
+func (n *Notifier) invalidatePaths(ctx context.Context, paths []string, og bool) error {
 	if len(paths) == 0 {
 		return nil
 	}
@@ -316,7 +329,11 @@ func (n *Notifier) invalidate(ctx context.Context, paths []string) error {
 	endpoint := strings.TrimRight(n.Config.WebInternalURL, "/") + "/cache/invalidate"
 	for start := 0; start < len(paths); start += invalidateChunk {
 		resetSettings := slices.Contains(paths, "/")
-		status, body, err := n.post(ctx, endpoint, n.Config.WebInternalSecret, map[string]any{"paths": paths[start:min(start+invalidateChunk, len(paths))], "settings": resetSettings})
+		payload := map[string]any{"paths": paths[start:min(start+invalidateChunk, len(paths))], "settings": resetSettings}
+		if og {
+			payload["og"] = true
+		}
+		status, body, err := n.post(ctx, endpoint, n.Config.WebInternalSecret, payload)
 		if err != nil {
 			return errors.New("web cache endpoint unreachable")
 		}
@@ -367,8 +384,14 @@ func (n *Notifier) probe(ctx context.Context, urls []string) string {
 
 // purgeEnabled reports whether Cloudflare may be purged; without HTML edge caching it holds no HTML.
 func purgeEnabled(settings store.SEOSettingsRow) bool {
+	return settings.Settings.EdgeCache.Enabled && cdnPurgeEnabled(settings)
+}
+
+// cdnPurgeEnabled reports whether a durable CDN obligation can be sent. Share
+// images and snapshots are purged even when HTML edge caching is disabled.
+func cdnPurgeEnabled(settings store.SEOSettingsRow) bool {
 	cf := settings.Settings.Cloudflare
-	return settings.Settings.EdgeCache.Enabled && cf.PurgeEnabled && cf.ZoneID != ""
+	return cf.PurgeEnabled && cf.ZoneID != ""
 }
 
 // drainPurges retries durable work even when there are no new feed changes.
@@ -381,7 +404,7 @@ func (n *Notifier) drainPurges(ctx context.Context, state *store.URLNotifyState)
 	if err != nil {
 		return "error: Cloudflare settings unavailable", 0
 	}
-	if !purgeEnabled(settings) {
+	if !cdnPurgeEnabled(settings) {
 		return "paused: Cloudflare purge disabled", 0
 	}
 	token, err := n.Store.SEOSecret(ctx, n.Config, "cloudflare")
