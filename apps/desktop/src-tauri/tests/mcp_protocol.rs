@@ -9,7 +9,8 @@ use std::io::Write;
 
 use opennavo_desktop_lib::mcp::cli::{self, Mode};
 use opennavo_desktop_lib::mcp::protocol::{
-    self, Availability, MAX_LINE_BYTES, SERVER_NAME, Session,
+    self, Availability, LATEST_PROTOCOL_VERSION, MAX_LINE_BYTES, SERVER_NAME,
+    SUPPORTED_PROTOCOL_VERSIONS, Session,
 };
 use opennavo_desktop_lib::mcp::tools;
 use serde_json::{Value, json};
@@ -76,6 +77,56 @@ fn initialize_returns_tools_capability_and_server_info() {
     assert_eq!(result["serverInfo"]["name"], SERVER_NAME);
     assert!(result["serverInfo"]["version"].is_string());
     assert_eq!(tools::list_result()["tools"], json!([]));
+}
+
+#[test]
+fn initialize_negotiates_protocol_version() {
+    assert_eq!(
+        LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS[0],
+        "latest must be the first supported version"
+    );
+    for version in SUPPORTED_PROTOCOL_VERSIONS {
+        let input = format!(
+            "{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{{\"protocolVersion\":\"{version}\"}}}}\n"
+        );
+        let (responses, _) = run(&input, Availability::Enabled);
+        assert_eq!(responses.len(), 1, "version {version}");
+        assert_eq!(
+            responses[0]["result"]["protocolVersion"], *version,
+            "supported version {version} must be echoed"
+        );
+    }
+}
+
+#[test]
+fn initialize_falls_back_to_latest_for_unusable_protocol_version() {
+    for params in [
+        "{}",
+        r#"{"protocolVersion":20250618}"#,
+        r#"{"protocolVersion":null}"#,
+        r#"{"protocolVersion":["2025-06-18"]}"#,
+        r#"{"protocolVersion":"2099-01-01"}"#,
+        r#"{"protocolVersion":""}"#,
+        r#"{"protocolVersion":"2025-06-18 "}"#,
+    ] {
+        let input = format!(
+            "{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{params}}}\n"
+        );
+        let (responses, _) = run(&input, Availability::Enabled);
+        assert_eq!(responses.len(), 1, "params {params}");
+        assert_eq!(
+            responses[0]["result"]["protocolVersion"], LATEST_PROTOCOL_VERSION,
+            "params {params} must fall back to latest"
+        );
+    }
+
+    let without_params = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}\n";
+    let (responses, _) = run(without_params, Availability::Enabled);
+    assert_eq!(responses.len(), 1);
+    assert_eq!(
+        responses[0]["result"]["protocolVersion"],
+        LATEST_PROTOCOL_VERSION
+    );
 }
 
 #[test]
