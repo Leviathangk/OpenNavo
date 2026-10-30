@@ -2,15 +2,15 @@ package articles
 
 import (
 	"bytes"
+	"fmt"
 	"net/url"
 	"regexp"
-	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 	"golang.org/x/net/html"
@@ -19,20 +19,32 @@ import (
 var (
 	// appDirectiveLine is one ::app[token] line, including its line ending.
 	appDirectiveLine = regexp.MustCompile(`(?m)^::app\[([a-z0-9][a-z0-9@+._-]*)\][ \t]*(?:\r?\n|$)`)
-	// appPath is /apps/<token>, /<locale>/apps/<token> and any trailing path.
-	appPath = regexp.MustCompile(`^/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/([a-z0-9][a-z0-9@+._-]*)(?:/.*)?$`)
-	// schemeLessAppURL is a bare OpenNavo URL without a scheme. Goldmark linkify handles http(s)://
-	// and www. forms; this covers the scheme-less form used in existing article bodies.
+	// appPath matches /apps/<token> or /<locale>/apps/<token> with optional trailing path.
+	appPath = regexp.MustCompile(`(?i)^/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/([a-z0-9][a-z0-9@+._-]*)(?:/.*)?$`)
+	// schemeLessAppURL covers bare opennavo.com / www.opennavo.com app URLs that linkify does not catch.
 	schemeLessAppURL = regexp.MustCompile(`(?i)(?:www\.)?opennavo\.com/(?:[A-Za-z]{2}(?:-[A-Za-z0-9]{2,8})?/)?apps/[^\s<>()\[\]{}"']+`)
-	// appMarkdown parses with the same link syntax the article renderer uses.
-	appMarkdown = goldmark.New(goldmark.WithExtensions(extension.Linkify))
+	// plainAppURL finds absolute or site-relative app URLs in plain text (invalid ref-def lines, etc.).
+	plainAppURL = regexp.MustCompile(`(?i)(?:(?:https?://)?(?:www\.)?opennavo\.com(?::\d+)?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/[a-z0-9][a-z0-9@+._-]*(?:/[^\s<>()\[\]{}"']*)?`)
+	// linkifyURLRegexp mirrors markdown-it linkify: case-insensitive scheme/host, optional port.
+	linkifyURLRegexp = regexp.MustCompile(`(?i)^(?:https?|ftp)://[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
+	linkifyWWWRegexp = regexp.MustCompile(`(?i)^www\.[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z]+(?:[/#?][-a-zA-Z0-9@:%_+.~#!?&/=();,'">\^{}\[\]` + "`" + `]*)?`)
+	appMarkdown      = goldmark.New(goldmark.WithExtensions(extension.NewLinkify(
+		extension.WithLinkifyAllowedProtocols([]string{
+			"http:", "https:", "ftp:",
+			"HTTP:", "HTTPS:", "FTP:",
+			"Http:", "Https:", "Ftp:",
+		}),
+		extension.WithLinkifyURLRegexp(linkifyURLRegexp),
+		extension.WithLinkifyWWWRegexp(linkifyWWWRegexp),
+	)))
 )
 
 // AppReferences lists the app tokens an article body references: ::app[token] cards, inline,
 // autolinked and linkified app URLs, reference-style links and raw HTML anchors. Code is skipped,
 // matching ScanBody.
 func AppReferences(body string) []string {
-	doc := parseAppDocument(body)
+	source := []byte(body)
+	doc := parseAppMarkdown(source)
 	seen := map[string]bool{}
 	out := []string{}
 	add := func(token string) {
@@ -41,408 +53,778 @@ func AppReferences(body string) []string {
 			out = append(out, token)
 		}
 	}
+
+	code := collectCodeSpans(doc, source)
 	for _, match := range appDirectiveLine.FindAllStringSubmatchIndex(body, -1) {
-		if doc.inCode(match[0]) {
+		if insideSpans(match[0], code) {
 			continue
 		}
 		add(body[match[2]:match[3]])
 	}
-	for _, link := range doc.links {
-		if token, ok := appToken(link.destination); ok {
-			add(token)
+
+	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
 		}
-	}
-	for _, definition := range doc.definitions {
-		if token, ok := appToken(definition.destination); ok {
-			add(token)
+		switch n := node.(type) {
+		case *ast.Link:
+			if token, ok := appToken(n.Destination); ok {
+				add(token)
+			}
+		case *ast.Image:
+			if token, ok := appToken(n.Destination); ok {
+				add(token)
+			}
+		case *ast.AutoLink:
+			if token, ok := appToken(n.URL(source)); ok {
+				add(token)
+			}
+		case *ast.LinkReferenceDefinition:
+			if token, ok := appToken(n.Destination); ok {
+				add(token)
+			}
+		case *ast.CodeBlock, *ast.FencedCodeBlock, *ast.CodeSpan:
+			return ast.WalkSkipChildren, nil
 		}
-	}
-	for _, href := range doc.htmlAnchors(body) {
+		return ast.WalkContinue, nil
+	})
+
+	for _, href := range htmlHrefs(body, code) {
 		if token, ok := appPathToken(href); ok {
 			add(token)
 		}
 	}
 	for _, match := range schemeLessAppURL.FindAllStringIndex(body, -1) {
-		end := trimBareURLEnd(body, match[0], match[1])
-		if !doc.rewritable(match[0]) || !bareURLStartOK(body, match[0]) {
+		if insideSpans(match[0], code) || !bareURLStartOK(body, match[0]) {
 			continue
 		}
+		end := trimBareURLEnd(body, match[0], match[1])
 		if token, ok := appPathToken(body[match[0]:end]); ok {
 			add(token)
 		}
 	}
-	for _, token := range residualAppTokens(body, doc) {
-		add(token)
-	}
 	return out
 }
 
-// RedactPrivateAppReferences rewrites inline and reference-style private app links as plain text,
-// removes private autolinks, linkified URLs, raw HTML anchors and ::app directive lines, and drops
-// private reference definitions. Public and unknown references are kept, and code is left untouched.
+// RedactPrivateAppReferences rewrites private app links as plain text by mutating the goldmark AST
+// and re-serializing Markdown. Public and unknown references stay; code is untouched. Raw HTML
+// anchors to private apps are neutralized before parsing. ::app directive lines for private tokens
+// are dropped after serialization.
 func RedactPrivateAppReferences(body string, private map[string]bool) string {
 	if body == "" || len(private) == 0 {
 		return body
 	}
-	// Raw HTML anchors are inert in article Markdown, but strip them before parsing so their inner
-	// text can still be parsed as links. The tokenizer looks at decoded attribute values only.
 	text := redactHTMLAnchors(body, private)
-	doc := parseAppDocument(text)
-	edits := []appEdit{}
-
-	for _, link := range doc.links {
-		token, ok := appToken(link.destination)
-		if !ok || !private[token] || link.unlocated {
-			continue
-		}
-		replacement := ""
-		if !link.auto {
-			replacement = text[link.text.start:link.text.stop]
-		}
-		edits = append(edits, appEdit{start: link.span.start, end: link.span.stop, replacement: replacement})
-	}
-
-	edits = append(edits, doc.definitionEdits(private)...)
-
-	for _, match := range appDirectiveLine.FindAllStringSubmatchIndex(text, -1) {
-		if doc.inCode(match[0]) || doc.inProtectedSpan(match[0]) {
-			continue
-		}
-		if private[text[match[2]:match[3]]] {
-			edits = append(edits, appEdit{start: match[0], end: match[1]})
-		}
-	}
-
-	for _, match := range schemeLessAppURL.FindAllStringIndex(text, -1) {
-		end := trimBareURLEnd(text, match[0], match[1])
-		if !doc.rewritable(match[0]) || !bareURLStartOK(text, match[0]) {
-			continue
-		}
-		token, ok := appPathToken(text[match[0]:end])
-		if !ok || !private[token] {
-			continue
-		}
-		edits = append(edits, appEdit{start: match[0], end: end})
-	}
-
-	return redactResidualAppPaths(applyAppEdits(text, edits), private)
-}
-
-// residualAppPath is a site-relative or opennavo.com app path in any letter case and with any
-// port. The preceding byte must not continue a hostname, path or scheme, so lookalike hosts and
-// OpenNavo URLs embedded in another site's URL are left alone.
-var residualAppPath = regexp.MustCompile(`(?i)(^|[^a-z0-9./:@_%-])(?:(?:https?:)?//)?(?:(?:www\.)?opennavo\.com(?::0*(?:443|80))?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/([a-z0-9][a-z0-9@+._-]*)`)
-
-// residualAppTokens lists every token that appears as an apps/<token> path outside code. Discovery
-// uses it as a superset so lookups never miss a form the structured parser could not interpret.
-func residualAppTokens(body string, doc *appDocument) []string {
-	out := []string{}
-	for _, match := range residualAppPath.FindAllStringSubmatchIndex(body, -1) {
-		if doc.inCode(match[3]) {
-			continue
-		}
-		out = append(out, strings.ToLower(body[match[4]:match[5]]))
+	source := []byte(text)
+	doc := parseAppMarkdown(source)
+	redactPrivateNodes(doc, source, private)
+	redactSchemeLessInText(doc, source, private)
+	pruneEmptyContainers(doc)
+	out := redactAppDirectiveLines(serializeMarkdown(doc, source), private)
+	if !strings.HasSuffix(text, "\n") {
+		out = strings.TrimRight(out, "\n")
+	} else if !strings.HasSuffix(out, "\n") {
+		out += "\n"
 	}
 	return out
 }
 
-// redactResidualAppPaths is the fail-safe after structured redaction: any remaining private
-// apps/<token> path outside code removes the whole whitespace-delimited word that carries it, so
-// no renderer interpretation (linkify, container lines, unusual casing) can turn it into a link.
-func redactResidualAppPaths(text string, private map[string]bool) string {
-	doc := parseAppDocument(text)
-	edits := []appEdit{}
-	for _, match := range residualAppPath.FindAllStringSubmatchIndex(text, -1) {
-		// match[3] is the end of the boundary byte, so the path itself starts there.
-		if doc.inCode(match[3]) || !private[strings.ToLower(text[match[4]:match[5]])] {
-			continue
-		}
-		start, end := match[3], match[1]
-		for start > 0 && !isWordBreak(text[start-1]) {
-			start--
-		}
-		for end < len(text) && !isWordBreak(text[end]) {
-			end++
-		}
-		edits = append(edits, appEdit{start: start, end: end})
+// RedactPrivateAppHTML removes or neutralizes href/src attributes that resolve to private app
+// pages. Only real href and src attributes are considered (not data-href). Attribute values are
+// entity-decoded by the tokenizer and then percent-decoded for matching. This is the HTML safety
+// net for encoding forms that survive Markdown-level handling.
+func RedactPrivateAppHTML(fragment string, private map[string]bool) string {
+	if fragment == "" || len(private) == 0 {
+		return fragment
 	}
-	if len(edits) == 0 {
-		return text
+	root, err := html.Parse(strings.NewReader(fragment))
+	if err != nil {
+		return redactHTMLAnchors(fragment, private)
 	}
-	return applyAppEdits(text, edits)
-}
-
-func isWordBreak(value byte) bool {
-	return value == ' ' || value == '\t' || value == '\n' || value == '\r'
-}
-
-type sourceSpan struct {
-	start int
-	stop  int
-}
-
-type appLink struct {
-	span        sourceSpan
-	text        sourceSpan
-	destination []byte
-	auto        bool
-	unlocated   bool // parsed by goldmark, but its source range could not be traced
-}
-
-type appDefinition struct {
-	span        sourceSpan
-	label       string
-	rawLabel    []byte
-	destination []byte
-	title       []byte
-}
-
-type appDocument struct {
-	source      []byte
-	links       []appLink
-	definitions []appDefinition // first definition per label, per CommonMark
-	allDefs     []appDefinition
-	code        []sourceSpan
-	protected   []sourceSpan // complete link and image syntax
-}
-
-func parseAppDocument(body string) *appDocument {
-	first := parseAppAST(body, nil)
-	// Definitions goldmark does not recognise (for example directly after a paragraph) render as
-	// plain text in markdown-it too, so they are not links; the residual pass strips their paths.
-	first.finishDefinitions()
-	return first
-}
-
-func parseAppAST(body string, context parser.Context) *appDocument {
-	doc := &appDocument{source: []byte(body)}
-	options := []parser.ParseOption{}
-	if context != nil {
-		options = append(options, parser.WithContext(context))
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			switch strings.ToLower(n.Data) {
+			case "a":
+				if href, ok := attrValue(n, "href"); ok {
+					if token, match := appPathToken(href); match && private[token] {
+						// Keep inner text; drop the anchor element.
+						unwrapHTMLNode(n)
+						return
+					}
+				}
+			case "img":
+				if src, ok := attrValue(n, "src"); ok {
+					if token, match := appPathToken(src); match && private[token] {
+						if parent := n.Parent; parent != nil {
+							parent.RemoveChild(n)
+						}
+						return
+					}
+				}
+			}
+		}
+		for child := n.FirstChild; child != nil; {
+			next := child.NextSibling
+			walk(child)
+			child = next
+		}
 	}
-	_ = ast.Walk(appMarkdown.Parser().Parse(text.NewReader(doc.source), options...), func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+	walk(root)
+	var buf bytes.Buffer
+	// html.Parse wraps fragments in <html><head/><body>…; emit body children only.
+	body := findHTMLBody(root)
+	if body == nil {
+		_ = html.Render(&buf, root)
+		return buf.String()
+	}
+	for child := body.FirstChild; child != nil; child = child.NextSibling {
+		_ = html.Render(&buf, child)
+	}
+	return buf.String()
+}
+
+func parseAppMarkdown(source []byte) ast.Node {
+	return appMarkdown.Parser().Parse(text.NewReader(source))
+}
+
+func redactPrivateNodes(doc ast.Node, source []byte, private map[string]bool) {
+	var unwrap []ast.Node
+	var remove []ast.Node
+	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
 		switch n := node.(type) {
+		case *ast.Link:
+			if token, ok := appToken(n.Destination); ok && private[token] {
+				unwrap = append(unwrap, n)
+				return ast.WalkSkipChildren, nil
+			}
+		case *ast.Image:
+			if token, ok := appToken(n.Destination); ok && private[token] {
+				remove = append(remove, n)
+				return ast.WalkSkipChildren, nil
+			}
+		case *ast.AutoLink:
+			if token, ok := appToken(n.URL(source)); ok && private[token] {
+				remove = append(remove, n)
+				return ast.WalkSkipChildren, nil
+			}
 		case *ast.LinkReferenceDefinition:
-			doc.allDefs = append(doc.allDefs, appDefinition{
-				span:        definitionSpan(doc.source, n),
-				label:       util.ToLinkReference(n.Label),
-				rawLabel:    n.Label,
-				destination: n.Destination,
-				title:       n.Title,
-			})
-			return ast.WalkSkipChildren, nil
-		case *ast.CodeBlock:
-			if span, ok := blockCodeSpan(doc.source, n); ok {
-				doc.code = append(doc.code, span)
+			if token, ok := appToken(n.Destination); ok && private[token] {
+				remove = append(remove, n)
+				return ast.WalkSkipChildren, nil
 			}
-			return ast.WalkSkipChildren, nil
-		case *ast.FencedCodeBlock:
-			if span, ok := blockCodeSpan(doc.source, n); ok {
-				doc.code = append(doc.code, span)
-			}
-			return ast.WalkSkipChildren, nil
-		case *ast.Paragraph:
-			doc.collectInline(n, n.Lines())
-			return ast.WalkSkipChildren, nil
-		case *ast.Heading:
-			doc.collectInline(n, n.Lines())
-			return ast.WalkSkipChildren, nil
-		case *ast.TextBlock:
-			doc.collectInline(n, n.Lines())
+		case *ast.CodeBlock, *ast.FencedCodeBlock, *ast.CodeSpan:
 			return ast.WalkSkipChildren, nil
 		}
 		return ast.WalkContinue, nil
 	})
-	return doc
-}
-
-func (d *appDocument) finishDefinitions() {
-	sort.SliceStable(d.allDefs, func(i, j int) bool { return d.allDefs[i].span.start < d.allDefs[j].span.start })
-	seen := map[string]bool{}
-	d.definitions = d.definitions[:0]
-	for _, definition := range d.allDefs {
-		if !seen[definition.label] {
-			seen[definition.label] = true
-			d.definitions = append(d.definitions, definition)
+	for _, n := range unwrap {
+		unwrapMarkdownNode(n)
+	}
+	for _, n := range remove {
+		if parent := n.Parent(); parent != nil {
+			parent.RemoveChild(parent, n)
 		}
 	}
 }
 
-func (d *appDocument) collectInline(parent ast.Node, lines *text.Segments) {
-	if lines == nil || lines.Len() == 0 {
+// redactSchemeLessInText removes bare / encoded app URLs from Text nodes outside code and links.
+func redactSchemeLessInText(doc ast.Node, source []byte, private map[string]bool) {
+	var targets []*ast.Text
+	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		switch n := node.(type) {
+		case *ast.CodeBlock, *ast.FencedCodeBlock, *ast.CodeSpan, *ast.AutoLink, *ast.Link, *ast.Image:
+			return ast.WalkSkipChildren, nil
+		case *ast.Text:
+			targets = append(targets, n)
+		}
+		return ast.WalkContinue, nil
+	})
+	for _, textNode := range targets {
+		parent := textNode.Parent()
+		if parent == nil {
+			continue
+		}
+		seg := textNode.Segment
+		value := string(seg.Value(source))
+		matches := plainAppURL.FindAllStringIndex(value, -1)
+		if len(matches) == 0 {
+			continue
+		}
+		var parts []ast.Node
+		cursor := 0
+		changed := false
+		for _, match := range matches {
+			start, end := match[0], match[1]
+			if !bareURLStartOK(value, start) {
+				continue
+			}
+			end = trimBareURLEnd(value, start, end)
+			token, ok := appPathToken(value[start:end])
+			if !ok || !private[token] {
+				continue
+			}
+			if start > cursor {
+				parts = append(parts, ast.NewString([]byte(value[cursor:start])))
+			}
+			cursor = end
+			changed = true
+		}
+		if !changed {
+			continue
+		}
+		if cursor < len(value) {
+			rest := ast.NewString([]byte(value[cursor:]))
+			if textNode.SoftLineBreak() {
+				// Preserve soft break on the trailing fragment.
+				_ = rest
+			}
+			parts = append(parts, ast.NewString([]byte(value[cursor:])))
+		}
+		// Soft/hard line breaks live on the Text node; keep a trailing empty Text if needed.
+		if textNode.SoftLineBreak() || textNode.HardLineBreak() {
+			tail := ast.NewText()
+			if textNode.SoftLineBreak() {
+				tail.SetSoftLineBreak(true)
+			}
+			if textNode.HardLineBreak() {
+				tail.SetHardLineBreak(true)
+			}
+			parts = append(parts, tail)
+		}
+		for i, part := range parts {
+			if i == 0 {
+				parent.ReplaceChild(parent, textNode, part)
+				textNode = nil
+				continue
+			}
+			prev := parts[i-1]
+			parent.InsertAfter(parent, prev, part)
+		}
+	}
+}
+
+func unwrapMarkdownNode(n ast.Node) {
+	parent := n.Parent()
+	if parent == nil {
 		return
 	}
-	cursor := lines.At(0).Start
-	for child := parent.FirstChild(); child != nil; child = child.NextSibling() {
-		d.collectInlineNode(child, &cursor)
+	for child := n.FirstChild(); child != nil; {
+		next := child.NextSibling()
+		n.RemoveChild(n, child)
+		parent.InsertBefore(parent, n, child)
+		child = next
 	}
+	parent.RemoveChild(parent, n)
 }
 
-func (d *appDocument) collectInlineNode(node ast.Node, cursor *int) {
-	switch n := node.(type) {
-	case *ast.Text:
-		if n.Segment.Stop > *cursor {
-			*cursor = n.Segment.Stop
+func redactAppDirectiveLines(body string, private map[string]bool) string {
+	source := []byte(body)
+	doc := parseAppMarkdown(source)
+	code := collectCodeSpans(doc, source)
+	var b strings.Builder
+	last := 0
+	for _, match := range appDirectiveLine.FindAllStringSubmatchIndex(body, -1) {
+		if insideSpans(match[0], code) || !private[body[match[2]:match[3]]] {
+			continue
 		}
-	case *ast.CodeSpan:
-		if span, ok := codeSpanContent(n); ok {
-			d.code = append(d.code, span)
-			if span.stop > *cursor {
-				*cursor = span.stop
+		b.WriteString(body[last:match[0]])
+		last = match[1]
+	}
+	if last == 0 {
+		return body
+	}
+	b.WriteString(body[last:])
+	return b.String()
+}
+
+func collectCodeSpans(doc ast.Node, source []byte) [][2]int {
+	spans := [][2]int{}
+	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		switch n := node.(type) {
+		case *ast.FencedCodeBlock, *ast.CodeBlock:
+			lines := n.Lines()
+			if lines == nil || lines.Len() == 0 {
+				return ast.WalkSkipChildren, nil
 			}
-		}
-	case *ast.RawHTML:
-		if n.Segments != nil {
-			for i := 0; i < n.Segments.Len(); i++ {
-				if segment := n.Segments.At(i); segment.Stop > *cursor {
-					*cursor = segment.Stop
+			start := lineStart(source, lines.At(0).Start)
+			stop := includeLineEnding(source, lines.At(lines.Len()-1).Stop)
+			// Include the fence lines when present.
+			if start > 0 {
+				prev := lineStart(source, start-1)
+				spans = append(spans, [2]int{prev, stop})
+			} else {
+				spans = append(spans, [2]int{start, stop})
+			}
+			if stop < len(source) {
+				nextLine := includeLineEnding(source, stop)
+				_ = nextLine
+			}
+			// Expand forward over a closing fence line for fenced blocks.
+			if _, ok := n.(*ast.FencedCodeBlock); ok {
+				end := stop
+				for end < len(source) && (source[end] == ' ' || source[end] == '\t' || source[end] == '`' || source[end] == '~' || source[end] == '\r') {
+					end++
+					if end > 0 && end <= len(source) && source[end-1] == '\n' {
+						break
+					}
+				}
+				if end > stop {
+					spans[len(spans)-1][1] = end
 				}
 			}
-		}
-	case *ast.AutoLink:
-		span, ok := autoLinkSpan(d.source, n, *cursor)
-		if !ok {
-			return
-		}
-		d.protected = append(d.protected, span)
-		d.links = append(d.links, appLink{span: span, destination: n.URL(d.source), auto: true})
-		if span.stop > *cursor {
-			*cursor = span.stop
-		}
-	case *ast.Link:
-		span, label, ok := markdownLinkSpan(d.source, n, *cursor)
-		if !ok {
-			// Keep the destination for discovery; the residual pass removes the path from the text.
-			d.links = append(d.links, appLink{destination: n.Destination, unlocated: true})
-			return
-		}
-		d.collectNestedCode(n)
-		d.protected = append(d.protected, span)
-		d.links = append(d.links, appLink{span: span, text: label, destination: n.Destination})
-		if span.stop > *cursor {
-			*cursor = span.stop
-		}
-	case *ast.Image:
-		span, _, ok := markdownLinkSpan(d.source, n, *cursor)
-		if !ok {
-			return
-		}
-		d.collectNestedCode(n)
-		d.protected = append(d.protected, span)
-		if span.stop > *cursor {
-			*cursor = span.stop
-		}
-	default:
-		for child := node.FirstChild(); child != nil; child = child.NextSibling() {
-			d.collectInlineNode(child, cursor)
-		}
-	}
-}
-
-// collectNestedCode keeps inline code inside a link or image label out of the HTML tokenizer and
-// directive scanner without treating the label as separately parsed block content.
-func (d *appDocument) collectNestedCode(parent ast.Node) {
-	for child := parent.FirstChild(); child != nil; child = child.NextSibling() {
-		if code, ok := child.(*ast.CodeSpan); ok {
-			if span, ok := codeSpanContent(code); ok {
-				d.code = append(d.code, span)
+			return ast.WalkSkipChildren, nil
+		case *ast.CodeSpan:
+			spanStart, spanStop := -1, -1
+			for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+				if t, ok := child.(*ast.Text); ok {
+					if spanStart < 0 || t.Segment.Start < spanStart {
+						spanStart = t.Segment.Start
+					}
+					if t.Segment.Stop > spanStop {
+						spanStop = t.Segment.Stop
+					}
+				}
 			}
+			if spanStart >= 0 && spanStop > spanStart {
+				// Include surrounding backticks by expanding to nearest matching runs.
+				left := spanStart
+				for left > 0 && source[left-1] == '`' {
+					left--
+				}
+				right := spanStop
+				for right < len(source) && source[right] == '`' {
+					right++
+				}
+				spans = append(spans, [2]int{left, right})
+			}
+			return ast.WalkSkipChildren, nil
 		}
-		d.collectNestedCode(child)
-	}
+		return ast.WalkContinue, nil
+	})
+	return spans
 }
 
-func (d *appDocument) definitionEdits(private map[string]bool) []appEdit {
-	privateLabels := map[string]bool{}
-	for _, definition := range d.definitions {
-		if token, ok := appToken(definition.destination); ok && private[token] {
-			privateLabels[definition.label] = true
-		}
-	}
-	edits := []appEdit{}
-	for _, definition := range d.allDefs {
-		if privateLabels[definition.label] {
-			edits = append(edits, appEdit{start: definition.span.start, end: definition.span.stop})
-		}
-	}
-	return edits
-}
-
-func (d *appDocument) inCode(position int) bool {
-	return insideSourceSpans(position, d.code)
-}
-
-func (d *appDocument) inProtectedSpan(position int) bool {
-	return insideSourceSpans(position, d.protected)
-}
-
-// rewritable rejects positions inside code or an existing link/image, where a bare URL is either
-// literal code or part of a larger destination.
-func (d *appDocument) rewritable(position int) bool {
-	return !d.inCode(position) && !d.inProtectedSpan(position)
-}
-
-func insideSourceSpans(position int, spans []sourceSpan) bool {
+func insideSpans(pos int, spans [][2]int) bool {
 	for _, span := range spans {
-		if position >= span.start && position < span.stop {
+		if pos >= span[0] && pos < span[1] {
 			return true
 		}
 	}
 	return false
 }
 
-type appEdit struct {
-	start, end  int
-	replacement string
+func lineStart(source []byte, position int) int {
+	if position <= 0 {
+		return 0
+	}
+	if index := bytes.LastIndexByte(source[:position], '\n'); index >= 0 {
+		return index + 1
+	}
+	return 0
 }
 
-func applyAppEdits(source string, edits []appEdit) string {
-	if len(edits) == 0 {
-		return source
+func includeLineEnding(source []byte, position int) int {
+	if position < len(source) && source[position] == '\r' {
+		position++
 	}
-	sort.SliceStable(edits, func(i, j int) bool {
-		if edits[i].start != edits[j].start {
-			return edits[i].start < edits[j].start
+	if position < len(source) && source[position] == '\n' {
+		position++
+	}
+	return position
+}
+
+func pruneEmptyContainers(doc ast.Node) {
+	var remove []ast.Node
+	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if entering {
+			return ast.WalkContinue, nil
 		}
-		return edits[i].end > edits[j].end
+		switch node.(type) {
+		case *ast.ListItem:
+			if node.FirstChild() == nil {
+				remove = append(remove, node)
+			}
+		case *ast.List:
+			if node.FirstChild() == nil {
+				remove = append(remove, node)
+			}
+		case *ast.Paragraph, *ast.TextBlock:
+			if node.FirstChild() == nil {
+				remove = append(remove, node)
+			}
+		}
+		return ast.WalkContinue, nil
 	})
-	var out strings.Builder
-	last := 0
-	for _, edit := range edits {
-		if edit.start < last || edit.start < 0 || edit.end > len(source) || edit.end < edit.start {
-			continue
+	for _, n := range remove {
+		if parent := n.Parent(); parent != nil {
+			parent.RemoveChild(parent, n)
 		}
-		out.WriteString(source[last:edit.start])
-		out.WriteString(edit.replacement)
-		last = edit.end
 	}
-	out.WriteString(source[last:])
-	return out.String()
 }
 
-// redactHTMLAnchors drops raw HTML anchors to private apps and keeps their inner text. Markdown
-// rendering escapes raw HTML in article bodies, so this is a guard rather than a live-link fix.
+// serializeMarkdown renders a (possibly mutated) goldmark AST back to CommonMark-ish Markdown.
+func serializeMarkdown(doc ast.Node, source []byte) string {
+	var b strings.Builder
+	writeBlocks(&b, doc, source, 0, false)
+	return b.String()
+}
+
+func writeBlocks(b *strings.Builder, parent ast.Node, source []byte, depth int, inQuote bool) {
+	children := []ast.Node{}
+	for child := parent.FirstChild(); child != nil; child = child.NextSibling() {
+		children = append(children, child)
+	}
+	for i, child := range children {
+		switch n := child.(type) {
+		case *ast.Heading:
+			writeQuotePrefix(b, inQuote, depth)
+			b.WriteString(strings.Repeat("#", n.Level))
+			b.WriteByte(' ')
+			writeInlines(b, n, source)
+			b.WriteByte('\n')
+		case *ast.Paragraph:
+			writeQuotePrefix(b, inQuote, depth)
+			writeInlines(b, n, source)
+			b.WriteByte('\n')
+		case *ast.TextBlock:
+			writeQuotePrefix(b, inQuote, depth)
+			writeInlines(b, n, source)
+			b.WriteByte('\n')
+		case *ast.Blockquote:
+			writeBlocks(b, n, source, depth+1, true)
+		case *ast.FencedCodeBlock:
+			writeFencedCode(b, n, source, inQuote, depth)
+		case *ast.CodeBlock:
+			writeIndentedCode(b, n, source, inQuote, depth)
+		case *ast.List:
+			writeList(b, n, source, depth, inQuote)
+		case *ast.ThematicBreak:
+			writeQuotePrefix(b, inQuote, depth)
+			b.WriteString("---\n")
+		case *ast.LinkReferenceDefinition:
+			writeQuotePrefix(b, inQuote, depth)
+			writeDefinition(b, n, source)
+			b.WriteByte('\n')
+		case *ast.HTMLBlock:
+			writeHTMLBlock(b, n, source, inQuote, depth)
+		default:
+			if n.Type() == ast.TypeBlock {
+				writeBlocks(b, n, source, depth, inQuote)
+			}
+		}
+		if i+1 < len(children) && needsBlankLineBetween(child, children[i+1]) {
+			writeQuotePrefix(b, inQuote, depth)
+			b.WriteByte('\n')
+		}
+	}
+}
+
+func needsBlankLineBetween(prev, next ast.Node) bool {
+	switch next.(type) {
+	case *ast.FencedCodeBlock:
+		return false
+	case *ast.CodeBlock:
+		// Indented code requires a blank line after a paragraph.
+		return true
+	case *ast.LinkReferenceDefinition:
+		// Definitions must not interrupt a paragraph on re-parse.
+		if _, ok := prev.(*ast.LinkReferenceDefinition); ok {
+			return false
+		}
+		return true
+	}
+	switch prev.(type) {
+	case *ast.FencedCodeBlock, *ast.LinkReferenceDefinition:
+		return false
+	case *ast.CodeBlock:
+		return true
+	default:
+		return true
+	}
+}
+
+func writeQuotePrefix(b *strings.Builder, inQuote bool, depth int) {
+	if !inQuote {
+		return
+	}
+	for i := 0; i < depth; i++ {
+		b.WriteString("> ")
+	}
+}
+
+func writeFencedCode(b *strings.Builder, n *ast.FencedCodeBlock, source []byte, inQuote bool, depth int) {
+	info := ""
+	if n.Info != nil {
+		seg := n.Info.Segment
+		info = string(seg.Value(source))
+	}
+	writeQuotePrefix(b, inQuote, depth)
+	b.WriteString("```")
+	b.WriteString(info)
+	b.WriteByte('\n')
+	lines := n.Lines()
+	for i := 0; i < lines.Len(); i++ {
+		writeQuotePrefix(b, inQuote, depth)
+		seg := lines.At(i)
+		b.Write(seg.Value(source))
+	}
+	writeQuotePrefix(b, inQuote, depth)
+	b.WriteString("```\n")
+}
+
+func writeIndentedCode(b *strings.Builder, n *ast.CodeBlock, source []byte, inQuote bool, depth int) {
+	lines := n.Lines()
+	for i := 0; i < lines.Len(); i++ {
+		writeQuotePrefix(b, inQuote, depth)
+		b.WriteString("    ")
+		seg := lines.At(i)
+		b.Write(seg.Value(source))
+	}
+}
+
+func writeList(b *strings.Builder, list *ast.List, source []byte, depth int, inQuote bool) {
+	index := list.Start
+	if index == 0 {
+		index = 1
+	}
+	for item := list.FirstChild(); item != nil; item = item.NextSibling() {
+		writeQuotePrefix(b, inQuote, depth)
+		if list.IsOrdered() {
+			fmt.Fprintf(b, "%d%c ", index, list.Marker)
+			index++
+		} else {
+			b.WriteByte(list.Marker)
+			b.WriteByte(' ')
+		}
+		// ListItem children are blocks; write first block's inlines on the same line when paragraph.
+		first := true
+		for child := item.FirstChild(); child != nil; child = child.NextSibling() {
+			switch n := child.(type) {
+			case *ast.Paragraph, *ast.TextBlock:
+				if !first {
+					writeQuotePrefix(b, inQuote, depth)
+					b.WriteString("  ")
+				}
+				writeInlines(b, n, source)
+				b.WriteByte('\n')
+			case *ast.List:
+				writeList(b, n, source, depth, inQuote)
+			case *ast.CodeBlock:
+				writeIndentedCode(b, n, source, inQuote, depth)
+			case *ast.FencedCodeBlock:
+				writeFencedCode(b, n, source, inQuote, depth)
+			case *ast.Blockquote:
+				writeBlocks(b, n, source, depth+1, true)
+			default:
+				writeBlocks(b, item, source, depth, inQuote)
+				first = false
+				continue
+			}
+			first = false
+		}
+		if item.FirstChild() == nil {
+			b.WriteByte('\n')
+		}
+	}
+}
+
+func writeDefinition(b *strings.Builder, n *ast.LinkReferenceDefinition, _ []byte) {
+	b.WriteByte('[')
+	b.Write(n.Label)
+	b.WriteString("]: ")
+	b.Write(n.Destination)
+	if len(n.Title) > 0 {
+		b.WriteString(" \"")
+		b.Write(n.Title)
+		b.WriteByte('"')
+	}
+}
+
+func writeHTMLBlock(b *strings.Builder, n *ast.HTMLBlock, source []byte, inQuote bool, depth int) {
+	lines := n.Lines()
+	for i := 0; i < lines.Len(); i++ {
+		writeQuotePrefix(b, inQuote, depth)
+		seg := lines.At(i)
+		b.Write(seg.Value(source))
+	}
+}
+
+func writeInlines(b *strings.Builder, parent ast.Node, source []byte) {
+	for child := parent.FirstChild(); child != nil; child = child.NextSibling() {
+		switch n := child.(type) {
+		case *ast.Text:
+			seg := n.Segment
+			b.Write(seg.Value(source))
+			if n.SoftLineBreak() {
+				b.WriteByte('\n')
+			}
+			if n.HardLineBreak() {
+				b.WriteString("\\\n")
+			}
+		case *ast.String:
+			b.Write(n.Value)
+		case *ast.CodeSpan:
+			content := codeSpanText(n, source)
+			ticks := neededTicks(content)
+			b.WriteString(strings.Repeat("`", ticks))
+			if strings.HasPrefix(content, "`") || strings.HasSuffix(content, "`") || strings.HasPrefix(content, " ") || strings.HasSuffix(content, " ") {
+				b.WriteByte(' ')
+				b.WriteString(content)
+				b.WriteByte(' ')
+			} else {
+				b.WriteString(content)
+			}
+			b.WriteString(strings.Repeat("`", ticks))
+		case *ast.Emphasis:
+			mark := strings.Repeat("*", n.Level)
+			b.WriteString(mark)
+			writeInlines(b, n, source)
+			b.WriteString(mark)
+		case *ast.Link:
+			writeLink(b, n, source, false)
+		case *ast.Image:
+			b.WriteByte('!')
+			writeLink(b, n, source, true)
+		case *ast.AutoLink:
+			label := n.Label(source)
+			if n.AutoLinkType == ast.AutoLinkEmail || (len(label) > 0 && label[0] == '<') {
+				b.WriteByte('<')
+				b.Write(label)
+				b.WriteByte('>')
+			} else {
+				b.Write(label)
+			}
+		case *ast.RawHTML:
+			if n.Segments != nil {
+				for i := 0; i < n.Segments.Len(); i++ {
+					seg := n.Segments.At(i)
+					b.Write(seg.Value(source))
+				}
+			}
+		default:
+			writeInlines(b, n, source)
+		}
+	}
+}
+
+func writeLink(b *strings.Builder, n ast.Node, source []byte, image bool) {
+	var dest, title []byte
+	var ref *ast.ReferenceLink
+	switch t := n.(type) {
+	case *ast.Link:
+		dest, title, ref = t.Destination, t.Title, t.Reference
+	case *ast.Image:
+		dest, title, ref = t.Destination, t.Title, t.Reference
+	}
+	_ = image
+	b.WriteByte('[')
+	writeInlines(b, n, source)
+	b.WriteByte(']')
+	if ref != nil {
+		switch ref.Type {
+		case ast.ReferenceLinkShortcut:
+			// shortcut: [text] only
+		case ast.ReferenceLinkCollapsed:
+			b.WriteString("[]")
+		default:
+			b.WriteByte('[')
+			b.Write(ref.Value)
+			b.WriteByte(']')
+		}
+		return
+	}
+	b.WriteByte('(')
+	if bytes.IndexByte(dest, ' ') >= 0 {
+		b.WriteByte('<')
+		b.Write(dest)
+		b.WriteByte('>')
+	} else {
+		b.Write(dest)
+	}
+	if len(title) > 0 {
+		b.WriteString(" \"")
+		b.Write(bytes.ReplaceAll(title, []byte(`"`), []byte(`\"`)))
+		b.WriteByte('"')
+	}
+	b.WriteByte(')')
+}
+
+func codeSpanText(n *ast.CodeSpan, source []byte) string {
+	var b strings.Builder
+	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+		if t, ok := child.(*ast.Text); ok {
+			seg := t.Segment
+			b.Write(seg.Value(source))
+			if t.SoftLineBreak() {
+				b.WriteByte(' ')
+			}
+		}
+	}
+	return b.String()
+}
+
+func neededTicks(content string) int {
+	maxRun := 0
+	run := 0
+	for i := 0; i < len(content); i++ {
+		if content[i] == '`' {
+			run++
+			if run > maxRun {
+				maxRun = run
+			}
+		} else {
+			run = 0
+		}
+	}
+	return maxRun + 1
+}
+
 func redactHTMLAnchors(body string, private map[string]bool) string {
-	doc := parseAppDocument(body)
-	edits := []appEdit{}
-	for _, segment := range outsideSpans(body, doc.code) {
-		edits = append(edits, htmlAnchorEdits(body, segment, private)...)
+	code := collectCodeSpans(parseAppMarkdown([]byte(body)), []byte(body))
+	edits := []struct {
+		start, end int
+		repl       string
+	}{}
+	for _, segment := range outsideCode(body, code) {
+		edits = append(edits, htmlAnchorEdits(body, segment[0], segment[1], private)...)
 	}
-	return applyAppEdits(body, edits)
+	if len(edits) == 0 {
+		return body
+	}
+	// Apply back to front.
+	sortEditsDesc(edits)
+	out := body
+	for _, edit := range edits {
+		out = out[:edit.start] + edit.repl + out[edit.end:]
+	}
+	return out
 }
 
-func htmlAnchorEdits(source string, segment sourceSpan, private map[string]bool) []appEdit {
-	tokenizer := html.NewTokenizer(strings.NewReader(source[segment.start:segment.stop]))
+func htmlAnchorEdits(source string, segStart, segStop int, private map[string]bool) []struct {
+	start, end int
+	repl       string
+} {
+	tokenizer := html.NewTokenizer(strings.NewReader(source[segStart:segStop]))
 	type anchor struct {
 		start, innerStart int
 		private           bool
 	}
 	stack := []anchor{}
-	edits := []appEdit{}
-	offset := segment.start
+	edits := []struct {
+		start, end int
+		repl       string
+	}{}
+	offset := segStart
 	for {
 		kind := tokenizer.Next()
 		if kind == html.ErrorToken {
@@ -474,22 +856,20 @@ func htmlAnchorEdits(source string, segment sourceSpan, private map[string]bool)
 			current := stack[len(stack)-1]
 			stack = stack[:len(stack)-1]
 			if current.private {
-				edits = append(edits, appEdit{
-					start:       current.start,
-					end:         offset,
-					replacement: source[current.innerStart:start],
-				})
+				edits = append(edits, struct {
+					start, end int
+					repl       string
+				}{start: current.start, end: offset, repl: source[current.innerStart:start]})
 			}
 		}
 	}
 	return edits
 }
 
-// htmlAnchors lists the decoded href values of raw HTML anchors outside code.
-func (d *appDocument) htmlAnchors(body string) []string {
+func htmlHrefs(body string, code [][2]int) []string {
 	hrefs := []string{}
-	for _, segment := range outsideSpans(body, d.code) {
-		tokenizer := html.NewTokenizer(strings.NewReader(body[segment.start:segment.stop]))
+	for _, segment := range outsideCode(body, code) {
+		tokenizer := html.NewTokenizer(strings.NewReader(body[segment[0]:segment[1]]))
 		for {
 			kind := tokenizer.Next()
 			if kind == html.ErrorToken {
@@ -514,329 +894,85 @@ func (d *appDocument) htmlAnchors(body string) []string {
 	return hrefs
 }
 
-func outsideSpans(source string, spans []sourceSpan) []sourceSpan {
-	if len(spans) == 0 {
-		return []sourceSpan{{start: 0, stop: len(source)}}
+func outsideCode(source string, code [][2]int) [][2]int {
+	if len(code) == 0 {
+		return [][2]int{{0, len(source)}}
 	}
-	sorted := append([]sourceSpan(nil), spans...)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].start < sorted[j].start })
-	out := []sourceSpan{}
-	position := 0
-	for _, span := range sorted {
-		start, stop := span.start, span.stop
+	out := [][2]int{}
+	pos := 0
+	for _, span := range code {
+		start, stop := span[0], span[1]
 		if start < 0 {
 			start = 0
 		}
 		if stop > len(source) {
 			stop = len(source)
 		}
-		if start > position {
-			out = append(out, sourceSpan{start: position, stop: start})
+		if start > pos {
+			out = append(out, [2]int{pos, start})
 		}
-		if stop > position {
-			position = stop
+		if stop > pos {
+			pos = stop
 		}
 	}
-	if position < len(source) {
-		out = append(out, sourceSpan{start: position, stop: len(source)})
+	if pos < len(source) {
+		out = append(out, [2]int{pos, len(source)})
 	}
 	return out
 }
 
-func blockCodeSpan(source []byte, node ast.Node) (sourceSpan, bool) {
-	lines := node.Lines()
-	if lines == nil || lines.Len() == 0 {
-		return sourceSpan{}, false
-	}
-	span := sourceSpan{start: lineStart(source, lines.At(0).Start), stop: lines.At(lines.Len() - 1).Stop}
-	span.stop = includeLineEnding(source, span.stop)
-	return span, span.stop > span.start
-}
-
-func codeSpanContent(node *ast.CodeSpan) (sourceSpan, bool) {
-	span := sourceSpan{start: -1, stop: -1}
-	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
-		textNode, ok := child.(*ast.Text)
-		if !ok {
-			continue
-		}
-		if span.start < 0 || textNode.Segment.Start < span.start {
-			span.start = textNode.Segment.Start
-		}
-		if textNode.Segment.Stop > span.stop {
-			span.stop = textNode.Segment.Stop
-		}
-	}
-	if span.start < 0 || span.stop <= span.start {
-		return sourceSpan{}, false
-	}
-	return span, true
-}
-
-func definitionSpan(source []byte, node *ast.LinkReferenceDefinition) sourceSpan {
-	lines := node.Lines()
-	if lines == nil || lines.Len() == 0 {
-		return sourceSpan{}
-	}
-	span := sourceSpan{start: lineStart(source, lines.At(0).Start), stop: lines.At(lines.Len() - 1).Stop}
-	span.stop = includeLineEnding(source, span.stop)
-	return span
-}
-
-func lineStart(source []byte, position int) int {
-	if position <= 0 {
-		return 0
-	}
-	if index := bytes.LastIndexByte(source[:position], '\n'); index >= 0 {
-		return index + 1
-	}
-	return 0
-}
-
-func includeLineEnding(source []byte, position int) int {
-	if position < len(source) && source[position] == '\r' {
-		position++
-	}
-	if position < len(source) && source[position] == '\n' {
-		position++
-	}
-	return position
-}
-
-// autoLinkSpan recovers the source range of a goldmark AutoLink. Explicit autolinks keep their
-// angle brackets; linkified bare URLs use the text itself.
-func autoLinkSpan(source []byte, node *ast.AutoLink, cursor int) (sourceSpan, bool) {
-	label := node.Label(source)
-	if len(label) == 0 || cursor < 0 || cursor > len(source) {
-		return sourceSpan{}, false
-	}
-	index := bytes.Index(source[cursor:], label)
-	if index < 0 {
-		return sourceSpan{}, false
-	}
-	start := cursor + index
-	stop := start + len(label)
-	if start > 0 && source[start-1] == '<' && stop < len(source) && source[stop] == '>' {
-		start--
-		stop++
-	}
-	return sourceSpan{start: start, stop: stop}, true
-}
-
-// markdownLinkSpan recovers a complete inline or reference link from its label text. Goldmark does
-// not expose syntax offsets, so the label is located through its text segments and the destination
-// is scanned with CommonMark bracket, escape and title rules.
-func markdownLinkSpan(source []byte, node ast.Node, cursor int) (sourceSpan, sourceSpan, bool) {
-	innerStart := firstTextStart(node)
-	start := -1
-	if innerStart >= 0 {
-		start = linkOpen(source, innerStart, cursor)
-	}
-	if start < 0 {
-		index := bytes.IndexByte(source[cursor:], '[')
-		if index < 0 {
-			return sourceSpan{}, sourceSpan{}, false
-		}
-		start = cursor + index
-	}
-	labelEnd := matchBracket(source, start)
-	if labelEnd < 0 {
-		return sourceSpan{}, sourceSpan{}, false
-	}
-	stop := labelEnd + 1
-	if stop < len(source) && source[stop] == '(' {
-		end := inlineLinkEnd(source, stop)
-		if end <= stop {
-			// Never accept a label-only range for an inline link: the destination would survive.
-			return sourceSpan{}, sourceSpan{}, false
-		}
-		stop = end
-	} else if stop < len(source) && source[stop] == '[' {
-		if end := matchBracket(source, stop); end >= stop {
-			stop = end + 1
-		}
-	}
-	return sourceSpan{start: start, stop: stop}, sourceSpan{start: start + 1, stop: labelEnd}, true
-}
-
-func firstTextStart(node ast.Node) int {
-	start := -1
-	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
-		if textNode, ok := child.(*ast.Text); ok && (start < 0 || textNode.Segment.Start < start) {
-			start = textNode.Segment.Start
-		}
-		if childStart := firstTextStart(child); childStart >= 0 && (start < 0 || childStart < start) {
-			start = childStart
-		}
-	}
-	return start
-}
-
-func linkOpen(source []byte, innerStart, floor int) int {
-	position := innerStart
-	for position > floor {
-		index := bytes.LastIndexByte(source[floor:position], '[')
-		if index < 0 {
-			return -1
-		}
-		index += floor
-		if escapedAt(source, index) || (index > 0 && source[index-1] == '!' && !escapedAt(source, index-1)) {
-			position = index
-			continue
-		}
-		return index
-	}
-	return -1
-}
-
-// escapedAt reports whether the byte at position is preceded by an odd number of backslashes.
-func escapedAt(source []byte, position int) bool {
-	count := 0
-	for index := position - 1; index >= 0 && source[index] == '\\'; index-- {
-		count++
-	}
-	return count%2 == 1
-}
-
-func matchBracket(source []byte, open int) int {
-	depth := 0
-	for index := open; index < len(source); index++ {
-		switch source[index] {
-		case '\\':
-			if index+1 < len(source) {
-				index++
-			}
-		case '`':
-			length := backtickRun(source[index:])
-			closeAt := -1
-			for scan := index + length; scan < len(source); {
-				if source[scan] != '`' {
-					scan++
-					continue
-				}
-				run := backtickRun(source[scan:])
-				if run == length {
-					closeAt = scan + run
-					break
-				}
-				scan += run
-			}
-			if closeAt >= 0 {
-				index = closeAt - 1
-			} else {
-				index += length - 1
-			}
-		case '[':
-			depth++
-		case ']':
-			depth--
-			if depth == 0 {
-				return index
+func sortEditsDesc(edits []struct {
+	start, end int
+	repl       string
+}) {
+	for i := 0; i < len(edits); i++ {
+		for j := i + 1; j < len(edits); j++ {
+			if edits[j].start > edits[i].start {
+				edits[i], edits[j] = edits[j], edits[i]
 			}
 		}
 	}
-	return -1
 }
 
-func inlineLinkEnd(source []byte, openParen int) int {
-	position := skipSpaces(source, openParen+1)
-	if position >= len(source) {
-		return -1
-	}
-	if source[position] == '<' {
-		position++
-		for position < len(source) {
-			if source[position] == '\\' && position+1 < len(source) {
-				position += 2
-				continue
-			}
-			if source[position] == '>' {
-				position++
-				break
-			}
-			position++
-		}
-		if position == 0 || source[position-1] != '>' {
-			return -1
-		}
-	} else {
-		depth := 0
-		for position < len(source) {
-			switch source[position] {
-			case '\\':
-				if position+1 < len(source) {
-					position += 2
-					continue
-				}
-			case '(':
-				depth++
-			case ')':
-				if depth == 0 {
-					goto destination
-				}
-				depth--
-			default:
-				if isMarkdownSpace(source[position]) {
-					goto destination
-				}
-			}
-			position++
+func attrValue(n *html.Node, name string) (string, bool) {
+	for _, attr := range n.Attr {
+		if strings.EqualFold(attr.Key, name) {
+			return attr.Val, true
 		}
 	}
-destination:
-	position = skipSpaces(source, position)
-	if position < len(source) && (source[position] == '"' || source[position] == '\'' || source[position] == '(') {
-		position = skipLinkTitle(source, position)
-		if position < 0 {
-			return -1
-		}
-		position = skipSpaces(source, position)
-	}
-	if position < len(source) && source[position] == ')' {
-		return position + 1
-	}
-	return -1
+	return "", false
 }
 
-func skipLinkTitle(source []byte, position int) int {
-	opener := source[position]
-	closer := opener
-	if opener == '(' {
-		closer = ')'
+func unwrapHTMLNode(n *html.Node) {
+	parent := n.Parent
+	if parent == nil {
+		return
 	}
-	for index := position + 1; index < len(source); index++ {
-		if source[index] == '\\' && index+1 < len(source) {
-			index++
-			continue
+	for child := n.FirstChild; child != nil; {
+		next := child.NextSibling
+		n.RemoveChild(child)
+		parent.InsertBefore(child, n)
+		child = next
+	}
+	parent.RemoveChild(n)
+}
+
+func findHTMLBody(root *html.Node) *html.Node {
+	var body *html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "body" {
+			body = n
+			return
 		}
-		if source[index] == closer {
-			return index + 1
+		for c := n.FirstChild; c != nil && body == nil; c = c.NextSibling {
+			walk(c)
 		}
 	}
-	return -1
+	walk(root)
+	return body
 }
 
-func skipSpaces(source []byte, position int) int {
-	for position < len(source) && isMarkdownSpace(source[position]) {
-		position++
-	}
-	return position
-}
-
-func isMarkdownSpace(value byte) bool {
-	return value == ' ' || value == '\t' || value == '\n' || value == '\r'
-}
-
-func backtickRun(source []byte) int {
-	length := 0
-	for length < len(source) && source[length] == '`' {
-		length++
-	}
-	return length
-}
-
-// bareURLStartOK keeps a hostname suffix such as notopennavo.com from matching opennavo.com, and
-// rejects a scheme-less candidate embedded after another URL.
 func bareURLStartOK(text string, start int) bool {
 	if start == 0 {
 		return true
@@ -851,7 +987,6 @@ func bareURLStartOK(text string, start int) bool {
 	}
 }
 
-// trimBareURLEnd removes sentence punctuation that linkify leaves outside the link.
 func trimBareURLEnd(text string, start, end int) int {
 	for end > start {
 		switch text[end-1] {
@@ -865,7 +1000,7 @@ func trimBareURLEnd(text string, start, end int) int {
 }
 
 // appToken resolves Markdown escapes and character references, then matches the URL against the app
-// page shape. It is shared by discovery and redaction so both see the same destination.
+// page shape. Shared by discovery and redaction so both see the same destination.
 func appToken(raw []byte) (string, bool) {
 	if len(raw) == 0 {
 		return "", false
@@ -874,7 +1009,6 @@ func appToken(raw []byte) (string, bool) {
 }
 
 func appPathToken(raw string) (string, bool) {
-	// Linkify turns a bare opennavo.com URL into a link without changing its text.
 	lower := strings.ToLower(raw)
 	if !strings.Contains(raw, "://") && !strings.HasPrefix(raw, "/") &&
 		(strings.HasPrefix(lower, "opennavo.com/") || strings.HasPrefix(lower, "www.opennavo.com/")) {
@@ -890,12 +1024,18 @@ func appPathToken(raw string) (string, bool) {
 		}
 		switch scheme := strings.ToLower(parsed.Scheme); scheme {
 		case "https":
-			if port := parsed.Port(); port != "" && port != "443" {
-				return "", false
+			if port := parsed.Port(); port != "" {
+				n, err := strconv.Atoi(port)
+				if err != nil || n != 443 {
+					return "", false
+				}
 			}
 		case "http":
-			if port := parsed.Port(); port != "" && port != "80" {
-				return "", false
+			if port := parsed.Port(); port != "" {
+				n, err := strconv.Atoi(port)
+				if err != nil || n != 80 {
+					return "", false
+				}
 			}
 		default:
 			return "", false
@@ -907,9 +1047,39 @@ func appPathToken(raw string) (string, bool) {
 	} else if !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") {
 		return "", false
 	}
-	match := appPath.FindStringSubmatch(parsed.Path)
-	if match == nil {
-		return "", false
+	for _, candidate := range pathCandidates(parsed) {
+		if match := appPath.FindStringSubmatch(candidate); match != nil {
+			return strings.ToLower(match[1]), true
+		}
 	}
-	return match[1], true
+	return "", false
+}
+
+// pathCandidates yields normalized path forms so percent-encoded slashes like %2Fapps%2F still match.
+func pathCandidates(parsed *url.URL) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	add := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	add(parsed.Path)
+	if parsed.RawPath != "" {
+		if unescaped, err := url.PathUnescape(parsed.RawPath); err == nil {
+			add(unescaped)
+		}
+		add(parsed.RawPath)
+	}
+	if unescaped, err := url.PathUnescape(parsed.Path); err == nil {
+		add(unescaped)
+	}
+	// /%2Fapps%2Ftoken → Path "//apps/token"; collapse leading slashes.
+	if parsed.Path != "" {
+		collapsed := "/" + strings.TrimLeft(parsed.Path, "/")
+		add(collapsed)
+	}
+	return out
 }
