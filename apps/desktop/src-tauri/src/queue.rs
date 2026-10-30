@@ -9,7 +9,7 @@ use crate::{
         locate,
         pty::{Execution, Progress, execute},
     },
-    db::Database,
+    db::{Database, TASK_INSTALL_PLAN_PREFIX},
     events::{CoreEvent, EventSink},
     model::*,
 };
@@ -213,7 +213,7 @@ impl TaskQueue {
 
     fn install_plan(&self, task: &Task) -> Result<Option<ResolvedInstallPlan>, AppError> {
         self.database
-            .meta(&format!("task_install_plan:{}", task.id))?
+            .meta(&format!("{TASK_INSTALL_PLAN_PREFIX}{}", task.id))?
             .map(|json| {
                 let plan: ResolvedInstallPlan = serde_json::from_str(&json)?;
                 plan.validate_task(task)?;
@@ -375,7 +375,7 @@ impl TaskQueue {
             plan.validate_task(&task)?;
             // Save before the task: recovery can never find a persisted task without its plan.
             self.database.set_meta(
-                &format!("task_install_plan:{id}"),
+                &format!("{TASK_INSTALL_PLAN_PREFIX}{id}"),
                 &serde_json::to_string(plan)?,
             )?;
         }
@@ -1560,7 +1560,7 @@ else:
             let task = queue
                 .enqueue_resolved_install(plan, TaskTrigger::Deeplink)
                 .unwrap();
-            let key = format!("task_install_plan:{}", task.id);
+            let key = format!("{TASK_INSTALL_PLAN_PREFIX}{}", task.id);
             if modified {
                 let mut json: serde_json::Value =
                     serde_json::from_str(&queue.database.meta(&key).unwrap().unwrap()).unwrap();
@@ -2394,6 +2394,76 @@ else:
                 kept: 0
             }
         );
+    }
+
+    #[test]
+    fn history_clear_removes_install_plan_metadata_only_for_deleted_tasks() {
+        let (_directory, queue, _) = fixture("install_ok");
+        let resolved = |token: &str| {
+            ResolvedInstallPlan::resolve(&queue.database, target(token), Default::default())
+                .expect("plan")
+        };
+        let finished = queue
+            .enqueue_resolved_install(resolved("calibre"), TaskTrigger::Deeplink)
+            .expect("finished task");
+        let queued = queue
+            .enqueue_resolved_install(resolved("other"), TaskTrigger::Deeplink)
+            .expect("queued task");
+        let mut ended = finished.clone();
+        ended.state = TaskState::Succeeded;
+        ended.finished_at = Some(chrono::Utc::now().timestamp_millis());
+        queue.database.save_task(&ended).expect("finish");
+        let finished_key = format!("{TASK_INSTALL_PLAN_PREFIX}{}", finished.id);
+        let queued_key = format!("{TASK_INSTALL_PLAN_PREFIX}{}", queued.id);
+        assert!(queue.database.meta(&finished_key).unwrap().is_some());
+        assert!(queue.database.meta(&queued_key).unwrap().is_some());
+
+        assert_eq!(
+            queue.clear_history().expect("clear"),
+            HistoryCleared {
+                cleared: 1,
+                kept: 0
+            }
+        );
+
+        assert!(queue.database.task(&finished.id).expect("read").is_none());
+        assert!(queue.database.meta(&finished_key).expect("read").is_none());
+        assert!(queue.database.task(&queued.id).expect("read").is_some());
+        assert!(queue.database.meta(&queued_key).expect("read").is_some());
+    }
+
+    #[test]
+    fn prune_removes_install_plan_metadata_with_its_task() {
+        let (_directory, queue, _) = fixture("install_ok");
+        let resolved = |token: &str| {
+            ResolvedInstallPlan::resolve(&queue.database, target(token), Default::default())
+                .expect("plan")
+        };
+        let old = queue
+            .enqueue_resolved_install(resolved("calibre"), TaskTrigger::Deeplink)
+            .expect("old task");
+        let recent = queue
+            .enqueue_resolved_install(resolved("other"), TaskTrigger::Deeplink)
+            .expect("recent task");
+        let now = chrono::Utc::now().timestamp_millis();
+        let day: i64 = 86_400_000;
+        for (task, finished_at) in [(&old, now - 731 * day), (&recent, now - day)] {
+            let mut ended = task.clone();
+            ended.state = TaskState::Succeeded;
+            ended.finished_at = Some(finished_at);
+            queue.database.save_task(&ended).expect("finish");
+        }
+        let old_key = format!("{TASK_INSTALL_PLAN_PREFIX}{}", old.id);
+        let recent_key = format!("{TASK_INSTALL_PLAN_PREFIX}{}", recent.id);
+        assert!(queue.database.meta(&old_key).unwrap().is_some());
+        assert!(queue.database.meta(&recent_key).unwrap().is_some());
+
+        queue.database.prune(now).expect("prune");
+
+        assert!(queue.database.task(&old.id).expect("read").is_none());
+        assert!(queue.database.meta(&old_key).expect("read").is_none());
+        assert!(queue.database.task(&recent.id).expect("read").is_some());
+        assert!(queue.database.meta(&recent_key).expect("read").is_some());
     }
 
     #[test]

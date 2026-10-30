@@ -12,6 +12,11 @@ use std::{
 /// inspect Connection::path() under with(), without opening another file.
 #[derive(Clone)]
 pub struct Database(Arc<Mutex<Connection>>);
+
+/// Meta keys that store a resolved install plan are `<prefix><task id>`. The queue writes and
+/// reads them, and task deletion must remove them together with their task, so the prefix lives
+/// here where the cleanup SQL can reference it.
+pub const TASK_INSTALL_PLAN_PREFIX: &str = "task_install_plan:";
 impl Database {
     pub fn open(path: &Path) -> Result<Self, AppError> {
         if let Some(parent) = path.parent() {
@@ -168,6 +173,17 @@ impl Database {
             let mut deleted = 0;
             for chunk in ids.chunks(500) {
                 let marks = vec!["?"; chunk.len()].join(",");
+                // Remove plan metadata first, and only for rows the task delete below really
+                // removes: a queued or running task must keep its plan.
+                tx.execute(
+                    &format!(
+                        "DELETE FROM meta WHERE key IN (SELECT ?1 || id FROM tasks WHERE state IN ('succeeded','failed','canceled') AND id IN ({marks}))"
+                    ),
+                    rusqlite::params_from_iter(
+                        std::iter::once(TASK_INSTALL_PLAN_PREFIX)
+                            .chain(chunk.iter().map(String::as_str)),
+                    ),
+                )?;
                 deleted += tx.execute(
                     &format!(
                         "DELETE FROM tasks WHERE state IN ('succeeded','failed','canceled') AND id IN ({marks})"
@@ -271,7 +287,14 @@ impl Database {
             }
         }
         self.with(|c| {
-            c.execute("DELETE FROM tasks WHERE finished_at < ?1", [task_cutoff])?;
+            let tx = c.transaction()?;
+            // Plan metadata must go before the task rows, while the subquery can still find them.
+            tx.execute(
+                "DELETE FROM meta WHERE key IN (SELECT ?1 || id FROM tasks WHERE finished_at < ?2)",
+                params![TASK_INSTALL_PLAN_PREFIX, task_cutoff],
+            )?;
+            tx.execute("DELETE FROM tasks WHERE finished_at < ?1", [task_cutoff])?;
+            tx.commit()?;
             Ok(())
         })
     }
