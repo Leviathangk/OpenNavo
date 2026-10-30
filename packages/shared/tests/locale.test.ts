@@ -107,4 +107,23 @@ describe('Package alternate names', () => {
     expect(packageAliases([], 'Example', 'en-US')).toEqual([]);
     expect(packageAliases(['Example', 'Éditeur'], 'Example', 'en-US')).toEqual(['Éditeur']);
   });
+  it.each(['C++', 'Notepad++', 'Ｃ＋＋', '$', '®™'])('shows the symbol alias %s on en, de and ja pages', alias => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      expect(packageAliases(['Editor', alias], 'Editor', locale)).toEqual([alias]);
+    }
+  });
+  it('shows fullwidth Latin on en, de and ja pages', () => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      expect(packageAliases(['Editor', 'ＶＳ Ｃｏｄｅ'], 'Editor', locale)).toEqual(['ＶＳ Ｃｏｄｅ']);
+    }
+  });
+  it('shows halfwidth katakana on Japanese pages only', () => {
+    expect(packageAliases(['Editor', 'ｺｰﾄﾞ'], 'Editor', 'ja-JP')).toEqual(['ｺｰﾄﾞ']);
+    expect(packageAliases(['Editor', 'ｺｰﾄﾞ'], 'Editor', 'en-US')).toEqual([]);
+    expect(packageAliases(['Editor', 'ｺｰﾄﾞ'], 'Editor', 'de-DE')).toEqual([]);
+  });
+  it('returns no aliases when every one is filtered out', () => {
+    expect(packageAliases(['Editor', '編集', 'Редактор'], 'Editor', 'en-US')).toEqual([]);
+    expect(packageAliases(['Editor', '編集', 'Редактор'], 'Editor', 'ja-JP')).toEqual([]);
+  });
 });

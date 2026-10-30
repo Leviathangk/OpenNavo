@@ -44,16 +44,17 @@ export function pick(
   return fallback;
 }
 
-// Japanese kana, including halfwidth katakana and the prolonged sound mark; punctuation and marks
-// are allowed separately below, so an alias such as エディター keeps its ー.
+// Japanese kana, including halfwidth katakana and the prolonged sound mark; punctuation, symbols and
+// marks are allowed separately below, so an alias such as エディター keeps its ー and C++ keeps its +.
 const KANA = '\\u3040-\\u30ff\\u31f0-\\u31ff\\uff66-\\uff9f';
-const LATIN_ALIAS = /^[\p{Script=Latin}\p{M}\p{Nd}\p{Z}\p{P}]*$/u;
-const JAPANESE_ALIAS = new RegExp(`^[\\p{Script=Latin}\\p{M}\\p{Nd}\\p{Z}\\p{P}${KANA}]*$`, 'u');
+const LATIN_ALIAS = /^[\p{Script=Latin}\p{M}\p{Nd}\p{Z}\p{P}\p{S}\uFF01-\uFF5E]*$/u;
+const JAPANESE_ALIAS = new RegExp(`^[\\p{Script=Latin}\\p{M}\\p{Nd}\\p{Z}\\p{P}\\p{S}\\uFF01-\\uFF5E${KANA}]*$`, 'u');
 
 /**
  * Alternate names for the package detail spec card, filtered by the page locale: Chinese pages keep
  * every alias; Japanese pages keep kana and/or Latin aliases (Han names are hidden); every other
- * locale keeps only Latin aliases. Digits, spaces and punctuation are allowed in either script.
+ * locale keeps only Latin aliases. Digits, spaces, punctuation, symbols and fullwidth forms are
+ * allowed in either script.
  */
 export function packageAliases(names: readonly string[], displayName: string, locale?: SiteLocaleCode): string[] {
   const language = (locale ?? DEFAULT_LOCALE).toLowerCase().split('-')[0];

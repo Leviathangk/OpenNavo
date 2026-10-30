@@ -4,7 +4,7 @@
 // facts.offers (verified, current, with an amount, currency, region and edition), so a price type or
 // a free download alone never becomes an offer. There are no reviews or ratings, so app pages are not
 // eligible for Google's software rich result; that gap is accepted rather than filled with install counts.
-import { BRAND, formatBytes } from '@opennavo/shared';
+import { allPackageAliases, BRAND, formatBytes } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { applicationCategory } from './packageView';
 import { httpsUrl, officialDownloadUrl } from './linkApp';
@@ -75,7 +75,7 @@ export function softwareAppNode(
     ),
     url
   };
-  const alternateNames = pkg.names.filter(name => name !== pkg.displayName && name !== pkg.token);
+  const alternateNames = allPackageAliases(pkg.names, pkg.displayName);
   if (alternateNames.length) node.alternateName = alternateNames;
   const version = reliableVersion(currentVersion(pkg));
   if (version) node.softwareVersion = version;

@@ -356,6 +356,32 @@ describe('spec card alternate names', () => {
     expect(value).toContain('コード');
     expect(value).not.toContain('編集');
   });
+  it.each(['C++', 'Notepad++', 'Ｃ＋＋', '$', '®™'])('keeps the symbol alias %s on en, de and ja pages', alias => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      const pkg = page({ kind: 'cask', displayName: 'Editor', names: ['Editor', alias] });
+      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(alias);
+    }
+  });
+  it('keeps fullwidth Latin on en, de and ja pages', () => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      const pkg = page({ kind: 'cask', displayName: 'Editor', names: ['Editor', 'ＶＳ Ｃｏｄｅ'] });
+      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe('ＶＳ Ｃｏｄｅ');
+    }
+  });
+  it('shows halfwidth katakana on Japanese pages but hides it elsewhere', () => {
+    const pkg = page({ kind: 'cask', displayName: 'Editor', names: ['Editor', 'ｺｰﾄﾞ'] });
+    expect(packageSpec(pkg, t, 'ja-JP', SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe('ｺｰﾄﾞ');
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+    expect(packageSpec(pkg, t, 'de-DE', SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+  });
+  it('omits the names row when every alias is filtered out', () => {
+    for (const kind of ['cask', 'formula', 'link'] as const) {
+      for (const locale of ['en-US', 'ja-JP'] as const) {
+        const pkg = page({ kind, displayName: 'Editor', names: ['Editor', '編集', 'Редактор'] });
+        expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+      }
+    }
+  });
 });
 
 describe('QA spec card regressions', () => {

@@ -214,6 +214,40 @@ describe('desktop alternate names', () => {
     }
   });
 
+  it.each(['C++', 'Notepad++', 'Ｃ＋＋', '$', '®™'])('keeps the symbol alias %s on en, de and ja pages', alias => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      const pkg = detail({ kind: 'cask', displayName: 'Editor', names: ['Editor', alias] });
+      expect(packageSpec(pkg, null, null, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(
+        alias
+      );
+    }
+  });
+
+  it('keeps fullwidth Latin on en, de and ja pages', () => {
+    for (const locale of ['en-US', 'de-DE', 'ja-JP'] as const) {
+      const pkg = detail({ kind: 'cask', displayName: 'Editor', names: ['Editor', 'ＶＳ Ｃｏｄｅ'] });
+      expect(packageSpec(pkg, null, null, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(
+        'ＶＳ Ｃｏｄｅ'
+      );
+    }
+  });
+
+  it('shows halfwidth katakana on Japanese pages but hides it elsewhere', () => {
+    const pkg = detail({ kind: 'cask', displayName: 'Editor', names: ['Editor', 'ｺｰﾄﾞ'] });
+    expect(packageSpec(pkg, null, null, t, 'ja-JP', SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe('ｺｰﾄﾞ');
+    expect(packageSpec(pkg, null, null, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+    expect(packageSpec(pkg, null, null, t, 'de-DE', SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+  });
+
+  it('omits the names row when every alias is filtered out', () => {
+    for (const kind of ['cask', 'formula', 'link'] as const) {
+      for (const locale of ['en-US', 'ja-JP'] as const) {
+        const pkg = detail({ kind, displayName: 'Editor', names: ['Editor', '編集', 'Редактор'] });
+        expect(packageSpec(pkg, null, null, t, locale, SPEC_NOW).rows.some(row => row.key === 'names')).toBe(false);
+      }
+    }
+  });
+
   it('renders the filtered aliases in the spec card', () => {
     const english = packageSpec(detail({ displayName: 'Visual Studio Code', names }), null, null, t, 'en-US', SPEC_NOW);
     const enCard = mount(OnPackageSpecCard, { props: { rows: english.rows } });
