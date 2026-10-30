@@ -106,7 +106,7 @@ func run(ctx context.Context) error {
 	githubFacts.ObserveQuota = st.ObserveGitHubQuota
 	githubFacts.TokenProvider = releaseService.Fetcher.HTTP.TokenProvider
 	factSources := &sourcefacts.Service{Store: st, NVD: &sources.NVD{Client: fetch.NewClient(20 * time.Second), UserAgent: cfg.FetchUserAgent}, GitHub: &sources.GitHub{HTTP: githubFacts},
-		AppStore:    &sources.AppStore{Client: fetch.NewClient(15 * time.Second), UserAgent: cfg.FetchUserAgent},
+		AppStore: &sources.AppStore{Client: fetch.NewClient(15 * time.Second), UserAgent: cfg.FetchUserAgent}, Logger: logger,
 		GitHubPause: 200 * time.Millisecond, AppStorePause: 3500 * time.Millisecond}
 	handlers["facts:sources"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return factSources.Run(ctx) }
 	updateFeeds := &updatefeeds.Service{Store: st, UserAgent: cfg.FetchUserAgent, GitHub: githubFacts, SeedRules: true}

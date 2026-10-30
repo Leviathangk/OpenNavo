@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -83,9 +84,15 @@ func repository(t *testing.T, raw string) Repository {
 }
 
 func TestOpenSourceNeedsCodeAndAnOSILicense(t *testing.T) {
-	fact, ok := repository(t, `{"full_name":"gnachman/iTerm2","html_url":"https://github.com/gnachman/iTerm2","language":"Objective-C","license":{"spdx_id":"GPL-2.0"},"archived":false}`).OpenSource()
+	fact, ok := repository(t, `{"full_name":"gnachman/iTerm2","html_url":"https://github.com/gnachman/iTerm2","language":"Objective-C","license":{"spdx_id":"GPL-2.0"},"archived":false,"stargazers_count":15678,"pushed_at":"2026-10-13T08:00:00Z"}`).OpenSource()
 	require.True(t, ok)
 	require.Equal(t, OpenSource{Repo: "gnachman/iTerm2", URL: "https://github.com/gnachman/iTerm2", License: "GPL-2.0"}, fact)
+	github, ok := repository(t, `{"full_name":"gnachman/iTerm2","html_url":"https://github.com/gnachman/iTerm2","language":"Objective-C","license":{"spdx_id":"GPL-2.0"},"archived":false,"stargazers_count":15678,"pushed_at":"2026-10-13T08:00:00Z"}`).GitHubFact()
+	require.True(t, ok)
+	pushed := time.Date(2026, 10, 13, 8, 0, 0, 0, time.UTC)
+	require.Equal(t, "gnachman/iTerm2", github.Repo)
+	require.Equal(t, int64(15678), *github.Stars)
+	require.Equal(t, pushed, *github.PushedAt)
 	for name, raw := range map[string]string{
 		"releases only":     `{"full_name":"obsidianmd/obsidian-releases","html_url":"https://github.com/obsidianmd/obsidian-releases","language":null,"license":null}`,
 		"unrecognized":      `{"full_name":"rxhanson/Rectangle","html_url":"https://github.com/rxhanson/Rectangle","language":"Swift","license":{"spdx_id":"NOASSERTION"}}`,
@@ -126,6 +133,7 @@ func TestGitHubRepoStatuses(t *testing.T) {
 	result, err := (&GitHub{HTTP: getter}).Repo(ctx, "a/b", "")
 	require.NoError(t, err)
 	require.Equal(t, []string{"https://api.github.com/repos/a/b"}, getter.calls)
+	require.Equal(t, 1, result.Requests)
 	require.Equal(t, `W/"1"`, result.ETag)
 	require.Equal(t, int64(4999), result.Remaining)
 	require.Equal(t, "a/b", result.Repository.FullName)
@@ -149,6 +157,7 @@ func TestGitHubRepoStatuses(t *testing.T) {
 	result, err = (&GitHub{HTTP: getter}).Repo(ctx, "a/b", `W/"1"`)
 	require.NoError(t, err)
 	require.Equal(t, []string{"https://api.github.com/repos/a/b", "https://api.github.com/repositories/42"}, getter.calls)
+	require.Equal(t, 2, result.Requests)
 	require.Equal(t, []string{`W/"1"`, ""}, getter.etags)
 	require.Equal(t, "a/c", result.Repository.FullName)
 

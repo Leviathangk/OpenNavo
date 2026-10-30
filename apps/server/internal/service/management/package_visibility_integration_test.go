@@ -4,6 +4,8 @@ package management
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"path"
 	"testing"
@@ -29,6 +31,7 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
  (703,'cask','upstream-disabled','upstream-disabled','homebrew/cask','Disabled fixture','1','1','{}','fixture','An unavailable application',50,1,true,false),
  (704,'cask','stale-disabled','stale-disabled','homebrew/cask','Stale fixture','1','1','{}','fixture','A stale application',50,1,false,true);
  INSERT INTO package_meta(package_id,hidden,developer,notes) SELECT id,true,'Fixture developer','Keep this note' FROM packages`).Error)
+	require.NoError(t, st.DB.Exec(`UPDATE packages SET disable_date='2026-01-01',disable_reason='upstream deprecation' WHERE id=703`).Error)
 	svc := &Service{Store: st, Config: config.Config{WebBaseURL: "https://visibility.example"}}
 	public := &catalog.PublicService{Store: st}
 	actorID := int64(701)
@@ -52,6 +55,12 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
 			}
 		}
 		return false
+	}
+	packageDisabled := func(id int64) bool {
+		t.Helper()
+		var disabled bool
+		require.NoError(t, st.DB.Raw("SELECT disabled FROM packages WHERE id=?", id).Scan(&disabled).Error)
+		return disabled
 	}
 	for _, tc := range []struct {
 		id    int64
@@ -126,9 +135,80 @@ func TestMCPPackageVisibilityUsesAdminWritePath(t *testing.T) {
 		require.Equal(t, false, view["hidden"])
 		require.Equal(t, true, view["disabled"], "visibility must not override upstream/stale disabling")
 	}
+	// Clearing disabled is an explicit, audited operation and its preview reports
+	// the upstream state that will be overridden without persisting anything.
+	op := &domain.Operation{RequestID: uuid.NewString(), Name: "updatePackageMeta", Tool: "package_set_enabled", ActorID: &actorID, AgentClientID: 1, AgentTokenID: 2,
+		Permissions: []string{"catalog:package:edit"}, RequiredPermissions: []string{"catalog:package:edit"}, DryRun: true, Execution: &domain.AgentExecution{IdempotencyKey: uuid.NewString()}}
+	in := Input{ID: 703, Body: map[string]any{"hidden": false, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
+	var beforeDisabled bool
+	var beforeReason string
+	require.NoError(t, st.DB.Raw("SELECT disabled,disable_reason FROM packages WHERE id=703").Row().Scan(&beforeDisabled, &beforeReason))
+	preview, err := svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
+	require.NoError(t, err)
+	view := preview.(map[string]any)
+	changes := view["changes"].([]any)
+	var packageChange map[string]any
+	for _, raw := range changes {
+		change := raw.(map[string]any)
+		if change["object"].(map[string]any)["entity"] == "package" {
+			packageChange = change
+		}
+	}
+	require.NotNil(t, packageChange)
+	packageBefore := packageChange["before"].(store.HistoryState)["packages"][0]
+	packageAfter := packageChange["after"].(store.HistoryState)["packages"][0]
+	require.Equal(t, beforeDisabled, packageBefore["disabled"])
+	require.Equal(t, beforeReason, packageBefore["disable_reason"])
+	require.Equal(t, false, packageAfter["disabled"])
+	require.Equal(t, beforeDisabled, packageDisabled(703), "dry run must not persist")
+	var overrideAt sql.NullTime
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_at FROM packages WHERE id=703").Scan(&overrideAt).Error)
+	require.False(t, overrideAt.Valid)
+
+	op.DryRun = false
+	op.Execution.ExpectedRevisionSet = true
+	op.Execution.ExpectedRevision = toInt64(view["expectedRevision"])
+	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
+	require.NoError(t, err)
+	require.False(t, packageDisabled(703))
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_at FROM packages WHERE id=703").Scan(&overrideAt).Error)
+	require.True(t, overrideAt.Valid)
+	var staleOverride bool
+	var overrideVersion sql.NullString
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_stale,disabled_override_version FROM packages WHERE id=703").Row().Scan(&staleOverride, &overrideVersion))
+	require.False(t, staleOverride, "an upstream-disabled clear does not opt out of stale refresh")
+	require.Equal(t, "1", overrideVersion.String)
+	var audit struct {
+		Before string
+		After  string
+	}
+	require.NoError(t, st.DB.Raw("SELECT before::text,after::text FROM audit_logs WHERE request_id=? AND action='UpdatePackageMeta'", op.RequestID).Scan(&audit).Error)
+	var auditBefore, auditAfter map[string]any
+	require.NoError(t, json.Unmarshal([]byte(audit.Before), &auditBefore))
+	require.NoError(t, json.Unmarshal([]byte(audit.After), &auditAfter))
+	require.Equal(t, true, auditBefore["disabled"])
+	require.Equal(t, beforeReason, auditBefore["disableReason"])
+	require.Equal(t, false, auditAfter["disabled"])
+	require.Equal(t, true, auditAfter["clearDisabled"])
+	// The same explicit opt-in clears the effective disabled state produced by
+	// stale-version policy and keeps that policy from immediately reapplying it.
+	_, err = svc.Execute(ctx, "UpdatePackageMeta", Input{ID: 704, Body: map[string]any{"hidden": true, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}})
+	require.NoError(t, err)
+	require.False(t, packageDisabled(704))
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_stale FROM packages WHERE id=704").Scan(&staleOverride).Error)
+	require.True(t, staleOverride)
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_version FROM packages WHERE id=704").Scan(&overrideVersion).Error)
+	require.Equal(t, "1", overrideVersion.String)
+	// An active package has no upstream lifecycle state to override. The clear
+	// request must not create a stale override row for it.
+	_, err = svc.Execute(ctx, "UpdatePackageMeta", Input{ID: 701, Body: map[string]any{"hidden": true, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}})
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Raw("SELECT disabled_override_stale,disabled_override_at FROM packages WHERE id=701").Row().Scan(&staleOverride, &overrideAt))
+	require.False(t, staleOverride)
+	require.False(t, overrideAt.Valid)
 	_, total, err := st.PublicPackages(ctx, store.PublicFilter{Locale: "en-US", Current: 1, Size: 100})
 	require.NoError(t, err)
-	require.Zero(t, total, "default catalog listings still exclude upstream/stale disabled apps")
+	require.Equal(t, 1, total, "cleared packages are visible while remaining disabled packages stay excluded")
 	var preserved int64
 	require.NoError(t, st.DB.Table("package_meta").Where("developer='Fixture developer' AND notes='Keep this note'").Count(&preserved).Error)
 	require.EqualValues(t, 4, preserved, "visibility patches preserve unrelated metadata")

@@ -9881,6 +9881,7 @@ export interface components {
          *       "developer": null,
          *       "repoUrl": null,
          *       "hidden": false,
+         *       "clearDisabled": false,
          *       "editorChoice": false,
          *       "tags": [
          *         "编辑器",
@@ -9907,6 +9908,12 @@ export interface components {
             repoUrl?: string | null;
             /** @example false */
             hidden?: boolean;
+            /**
+             * @description When true, clears the effective Homebrew or stale-version disabled state and records a manual override; omitted or false leaves it unchanged.
+             * @default false
+             * @example false
+             */
+            clearDisabled: boolean;
             /** @example false */
             editorChoice?: boolean;
             tags?: string[];

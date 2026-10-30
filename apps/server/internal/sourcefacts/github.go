@@ -9,17 +9,32 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ErrRateLimited stops a batch: the source refused more requests for now.
 var ErrRateLimited = errors.New("source rate limited")
 
-// OpenSource is the published license fact for an app.
+// OpenSource is the published license fact for an app. Repository signals are
+// stored separately in GitHubFact so the OSI decision can keep its 30-day
+// schedule.
 type OpenSource struct {
 	Repo     string `json:"repo"`
 	URL      string `json:"url"`
 	License  string `json:"license"`
 	Archived bool   `json:"archived"`
+}
+
+// GitHubFact is the repository record kept for every public GitHub repository
+// identified by a package. License is populated only after the 30-day OSI
+// check accepts the repository.
+type GitHubFact struct {
+	Repo     string     `json:"repo"`
+	URL      string     `json:"url"`
+	License  string     `json:"license,omitempty"`
+	Archived bool       `json:"archived"`
+	Stars    *int64     `json:"stars,omitempty"`
+	PushedAt *time.Time `json:"pushedAt,omitempty"`
 }
 
 // Repository is the part of GitHub's repository response the decision needs.
@@ -29,7 +44,11 @@ type Repository struct {
 	Private  bool    `json:"private"`
 	Archived bool    `json:"archived"`
 	Language *string `json:"language"`
-	License  *struct {
+	// StargazersCount and PushedAt are read from the same repository response as the license.
+	// PushedAt is nullable in GitHub's API for repositories with no commits.
+	StargazersCount *int64     `json:"stargazers_count"`
+	PushedAt        *time.Time `json:"pushed_at"`
+	License         *struct {
 		SPDXID string `json:"spdx_id"`
 	} `json:"license"`
 }
@@ -50,13 +69,47 @@ var osiLicenses = map[string]bool{
 // language) under an OSI-approved license GitHub recognized. Releases-only repositories, missing
 // or unrecognized licenses ("NOASSERTION") publish nothing rather than a guess.
 func (r Repository) OpenSource() (OpenSource, bool) {
-	if r.Private || r.License == nil || !osiLicenses[r.License.SPDXID] || r.Language == nil || *r.Language == "" {
+	if !r.Public() || r.License == nil || !osiLicenses[r.License.SPDXID] || r.Language == nil || *r.Language == "" {
 		return OpenSource{}, false
 	}
-	if githubRepo(r.HTMLURL) == "" || !strings.EqualFold(githubRepo(r.HTMLURL), r.FullName) {
-		return OpenSource{}, false
+	return OpenSource{Repo: r.FullName, URL: githubURL(r.FullName), License: r.License.SPDXID, Archived: r.Archived}, true
+}
+
+// Public reports whether GitHub returned a public repository whose canonical
+// URL and full name agree. It intentionally does not require language or a
+// license: releases-only and non-OSI repositories still publish signals.
+func (r Repository) Public() bool {
+	return !r.Private && r.FullName != "" && githubRepo(r.HTMLURL) != "" && strings.EqualFold(githubRepo(r.HTMLURL), r.FullName)
+}
+
+// GitHubFact returns the repository identity and current signals for any
+// public repository, including one without an OSI-approved license.
+func (r Repository) GitHubFact() (GitHubFact, bool) {
+	if !r.Public() {
+		return GitHubFact{}, false
 	}
-	return OpenSource{Repo: r.FullName, URL: "https://github.com/" + r.FullName, License: r.License.SPDXID, Archived: r.Archived}, true
+	return GitHubFact{Repo: r.FullName, URL: githubURL(r.FullName), Archived: r.Archived,
+		Stars: cloneInt64(r.StargazersCount), PushedAt: cloneTime(r.PushedAt)}, true
+}
+
+func githubURL(repo string) string {
+	return "https://github.com/" + repo
+}
+
+func cloneInt64(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	out := *value
+	return &out
+}
+
+func cloneTime(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	out := value.UTC()
+	return &out
 }
 
 // Getter is the changelog GitHub client: token, quota tracking and no redirects.
@@ -75,6 +128,8 @@ type RepoResult struct {
 	ETag        string
 	NotModified bool
 	NotFound    bool
+	// Requests is the number of HTTP requests made, including a permitted rename redirect.
+	Requests int
 	// Remaining and Limit describe the primary quota after the request, or -1 when GitHub did not say.
 	Remaining, Limit int64
 }
@@ -89,16 +144,18 @@ func (g *GitHub) Repo(ctx context.Context, repo, etag string) (RepoResult, error
 		base = "https://api.github.com"
 	}
 	target := base + "/repos/" + repo
+	requests := 0
 	for redirects := 0; ; redirects++ {
+		requests++
 		headers := http.Header{}
 		if etag != "" {
 			headers.Set("If-None-Match", etag)
 		}
 		body, status, header, err := g.HTTP.Get(ctx, target, 1<<20, headers)
 		if err != nil {
-			return RepoResult{Remaining: -1, Limit: -1}, err
+			return RepoResult{Requests: requests, Remaining: -1, Limit: -1}, err
 		}
-		result := RepoResult{Remaining: quota(header, "X-Ratelimit-Remaining"), Limit: quota(header, "X-Ratelimit-Limit"), ETag: header.Get("ETag")}
+		result := RepoResult{Requests: requests, Remaining: quota(header, "X-Ratelimit-Remaining"), Limit: quota(header, "X-Ratelimit-Limit"), ETag: header.Get("ETag")}
 		switch {
 		case status == http.StatusOK:
 			if err := json.Unmarshal(body, &result.Repository); err != nil {

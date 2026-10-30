@@ -1,14 +1,16 @@
 // Package sourcefacts runs the hourly facts:sources job: for each app it finds the GitHub
 // repository and bundle identifiers in the Homebrew definition (rules in internal/sourcefacts),
-// asks GitHub for the license and Apple's lookup API for a matching Mac App Store listing, and
-// keeps the result with a schedule. One run stays inside a time budget, leaves GitHub quota for the
-// changelog pipeline and paces App Store lookups; whatever is left waits for the next run.
+// asks GitHub for repository signals and the 30-day OSI license decision, and asks Apple's lookup
+// API for a matching Mac App Store listing. One run stays inside a time budget, leaves GitHub
+// quota for the changelog pipeline and paces App Store lookups; whatever is left waits for the
+// next run.
 package sourcefacts
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"reflect"
 	"strings"
 	"time"
@@ -21,9 +23,18 @@ const (
 	GitHub   = "github"
 	AppStore = "app_store"
 
-	recheck      = 30 * 24 * time.Hour
-	priceRecheck = 24 * time.Hour
-	maxBackoff   = 7 * 24 * time.Hour
+	recheck                       = 30 * 24 * time.Hour
+	signalRecheck                 = 24 * time.Hour
+	priceRecheck                  = 24 * time.Hour
+	maxBackoff                    = 7 * 24 * time.Hour
+	maxGitHubRequestsWithoutQuota = 100 // A missing quota header caps one run at 100 requests to protect the shared token.
+	maxGitHubRepoRequests         = 2   // GitHub.Repo follows at most one rename redirect.
+)
+
+var (
+	errGitHubRequestCap            = errors.New("github request cap reached without rate-limit headers")
+	errGitHubRepositoryUnavailable = errors.New("github repository unavailable during signal refresh")
+	errGitHubSignalRefreshFailed   = errors.New("github signal refresh failed")
 )
 
 type GitHubSource interface {
@@ -40,6 +51,7 @@ type Service struct {
 	AppStore AppStoreSource
 	Now      func() time.Time
 	Sleep    func(context.Context, time.Duration) error
+	Logger   *slog.Logger
 	// Budget bounds one run (default 10 minutes; the job timeout is 20). GitHub gets the first half.
 	Budget time.Duration
 	// GitHubPause and AppStorePause space requests; Apple allows roughly 20 lookups a minute.
@@ -47,27 +59,35 @@ type Service struct {
 }
 
 type pending struct {
-	pkg   store.SourceFactPackage
-	input string
-	items []string
-	row   *store.SourceFact
+	pkg         store.SourceFactPackage
+	input       string
+	items       []string
+	row         *store.SourceFact
+	signalsOnly bool
 }
 
 type Stats struct {
-	Due      map[string]int    `json:"due"`
-	Checked  map[string]int    `json:"checked"`
-	Found    map[string]int    `json:"found"`
-	Failed   map[string]int    `json:"failed"`
-	Changed  int               `json:"changed"`
-	Removed  int               `json:"removed"`
-	Lookups  int               `json:"lookups"`
-	Stopped  map[string]string `json:"stopped,omitempty"`
-	Reserved bool              `json:"githubQuotaReserved,omitempty"`
+	Due                map[string]int    `json:"due"`
+	Checked            map[string]int    `json:"checked"`
+	Found              map[string]int    `json:"found"`
+	Failed             map[string]int    `json:"failed"`
+	Changed            int               `json:"changed"`
+	Removed            int               `json:"removed"`
+	Lookups            int               `json:"lookups"`
+	GitHubRequests     int               `json:"githubRequests"`
+	GitHubNotModified  int               `json:"githubNotModified"`
+	GitHubRemaining    int64             `json:"githubRemaining"`
+	Stopped            map[string]string `json:"stopped,omitempty"`
+	Reserved           bool              `json:"githubQuotaReserved,omitempty"`
+	githubQuotaUnknown bool
 }
 
 func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	start := s.now()
-	stats := &Stats{Due: map[string]int{}, Checked: map[string]int{}, Found: map[string]int{}, Failed: map[string]int{}, Stopped: map[string]string{}}
+	stats := &Stats{Due: map[string]int{}, Checked: map[string]int{}, Found: map[string]int{}, Failed: map[string]int{}, Stopped: map[string]string{}, GitHubRemaining: -1}
+	defer func() {
+		s.logger().InfoContext(ctx, "source facts GitHub refresh", "requests", stats.GitHubRequests, "notModified", stats.GitHubNotModified, "remaining", stats.GitHubRemaining)
+	}()
 	packages, err := s.Store.SourceFactPackages(ctx)
 	if err != nil {
 		return nil, err
@@ -85,17 +105,28 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 			row, exists := rows[key]
 			if input == "" {
 				if exists {
-					if err := s.Store.DeleteSourceFact(ctx, key, p.Token, row.Status == "found"); err != nil {
+					if err := s.Store.DeleteSourceFact(ctx, key, p.Token, publicSourceFact(&row)); err != nil {
 						return nil, err
 					}
 					stats.Removed++
 				}
 				continue
 			}
-			if exists && row.Input == input && row.NextCheckAt.After(start) {
+			signalsScheduled := exists && ((row.Subject != "" && contains(items, row.Subject)) || (row.Subject == "" && row.SignalsNextCheckAt != nil))
+			signalsOnly := source == GitHub && signalsScheduled && row.Input == input && githubSignalsDue(row, start) && row.NextCheckAt.After(start)
+			if exists && row.Input == input && row.NextCheckAt.After(start) && !signalsOnly {
 				continue
 			}
-			item := pending{pkg: p, input: input, items: items}
+			if signalsOnly {
+				// A stored subject identifies the repository whose ETag was checked. A daily
+				// refresh spends one request on that repository. After it is cleared following
+				// repeated unavailability, try every current candidate so a recovered repository
+				// can return within the signal backoff window.
+				if row.Subject != "" && contains(items, row.Subject) {
+					items = []string{row.Subject}
+				}
+			}
+			item := pending{pkg: p, input: input, items: items, signalsOnly: signalsOnly}
 			if exists {
 				item.row = &row
 			}
@@ -148,7 +179,11 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 				return err
 			}
 		}
-		fact, low, err := s.checkGitHub(ctx, item)
+		fact, low, err := s.checkGitHub(ctx, item, stats)
+		if errors.Is(err, errGitHubRequestCap) {
+			stats.Stopped[GitHub], stats.Reserved = "request_cap", true
+			return nil
+		}
 		if errors.Is(err, sources.ErrRateLimited) {
 			stats.Stopped[GitHub] = "rate_limited"
 			return nil
@@ -158,14 +193,22 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 				return ctx.Err()
 			}
 			stats.Failed[GitHub]++
-			if err := s.fail(ctx, item, GitHub); err != nil {
+			if item.signalsOnly {
+				if err := s.failSignals(ctx, item, errors.Is(err, errGitHubRepositoryUnavailable)); err != nil {
+					return err
+				}
+			} else if err := s.fail(ctx, item, GitHub); err != nil {
 				return err
 			}
 		} else if err := s.save(ctx, item, fact, stats); err != nil {
 			return err
 		}
 		if low {
-			stats.Stopped[GitHub], stats.Reserved = "quota", true
+			reason := "quota"
+			if stats.githubQuotaUnknown && stats.GitHubRequests >= maxGitHubRequestsWithoutQuota {
+				reason = "request_cap"
+			}
+			stats.Stopped[GitHub], stats.Reserved = reason, true
 			return nil
 		}
 	}
@@ -174,44 +217,186 @@ func (s *Service) runGitHub(ctx context.Context, queue []pending, deadline time.
 
 // checkGitHub tries the repositories in order until one publishes a license. A 304 for the
 // repository already found keeps it without spending quota. low reports that the quota is down
-// to its last tenth, which the changelog pipeline keeps; the caller stops after this app.
-func (s *Service) checkGitHub(ctx context.Context, item pending) (store.SourceFact, bool, error) {
+// to its last tenth, or that the unknown-quota request cap was reached; the caller stops after
+// this app.
+func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (store.SourceFact, bool, error) {
 	now := s.now()
-	fact := store.SourceFact{PackageID: item.pkg.ID, Source: GitHub, Input: item.input, Status: "none", CheckedAt: now, NextCheckAt: next(now, recheck, item.pkg.ID)}
+	fullCheck := !item.signalsOnly
+	licenseCheck := store.SourceFact{PackageID: item.pkg.ID, Source: GitHub, Input: item.input, Status: "none", CheckedAt: now, NextCheckAt: next(now, recheck, item.pkg.ID)}
+	fact := licenseCheck
+	if item.signalsOnly && item.row != nil {
+		fact = *item.row
+		fact.Input = item.input
+	}
 	low := false
-	for _, repo := range item.items {
+	var first sources.GitHubFact
+	var firstETag string
+	haveFirst := false
+	sawUnavailable := false
+	sawSignalFailure := false
+	results := make(map[string]sources.RepoResult)
+	for index := 0; index < len(item.items); index++ {
+		repo := item.items[index]
 		etag := ""
-		if item.row != nil && item.row.Status == "found" && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
+		if item.row != nil && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
 			etag = *item.row.ETag
 		}
-		result, err := s.GitHub.Repo(ctx, repo, etag)
-		if result.Remaining >= 0 && result.Limit > 0 && result.Remaining*10 <= result.Limit {
-			low = true
-		}
-		if err != nil {
-			return fact, low, err
-		}
-		if result.NotModified && etag != "" {
-			fact.Status, fact.Subject, fact.Data, fact.ETag = "found", item.row.Subject, item.row.Data, item.row.ETag
-			return fact, low, nil
-		}
-		if result.NotFound {
-			continue
-		}
-		if open, ok := result.Repository.OpenSource(); ok {
-			data, err := json.Marshal(open)
+		result, fetched := results[strings.ToLower(repo)]
+		if !fetched {
+			// An escalated signal refresh can exhaust its quota between candidates.
+			// Keep the previous fact until the license check can finish.
+			if item.signalsOnly && fullCheck && low {
+				return *item.row, low, errGitHubSignalRefreshFailed
+			}
+			if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
+				return fact, low, errGitHubRequestCap
+			}
+			var err error
+			result, err = s.GitHub.Repo(ctx, repo, etag)
+			requests := result.Requests
+			if requests <= 0 {
+				requests = 1
+			}
+			stats.GitHubRequests += requests
+			if result.NotModified {
+				stats.GitHubNotModified++
+			}
+			if result.Remaining >= 0 && (stats.GitHubRemaining < 0 || result.Remaining < stats.GitHubRemaining) {
+				stats.GitHubRemaining = result.Remaining
+			}
+			if result.Remaining < 0 || result.Limit < 0 {
+				stats.githubQuotaUnknown = true
+			}
+			if result.Remaining >= 0 && result.Limit > 0 && result.Remaining*10 <= result.Limit {
+				low = true
+			}
+			if stats.githubQuotaUnknown && stats.GitHubRequests >= maxGitHubRequestsWithoutQuota {
+				low = true
+			}
 			if err != nil {
 				return fact, low, err
 			}
-			fact.Status, fact.Subject, fact.Data = "found", open.Repo, data
+			results[strings.ToLower(repo)] = result
+		}
+		if result.NotModified && etag != "" {
+			if item.row == nil || !hasGitHubRepository(*item.row) {
+				continue
+			}
+			fact = *item.row
+			fact.Input = item.input
+			fact.Subject = item.row.Subject
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
+			fact.SignalsUnavailableCount = 0
+			if fullCheck {
+				fact.FailCount = 0
+				fact.CheckedAt = now
+				fact.NextCheckAt = next(now, recheck, item.pkg.ID)
+			}
+			return fact, low, nil
+		}
+		if result.NotFound {
+			if !fullCheck {
+				sawUnavailable = true
+			}
+			continue
+		}
+		current, public := result.Repository.GitHubFact()
+		if !public {
+			if !fullCheck {
+				if result.Repository.Private {
+					sawUnavailable = true
+				} else {
+					sawSignalFailure = true
+				}
+			}
+			continue
+		}
+		if !fullCheck && !strings.EqualFold(item.row.Subject, current.Repo) {
+			// Recovery or a redirect can select a different repository. Its license
+			// must be checked before publishing a new open-source decision.
+			if low {
+				return fact, low, errGitHubSignalRefreshFailed
+			}
+			fullCheck = true
+			fact = licenseCheck
+			// Restart in the full check's candidate order, reusing fetched responses
+			// so the OSI choice and the first public fallback match a 30-day check.
+			item.items = candidates(GitHub, item.pkg)
+			haveFirst = false
+			index = -1
+			continue
+		}
+		if !haveFirst {
+			first, firstETag, haveFirst = current, result.ETag, true
+		}
+		if !fullCheck {
+			// A daily refresh of the same repository keeps its OSI judgment and
+			// 30-day schedule while updating the repository signals.
+			data, mergeErr := mergeGitHubSignals(item.row.Data, result.Repository)
+			if mergeErr != nil {
+				return fact, low, mergeErr
+			}
+			fact.Status, fact.Subject, fact.Data = item.row.Status, current.Repo, data
+			fact.CheckedAt = item.row.CheckedAt
+			fact.NextCheckAt = item.row.NextCheckAt
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
+			fact.SignalsUnavailableCount = 0
+			if result.ETag != "" {
+				fact.ETag = &result.ETag
+			} else {
+				fact.ETag = item.row.ETag
+			}
+			return fact, low, nil
+		}
+		if open, ok := result.Repository.OpenSource(); ok {
+			current.License = open.License
+			data, marshalErr := json.Marshal(current)
+			if marshalErr != nil {
+				return fact, low, marshalErr
+			}
+			fact.Status, fact.Subject, fact.Data = "found", current.Repo, data
+			fact.SignalsCheckedAt = timePointer(now)
+			fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+			fact.SignalsFailCount = 0
+			fact.SignalsUnavailableCount = 0
+			fact.FailCount = 0
 			if result.ETag != "" {
 				fact.ETag = &result.ETag
 			}
 			return fact, low, nil
 		}
 	}
-	// Every candidate was read (at most three requests), so "none" is a complete answer even when
-	// the quota turned low on the way; the run stops after this app.
+	if !fullCheck && item.row != nil {
+		if sawSignalFailure {
+			return fact, low, errGitHubSignalRefreshFailed
+		}
+		if sawUnavailable || len(item.items) == 0 {
+			return fact, low, errGitHubRepositoryUnavailable
+		}
+		return fact, low, errGitHubSignalRefreshFailed
+	}
+	if haveFirst {
+		fact.Status, fact.Subject = "none", first.Repo
+		data, err := json.Marshal(first)
+		if err != nil {
+			return fact, low, err
+		}
+		fact.Data = data
+		fact.SignalsCheckedAt = timePointer(now)
+		fact.SignalsNextCheckAt = timePointer(now.Add(signalRecheck))
+		fact.SignalsFailCount = 0
+		fact.SignalsUnavailableCount = 0
+		fact.FailCount = 0
+		if firstETag != "" {
+			fact.ETag = &firstETag
+		}
+	}
+	// Every candidate was checked (at most three repository lookups, each allowing one redirect),
+	// so "none" is complete even if quota turned low during the full check; the run stops after this app.
 	return fact, low, nil
 }
 
@@ -285,6 +470,9 @@ func (s *Service) save(ctx context.Context, item pending, fact store.SourceFact,
 	if changed {
 		stats.Changed++
 	}
+	if item.signalsOnly && strings.EqualFold(item.row.Subject, fact.Subject) {
+		return s.Store.UpdateSourceFactSignals(ctx, fact, item.pkg.Token, changed)
+	}
 	return s.Store.SaveSourceFact(ctx, fact, item.pkg.Token, changed)
 }
 
@@ -298,10 +486,59 @@ func (s *Service) fail(ctx context.Context, item pending, source string) error {
 	return s.Store.RecordSourceFactFailure(ctx, store.SourceFactKey{PackageID: item.pkg.ID, Source: source}, item.input, now, now.Add(min(wait, maxBackoff)))
 }
 
-// samePublic compares what a page would show: nothing unless found, else the subject and data.
+func (s *Service) failSignals(ctx context.Context, item pending, repositoryUnavailable bool) error {
+	failures := 0
+	if item.row != nil {
+		failures = item.row.SignalsFailCount
+	}
+	wait := time.Hour << min(failures, 8)
+	now := s.now()
+	nextCheck := now.Add(min(wait, maxBackoff))
+	key := store.SourceFactKey{PackageID: item.pkg.ID, Source: GitHub}
+	if repositoryUnavailable {
+		return s.Store.RecordSourceFactRepositoryUnavailable(ctx, key, item.pkg.Token, nextCheck)
+	}
+	return s.Store.RecordSourceFactSignalFailure(ctx, key, nextCheck)
+}
+
+func (s *Service) logger() *slog.Logger {
+	if s.Logger != nil {
+		return s.Logger
+	}
+	return slog.Default()
+}
+
+func githubSignalsDue(row store.SourceFact, now time.Time) bool {
+	return row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now)
+}
+
+func mergeGitHubSignals(data json.RawMessage, repository sources.Repository) ([]byte, error) {
+	var fact sources.GitHubFact
+	if len(data) > 0 && string(data) != "null" && string(data) != "{}" {
+		if err := json.Unmarshal(data, &fact); err != nil {
+			return nil, err
+		}
+	}
+	current, ok := repository.GitHubFact()
+	if !ok {
+		return nil, errors.New("github repository is not public")
+	}
+	if strings.EqualFold(fact.Repo, current.Repo) {
+		current.License = fact.License
+	}
+	return json.Marshal(current)
+}
+
+func timePointer(value time.Time) *time.Time {
+	value = value.UTC()
+	return &value
+}
+
+// samePublic compares what a page would show: found source facts and public
+// GitHub repository rows with a stored subject are both visible.
 func samePublic(before, after *store.SourceFact) bool {
 	shown := func(row *store.SourceFact) (string, any) {
-		if row == nil || row.Status != "found" {
+		if !publicSourceFact(row) {
 			return "", nil
 		}
 		var data any
@@ -311,6 +548,14 @@ func samePublic(before, after *store.SourceFact) bool {
 	subjectBefore, dataBefore := shown(before)
 	subjectAfter, dataAfter := shown(after)
 	return subjectBefore == subjectAfter && reflect.DeepEqual(dataBefore, dataAfter)
+}
+
+func hasGitHubRepository(row store.SourceFact) bool {
+	return row.Source == GitHub && row.Subject != ""
+}
+
+func publicSourceFact(row *store.SourceFact) bool {
+	return row != nil && (row.Status == "found" || hasGitHubRepository(*row))
 }
 
 // next spreads rechecks over a day so a first fill does not come due all at once later.
@@ -347,4 +592,13 @@ func text(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func contains(values []string, wanted string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, wanted) {
+			return true
+		}
+	}
+	return false
 }

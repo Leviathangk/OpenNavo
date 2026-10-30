@@ -4,7 +4,14 @@ import { describe, expect, it } from 'vitest';
 import type { PublicComponents } from '@opennavo/api';
 import { SITE_LOCALES } from '@opennavo/shared';
 import { mdText, nestedMarkdown, renderPackageMarkdown } from '../server/utils/packageMarkdown';
-import { isOverviewPath, markdownAlternatesEnabled, markdownTarget } from '../shared/utils/markdownAlternate';
+import {
+  isOverviewPath,
+  markdownAlternatesEnabled,
+  markdownPageTarget,
+  markdownTarget,
+  prefersMarkdown,
+  supportsMarkdownNegotiation
+} from '../shared/utils/markdownAlternate';
 
 type PackageDetail = PublicComponents['schemas']['PackageDetail'];
 
@@ -114,8 +121,31 @@ describe('Markdown alternates (X4)', () => {
     for (const path of ['/apps/Foo.md', '/apps/foo.md/', '/apps/foo/versions.md', '/xx/apps/foo.md', '/apps/foo'])
       expect(markdownTarget(path)).toBeUndefined();
     expect(isOverviewPath('/apps/foo')).toBe(true);
+    expect(markdownPageTarget('/zh/apps/foo')).toEqual({ kind: 'app', locale: 'zh-CN', token: 'foo' });
+    expect(markdownPageTarget('/zh')).toEqual({ kind: 'home', locale: 'zh-CN' });
+    expect(markdownPageTarget('/apps/foo/versions')).toBeUndefined();
+    expect(supportsMarkdownNegotiation('/')).toBe(true);
+    expect(supportsMarkdownNegotiation('/apps/foo')).toBe(true);
+    expect(supportsMarkdownNegotiation('/apps/foo.md')).toBe(false);
+    expect(supportsMarkdownNegotiation('/apps/foo/versions')).toBe(false);
     expect(isOverviewPath('/apps')).toBe(false);
     expect(isOverviewPath('/apps/foo/versions')).toBe(false);
+  });
+
+  it.each([
+    ['text/markdown', true],
+    ['text/markdown ; q=1', true],
+    ['text/markdown, text/html;q=0.8', true],
+    ['text/html, text/markdown;q=0.5', false],
+    ['text/markdown;q=0.5, */*;q=0.9', false],
+    ['text/markdown;q=0.9, text/*;q=0.5', true],
+    ['text/html', false],
+    ['*/*', false],
+    ['text/markdown;q=0, text/html', false],
+    ['text/markdown;q=0.8, text/html;q=0.8', true],
+    [undefined, false]
+  ] as const)('selects Markdown only when Accept prefers it: %s', (accept, expected) => {
+    expect(prefersMarkdown(accept)).toBe(expected);
   });
 
   it('Writes the same scoped and dated facts as the overview', () => {

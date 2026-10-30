@@ -4,11 +4,12 @@ import {
   LOCKED_CRAWLERS,
   ROBOTS_LIMITED_PATHS,
   ROBOTS_PRIVATE_PATHS,
+  ROBOTS_CONTENT_SIGNAL,
   buildRobotsTxt,
   closedLocalePaths,
   type CrawlerPolicy
 } from '../src/robots';
-import { LOCALES, SITE_LOCALES } from '../src/locales.gen';
+import { SITE_LOCALES } from '../src/locales.gen';
 
 // Every site language open, so the closed-language rules stay out of the way unless a test names them.
 const open = { openLocales: SITE_LOCALES };
@@ -35,8 +36,38 @@ const privateRules = [
   '/zh-hant/search',
   '/zh-hant/brewfile'
 ].map(path => `Disallow: ${path}`);
+const defaultRules = [ROBOTS_CONTENT_SIGNAL, ...privateRules];
 
 describe('robots.txt generation', () => {
+  it('signals search, AI input and AI training in the default group', () => {
+    const text = buildRobotsTxt({ crawlers: DEFAULT_CRAWLER_POLICY, indexable: true, ...open });
+    const [everyone] = text.split('\n\n');
+    expect(everyone).toContain(`User-agent: *\n${ROBOTS_CONTENT_SIGNAL}\n`);
+    expect(text.match(new RegExp(ROBOTS_CONTENT_SIGNAL, 'g'))).toHaveLength(1);
+  });
+
+  it('uses only known directives and keeps the exact Content-Signal in the default group', () => {
+    const text = buildRobotsTxt({
+      crawlers: DEFAULT_CRAWLER_POLICY,
+      indexable: true,
+      ...open,
+      sitemap: 'https://opennavo.example/sitemap_index.xml'
+    });
+    const knownDirectives = new Set(['user-agent', 'allow', 'disallow', 'sitemap', 'content-signal', 'crawl-delay']);
+
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const colon = trimmed.indexOf(':');
+      expect(colon, trimmed).toBeGreaterThan(0);
+      expect(knownDirectives, trimmed).toContain(trimmed.slice(0, colon).toLowerCase());
+    }
+
+    const [everyone] = text.split('\n\n');
+    expect(everyone).toContain('User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\n');
+    expect(text.match(/Content-Signal: .*/g)).toEqual(['Content-Signal: search=yes, ai-input=yes, ai-train=yes']);
+  });
+
   it('Search, user-fetch and existing diagnostic tokens cannot be blocked or limited', () => {
     const expected = [
       'Googlebot',
@@ -75,7 +106,7 @@ describe('robots.txt generation', () => {
         const policy: CrawlerPolicy = { training: rule, seoTools: rule };
         policy[category] = { mode, delaySeconds: 10, bots: expected.map(bot => bot.toUpperCase()) };
         expect(buildRobotsTxt({ crawlers: policy, indexable: true, ...open })).toBe(
-          ['User-agent: *', ...privateRules, ''].join('\n')
+          ['User-agent: *', ...defaultRules, ''].join('\n')
         );
       }
     }
@@ -112,14 +143,13 @@ describe('robots.txt generation', () => {
       buildRobotsTxt({
         crawlers: DEFAULT_CRAWLER_POLICY,
         indexable: true,
-        // The six app languages, as before the site opened the others.
-        openLocales: LOCALES,
+        openLocales: ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'ru-RU'],
         sitemap: 'https://opennavo.example/sitemap_index.xml'
       })
     ).toBe(
       [
         'User-agent: *',
-        ...privateRules,
+        ...defaultRules,
         '',
         'User-agent: MJ12bot',
         'User-agent: SerpstatBot',
@@ -143,6 +173,7 @@ describe('robots.txt generation', () => {
         'Disallow: /_og/',
         'Disallow: /*/feed.xml',
         'Disallow: /*?',
+        'Disallow: /pt/',
         'Disallow: /de/',
         'Disallow: /fr/',
         'Disallow: /it/',
@@ -174,7 +205,7 @@ describe('robots.txt generation', () => {
     for (const rule of extra) expect(limited, rule).toContain(`${rule}\n`);
     for (const prefix of ['/zh/', '/ja/', '/es/', '/ru/']) expect(limited).not.toContain(`Disallow: ${prefix}\n`);
     // The default group (search engines, link previews such as Twitterbot) and blocked crawlers stay as they were.
-    expect(everyone).toBe(['User-agent: *', ...privateRules].join('\n'));
+    expect(everyone).toBe(['User-agent: *', ...defaultRules].join('\n'));
     expect(blocked).toBe('User-agent: MJ12bot\nDisallow: /');
     // A locked crawler named in the limited group still follows the default group.
     expect(limited).toMatch(/^User-agent: GPTBot\nUser-agent: Amazonbot\nCrawl-delay: 10\n/);
@@ -216,7 +247,7 @@ describe('robots.txt generation', () => {
     for (const path of ['/apps/vlc', '/zh/apps/vlc/versions', '/articles', '/collections/editors'])
       expect(limited(path), path).toBe(false);
     const [defaults] = buildRobotsTxt({ crawlers: DEFAULT_CRAWLER_POLICY, indexable: true, ...open }).split('\n\n');
-    expect(defaults).toBe(['User-agent: *', ...privateRules].join('\n'));
+    expect(defaults).toBe(['User-agent: *', ...defaultRules].join('\n'));
   });
 
   it('Non-production sites disallow everything', () => {
@@ -236,7 +267,7 @@ describe('robots.txt generation', () => {
       seoTools: { mode: 'allow', delaySeconds: 5, bots: ['MJ12bot'] }
     };
     expect(buildRobotsTxt({ crawlers: policy, indexable: true, ...open })).toBe(
-      ['User-agent: *', ...privateRules, ''].join('\n')
+      ['User-agent: *', ...defaultRules, ''].join('\n')
     );
     const empty: CrawlerPolicy = { ...policy, training: { mode: 'limit', delaySeconds: 5, bots: [] } };
     expect(buildRobotsTxt({ crawlers: empty, indexable: true, ...open })).not.toContain('Crawl-delay');

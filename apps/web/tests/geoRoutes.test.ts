@@ -131,6 +131,7 @@ describe('G5 Markdown discovery follows the rendered page language decision', ()
     const { ref } = await import('vue');
     const route = ref({ path: '/de/apps/geo-fixture-30' });
     const hreflangs = ref(['en']);
+    const settings = ref({ pages: { openLocales: ['en-US'] } });
     let head: (() => { link?: { href: string }[] }) | undefined;
     vi.stubGlobal('defineNuxtPlugin', (plugin: unknown) => plugin);
     vi.stubGlobal('useRuntimeConfig', () => ({
@@ -138,6 +139,7 @@ describe('G5 Markdown discovery follows the rendered page language decision', ()
     }));
     vi.stubGlobal('useRouter', () => ({ currentRoute: route }));
     vi.stubGlobal('useState', () => hreflangs);
+    vi.stubGlobal('useSiteSettings', () => settings);
     vi.stubGlobal('useHead', (getter: typeof head) => {
       head = getter;
     });
@@ -146,6 +148,8 @@ describe('G5 Markdown discovery follows the rendered page language decision', ()
       await (plugin as unknown as () => void)();
       expect(head!()).toEqual({});
       hreflangs.value = ['en', 'de'];
+      expect(head!()).toEqual({});
+      settings.value.pages.openLocales.push('de-DE');
       expect(head!().link).toMatchObject([{ href: 'https://opennavo.example/de/apps/geo-fixture-30.md' }]);
       route.value.path = '/de/apps/geo-fixture-30/versions';
       expect(head!()).toEqual({});
