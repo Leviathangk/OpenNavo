@@ -289,29 +289,6 @@ func (s *Store) ImageAssets(ctx context.Context, urls []string) (map[string]Asse
 	return out, nil
 }
 
-// PrivatePackageTokens reports which of the requested tokens resolve to an existing private cask
-// or link, matching package tokens, full tokens and aliases in one lookup.
-func (s *Store) PrivatePackageTokens(ctx context.Context, tokens []string) (map[string]bool, error) {
-	out := map[string]bool{}
-	if len(tokens) == 0 {
-		return out, nil
-	}
-	var found []string
-	err := s.DB.WithContext(ctx).Raw(`SELECT p.token FROM packages p JOIN package_meta m ON m.package_id=p.id
- WHERE m.private AND p.kind IN ('cask','link') AND p.removed_at IS NULL AND p.token IN ?
- UNION SELECT p.full_token FROM packages p JOIN package_meta m ON m.package_id=p.id
- WHERE m.private AND p.kind IN ('cask','link') AND p.removed_at IS NULL AND p.full_token IN ?
- UNION SELECT a.token FROM package_aliases a JOIN packages p ON p.id=a.package_id JOIN package_meta m ON m.package_id=p.id
- WHERE m.private AND p.kind IN ('cask','link') AND p.removed_at IS NULL AND a.token IN ?`, tokens, tokens, tokens).Scan(&found).Error
-	if err != nil {
-		return nil, err
-	}
-	for _, token := range found {
-		out[token] = true
-	}
-	return out, nil
-}
-
 // LiveCaskIDs is the legacy name for article card lookup; it accepts cask and link apps.
 func (s *Store) LiveCaskIDs(ctx context.Context, tokens []string) (map[string]int64, error) {
 	out := map[string]int64{}

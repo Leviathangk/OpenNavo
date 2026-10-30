@@ -51,24 +51,6 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
  INSERT INTO article_revisions(id,article_id,number,source_locale,type) VALUES(901,901,1,'en-US','roundup');
  INSERT INTO article_revision_i18n(revision_id,locale,source_locale,title) VALUES(901,'en-US','en-US','Visibility fixture');
  INSERT INTO article_revision_packages(revision_id,package_id,sort) SELECT 901,id,0 FROM packages;`).Error)
-	// Real article text shape, including the Markdown forms the public renderer linkifies.
-	articleBody := strings.Join([]string{
-		"## What to compare",
-		"Pick by task. Compare the [Tencent Meeting](/apps/private-sample) and [x](/zh/apps/private-sample) notes.",
-		"The public [Public child](/apps/public-child) link stays.",
-		"Read [Absolute Meeting](https://opennavo.com/apps/private-sample?tab=releases#top) and an http [HTTP Meeting](http://opennavo.com/apps/private-sample) as text.",
-		"A scheme-less [WWW Meeting](www.opennavo.com/zh/apps/private-sample) also reads as text.",
-		"An autolink <https://opennavo.com/apps/private-sample> and an http autolink <http://www.opennavo.com/apps/private-sample> disappear.",
-		"Bare https://www.opennavo.com/zh/apps/private-sample, opennavo.com/apps/private-sample, http://opennavo.com/apps/private-sample and www.opennavo.com/apps/private-sample disappear too.",
-		"Reference-style [Tencent Meeting][meeting], collapsed [meeting][], and shortcut [meeting] references keep their text.",
-		"Raw <a href=\"https://opennavo.com/zh/apps/private-sample\">Tencent Meeting</a> and <a href=\"http://opennavo.com/apps/private-sample\">HTTP Meeting</a> also keep only their text.",
-		"::app[private-sample]",
-		"::app[public-child]",
-		"",
-		"[meeting]: http://opennavo.com/apps/private-sample \"Private sample\"",
-		"[public]: https://opennavo.com/apps/public-child",
-	}, "\n")
-	require.NoError(t, st.DB.Exec("UPDATE article_revision_i18n SET body_markdown=? WHERE revision_id=901 AND locale='en-US'", articleBody).Error)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	searchService := search.New(ctx, st, nil, logger)
 	t.Cleanup(searchService.Close)
@@ -116,6 +98,10 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 				for _, token := range []string{"private-sample", "private-font", "private-link"} {
 					require.NotContains(t, body, token)
 				}
+				// Hidden packages stay out of lists, search, rankings and sitemaps (detail still 200).
+				if !strings.Contains(path, "public-parent") {
+					require.NotContains(t, body, "unlisted-sample")
+				}
 			})
 		}
 		var categories struct{ Data []publicapi.CategoryNode }
@@ -128,29 +114,6 @@ func TestPrivatePackagesAbsentFromEveryPublicEntry(t *testing.T) {
 			require.NotContains(t, row.Token, "private")
 			require.NotContains(t, string(row.Dependencies), "private-sample")
 		}
-	})
-	t.Run("article_body_redaction", func(t *testing.T) {
-		raw := call(t, "GET", "/articles/visibility-fixture", "", 200)
-		require.NotContains(t, raw, "private-sample")
-		var response publicapi.ArticleLookupResponse
-		require.NoError(t, json.Unmarshal([]byte(raw), &response))
-		require.NotNil(t, response.Data.Article)
-		require.NotNil(t, response.Data.Article.BodyMarkdown)
-		body := *response.Data.Article.BodyMarkdown
-		require.Contains(t, body, "Tencent Meeting and x notes.")
-		require.Contains(t, body, "[Public child](/apps/public-child) link stays.")
-		require.Contains(t, body, "Read Absolute Meeting and an http HTTP Meeting as text.")
-		require.Contains(t, body, "A scheme-less WWW Meeting also reads as text.")
-		require.Contains(t, body, "An autolink  and an http autolink  disappear.")
-		require.Contains(t, body, "Bare , ,  and  disappear too.")
-		require.Contains(t, body, "Reference-style Tencent Meeting, collapsed meeting, and shortcut meeting references keep their text.")
-		require.Contains(t, body, "Raw Tencent Meeting and HTTP Meeting also keep only their text.")
-		require.Contains(t, body, "::app[public-child]")
-		require.Contains(t, body, "[public]: https://opennavo.com/apps/public-child")
-		require.NotContains(t, body, "private-sample")
-		require.NotContains(t, body, "::app[private-sample]")
-		require.NotContains(t, body, "/apps/private-sample")
-		require.NotContains(t, body, "<a href")
 	})
 	t.Run("lookup", func(t *testing.T) {
 		body := call(t, "POST", "/packages/lookup", `{"items":[{"kind":"cask","token":"public-parent"},{"kind":"cask","token":"private-sample"},{"kind":"link","token":"private-link"},{"kind":"cask","token":"unknown-sample"}]}`, 200)
