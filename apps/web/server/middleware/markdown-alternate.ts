@@ -1,3 +1,5 @@
+import { LOCALES, LOCALE_METADATA } from '@opennavo/shared';
+import { createError, defineEventHandler, getHeader, setHeader } from 'h3';
 import {
   markdownAlternatesEnabled,
   markdownPageTarget,
@@ -10,6 +12,7 @@ import { agentLabel } from '../utils/crawlerMetrics';
 import { LONG_EDGE_CACHE_VALUE } from '../utils/edgeCache';
 import { renderHomeMarkdown } from '../utils/homeMarkdown';
 import { packageMarkdown } from '../utils/packageMarkdown';
+import { appendHeaderValue } from '../utils/responseHeaders';
 import { getSiteSettings } from '../utils/siteSettings';
 
 // Keep the explicit .md projection on the same origin cache policy as the app overview route
@@ -32,8 +35,14 @@ export default defineEventHandler(async event => {
   const negotiated = !explicit && prefersMarkdown(getHeader(event, 'accept')) ? page : undefined;
   const target = explicit ? { kind: 'app' as const, ...explicit } : negotiated;
   if (!markdownAlternatesEnabled(useRuntimeConfig(event).public.markdownAlternates)) return;
-  if (supportsMarkdownNegotiation(path)) setHeader(event, 'Vary', 'Accept');
   if (!target) return;
+  const settings =
+    (event.context.siteSettings as Awaited<ReturnType<typeof getSiteSettings>> | undefined) ??
+    (await getSiteSettings());
+  if (!(settings.pages.openLocales ?? LOCALES).includes(target.locale)) {
+    if (explicit) throw createError({ statusCode: 404, statusMessage: 'Page not found' });
+    return;
+  }
   const userAgent = getHeader(event, 'user-agent') ?? '';
   console.info(
     `[x4] markdown fetch ${JSON.stringify({
@@ -52,6 +61,15 @@ export default defineEventHandler(async event => {
   if (event.handled) return;
   setHeader(event, 'Content-Type', 'text/markdown; charset=utf-8');
   setHeader(event, 'X-Robots-Tag', 'noindex');
+  const prefix = LOCALE_METADATA[target.locale].prefix;
+  const htmlPath = target.kind === 'home' ? prefix || '/' : `${prefix}/apps/${target.token}`;
+  const canonicalPath = brandDownloadPath(htmlPath) ?? htmlPath;
+  appendHeaderValue(
+    event,
+    'Link',
+    `<${new URL(canonicalPath, useRuntimeConfig(event).public.siteUrl).href}>; rel="canonical"`
+  );
+  if (supportsMarkdownNegotiation(path)) appendHeaderValue(event, 'Vary', 'Accept');
   if (negotiated) {
     setHeader(event, 'Cache-Control', 'private, no-store');
     setHeader(event, 'CDN-Cache-Control', 'no-store');
@@ -60,12 +78,8 @@ export default defineEventHandler(async event => {
     // The explicit .md URL is a public app projection. It is served by this middleware before the
     // Nitro route cache, so carry the same six-hour origin policy explicitly. The edge switch also
     // controls the Cloudflare header, matching HTML responses when edge caching is disabled.
-    const settings =
-      (event.context.siteSettings as Awaited<ReturnType<typeof getSiteSettings>> | undefined) ??
-      (await getSiteSettings());
     setHeader(event, 'Cache-Control', APP_PAGE_CACHE_CONTROL);
     setHeader(event, 'Cloudflare-CDN-Cache-Control', settings.edgeCache.enabled ? LONG_EDGE_CACHE_VALUE : 'no-store');
   }
   return body;
 });
-import { defineEventHandler, getHeader, setHeader } from 'h3';
