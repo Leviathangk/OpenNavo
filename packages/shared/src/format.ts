@@ -101,14 +101,14 @@ export function formatCountCompact(value: number, { locale = 'en-US' }: FormatOp
     };
     const parts = new Intl.NumberFormat(locale, options).formatToParts(value);
     const compact = parts.some(part => part.type === 'compact');
-    const integer = Number(
+    const integerPart = Number(
       parts
         .filter(part => part.type === 'integer')
         .map(part => part.value)
         .join('')
     );
-    if (compact && integer < 1000) return parts.map(part => part.value).join('');
-    if (compact && integer >= 1000)
+    if (compact && integerPart < 1000) return parts.map(part => part.value).join('');
+    if (compact && integerPart >= 1000)
       return new Intl.NumberFormat(locale, { ...options, compactDisplay: 'long' }).format(value);
     // German short form keeps four-digit numbers grouped until one million, so 999,950
     // would read 999.950. Add the half-expand carry so it rolls over to 1 Mio.

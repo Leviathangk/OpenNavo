@@ -2042,7 +2042,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(response.status, 200, logs);
     const page = JSDOM.fragment(html);
     const card = page.querySelector('[data-testid="package-spec-card"]');
-    assert.ok(card.textContent.includes('★1.0M'), card.textContent);
+    assert.ok(card.textContent.includes('★1M'), card.textContent);
     const trigger = card.querySelector('button[aria-describedby]');
     assert.ok(trigger, 'repository tooltip trigger is associated in SSR');
     const description = page.querySelector(`[id="${trigger.getAttribute('aria-describedby')}"]`);

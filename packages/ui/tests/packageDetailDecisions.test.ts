@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { createSSRApp, h, nextTick } from 'vue';
+import { createSSRApp, nextTick } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { describe, expect, it } from 'vitest';
 import OnPackageSpecCard from '../src/components/OnPackageSpecCard.vue';
