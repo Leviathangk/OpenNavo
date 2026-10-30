@@ -53,6 +53,15 @@ describe('package share-image visibility', () => {
     expect(fetch).toHaveBeenCalled();
   });
 
+  it('fails closed when the detail read returns an upstream error', async () => {
+    const fetch = vi.fn(async () => {
+      throw { statusCode: 503 };
+    });
+    stubApi(fetch);
+    expect(await checkPackageOgVisibility(event(imagePath('cask', 'public-app')))).toEqual({ status: 503 });
+    expect(fetch).toHaveBeenCalled();
+  });
+
   it('serves a public package image', async () => {
     const fetch = vi.fn(async () => ({
       data: { kind: 'cask', token: 'public-app', displayName: 'Public App' }

@@ -1454,6 +1454,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
     NUXT_METRICS_PORT: internalPort,
     NUXT_INTERNAL_SECRET: internalSecret,
+    // A cold share-image render can stall the event loop past the extreme lag limit; the next request
+    // would then be shed with 503 before any route sees it. Keep that availability layer out of this
+    // SEO/visibility fixture (loadShed.test.ts and the image-admission subtest below cover it).
+    NUXT_LOAD_SHED_ENABLED: 'false',
     OPENNAVO_SITEMAP_WARMUP: 'false'
   };
   const child = spawn(process.execPath, ['--import', clock, entry], {
@@ -3562,9 +3566,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.equal(invalidated.status, 200, logs);
       assert.ok((await invalidated.json()).ogRemoved >= 1, logs);
       const rejected = await fetch(imageUrl);
-      assert.equal(rejected.status, 404, logs);
+      const rejectedBody = await rejected.text();
+      assert.equal(
+        rejected.status,
+        404,
+        `${rejected.status} ${JSON.stringify([...rejected.headers])} ${rejectedBody.slice(0, 300)}\n${logs}`
+      );
       assert.equal(rejected.headers.get('cache-control'), 'no-store');
-      await rejected.arrayBuffer();
     } finally {
       shareImagePrivate = false;
     }
@@ -3632,6 +3640,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         PORT: imagePort,
         NITRO_PORT: imagePort,
         NUXT_METRICS_PORT: metricsPort,
+        NUXT_LOAD_SHED_ENABLED: 'true',
         NUXT_LOAD_SHED_IMAGE_IN_FLIGHT: '1',
         NUXT_LOAD_SHED_LOW_IN_FLIGHT: '1',
         NUXT_LOAD_SHED_MEDIUM_IN_FLIGHT: '1',
