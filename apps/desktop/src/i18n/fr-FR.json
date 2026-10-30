@@ -317,6 +317,19 @@
     "deprecated": "Obsolète",
     "paused": "Suspendue par OpenNavo",
     "homepage": "Site web",
+    "sourceBadge": {
+      "label": "Source officielle",
+      "verified": "Source officielle · Vérifiée",
+      "disabled": "Source officielle · App désactivée",
+      "deprecated": "Source officielle · App obsolète",
+      "paused": "Source officielle · En pause",
+      "domain": "Source : {domain}",
+      "checksum": "SHA-256 : {sha256}",
+      "checksumUnknown": "SHA-256 non renseigné",
+      "checked": "Vérification : {date}",
+      "unchecked": "Date de vérification non renseignée",
+      "active": "Non désactivé par Homebrew"
+    },
     "fromTap": "Source :",
     "thirdPartyTap": "Dépôt tiers",
     "stats": {

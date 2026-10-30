@@ -16,6 +16,8 @@ import type { SiteLocale as Locale } from '@opennavo/shared';
 import { httpsUrl, linkSource } from './linkApp';
 import type { Translate } from './seoTitles';
 
+export { toPackageSource as officialSource } from '@opennavo/shared';
+
 type Schemas = PublicComponents['schemas'];
 export type AppFacts = Schemas['AppFacts'];
 export type FactEvidence = Schemas['FactEvidence'];
@@ -618,29 +620,6 @@ export function releaseCompatibilityText(
     );
   if (value.appleSilicon === 'yes' || value.appleSilicon === 'no') parts.push(labels.appleSilicon[value.appleSilicon]);
   return parts.join(' · ');
-}
-
-/** A direct Homebrew URL, with only checks backed by current, dated evidence. */
-export function officialDownload(pkg: PackagePage) {
-  if (pkg.kind !== 'cask' || disabledByHomebrew(pkg) || pkg.homebrewStatus?.state === 'disabled') return null;
-  const choice = downloadChoice(pkg);
-  if (choice?.kind !== 'direct') return null;
-  const url = httpsUrl(choice.url);
-  if (!url) return null;
-  const rows = homebrewRows(pkg).filter(
-    row => isVerified(row.evidence) && row.versions.includes(currentVersion(pkg)) && row.downloadUrl === url
-  );
-  const checksums = rows
-    .map(row => row.sha256)
-    .filter((sha): sha is string => Boolean(sha && /^[a-f0-9]{64}$/i.test(sha)));
-  const checksum = checksums.length === rows.length && new Set(checksums.map(sha => sha.toLowerCase())).size === 1;
-  return {
-    url,
-    host: new URL(url).hostname,
-    checksum,
-    checkedAt: oldestCheck(rows.map(row => row.evidence)),
-    active: pkg.homebrewStatus?.state === 'active' || pkg.homebrewStatus?.state === 'deprecated'
-  };
 }
 
 /** Subpages reference a complete, minimal application node without offers or ratings. */

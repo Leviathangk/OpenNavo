@@ -1897,6 +1897,35 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     }
   );
 
+  await t.test('source badges retain full source domains, SHA-256, lifecycle and check-date text in SSR', async () => {
+    for (const [prefix, label, domain, checked] of [
+      ['', 'Official source · Verified', 'Source: vendor.example', 'Checked:'],
+      ['/zh', '官方来源 · 已核查', '来源域名：vendor.example', '核查日期：']
+    ]) {
+      const response = await fetch(`${origin}${prefix}/apps/facts-app`);
+      assert.equal(response.status, 200, logs);
+      const page = JSDOM.fragment(await response.text());
+      const badge = page.querySelector('[data-testid="package-source-badge"]');
+      assert.equal(badge?.textContent.trim(), label);
+      assert.equal(badge.tagName, 'BUTTON');
+      assert.equal(badge.getAttribute('type'), 'button');
+      assert.ok(badge.closest('[data-testid="package-header-tags"]'));
+      const id = badge.getAttribute('aria-describedby');
+      assert.ok(id);
+      const tooltip = page.querySelector(`[role="tooltip"][id="${id}"]`);
+      assert.ok(tooltip, 'aria-describedby refers to a description in server HTML');
+      for (const text of [domain, 'b'.repeat(64), checked, '2025']) assert.ok(tooltip.textContent.includes(text), text);
+      const actions = page.querySelector('[data-testid="package-header-actions"]');
+      assert.equal(actions.children.length, 2);
+      assert.ok(!actions.contains(badge));
+      assert.ok(!actions.closest('section').textContent.includes('homebrew/cask'));
+      assert.ok(page.querySelector('[data-testid="package-sources"]').textContent.includes('homebrew/cask'));
+    }
+    const disabled = JSDOM.fragment(await (await fetch(`${origin}/apps/repair-disabled`)).text());
+    assert.equal(disabled.querySelector('[data-testid="package-source-badge"]').getAttribute('data-state'), 'disabled');
+    assert.ok(disabled.querySelector('[data-testid="package-header-actions"] button[disabled]'));
+  });
+
   await t.test(
     'deduplicated metadata keeps architectures, non-native status, older builds and identity IDs',
     async () => {
@@ -3562,13 +3591,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const facts = visible(await page('/apps/facts-app'));
     const header =
       /<section\b[^>]*class="[^"]*bg-component-detail-header-bg[^"]*"[\s\S]*?<\/section>/.exec(facts)?.[0] ?? '';
-    assert.match(
-      header,
-      /<a\b[^>]*href="https:\/\/vendor\.example\/FactsApp\.dmg"[^>]*>\s*Official download · vendor\.example\s*<\/a>/
-    );
+    assert.match(header, /data-testid="package-source-badge"/);
+    assert.ok(header.includes('Official source · Verified'));
     assert.match(header, /aria-label="Get Facts App"/);
-    assert.ok(header.includes('SHA-256 recorded by Homebrew'));
-    assert.match(header, /<time[^>]*datetime="2025-12-01T08:00:00Z"[^>]*>[^<]*2025[^<]*<\/time>/);
+    assert.ok(!header.includes('From homebrew/cask'));
     for (const path of ['/apps/ordinary-app', '/apps/repair-disabled', '/apps/lumen-notes'])
       assert.ok(!visible(await page(path)).includes('Official download ·'), path);
     const details = visible(await page('/apps/facts-app/details'));

@@ -8,7 +8,7 @@ import type { OnImageVariant } from '../utils/image';
 import OnChip from './OnChip.vue';
 import type { OnChipTone } from './OnChip.vue';
 
-// Detail header (08 §10.5, mockup 03, ADR-017): 96 icon, name, developer/summary, badges, host actions, source caption.
+// Detail header (08 §10.5, mockup 03, ADR-017): 96 icon, name, developer/summary, badges, host actions, optional caption.
 // Shared web/desktop: desktop update/get/open follows local state; web shows Get menu/homepage.
 export interface OnPackageHeaderChip {
   key: string;
@@ -33,10 +33,12 @@ export interface OnPackageHeaderProps {
   iconVariants?: readonly OnImageVariant[] | null;
   accent?: string | null;
   chips?: readonly OnPackageHeaderChip[];
-  /** Caption beneath actions, e.g. source homebrew/cask and installation date. */
+  /** Caption beneath actions, e.g. a link app's download domain or an installation date. */
   meta?: string;
   /** Web: prioritize loading this largest above-the-fold image. */
   priority?: boolean;
+  /** Pair web actions in equal columns on small screens, with natural button widths on desktop. */
+  stretchActions?: boolean;
   /** Link component for chips with href (NuxtLink/RouterLink); native a by default. */
   linkAs?: string | Component;
 }
@@ -45,7 +47,7 @@ const props = withDefaults(defineProps<OnPackageHeaderProps>(), { chips: () => [
 
 const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: href });
 
-defineSlots<{ actions?: () => unknown; default?: () => unknown }>();
+defineSlots<{ actions?: () => unknown; tags?: () => unknown; default?: () => unknown }>();
 
 const glow = computed(() => ({ background: detailGlow(props.accent ?? undefined) }));
 </script>
@@ -75,7 +77,11 @@ const glow = computed(() => ({ background: detailGlow(props.accent ?? undefined)
         }}</span>
       </h1>
       <p v-if="subtitle" class="m-0 mt-4px text-14px text-ink-secondary md:truncate">{{ subtitle }}</p>
-      <div v-if="chips.length" class="mt-12px flex flex-wrap gap-6px">
+      <div
+        v-if="chips.length || $slots.tags"
+        class="mt-12px flex flex-wrap items-center gap-6px"
+        data-testid="package-header-tags"
+      >
         <template v-for="chip in chips" :key="chip.key">
           <component
             :is="linkAs"
@@ -89,10 +95,19 @@ const glow = computed(() => ({ background: detailGlow(props.accent ?? undefined)
             {{ chip.label }}
           </OnChip>
         </template>
+        <slot name="tags" />
       </div>
     </div>
-    <div class="relative flex shrink-0 flex-col items-start gap-10px md:items-end">
-      <div v-if="$slots.actions" class="flex items-center gap-8px">
+    <div
+      class="relative flex shrink-0 flex-col items-start gap-10px md:items-end"
+      :class="stretchActions ? 'w-full md:w-auto' : ''"
+    >
+      <div
+        v-if="$slots.actions"
+        class="items-center gap-8px"
+        :class="stretchActions ? 'grid w-full grid-cols-2 md:w-auto md:flex' : 'flex'"
+        data-testid="package-header-actions"
+      >
         <slot name="actions" />
       </div>
       <small v-if="meta" class="text-12px text-ink-tertiary">{{ meta }}</small>

@@ -445,6 +445,24 @@ describe('List views', () => {
 });
 
 describe('Detail views', () => {
+  it('appends host source tags to the tag row while keeping action content together', () => {
+    const wrapper = mount(OnPackageHeader, {
+      props: {
+        kind: 'cask',
+        token: 'example',
+        name: 'Example',
+        chips: [{ key: 'kind', label: 'Cask' }],
+        stretchActions: true
+      },
+      slots: {
+        tags: () => h('button', { class: 'source' }, 'Official source'),
+        actions: () => [h('button', 'Get'), h('a', { href: 'https://example.com/' }, 'Homepage')]
+      }
+    });
+    expect(wrapper.get('[data-testid="package-header-tags"]').text()).toBe('CaskOfficial source');
+    expect(wrapper.get('[data-testid="package-header-actions"]').find('.source').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="package-header-actions"]').element.children).toHaveLength(2);
+  });
   it('Headers include names, labels, action slots, and source captions', () => {
     const wrapper = mount(OnPackageHeader, {
       props: {

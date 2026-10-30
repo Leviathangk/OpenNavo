@@ -324,6 +324,19 @@ const messages: MessageSchema = {
     deprecated: 'Deprecated',
     paused: 'Paused by OpenNavo',
     homepage: 'Homepage',
+    sourceBadge: {
+      label: 'Official source',
+      verified: 'Official source · Verified',
+      disabled: 'Official source · Disabled',
+      deprecated: 'Official source · Deprecated',
+      paused: 'Official source · Paused by OpenNavo',
+      domain: 'Source: {domain}',
+      checksum: 'SHA-256: {sha256}',
+      checksumUnknown: 'SHA-256 not recorded',
+      checked: 'Checked: {date}',
+      unchecked: 'No check date recorded',
+      active: 'Not disabled by Homebrew'
+    },
     fromTap: 'From',
     thirdPartyTap: 'Third-party tap',
     stats: {

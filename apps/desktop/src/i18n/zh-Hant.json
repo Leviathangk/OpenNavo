@@ -317,6 +317,19 @@
     "deprecated": "已棄用",
     "paused": "暫停更新",
     "homepage": "主頁",
+    "sourceBadge": {
+      "label": "官方來源",
+      "verified": "官方來源 · 已核查",
+      "disabled": "官方來源 · 已停用",
+      "deprecated": "官方來源 · 已棄用",
+      "paused": "官方來源 · 暫停推薦",
+      "domain": "來源域名：{domain}",
+      "checksum": "SHA-256：{sha256}",
+      "checksumUnknown": "未記錄 SHA-256",
+      "checked": "核查日期：{date}",
+      "unchecked": "暫無核查日期",
+      "active": "未被 Homebrew 停用"
+    },
     "fromTap": "來自",
     "thirdPartyTap": "第三方倉庫",
     "stats": {

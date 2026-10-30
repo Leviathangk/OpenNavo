@@ -317,6 +317,19 @@
     "deprecated": "非推奨",
     "paused": "一時停止中",
     "homepage": "ホームページ",
+    "sourceBadge": {
+      "label": "公式配布元",
+      "verified": "公式配布元 · 確認済み",
+      "disabled": "公式配布元 · 無効化済み",
+      "deprecated": "公式配布元 · 非推奨",
+      "paused": "公式配布元 · おすすめを一時停止",
+      "domain": "配布元：{domain}",
+      "checksum": "SHA-256：{sha256}",
+      "checksumUnknown": "SHA-256 の記録なし",
+      "checked": "確認日：{date}",
+      "unchecked": "確認日の記録なし",
+      "active": "Homebrew で無効化されていません"
+    },
     "fromTap": "提供元",
     "thirdPartyTap": "サードパーティのリポジトリ",
     "stats": {

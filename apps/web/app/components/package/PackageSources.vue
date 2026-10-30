@@ -19,6 +19,7 @@ const items = computed(() =>
       ['zh-CN', 'zh-Hant', 'ja-JP'].includes(appLocale.value) ? '' : ' '
     }`,
     url: source.url,
+    tap: source.kind === 'homebrew' ? props.pkg.tap : null,
     checked: source.checkedAt
       ? {
           iso: isoDate(source.checkedAt),
@@ -49,6 +50,7 @@ const items = computed(() =>
           rel="nofollow noopener noreferrer"
           class="text-ink-primary underline-offset-2 [overflow-wrap:anywhere] hover:underline"
           >{{ displayUrl(item.url) }}</a
+        ><code v-if="item.tap" class="ml-6px font-mono text-11.5px">{{ item.tap }}</code
         ><template v-if="item.checked"
           >{{ ` · ${item.checked.before}` }}<time :datetime="item.checked.iso">{{ item.checked.date }}</time
           >{{ item.checked.after }}</template

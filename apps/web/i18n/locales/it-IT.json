@@ -843,6 +843,18 @@
       "label": "Download ufficiale · {host}",
       "checksum": "SHA-256 registrato da Homebrew",
       "active": "Non disabilitato da Homebrew"
+    },
+    "sourceBadge": {
+      "label": "Fonte ufficiale",
+      "verified": "Fonte ufficiale · Verificata",
+      "disabled": "Fonte ufficiale · App disattivata",
+      "deprecated": "Fonte ufficiale · App deprecata",
+      "paused": "Fonte ufficiale · In pausa",
+      "domain": "Origine: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 non registrato",
+      "checked": "Data verifica: {date}",
+      "unchecked": "Data di verifica non registrata"
     }
   },
   "collections": {

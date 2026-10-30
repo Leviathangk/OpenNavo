@@ -317,6 +317,19 @@ export default {
     deprecated: '已弃用',
     paused: '暂停更新',
     homepage: '主页',
+    sourceBadge: {
+      label: '官方来源',
+      verified: '官方来源 · 已核查',
+      disabled: '官方来源 · 已停用',
+      deprecated: '官方来源 · 已弃用',
+      paused: '官方来源 · 暂停推荐',
+      domain: '来源域名：{domain}',
+      checksum: 'SHA-256：{sha256}',
+      checksumUnknown: '未记录 SHA-256',
+      checked: '核查日期：{date}',
+      unchecked: '暂无核查日期',
+      active: '未被 Homebrew 禁用'
+    },
     fromTap: '来自',
     thirdPartyTap: '第三方仓库',
     stats: {

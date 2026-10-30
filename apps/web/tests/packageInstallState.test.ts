@@ -10,7 +10,8 @@ import { packageSpec } from '../app/utils/packageSpec';
 import { siteMessage } from '../server/utils/siteCopy';
 import production from './fixtures/packageFaq.production.json';
 
-const t = (key: string) => siteMessage('en-US', key);
+const t = (key: string, named?: Record<string, unknown>) =>
+  siteMessage('en-US', key, named as Record<string, string | number>);
 const statusLabels = { disabled: 'Disabled', deprecated: 'Deprecated', paused: 'Paused by OpenNavo' };
 const homebrewLabels = {
   active: 'Available; the app updates itself',
@@ -23,6 +24,7 @@ beforeEach(() => {
   vi.stubGlobal('computed', computed);
   vi.stubGlobal('resolveComponent', resolveComponent);
   vi.stubGlobal('useI18n', () => ({ t, locale: ref('en') }));
+  vi.stubGlobal('toAppLocale', () => 'en-US');
   vi.stubGlobal('useLocalePath', () => (path: string) => path);
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -53,7 +55,6 @@ it.each(lifecycleCases)(
           h('a', { href: props.to }, slots.default?.())
     });
     app.component('GetMenu', { render: () => h('button', 'Get') });
-    app.component('PackageOfficialDownload', { render: () => null });
     const page = document.createElement('div');
     page.innerHTML = await renderToString(app);
     const header = page.querySelector('h1')!.parentElement!;

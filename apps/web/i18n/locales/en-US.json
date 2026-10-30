@@ -843,6 +843,18 @@
       "label": "Official download · {host}",
       "checksum": "SHA-256 recorded by Homebrew",
       "active": "Not disabled by Homebrew"
+    },
+    "sourceBadge": {
+      "label": "Official source",
+      "verified": "Official source · Verified",
+      "disabled": "Official source · Disabled",
+      "deprecated": "Official source · Deprecated",
+      "paused": "Official source · Paused by OpenNavo",
+      "domain": "Source: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 not recorded",
+      "checked": "Checked: {date}",
+      "unchecked": "No check date recorded"
     }
   },
   "collections": {

@@ -240,7 +240,7 @@ const notice = computed(() => {
         "
         :link-as="NuxtLink"
       />
-      <PackageHeader :pkg="pkg" :heading-suffix="headingSuffix" :show-official-download="tab === 'overview'" />
+      <PackageHeader :pkg="pkg" :heading-suffix="headingSuffix" />
       <PackageStats v-if="!isLink" :pkg="pkg" :release-stats="releaseStats" />
       <OnTabs
         class="mt-2px"

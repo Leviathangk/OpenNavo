@@ -317,6 +317,19 @@
     "deprecated": "Veraltet",
     "paused": "Von OpenNavo pausiert",
     "homepage": "Website",
+    "sourceBadge": {
+      "label": "Offizielle Quelle",
+      "verified": "Offizielle Quelle · Geprüft",
+      "disabled": "Offizielle Quelle · Deaktiviert",
+      "deprecated": "Offizielle Quelle · Veraltet",
+      "paused": "Offizielle Quelle · Pausiert",
+      "domain": "Quelle: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 nicht erfasst",
+      "checked": "Geprüft am {date}",
+      "unchecked": "Kein Prüfdatum erfasst",
+      "active": "Von Homebrew nicht deaktiviert"
+    },
     "fromTap": "Aus",
     "thirdPartyTap": "Drittanbieter-Tap",
     "stats": {
