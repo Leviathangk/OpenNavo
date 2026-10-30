@@ -1,11 +1,14 @@
 //! Integration tests for the `mcp` subcommand and the B1 stdio protocol.
 //!
-//! These tests exercise the public library surface only. They deliberately do
-//! not start Tauri or spawn the application binary: argv classification is
-//! checked directly and the protocol is driven over in-memory streams.
+//! Argv classification and protocol edges are checked against the public
+//! library surface and in-memory streams. The stdout-isolation test also spawns
+//! the real application binary with `mcp`, because that is the only way to
+//! prove diagnostics cannot leak into the protocol stream.
 
 use std::ffi::OsString;
-use std::io::Write;
+use std::io::{Read, Write};
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 
 use opennavo_desktop_lib::mcp::cli::{self, Mode};
 use opennavo_desktop_lib::mcp::protocol::{
@@ -35,6 +38,21 @@ fn run(input: &str, availability: Availability) -> (Vec<Value>, Session) {
         .map(|line| serde_json::from_str(line).expect("each stdout line is JSON"))
         .collect();
     (responses, session)
+}
+
+fn wait_with_timeout(child: &mut Child, timeout: Duration) -> ExitStatus {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Some(status) = child.try_wait().expect("poll mcp process") {
+            return status;
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("mcp process did not exit within {timeout:?}");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 
 #[test]
@@ -184,42 +202,88 @@ fn malformed_json_and_oversized_line_do_not_panic() {
 
 #[test]
 fn stdout_contains_only_protocol_json() {
-    let input = concat!(
-        r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#,
-        "\n",
-        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
-        "\n",
-        "{not json}\n",
-        r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#,
-        "\n",
-        r#"{"jsonrpc":"2.0","id":3,"method":"no/such/method"}"#,
-        "\n",
+    let input = format!(
+        "{INITIALIZE}{}\n{}\n",
+        r#"{"jsonrpc":"2.0","id":2,"method":"ping"}"#,
+        r#"{"jsonrpc":"2.0","id":3,"method":"tools/list"}"#,
     );
-    let mut output = Vec::new();
-    protocol::serve_with_availability(input.as_bytes(), &mut output, Availability::Enabled)
-        .expect("serve should finish cleanly");
-    output.flush().expect("flush in-memory stdout");
 
-    let text = std::str::from_utf8(&output).expect("stdout is UTF-8");
+    // Cargo sets CARGO_BIN_EXE_<name> for integration tests and builds the
+    // package's binary targets first. `opennavo-desktop` is the autobin from
+    // src/main.rs; the fan-helper [[bin]] is skipped unless its feature is on.
+    let mut child = Command::new(env!("CARGO_BIN_EXE_opennavo-desktop"))
+        .arg("mcp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn the app binary in mcp mode");
+
+    let mut stdin = child.stdin.take().expect("child stdin is piped");
+    stdin
+        .write_all(input.as_bytes())
+        .expect("write requests to child stdin");
+    stdin.flush().expect("flush child stdin");
+    drop(stdin);
+
+    let status = wait_with_timeout(&mut child, Duration::from_secs(20));
+
+    let mut stdout = String::new();
+    child
+        .stdout
+        .take()
+        .expect("child stdout is piped")
+        .read_to_string(&mut stdout)
+        .expect("read child stdout");
+    let mut stderr = String::new();
+    child
+        .stderr
+        .take()
+        .expect("child stderr is piped")
+        .read_to_string(&mut stderr)
+        .expect("read child stderr");
+
     assert!(
-        text.ends_with('\n'),
-        "every protocol message is newline terminated"
+        status.success(),
+        "mcp mode must exit 0, got {status}; stderr: {stderr}"
     );
-    let lines: Vec<&str> = text.lines().collect();
+    assert!(
+        stdout.ends_with('\n'),
+        "stdout must be only newline-terminated protocol messages: {stdout:?}"
+    );
+    let lines: Vec<&str> = stdout.lines().collect();
     assert_eq!(
         lines.len(),
-        4,
-        "notification and oversized-free input produce 4 responses"
+        3,
+        "initialize, ping and tools/list each produce one response; the notification produces none: {stdout:?}"
     );
-    for line in lines {
-        let message: Value = serde_json::from_str(line).expect("stdout line must be protocol JSON");
-        assert_eq!(message["jsonrpc"], "2.0");
-        assert!(message.get("id").is_some());
+    assert!(
+        !stdout.contains("mcp:"),
+        "diagnostics must go to stderr, never stdout: {stdout:?}"
+    );
+    for (index, line) in lines.iter().enumerate() {
+        let message: Value = serde_json::from_str(line).unwrap_or_else(|error| {
+            panic!(
+                "stdout line {} is not protocol JSON ({error}): {line:?}",
+                index + 1
+            )
+        });
+        assert_eq!(
+            message["jsonrpc"],
+            "2.0",
+            "stdout line {}: {line}",
+            index + 1
+        );
+        assert_eq!(
+            message["id"],
+            json!(index + 1),
+            "stdout line {}: {line}",
+            index + 1
+        );
         assert!(
             message.get("result").is_some() ^ message.get("error").is_some(),
             "each response has exactly one of result/error: {line}"
         );
-        assert!(!line.contains("mcp:"), "diagnostics must not reach stdout");
     }
 }
 
