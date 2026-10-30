@@ -149,6 +149,7 @@ const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagi
       width: 150,
       render: row => {
         const flags = [
+          row.private && { type: 'warning', label: $t('page.catalog.packageDetail.basic.private') },
           row.hidden && { type: 'default', label: $t('page.shared.flags.hidden') },
           row.editorChoice && { type: 'primary', label: $t('page.shared.flags.editorChoice') },
           row.deprecated && { type: 'warning', label: $t('page.shared.flags.deprecated') },

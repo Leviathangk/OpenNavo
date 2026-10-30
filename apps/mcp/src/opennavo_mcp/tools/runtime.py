@@ -151,7 +151,10 @@ def normalize_arguments(spec: ToolSpec, args: dict[str, Any]) -> None:
 USAGE = {
     "package_set_enabled": (
         " Set catalog visibility, matching the admin UI: enabled=true clears hidden;"
-        " enabled=false sets hidden. Homebrew and stale-version disabled flags and removed"
+        " enabled=false sets hidden and requires visibility_reason, recorded in the audit log."
+        " Hidden packages remain reachable by direct link with noindex. Use package_update_meta"
+        " with private=true and visibility_reason to remove a package from every public read."
+        " Homebrew and stale-version disabled flags and removed"
         " state remain in effect. dry_run returns the before/after hidden state without"
         " persisting changes. Uses the same audit, revisions and cache/sitemap invalidation"
         " as package_update_meta."
@@ -336,7 +339,15 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
         properties = {
             key: value
             for key, value in properties.items()
-            if key in {"package", "enabled", "dry_run", "expected_revision", "idempotency_key"}
+            if key
+            in {
+                "package",
+                "enabled",
+                "visibility_reason",
+                "dry_run",
+                "expected_revision",
+                "idempotency_key",
+            }
         }
         required = ["package", "enabled"]
     if spec.name in {"revision_restore", "package_set_icon", "feature_upsert"}:
@@ -584,6 +595,16 @@ class AdapterTool(Tool):
         unused = args.keys() - operation_keys(self._spec, choose(self._spec, deepcopy(args)))
         if unused:
             raise AgentError("1001", validation=f"field {sorted(unused)[0]}: unsupported_parameter")
+        if (
+            self.name == "package_set_enabled"
+            and args.get("enabled") is False
+            or self.name == "package_update_meta"
+            and (args.get("hidden") is True or args.get("private") is True)
+        ):
+            reason = args.get("visibility_reason", "").strip()
+            if not reason:
+                raise AgentError("1001", validation="field visibility_reason: reason_required")
+            args["visibility_reason"] = reason
         operation = choose(self._spec, args)
         token = None
         if "package" in args:

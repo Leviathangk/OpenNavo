@@ -23,6 +23,9 @@ const { nameOf } = useLocalizedPackage();
       <div class="min-w-0 flex-col gap-4px">
         <div class="flex flex-wrap items-center gap-8px">
           <span class="text-20px font-600">{{ nameOf(detail) }}</span>
+          <NTag v-if="detail.private" size="small" type="warning" :bordered="false">
+            {{ $t('page.catalog.packageDetail.basic.private') }}
+          </NTag>
           <NTag v-if="detail.hidden" size="small" :bordered="false">{{ $t('page.shared.flags.hidden') }}</NTag>
           <NTag v-if="detail.editorChoice" size="small" type="primary" :bordered="false">
             {{ $t('page.shared.flags.editorChoice') }}
@@ -49,7 +52,7 @@ const { nameOf } = useLocalizedPackage();
           <span v-if="detail.rank30d">#{{ detail.rank30d }}</span>
         </NText>
       </div>
-      <!-- Backend constructs public URLs from WEB_BASE_URL; hidden/removed packages return null and show no link. -->
+      <!-- Backend constructs public URLs from WEB_BASE_URL; hidden/private/removed packages show no link. -->
       <NButton
         v-if="detail.webUrl"
         tag="a"

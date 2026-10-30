@@ -424,7 +424,11 @@ const pages: PageMessages = {
         tags: 'Tags',
         tagsHint: 'Up to 10 tags, 20 characters each',
         hidden: 'Hidden',
-        hiddenHint: 'Hidden packages are not shown on the site or in the app',
+        hiddenHint: 'Unlisted packages remain reachable by direct link and are not indexed by search engines.',
+        private: 'Private',
+        privateHint: 'Private packages are unavailable through public pages and APIs.',
+        visibilityReason: 'Visibility reason',
+        visibilityReasonRequired: 'Enter a reason before making a package unlisted or private.',
         editorChoice: "Editor's pick",
         notes: 'Internal notes',
         save: 'Save'
