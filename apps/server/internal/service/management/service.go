@@ -395,6 +395,33 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 	return result, nil
 }
 
+// shareImagePackageIDs resolves the package IDs affected by a visibility change.
+// UpdatePackageMeta carries the package ID directly, while restore paths carry a
+// revision, trash, or request ID, so the affected package rows must be resolved
+// before the purge can target the right token.
+func (s *Service) shareImagePackageIDs(ctx context.Context, op string, in Input) []int64 {
+	var query string
+	var arg any
+	switch op {
+	case "UpdatePackageMeta":
+		return []int64{in.ID}
+	case "RestoreRevision":
+		query, arg = "SELECT object_key::bigint FROM content_revisions WHERE id=? AND entity='package'", in.ID
+	case "RestoreTrash":
+		query, arg = "SELECT object_key::bigint FROM content_trash WHERE id=? AND entity='package'", in.ID
+	case "RevertRequest":
+		query, arg = "SELECT DISTINCT object_key::bigint FROM content_revisions WHERE request_id=? AND entity='package'", in.RequestID
+	default:
+		return []int64{in.ID}
+	}
+	var packageIDs []int64
+	if err := s.Store.DB.WithContext(ctx).Raw(query, arg).Scan(&packageIDs).Error; err != nil {
+		slog.Default().Error("share image package lookup failed", "operation", op, "error", err)
+		return nil
+	}
+	return packageIDs
+}
+
 // invalidateShareImages resolves the app paths and hands the purge to the
 // configured queue. Errors are logged but never returned: visibility already
 // committed, and the queue retries delivery.
@@ -453,7 +480,9 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 			}
 			// Queue, never await, the share-image purge: a CDN or web outage must not
 			// turn a committed visibility change into a failed admin write.
-			s.invalidateShareImages(ctx, in.ID)
+			for _, packageID := range s.shareImagePackageIDs(ctx, op, in) {
+				s.invalidateShareImages(ctx, packageID)
+			}
 		}
 	}()
 	// CI may carry all ten release-note languages as a consistency assertion.

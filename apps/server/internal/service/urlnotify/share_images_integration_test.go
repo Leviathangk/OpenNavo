@@ -10,9 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/service/management"
+	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -125,4 +128,76 @@ func TestShareImagePurgeFailureDoesNotBlockVisibilityChange(t *testing.T) {
 	}
 	require.Empty(t, queuedPurges(t, f.st))
 	require.Equal(t, "announced", state, "the retry completes the queued origin invalidation")
+}
+
+// requireShareImagePurgeFor asserts the restore path resolved the package token
+// and queued one share-image obligation per site language.
+func requireShareImagePurgeFor(t *testing.T, st *store.Store, token string) {
+	t.Helper()
+	var items []struct{ URL, Path string }
+	require.NoError(t, st.DB.Table("url_notify_outbox").
+		Select("url,path").
+		Where("state='pending' AND path LIKE ?", "%/apps/"+token).
+		Scan(&items).Error)
+	require.Len(t, items, len(i18n.SiteLocales), "every site language queues the package path")
+	for _, item := range items {
+		require.Contains(t, item.URL, token)
+		require.True(t, strings.HasSuffix(item.Path, "/apps/"+token), item.Path)
+	}
+}
+
+func TestVisibilityRestoreQueuesShareImagePurgeForPackage(t *testing.T) {
+	ctx := context.Background()
+	setup := func(t *testing.T, id int64, token string) (feed, *management.Service) {
+		t.Helper()
+		f := newFeed(t)
+		_, err := f.run(ctx)
+		require.NoError(t, err)
+		shareImageFixture(t, f, id, token)
+		svc := &management.Service{Store: f.st, Config: config.Config{WebBaseURL: "https://opennavo.example"}, InvalidateShareImages: func(ctx context.Context, token string) error {
+			return f.notifier.QueueShareImagePurge(ctx, token)
+		}}
+		return f, svc
+	}
+
+	t.Run("RestoreRevision", func(t *testing.T) {
+		f, svc := setup(t, 1997, "share-image-restore")
+		_, err := svc.Execute(ctx, "UpdatePackageMeta", management.Input{ID: 1997, Body: map[string]any{"private": true, "visibilityReason": "Visibility fixture"}})
+		require.NoError(t, err)
+		var revision int64
+		require.NoError(t, f.st.DB.Raw("SELECT max(id) FROM content_revisions WHERE entity='package' AND object_key='1997'").Scan(&revision).Error)
+		require.Positive(t, revision)
+		_, err = svc.Execute(ctx, "UpdatePackageMeta", management.Input{ID: 1997, Body: map[string]any{"private": false}})
+		require.NoError(t, err)
+		finishFeed(t, f)
+
+		_, err = svc.Execute(ctx, "RestoreRevision", management.Input{ID: revision, Body: map[string]any{}})
+		require.NoError(t, err)
+		var private bool
+		require.NoError(t, f.st.DB.Raw("SELECT private FROM package_meta WHERE package_id=1997").Scan(&private).Error)
+		require.True(t, private, "the restored revision makes the package private again")
+		require.Contains(t, queuedPurges(t, f.st), "opennavo.example/_og/")
+		requireShareImagePurgeFor(t, f.st, "share-image-restore")
+	})
+
+	t.Run("RevertRequest", func(t *testing.T) {
+		f, svc := setup(t, 1998, "share-image-revert")
+		_, err := svc.Execute(ctx, "UpdatePackageMeta", management.Input{ID: 1998, Body: map[string]any{"private": true, "visibilityReason": "Visibility fixture"}})
+		require.NoError(t, err)
+		finishFeed(t, f)
+
+		request := uuid.NewString()
+		op := &domain.Operation{RequestID: request, Name: "updatePackageMeta", Permissions: []string{"*"}, RequiredPermissions: []string{"catalog:package:edit"}, AllowDelete: true}
+		_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", management.Input{ID: 1998, Body: map[string]any{"private": false}})
+		require.NoError(t, err)
+		finishFeed(t, f)
+
+		_, err = svc.Execute(ctx, "RevertRequest", management.Input{RequestID: request, Body: map[string]any{}})
+		require.NoError(t, err)
+		var private bool
+		require.NoError(t, f.st.DB.Raw("SELECT private FROM package_meta WHERE package_id=1998").Scan(&private).Error)
+		require.True(t, private, "reverting the public update restores the private state")
+		require.Contains(t, queuedPurges(t, f.st), "opennavo.example/_og/")
+		requireShareImagePurgeFor(t, f.st, "share-image-revert")
+	})
 }
