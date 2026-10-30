@@ -214,7 +214,6 @@
     "disabled": "Deaktiviert",
     "deprecated": "Veraltet",
     "homepage": "Website",
-    "fromTap": "Aus",
     "stats": {
       "label": "Statistik",
       "installs30d": "Installationen (30 Tage)",
@@ -438,7 +437,6 @@
       "downloadVaries": "Der Download hängt von der macOS-Version ab. Wählen Sie ihn daher auf der offiziellen Website aus:",
       "downloadOfficial": "Laden Sie die Software von der offiziellen Website herunter:",
       "sha": "SHA-256 prüft nur, ob der Download vollständig ist; es ist keine Sicherheitszertifizierung.",
-      "shaLink": "SHA-256 und Downloadadresse ansehen",
       "uninstallTitle": "Befehl zum Deinstallieren",
       "uninstall": "Eine normale Deinstallation entfernt die App, behält aber ihre Einstellungen und Caches.",
       "zapTitle": "Gründliche Bereinigung (optional)",
@@ -675,12 +673,13 @@
       "token": "Paketkennung",
       "yes": "Ja",
       "no": "Nein",
-      "checked": "Geprüft"
+      "checked": "Geprüft",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
       "checked": "Repository-Daten am {date} geprüft.",
-      "updated": "Vor {days} Tagen aktualisiert",
+      "updated": "Vor {days} Tag aktualisiert | Vor {days} Tagen aktualisiert",
       "unmaintained": "Wird möglicherweise nicht mehr gepflegt",
       "archived": "Archiviert"
     },
@@ -739,8 +738,7 @@
       "builtFor": "Build für macOS {versions}"
     },
     "install": {
-      "title": "So installieren Sie {name} auf dem Mac",
-      "run": "Führen Sie im Terminal Folgendes aus:"
+      "title": "So installieren Sie {name} auf dem Mac"
     },
     "uninstall": {
       "title": "{name} deinstallieren und Daten optional bereinigen",

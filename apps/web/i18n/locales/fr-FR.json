@@ -214,7 +214,6 @@
     "disabled": "Désactivé",
     "deprecated": "Obsolète",
     "homepage": "Site web",
-    "fromTap": "Source :",
     "stats": {
       "label": "Statistiques",
       "installs30d": "Installations sur 30 jours",
@@ -438,7 +437,6 @@
       "downloadVaries": "Le fichier varie selon la version de macOS ; choisissez le bon sur le site officiel :",
       "downloadOfficial": "Téléchargez-le sur le site officiel :",
       "sha": "Le SHA-256 vérifie seulement que le téléchargement est complet ; ce n’est pas une certification de sécurité.",
-      "shaLink": "Voir le SHA-256 et l’adresse de téléchargement",
       "uninstallTitle": "Commande de désinstallation",
       "uninstall": "Une désinstallation standard supprime l’app mais conserve ses réglages et ses caches.",
       "zapTitle": "Nettoyage approfondi (facultatif)",
@@ -675,12 +673,13 @@
       "token": "Identifiant",
       "yes": "Oui",
       "no": "Non",
-      "checked": "Vérifié le"
+      "checked": "Vérifié le",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
       "checked": "Données du dépôt vérifiées le {date}.",
-      "updated": "Mis à jour il y a {days} jours",
+      "updated": "Mis à jour il y a {days} jour | Mis à jour il y a {days} jours",
       "unmaintained": "La maintenance a peut-être cessé",
       "archived": "Archivé"
     },
@@ -739,8 +738,7 @@
       "builtFor": "Version pour macOS {versions}"
     },
     "install": {
-      "title": "Comment installer {name} sur Mac",
-      "run": "Dans « Terminal », exécutez :"
+      "title": "Comment installer {name} sur Mac"
     },
     "uninstall": {
       "title": "Désinstaller {name} et nettoyer éventuellement ses données",

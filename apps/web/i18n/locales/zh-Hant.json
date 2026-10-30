@@ -214,7 +214,6 @@
     "disabled": "已停用",
     "deprecated": "已棄用",
     "homepage": "主頁",
-    "fromTap": "來自",
     "stats": {
       "label": "資料",
       "installs30d": "近 30 天安裝",
@@ -438,7 +437,6 @@
       "downloadVaries": "下載檔案因系統版本而不同，請在官網選擇：",
       "downloadOfficial": "請從官網下載：",
       "sha": "SHA-256 只用來核對下載的檔案是否完整，不代表安全認證。",
-      "shaLink": "檢視 SHA-256 和下載網址",
       "uninstallTitle": "解除安裝命令",
       "uninstall": "普通解除安裝會刪除應用本身，設定和快取會保留。",
       "zapTitle": "深度清理（可選）",
@@ -675,7 +673,8 @@
       "token": "套件識別碼",
       "yes": "是",
       "no": "否",
-      "checked": "核查日期"
+      "checked": "核查日期",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
@@ -739,8 +738,7 @@
       "builtFor": "適用於 macOS {versions} 的版本"
     },
     "install": {
-      "title": "如何在 Mac 上安裝 {name}",
-      "run": "在“終端”中執行："
+      "title": "如何在 Mac 上安裝 {name}"
     },
     "uninstall": {
       "title": "解除安裝 {name} 與可選的資料清理",

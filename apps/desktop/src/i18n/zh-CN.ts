@@ -330,7 +330,6 @@ export default {
       unchecked: '暂无核查日期',
       active: '未被 Homebrew 禁用'
     },
-    fromTap: '来自',
     thirdPartyTap: '第三方仓库',
     stats: {
       label: '数据',
@@ -475,6 +474,7 @@ export default {
       developer: '开发者',
       homepage: '主页',
       token: '软件包标识符',
+      bundleId: 'Bundle ID',
       installedVersion: '已安装版本',
       installLocation: '安装位置',
       yes: '是',

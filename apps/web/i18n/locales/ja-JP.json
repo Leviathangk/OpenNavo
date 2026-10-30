@@ -214,7 +214,6 @@
     "disabled": "無効化済み",
     "deprecated": "非推奨",
     "homepage": "ホームページ",
-    "fromTap": "提供元",
     "stats": {
       "label": "データ",
       "installs30d": "過去 30 日間のインストール数",
@@ -438,7 +437,6 @@
       "downloadVaries": "ダウンロードするファイルは macOS のバージョンで異なるため、公式サイトで選んでください：",
       "downloadOfficial": "公式サイトからダウンロードしてください：",
       "sha": "SHA-256 はダウンロードしたファイルが完全かを確かめるためのもので、安全性の認証ではありません。",
-      "shaLink": "SHA-256 とダウンロード URL を見る",
       "uninstallTitle": "アンインストールのコマンド",
       "uninstall": "通常のアンインストールではアプリ本体だけを削除し、設定とキャッシュは残ります。",
       "zapTitle": "完全な削除（任意）",
@@ -675,7 +673,8 @@
       "token": "パッケージ識別子",
       "yes": "はい",
       "no": "いいえ",
-      "checked": "確認日"
+      "checked": "確認日",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
@@ -739,8 +738,7 @@
       "builtFor": "macOS {versions} 向けのビルド"
     },
     "install": {
-      "title": "Mac に {name} をインストールする方法",
-      "run": "「ターミナル」で次のコマンドを実行します："
+      "title": "Mac に {name} をインストールする方法"
     },
     "uninstall": {
       "title": "{name} のアンインストールと任意のデータ削除",

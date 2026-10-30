@@ -10,19 +10,16 @@ import {
 describe('repository signals', () => {
   const boundaries = [999, 1000, 12345, 999950, 1_049_999, 1_200_000, 1e9];
   const localized = [
-    ['en-US', ['999', '1.0K', '12.3K', '1.0M', '1.0M', '1.2M', '1.0B']],
-    ['zh-CN', ['999', '1000.0', '1.2万', '100.0万', '105.0万', '120.0万', '10.0亿']],
-    ['zh-Hant', ['999', '1000.0', '1.2萬', '100.0萬', '105.0萬', '120.0萬', '10.0億']],
-    ['ja-JP', ['999', '1000.0', '1.2万', '100.0万', '105.0万', '120.0万', '10.0億']],
-    ['es-ES', ['999', '1,0\u00a0mil', '12,3\u00a0mil', '1,0\u00a0M', '1,0\u00a0M', '1,2\u00a0M', '1,0 mil millones']],
-    ['pt-BR', ['999', '1,0\u00a0mil', '12,3\u00a0mil', '1,0\u00a0mi', '1,0\u00a0mi', '1,2\u00a0mi', '1,0\u00a0bi']],
-    [
-      'ru-RU',
-      ['999', '1,0\u00a0тыс.', '12,3\u00a0тыс.', '1,0\u00a0млн', '1,0\u00a0млн', '1,2\u00a0млн', '1,0\u00a0млрд']
-    ],
-    ['de-DE', ['999', '1000,0', '12.345,0', '999.950,0', '1,0\u00a0Mio.', '1,2\u00a0Mio.', '1,0\u00a0Mrd.']],
-    ['fr-FR', ['999', '1,0\u00a0k', '12,3\u00a0k', '1,0\u00a0M', '1,0\u00a0M', '1,2\u00a0M', '1,0\u00a0Md']],
-    ['it-IT', ['999', '1,0K', '12,3K', '1,0\u00a0Mln', '1,0\u00a0Mln', '1,2\u00a0Mln', '1,0\u00a0Mld']]
+    ['en-US', ['999', '1K', '12.3K', '1M', '1M', '1.2M', '1B']],
+    ['zh-CN', ['999', '1,000', '1.2万', '100万', '105万', '120万', '10亿']],
+    ['zh-Hant', ['999', '1,000', '1.2萬', '100萬', '105萬', '120萬', '10億']],
+    ['ja-JP', ['999', '1,000', '1.2万', '100万', '105万', '120万', '10億']],
+    ['es-ES', ['999', '1\u00a0mil', '12,3\u00a0mil', '1\u00a0M', '1\u00a0M', '1,2\u00a0M', '1 mil millones']],
+    ['pt-BR', ['999', '1\u00a0mil', '12,3\u00a0mil', '1\u00a0mi', '1\u00a0mi', '1,2\u00a0mi', '1\u00a0bi']],
+    ['ru-RU', ['999', '1\u00a0тыс.', '12,3\u00a0тыс.', '1\u00a0млн', '1\u00a0млн', '1,2\u00a0млн', '1\u00a0млрд']],
+    ['de-DE', ['999', '1.000', '12.345', '1\u00a0Mio.', '1\u00a0Mio.', '1,2\u00a0Mio.', '1\u00a0Mrd.']],
+    ['fr-FR', ['999', '1\u00a0k', '12,3\u00a0k', '1\u00a0M', '1\u00a0M', '1,2\u00a0M', '1\u00a0Md']],
+    ['it-IT', ['999', '1K', '12,3K', '1\u00a0Mln', '1\u00a0Mln', '1,2\u00a0Mln', '1\u00a0Mld']]
   ] as const;
   for (const [locale, expected] of localized) {
     it.each(boundaries.map((stars, index) => [stars, expected[index]] as const))(
@@ -37,8 +34,21 @@ describe('repository signals', () => {
   it('rounds ties consistently and carries into the next compact unit', () => {
     expect(formatRepoStars(12_350, 'en-US')).toBe('12.4K');
     expect(formatRepoStars(999_949, 'en-US')).toBe('999.9K');
-    expect(formatRepoStars(999_950, 'en-US')).toBe('1.0M');
+    expect(formatRepoStars(999_950, 'en-US')).toBe('1M');
     expect(formatRepoStars(1_050_000, 'en-US')).toBe('1.1M');
+  });
+
+  it.each([
+    ['zh-CN', 1_000, '1,000'],
+    ['ja-JP', 1_000, '1,000'],
+    ['de-DE', 1_000, '1.000'],
+    ['zh-CN', 999_950, '100万'],
+    ['ja-JP', 999_950, '100万'],
+    ['de-DE', 999_950, '1\u00a0Mio.']
+  ] as const)('rolls compact stars over in %s without a 1000.0 label', (locale, stars, expected) => {
+    expect(formatRepoStars(stars, locale)).toBe(expected);
+    expect(formatRepoStars(stars, locale)).not.toContain('1000.0');
+    expect(formatRepoStars(stars, locale)).not.toContain('1000,0');
   });
 
   it.each(['invalid', '2026-13-40', '9999999999999999', '', ' ', null, undefined, 42, {}])(

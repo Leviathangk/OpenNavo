@@ -98,10 +98,13 @@ const installNotice = computed(() => {
       : state === 'deprecated'
         ? 'package.deprecatedNotice'
         : 'package.staleNotice';
+  // A disabled package uses Homebrew's current reason before any stale pause notice.
   const reason =
-    (state === 'deprecated' ? value.deprecation?.reason : value.disable?.reason) ??
-    value.homebrewStatus?.reason ??
-    t('package.noReason');
+    (state === 'disabled'
+      ? (value.homebrewStatus?.reason ?? value.disable?.reason)
+      : state === 'deprecated'
+        ? (value.deprecation?.reason ?? value.homebrewStatus?.reason)
+        : (value.disable?.reason ?? value.homebrewStatus?.reason)) ?? t('package.noReason');
   return { text: t(key, { reason }), disabled: state === 'disabled' };
 });
 

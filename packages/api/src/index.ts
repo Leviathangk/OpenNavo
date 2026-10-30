@@ -15,7 +15,6 @@ export type PackageSummary = Schemas['PackageSummary'];
 export type PackageDetail = Schemas['PackageDetail'];
 /** Repository signals from the public package detail contract; null when no public repository is known. */
 export type PackageRepository = Schemas['RepositoryFact'] | null;
-export type PackageDetailWithRepository = PackageDetail & { repository?: PackageRepository };
 export type CaskPlatform = Schemas['CaskPlatform'];
 export type CaskArtifact = Schemas['CaskArtifact'];
 export type Artifacts = Schemas['Artifacts'];

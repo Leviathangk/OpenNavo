@@ -87,6 +87,25 @@ it('keeps Get and Homepage in one right-aligned row inside the header actions', 
   expect(actions.textContent).not.toMatch(/Official download|SHA-256|Checked/);
 });
 
+it('renders the primary category first and does not repeat it in the tag row', async () => {
+  const value = pkg();
+  value.primaryCategory = { slug: 'developer-tools', name: 'Developer Tools' } as never;
+  value.categories = [
+    { slug: 'developer-tools', name: 'Developer Tools' },
+    { slug: 'utilities', name: 'Utilities' }
+  ] as never;
+  const page = await render(value);
+  const tags = page.querySelector('[data-testid="package-header-tags"]')!;
+  const links = [...tags.querySelectorAll('a')].map(link => [link.textContent, link.getAttribute('href')]);
+  expect(links.filter(([label]) => label === 'Developer Tools')).toEqual([
+    ['Developer Tools', '/categories/developer-tools']
+  ]);
+  expect(links).toContainEqual(['Utilities', '/categories/utilities']);
+  expect(links.findIndex(([label]) => label === 'Developer Tools')).toBeLessThan(
+    links.findIndex(([label]) => label === 'Utilities')
+  );
+});
+
 it('renders the exact verified source badge in the header tag row', async () => {
   const page = await render();
   const badge = page.querySelector('[data-testid="package-source-badge"]')!;

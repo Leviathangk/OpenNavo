@@ -330,7 +330,6 @@
       "unchecked": "Kein Prüfdatum erfasst",
       "active": "Von Homebrew nicht deaktiviert"
     },
-    "fromTap": "Aus",
     "thirdPartyTap": "Drittanbieter-Tap",
     "stats": {
       "label": "Statistik",
@@ -484,11 +483,12 @@
       "no": "Nein",
       "checked": "Geprüft",
       "downloadSource": "Downloadquelle",
-      "fontFiles": "Schriftdateien"
+      "fontFiles": "Schriftdateien",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
-      "updated": "Vor {days} Tagen aktualisiert",
+      "updated": "Vor {days} Tag aktualisiert | Vor {days} Tagen aktualisiert",
       "unmaintained": "Wird möglicherweise nicht mehr gepflegt",
       "archived": "Archiviert",
       "checked": "Repository-Daten am {date} geprüft."

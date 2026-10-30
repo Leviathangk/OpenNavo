@@ -82,22 +82,26 @@ export function formatRepoStars(stars: number, locale: SiteLocale = 'en-US'): st
   if (value < 1000) return new Intl.NumberFormat(locale).format(value);
   const options: Intl.NumberFormatOptions = {
     notation: 'compact',
-    minimumFractionDigits: 1,
     maximumFractionDigits: 1,
     roundingMode: 'halfExpand'
   };
   const parts = new Intl.NumberFormat(locale, options).formatToParts(value);
-  // Some short locale forms stop at millions (Spanish: 1000 M). The long form
-  // supplies the localized next unit, e.g. "1,0 mil millones", without inventing a suffix.
+  const compact = parts.some(part => part.type === 'compact');
   const integer = Number(
     parts
       .filter(part => part.type === 'integer')
       .map(part => part.value)
       .join('')
   );
-  if (integer >= 1000 && parts.some(part => part.type === 'compact'))
+  if (compact && integer < 1000) return parts.map(part => part.value).join('');
+  // Some short locale forms stop at millions (Spanish: 1000 M). The long form
+  // supplies the localized next unit, e.g. "1 mil millones", without inventing a suffix.
+  if (compact && integer >= 1000)
     return new Intl.NumberFormat(locale, { ...options, compactDisplay: 'long' }).format(value);
-  return parts.map(part => part.value).join('');
+  // German short form keeps four-digit numbers grouped until one million, so 999,950
+  // would read 999.950. Add the half-expand carry so it rolls over to 1 Mio.
+  if (value >= 999_950) return new Intl.NumberFormat(locale, options).format(value + 50);
+  return new Intl.NumberFormat(locale).format(value);
 }
 
 /** Whole elapsed days for a pushed-at timestamp, or null for an invalid/future date. */

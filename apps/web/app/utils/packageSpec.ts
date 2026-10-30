@@ -97,7 +97,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
     const repo = repoText(
       signals,
       {
-        updated: days => t('package.repo.updated', { days }),
+        updated: days => t('package.repo.updated', { days }, days),
         unmaintained: t('package.repo.unmaintained'),
         archived: t('package.repo.archived')
       },
@@ -119,7 +119,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
           ? undefined
           : {
               label: `★${formatRepoStars(signals.stars, locale)}`,
-              href: repository?.url ?? undefined,
+              href: repository?.url ?? repositoryUrl,
               checked: signals.checkedAt
                 ? t('package.repo.checked', { date: formatDate(signals.checkedAt, { locale }) })
                 : undefined
@@ -130,7 +130,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
 
   rows.push(...originalRows(['developer', 'teamId', 'license', 'homebrew', 'names']));
   if (pkg.kind === 'link' && pkg.bundleIds?.length)
-    rows.push({ key: 'bundle', label: 'Bundle ID', value: pkg.bundleIds.join(' '), mono: true });
+    rows.push({ key: 'bundle', label: t('package.spec.bundleId'), value: pkg.bundleIds.join(' '), mono: true });
   const homepage = httpsUrl(pkg.kind === 'link' ? pkg.link?.homepage : pkg.homepage) ?? httpsUrl(pkg.homepage);
   if (homepage)
     rows.push({ key: 'homepage', label: t('package.spec.homepage'), value: displayUrl(homepage), href: homepage });

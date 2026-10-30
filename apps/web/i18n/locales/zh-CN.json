@@ -214,7 +214,6 @@
     "disabled": "已停用",
     "deprecated": "已弃用",
     "homepage": "主页",
-    "fromTap": "来自",
     "stats": {
       "label": "数据",
       "installs30d": "近 30 天安装",
@@ -438,7 +437,6 @@
       "downloadVaries": "下载文件因系统版本而不同，请在官网选择：",
       "downloadOfficial": "请从官网下载：",
       "sha": "SHA-256 只用来核对下载的文件是否完整，不代表安全认证。",
-      "shaLink": "查看 SHA-256 和下载地址",
       "uninstallTitle": "卸载命令",
       "uninstall": "普通卸载会删除应用本身，设置和缓存会保留。",
       "zapTitle": "深度清理（可选）",
@@ -675,7 +673,8 @@
       "token": "软件包标识符",
       "yes": "是",
       "no": "否",
-      "checked": "核查日期"
+      "checked": "核查日期",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
@@ -739,8 +738,7 @@
       "builtFor": "适用于 macOS {versions} 的版本"
     },
     "install": {
-      "title": "如何在 Mac 上安装 {name}",
-      "run": "在“终端”中运行："
+      "title": "如何在 Mac 上安装 {name}"
     },
     "uninstall": {
       "title": "卸载 {name} 与可选的数据清理",

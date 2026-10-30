@@ -330,7 +330,6 @@
       "unchecked": "暫無核查日期",
       "active": "未被 Homebrew 停用"
     },
-    "fromTap": "來自",
     "thirdPartyTap": "第三方倉庫",
     "stats": {
       "label": "資料",
@@ -481,6 +480,7 @@
       "developer": "開發者",
       "homepage": "主頁",
       "token": "套件識別碼",
+      "bundleId": "Bundle ID",
       "installedVersion": "已安裝版本",
       "installLocation": "安裝位置",
       "yes": "是",

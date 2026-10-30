@@ -214,7 +214,6 @@
     "disabled": "Desativado",
     "deprecated": "Descontinuado",
     "homepage": "Página inicial",
-    "fromTap": "Fonte",
     "stats": {
       "label": "Dados",
       "installs30d": "Instalações nos últimos 30 dias",
@@ -438,7 +437,6 @@
       "downloadVaries": "O download muda conforme a versão do macOS, então escolha um no site oficial:",
       "downloadOfficial": "Baixe no site oficial:",
       "sha": "O SHA-256 só confere se o download está completo; não é uma certificação de segurança.",
-      "shaLink": "Ver o SHA-256 e o endereço de download",
       "uninstallTitle": "Comando para desinstalar",
       "uninstall": "Uma desinstalação comum remove o App e mantém os ajustes e caches.",
       "zapTitle": "Limpeza completa (opcional)",
@@ -675,12 +673,13 @@
       "token": "Identificador",
       "yes": "Sim",
       "no": "Não",
-      "checked": "Verificado"
+      "checked": "Verificado",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
       "checked": "Dados do repositório verificados em {date}.",
-      "updated": "Atualizado há {days} dias",
+      "updated": "Atualizado há {days} dia | Atualizado há {days} dias",
       "unmaintained": "Pode não receber mais manutenção",
       "archived": "Arquivado"
     },
@@ -739,8 +738,7 @@
       "builtFor": "Versão para macOS {versions}"
     },
     "install": {
-      "title": "Como instalar o {name} no Mac",
-      "run": "No “Terminal”, execute:"
+      "title": "Como instalar o {name} no Mac"
     },
     "uninstall": {
       "title": "Desinstalar o {name} e limpeza opcional de dados",

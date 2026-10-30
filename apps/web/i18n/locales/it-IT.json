@@ -214,7 +214,6 @@
     "disabled": "Disattivato",
     "deprecated": "Deprecato",
     "homepage": "Sito web",
-    "fromTap": "Da",
     "stats": {
       "label": "Statistiche",
       "installs30d": "Installazioni in 30 giorni",
@@ -438,7 +437,6 @@
       "downloadVaries": "Il download varia in base alla versione di macOS, quindi sceglilo sul sito ufficiale:",
       "downloadOfficial": "Scaricalo dal sito ufficiale:",
       "sha": "Lo SHA-256 serve solo a verificare che il download sia completo: non è una certificazione di sicurezza.",
-      "shaLink": "Mostra lo SHA-256 e l’indirizzo di download",
       "uninstallTitle": "Comando di disinstallazione",
       "uninstall": "Una disinstallazione normale rimuove l’app e ne conserva impostazioni e cache.",
       "zapTitle": "Pulizia approfondita (facoltativa)",
@@ -675,12 +673,13 @@
       "token": "Identificatore",
       "yes": "Sì",
       "no": "No",
-      "checked": "Verificato"
+      "checked": "Verificato",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
       "checked": "Dati del repository verificati il {date}.",
-      "updated": "Aggiornato {days} giorni fa",
+      "updated": "Aggiornato {days} giorno fa | Aggiornato {days} giorni fa",
       "unmaintained": "La manutenzione potrebbe essere terminata",
       "archived": "Archiviato"
     },
@@ -739,8 +738,7 @@
       "builtFor": "Versione per macOS {versions}"
     },
     "install": {
-      "title": "Come installare {name} sul Mac",
-      "run": "Esegui in “Terminale”:"
+      "title": "Come installare {name} sul Mac"
     },
     "uninstall": {
       "title": "Disinstallazione di {name} e pulizia facoltativa dei dati",

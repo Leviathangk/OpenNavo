@@ -93,6 +93,41 @@ describe('Package detail product decisions', () => {
     }
   });
 
+  it('uses the row href for stars when stars.href is absent, still requiring https', () => {
+    const wrapper = mount(OnPackageSpecCard, {
+      props: {
+        rows: [
+          {
+            key: 'repository',
+            label: 'Repository',
+            value: 'Open source',
+            href: 'https://github.com/acme/fallback',
+            stars: { label: '★1K' }
+          },
+          {
+            key: 'insecure',
+            label: 'Insecure',
+            value: 'Open source',
+            href: 'javascript:alert(1)',
+            stars: { label: '★2K' }
+          }
+        ]
+      }
+    });
+    try {
+      const links = wrapper.findAll('a');
+      expect(links).toHaveLength(2);
+      expect(links.map(link => link.attributes('href'))).toEqual([
+        'https://github.com/acme/fallback',
+        'https://github.com/acme/fallback'
+      ]);
+      expect(wrapper.text()).toContain('★1K');
+      expect(wrapper.html()).not.toContain('javascript:');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('keeps one overall date and puts the repository date in an accessible, tappable star tooltip', async () => {
     const wrapper = mount(OnPackageSpecCard, {
       props: {

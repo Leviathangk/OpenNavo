@@ -330,7 +330,6 @@
       "unchecked": "確認日の記録なし",
       "active": "Homebrew で無効化されていません"
     },
-    "fromTap": "提供元",
     "thirdPartyTap": "サードパーティのリポジトリ",
     "stats": {
       "label": "データ",
@@ -484,7 +483,8 @@
       "no": "いいえ",
       "checked": "確認日",
       "downloadSource": "ダウンロード元",
-      "fontFiles": "フォントファイル"
+      "fontFiles": "フォントファイル",
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",

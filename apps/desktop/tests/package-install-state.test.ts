@@ -8,6 +8,7 @@ import type { LocalItem } from '@/ipc/client';
 import PackageLayout from '@/pages/package/PackageLayout.vue';
 import { i18n } from '@/i18n';
 import PackageOverview from '@/pages/package/PackageOverview.vue';
+import PackageDetails from '@/pages/package/PackageDetails.vue';
 import DetailHeader from '@/components/package/DetailHeader.vue';
 import PackageGetButton from '@/components/package/PackageGetButton.vue';
 import { setup } from './helpers';
@@ -165,6 +166,38 @@ it.each(lifecycleCases)(
   }
 );
 
+it('prefers the disabled Homebrew reason over a stale pause reason in PackageOverview', async () => {
+  state.local = null;
+  state.detail = {
+    kind: 'cask',
+    token: 'disabled-example',
+    displayName: 'Disabled Example',
+    names: [],
+    version: '1.0.0',
+    installCommand: 'brew install --cask disabled-example',
+    artifacts: { apps: [], binaries: [], pkgs: [], entries: [] },
+    supports: { status: 'known', arm64: true, x86_64: true },
+    installs: { d30: 0, d90: 0, d365: 0 },
+    homebrewStatus: { state: 'disabled', reason: 'discontinued upstream' },
+    disable: { reason: 'stale pause notice' }
+  } as unknown as PackageDetail;
+  const { pinia, router } = await setup('/package/cask/disabled-example');
+  const wrapper = mount(PackageOverview, {
+    global: {
+      plugins: [pinia, router, i18n],
+      stubs: { MonthlyInstallsCard: true, MasAlsoPanel: true, DetailHeader: true, DetailStats: true }
+    }
+  });
+  try {
+    const note = wrapper.get('[data-testid="package-install-command"] [role="note"]');
+    expect(note.text()).toContain('discontinued upstream');
+    expect(note.text()).not.toContain('stale pause notice');
+  } finally {
+    wrapper.unmount();
+    state.detail = null;
+  }
+});
+
 it.each(DESKTOP_LOCALES)('renders the paused chip from real desktop messages in %s', async locale => {
   const { pinia, router } = await setup('/package/cask/iterm2');
   i18n.global.locale.value = locale;
@@ -194,6 +227,51 @@ it.each(DESKTOP_LOCALES)('renders the paused chip from real desktop messages in 
   } finally {
     header.unmount();
     i18n.global.locale.value = 'zh-CN';
+  }
+});
+
+it('renders install details with the SHA copy control, artifacts and caveats', async () => {
+  state.local = null;
+  state.detail = {
+    kind: 'cask',
+    token: 'details-example',
+    displayName: 'Details Example',
+    names: ['Details Example', 'Former Details'],
+    version: '1.0.0',
+    tap: 'homebrew/cask',
+    downloadUrl: 'https://downloads.example.com/details-example.dmg',
+    downloadSha256: 'a'.repeat(64),
+    sourceUrl: 'https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/d/details-example.rb',
+    formulaeUrl: 'https://formulae.brew.sh/cask/details-example',
+    repoUrl: null,
+    kegOnly: false,
+    caveats: 'Details caveat text',
+    artifacts: {
+      apps: ['Details Example.app'],
+      binaries: ['details-example'],
+      pkgs: [],
+      entries: [
+        {
+          type: 'app',
+          phase: 'install',
+          sources: ['Details Example.app'],
+          declaration: { app: ['Details Example.app'] }
+        }
+      ]
+    },
+    supports: { status: 'known', arm64: true, x86_64: true },
+    installs: { d30: 0, d90: 0, d365: 0 }
+  } as unknown as PackageDetail;
+  const { pinia, router } = await setup('/package/cask/details-example');
+  const wrapper = mount(PackageDetails, { global: { plugins: [pinia, router, i18n] } });
+  try {
+    expect(wrapper.text()).toContain('Details caveat text');
+    expect(wrapper.text()).toContain(`${'a'.repeat(16)}…`);
+    expect(wrapper.text()).toContain('Details Example.app');
+    expect(wrapper.get('button').text()).toContain('SHA-256');
+  } finally {
+    wrapper.unmount();
+    state.detail = null;
   }
 });
 

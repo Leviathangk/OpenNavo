@@ -61,8 +61,8 @@ const isHttps = (href: string | undefined): href is string => Boolean(href && /^
           <span v-if="row.stars" class="inline-flex items-center gap-4px">
             <span aria-hidden="true"> · </span>
             <a
-              v-if="isHttps(row.stars.href)"
-              :href="row.stars.href"
+              v-if="isHttps(row.stars.href ?? row.href)"
+              :href="row.stars.href ?? row.href"
               target="_blank"
               rel="noopener noreferrer"
               class="inline-flex max-w-full items-center gap-4px text-ink-primary no-underline hover:underline"

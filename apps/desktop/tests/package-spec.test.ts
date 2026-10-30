@@ -43,7 +43,10 @@ describe('desktop quick-info field parity', () => {
     expect(spec.find(row => row.key === 'source')?.value).toBe('github.com/ELY-Open-Source/ElyOffice');
     expect(spec.find(row => row.key === 'openSource')?.href).toBe('https://github.com/ELY-Open-Source/ElyOffice');
     expect(spec.find(row => row.key === 'teamId')?.value).toBe('EXAMPLE123');
-    expect(spec.find(row => row.key === 'bundle')?.value).toBe('org.example.ely-office');
+    expect(spec.find(row => row.key === 'bundle')).toMatchObject({
+      label: 'package.spec.bundleId',
+      value: 'org.example.ely-office'
+    });
     expect(spec.find(row => row.key === 'homepage')?.href).toBe('https://ely.example/');
     expect(spec.some(row => ['auto', 'binaries', 'install'].includes(row.key))).toBe(false);
   });
@@ -78,6 +81,36 @@ describe('desktop quick-info field parity', () => {
       expect(spec.some(row => row.key === 'auto')).toBe(kind === 'cask');
     }
   );
+
+  it('uses the repository fallback URL for stars when the repository has no URL', () => {
+    const pkg = detail({
+      openSource: {
+        repo: 'acme/fallback',
+        url: 'https://github.com/acme/fallback',
+        license: 'MIT',
+        archived: false,
+        checkedAt: '2026-10-01T00:00:00Z'
+      } as PackageDetail['openSource'],
+      repository: { stars: 1000, archived: false } as PackageDetail['repository']
+    });
+    expect(rows(pkg).find(row => row.key === 'openSource')?.stars?.href).toBe('https://github.com/acme/fallback');
+  });
+
+  it('passes the repository age to the i18n plural selector', () => {
+    const pkg = detail({
+      repository: {
+        url: 'https://github.com/acme/one-day',
+        stars: 5,
+        pushedAt: '2026-10-29T00:00:00Z'
+      } as PackageDetail['repository']
+    });
+    const translate = (key: string, named: Record<string, unknown> = {}, plural?: number) =>
+      key === 'package.repo.updated' ? `Updated ${named.days} ${plural === 1 ? 'day' : 'days'} ago` : key;
+    expect(
+      packageSpec(pkg, null, null, translate as never, 'en-US', SPEC_NOW).rows.find(row => row.key === 'openSource')
+        ?.value
+    ).toContain('Updated 1 day ago');
+  });
 
   it.each([
     [{ status: 'unknown', arm64: false, x86_64: false }, 'Not confirmed'],

@@ -45,6 +45,19 @@ describe('Count formatting', () => {
     expect(formatCountCompact(999_950, { locale: 'en-US' })).toBe('1M');
     expect(formatCountCompact(3_000_000_000, { locale: 'en-US' })).toBe('3B');
   });
+
+  it.each([
+    ['ja-JP', 999_950, '100万'],
+    ['de-DE', 999_950, '1\u00a0Mio.'],
+    ['zh-CN', 999_950, '100万']
+  ] as const)('rolls compact counts over in %s without a 1000.0 label', (locale, value, expected) => {
+    expect(formatCountCompact(value, { locale })).toBe(expected);
+    expect(formatCountCompact(1_000, { locale })).not.toMatch(/1000[.,]0/);
+  });
+
+  it('uses the long compact unit when a short form runs to 1000 units', () => {
+    expect(formatCountCompact(1_000_000_000, { locale: 'es-ES' })).toBe('1 mil millones');
+  });
 });
 
 describe('Size and speed formatting', () => {

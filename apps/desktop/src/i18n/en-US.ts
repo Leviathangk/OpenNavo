@@ -337,7 +337,6 @@ const messages: MessageSchema = {
       unchecked: 'No check date recorded',
       active: 'Not disabled by Homebrew'
     },
-    fromTap: 'From',
     thirdPartyTap: 'Third-party tap',
     stats: {
       label: 'Stats',
@@ -489,6 +488,7 @@ const messages: MessageSchema = {
       developer: 'Developer',
       homepage: 'Homepage',
       token: 'Token',
+      bundleId: 'Bundle ID',
       installedVersion: 'Installed version',
       installLocation: 'Install location',
       yes: 'Yes',
@@ -497,7 +497,7 @@ const messages: MessageSchema = {
     repo: {
       stars: 'Stars',
       checked: 'Repository data checked {date}.',
-      updated: 'Updated {days} days ago',
+      updated: 'Updated {days} day ago | Updated {days} days ago',
       unmaintained: 'May no longer be maintained',
       archived: 'Archived'
     },
