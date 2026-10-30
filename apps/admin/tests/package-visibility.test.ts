@@ -21,27 +21,31 @@ const detail = {
   meta: { tags: [] }
 } as unknown as DataOf<'getAdminPackage'>;
 
+function mountBasicTab() {
+  return mount(BasicTab, {
+    props: { detail },
+    global: {
+      mocks: { $t: (key: string) => key },
+      components: { NGi, NGrid, NForm, NFormItem, NInput, NSwitch, NButton },
+      stubs: {
+        PermissionGate: { props: ['code'], template: '<slot />' },
+        NDescriptions: true,
+        NDescriptionsItem: true,
+        NCollapse: true,
+        NCollapseItem: true,
+        NInputNumber: true,
+        NColorPicker: true,
+        NDynamicTags: true,
+        NText: true
+      }
+    }
+  });
+}
+
 describe('Admin visibility form', () => {
   it.each(['hidden', 'private'] as const)('requires a reason before saving %s', async field => {
     update.mockClear();
-    const wrapper = mount(BasicTab, {
-      props: { detail },
-      global: {
-        mocks: { $t: (key: string) => key },
-        components: { NGi, NGrid, NForm, NFormItem, NInput, NSwitch, NButton },
-        stubs: {
-          PermissionGate: { props: ['code'], template: '<slot />' },
-          NDescriptions: true,
-          NDescriptionsItem: true,
-          NCollapse: true,
-          NCollapseItem: true,
-          NInputNumber: true,
-          NColorPicker: true,
-          NDynamicTags: true,
-          NText: true
-        }
-      }
-    });
+    const wrapper = mountBasicTab();
     const switches = wrapper.findAllComponents(NSwitch);
     await switches[field === 'hidden' ? 0 : 1]!.trigger('click');
     const save = wrapper.findAllComponents(NButton).find(button => button.text().endsWith('basic.save'))!;
@@ -68,5 +72,24 @@ describe('Admin visibility form', () => {
     expect(update).toHaveBeenLastCalledWith(42, expect.objectContaining({ [field]: false }));
     expect(update).toHaveBeenLastCalledWith(42, expect.not.objectContaining({ visibilityReason: expect.anything() }));
     wrapper.unmount();
+  });
+
+  it('shows the paused CDN purge warning alongside the success message', async () => {
+    const warning = 'CDN purge is pending; edge copies may persist until the purge is resumed.';
+    update.mockClear();
+    update.mockResolvedValueOnce({ data: { warning }, error: undefined } as never);
+    const message = { success: vi.fn(), warning: vi.fn() };
+    vi.stubGlobal('$message', message);
+    const wrapper = mountBasicTab();
+    const save = wrapper.findAllComponents(NButton).find(button => button.text().endsWith('basic.save'))!;
+
+    await save.trigger('click');
+    await flushPromises();
+
+    expect(message.success).toHaveBeenCalledWith('page.shared.saved');
+    expect(message.warning).toHaveBeenCalledWith(warning);
+    expect(wrapper.emitted('saved')).toHaveLength(1);
+    wrapper.unmount();
+    vi.unstubAllGlobals();
   });
 });

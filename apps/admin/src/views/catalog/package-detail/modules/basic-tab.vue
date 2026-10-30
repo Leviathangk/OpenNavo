@@ -80,10 +80,11 @@ async function save() {
   if (model.visibilityReason.trim()) body.visibilityReason = model.visibilityReason.trim();
   if (model.downloadSize !== loaded.downloadSize) body.downloadSize = model.downloadSize;
   if (model.accentColor !== loaded.accentColor) body.accentColor = model.accentColor?.toUpperCase() ?? null;
-  const { error } = await updatePackageMeta(props.detail.id, body);
+  const { data, error } = await updatePackageMeta(props.detail.id, body);
   saving.value = false;
   if (error) return;
   window.$message?.success($t('page.shared.saved'));
+  if (data?.warning) window.$message?.warning(data.warning);
   emit('saved');
 }
 </script>
