@@ -1,10 +1,31 @@
 package store
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestHistoryPatchTreatsPrivateAndReasonAsOneGroup(t *testing.T) {
+	before := HistoryState{"package_meta": {{"package_id": float64(1), "notes": "old"}}}
+	after := HistoryState{"package_meta": {{"package_id": float64(1), "notes": "new"}}}
+	current := HistoryState{"package_meta": {{"package_id": float64(1), "notes": "later", "private": true, "visibility_reason": "Owner decision"}}}
+	for _, target := range []HistoryState{before, after} {
+		patched := HistoryPatch(current, before, after, target)
+		require.Equal(t, true, patched["package_meta"][0]["private"])
+		require.Equal(t, "Owner decision", patched["package_meta"][0]["visibility_reason"])
+	}
+	// Only private changed in this revision; the unchanged reason still belongs
+	// to that decision and must be restored with it.
+	before["package_meta"][0]["private"] = false
+	before["package_meta"][0]["visibility_reason"] = "Original reason"
+	after["package_meta"][0] = maps.Clone(before["package_meta"][0])
+	after["package_meta"][0]["private"] = true
+	patched := HistoryPatch(current, before, after, before)
+	require.Equal(t, false, patched["package_meta"][0]["private"])
+	require.Equal(t, "Original reason", patched["package_meta"][0]["visibility_reason"])
+}
 
 func TestHistoryPatchPreservesFieldsOutsideOriginalMutation(t *testing.T) {
 	before := HistoryState{"package_meta": {}}

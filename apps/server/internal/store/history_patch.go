@@ -61,12 +61,23 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 				continue
 			}
 			for field, value := range desired {
+				if table == "package_meta" && (field == "private" || field == "visibility_reason") {
+					continue // Visibility and its required reason must move together.
+				}
 				// Creation grants content writes only; defaults must not roll back existing publication state or later audit attribution.
 				if before == nil && (field == "created_at" || field == "created_by" || field == "updated_at" || field == "updated_by" || table == "collections" && (field == "status" || field == "publish_at" || field == "unpublish_at")) {
 					continue
 				}
 				if previous == nil || !reflect.DeepEqual(previous[field], next[field]) {
 					currentByKey[key][field] = value
+				}
+			}
+			if table == "package_meta" {
+				oldPrivate, oldReason := historyVisibility(previous)
+				newPrivate, newReason := historyVisibility(next)
+				if oldPrivate != newPrivate || oldReason != newReason {
+					private, reason := historyVisibility(desired)
+					currentByKey[key]["private"], currentByKey[key]["visibility_reason"] = private, reason
 				}
 			}
 			if lifecycleTable {
@@ -109,6 +120,13 @@ func HistoryPatch(current, before, after, target HistoryState) HistoryState {
 	}
 	return out
 }
+
+func historyVisibility(row map[string]any) (bool, string) {
+	private, _ := row["private"].(bool)
+	reason, _ := row["visibility_reason"].(string)
+	return private, reason
+}
+
 func historyRows(rows []map[string]any) map[string]map[string]any {
 	out := map[string]map[string]any{}
 	for _, row := range rows {

@@ -350,6 +350,18 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 			return domain.Rejected("history_snapshot_invalid")
 		}
 		for _, row := range rows {
+			if ref.Entity == "package" && t.Name == "package_meta" {
+				// Full snapshots from before 00126 have no visibility group. Keep
+				// the live decision when recreating this child row instead of using
+				// INSERT defaults, which would silently make a private app public.
+				if _, exists := row["private"]; !exists {
+					row = maps.Clone(row)
+					live := historyRows(current["package_meta"])
+					for key := range historyRows([]map[string]any{row}) {
+						row["private"], row["visibility_reason"] = historyVisibility(live[key])
+					}
+				}
+			}
 			if ref.Entity == "announcement" && t.Name == "app_config" {
 				if value, ok := row["value"].(map[string]any); ok && (value["sourceLocale"] == nil || value["sourceLocale"] == "") {
 					// Snapshots predating English authoring used Chinese implicitly.
