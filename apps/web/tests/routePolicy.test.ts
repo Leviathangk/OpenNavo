@@ -60,7 +60,13 @@ describe('localized route policies', () => {
   it.each(prefixes)('preserves production cache TTLs at the actual %s locale paths', prefix => {
     for (const [path, swr] of Object.entries(ttls)) {
       const actualPath = path === '/' ? prefix || '/' : `${prefix}${path}`;
-      expect(config.$production?.routeRules?.[actualPath], actualPath).toEqual({ swr });
+      const expected =
+        path === '/'
+          ? { cache: { swr: true, maxAge: swr } }
+          : path === '/apps/**'
+            ? { cache: { swr: true, maxAge: swr } }
+            : { swr };
+      expect(config.$production?.routeRules?.[actualPath], actualPath).toEqual(expected);
       expect(config.routeRules?.[actualPath]?.swr).toBeUndefined();
     }
     expect(config.$production?.routeRules?.[`${prefix}/recent`]).toEqual({

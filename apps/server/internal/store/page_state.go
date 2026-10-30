@@ -47,7 +47,7 @@ func (s *Store) pageStateInputs(ctx context.Context, id int64, locale string) (j
  'link',(SELECT to_jsonb(l) FROM link_apps l WHERE l.package_id=p.id),
  'security',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.product_cpe) FROM package_cve_checks c WHERE c.package_id=p.id),
  'records',(SELECT jsonb_agg(to_jsonb(f) ORDER BY f.kind,f.key) FROM package_fact_records f WHERE f.package_id=p.id),
- 'sources',(SELECT jsonb_agg(to_jsonb(f) ORDER BY f.source) FROM package_source_facts f WHERE f.package_id=p.id AND f.status='found'),
+ 'sources',(SELECT jsonb_agg(to_jsonb(f) ORDER BY f.source) FROM package_source_facts f WHERE f.package_id=p.id AND (f.status='found' OR (f.source='github' AND f.subject<>''))),
  'alternatives',(SELECT jsonb_agg(jsonb_build_object('relation',to_jsonb(a),'name',q.name,'token',q.token,'version',q.version,'disabled',q.disabled,'facts',(SELECT to_jsonb(af) FROM package_facts af WHERE af.package_id=q.id),'records',(SELECT jsonb_agg(to_jsonb(ar) ORDER BY ar.kind,ar.key) FROM package_fact_records ar WHERE ar.package_id=q.id)) ORDER BY a.sort,a.alternative_id) FROM package_alternatives a JOIN packages q ON q.id=a.alternative_id WHERE a.package_id=p.id AND q.removed_at IS NULL),
  'aliases',(SELECT jsonb_agg(a.token ORDER BY a.token) FROM package_aliases a WHERE a.package_id=p.id),
  'categories',(SELECT jsonb_agg(jsonb_build_object('slug',c.slug,'primary',pc.is_primary,'text',(SELECT to_jsonb(t) FROM category_i18n t WHERE t.category_id=c.id AND t.locale IN (lang.requested,c.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1)) ORDER BY c.slug) FROM package_categories pc JOIN categories c ON c.id=pc.category_id WHERE pc.package_id=p.id AND c.visible),
