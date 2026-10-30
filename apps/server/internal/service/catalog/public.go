@@ -32,6 +32,13 @@ type PublicService struct {
 	// Secrets decrypts credentials read by public endpoints (IndexNow key file).
 	Secrets config.Config
 }
+
+func (s *PublicService) cacheScope(ctx context.Context) *PublicService {
+	scoped := *s
+	scoped.Cache = cache.Scope(ctx, s.Cache)
+	return &scoped
+}
+
 type SummaryPage struct {
 	Current int                        `json:"current"`
 	Size    int                        `json:"size"`
@@ -153,6 +160,7 @@ func (s *PublicService) Categories(ctx context.Context, locale string) ([]public
 	})
 }
 func (s *PublicService) Home(ctx context.Context, locale string, requestedSize ...int) (publicapi.HomeData, error) {
+	s = s.cacheScope(ctx)
 	sectionSize := 12
 	if len(requestedSize) > 0 {
 		sectionSize = requestedSize[0]
@@ -196,6 +204,7 @@ func (s *PublicService) Home(ctx context.Context, locale string, requestedSize .
 
 }
 func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) (publicapi.PackageDetail, error) {
+	s = s.cacheScope(ctx)
 	d, err := cache.ReadThrough(ctx, s.Cache, cache.PackageDetailPrefix+kind+":"+token+":"+locale+domain.LinksCacheKey(ctx), cache.PackageDetailTTL, func(ctx context.Context) (publicapi.PackageDetail, error) {
 		p, err := s.Store.PublicPackage(ctx, kind, token, locale)
 		if err != nil {
@@ -752,11 +761,12 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 		return SitemapPage{}, domain.Validation()
 	}
 	key := fmt.Sprintf("c:pkg:sitemap:%s:%d:%d", group, current, size)
+	backend := cache.Scope(ctx, s.Cache)
 	// The computation outlives a caller that disconnects, so the page still reaches the cache for the next one.
-	result, err, _ := sitemapLoads.Do(fmt.Sprintf("%p|%s", s.Store, key), func() (any, error) {
+	result, err, _ := sitemapLoads.Do(fmt.Sprintf("%p|%s|%s", s.Store, key, cache.Namespace(backend)), func() (any, error) {
 		loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
 		defer cancel()
-		return cache.ReadThroughCompressed(loadCtx, s.Cache, key, 10*time.Minute, func(ctx context.Context) (SitemapPage, error) {
+		return cache.ReadThroughCompressed(loadCtx, backend, key, 10*time.Minute, func(ctx context.Context) (SitemapPage, error) {
 			return s.sitemap(ctx, group, current, size)
 		})
 	})

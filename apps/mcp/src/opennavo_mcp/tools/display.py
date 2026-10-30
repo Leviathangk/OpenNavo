@@ -33,7 +33,7 @@ def package_display(package: dict[str, Any]) -> dict[str, Any]:
             "translationStatus": selected.get("status", "none"),
         }
     return {
-        "visible": not package.get("hidden", False) and not package.get("removed", False),
+        "visible": not any(package.get(flag, False) for flag in ("hidden", "private", "removed")),
         "webUrl": package.get("webUrl"),
         "locales": previews,
     }

@@ -221,7 +221,8 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 			break
 		}
 		pending := []store.URLNotificationRow{}
-		paths, prefixes := []string{}, []string{}
+		paths, ogPaths, prefixes := []string{}, []string{}, []string{}
+		sharePrefix := shareImagePurgePrefix(n.Config.WebBaseURL)
 		for _, row := range rows {
 			if row.State == "pending" {
 				owned, err := n.Store.RenewURLNotification(ctx, row, n.Now())
@@ -232,6 +233,10 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 					continue
 				}
 				pending = append(pending, row)
+				if row.PurgePrefix == sharePrefix {
+					ogPaths = append(ogPaths, row.Path)
+					continue
+				}
 				paths = append(paths, row.Path)
 				if row.PurgePrefix != "" && !slices.Contains(prefixes, row.PurgePrefix) {
 					prefixes = append(prefixes, row.PurgePrefix)
@@ -239,7 +244,10 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 			}
 		}
 		if len(pending) > 0 {
-			err = n.invalidate(ctx, paths)
+			err = errors.Join(n.invalidate(ctx, paths), n.invalidateShareImages(ctx, ogPaths))
+			if err != nil {
+				n.Logger.Error("web cache invalidation failed; outbox will retry", "error", err)
+			}
 			if err == nil && purgeEnabled(settings) && len(prefixes) > 0 {
 				// A failed edge purge is not these rows' to retry: the prefixes left join the durable purge queue,
 				// which every run retries first and without a deadline (drainPurges). The rows spend no attempt,

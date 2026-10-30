@@ -580,6 +580,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   let articleSitemapState = 'ok';
   // Changes what ordinary-app's description says, to see whether a page came from the cache.
   let revision = 1;
+  // Lets the share-image test make ordinary-app private without disturbing the other fixtures.
+  let shareImagePrivate = false;
   let collectionState = 'empty';
   let collectionRequests = 0;
   const packageQueries = [];
@@ -898,6 +900,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           }
         ]
       };
+    } else if (shareImagePrivate && match?.[1] === 'ordinary-app' && !match[2]) {
+      status = 404;
+      data = null;
     } else if (
       match &&
       [
@@ -906,6 +911,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'versioned-app@11',
         'plus-app++',
         'ordinary-app',
+        'unlisted-sample',
         'image-alt-app',
         'dependency-content-app',
         'reverse-dependency-app',
@@ -1402,6 +1408,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           data.isFont,
           siteSettings.pages.fontsSitemap
         );
+      if (data.token === 'unlisted-sample') {
+        data.indexing.reason = 'hidden';
+        data.indexing.locales = [];
+        for (const page of Object.values(data.indexing.pages)) {
+          Object.assign(page, {
+            indexable: false,
+            robots: 'noindex, follow',
+            inSitemap: false,
+            announce: false,
+            hreflang: []
+          });
+        }
+      }
       if (data.token === 'variant-app@beta') {
         // Three verified known issues open the troubleshooting page; the other intent pages follow the overview.
         data.facts.issues = ['Sync stalls', 'The window opens off-screen', 'Sign-in loops'].map(title => ({
@@ -1499,6 +1518,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
     NUXT_METRICS_PORT: internalPort,
     NUXT_INTERNAL_SECRET: internalSecret,
+    // A cold share-image render can stall the event loop past the extreme lag limit; the next request
+    // would then be shed with 503 before any route sees it. Keep that availability layer out of this
+    // SEO/visibility fixture (loadShed.test.ts and the image-admission subtest below cover it).
+    NUXT_LOAD_SHED_ENABLED: 'false',
     OPENNAVO_SITEMAP_WARMUP: 'false'
   };
   const child = spawn(process.execPath, ['--import', clock, entry], {
@@ -3783,6 +3806,41 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     for (const query of ['?utm_source=newsletter', '?returnTo=%2Frecent', '?nocache=1'])
       assert.equal(await shareImage(`/apps/ordinary-app${query}`), plain, query);
   });
+  await t.test('a private app share image is not served from the old signed URL', async () => {
+    const response = await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } });
+    const page = await response.text();
+    assert.equal(response.status, 200, logs);
+    const signed = /<meta property="og:image" content="([^"]+)"/.exec(page)?.[1]?.replaceAll('&amp;', '&');
+    assert.ok(signed?.startsWith('https://example.test/_og/'), `${signed} ${page.slice(0, 300)}\n${logs}`);
+    const imageUrl = signed.replace('https://example.test', origin);
+    const first = await fetch(imageUrl);
+    assert.equal(first.status, 200, logs);
+    assert.equal(first.headers.get('content-type'), 'image/png');
+    await first.arrayBuffer();
+    try {
+      shareImagePrivate = true;
+      const invalidated = await fetch(`${internal}/cache/invalidate`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${internalSecret}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ paths: ['/apps/ordinary-app'], og: true })
+      });
+      assert.equal(invalidated.status, 200, logs);
+      assert.ok((await invalidated.json()).ogRemoved >= 1, logs);
+      const rejected = await fetch(imageUrl);
+      const rejectedBody = await rejected.text();
+      assert.equal(
+        rejected.status,
+        404,
+        `${rejected.status} ${JSON.stringify([...rejected.headers])} ${rejectedBody.slice(0, 300)}\n${logs}`
+      );
+      assert.equal(rejected.headers.get('cache-control'), 'no-store');
+    } finally {
+      shareImagePrivate = false;
+    }
+    const restored = await fetch(imageUrl);
+    assert.equal(restored.status, 200, logs);
+    await restored.arrayBuffer();
+  });
   await t.test('every shared page type has a 1200×630 share image', async () => {
     const image = async path => {
       const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
@@ -3843,6 +3901,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         PORT: imagePort,
         NITRO_PORT: imagePort,
         NUXT_METRICS_PORT: metricsPort,
+        NUXT_LOAD_SHED_ENABLED: 'true',
         NUXT_LOAD_SHED_IMAGE_IN_FLIGHT: '1',
         NUXT_LOAD_SHED_LOW_IN_FLIGHT: '1',
         NUXT_LOAD_SHED_MEDIUM_IN_FLIGHT: '1',
@@ -4425,6 +4484,39 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       }
     }
   );
+  await t.test(
+    'visibility: private pages are 404; unlisted pages are 200 with noindex and absent from Markdown and discovery',
+    async () => {
+      for (const prefix of ['', '/zh']) {
+        for (const suffix of ['', '/versions', '/details', '/dependencies']) {
+          assert.equal((await fetch(`${origin}${prefix}/apps/private-sample${suffix}`)).status, 404);
+        }
+        const response = await fetch(`${origin}${prefix}/apps/unlisted-sample`);
+        assert.equal(response.status, 200);
+        assert.match(response.headers.get('x-robots-tag') ?? '', /noindex/);
+        const document = JSDOM.fragment(await response.text());
+        assert.match(document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? '', /noindex/);
+        for (const token of ['private-sample', 'unlisted-sample']) {
+          assert.equal((await fetch(`${origin}${prefix}/apps/${token}.md`)).status, 404);
+          assert.equal(
+            (await fetch(`${origin}${prefix}/apps/${token}`, { headers: { accept: 'text/markdown' } })).status,
+            404
+          );
+        }
+      }
+      const llms = await (await fetch(`${origin}/llms.txt`)).text();
+      const sitemap = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+      for (const token of ['private-sample', 'unlisted-sample']) {
+        assert.ok(!llms.includes(token));
+        assert.ok(!sitemap.includes(token));
+        for (const group of ['apps', 'versions', 'fonts']) {
+          const shard = await fetch(`${origin}/__sitemap__/${packageSitemapName(group, token)}.xml`);
+          assert.ok([200, 404, 410].includes(shard.status));
+          assert.ok(!(await shard.text()).includes(`/apps/${token}`));
+        }
+      }
+    }
+  );
   assert.deepEqual(seoApiRequests, []);
   assert.deepEqual(
     [...requestedTokens].sort(),
@@ -4439,6 +4531,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'install-deprecated',
       'install-paused',
       'ordinary-app',
+      'unlisted-sample',
       'plus-app++',
       'reverse-dependency-app',
       'opennavo',

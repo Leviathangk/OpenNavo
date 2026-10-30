@@ -60,6 +60,21 @@ func (s S3Objects) URL(key string) string {
 	return strings.TrimRight(s.Client.CDNBaseURL, "/") + "/" + key
 }
 
+func (s S3Objects) Delete(ctx context.Context, key string) error {
+	return s.Client.S3.RemoveObject(ctx, s.Client.Bucket, key, minio.RemoveObjectOptions{})
+}
+
+func (s S3Objects) List(ctx context.Context, prefix string) ([]string, error) {
+	keys := []string{}
+	for object := range s.Client.S3.ListObjects(ctx, s.Client.Bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true}) {
+		if object.Err != nil {
+			return nil, object.Err
+		}
+		keys = append(keys, object.Key)
+	}
+	return keys, nil
+}
+
 type Service struct {
 	URLClient *http.Client
 	Store     *store.Store

@@ -21,7 +21,7 @@ type BackgroundOwner struct {
 func (s *Store) BackgroundLabels(ctx context.Context, q string, current, size int) ([]string, int64, error) {
 	labels := []string{}
 	var total int64
-	where := ` FROM background_items b WHERE octet_length(b.label) BETWEEN 1 AND 255 AND b.label=btrim(b.label) AND b.label !~ $label$[/\\#[:cntrl:]]$label$ AND position(chr(63) in b.label)=0 AND b.label ILIKE '%'||?||'%' AND EXISTS(SELECT 1 FROM background_item_packages x JOIN packages p ON p.id=x.package_id WHERE x.label=b.label AND p.kind='cask' AND p.removed_at IS NULL)`
+	where := ` FROM background_items b WHERE octet_length(b.label) BETWEEN 1 AND 255 AND b.label=btrim(b.label) AND b.label !~ $label$[/\\#[:cntrl:]]$label$ AND position(chr(63) in b.label)=0 AND b.label ILIKE '%'||?||'%' AND EXISTS(SELECT 1 FROM background_item_packages x JOIN packages p ON p.id=x.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE NOT COALESCE(m.private,false) AND x.label=b.label AND p.kind='cask' AND p.removed_at IS NULL)`
 	if err := s.DB.WithContext(ctx).Raw("SELECT count(*)"+where, q).Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -39,7 +39,7 @@ func (s *Store) BackgroundLabels(ctx context.Context, q string, current, size in
 }
 func (s *Store) BackgroundOwners(ctx context.Context, label string) ([]BackgroundOwner, error) {
 	rows := []BackgroundOwner{}
-	err := s.DB.WithContext(ctx).Raw(`SELECT x.package_id,x.kind,x.phase,x.source_url,p.homebrew_checked_at AS checked_at,m.developer,NOT COALESCE(m.hidden,false) AS visible FROM background_item_packages x JOIN packages p ON p.id=x.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE x.label=? AND p.kind='cask' AND p.removed_at IS NULL ORDER BY x.package_id,x.kind,x.phase`, label).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw(`SELECT x.package_id,x.kind,x.phase,x.source_url,p.homebrew_checked_at AS checked_at,m.developer,NOT COALESCE(m.hidden,false) AS visible FROM background_item_packages x JOIN packages p ON p.id=x.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE NOT COALESCE(m.private,false) AND x.label=? AND p.kind='cask' AND p.removed_at IS NULL ORDER BY x.package_id,x.kind,x.phase`, label).Scan(&rows).Error
 	return rows, err
 }
 

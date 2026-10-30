@@ -66,7 +66,7 @@ func (f *disabledRequestHistoryFixture) snapshot(t *testing.T) store.HistoryStat
 func (f *disabledRequestHistoryFixture) write(t *testing.T, clear bool) {
 	t.Helper()
 	f.steps++
-	body := map[string]any{"downloadSize": int64(100 + f.steps*100), "hidden": f.steps%2 == 1}
+	body := map[string]any{"downloadSize": int64(100 + f.steps*100), "hidden": f.steps%2 == 1, "visibilityReason": "Visibility fixture"}
 	if clear {
 		body["clearDisabled"] = true
 	}

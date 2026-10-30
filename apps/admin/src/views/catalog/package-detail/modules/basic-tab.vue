@@ -19,14 +19,15 @@ const emit = defineEmits<{ saved: [] }>();
 const { hasAuth } = useAuth();
 const editable = computed(() => hasAuth('catalog:package:edit'));
 
-type Meta = Required<BodyOf<'updatePackageMeta'>>;
+type Meta = Required<Omit<BodyOf<'updatePackageMeta'>, 'clearDisabled'>>;
 const model = reactive<Meta>({
   downloadSize: null,
   accentColor: null,
   developer: null,
   repoUrl: null,
   hidden: false,
-  clearDisabled: false,
+  private: false,
+  visibilityReason: '',
   editorChoice: false,
   tags: [],
   notes: null
@@ -46,6 +47,8 @@ watch(
       developer: detail.meta.developer ?? null,
       repoUrl: detail.meta.repoUrl ?? null,
       hidden: detail.hidden,
+      private: detail.private ?? false,
+      visibilityReason: detail.visibilityReason ?? '',
       editorChoice: detail.editorChoice,
       tags: [...(detail.meta.tags ?? [])],
       notes: detail.meta.notes ?? null
@@ -55,27 +58,33 @@ watch(
 );
 
 const raw = computed(() => JSON.stringify(props.detail.raw, null, 2));
+const reasonRequired = computed(() => model.hidden || model.private);
+const reasonInvalid = computed(() => reasonRequired.value && !model.visibilityReason.trim());
 
 // Submit empty strings as null, which the backend treats as unfilled.
 const blankToNull = (value: string | null) => (value?.trim() ? value.trim() : null);
 
 async function save() {
+  if (reasonInvalid.value) return;
   saving.value = true;
   const body: BodyOf<'updatePackageMeta'> = {
     developer: blankToNull(model.developer),
     repoUrl: blankToNull(model.repoUrl),
     hidden: model.hidden,
+    private: model.private,
     clearDisabled: false,
     editorChoice: model.editorChoice,
     notes: blankToNull(model.notes),
     tags: model.tags.map(tag => tag.trim()).filter(Boolean)
   };
+  if (model.visibilityReason.trim()) body.visibilityReason = model.visibilityReason.trim();
   if (model.downloadSize !== loaded.downloadSize) body.downloadSize = model.downloadSize;
   if (model.accentColor !== loaded.accentColor) body.accentColor = model.accentColor?.toUpperCase() ?? null;
-  const { error } = await updatePackageMeta(props.detail.id, body);
+  const { data, error } = await updatePackageMeta(props.detail.id, body);
   saving.value = false;
   if (error) return;
   window.$message?.success($t('page.shared.saved'));
+  if (data?.warning) window.$message?.warning(data.warning);
   emit('saved');
 }
 </script>
@@ -185,6 +194,22 @@ async function save() {
               <NText depth="3" class="text-12px">{{ $t('page.catalog.packageDetail.basic.hiddenHint') }}</NText>
             </div>
           </NFormItem>
+          <NFormItem :label="$t('page.catalog.packageDetail.basic.private')" path="private">
+            <div class="flex items-center gap-12px">
+              <NSwitch v-model:value="model.private" />
+              <NText depth="3" class="text-12px">{{ $t('page.catalog.packageDetail.basic.privateHint') }}</NText>
+            </div>
+          </NFormItem>
+          <NFormItem
+            v-if="reasonRequired || model.visibilityReason"
+            :label="$t('page.catalog.packageDetail.basic.visibilityReason')"
+            path="visibilityReason"
+            :required="reasonRequired"
+            :validation-status="reasonInvalid ? 'error' : undefined"
+            :feedback="reasonInvalid ? $t('page.catalog.packageDetail.basic.visibilityReasonRequired') : undefined"
+          >
+            <NInput v-model:value="model.visibilityReason" type="textarea" :rows="2" :maxlength="2000" show-count />
+          </NFormItem>
           <NFormItem :label="$t('page.catalog.packageDetail.basic.editorChoice')" path="editorChoice">
             <NSwitch v-model:value="model.editorChoice" />
           </NFormItem>
@@ -194,7 +219,7 @@ async function save() {
         </NForm>
         <PermissionGate code="catalog:package:edit">
           <div class="flex justify-end">
-            <NButton type="primary" :loading="saving" @click="save">
+            <NButton type="primary" :loading="saving" :disabled="reasonInvalid" @click="save">
               {{ $t('page.catalog.packageDetail.basic.save') }}
             </NButton>
           </div>

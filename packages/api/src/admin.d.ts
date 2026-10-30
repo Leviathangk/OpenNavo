@@ -8104,6 +8104,43 @@ export interface components {
         };
         /**
          * @example {
+         *       "warning": "CDN purge is pending; edge copies may persist until the purge is resumed."
+         *     }
+         */
+        PackageMetaUpdateWarning: {
+            /**
+             * @description Present when the CDN purge is paused. The purge stays queued and share-image edge copies may persist until it is resumed.
+             * @example CDN purge is pending; edge copies may persist until the purge is resumed.
+             */
+            warning?: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "warning": "CDN purge is pending; edge copies may persist until the purge is resumed."
+         *       }
+         *     }
+         */
+        PackageMetaUpdateResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["PackageMetaUpdateWarning"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "warning": "CDN purge is pending; edge copies may persist until the purge is resumed."
+         *       }
+         *     }
+         */
+        PackageMetaUpdateResult: components["schemas"]["PackageMetaUpdateResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
          *       "code": "0000",
          *       "msg": "ok",
          *       "data": {
@@ -9422,6 +9459,16 @@ export interface components {
             screenshotCount: number;
             /** @example false */
             hidden: boolean;
+            /**
+             * @description Whether the package is absent from public reads.
+             * @example false
+             */
+            private?: boolean;
+            /**
+             * @description Most recently recorded visibility reason; empty for packages with no recorded restriction.
+             * @example Catalog visibility review.
+             */
+            visibilityReason?: string;
             /** @example true */
             editorChoice: boolean;
             /** @example false */
@@ -9827,7 +9874,7 @@ export interface components {
             revision?: number;
             /**
              * Format: uri
-             * @description /apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.
+             * @description /apps/{token} under WEB_BASE_URL; null when hidden, private or removed. Casks and link apps only.
              * @example https://opennavo.example/apps/visual-studio-code
              */
             webUrl?: string | null;
@@ -9906,8 +9953,21 @@ export interface components {
             developer?: string | null;
             /** @example null */
             repoUrl?: string | null;
-            /** @example false */
+            /**
+             * @description Unlisted but reachable by direct link. Setting true requires visibilityReason.
+             * @example false
+             */
             hidden?: boolean;
+            /**
+             * @description Absent from all public reads. Setting true requires visibilityReason.
+             * @example false
+             */
+            private?: boolean;
+            /**
+             * @description Required and recorded in the audit log whenever hidden or private is set to true.
+             * @example Catalog visibility review.
+             */
+            visibilityReason?: string;
             /**
              * @description When true, clears the effective Homebrew or stale-version disabled state and records a manual override; omitted or false leaves it unchanged.
              * @default false
@@ -25244,7 +25304,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description On success data is null; see code for failures */
+            /** @description On success data is empty or carries a warning when the CDN purge is paused; see code for failures */
             200: {
                 headers: {
                     /**
@@ -25255,7 +25315,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EmptyResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                    "application/json": components["schemas"]["PackageMetaUpdateResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };

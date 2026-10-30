@@ -678,6 +678,26 @@ class EmptyResponse(BaseModel):
     data: dict[str, Any] | None | MISSING = MISSING
 
 
+class PackageMetaUpdateWarning(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    warning: Annotated[str | MISSING, Field(description='Present when the CDN purge is paused. The purge stays queued and share-image edge copies may persist until it is resumed.', examples=['CDN purge is pending; edge copies may persist until the purge is resumed.'])] = MISSING
+
+
+class PackageMetaUpdateResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: PackageMetaUpdateWarning
+
+
+class PackageMetaUpdateResult(RootModel[PackageMetaUpdateResponse | BusinessErrorResponse]):
+    root: Annotated[PackageMetaUpdateResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'warning': 'CDN purge is pending; edge copies may persist until the purge is resumed.'}}])]
+
+
 class Data2(BaseModel):
     id: Annotated[int, Field(examples=[1])]
 
@@ -879,7 +899,9 @@ class PackageMetaUpdate(BaseModel):
     accentColor: Annotated[str | None | MISSING, Field(description='Primary color; null clears it, and setting an icon recalculates it.', examples=['#336699'], pattern='^#[0-9A-Fa-f]{6}$')] = MISSING
     developer: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
     repoUrl: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
-    hidden: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    hidden: Annotated[bool | MISSING, Field(description='Unlisted but reachable by direct link. Setting true requires visibilityReason.', examples=[False])] = MISSING
+    private: Annotated[bool | MISSING, Field(description='Absent from all public reads. Setting true requires visibilityReason.', examples=[False])] = MISSING
+    visibilityReason: Annotated[str | MISSING, Field(description='Required and recorded in the audit log whenever hidden or private is set to true.', examples=['Catalog visibility review.'], max_length=2000, min_length=1)] = MISSING
     clearDisabled: Annotated[bool, Field(description='When true, clears the effective Homebrew or stale-version disabled state and records a manual override; omitted or false leaves it unchanged.', examples=[False])] = False
     editorChoice: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     tags: Annotated[list[Tag] | MISSING, Field(max_length=10)] = MISSING
@@ -5111,6 +5133,8 @@ class AdminPackage(BaseModel):
     hasIcon: Annotated[bool, Field(examples=[False])]
     screenshotCount: Annotated[int, Field(examples=[0])]
     hidden: Annotated[bool, Field(examples=[False])]
+    private: Annotated[bool | MISSING, Field(description='Whether the package is absent from public reads.', examples=[False])] = MISSING
+    visibilityReason: Annotated[str | MISSING, Field(description='Most recently recorded visibility reason; empty for packages with no recorded restriction.', examples=['Catalog visibility review.'])] = MISSING
     editorChoice: Annotated[bool, Field(examples=[True])]
     deprecated: Annotated[bool, Field(examples=[False])]
     disabled: Annotated[bool, Field(examples=[False])]
@@ -5156,7 +5180,7 @@ class AdminScreenshot(BaseModel):
 
 class AdminPackageDetail(AdminPackage):
     revision: Annotated[int | MISSING, Field(description='Revision the UpdatePackageMeta and the other package writes (text, i18n, categories, facts, icon); link app definitions use their own revision check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = MISSING
-    webUrl: Annotated[AnyUrl | None | MISSING, Field(description='/apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.', examples=['https://opennavo.example/apps/visual-studio-code'])] = MISSING
+    webUrl: Annotated[AnyUrl | None | MISSING, Field(description='/apps/{token} under WEB_BASE_URL; null when hidden, private or removed. Casks and link apps only.', examples=['https://opennavo.example/apps/visual-studio-code'])] = MISSING
     names: list[str]
     descEn: Annotated[str | None | MISSING, Field(examples=['Open-source code editor with debugging and extensions'])] = MISSING
     homepage: Annotated[str | None | MISSING, Field(examples=['https://code.visualstudio.com/'])] = MISSING

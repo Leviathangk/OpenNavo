@@ -155,26 +155,50 @@ func HistoryHash(state HistoryState) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// HistoryHashMatches accepts snapshots from before build-specific release notes.
-// Only the new column's migration default may be omitted: a real build binding
-// or any other edit must still cause a conflict. Never mutate the snapshot.
+// HistoryHashMatches accepts snapshots from before build-specific notes and private visibility.
+// Only migration defaults/backfills may be omitted; real visibility, reason or build edits conflict.
+// Never mutate the snapshot.
 func HistoryHashMatches(state HistoryState, expected string) bool {
 	if HistoryHash(state) == expected {
 		return true
 	}
-	rows := state["releases"]
-	if len(rows) == 0 {
-		return false
+	candidates := []HistoryState{state}
+	if rows := state["package_meta"]; len(rows) > 0 {
+		legacy := maps.Clone(state)
+		legacy["package_meta"] = make([]map[string]any, len(rows))
+		for i, row := range rows {
+			copy := maps.Clone(row)
+			if row["private"] == false {
+				delete(copy, "private")
+			}
+			if row["visibility_reason"] == "" || row["hidden"] == true && row["visibility_reason"] == "Legacy setting; reason not recorded." {
+				delete(copy, "visibility_reason")
+			}
+			legacy["package_meta"][i] = copy
+		}
+		if HistoryHash(legacy) == expected {
+			return true
+		}
+		candidates = append(candidates, legacy)
 	}
-	legacy := maps.Clone(state)
-	legacy["releases"] = make([]map[string]any, len(rows))
-	for i, row := range rows {
-		legacy["releases"][i] = maps.Clone(row)
-		if row["package_version_id"] == nil {
-			delete(legacy["releases"][i], "package_version_id")
+	for _, candidate := range candidates {
+		rows := candidate["releases"]
+		if len(rows) == 0 {
+			continue
+		}
+		legacy := maps.Clone(candidate)
+		legacy["releases"] = make([]map[string]any, len(rows))
+		for i, row := range rows {
+			legacy["releases"][i] = maps.Clone(row)
+			if row["package_version_id"] == nil {
+				delete(legacy["releases"][i], "package_version_id")
+			}
+		}
+		if HistoryHash(legacy) == expected {
+			return true
 		}
 	}
-	return HistoryHash(legacy) == expected
+	return false
 }
 func historyAssets(states ...HistoryState) []int64 {
 	ids := []int64{}
@@ -310,6 +334,15 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 			return err
 		}
 	}
+	if ref.Entity == "package" && state != nil && len(state["package_meta"]) == 0 && len(current["package_meta"]) > 0 {
+		private, reason := historyVisibility(current["package_meta"][0])
+		if private || reason != "" {
+			// A pre-migration snapshot may predate the metadata row itself.
+			// Recreate its defaults while retaining the later visibility group.
+			state = maps.Clone(state)
+			state["package_meta"] = []map[string]any{{"package_id": ref.ID, "private": private, "visibility_reason": reason}}
+		}
+	}
 	for i := len(tables) - 1; i >= 1; i-- {
 		t := tables[i]
 		if err := s.DB.WithContext(ctx).Exec("DELETE FROM "+t.Name+" WHERE "+t.Where, t.Args...).Error; err != nil {
@@ -326,6 +359,18 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 			return domain.Rejected("history_snapshot_invalid")
 		}
 		for _, row := range rows {
+			if ref.Entity == "package" && t.Name == "package_meta" {
+				// Full snapshots from before 00126 have no visibility group. Keep
+				// the live decision when recreating this child row instead of using
+				// INSERT defaults, which would silently make a private app public.
+				if _, exists := row["private"]; !exists {
+					row = maps.Clone(row)
+					live := historyRows(current["package_meta"])
+					for key := range historyRows([]map[string]any{row}) {
+						row["private"], row["visibility_reason"] = historyVisibility(live[key])
+					}
+				}
+			}
 			if ref.Entity == "announcement" && t.Name == "app_config" {
 				if value, ok := row["value"].(map[string]any); ok && (value["sourceLocale"] == nil || value["sourceLocale"] == "") {
 					// Snapshots predating English authoring used Chinese implicitly.

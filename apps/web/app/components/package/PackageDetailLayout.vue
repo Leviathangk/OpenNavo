@@ -31,6 +31,8 @@ if (pkg.value)
     summary: pkg.value.summary ?? undefined,
     kind: pkg.value.kind,
     token: pkg.value.token,
+    // Revalidated at request time so a URL signed before the package went private stops rendering.
+    visibility: `${pkg.value.kind}:${pkg.value.token}`,
     iconUrl: pkg.value.iconUrl,
     contentVersion: pkg.value.version,
     accent: pkg.value.accentColor,
@@ -43,6 +45,8 @@ else if (removed.value)
     summary: removed.value.summary ?? undefined,
     kind: props.kind,
     token: removed.value.token,
+    // Removed apps keep their image; a private app never reaches this branch.
+    visibility: `${props.kind}:${removed.value.token}`,
     iconUrl: removed.value.iconUrl,
     ...useOgFrame()
   });

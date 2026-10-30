@@ -94,7 +94,8 @@ const pages = {
       empty: '暂未收到活跃数据。客户端运行或网页有效访问后会自动上报。',
       trend: '每日活跃趋势 · {start} 至 {end}',
       details: '每日明细',
-      newHint: '新增指首次观察到此标识。客户端保留应用数据时，重装或升级会沿用原标识；清除应用或浏览器数据后可能生成新标识。'
+      newHint:
+        '新增指首次观察到此标识。客户端保留应用数据时，重装或升级会沿用原标识；清除应用或浏览器数据后可能生成新标识。'
     },
     scale: '规模',
     total: 'App 总数',
@@ -395,7 +396,11 @@ const pages = {
         tags: '标签',
         tagsHint: '最多 10 个，每个不超过 20 字',
         hidden: '隐藏',
-        hiddenHint: '隐藏后前台与客户端都不显示',
+        hiddenHint: '隐藏后不在列表中展示，直接链接仍可访问，搜索引擎不收录。',
+        private: '私有',
+        privateHint: '私有软件无法通过公开页面或 API 访问。',
+        visibilityReason: '可见性原因',
+        visibilityReasonRequired: '将软件设为隐藏或私有前，请填写原因。',
         editorChoice: '编辑推荐',
         notes: '内部备注',
         save: '保存'

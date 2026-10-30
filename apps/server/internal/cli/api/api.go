@@ -30,6 +30,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/search"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/storage"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
@@ -77,7 +78,7 @@ func run(ctx context.Context) error {
 		cacheClient = redis.NewClient(opts)
 		defer func() { _ = cacheClient.Close() }()
 	}
-	cacheBackend := cache.Redis{Client: cacheClient}
+	cacheBackend := cache.Visibility{Backend: cache.Redis{Client: cacheClient}, Generation: st.VisibilityGeneration}
 	catalogService := &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL, Secrets: cfg}
 	warmContext, stopWarm := context.WithCancel(ctx)
 	defer stopWarm()
@@ -104,9 +105,19 @@ func run(ctx context.Context) error {
 	tapGitHub.ObserveQuota = st.ObserveGitHubQuota
 	tapGitHub.TokenProvider = func(ctx context.Context) (string, error) { return st.GitHubToken(ctx, cfg) }
 	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent, Taps: &taps.Service{Store: st, GitHub: tapGitHub}}
+	adminService.InvalidatePublic = func(ctx context.Context) error {
+		return cache.Invalidate(ctx, cacheClient, []string{"c:*"})
+	}
+	adminService.InvalidateShareImages = func(ctx context.Context, token string) (string, error) {
+		return (&urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}).QueueShareImagePurgeWithWarning(ctx, token)
+	}
+	snapshots := &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}, Purge: func(ctx context.Context, prefixes []string) error {
+		return (&urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}).PurgeSnapshots(ctx, prefixes)
+	}}
+	adminService.Snapshots = snapshots
 	queueMetrics := observability.NewQueueMetrics(st.Redis)
 	defer func() { _ = queueMetrics.Close() }()
-	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
+	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: snapshots, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)
 	}

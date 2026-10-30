@@ -19,6 +19,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useSettingsStore, useTasksStore, useUpdatesStore } from '@/stores';
 import { openExternal } from '@/utils/external';
+import { optionalPublicPackage } from '@/utils/publicCatalog';
 
 // Version history (08 §10.6, mockup 04): toolbar (all / with notes / previously installed; Chinese / original) and timeline.
 // Local annotations use history_list (successful installs/updates); Current installation uses the installed version; offer Update to this version when behind latest.
@@ -55,14 +56,33 @@ watch([filter, original, appLocale], () => {
 function releaseFetcher() {
   const path = { kind: kind.value, token: token.value };
   const query = { original: original.value, locale: appLocale.value };
-  return (current: number, onlyWithNotes: boolean, size = PAGE_SIZE) =>
-    unwrap(
-      api.GET('/packages/{kind}/{token}/releases', {
-        params: {
-          path,
-          query: { ...query, current, size, onlyWithNotes }
+  return (current: number, onlyWithNotes: boolean, size = PAGE_SIZE): Promise<ReleasePage> =>
+    optionalPublicPackage(
+      unwrap(
+        api.GET('/packages/{kind}/{token}/releases', {
+          params: {
+            path,
+            query: { ...query, current, size, onlyWithNotes }
+          }
+        })
+      )
+    ).then(
+      page =>
+        page ?? {
+          current,
+          size,
+          total: 0,
+          records: [],
+          stats: { count30d: 0, cadence: 'irregular' as const, brewLag: { compared: 0, earlierCount: 0 } },
+          indexing: {
+            robots: 'noindex, follow',
+            canonicalPath: '',
+            hreflang: [],
+            inSitemap: false,
+            announce: false,
+            reason: 'not_found'
+          }
         }
-      })
     );
 }
 

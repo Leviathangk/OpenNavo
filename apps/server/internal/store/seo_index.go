@@ -14,25 +14,25 @@ import (
 // Disabled and Deprecated are Homebrew's flags; Stale is OpenNavo's 90-day rule (stale_disabled),
 // which the catalog shows as disabled but which does not stop Homebrew from installing the app.
 type IndexRow struct {
-	TroubleshootingIssues                       map[string]int
-	IntentLocales                               map[seo.PageKind][]string
-	ID                                          int64
-	Kind, Token, Name, DisplayName, Version     string
-	SourceLocale                                string
-	Summary                                     string
-	Description                                 string
-	HasSubstantiveContent, HasDependencyContent bool
-	Hidden, Disabled, HasRequirements, IsFont   bool
-	Deprecated, Stale                           bool
-	Installs30d, NotesCount, Rank30d            int
-	FirstSeenAt, UpdatedAt                      time.Time
-	Override                                    string
-	OverrideReason                              *string
-	OverrideAt                                  *time.Time
-	CommittedAt, ScreenshotsAt                  *time.Time
-	PublishedLocales                            []string
-	ReadyLocales                                []string
-	NotesPages                                  map[int]map[string]seo.NotesFacts
+	TroubleshootingIssues                              map[string]int
+	IntentLocales                                      map[seo.PageKind][]string
+	ID                                                 int64
+	Kind, Token, Name, DisplayName, Version            string
+	SourceLocale                                       string
+	Summary                                            string
+	Description                                        string
+	HasSubstantiveContent, HasDependencyContent        bool
+	Hidden, Private, Disabled, HasRequirements, IsFont bool
+	Deprecated, Stale                                  bool
+	Installs30d, NotesCount, Rank30d                   int
+	FirstSeenAt, UpdatedAt                             time.Time
+	Override                                           string
+	OverrideReason                                     *string
+	OverrideAt                                         *time.Time
+	CommittedAt, ScreenshotsAt                         *time.Time
+	PublishedLocales                                   []string
+	ReadyLocales                                       []string
+	NotesPages                                         map[int]map[string]seo.NotesFacts
 	// TextUpdatedAt holds the update time of each published language's text.
 	TextUpdatedAt map[string]time.Time
 }
@@ -42,7 +42,7 @@ const indexOverviewColumns = `p.id,p.kind,p.token,p.name,p.version,p.source_loca
  COALESCE(si.description,'') AS description,
  EXISTS(SELECT 1 FROM package_screenshots sc WHERE sc.package_id=p.id) AS has_substantive_content,
  COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,
- COALESCE(m.hidden,false) AS hidden,p.disabled,p.deprecated,p.stale_disabled AS stale,
+ COALESCE(m.hidden,false) AS hidden,COALESCE(m.private,false) AS private,p.disabled,p.deprecated,p.stale_disabled AS stale,
  (p.min_macos IS NOT NULL OR p.raw->'depends_on'->'macos' IS NOT NULL) AS has_requirements,
  COALESCE(m.index_override,'auto') AS override,m.index_override_reason AS override_reason,m.index_override_at AS override_at,
  COALESCE((SELECT json_object_agg(t.locale,t.updated_at) FROM package_i18n t WHERE t.package_id=p.id AND NULLIF(btrim(t.summary),'') IS NOT NULL AND t.status IN ('source','machine','manual')),'{}')::text AS text_times,
@@ -61,7 +61,7 @@ const indexRowSelect = `SELECT
  OR COALESCE(jsonb_array_length(p.conflicts_with->'cask'),0)>0
  OR COALESCE(jsonb_array_length(p.conflicts_with->'formula'),0)>0
  OR EXISTS(SELECT 1 FROM packages dependent LEFT JOIN package_meta dm ON dm.package_id=dependent.id WHERE dependent.kind='cask' AND dependent.removed_at IS NULL
- AND NOT (dependent.disabled OR dependent.stale_disabled) AND NOT COALESCE(dm.hidden,false)
+ AND NOT (dependent.disabled OR dependent.stale_disabled) AND NOT COALESCE(dm.hidden,false) AND NOT COALESCE(dm.private,false)
  AND dependent.dependencies->'dependsOn'->'cask' @> jsonb_build_array(p.token))) AS has_dependency_content,
  (SELECT v.brew_committed_at FROM package_versions v WHERE v.package_id=p.id AND v.version=p.version) AS committed_at,
  (SELECT max(sc.created_at) FROM package_screenshots sc WHERE sc.package_id=p.id) AS screenshots_at,
@@ -69,22 +69,22 @@ const indexRowSelect = `SELECT
 ` + indexOverviewColumns + indexJoins
 
 type indexRowScan struct {
-	ID                                          int64
-	Kind, Token, Name, DisplayName, Version     string
-	SourceLocale                                string
-	Summary                                     string
-	Description                                 string
-	HasSubstantiveContent, HasDependencyContent bool
-	Hidden, Disabled, HasRequirements, IsFont   bool
-	Deprecated, Stale                           bool
-	Installs30d, NotesCount, Rank30d            int
-	FirstSeenAt, UpdatedAt                      time.Time
-	Override                                    string
-	OverrideReason                              *string
-	OverrideAt                                  *time.Time
-	CommittedAt, ScreenshotsAt                  *time.Time
-	TextTimes                                   string
-	ReadyLanguages                              string
+	ID                                                 int64
+	Kind, Token, Name, DisplayName, Version            string
+	SourceLocale                                       string
+	Summary                                            string
+	Description                                        string
+	HasSubstantiveContent, HasDependencyContent        bool
+	Hidden, Private, Disabled, HasRequirements, IsFont bool
+	Deprecated, Stale                                  bool
+	Installs30d, NotesCount, Rank30d                   int
+	FirstSeenAt, UpdatedAt                             time.Time
+	Override                                           string
+	OverrideReason                                     *string
+	OverrideAt                                         *time.Time
+	CommittedAt, ScreenshotsAt                         *time.Time
+	TextTimes                                          string
+	ReadyLanguages                                     string
 }
 
 func (s *Store) indexRows(ctx context.Context, condition, tail string, args ...any) ([]IndexRow, error) {
@@ -108,7 +108,7 @@ func (s *Store) indexRowsQuery(ctx context.Context, query, condition, tail strin
 		r := IndexRow{
 			ID: row.ID, Kind: row.Kind, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName, Version: row.Version,
 			Description: row.Description, HasSubstantiveContent: row.HasSubstantiveContent, HasDependencyContent: row.HasDependencyContent,
-			SourceLocale: row.SourceLocale, Summary: row.Summary, Hidden: row.Hidden, Disabled: row.Disabled,
+			SourceLocale: row.SourceLocale, Summary: row.Summary, Hidden: row.Hidden, Private: row.Private, Disabled: row.Disabled,
 			Deprecated: row.Deprecated, Stale: row.Stale,
 			HasRequirements: row.HasRequirements, IsFont: row.IsFont, Installs30d: row.Installs30d, Rank30d: row.Rank30d, NotesCount: row.NotesCount,
 			FirstSeenAt: row.FirstSeenAt, UpdatedAt: row.UpdatedAt, Override: row.Override, OverrideReason: row.OverrideReason, OverrideAt: row.OverrideAt,
@@ -135,7 +135,7 @@ func (r IndexRow) Facts() seo.Facts {
 	return seo.Facts{TroubleshootingIssues: r.TroubleshootingIssues, IntentLocales: r.IntentLocales,
 		Kind: r.Kind, Description: r.Description, HasSubstantiveContent: r.HasSubstantiveContent || strings.TrimSpace(r.Description) != "",
 		ReadyLocales: r.ReadyLocales, NotesPages: r.NotesPages, HasDependencyContent: r.HasDependencyContent,
-		Hidden: r.Hidden, Disabled: r.Disabled, Deprecated: r.Deprecated, Stale: r.Stale,
+		Hidden: r.Hidden || r.Private, Disabled: r.Disabled, Deprecated: r.Deprecated, Stale: r.Stale,
 		Name: r.Name, Token: r.Token, Summary: r.Summary, Version: r.Version,
 		IsFont: r.IsFont || strings.HasPrefix(r.Token, "font-"), Rank30d: r.Rank30d, HasRequirements: r.HasRequirements, Installs30d: r.Installs30d, Override: r.Override, FirstSeenAt: r.FirstSeenAt,
 		SourceLocale: r.SourceLocale, PublishedLocales: r.PublishedLocales,
@@ -165,9 +165,9 @@ func (r IndexRow) Lastmod(locale string) *time.Time {
 	return latest
 }
 
-// IndexRowByToken loads one listed or hidden cask; found is false for unknown or removed tokens.
+// IndexRowByToken loads one listed or hidden cask; private, unknown and removed tokens are not found.
 func (s *Store) IndexRowByToken(ctx context.Context, token string) (IndexRow, bool, error) {
-	rows, err := s.indexRows(ctx, "p.token=?", "", token)
+	rows, err := s.indexRows(ctx, "p.token=? AND "+publicReadable, "", token)
 	if err != nil || len(rows) == 0 {
 		return IndexRow{}, false, err
 	}
@@ -186,7 +186,7 @@ func (s *Store) IndexRowByID(ctx context.Context, id int64) (IndexRow, bool, err
 // SitemapIndexRows pages the casks the sitemap may list, in stable id order. group is apps, fonts
 // or empty for both. Callers apply the policy; total counts candidates, not listed rows.
 func (s *Store) SitemapIndexRows(ctx context.Context, group string, current, size int) ([]IndexRow, int, error) {
-	condition := "NOT COALESCE(m.hidden,false)"
+	condition := "NOT COALESCE(m.hidden,false) AND NOT COALESCE(m.private,false)"
 	switch group {
 	case "apps":
 		condition += " AND NOT p.is_font"

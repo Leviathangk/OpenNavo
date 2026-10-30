@@ -9,7 +9,7 @@ export const fetchPackageList = (params: QueryOf<'listAdminPackages'>) =>
 export const fetchPackageDetail = (id: number) => request<DataOf<'getAdminPackage'>>({ url: `/packages/${id}` });
 
 export const updatePackageMeta = (id: number, data: BodyOf<'updatePackageMeta'>) =>
-  request({ url: `/packages/${id}/meta`, method: 'put', data });
+  request<Schemas['PackageMetaUpdateWarning'] | null>({ url: `/packages/${id}/meta`, method: 'put', data });
 
 export const fetchPackageIndexStatus = (id: number) =>
   request<DataOf<'getPackageIndexStatus'>>({ url: `/packages/${id}/index-status` });

@@ -3,7 +3,7 @@ import { packageInstallState, recentReturnPath, withRecentReturn } from '@openna
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { OnBreadcrumb, OnPackageNotice, OnSkeleton, OnTabs } from '@opennavo/ui';
+import { OnBreadcrumb, OnEmpty, OnPackageNotice, OnSkeleton, OnTabs } from '@opennavo/ui';
 import RequestError from '@/components/common/RequestError.vue';
 import DetailHeader from '@/components/package/DetailHeader.vue';
 import DetailStats from '@/components/package/DetailStats.vue';
@@ -18,7 +18,7 @@ const { t } = useI18n();
 const { pick } = useAppLocale();
 const route = useRoute();
 const context = providePackage(props);
-const { detail, local, releaseStats, error } = context;
+const { detail, local, releaseStats, error, loading } = context;
 
 type Tab = 'overview' | 'versions' | 'dependencies' | 'details';
 const tab = computed<Tab>(() => {
@@ -106,6 +106,8 @@ const notice = computed(() => {
 });
 
 const offline = computed(() => Boolean(error.value) && !detail.value);
+// A private package that is gone from the public catalog and not installed has no header to show.
+const unavailable = computed(() => !loading.value && !detail.value && !local.value && !error.value);
 </script>
 
 <template>
@@ -139,6 +141,12 @@ const offline = computed(() => Boolean(error.value) && !detail.value);
       <RouterView />
     </template>
     <RequestError v-else-if="error" :error="error" />
+    <OnEmpty
+      v-else-if="unavailable"
+      data-testid="package-unavailable"
+      :title="t('package.notFound')"
+      icon="lucide:package"
+    />
     <div v-else class="flex flex-col gap-14px" aria-hidden="true">
       <OnSkeleton height="146px" radius="huge" />
       <OnSkeleton height="86px" radius="big" />

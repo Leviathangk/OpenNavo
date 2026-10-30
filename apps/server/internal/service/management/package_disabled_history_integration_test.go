@@ -50,7 +50,7 @@ INSERT INTO package_meta(package_id) VALUES(804)`).Error)
 
 			// Both real service writes retain the same operation request ID.
 			// The normal edit deliberately captures no lifecycle fields.
-			write(map[string]any{"hidden": true, "downloadSize": int64(200)})
+			write(map[string]any{"hidden": true, "visibilityReason": "Visibility fixture", "downloadSize": int64(200)})
 			write(map[string]any{"clearDisabled": true})
 			if tc.repeatClear {
 				// A later clear captures the already-cleared lifecycle. Revert
@@ -101,7 +101,7 @@ INSERT INTO package_meta(package_id) VALUES(801)`).Error)
 	svc := &Service{Store: st}
 	requestID := uuid.NewString()
 	op := &domain.Operation{RequestID: requestID, Name: "updatePackageMeta", ActorID: &actorID, Permissions: []string{"catalog:package:edit"}, RequiredPermissions: []string{"catalog:package:edit"}, AllowDelete: true}
-	in := Input{ID: 801, Body: map[string]any{"hidden": true, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
+	in := Input{ID: 801, Body: map[string]any{"hidden": true, "visibilityReason": "Visibility fixture", "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
 	_, err := svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
 	require.NoError(t, err)
 
@@ -212,7 +212,7 @@ INSERT INTO package_meta(package_id) VALUES(803)`).Error)
 	permissions := []string{"catalog:package:edit"}
 	clear := func(requestID string, hidden bool) {
 		op := &domain.Operation{RequestID: requestID, Name: "updatePackageMeta", ActorID: &actorID, Permissions: permissions, RequiredPermissions: permissions, AllowDelete: true}
-		in := Input{ID: 803, Body: map[string]any{"hidden": hidden, "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
+		in := Input{ID: 803, Body: map[string]any{"hidden": hidden, "visibilityReason": "Visibility fixture", "clearDisabled": true}, Actor: store.AuditActor{ID: &actorID}}
 		_, err := svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", in)
 		require.NoError(t, err)
 	}

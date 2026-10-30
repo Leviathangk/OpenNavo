@@ -22,6 +22,7 @@ type Backend interface {
 }
 
 func ReadThrough[T any](ctx context.Context, backend Backend, key string, ttl time.Duration, load func(context.Context) (T, error)) (T, error) {
+	backend = Scope(ctx, backend)
 	var value T
 	if backend != nil {
 		if data, err := backend.Load(ctx, key); err == nil && json.Unmarshal(data, &value) == nil {
@@ -43,6 +44,7 @@ func ReadThrough[T any](ctx context.Context, backend Backend, key string, ttl ti
 // ReadThroughCompressed is ReadThrough for values above a backend's entry limit (Redis keeps at most 512 KiB):
 // entries hold gzip-compressed JSON, which shrinks repetitive payloads such as sitemap pages by over 10×.
 func ReadThroughCompressed[T any](ctx context.Context, backend Backend, key string, ttl time.Duration, load func(context.Context) (T, error)) (T, error) {
+	backend = Scope(ctx, backend)
 	if backend != nil {
 		if data, err := backend.Load(ctx, key); err == nil {
 			if reader, err := gzip.NewReader(bytes.NewReader(data)); err == nil {

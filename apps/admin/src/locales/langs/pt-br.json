@@ -720,10 +720,14 @@
           "tags": "Tags",
           "tagsHint": "Até 10 tags, com até 20 caracteres cada",
           "hidden": "Oculto",
-          "hiddenHint": "Pacotes ocultos não aparecem no site nem no aplicativo",
+          "hiddenHint": "Aplicativos ocultos continuam acessíveis por link direto e não são indexados pelos buscadores.",
           "editorChoice": "Escolha do editor",
           "notes": "Notas internas",
-          "save": "Salvar"
+          "save": "Salvar",
+          "private": "Privado",
+          "privateHint": "Aplicativos privados não estão disponíveis nas páginas nem nas APIs públicas.",
+          "visibilityReason": "Motivo da visibilidade",
+          "visibilityReasonRequired": "Informe um motivo antes de ocultar um aplicativo ou torná-lo privado."
         },
         "i18n": {
           "hint": "Idioma de origem: {locale}. Quando o texto de origem mudar, a IA traduzirá novamente os outros idiomas; alterações em outro idioma são correções manuais e entram em vigor imediatamente.",

@@ -11,7 +11,7 @@ import (
 func (s *Service) withWebURL(raw json.RawMessage, entity string) (json.RawMessage, error) {
 	var state struct {
 		Kind, Token, Slug, Status string
-		Hidden, Removed           bool
+		Hidden, Private, Removed  bool
 	}
 	if err := json.Unmarshal(raw, &state); err != nil {
 		return nil, fmt.Errorf("decode admin %s visibility: %w", entity, err)
@@ -26,7 +26,7 @@ func (s *Service) withWebURL(raw json.RawMessage, entity string) (json.RawMessag
 		path := ""
 		switch entity {
 		case "package":
-			if !state.Hidden && !state.Removed {
+			if !state.Hidden && !state.Private && !state.Removed {
 				switch state.Kind {
 				case "cask", "link":
 					path = "/apps/" + url.PathEscape(state.Token)

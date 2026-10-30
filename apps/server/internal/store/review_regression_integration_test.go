@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,6 +56,19 @@ func TestRegressionRemovedLinkDirectAdoptionVisibility(t *testing.T) {
 	var hidden bool
 	require.NoError(t, st.DB.Raw("SELECT coalesce(m.hidden,false) FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id WHERE p.id=?", id).Scan(&hidden).Error)
 	require.True(t, hidden, "removed link must remain hidden after adoption, as rename adoption already guarantees")
+}
+
+func TestLinkAdoptionRecordsVisibilityReason(t *testing.T) {
+	st := testutil.NewStore(t)
+	ctx := context.Background()
+	id := remediationLink(t, st, "adopted-link")
+	require.NoError(t, st.RemoveLinkApp(ctx, id))
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: remediationCask(t, "adopted-link")}}))
+	var hidden bool
+	var reason string
+	require.NoError(t, st.DB.Raw("SELECT hidden,visibility_reason FROM package_meta WHERE package_id=?", id).Row().Scan(&hidden, &reason))
+	require.True(t, hidden)
+	require.NotEmpty(t, strings.TrimSpace(reason), "adoption that hides a package must record a visibility reason")
 }
 
 func TestRegressionDetailInvalidationProducers(t *testing.T) {

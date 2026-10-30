@@ -1966,26 +1966,26 @@ paths:
               notes: null
       responses:
         '200':
-          description: 'On success data is null; see code for failures'
+          description: 'On success data is empty or carries a warning when the CDN purge is paused; see code for failures'
           content:
             application/json:
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/EmptyResponseResult'
+                  - $ref: '#/components/schemas/PackageMetaUpdateResult'
                   - $ref: '#/components/schemas/AgentDryRunResponse'
               examples:
                 en-US:
-                  $ref: '#/components/examples/EmptyResponseResultSixLocales'
+                  $ref: '#/components/examples/PackageMetaUpdateWarningResult'
                 zh-CN:
-                  $ref: '#/components/examples/EmptyResponseResultSixLocales'
+                  $ref: '#/components/examples/PackageMetaUpdateWarningResult'
                 ja-JP:
-                  $ref: '#/components/examples/EmptyResponseResultSixLocales'
+                  $ref: '#/components/examples/PackageMetaUpdateWarningResult'
                 es-ES:
-                  $ref: '#/components/examples/EmptyResponseResultSixLocales'
+                  $ref: '#/components/examples/PackageMetaUpdateWarningResult'
                 pt-BR:
-                  $ref: '#/components/examples/EmptyResponseResultSixLocales'
+                  $ref: '#/components/examples/PackageMetaUpdateWarningResult'
                 ru-RU:
-                  $ref: '#/components/examples/EmptyResponseResultSixLocales'
+                  $ref: '#/components/examples/PackageMetaUpdateWarningResult'
                 dry-run:
                   value:
                     code: '0000'
@@ -19937,6 +19937,45 @@ components:
         code: '0000'
         msg: ok
         data: null
+    PackageMetaUpdateWarning:
+      type: object
+      additionalProperties: false
+      properties:
+        warning:
+          type: string
+          description: 'Present when the CDN purge is paused. The purge stays queued and share-image edge copies may persist until it is resumed.'
+          example: CDN purge is pending; edge copies may persist until the purge is resumed.
+      example:
+        warning: CDN purge is pending; edge copies may persist until the purge is resumed.
+    PackageMetaUpdateResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - msg
+        - data
+      properties:
+        code:
+          $ref: '#/components/schemas/Code'
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: '#/components/schemas/PackageMetaUpdateWarning'
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          warning: CDN purge is pending; edge copies may persist until the purge is resumed.
+    PackageMetaUpdateResult:
+      anyOf:
+        - $ref: '#/components/schemas/PackageMetaUpdateResponse'
+        - $ref: '#/components/schemas/BusinessErrorResponse'
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          warning: CDN purge is pending; edge copies may persist until the purge is resumed.
     IdResponse:
       type: object
       required:
@@ -20786,6 +20825,14 @@ components:
         hidden:
           type: boolean
           example: false
+        private:
+          type: boolean
+          description: Whether the package is absent from public reads.
+          example: false
+        visibilityReason:
+          type: string
+          description: Most recently recorded visibility reason; empty for packages with no recorded restriction.
+          example: Catalog visibility review.
         editorChoice:
           type: boolean
           example: true
@@ -21098,7 +21145,7 @@ components:
               type: string
               format: uri
               nullable: true
-              description: '/apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.'
+              description: '/apps/{token} under WEB_BASE_URL; null when hidden, private or removed. Casks and link apps only.'
               example: https://opennavo.example/apps/visual-studio-code
             names:
               type: array
@@ -21361,7 +21408,18 @@ components:
           example: null
         hidden:
           type: boolean
+          description: Unlisted but reachable by direct link. Setting true requires visibilityReason.
           example: false
+        private:
+          type: boolean
+          description: Absent from all public reads. Setting true requires visibilityReason.
+          example: false
+        visibilityReason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Required and recorded in the audit log whenever hidden or private is set to true.
+          example: Catalog visibility review.
         clearDisabled:
           type: boolean
           default: false
@@ -39933,6 +39991,13 @@ components:
         code: '0000'
         msg: ok
         data: null
+    PackageMetaUpdateWarningResult:
+      summary: The CDN purge is paused, so share-image edge copies may persist
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          warning: CDN purge is pending; edge copies may persist until the purge is resumed.
     IdResponseResultSixLocales:
       summary: Six-language fields and translation status
       value:

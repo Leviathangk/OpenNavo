@@ -103,6 +103,7 @@ func TestRepairPageDatesOfTheUpgradeHour(t *testing.T) {
 	require.NoError(t, goose.UpToContext(ctx, db, ".", 113))
 
 	// The current hash refresh finds no change after the repaired dates.
+	require.NoError(t, goose.UpContext(ctx, db, "."))
 	require.NoError(t, st.DB.Exec(`INSERT INTO package_page_dirty(package_id,changed_at) VALUES(801,now()),(802,now())`).Error)
 	for {
 		count, err := st.RefreshPackagePageStates(ctx, 100)

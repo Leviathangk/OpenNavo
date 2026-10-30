@@ -22,7 +22,7 @@ func (s *Store) PackageLifecycle(ctx context.Context, kind, token string) (Lifec
  FROM (SELECT id,1 AS rank FROM packages WHERE kind=? AND token=? AND removed_at IS NULL
   UNION ALL SELECT package_id,2 FROM package_aliases WHERE kind=? AND token=?
   UNION ALL SELECT id,3 FROM packages WHERE kind=? AND token=? AND removed_at IS NOT NULL) c
- JOIN packages p ON p.id=c.id ORDER BY c.rank LIMIT 1`, kind, token, kind, token, kind, token).Scan(&rows).Error
+ JOIN packages p ON p.id=c.id LEFT JOIN package_meta m ON m.package_id=p.id WHERE `+publicReadable+` ORDER BY c.rank LIMIT 1`, kind, token, kind, token, kind, token).Scan(&rows).Error
 	if err != nil || len(rows) == 0 {
 		return LifecycleRow{}, false, err
 	}
