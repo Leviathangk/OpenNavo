@@ -209,6 +209,7 @@ export const commands = {
 	historyList: (query: HistoryQuery) => typedError<Page<Task>, AppError>(__TAURI_INVOKE("history_list", { query })),
 	historyClear: () => typedError<HistoryCleared, AppError>(__TAURI_INVOKE("history_clear")),
 	historyExportCsv: (path: string) => typedError<number, AppError>(__TAURI_INVOKE("history_export_csv", { path })),
+	deeplinkInstallConfirm: (pendingId: string) => typedError<DeepLinkInstallResult, AppError>(__TAURI_INVOKE("deeplink_install_confirm", { pendingId })),
 	brewfileExport: (path: string, targets: TaskTarget[] | null) => typedError<number, AppError>(__TAURI_INVOKE("brewfile_export", { path, targets })),
 	brewfilePreview: (path: string) => typedError<BrewfilePreview, AppError>(__TAURI_INVOKE("brewfile_preview", { path })),
 	brewfileInstall: (targets: TaskTarget[]) => typedError<Task[], AppError>(__TAURI_INVOKE("brewfile_install", { targets })),
@@ -246,7 +247,7 @@ export const events = {
 	catalogSynced: makeEvent<CatalogSynced>("catalog:synced"),
 	cleanupChanged: makeEvent<CleanupChangedEvent>("cleanup:changed"),
 	cleanupScanProgress: makeEvent<CleanupScanEvent>("cleanup:scan-progress"),
-	deeplinkReceived: makeEvent<DeeplinkReceived>("deeplink:received"),
+	deeplinkReceived: makeEvent<DeeplinkReceived_Deserialize>("deeplink:received"),
 	downloadDetected: makeEvent<DownloadDetectedEvent>("download:detected"),
 	downloadVerified: makeEvent<DownloadVerifiedEvent>("download:verified"),
 	envChanged: makeEvent<EnvChanged>("env:changed"),
@@ -754,13 +755,33 @@ export type CpuSample = {
 
 export type DeepLinkAction = "install";
 
-export type DeepLinkEvent = {
+export type DeepLinkEvent = DeepLinkEvent_Serialize | DeepLinkEvent_Deserialize;
+
+export type DeepLinkEvent_Deserialize = {
 	url: string,
 	route: string,
 	action: DeepLinkAction | null,
+	/**  Rust-owned write intent. The frontend may pass this opaque id back to the guarded command, but never a target. */
+	pendingId?: string | null,
 };
 
-export type DeeplinkReceived = DeepLinkEvent;
+export type DeepLinkEvent_Serialize = {
+	url: string,
+	route: string,
+	action: DeepLinkAction | null,
+	/**  Rust-owned write intent. The frontend may pass this opaque id back to the guarded command, but never a target. */
+	pendingId?: string | null,
+};
+
+export type DeepLinkInstallResult = {
+	tasks: Task[],
+};
+
+export type DeeplinkReceived = DeeplinkReceived_Serialize | DeeplinkReceived_Deserialize;
+
+export type DeeplinkReceived_Deserialize = DeepLinkEvent_Deserialize;
+
+export type DeeplinkReceived_Serialize = DeepLinkEvent_Serialize;
 
 export type DeleteMode = "trash" | "delete";
 
@@ -2141,7 +2162,7 @@ export type TaskTarget = {
 	token: string,
 };
 
-export type TaskTrigger = "manual" | "schedule" | "deeplink" | "bundle" | "retry";
+export type TaskTrigger = "manual" | "schedule" | "deeplink" | "mcp" | "bundle" | "retry";
 
 export type TaskUpdated = Task;
 

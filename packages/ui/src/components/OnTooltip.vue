@@ -7,6 +7,10 @@ export interface OnTooltipProps {
   /** Show delay in milliseconds (08 §8.24: 400). */
   delay?: number;
   disabled?: boolean;
+  /** Allow a button trigger to reveal the tooltip on touch and keyboard activation. */
+  toggleOnClick?: boolean;
+  /** Preserve line breaks in factual descriptions, such as download sources and checksums. */
+  multiline?: boolean;
   /**
    * Render the description only once the trigger is used, for decorative triggers whose information is on
    * the page anyway (chart bars with a hidden table). It then never reaches the server-rendered HTML, where
@@ -18,7 +22,7 @@ export interface OnTooltipProps {
 const props = withDefaults(defineProps<OnTooltipProps>(), { placement: 'top', delay: 400 });
 defineOptions({ inheritAttrs: false });
 
-defineSlots<{ default?: () => unknown }>();
+defineSlots<{ default?: (props: { describedBy: string | undefined }) => unknown }>();
 
 const id = useId();
 const root = ref<HTMLElement>();
@@ -69,6 +73,8 @@ function listen(active: boolean) {
   window[method]('resize', hide);
   if (active) window.addEventListener('keydown', onKeydown);
   else window.removeEventListener('keydown', onKeydown);
+  if (active && props.toggleOnClick) window.addEventListener('pointerdown', onOutsidePointer, true);
+  else window.removeEventListener('pointerdown', onOutsidePointer, true);
 }
 
 function show() {
@@ -90,9 +96,25 @@ function hide() {
   listen(false);
 }
 
+function toggle() {
+  if (!props.toggleOnClick || props.disabled || !props.content) return;
+  clearTimeout(timer);
+  if (open.value) return hide();
+  used.value = true;
+  positioned.value = false;
+  open.value = true;
+  listen(true);
+  void place();
+}
+
 function onKeydown(event: KeyboardEvent) {
   // WCAG 1.4.13: Escape dismisses tooltips.
   if (event.key === 'Escape' && open.value) hide();
+}
+
+function onOutsidePointer(event: PointerEvent) {
+  if (event.target instanceof Node && !root.value?.contains(event.target) && !tooltip.value?.contains(event.target))
+    hide();
 }
 
 // Screen readers read tooltips through the trigger's aria-describedby.
@@ -130,8 +152,9 @@ onBeforeUnmount(hide);
     @mouseleave="hide"
     @focusin="show"
     @focusout="hide"
+    @click="toggle"
   >
-    <slot />
+    <slot :described-by="!disabled && content && !lazy ? id : undefined" />
   </span>
   <Teleport v-if="used" to="body">
     <span
@@ -140,7 +163,7 @@ onBeforeUnmount(hide);
       ref="tooltip"
       role="tooltip"
       class="pointer-events-none fixed z-tooltip box-border w-max max-w-[min(240px,calc(100vw-16px))] max-h-[calc(100vh-16px)] overflow-hidden rounded-small border border-solid border-line-default bg-surface-control px-9px py-6px font-sans text-11.5px font-400 leading-16px text-ink-primary shadow-popover [overflow-wrap:anywhere]"
-      :class="positioned ? 'visible opacity-100' : 'invisible opacity-0'"
+      :class="[positioned ? 'visible opacity-100' : 'invisible opacity-0', multiline ? 'whitespace-pre-line' : '']"
       :style="position"
     >
       {{ content }}

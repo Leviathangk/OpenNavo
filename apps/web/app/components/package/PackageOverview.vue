@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
-import { formatCount, formatList, formatVersion } from '@opennavo/shared';
+import { formatCount, formatList, formatVersion, packageInstallState } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
-import { displayUrl, imageSrcset, OnPackageOverview } from '@opennavo/ui';
-import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
+import { imageSrcset, OnPackageOverview, OnPackageSpecCard } from '@opennavo/ui';
+import type { OnRelatedPackage } from '@opennavo/ui';
 import { capabilities } from '~/utils/packageFacts';
 import { packagePath } from '~/utils/packageView';
 import { appEntityId, softwareAppNode } from '~/utils/structuredData';
@@ -15,7 +15,7 @@ import {
   overviewTitle,
   withVariantNames
 } from '~/utils/seoTitles';
-import { httpsUrl } from '~/utils/linkApp';
+import { packageSpec } from '~/utils/packageSpec';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -85,46 +85,27 @@ const relatedItems = computed<OnRelatedPackage[]>(() =>
   }))
 );
 
-// Download information as on the desktop: official site, GitHub and bundle IDs. The signature and price are in
-// the facts table, the chips in the requirements table.
-const linkInfo = computed<OnKeyValueItem[]>(() => {
-  const link = pkg.value?.link;
-  if (!link) return [];
-  const items: OnKeyValueItem[] = [];
-  const homepage = httpsUrl(link.homepage);
-  if (homepage)
-    items.push({ key: 'homepage', label: t('package.info.homepage'), value: displayUrl(homepage), href: homepage });
-  if (link.github)
-    items.push({
-      key: 'github',
-      label: 'GitHub',
-      value: link.github.repo,
-      href: `https://github.com/${link.github.repo}`
-    });
-  const bundleIds = pkg.value?.bundleIds ?? [];
-  if (bundleIds.length) items.push({ key: 'bundle', label: 'Bundle ID', value: bundleIds.join(' '), mono: true });
-  return items;
-});
-
-const info = computed<OnKeyValueItem[]>(() => {
+const specNow = usePackageSpecNow();
+const spec = computed(() => packageSpec(pkg.value!, t, toAppLocale(locale.value), specNow.value));
+const installNotice = computed(() => {
   const value = pkg.value;
-  if (!value) return [];
-  if (value.kind === 'link') return linkInfo.value;
-  const items: OnKeyValueItem[] = [{ key: 'token', label: 'Token', value: value.token, mono: true }];
-  if (value.homepage)
-    items.push({
-      key: 'homepage',
-      label: t('package.info.homepage'),
-      value: displayUrl(value.homepage),
-      href: value.homepage
-    });
-  if (value.kind === 'cask')
-    items.push({
-      key: 'auto',
-      label: t('package.info.autoUpdates'),
-      value: t(value.autoUpdates ? 'package.info.autoYes' : 'package.info.autoNo')
-    });
-  return items;
+  if (!value || value.kind === 'link') return undefined;
+  const state = packageInstallState(value);
+  if (state === 'active') return undefined;
+  const key =
+    state === 'disabled'
+      ? 'package.disabledNotice'
+      : state === 'deprecated'
+        ? 'package.deprecatedNotice'
+        : 'package.staleNotice';
+  // A disabled package uses Homebrew's current reason before any stale pause notice.
+  const reason =
+    (state === 'disabled'
+      ? (value.homebrewStatus?.reason ?? value.disable?.reason)
+      : state === 'deprecated'
+        ? (value.deprecation?.reason ?? value.homebrewStatus?.reason)
+        : (value.disable?.reason ?? value.homebrewStatus?.reason)) ?? t('package.noReason');
+  return { text: t(key, { reason }), disabled: state === 'disabled' };
 });
 
 function onCopied(command: string) {
@@ -204,22 +185,19 @@ usePageSeo({
 
 <template>
   <div v-if="pkg && can" class="flex flex-col gap-14px">
-    <PackageLead :pkg="pkg" />
     <OnPackageOverview
       :screenshots="shots"
       :screenshots-label="t('package.screenshots')"
       :screenshots-name="pkg.displayName"
       :has-about="Boolean(description)"
       :command="can.homebrew ? pkg.installCommand : undefined"
-      :info="info"
+      :install-notice="installNotice"
+      :info="[]"
       :related="relatedItems"
       :related-title="t(pkg.isFont ? 'package.relatedFonts' : 'package.related')"
       :link-as="NuxtLink"
       @copied="onCopied"
     >
-      <template #top>
-        <PackageQuickFacts :pkg="pkg" />
-      </template>
       <template #about>
         <MarkdownContent size="md" :heading-level="3" :source="description" />
       </template>
@@ -246,6 +224,15 @@ usePageSeo({
       </template>
       <template v-if="pkg.kind === 'link' && pkg.link" #download>
         <LinkDownloadPanel :link="pkg.link" />
+      </template>
+      <template #spec>
+        <OnPackageSpecCard
+          :rows="spec.rows"
+          :title="t('package.spec.title')"
+          :checked-at="spec.checkedAt"
+          :checked-label="t('package.spec.checked')"
+          :link-as="NuxtLink"
+        />
       </template>
       <template #aside>
         <MonthlyInstalls v-if="can.installs" :installs="pkg.installs" />

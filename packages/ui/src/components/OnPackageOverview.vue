@@ -37,6 +37,7 @@ export interface OnPackageOverviewProps {
   caveatsTitle?: string;
   /** Install command; link apps have none and fill the `download` slot instead. */
   command?: string;
+  installNotice?: { text: string; disabled: boolean };
   info: readonly OnKeyValueItem[];
   related?: readonly OnRelatedPackage[];
   relatedTitle?: string;
@@ -63,6 +64,8 @@ defineSlots<{
   main?: () => unknown;
   /** Top of the side column in place of the install command, e.g. link apps' download panel. */
   download?: () => unknown;
+  /** Shared package specification card, rendered in the side column. */
+  spec?: () => unknown;
   /** After information, e.g. monthly installs. */
   aside?: () => unknown;
   /** End of the side column, after similar apps, e.g. the collections an app is in. */
@@ -97,11 +100,30 @@ defineSlots<{
     <aside class="flex min-w-0 flex-col gap-14px">
       <slot name="download" />
       <section
-        v-if="command"
+        v-if="command || installNotice"
         class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px"
+        data-testid="package-install-command"
       >
-        <OnInstallCommand :command="command" @copied="emit('copied', $event)" />
+        <p
+          v-if="installNotice"
+          role="note"
+          class="m-0 rounded-default border border-solid px-12px py-10px text-12.5px leading-[1.6]"
+          :class="[
+            installNotice.disabled
+              ? 'border-status-danger text-status-danger'
+              : 'border-status-warning text-status-warning',
+            command && !installNotice.disabled ? 'mb-12px' : ''
+          ]"
+        >
+          {{ installNotice.text }}
+        </p>
+        <OnInstallCommand
+          v-if="command && !installNotice?.disabled"
+          :command="command"
+          @copied="emit('copied', $event)"
+        />
       </section>
+      <slot name="spec" />
       <section
         v-if="info.length"
         class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px"

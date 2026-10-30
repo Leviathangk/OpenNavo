@@ -66,5 +66,21 @@
   "security.threatsFound": "脅威が見つかりました",
   "security.signatureChanged": "App の署名が変更されました",
   "security.downloadThreat": "ダウンロードしたファイルに脅威",
-  "security.newStartupItem": "新しい起動項目"
+  "security.newStartupItem": "新しい起動項目",
+  "confirmation.title": "OpenNavo の確認",
+  "confirmation.request": "この Mac を変更するリクエストを OpenNavo が受け取りました。\n\n呼び出し元：{caller}\n送信元：{source}\n操作：{action}\n対象：{target}\n\n今回の操作を許可しますか？",
+  "confirmation.collection": "このコレクションのアプリをインストールするリクエストを OpenNavo が受け取りました。{install} 個をインストールし、{skip} 個をスキップします。\n\n",
+  "confirmation.footer": "このリスト内の有効なアプリのうち、未インストールかつ未登録のものだけをインストールします。",
+  "confirmation.allow": "許可",
+  "confirmation.deny": "拒否",
+  "confirmation.installAll": "すべてインストール",
+  "confirmation.cancel": "キャンセル",
+  "confirmation.disabled": "無効",
+  "confirmation.installed": "インストール済み",
+  "confirmation.queued": "キューに登録済み",
+  "confirmation.duplicate": "重複",
+  "confirmation.unsupported": "Cask ではありません",
+  "confirmation.deepLink": "ディープリンク",
+  "confirmation.install": "インストール",
+  "confirmation.installCollection": "コレクションをインストール"
 }

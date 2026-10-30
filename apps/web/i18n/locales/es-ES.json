@@ -214,7 +214,6 @@
     "disabled": "Desactivada",
     "deprecated": "Obsoleta",
     "homepage": "Inicio",
-    "fromTap": "De",
     "stats": {
       "label": "Datos",
       "installs30d": "Instalaciones en los últimos 30 días",
@@ -438,7 +437,6 @@
       "downloadVaries": "La descarga cambia según la versión de macOS, así que elige una en el sitio oficial:",
       "downloadOfficial": "Descárgala desde el sitio oficial:",
       "sha": "SHA-256 solo comprueba que la descarga esté completa; no es una certificación de seguridad.",
-      "shaLink": "Ver el SHA-256 y la dirección de descarga",
       "uninstallTitle": "Comando para desinstalar",
       "uninstall": "Una desinstalación normal elimina la App y conserva sus ajustes y cachés.",
       "zapTitle": "Limpieza a fondo (opcional)",
@@ -581,6 +579,7 @@
       "priceStoreNote": "Homebrew instala la versión del sitio web del desarrollador, que puede diferir de la edición de la App Store en precio y funciones.",
       "openSourceQ": "¿{name} es de código abierto?",
       "openSourceA": "El código fuente de {name} es público en GitHub ({repo}) con la licencia {license}.",
+      "openSourceNoLicenseA": "{name} tiene un repositorio público en GitHub ({repo}), pero OpenNavo no ha verificado una licencia OSI.",
       "openSourceArchived": "El repositorio está archivado y ya no se actualiza.",
       "uninstallQ": "¿Cómo desinstalo {name} por completo en un Mac?",
       "uninstallRun": "Ejecuta `brew uninstall --cask {token}`.",
@@ -643,7 +642,8 @@
       },
       "alternativesQ": "¿Qué alternativas hay a {name}?",
       "alternativesA": "Algunas alternativas son {list}.",
-      "titleFor": "Preguntas frecuentes sobre {name}"
+      "titleFor": "Preguntas frecuentes sobre {name}",
+      "repositoryQ": "¿{name} tiene un repositorio público en GitHub?"
     },
     "securityPromo": {
       "title": "OpenNavo: análisis de virus y cortafuegos de apps",
@@ -658,6 +658,30 @@
     "lead": {
       "developer": "Su desarrollador es {developer}.",
       "source": "El instalador se descarga desde {source}."
+    },
+    "spec": {
+      "title": "De un vistazo",
+      "price": "Precio",
+      "system": "Sistema",
+      "chip": "Chip",
+      "autoUpdates": "Actualización automática",
+      "openSource": "Código abierto",
+      "repository": "Repositorio",
+      "githubRepository": "Repositorio de GitHub",
+      "developer": "Desarrollador",
+      "homepage": "Sitio web",
+      "token": "Identificador",
+      "yes": "Sí",
+      "no": "No",
+      "checked": "Comprobado",
+      "bundleId": "Bundle ID"
+    },
+    "repo": {
+      "stars": "★",
+      "checked": "Datos del repositorio comprobados el {date}.",
+      "updated": "Actualizado hace {days} día | Actualizado hace {days} días",
+      "unmaintained": "Puede que ya no reciba mantenimiento",
+      "archived": "Archivado"
     },
     "quick": {
       "title": "Datos básicos",
@@ -714,8 +738,7 @@
       "builtFor": "Versión para macOS {versions}"
     },
     "install": {
-      "title": "Cómo instalar {name} en Mac",
-      "run": "En la app Terminal, ejecuta:"
+      "title": "Cómo instalar {name} en Mac"
     },
     "uninstall": {
       "title": "Desinstalar {name} y limpieza opcional de datos",
@@ -818,6 +841,18 @@
       "label": "Descarga oficial · {host}",
       "checksum": "SHA-256 registrado en Homebrew",
       "active": "No deshabilitada por Homebrew"
+    },
+    "sourceBadge": {
+      "label": "Fuente oficial",
+      "verified": "✓ Fuente oficial · Verificada",
+      "disabled": "Fuente oficial · App desactivada",
+      "deprecated": "Fuente oficial · App obsoleta",
+      "paused": "Fuente oficial · En pausa",
+      "domain": "Origen: {domain}",
+      "checksum": "SHA-256: {sha256}",
+      "checksumUnknown": "SHA-256 no registrado",
+      "checked": "Verificado el {date}",
+      "unchecked": "Sin fecha de verificación"
     }
   },
   "collections": {

@@ -315,8 +315,21 @@
     "autoUpdates": "Mise à jour intégrée",
     "disabled": "Désactivé",
     "deprecated": "Obsolète",
+    "paused": "Suspendue par OpenNavo",
     "homepage": "Site web",
-    "fromTap": "Source :",
+    "sourceBadge": {
+      "label": "Source officielle",
+      "verified": "✓ Source officielle · Vérifiée",
+      "disabled": "Source officielle · App désactivée",
+      "deprecated": "Source officielle · App obsolète",
+      "paused": "Source officielle · En pause",
+      "domain": "Source : {domain}",
+      "checksum": "SHA-256 : {sha256}",
+      "checksumUnknown": "SHA-256 non renseigné",
+      "checked": "Vérification : {date}",
+      "unchecked": "Date de vérification non renseignée",
+      "active": "Non désactivé par Homebrew"
+    },
     "thirdPartyTap": "Dépôt tiers",
     "stats": {
       "label": "Statistiques",
@@ -451,6 +464,34 @@
       "uninstall": "À la désinstallation",
       "arch": "Architecture",
       "license": "Licence"
+    },
+    "spec": {
+      "title": "En bref",
+      "price": "Prix",
+      "system": "Système",
+      "chip": "Puce",
+      "autoUpdates": "Mise à jour automatique",
+      "openSource": "Open source",
+      "repository": "Dépôt",
+      "githubRepository": "Dépôt GitHub",
+      "developer": "Développeur",
+      "homepage": "Site web",
+      "token": "Identifiant",
+      "installedVersion": "Version installée",
+      "installLocation": "Emplacement d’installation",
+      "yes": "Oui",
+      "no": "Non",
+      "checked": "Vérifié le",
+      "downloadSource": "Source de téléchargement",
+      "fontFiles": "Fichiers de police",
+      "bundleId": "Bundle ID"
+    },
+    "repo": {
+      "stars": "★",
+      "updated": "Mis à jour il y a {days} jour | Mis à jour il y a {days} jours",
+      "unmaintained": "La maintenance a peut-être cessé",
+      "archived": "Archivé",
+      "checked": "Données du dépôt vérifiées le {date}."
     },
     "deps": {
       "macos": "Configuration requise",
@@ -1055,6 +1096,8 @@
     "installDescription": "Une page web demande l’installation sur ce Mac. Confirmez pour exécuter la commande ci-dessous ; annulez pour ne rien faire.",
     "installConfirm": "Installation",
     "formulaUnsupported": "OpenNavo ne répertorie que les apps (Homebrew Cask). Ce lien mène à un outil en ligne de commande.",
+    "confirmationBusy": "Une autre fenêtre de confirmation est encore ouverte. Fermez-la et réessayez.",
+    "confirmationTimeout": "La fenêtre de confirmation a expiré. Fermez-la et réessayez.",
     "preview": {
       "invalid": "Impossible d’ouvrir ce lien",
       "invalidBody": "Les paramètres du lien sont incomplets ou invalides. OpenNavo n’a effectué aucune action.",

@@ -45,13 +45,6 @@ const channels = computed(() => {
     .map(channel => (channel === 'homebrew' ? 'Homebrew' : t(`package.price.channels.${channel}`)));
 });
 
-const openSource = computed(() => {
-  const item = identities.value.find(entry => entry.openSource !== 'unknown');
-  if (!item) return null;
-  const license = props.pkg.openSource?.url === item.repositoryUrl ? props.pkg.openSource?.license : undefined;
-  return { open: item.openSource === 'yes', url: item.repositoryUrl, license, checked: checked(item.evidence) };
-});
-
 const vulnerabilities = computed(() =>
   (security.value?.vulnerabilities ?? []).filter(item => isVerified(item.evidence))
 );
@@ -97,26 +90,6 @@ const visible = computed(() => Boolean(security.value) || channels.value.length 
       <div v-if="channels.length">
         <dt class="text-12px text-ink-tertiary">{{ t('package.safety.channels') }}</dt>
         <dd class="m-0 text-ink-primary">{{ channels.join(' · ') }}</dd>
-      </div>
-      <div v-if="openSource">
-        <dt class="text-12px text-ink-tertiary">{{ t('package.safety.openSource') }}</dt>
-        <dd class="m-0 text-ink-primary">
-          {{ t(openSource.open ? 'package.facts.yes' : 'package.facts.no') }}
-          <template v-if="openSource.url">
-            ·
-            <a
-              :href="openSource.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-ink-secondary underline-offset-2 hover:text-ink-primary"
-              >{{ displayUrl(openSource.url) }}</a
-            ></template
-          ><template v-if="openSource.license">{{ ` · ${openSource.license}` }}</template>
-          <span v-if="openSource.checked" class="mt-2px block text-12px text-ink-tertiary"
-            >{{ openSource.checked.before }}<time :datetime="openSource.checked.iso">{{ openSource.checked.date }}</time
-            >{{ openSource.checked.after }}</span
-          >
-        </dd>
       </div>
       <div v-if="vulnerabilities.length">
         <dt class="text-12px text-ink-tertiary">{{ t('package.safety.cves') }}</dt>

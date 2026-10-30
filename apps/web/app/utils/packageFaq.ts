@@ -304,20 +304,32 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
     );
   }
 
-  // Is it open source? An OSI license GitHub recognized for a repository with code, still verified.
-  const repository = pkg.openSource;
+  // An OSI record must match a verified identity before the FAQ calls an app open source.
+  const repository = pkg.repository;
+  const openSource = pkg.openSource;
+  const repositoryPosition = items.length;
+  let repositoryQuestion: FaqItem | undefined;
   const openIdentity = verifiedIdentities(pkg).some(
-    identity => identity.openSource === 'yes' && identity.repositoryUrl === repository?.url
+    identity => identity.openSource === 'yes' && identity.repositoryUrl === openSource?.url
   );
-  if (repository && openIdentity)
+  if (openSource && openIdentity)
     add(
       'openSource',
       t('package.faq.openSourceQ', { name }),
       sentences([
-        t('package.faq.openSourceA', { name, repo: repository.repo, license: repository.license }),
-        repository.archived && t('package.faq.openSourceArchived')
+        t('package.faq.openSourceA', { name, repo: openSource.repo, license: openSource.license }),
+        openSource.archived && t('package.faq.openSourceArchived')
       ])
     );
+  else if (!openSource && repository?.url)
+    repositoryQuestion = {
+      key: 'openSource',
+      question: t('package.faq.repositoryQ', { name }),
+      answer: sentences([
+        t('package.faq.openSourceNoLicenseA', { name, repo: repository.url ?? '' }),
+        repository.archived && t('package.faq.openSourceArchived')
+      ])
+    };
 
   // How to remove it completely: what uninstall does, then --zap with how much it clears.
   const steps = uninstallSteps(pkg);
@@ -460,7 +472,10 @@ export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): Faq
       t('package.faq.alternativesA', { list: list(alternatives) })
     );
 
-  return items.slice(0, FAQ_LIMIT);
+  const result = items.slice(0, FAQ_LIMIT);
+  // The optional new question must not displace any of main's existing answers.
+  if (repositoryQuestion && result.length < FAQ_LIMIT) result.splice(repositoryPosition, 0, repositoryQuestion);
+  return result;
 }
 
 function hostOf(url: string): string {

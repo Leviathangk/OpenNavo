@@ -315,8 +315,21 @@ export default {
     autoUpdates: '自带更新',
     disabled: '已停用',
     deprecated: '已弃用',
+    paused: '暂停更新',
     homepage: '主页',
-    fromTap: '来自',
+    sourceBadge: {
+      label: '官方来源',
+      verified: '✓ 官方来源 · 已核查',
+      disabled: '官方来源 · 已停用',
+      deprecated: '官方来源 · 已弃用',
+      paused: '官方来源 · 暂停推荐',
+      domain: '来源域名：{domain}',
+      checksum: 'SHA-256：{sha256}',
+      checksumUnknown: '未记录 SHA-256',
+      checked: '核查日期：{date}',
+      unchecked: '暂无核查日期',
+      active: '未被 Homebrew 禁用'
+    },
     thirdPartyTap: '第三方仓库',
     stats: {
       label: '数据',
@@ -445,6 +458,34 @@ export default {
       uninstall: '卸载时',
       arch: '架构',
       license: '许可证'
+    },
+    spec: {
+      downloadSource: '下载来源',
+      fontFiles: '字体文件',
+      title: '基本信息',
+      price: '价格',
+      system: '系统',
+      chip: '芯片',
+      autoUpdates: '自动更新',
+      openSource: '开源',
+      repository: '仓库',
+      githubRepository: 'GitHub 仓库',
+      checked: '核查日期',
+      developer: '开发者',
+      homepage: '主页',
+      token: '软件包标识符',
+      bundleId: 'Bundle ID',
+      installedVersion: '已安装版本',
+      installLocation: '安装位置',
+      yes: '是',
+      no: '否'
+    },
+    repo: {
+      stars: '星标数',
+      checked: '仓库数据核查于 {date}。',
+      updated: '{days} 天前更新',
+      unmaintained: '可能已停止维护',
+      archived: '已归档'
     },
     deps: {
       macos: '系统要求',
@@ -1049,6 +1090,8 @@ export default {
     installDescription: '网页请求在这台 Mac 上安装它。确认后将执行下面的命令；取消则不做任何操作。',
     installConfirm: '安装',
     formulaUnsupported: 'OpenNavo 只收录 App（Homebrew Cask），这个链接指向的是命令行工具。',
+    confirmationBusy: '另一个确认窗口还开着。请先关闭它，再重试。',
+    confirmationTimeout: '确认窗口已超时。请先关闭它，再重试。',
     preview: {
       invalid: '这个链接打不开',
       invalidBody: '链接里的参数不完整或不符合要求，OpenNavo 没有做任何操作。',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { disabledByHomebrew, recentReturnPath, withRecentReturn } from '@opennavo/shared';
+import { packageInstallState, recentReturnPath, withRecentReturn } from '@opennavo/shared';
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -77,7 +77,7 @@ const breadcrumb = computed(() =>
 );
 
 const notice = computed(() => {
-  const value = detail.value;
+  const value = detail.value ?? local.value;
   // A link app Homebrew later added: point to the one-click install page.
   const adopted = (value?.link ?? local.value?.link)?.adoptedByCask;
   if (props.kind === 'link' && adopted)
@@ -87,24 +87,22 @@ const notice = computed(() => {
       replacement: { kind: 'cask' as const, token: adopted }
     };
   if (!value) return null;
-  if (value.disable && disabledByHomebrew(value))
-    return {
-      tone: 'danger' as const,
-      text: t('package.disabledNotice', { reason: value.disable.reason ?? t('package.noReason') }),
-      replacement: value.disable.replacement
-    };
-  if (value.deprecation)
-    return {
-      tone: 'warning' as const,
-      text: t('package.deprecatedNotice', {
-        reason: value.deprecation.reason ?? t('package.noReason')
-      }),
-      replacement: value.deprecation.replacement
-    };
-  // Paused only by OpenNavo's 90-day rule: Homebrew still offers and installs the app.
-  if (value.disable)
-    return { tone: 'warning' as const, text: t('package.staleNotice'), replacement: value.disable.replacement };
-  return null;
+  const state = packageInstallState(value);
+  if (state === 'active') return null;
+  const lifecycle = state === 'deprecated' ? detail.value?.deprecation : detail.value?.disable;
+  const reason = lifecycle?.reason ?? detail.value?.homebrewStatus?.reason ?? t('package.noReason');
+  return {
+    tone: state === 'disabled' ? ('danger' as const) : ('warning' as const),
+    text: t(
+      state === 'disabled'
+        ? 'package.disabledNotice'
+        : state === 'deprecated'
+          ? 'package.deprecatedNotice'
+          : 'package.staleNotice',
+      { reason }
+    ),
+    replacement: lifecycle?.replacement
+  };
 });
 
 const offline = computed(() => Boolean(error.value) && !detail.value);
@@ -118,6 +116,7 @@ const offline = computed(() => Boolean(error.value) && !detail.value);
       <!-- Only apps have details pages; command-line alternatives show names only (ADR-018). -->
       <OnPackageNotice
         v-if="notice"
+        data-testid="package-lifecycle-banner"
         :tone="notice.tone"
         :text="notice.text"
         :replacement-label="

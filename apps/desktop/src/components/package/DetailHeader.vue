@@ -2,10 +2,11 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PackageDetail } from '@opennavo/api';
-import { formatDate, isThirdPartyTap } from '@opennavo/shared';
-import { architectures, displayUrl, OnButton, OnIcon, OnMenu, OnPackageHeader } from '@opennavo/ui';
+import { formatDate, isThirdPartyTap, packageInstallState, toPackageSource } from '@opennavo/shared';
+import { displayUrl, OnButton, OnIcon, OnMenu, OnPackageHeader, toPackageRepoSignals } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import PackageGetButton from './PackageGetButton.vue';
+import DetailSourceBadge from './DetailSourceBadge.vue';
 import type { Kind } from '@/ipc/bindings';
 import type { LocalItem } from '@/ipc/client';
 import { useAppLocale } from '@/composables/useAppLocale';
@@ -43,17 +44,14 @@ const summary = computed(
 const subtitle = computed(() => [props.detail?.developer, summary.value].filter(Boolean).join(' · '));
 const iconUrl = computed(() => props.detail?.iconUrl ?? props.local?.iconUrl ?? null);
 const accent = computed(() => props.detail?.accentColor ?? props.local?.accentColor ?? null);
-const arch = computed(() =>
-  props.detail
-    ? architectures(props.detail.supports)
-        .map(item => t(`package.arch.${item}`))
-        .join(' · ')
-    : ''
-);
+const repoSignals = computed(() => toPackageRepoSignals(props.detail));
+const officialSource = computed(() => (props.detail ? toPackageSource(props.detail) : null));
 
 const installed = computed(() => library.find(props.kind, props.token));
 const outdated = computed(() => updates.find(props.kind, props.token));
-const state = computed(() => stateOf(props.kind, props.token, Boolean(props.detail?.disable ?? props.local?.disabled)));
+const installState = computed(() => packageInstallState(props.detail ?? props.local ?? {}));
+const unavailable = computed(() => installState.value === 'disabled');
+const state = computed(() => stateOf(props.kind, props.token, unavailable.value));
 const latest = computed(() => outdated.value?.currentVersion ?? props.detail?.version ?? props.local?.version ?? '');
 
 const installedChip = computed(() => {
@@ -82,16 +80,15 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
     list.push({ key: 'tap', label: t('package.thirdPartyTap'), tone: 'warning', outline: true });
   if (props.detail?.autoUpdates ?? props.local?.autoUpdates)
     list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
-  if (arch.value) list.push({ key: 'arch', label: arch.value });
+  if (repoSignals.value?.archived)
+    list.push({ key: 'archived', label: t('package.repo.archived'), tone: 'danger', outline: true });
   if (installedChip.value) list.push({ key: 'installed', label: installedChip.value, tone: 'success', dot: true });
   if (installed.value?.pinned) list.push({ key: 'pinned', label: t('package.pinned') });
-  if (props.detail?.disable ?? props.local?.disabled)
-    list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
-  else if (props.detail?.deprecation ?? props.local?.deprecated)
+  if (installState.value !== 'active' && !officialSource.value)
     list.push({
-      key: 'deprecated',
-      label: t('package.deprecated'),
-      tone: 'warning',
+      key: installState.value,
+      label: t(`package.${installState.value}`),
+      tone: unavailable.value ? 'danger' : 'warning',
       outline: true
     });
   return list;
@@ -109,11 +106,16 @@ const source = computed(() => {
       : null;
 });
 
+const linkHomepage = computed(() =>
+  props.kind === 'link' ? ((props.detail?.link ?? props.local?.link)?.homepage ?? null) : null
+);
+// Only the link app's Get/Homepage pair stretches into equal columns; casks keep Brewfile/Get/More at natural widths.
+const stretchActions = computed(() => Boolean(linkHomepage.value));
+
 const meta = computed(() => {
   const parts: string[] = [];
   if (props.kind === 'link')
     return source.value ? t('package.link.meta', { source: source.value }) : t('package.link.notHosted');
-  if (props.detail?.tap) parts.push(`${t('package.fromTap')} ${props.detail.tap}`);
   if (installed.value?.installedAt)
     parts.push(
       t('package.installedAt', {
@@ -134,8 +136,13 @@ async function openHomepage() {
 }
 
 const menu = usePackageMenu();
-const menuItems = computed(() => menu.itemsFor(props.kind, props.token));
-const onSelect = (key: string) => menu.select(props.kind, props.token, name.value, key, props.detail?.installCommand);
+const menuItems = computed(() =>
+  menu.itemsFor(props.kind, props.token).filter(item => !unavailable.value || item.key !== 'copy')
+);
+const onSelect = (key: string) => {
+  if (unavailable.value && key === 'copy') return;
+  return menu.select(props.kind, props.token, name.value, key, props.detail?.installCommand);
+};
 </script>
 
 <template>
@@ -148,7 +155,11 @@ const onSelect = (key: string) => menu.select(props.kind, props.token, name.valu
     :accent="accent"
     :chips="chips"
     :meta="meta"
+    :stretch-actions="stretchActions"
   >
+    <template #tags>
+      <DetailSourceBadge v-if="detail && officialSource" :pkg="detail" />
+    </template>
     <template #actions>
       <OnButton
         v-if="kind === 'cask'"
@@ -162,7 +173,7 @@ const onSelect = (key: string) => menu.select(props.kind, props.token, name.valu
         appearance="button"
         :kind="kind"
         :token="token"
-        :disabled="Boolean(detail?.disable ?? local?.disabled)"
+        :disabled="unavailable"
         :label="state.state === 'update' ? t('package.updateTo', { version: latest }) : undefined"
       />
       <OnButton
@@ -173,11 +184,7 @@ const onSelect = (key: string) => menu.select(props.kind, props.token, name.valu
         {{ t('package.open') }}
       </OnButton>
       <!-- The arrow follows the label, as on Download beside it: both leave OpenNavo for the developer's site. -->
-      <OnButton
-        v-if="kind === 'link' && (detail?.link ?? local?.link)?.homepage"
-        variant="secondary"
-        @click="openHomepage"
-      >
+      <OnButton v-if="kind === 'link' && linkHomepage" variant="secondary" @click="openHomepage">
         {{ t('package.link.homepage') }}
         <OnIcon name="arrow-up-right" :size="15" />
       </OnButton>

@@ -50,6 +50,12 @@ const appInfo: AppInfo = { version: '0.0.0', os: 'macos', arch: 'aarch64' };
 const OFFICIAL_INSTALLER = 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh';
 const MIRROR_INSTALLER = 'https://mirrors.ustc.edu.cn/misc/brew-install.sh';
 
+function ipcTaskTrigger(trigger: Task['trigger']): Task['trigger'] {
+  if (trigger === 'deeplink' || trigger === 'mcp')
+    throw { code: 'E_INVALID_ARG', message: 'external_trigger_requires_rust', detail: null };
+  return trigger;
+}
+
 function defaultSettings(): AppSettings {
   return {
     onboardingCompleted: false,
@@ -685,20 +691,28 @@ export function installMockIpc(
         }));
     },
     task_enqueue: args => {
-      // Like Rust's queue: link apps are refused at the door, before anything is stored.
+      // Match Rust IPC: preserve app-internal origins and reject external origins before any queue write.
+      const trigger = ipcTaskTrigger(args.trigger as Task['trigger']);
       if ((args.target as TaskTarget | null)?.kind === 'link')
         throw { code: 'E_NOT_INSTALLABLE', message: 'link_app', detail: null };
       return runner.enqueue(
         args.op as Task['op'],
         (args.target as TaskTarget | null) ?? null,
         args.options as Task['options'],
-        args.trigger as Task['trigger']
+        trigger
       );
     },
-    task_enqueue_many: args =>
-      (args.targets as TaskTarget[]).map(target =>
-        runner.enqueue(args.op as Task['op'], target, args.options as Task['options'], args.trigger as Task['trigger'])
-      ),
+    task_enqueue_many: args => {
+      const trigger = ipcTaskTrigger(args.trigger as Task['trigger']);
+      return (args.targets as TaskTarget[]).map(target =>
+        runner.enqueue(args.op as Task['op'], target, args.options as Task['options'], trigger)
+      );
+    },
+    // The approve switch is intentionally compile-time dev-only: Vite removes this branch from release bundles.
+    deeplink_install_confirm: () => {
+      if (import.meta.env.DEV && flags.has('deeplink-approve')) return { tasks: [] };
+      throw { code: 'E_CONFIRMATION_DENIED', message: 'confirmation_denied', detail: null };
+    },
     task_cancel: args => {
       runner.cancel(args.id as string);
       return null;

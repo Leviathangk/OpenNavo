@@ -243,6 +243,28 @@ describe('OnTooltip', () => {
     wrapper.unmount();
   });
 
+  it('Toggles on activation, preserves multiline facts and dismisses on an outside touch', async () => {
+    const wrapper = mountTooltip({
+      toggleOnClick: true,
+      multiline: true,
+      content: 'Source: example.com\nChecked: Oct 30, 2026'
+    });
+    const tooltip = tooltipFor(wrapper);
+    expect(tooltip.classes()).toContain('whitespace-pre-line');
+    await wrapper.get('button').trigger('click');
+    await wrapper.vm.$nextTick();
+    expect(tooltip.classes()).toContain('visible');
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    await wrapper.vm.$nextTick();
+    expect(tooltip.classes()).toContain('invisible');
+    await wrapper.get('button').trigger('click');
+    await wrapper.vm.$nextTick();
+    expect(tooltip.classes()).toContain('visible');
+    await wrapper.get('button').trigger('click');
+    expect(tooltip.classes()).toContain('invisible');
+    wrapper.unmount();
+  });
+
   it('Stays hidden when disabled or empty and removes the description association', async () => {
     const wrapper = mountTooltip({ disabled: true, placement: 'left' });
     const tooltip = new DOMWrapper(document.body.querySelector('[role="tooltip"]')!);

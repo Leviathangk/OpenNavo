@@ -1,0 +1,2021 @@
+{
+  "capturedAt": "2026-10-29T22:56:16.702111+00:00",
+  "mainCommit": "baa5a12ec65b0872703cf88563d1945bb40b6c2c",
+  "mainFaqBlob": "e27df3cd0845c36204ac7726240fd2afe1e3f27d",
+  "sources": {
+    "rectangle": {
+      "url": "https://api.opennavo.com/api/v1/packages/cask/rectangle?locale=en-US",
+      "responseSha256": "131b6cbd810f6fd6887aeac4a26c94d668f1d2089f9b754dfa04276533decd74"
+    },
+    "iterm2": {
+      "url": "https://api.opennavo.com/api/v1/packages/cask/iterm2?locale=en-US",
+      "responseSha256": "f2d11a39f7aefed7fed6d6434adbbde3ca57a4ed8253e79d6172ce4f7fb927ef"
+    },
+    "discord": {
+      "url": "https://api.opennavo.com/api/v1/packages/cask/discord?locale=en-US",
+      "responseSha256": "33d6f2c75abe7b18b1752581568fbc76ddcc1810d9453474ef2ce0c6ead47cab"
+    },
+    "ely-office": {
+      "url": "https://api.opennavo.com/api/v1/packages/link/ely-office?locale=en-US",
+      "responseSha256": "97f816c2f0b250a7f934edc4bab9b6ebc7e2879c22a502073fc638e117d73be0"
+    }
+  },
+  "packages": {
+    "rectangle": {
+      "autoUpdates": true,
+      "conflictsWith": {
+        "casks": [],
+        "formulae": []
+      },
+      "developer": "Ryan Hanson and contributors",
+      "displayName": "Rectangle",
+      "facts": {
+        "alternatives": [],
+        "offers": [],
+        "overview": {
+          "aliases": [],
+          "artifacts": {
+            "apps": ["Rectangle.app"],
+            "binaries": [],
+            "entries": [
+              {
+                "declaration": {
+                  "uninstall": [
+                    {
+                      "login_item": "Rectangle",
+                      "quit": "com.knollsoft.Rectangle"
+                    }
+                  ]
+                },
+                "phase": "uninstall",
+                "sources": [],
+                "type": "uninstall"
+              },
+              {
+                "declaration": {
+                  "app": ["Rectangle.app"],
+                  "target": "/Applications/Rectangle.app"
+                },
+                "phase": "install",
+                "sources": ["Rectangle.app"],
+                "target": "/Applications/Rectangle.app",
+                "type": "app"
+              },
+              {
+                "declaration": {
+                  "zap": [
+                    {
+                      "trash": [
+                        "~/Library/Application Scripts/com.knollsoft.RectangleLauncher",
+                        "~/Library/Application Support/Rectangle",
+                        "~/Library/Caches/com.knollsoft.Rectangle",
+                        "~/Library/Containers/com.knollsoft.RectangleLauncher",
+                        "~/Library/HTTPStorages/com.knollsoft.Rectangle",
+                        "~/Library/Preferences/com.knollsoft.Rectangle.plist",
+                        "~/Library/WebKit/com.knollsoft.Rectangle"
+                      ]
+                    }
+                  ]
+                },
+                "phase": "cleanup",
+                "sources": [],
+                "type": "zap"
+              }
+            ],
+            "pkgs": []
+          },
+          "caveats": null,
+          "conflictCount": 0,
+          "dependencyCount": 0,
+          "downloadUrl": "https://github.com/rxhanson/Rectangle/releases/download/v2.0.4/Rectangle2.0.4.dmg",
+          "sha256": "9f820a2e56bd2c27cdda4fb4556de3cbcfcbac052d9eeb2179d49e2dae277abc",
+          "version": "2.0.4"
+        },
+        "price": {
+          "amount": null,
+          "appVersion": null,
+          "currency": null,
+          "method": "vendor_site",
+          "offer": false,
+          "period": null,
+          "plan": null,
+          "region": null,
+          "sourceUrl": "https://rectangleapp.com/",
+          "stale": false,
+          "type": "free",
+          "verifiedAt": "2026-10-21T17:42:05Z"
+        },
+        "prices": [
+          {
+            "channel": "vendor",
+            "downloadFree": true,
+            "edition": "unspecified",
+            "evidence": {
+              "checkedAt": "2026-10-21T17:42:05Z",
+              "sourceUrl": "https://rectangleapp.com/",
+              "status": "verified",
+              "validUntil": "2027-10-21T17:42:05Z"
+            },
+            "period": "free",
+            "purchaseUrl": "https://rectangleapp.com/",
+            "region": "ZZ",
+            "usage": "free"
+          }
+        ],
+        "requirements": [
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["x86_64"],
+            "downloadUrl": "https://github.com/rxhanson/Rectangle/releases/download/v2.0.4/Rectangle2.0.4.dmg",
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "14",
+            "platformMacOS": ["27", "26", "15", "14"],
+            "sha256": "9f820a2e56bd2c27cdda4fb4556de3cbcfcbac052d9eeb2179d49e2dae277abc",
+            "versions": ["2.0.4"]
+          },
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["arm64"],
+            "downloadUrl": "https://github.com/rxhanson/Rectangle/releases/download/v2.0.4/Rectangle2.0.4.dmg",
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "14",
+            "platformMacOS": ["27", "26", "15", "14"],
+            "sha256": "9f820a2e56bd2c27cdda4fb4556de3cbcfcbac052d9eeb2179d49e2dae277abc",
+            "versions": ["2.0.4"]
+          }
+        ],
+        "security": {
+          "identities": [],
+          "scanUrl": "opennavo://scan/rectangle?preview=1",
+          "vulnerabilities": []
+        },
+        "uninstall": [
+          {
+            "deletesUserData": false,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "login_item",
+            "phase": "uninstall",
+            "value": "Rectangle"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Scripts/com.knollsoft.RectangleLauncher"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/Rectangle"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Caches/com.knollsoft.Rectangle"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Containers/com.knollsoft.RectangleLauncher"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/HTTPStorages/com.knollsoft.Rectangle"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Preferences/com.knollsoft.Rectangle.plist"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/WebKit/com.knollsoft.Rectangle"
+          }
+        ]
+      },
+      "homebrewStatus": {
+        "date": null,
+        "reason": null,
+        "state": "active"
+      },
+      "homepage": "https://rectangleapp.com/",
+      "installCommand": "brew install --cask rectangle",
+      "installs": {
+        "d30": 9659,
+        "d365": 116221,
+        "d90": 26083
+      },
+      "isFont": false,
+      "kind": "cask",
+      "latestRelease": {
+        "bodyMarkdown": "- Adds mouse-button shortcuts for window actions and full-height vertical-sixth layouts.\n- Adds an option to snap before reaching outer screen edges and an opposite-side option for repeated commands.\n- Improves optional window animations and keeps snap previews translucent with Reduce Transparency.\n- Avoids redundant Accessibility writes and fixes drag-snap window detection for Emacs 28.\n- Adds Persian and Ukrainian localization and completes Simplified Chinese and Brazilian Portuguese localization.",
+        "brewCommittedAt": "2026-10-20T19:37:05Z",
+        "compatibility": {
+          "appVersion": "2.0.4",
+          "appleSilicon": "unknown",
+          "maximumMacOS": null,
+          "minimumMacOS": "14",
+          "requirements": [
+            {
+              "appleSilicon": "unknown",
+              "architectures": ["arm64"],
+              "downloadUrl": "https://github.com/rxhanson/Rectangle/releases/download/v2.0.4/Rectangle2.0.4.dmg",
+              "evidence": {
+                "checkedAt": "2026-10-29T18:00:08.953178Z",
+                "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+                "status": "verified",
+                "validUntil": "2027-10-29T18:00:08.953178Z"
+              },
+              "maximumMacOS": null,
+              "minimumMacOS": "14",
+              "platformMacOS": ["27", "15", "14", "26"],
+              "sha256": "9f820a2e56bd2c27cdda4fb4556de3cbcfcbac052d9eeb2179d49e2dae277abc",
+              "versions": ["2.0.4"]
+            },
+            {
+              "appleSilicon": "unknown",
+              "architectures": ["x86_64"],
+              "downloadUrl": "https://github.com/rxhanson/Rectangle/releases/download/v2.0.4/Rectangle2.0.4.dmg",
+              "evidence": {
+                "checkedAt": "2026-10-29T18:00:08.953178Z",
+                "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+                "status": "verified",
+                "validUntil": "2027-10-29T18:00:08.953178Z"
+              },
+              "maximumMacOS": null,
+              "minimumMacOS": "14",
+              "platformMacOS": ["27", "15", "14", "26"],
+              "sha256": "9f820a2e56bd2c27cdda4fb4556de3cbcfcbac052d9eeb2179d49e2dae277abc",
+              "versions": ["2.0.4"]
+            }
+          ]
+        },
+        "hasNotes": true,
+        "id": 26032,
+        "isLatest": true,
+        "isPrerelease": false,
+        "machineTranslated": false,
+        "sections": [],
+        "source": "editorial",
+        "sourceLocale": "en-US",
+        "summary": "Adds mouse-button shortcuts and vertical-sixth layouts while improving snapping, animations, and localization.",
+        "title": "Rectangle 2.0.4: more window shortcuts and snapping options",
+        "translation": {
+          "locale": "en-US",
+          "machineTranslated": false,
+          "sourceLocale": "en-US",
+          "status": "source"
+        },
+        "version": "2.0.4",
+        "versionBase": "2.0.4"
+      },
+      "name": "Rectangle",
+      "names": ["Rectangle", "rectangle"],
+      "repoUrl": "https://github.com/rxhanson/Rectangle",
+      "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/r/rectangle.rb",
+      "supports": {
+        "arm64": true,
+        "requiresRosetta": false,
+        "status": "known",
+        "x86_64": true
+      },
+      "tap": "homebrew/cask",
+      "token": "rectangle",
+      "version": "2.0.4",
+      "versionCommittedAt": "2026-10-20T19:37:05Z"
+    },
+    "iterm2": {
+      "autoUpdates": true,
+      "conflictsWith": {
+        "casks": ["iterm2@beta", "iterm2@nightly"],
+        "formulae": []
+      },
+      "developer": "George Nachman and contributors",
+      "displayName": "iTerm2",
+      "facts": {
+        "alternatives": [],
+        "offers": [],
+        "overview": {
+          "aliases": [],
+          "artifacts": {
+            "apps": ["iTerm.app"],
+            "binaries": [],
+            "entries": [
+              {
+                "declaration": {
+                  "uninstall": [
+                    {
+                      "quit": "com.googlecode.iterm2"
+                    }
+                  ]
+                },
+                "phase": "uninstall",
+                "sources": [],
+                "type": "uninstall"
+              },
+              {
+                "declaration": {
+                  "app": ["iTerm.app"],
+                  "target": "/Applications/iTerm.app"
+                },
+                "phase": "install",
+                "sources": ["iTerm.app"],
+                "target": "/Applications/iTerm.app",
+                "type": "app"
+              },
+              {
+                "declaration": {
+                  "zap": [
+                    {
+                      "trash": [
+                        "~/Library/Application Scripts/com.googlecode.iterm2.iTermFileProvider",
+                        "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.googlecode.iterm2.itermai.sfl*",
+                        "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.googlecode.iterm2.sfl*",
+                        "~/Library/Application Support/iTerm",
+                        "~/Library/Application Support/iTerm2",
+                        "~/Library/Caches/com.googlecode.iterm2",
+                        "~/Library/Containers/com.googlecode.iterm2.iTermFileProvider",
+                        "~/Library/Containers/iTermAI",
+                        "~/Library/Cookies/com.googlecode.iterm2.binarycookies",
+                        "~/Library/HTTPStorages/com.googlecode.iterm2",
+                        "~/Library/HTTPStorages/com.googlecode.iterm2.binarycookies",
+                        "~/Library/Preferences/com.googlecode.iterm2.plist",
+                        "~/Library/Preferences/com.googlecode.iterm2.private.plist",
+                        "~/Library/Saved Application State/com.googlecode.iterm2*.savedState",
+                        "~/Library/WebKit/com.googlecode.iterm2"
+                      ]
+                    }
+                  ]
+                },
+                "phase": "cleanup",
+                "sources": [],
+                "type": "zap"
+              }
+            ],
+            "pkgs": []
+          },
+          "caveats": null,
+          "conflictCount": 2,
+          "dependencyCount": 0,
+          "downloadUrl": "https://iterm2.com/downloads/stable/iTerm2-3_7_6.zip",
+          "sha256": "bb6102e9f57bbe41979ba7c7b1c25d4112e9a5c2142606eeccbe18dc7ee0706f",
+          "version": "3.7.6"
+        },
+        "prices": [],
+        "requirements": [
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["x86_64"],
+            "downloadUrl": "https://iterm2.com/downloads/stable/iTerm2-3_7_6.zip",
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "13",
+            "platformMacOS": ["27", "26", "15", "14", "13"],
+            "sha256": "bb6102e9f57bbe41979ba7c7b1c25d4112e9a5c2142606eeccbe18dc7ee0706f",
+            "versions": ["3.7.6"]
+          },
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["arm64"],
+            "downloadUrl": "https://iterm2.com/downloads/stable/iTerm2-3_7_6.zip",
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "13",
+            "platformMacOS": ["27", "26", "15", "14", "13"],
+            "sha256": "bb6102e9f57bbe41979ba7c7b1c25d4112e9a5c2142606eeccbe18dc7ee0706f",
+            "versions": ["3.7.6"]
+          }
+        ],
+        "security": {
+          "identities": [
+            {
+              "channels": [],
+              "evidence": {
+                "checkedAt": "2026-10-14T06:35:05.108983Z",
+                "sourceUrl": "https://github.com/gnachman/iTerm2",
+                "status": "verified",
+                "validUntil": "2026-11-13T06:35:05.108983Z"
+              },
+              "openSource": "yes",
+              "repositoryUrl": "https://github.com/gnachman/iTerm2"
+            }
+          ],
+          "scanUrl": "opennavo://scan/iterm2?preview=1",
+          "vulnerabilities": []
+        },
+        "uninstall": [
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Scripts/com.googlecode.iterm2.iTermFileProvider"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.googlecode.iterm2.itermai.sfl*"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.googlecode.iterm2.sfl*"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/iTerm"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/iTerm2"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Caches/com.googlecode.iterm2"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Containers/com.googlecode.iterm2.iTermFileProvider"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Containers/iTermAI"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Cookies/com.googlecode.iterm2.binarycookies"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/HTTPStorages/com.googlecode.iterm2"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/HTTPStorages/com.googlecode.iterm2.binarycookies"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Preferences/com.googlecode.iterm2.plist"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Preferences/com.googlecode.iterm2.private.plist"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Saved Application State/com.googlecode.iterm2*.savedState"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T18:00:08.953178Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T18:00:08.953178Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/WebKit/com.googlecode.iterm2"
+          }
+        ]
+      },
+      "homebrewStatus": {
+        "date": null,
+        "reason": null,
+        "state": "active"
+      },
+      "homepage": "https://iterm2.com/",
+      "installCommand": "brew install --cask iterm2",
+      "installs": {
+        "d30": 18669,
+        "d365": 305333,
+        "d90": 49429
+      },
+      "isFont": false,
+      "kind": "cask",
+      "latestRelease": {
+        "bodyMarkdown": "Built on October 15, 2026. Includes fixes accidentally omitted from 3.7.5.\n\n- Automatic AI keys go only to their provider’s servers; existing manually configured models retain their previous key behavior. Debug logs omit AI keys and custom HTTP header values. Administrator AI restrictions also cover chat timers, watches, and Composer requests.\n- Fixes chat cancellation, stale replies, restored timers and session links, and deletion of subsequent conversation context. Command safety checks preserve manual model credentials and headers.\n- Fixes trigger, bell, and detached tmux-window crashes. Detaching no longer closes unrelated sessions; floating-pane restoration and layouts are corrected.\n- Repairs SSH disconnect recovery, remote paths, uploads with duplicate filenames, and offline zsh shell integration installation.\n- Restores password-manager authentication and screen-lock behavior. Claude Code integration preserves invalid settings files and reports the error. Also fixes status-report memory growth, Prevent Sleep, and terminal input issues.\n\nSee the official changelog for all fixes and setup-wizard improvements.\n\n[iTerm2 3.7.6](https://iterm2.com/downloads.html)",
+        "brewCommittedAt": "2026-10-16T01:42:52Z",
+        "compatibility": {
+          "appVersion": "3.7.6",
+          "appleSilicon": "unknown",
+          "maximumMacOS": null,
+          "minimumMacOS": "13",
+          "requirements": [
+            {
+              "appleSilicon": "unknown",
+              "architectures": ["arm64"],
+              "downloadUrl": "https://iterm2.com/downloads/stable/iTerm2-3_7_6.zip",
+              "evidence": {
+                "checkedAt": "2026-10-29T18:00:08.953178Z",
+                "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+                "status": "verified",
+                "validUntil": "2027-10-29T18:00:08.953178Z"
+              },
+              "maximumMacOS": null,
+              "minimumMacOS": "13",
+              "platformMacOS": ["27", "15", "14", "26", "13"],
+              "sha256": "bb6102e9f57bbe41979ba7c7b1c25d4112e9a5c2142606eeccbe18dc7ee0706f",
+              "versions": ["3.7.6"]
+            },
+            {
+              "appleSilicon": "unknown",
+              "architectures": ["x86_64"],
+              "downloadUrl": "https://iterm2.com/downloads/stable/iTerm2-3_7_6.zip",
+              "evidence": {
+                "checkedAt": "2026-10-29T18:00:08.953178Z",
+                "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+                "status": "verified",
+                "validUntil": "2027-10-29T18:00:08.953178Z"
+              },
+              "maximumMacOS": null,
+              "minimumMacOS": "13",
+              "platformMacOS": ["27", "15", "14", "26", "13"],
+              "sha256": "bb6102e9f57bbe41979ba7c7b1c25d4112e9a5c2142606eeccbe18dc7ee0706f",
+              "versions": ["3.7.6"]
+            }
+          ]
+        },
+        "hasNotes": true,
+        "id": 26724,
+        "isLatest": true,
+        "isPrerelease": false,
+        "machineTranslated": false,
+        "sections": [],
+        "source": "editorial",
+        "sourceLocale": "en-US",
+        "summary": "Fixes AI credential handling, chat cancellation, crashes, SSH and tmux integration, and password-manager authentication.",
+        "title": "iTerm2 3.7.6",
+        "translation": {
+          "locale": "en-US",
+          "machineTranslated": false,
+          "sourceLocale": "en-US",
+          "status": "source"
+        },
+        "version": "3.7.6",
+        "versionBase": "3.7.6"
+      },
+      "name": "iTerm2",
+      "names": ["iTerm2", "iterm2"],
+      "openSource": {
+        "archived": false,
+        "checkedAt": "2026-10-14T06:35:05.108983Z",
+        "license": "GPL-2.0",
+        "repo": "gnachman/iTerm2",
+        "url": "https://github.com/gnachman/iTerm2"
+      },
+      "repoUrl": "https://github.com/gnachman/iTerm2",
+      "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/i/iterm2.rb",
+      "supports": {
+        "arm64": true,
+        "requiresRosetta": false,
+        "status": "known",
+        "x86_64": true
+      },
+      "tap": "homebrew/cask",
+      "token": "iterm2",
+      "version": "3.7.6",
+      "versionCommittedAt": "2026-10-16T01:42:52Z"
+    },
+    "discord": {
+      "autoUpdates": true,
+      "conflictsWith": {
+        "casks": [],
+        "formulae": []
+      },
+      "developer": "Discord Inc.",
+      "displayName": "Discord",
+      "facts": {
+        "alternatives": [],
+        "offers": [],
+        "overview": {
+          "aliases": [],
+          "artifacts": {
+            "apps": ["Discord.app"],
+            "binaries": [],
+            "entries": [
+              {
+                "declaration": {
+                  "uninstall": [
+                    {
+                      "launchctl": "com.discord.discord.ShipIt",
+                      "quit": ["com.hnc.Discord", "com.hnc.Discord.helper.Plugin", "com.hnc.Discord.helper.Renderer"]
+                    }
+                  ]
+                },
+                "phase": "uninstall",
+                "sources": [],
+                "type": "uninstall"
+              },
+              {
+                "declaration": {
+                  "app": ["Discord.app"],
+                  "target": "/Applications/Discord.app"
+                },
+                "phase": "install",
+                "sources": ["Discord.app"],
+                "target": "/Applications/Discord.app",
+                "type": "app"
+              },
+              {
+                "declaration": {
+                  "zap": [
+                    {
+                      "trash": [
+                        "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.hnc.discord.sfl*",
+                        "~/Library/Application Support/discord",
+                        "~/Library/Application%20Support/discord",
+                        "~/Library/Caches/com.hnc.Discord",
+                        "~/Library/Caches/com.hnc.Discord.ShipIt",
+                        "~/Library/Cookies/com.hnc.Discord.binarycookies",
+                        "~/Library/HTTPStorages/com.hnc.Discord",
+                        "~/Library/HTTPStorages/com.hnc.Discord.binarycookies",
+                        "~/Library/Preferences/ByHost/com.discord.discord.ShipIt.*.plist",
+                        "~/Library/Preferences/com.hnc.Discord.helper.plist",
+                        "~/Library/Preferences/com.hnc.Discord.plist",
+                        "~/Library/Saved Application State/com.hnc.Discord.savedState"
+                      ]
+                    }
+                  ]
+                },
+                "phase": "cleanup",
+                "sources": [],
+                "type": "zap"
+              }
+            ],
+            "pkgs": []
+          },
+          "caveats": null,
+          "conflictCount": 0,
+          "dependencyCount": 0,
+          "downloadUrl": "https://dl.discordapp.net/apps/osx/0.0.420/Discord.dmg",
+          "sha256": "f1f809f79873a375ebaff8dd09858bf1cd9ac91167853a928f747b9f891c8dc8",
+          "version": "0.0.420"
+        },
+        "prices": [],
+        "requirements": [
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["x86_64"],
+            "downloadUrl": "https://dl.discordapp.net/apps/osx/0.0.420/Discord.dmg",
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "13",
+            "platformMacOS": ["27", "26", "15", "14", "13"],
+            "sha256": "f1f809f79873a375ebaff8dd09858bf1cd9ac91167853a928f747b9f891c8dc8",
+            "versions": ["0.0.420"]
+          },
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["arm64"],
+            "downloadUrl": "https://dl.discordapp.net/apps/osx/0.0.420/Discord.dmg",
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "13",
+            "platformMacOS": ["27", "26", "15", "14", "13"],
+            "sha256": "f1f809f79873a375ebaff8dd09858bf1cd9ac91167853a928f747b9f891c8dc8",
+            "versions": ["0.0.420"]
+          }
+        ],
+        "security": {
+          "identities": [],
+          "scanUrl": "opennavo://scan/discord?preview=1",
+          "vulnerabilities": []
+        },
+        "uninstall": [
+          {
+            "deletesUserData": false,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "launchctl",
+            "phase": "uninstall",
+            "value": "com.discord.discord.ShipIt"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.hnc.discord.sfl*"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application Support/discord"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Application%20Support/discord"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Caches/com.hnc.Discord"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Caches/com.hnc.Discord.ShipIt"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Cookies/com.hnc.Discord.binarycookies"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/HTTPStorages/com.hnc.Discord"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/HTTPStorages/com.hnc.Discord.binarycookies"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Preferences/ByHost/com.discord.discord.ShipIt.*.plist"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Preferences/com.hnc.Discord.helper.plist"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Preferences/com.hnc.Discord.plist"
+          },
+          {
+            "deletesUserData": true,
+            "evidence": {
+              "checkedAt": "2026-10-29T21:15:00.452413Z",
+              "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+              "status": "verified",
+              "validUntil": "2027-10-29T21:15:00.452413Z"
+            },
+            "kind": "zap",
+            "phase": "zap",
+            "value": "~/Library/Saved Application State/com.hnc.Discord.savedState"
+          }
+        ]
+      },
+      "homebrewStatus": {
+        "date": null,
+        "reason": null,
+        "state": "active"
+      },
+      "homepage": "https://discord.com/",
+      "installCommand": "brew install --cask discord",
+      "installs": {
+        "d30": 7031,
+        "d365": 93761,
+        "d90": 19172
+      },
+      "isFont": false,
+      "kind": "cask",
+      "latestRelease": {
+        "brewCommittedAt": "2026-10-26T19:06:10Z",
+        "compatibility": {
+          "appVersion": "0.0.420",
+          "appleSilicon": "unknown",
+          "maximumMacOS": null,
+          "minimumMacOS": "13",
+          "requirements": [
+            {
+              "appleSilicon": "unknown",
+              "architectures": ["arm64"],
+              "downloadUrl": "https://dl.discordapp.net/apps/osx/0.0.420/Discord.dmg",
+              "evidence": {
+                "checkedAt": "2026-10-29T21:15:00.452413Z",
+                "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+                "status": "verified",
+                "validUntil": "2027-10-29T21:15:00.452413Z"
+              },
+              "maximumMacOS": null,
+              "minimumMacOS": "13",
+              "platformMacOS": ["27", "15", "14", "26", "13"],
+              "sha256": "f1f809f79873a375ebaff8dd09858bf1cd9ac91167853a928f747b9f891c8dc8",
+              "versions": ["0.0.420"]
+            },
+            {
+              "appleSilicon": "unknown",
+              "architectures": ["x86_64"],
+              "downloadUrl": "https://dl.discordapp.net/apps/osx/0.0.420/Discord.dmg",
+              "evidence": {
+                "checkedAt": "2026-10-29T21:15:00.452413Z",
+                "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+                "status": "verified",
+                "validUntil": "2027-10-29T21:15:00.452413Z"
+              },
+              "maximumMacOS": null,
+              "minimumMacOS": "13",
+              "platformMacOS": ["27", "15", "14", "26", "13"],
+              "sha256": "f1f809f79873a375ebaff8dd09858bf1cd9ac91167853a928f747b9f891c8dc8",
+              "versions": ["0.0.420"]
+            }
+          ]
+        },
+        "hasNotes": false,
+        "isLatest": true,
+        "isPrerelease": false,
+        "sections": [],
+        "source": "homebrew",
+        "translation": {
+          "status": "none"
+        },
+        "version": "0.0.420",
+        "versionBase": "0.0.420"
+      },
+      "name": "Discord",
+      "names": ["Discord", "discord"],
+      "sourceUrl": "https://github.com/homebrew/homebrew-cask/blob/HEAD/Casks/d/discord.rb",
+      "supports": {
+        "arm64": true,
+        "requiresRosetta": false,
+        "status": "known",
+        "x86_64": true
+      },
+      "tap": "homebrew/cask",
+      "token": "discord",
+      "version": "0.0.420",
+      "versionCommittedAt": "2026-10-26T19:06:10Z"
+    },
+    "ely-office": {
+      "autoUpdates": false,
+      "bundleIds": [],
+      "conflictsWith": {
+        "casks": [],
+        "formulae": []
+      },
+      "developer": "Yang Zhang / ELY-Open-Source",
+      "displayName": "Ely Office",
+      "facts": {
+        "alternatives": [],
+        "macosSupplement": {
+          "appVersion": "0.1.9",
+          "conflicts": [],
+          "method": "vendor_site",
+          "ranges": [
+            {
+              "arch": "arm64",
+              "maximum": null,
+              "minimum": "14",
+              "support": "native"
+            },
+            {
+              "arch": "x86_64",
+              "maximum": null,
+              "minimum": null,
+              "support": "unsupported"
+            }
+          ],
+          "sourceUrl": "https://office.elygpui.com/",
+          "stale": false,
+          "verifiedAt": "2026-10-20T14:15:09Z"
+        },
+        "offers": [],
+        "overview": {
+          "aliases": [],
+          "artifacts": {
+            "apps": [],
+            "binaries": [],
+            "pkgs": []
+          },
+          "caveats": null,
+          "conflictCount": 0,
+          "dependencyCount": 0,
+          "downloadUrl": null,
+          "sha256": null,
+          "version": "0.1.12"
+        },
+        "prices": [],
+        "requirements": [
+          {
+            "appleSilicon": "yes",
+            "architectures": ["arm64"],
+            "downloadUrl": null,
+            "evidence": {
+              "checkedAt": "2026-10-20T14:15:09Z",
+              "sourceUrl": "https://office.elygpui.com/",
+              "status": "needs_review",
+              "validUntil": "2027-10-20T14:15:09Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": "14",
+            "platformMacOS": [],
+            "sha256": null,
+            "versions": ["0.1.9"]
+          },
+          {
+            "appleSilicon": "unknown",
+            "architectures": ["x86_64"],
+            "downloadUrl": null,
+            "evidence": {
+              "checkedAt": "2026-10-20T14:15:09Z",
+              "sourceUrl": "https://office.elygpui.com/",
+              "status": "needs_review",
+              "validUntil": "2027-10-20T14:15:09Z"
+            },
+            "maximumMacOS": null,
+            "minimumMacOS": null,
+            "platformMacOS": [],
+            "sha256": null,
+            "versions": ["0.1.9"]
+          }
+        ],
+        "security": {
+          "identities": [
+            {
+              "channels": [],
+              "evidence": {
+                "checkedAt": "2026-10-20T05:35:01.577637Z",
+                "sourceUrl": "https://github.com/ELY-Open-Source/ElyOffice",
+                "status": "verified",
+                "validUntil": "2026-11-19T05:35:01.577637Z"
+              },
+              "openSource": "yes",
+              "repositoryUrl": "https://github.com/ELY-Open-Source/ElyOffice"
+            }
+          ],
+          "scanUrl": "opennavo://scan/ely-office?preview=1",
+          "vulnerabilities": []
+        },
+        "uninstall": []
+      },
+      "homebrewStatus": {
+        "date": null,
+        "reason": null,
+        "state": "active"
+      },
+      "homepage": "https://office.elygpui.com/",
+      "installCommand": "",
+      "installs": {
+        "d30": 0,
+        "d365": 0,
+        "d90": 0
+      },
+      "isFont": false,
+      "kind": "link",
+      "latestRelease": {
+        "bodyMarkdown": "## 中文\n\n新功能：\n\n- ElyTable：别的程序（脚本、AI 代理）可经命令行读写已打开工作簿的单元格并保存：`ely-table cell docs`、`get`、`set`、`save`。地址写明工作表，如 `Sheet1!A1`；读写不动你的光标与选区，每次写入是一步撤销（#19）。\n- ElyPDF：“视图 › 横向滚动”，页面排成一行，按住 Shift 滚动滚轮横移（#39）。\n- ElyMark：右键标签、文件夹里的文件或最近文件，可“复制文件名”“复制路径”（#41）。\n- 设置 › 存储 › 数据文件夹：数据可放到自选的文件夹（如另一块盘），下次启动、没有别的 Ely 应用开着时搬过去；重装系统后选回同一文件夹即直接使用（#43）。\n\n修复：\n\n- ElyMark：Windows 上大纲的滚动条闪烁、拖不动（#36）。\n- ElyPDF：Windows 上存不回已打开的文件（拒绝访问）；签名的证书信任在 Windows 与 Linux 上也做核对（原只 macOS）。\n- Windows 与 Linux 上拼写检查可用；Windows 上读屏软件跟得上插入点与选区。\n- ElyMark：在大文件夹里搜索更快（#40）。\n\n## English\n\nNew:\n\n- ElyTable: other programs, scripts and AI agents among them, read and write cells of an open workbook and save it from the command line: `ely-table cell docs`, `get`, `set`, `save`. Addresses name their sheet, as in `Sheet1!A1`; reads and writes leave your cursor and selection alone, and each write is one undo step (#19).\n- ElyPDF: View › Horizontal Scrolling lays pages in a row; Shift and the wheel move across (#39).\n- ElyMark: right-click a tab, a file in the folder, or a recent file to Copy File Name or Copy Path (#41).\n- Settings › Storage › Data folder: keep your data in a folder you choose, such as another drive. It moves there at the next start with no other Ely app open; after a system reinstall, choose the same folder and Ely uses it as it is (#43).\n\nFixes:\n\n- ElyMark: on Windows the outline's scroll bar flickered and would not drag (#36).\n- ElyPDF: on Windows a save over the open file failed (Access is denied); signature certificates are now checked for trust on Windows and Linux too, not only macOS.\n- Spell checking works on Windows and Linux; on Windows, screen readers follow the caret and the selection.\n- ElyMark: searching a large folder is faster (#40).\n",
+        "compatibility": {
+          "appVersion": "0.1.12",
+          "appleSilicon": "unknown",
+          "maximumMacOS": null,
+          "minimumMacOS": null,
+          "requirements": []
+        },
+        "hasNotes": true,
+        "id": 28584,
+        "isLatest": true,
+        "isPrerelease": false,
+        "machineTranslated": false,
+        "publishedAt": "2026-10-26T04:42:37Z",
+        "sections": [],
+        "source": "github_release",
+        "sourceLocale": "en-US",
+        "sourceUrl": "https://github.com/ELY-Open-Source/ElyOffice/releases/tag/v0.1.12",
+        "title": "v0.1.12",
+        "translation": {
+          "status": "none"
+        },
+        "version": "0.1.12",
+        "versionBase": "0.1.12"
+      },
+      "link": {
+        "adoptedByCask": null,
+        "downloadUrl": null,
+        "github": {
+          "latest": {
+            "publishedAt": "2026-10-26T04:42:37Z",
+            "tag": "v0.1.12",
+            "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/tag/v0.1.12",
+            "version": "0.1.12",
+            "assets": [
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-doc-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "30f89d3ec18dc1efcae756b85f7eba2dd8dcbf6d8ee21392d31c8710bac6b2aa",
+                "size": 238110122,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-doc-0.1.12-1.x86_64.rpm",
+                "sha256": "6399d95acab20d5b0b017afde9f37592b26f4e63d1d9f26661bb2dedb97412a3",
+                "size": 254644222,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-doc-linux-x86_64.json",
+                "sha256": "e3b5606cb14e4ffe1c06bc719758200e28dd5dacacf5450d4ea8d01d1800e627",
+                "size": 247,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-doc-macos-aarch64.json",
+                "sha256": "0eea6b6ade546c8959ddbe8d7915796cc970f715b142439b1c2f3d27c37c23a7",
+                "size": 236,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-doc-macos-x86_64.json",
+                "sha256": "c017937de264e276effab3da1acbb6d70fefae8fccf40397e40918e8ca248fcc",
+                "size": 236,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-doc-windows-x86_64.json",
+                "sha256": "bd4d1ae8351f0ab837c9f9dcb2b18d05ee3b74fb9802c475f0eb92786f654973",
+                "size": 252,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-doc.json",
+                "sha256": "0eea6b6ade546c8959ddbe8d7915796cc970f715b142439b1c2f3d27c37c23a7",
+                "size": 236,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-doc_0.1.12-1_amd64.deb",
+                "sha256": "4d7f0f92bc7bee915a2c2ae197cd4afb48117b31524e5c6648faeeab9f4186a3",
+                "size": 254364428,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-doc_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mail-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "5969f61f96003799c6a0827bcd6ba9248868fc2f110b997e01d67d19d0f3c8e9",
+                "size": 25853802,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mail-0.1.12-1.x86_64.rpm",
+                "sha256": "2b2c2099ef0b8806ccca027098de2e5d19a579f1d20c0f85300a29e8265358da",
+                "size": 27769008,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mail-linux-x86_64.json",
+                "sha256": "cb0294ac9973a7e83ceba7158bf5753448f1719067ab8e869ca3b0957c431885",
+                "size": 248,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-mail-macos-aarch64.json",
+                "sha256": "d252bae36575fa0a5bc1c805526f2b46ee77c0f608f0c36473679cfe38bb4b74",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mail-macos-x86_64.json",
+                "sha256": "6664e71dc379ae6a12d5e1122d6e43dc2717d3f3bd7bb7065ef369d876d36560",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mail-windows-x86_64.json",
+                "sha256": "368cd7da630ac36b329216ed3804b168c173928429f41b90878ffe525dfd0e2d",
+                "size": 253,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-mail.json",
+                "sha256": "d252bae36575fa0a5bc1c805526f2b46ee77c0f608f0c36473679cfe38bb4b74",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mail_0.1.12-1_amd64.deb",
+                "sha256": "741679e3bdf384f01ead00fe337dfc8e5b91012c6c647fa69517aae5e4bbd72b",
+                "size": 27899006,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mail_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mark-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "51ddc7c7373d0d091035e37c4cd4791fe4e29c3bcb14fdd2ae587a8ca0b3b592",
+                "size": 125017572,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mark-0.1.12-1.x86_64.rpm",
+                "sha256": "9e5b9486f5b2ce8d6fffe2280d5bda758721ceca13bcc2c1b44780b273de7310",
+                "size": 126274563,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mark-linux-x86_64.json",
+                "sha256": "bb28d3d107c65b614446987a12fb6d9fc725d14bae562e5caec746e8abd423ca",
+                "size": 248,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-mark-macos-aarch64.json",
+                "sha256": "a97bd5f02edffab062384e9bdb27c81edec95dc0d61079261a0e064406c49611",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mark-macos-x86_64.json",
+                "sha256": "aeda695e619e1cf2cb009b4c4aabfdfbb27649a10b7a964f46e919e0b84e7171",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mark-windows-x86_64.json",
+                "sha256": "94921779bdfe08edd62b588d353322e13b3ff67f1d30ba4b8573e27012624d81",
+                "size": 253,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-mark.json",
+                "sha256": "a97bd5f02edffab062384e9bdb27c81edec95dc0d61079261a0e064406c49611",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-mark_0.1.12-1_amd64.deb",
+                "sha256": "8a7a3017c04c00c11f8091257087dd9df203170fa796773907d99820f2b93164",
+                "size": 126608648,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-mark_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-pdf-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "0ac4c36de1a61d3caa767663b2aed7663bcce48d5505603cfd07e11f5ba8e885",
+                "size": 61196206,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-pdf-0.1.12-1.x86_64.rpm",
+                "sha256": "7b7750a20c438b366e05b7b105a076125a38c0f570f805802f14f69232e6fa2e",
+                "size": 62287670,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-pdf-linux-x86_64.json",
+                "sha256": "8cfcc979f83994daa2fd03230cf661505b6dabf6677db4044d865b5db30865b5",
+                "size": 247,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-pdf-macos-aarch64.json",
+                "sha256": "af0e3f21d7fe172873e3dd4239047fa83abe3e5eabfda44b25f25c2e71b5b7c4",
+                "size": 236,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-pdf-macos-x86_64.json",
+                "sha256": "f11f132ab96620adbf5fd47c99eb0d88921ae0a6279b402fdb25534ba07be6ce",
+                "size": 236,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-pdf-windows-x86_64.json",
+                "sha256": "47b0bcbf5763a6c89584dca5672afbee72ee55820d13080e6b0073f7f791723b",
+                "size": 252,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-pdf.json",
+                "sha256": "af0e3f21d7fe172873e3dd4239047fa83abe3e5eabfda44b25f25c2e71b5b7c4",
+                "size": 236,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-pdf_0.1.12-1_amd64.deb",
+                "sha256": "4d323e83215ed334be67c396b5692d18154dbda1578084bd9d65dd006298f3d6",
+                "size": 62501582,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-pdf_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-show-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "80ff69f62005b5a29c7e160e10375e9cb49be2634e8d4c81c041971c72b9193d",
+                "size": 238316593,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-show-0.1.12-1.x86_64.rpm",
+                "sha256": "41aed69a4aed04e38b0659ce01fb7473497aefbc02eefa48379e0f53743c8078",
+                "size": 254814182,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-show-linux-x86_64.json",
+                "sha256": "6db3d238750ed3dbd8000861e0b4340cc23f8f40efc1a153bbc6b52b536fae04",
+                "size": 248,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-show-macos-aarch64.json",
+                "sha256": "2d1348ababa851acb1d21d2abd4708c106cd09a11b514b702c8199a8dfe17664",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-show-macos-x86_64.json",
+                "sha256": "bdcc4c21604f5ec4b6b1e72462f1e173255ad03046ea509419a3728c9864bbfd",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-show-windows-x86_64.json",
+                "sha256": "a21e5e46a6ad5f8bb906bc1871f910c3401319ae3d6bc9728e76e035df62f526",
+                "size": 253,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-show.json",
+                "sha256": "2d1348ababa851acb1d21d2abd4708c106cd09a11b514b702c8199a8dfe17664",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-show_0.1.12-1_amd64.deb",
+                "sha256": "333c951f806824f8cbbea64c5440d052237bc5c65fe7ba88b0a41c3ff200ddf1",
+                "size": 254543182,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-show_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-table-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "bc066ec4d8dd0fe8d23b87e12c4d5a2af2059e4d8e2b6465b5715e73108ca76f",
+                "size": 235412255,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-table-0.1.12-1.x86_64.rpm",
+                "sha256": "25b49ab0bb3e01f12cae325c72c95889603e99b8deaf03ee52743deb18b41fbc",
+                "size": 251780858,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-table-linux-x86_64.json",
+                "sha256": "0d873f93ae312395c9e0d6d1bd3f4dca0664d1be277d8c158e631c3b3a9eafaf",
+                "size": 249,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-table-macos-aarch64.json",
+                "sha256": "5faf9bb74d776c187b3741e9e1f668f3fe7164edf77d78ec8f74e7a7b6b7c722",
+                "size": 238,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-table-macos-x86_64.json",
+                "sha256": "81f1403168b82cbc4937520eaed5a6253cbdba3e23691d5519c28c3d32fa07f0",
+                "size": 238,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-table-windows-x86_64.json",
+                "sha256": "8fae616c93c1ac820310aba4b99548036799f20b27e15059c2fe80641234c23c",
+                "size": 254,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-table.json",
+                "sha256": "5faf9bb74d776c187b3741e9e1f668f3fe7164edf77d78ec8f74e7a7b6b7c722",
+                "size": 238,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-table_0.1.12-1_amd64.deb",
+                "sha256": "12732781b277029009bca480da3742d9353395d4649c969b832e5f962e2029b8",
+                "size": 251466318,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-table_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-tree-0.1.12-1-x86_64.pkg.tar.zst",
+                "sha256": "b1f05867dee81d1a1dbf71b2948b20dadb0d3730767ab10505a01c9469693bbe",
+                "size": 85898756,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree-0.1.12-1-x86_64.pkg.tar.zst"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-tree-0.1.12-1.x86_64.rpm",
+                "sha256": "6b0a60c549195737ee623bb8e7b777682c950512329acacf38afb228943fe6eb",
+                "size": 87134721,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree-0.1.12-1.x86_64.rpm"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-tree-linux-x86_64.json",
+                "sha256": "116b4a6d560b11fa583d6c871d5aeada97510df7d6d8f15424b854e9b7294bc8",
+                "size": 248,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree-linux-x86_64.json"
+              },
+              {
+                "arch": "arm64",
+                "format": "other",
+                "name": "ely-tree-macos-aarch64.json",
+                "sha256": "0e1fc8f62fda858b83a1357cab5152e368bbc6580104fd6cccc149f92f45d99c",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree-macos-aarch64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-tree-macos-x86_64.json",
+                "sha256": "cb718568f52a9b9af810cd38ea70216e877059db36592d0717c759b2bbb28a12",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree-macos-x86_64.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-tree-windows-x86_64.json",
+                "sha256": "63496c7c94a4861b9ddf41f239952fbd9c4fd37cca025879db11b4024cf7223e",
+                "size": 253,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree-windows-x86_64.json"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ely-tree.json",
+                "sha256": "0e1fc8f62fda858b83a1357cab5152e368bbc6580104fd6cccc149f92f45d99c",
+                "size": 237,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree.json"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ely-tree_0.1.12-1_amd64.deb",
+                "sha256": "aeba13a49de0edc50e5e160e05fcacbd8e9df783238fb2c9074b781d26ffcc72",
+                "size": 87259918,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ely-tree_0.1.12-1_amd64.deb"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyDoc-0.1.12-arm64.dmg",
+                "sha256": "9610e38460641e1de654b88ae66e98a0d2804c3d27cac6cedacd49b75ad5ef77",
+                "size": 240513403,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyDoc-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyDoc-0.1.12-linux-x86_64.AppImage",
+                "sha256": "70d444b812add338711c8e240701a01f886344cfc2d9e39337c23faaeed776c0",
+                "size": 227314168,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyDoc-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyDoc-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "9672100f530bb2507e8cb94439ab9cc0733789ed85fd4d83e38aab907d9c7cf9",
+                "size": 137173123,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyDoc-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyDoc-0.1.12-x86_64.dmg",
+                "sha256": "82987d28970acae1e18a4d006456b23728310eee0b8d82c674b9eb2450f4f13e",
+                "size": 249525412,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyDoc-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyMail-0.1.12-arm64.dmg",
+                "sha256": "5266e86a071a094226e08bef57236aabc5d5845e076c2c38cdcce93f72735eaa",
+                "size": 18870453,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMail-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyMail-0.1.12-linux-x86_64.AppImage",
+                "sha256": "ffb93f660b6d097ac343dd740a3a64601f591fdd9502e3972eec78778fd8dd37",
+                "size": 25754104,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMail-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyMail-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "673e1604d04050a88009655b01cb2d8c63cc18c244408a3f72b8f31a5c4daf68",
+                "size": 11425989,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMail-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyMail-0.1.12-x86_64.dmg",
+                "sha256": "6c5dc654ac86479ba2da4794cd83e43df4246608fed72863238f9d1c5d92ee5c",
+                "size": 20336099,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMail-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyMark-0.1.12-arm64.dmg",
+                "sha256": "1308820817056f597dfeb58a3b3dc7cc7347cec7ccb9b05d314323d5ec1a1e3c",
+                "size": 52438654,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMark-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyMark-0.1.12-linux-x86_64.AppImage",
+                "sha256": "e26650160e531abe592a857aa0c91cac4dd32d703b5de30eee99da86218bc73f",
+                "size": 116263416,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMark-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyMark-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "065b535d600058ee1fb758054191b9df72bd08d132d4ca480a87a632f8f9066d",
+                "size": 35653184,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMark-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyMark-0.1.12-x86_64.dmg",
+                "sha256": "0c7ebe9868e3e2b1abd1aeb0cbce3827853341ca719c6eafd968b72b5cc0e9c6",
+                "size": 54037884,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyMark-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ElyOffice-0.1.12-64b8dcdc879a-source.tar.gz",
+                "sha256": "79ee3da49f65099302c2309c94e1f5902d0456c9a15dfa083a09af64f54109a8",
+                "size": 29321687,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyOffice-0.1.12-64b8dcdc879a-source.tar.gz"
+              },
+              {
+                "arch": null,
+                "format": "other",
+                "name": "ElyOffice-0.1.12-64b8dcdc879a-upstream-source.tar.gz",
+                "sha256": "d14dd3472237d6a7104532b97996ea8aaecc7df9d7636824a88f29cfb542f9b7",
+                "size": 108566196,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyOffice-0.1.12-64b8dcdc879a-upstream-source.tar.gz"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyOffice-0.1.12-arm64.dmg",
+                "sha256": "147a832761ab2b40e7639e12a0f44fde00876406a6283ccc09d6194f7e9ae2d0",
+                "size": 853068082,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyOffice-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyOffice-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "c414e4b285f0ac99849816110a8ec688a1fb9bcc6758f6c8f2f977e991a276e4",
+                "size": 532342198,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyOffice-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyOffice-0.1.12-x86_64.dmg",
+                "sha256": "1b230e38935dcc6c14d4faa9741646176bd23cdc5ec8a6b32d8f20584cc5881f",
+                "size": 900529596,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyOffice-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyPDF-0.1.12-arm64.dmg",
+                "sha256": "7c8bffc927e5c5a8a86bc5be3cfb4813c14047900ca1b377f130a1ca01e06058",
+                "size": 54294080,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyPDF-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyPDF-0.1.12-linux-x86_64.AppImage",
+                "sha256": "87118fefe79fa8d5b33ab572308b1420e889ec8433e57dedb8a92aec2a88a7d5",
+                "size": 58702328,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyPDF-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyPDF-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "5fc3931d41e82d4e23474d33828af7b3bae048357935f70569c968f595c9c674",
+                "size": 38149417,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyPDF-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyPDF-0.1.12-x86_64.dmg",
+                "sha256": "7e4fed0231fd94d7db42f2af8bcf750a75a7b655eb92fda66aecd4088f01b385",
+                "size": 55675381,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyPDF-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyShow-0.1.12-arm64.dmg",
+                "sha256": "c0826b1f3de875ede979be453c48f33e1d05fc5443708e23ff4ffaf19caf8489",
+                "size": 237591216,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyShow-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyShow-0.1.12-linux-x86_64.AppImage",
+                "sha256": "28dc9fb9ec234c0acbdab0bef5df2f7aef09715613b61749846131f4eab05c81",
+                "size": 227457528,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyShow-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyShow-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "f8e232778e1952d3e96d32459c097fa2830ce03b81a22e4e0e20add77f04ee28",
+                "size": 137266209,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyShow-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyShow-0.1.12-x86_64.dmg",
+                "sha256": "d3a759aa509a1ac5dabbe23e203ab3cb6366e1a49d8cbe1e73cf704efbf3c9af",
+                "size": 247722361,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyShow-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyTable-0.1.12-arm64.dmg",
+                "sha256": "32d615c227086a52c5907e46a6d7c33256d4403837be61226710ce09900cb8b5",
+                "size": 237372369,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTable-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyTable-0.1.12-linux-x86_64.AppImage",
+                "sha256": "6edc872fe64ba00625c6b7e4faf4a53c0f09e112b842a70ced156e444f5bcee0",
+                "size": 224758264,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTable-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyTable-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "e1923dc0eb7d49208a18d909ce67c22d32a2e3629d09ff9e76e86b488f26f7f9",
+                "size": 135249266,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTable-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyTable-0.1.12-x86_64.dmg",
+                "sha256": "ae7c707875ae4fe7c9f4c67b18dd7545827d4ccfbaee44b44e244f769866ca9e",
+                "size": 246629298,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTable-0.1.12-x86_64.dmg"
+              },
+              {
+                "arch": "arm64",
+                "format": "dmg",
+                "name": "ElyTree-0.1.12-arm64.dmg",
+                "sha256": "27677f80df0864decf1882b9ef1af62a8b2f65d4e97ea6d72116a4c1cfc94479",
+                "size": 33650630,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTree-0.1.12-arm64.dmg"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyTree-0.1.12-linux-x86_64.AppImage",
+                "sha256": "87650f523347798303b83b9f30146004fccada5a53ca6523990a25a255ab03bc",
+                "size": 79616504,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTree-0.1.12-linux-x86_64.AppImage"
+              },
+              {
+                "arch": "x86_64",
+                "format": "other",
+                "name": "ElyTree-0.1.12-windows-x86_64-setup.exe",
+                "sha256": "2027f62c2e64fc46105548e6aaa75a859951594b11853d46bda186803e7f5950",
+                "size": 37338334,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTree-0.1.12-windows-x86_64-setup.exe"
+              },
+              {
+                "arch": "x86_64",
+                "format": "dmg",
+                "name": "ElyTree-0.1.12-x86_64.dmg",
+                "sha256": "c614ed1e99e438149cf0af33b852cd2417c5642374a0dc77d5e96349a0c2a6ef",
+                "size": 36756325,
+                "url": "https://github.com/ELY-Open-Source/ElyOffice/releases/download/v0.1.12/ElyTree-0.1.12-x86_64.dmg"
+              }
+            ]
+          },
+          "repo": "ELY-Open-Source/ElyOffice"
+        },
+        "homepage": "https://office.elygpui.com/",
+        "notes": {
+          "en-US": "It is a good option if you want an open-source office suite centered on local files and offline use. The Mac version requires Apple silicon and macOS 14 or later.",
+          "es-ES": "Es una opción para quienes buscan una suite ofimática de código abierto centrada en los archivos locales y el uso sin conexión. La versión para Mac requiere Apple silicon y macOS 14 o posterior.",
+          "ja-JP": "ローカルファイルを中心に、オフラインで日常業務を進めたい方に向いています。Mac 版には Apple シリコンと macOS 14 以降が必要です。",
+          "pt-BR": "É uma opção para quem procura uma suíte de escritório de código aberto voltada a arquivos locais e ao uso offline. A versão para Mac exige Apple silicon e macOS 14 ou posterior.",
+          "ru-RU": "Подойдёт тем, кто ищет офисный пакет с открытым исходным кодом для локальных файлов и автономной работы. Для версии Mac нужны Apple silicon и macOS 14 или новее.",
+          "zh-CN": "适合希望围绕本地文件、离线完成日常工作的开源办公用户。Mac 版要求 Apple 芯片和 macOS 14 或更高版本。"
+        },
+        "pricing": "open_source",
+        "teamId": null
+      },
+      "name": "Ely Office",
+      "names": ["Ely Office"],
+      "openSource": {
+        "archived": false,
+        "checkedAt": "2026-10-20T05:35:01.577637Z",
+        "license": "MIT",
+        "repo": "ELY-Open-Source/ElyOffice",
+        "url": "https://github.com/ELY-Open-Source/ElyOffice"
+      },
+      "repoUrl": "https://github.com/ELY-Open-Source/ElyOffice",
+      "sourceUrl": "https://github.com/ELY-Open-Source/ElyOffice",
+      "supports": {
+        "arm64": true,
+        "requiresRosetta": false,
+        "status": "unknown",
+        "x86_64": true
+      },
+      "tap": "",
+      "token": "ely-office",
+      "version": "0.1.12"
+    }
+  }
+}

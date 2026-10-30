@@ -43,3 +43,12 @@ export function pick(
   }
   return fallback;
 }
+
+/**
+ * Alternate names, using main's Quick facts rule literally: every name except the displayed one.
+ * Aliases stay in their original language; the locale is accepted for call-site compatibility but
+ * deliberately does not filter scripts.
+ */
+export function packageAliases(names: readonly string[], displayName: string, _locale?: SiteLocaleCode): string[] {
+  return names.filter(name => name !== displayName);
+}

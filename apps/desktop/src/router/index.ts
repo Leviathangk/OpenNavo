@@ -84,7 +84,13 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'discover' }
   },
   {
-    // Casks and link apps (store/security plan §4); command-line tool URLs fall through to Discover (ADR-018).
+    path: '/package/formula/:token',
+    component: () => import('@/pages/package/FormulaDetailPage.vue'),
+    props: true,
+    meta: { nav: 'discover' }
+  },
+  {
+    // Casks and link apps (store/security plan §4); legacy formula deep links have a read-only page.
     path: '/package/:kind(cask|link)/:token',
     component: () => import('@/pages/package/PackageLayout.vue'),
     props: true,

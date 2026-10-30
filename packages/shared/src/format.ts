@@ -94,7 +94,26 @@ function compactUnits(locale: Locale): Array<[number, string]> {
  */
 export function formatCountCompact(value: number, { locale = 'en-US' }: FormatOptions = {}): string {
   if (locale !== 'zh-CN' && locale !== 'en-US') {
-    return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+    const options: Intl.NumberFormatOptions = {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+      roundingMode: 'halfExpand'
+    };
+    const parts = new Intl.NumberFormat(locale, options).formatToParts(value);
+    const compact = parts.some(part => part.type === 'compact');
+    const integerPart = Number(
+      parts
+        .filter(part => part.type === 'integer')
+        .map(part => part.value)
+        .join('')
+    );
+    if (compact && integerPart < 1000) return parts.map(part => part.value).join('');
+    if (compact && integerPart >= 1000)
+      return new Intl.NumberFormat(locale, { ...options, compactDisplay: 'long' }).format(value);
+    // German short form keeps four-digit numbers grouped until one million, so 999,950
+    // would read 999.950. Add the half-expand carry so it rolls over to 1 Mio.
+    if (Math.abs(value) >= 999_950) return new Intl.NumberFormat(locale, options).format(value + 50);
+    return parts.map(part => part.value).join('');
   }
   const units = compactUnits(locale);
   const absolute = Math.abs(value);

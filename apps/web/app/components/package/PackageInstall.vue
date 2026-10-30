@@ -4,9 +4,10 @@ import { installNote } from '~/utils/appAnswer';
 import { downloadChoice } from '~/utils/packageFacts';
 import type { PackagePage } from '~/utils/packageFacts';
 
-// How to install {name} on Mac (casks only, T3): the Homebrew command and what it puts on the Mac, Homebrew's
-// caveats, and a download without Homebrew (the same file, one per chip, or the official site when files
-// vary) read from the requirements rows, whose full SHA-256 sits in the requirements table.
+// How to install {name} on Mac (casks only, T3): the command lives in the shared header command card;
+// this section explains what Homebrew puts on the Mac, Homebrew's caveats, and a download without Homebrew
+// (the same file, one per chip, or the official site when files vary) read from the requirements rows, whose
+// full SHA-256 sits in the requirements table.
 const props = defineProps<{ pkg: PackagePage }>();
 
 const { t } = useI18n();
@@ -27,14 +28,8 @@ const sha256 = computed(() => props.pkg.facts.overview.sha256);
     <h2 id="install-title" class="m-0 text-13.5px font-600 text-ink-primary">
       {{ t('package.install.title', { name: pkg.displayName }) }}
     </h2>
-    <ol class="m-0 mt-8px flex flex-col gap-6px pl-18px text-13px leading-[1.6] text-ink-secondary">
+    <ol v-if="note" class="m-0 mt-8px flex flex-col gap-6px pl-18px text-13px leading-[1.6] text-ink-secondary">
       <li>
-        {{ t('package.install.run') }}
-        <code class="rounded-tiny bg-surface-inset px-6px py-1px font-mono text-12px text-component-mono-text">{{
-          pkg.installCommand
-        }}</code>
-      </li>
-      <li v-if="note">
         {{
           note.key === 'installPkg' ? t('package.guide.installPkg', { pkg: note.pkg }) : t(`package.guide.${note.key}`)
         }}
@@ -74,7 +69,6 @@ const sha256 = computed(() => props.pkg.facts.overview.sha256);
       </p>
       <p v-if="download.kind !== 'official' && sha256" class="m-0 mt-4px text-12px text-ink-tertiary">
         {{ t('package.guide.sha') }}
-        <a href="#requirements" class="text-ink-secondary">{{ t('package.guide.shaLink') }}</a>
       </p>
     </div>
   </section>

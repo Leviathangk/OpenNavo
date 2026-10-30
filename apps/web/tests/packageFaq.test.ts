@@ -4,12 +4,15 @@ import { selectPlural } from '@opennavo/shared';
 import { describe, expect, it } from 'vitest';
 import { chipSupport, dataLocations, FAQ_LIMIT, faqItems, uninstallSteps, zapPaths } from '../app/utils/packageFaq';
 import type { FaqTranslate } from '../app/utils/packageFaq';
+import { formatDate } from '../app/utils/packageDate';
 import { evidence, pageOf } from './packageFixtures';
+import { faqItems as mainFaqItems } from './fixtures/packageFaq.main';
+import { slimPackage } from '../app/utils/packageFacts';
 
-const LOCALES = ['zh-CN', 'en-US', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'] as const;
+const LOCALES = ['zh-CN', 'en-US', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
 type Code = (typeof LOCALES)[number];
 
-// Real messages, plural forms picked like vue-i18n, so every template runs in all six languages.
+// Real messages, plural forms picked like vue-i18n, so every template runs in all ten languages.
 function translator(code: Code): FaqTranslate {
   const messages = JSON.parse(readFileSync(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8'));
   return (key, named = {}, plural) => {
@@ -335,21 +338,249 @@ describe('App questions', () => {
   it('Publishes the license GitHub reports, with archived repositories marked', () => {
     const items = faqItems(
       pageOf(
-        docker({
-          openSource: {
-            repo: 'gnachman/iTerm2',
-            url: 'https://github.com/gnachman/iTerm2',
-            license: 'GPL-2.0',
-            archived: false,
-            checkedAt: '2025-12-01T08:00:00Z'
+        Object.assign(
+          docker({
+            openSource: {
+              repo: 'gnachman/iTerm2',
+              url: 'https://github.com/gnachman/iTerm2',
+              license: 'GPL-2.0',
+              archived: false,
+              checkedAt: '2025-12-01T08:00:00Z'
+            }
+          }),
+          {
+            repository: {
+              url: 'https://github.com/gnachman/iTerm2',
+              stars: 12345,
+              pushedAt: '2026-10-01T00:00:00Z',
+              archived: false,
+              signalsCheckedAt: '2026-10-02T00:00:00Z'
+            }
           }
-        })
+        )
       ),
       translator('en-US'),
       'en-US'
     );
     expect(items.find(item => item.key === 'openSource')!.answer).toBe(
       'Docker Desktop’s source code is public on GitHub (gnachman/iTerm2) under the GPL-2.0 license.'
+    );
+  });
+
+  it('distinguishes OSI repositories, public repositories without an OSI fact, and no repository', () => {
+    const osi = faqItems(
+      pageOf(
+        Object.assign(
+          docker({
+            openSource: {
+              repo: 'acme/osi',
+              url: 'https://github.com/acme/osi',
+              license: 'MIT',
+              archived: false,
+              checkedAt: '2025-12-01T08:00:00Z'
+            }
+          }),
+          { repository: { url: 'https://github.com/acme/osi', stars: 999, archived: false } }
+        )
+      ),
+      translator('en-US'),
+      'en-US'
+    );
+    expect(osi.find(item => item.key === 'openSource')!.answer).toContain('under the MIT license.');
+    expect(osi.find(item => item.key === 'openSource')!.answer).not.toMatch(/★|999/);
+
+    const publicOnly = faqItems(
+      pageOf(
+        Object.assign(docker({ openSource: null }), {
+          repository: {
+            url: 'https://github.com/acme/public-only',
+            stars: 1000,
+            archived: true,
+            signalsCheckedAt: '2026-10-02T00:00:00Z'
+          }
+        })
+      ),
+      translator('en-US'),
+      'en-US'
+    );
+    expect(publicOnly.find(item => item.key === 'openSource')!.answer).toContain(
+      'has a public GitHub repository (https://github.com/acme/public-only), but OpenNavo has not verified an OSI license.'
+    );
+    expect(publicOnly.find(item => item.key === 'openSource')!.answer).toContain('repository is archived');
+
+    const neither = faqItems(pageOf(docker({ openSource: null })), translator('en-US'), 'en-US');
+    expect(neither.some(item => item.key === 'openSource')).toBe(false);
+  });
+
+  it('preserves main’s OSI archived answer independently of new repository signals', () => {
+    const sample = docker({
+      openSource: {
+        repo: 'acme/osi',
+        url: 'https://github.com/acme/osi',
+        license: 'MIT',
+        archived: true,
+        checkedAt: '2025-12-01T08:00:00Z'
+      }
+    });
+    const answer = faqItems(pageOf(sample), translator('en-US'), 'en-US').find(
+      item => item.key === 'openSource'
+    )!.answer;
+    expect(answer).toContain('repository is archived');
+    expect(answer).not.toContain('Repository data checked');
+    const current = Object.assign(sample, { repository: { archived: false } });
+    expect(
+      faqItems(pageOf(current), translator('en-US'), 'en-US').find(item => item.key === 'openSource')!.answer
+    ).toContain('repository is archived');
+  });
+
+  it.each([
+    {
+      status: 'stale',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'yes',
+      repositoryUrl: 'https://github.com/acme/osi'
+    },
+    {
+      status: 'needs_review',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'yes',
+      repositoryUrl: 'https://github.com/acme/osi'
+    },
+    { status: 'verified', checkedAt: null, openSource: 'yes', repositoryUrl: 'https://github.com/acme/osi' },
+    {
+      status: 'verified',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'unknown',
+      repositoryUrl: 'https://github.com/acme/osi'
+    },
+    {
+      status: 'verified',
+      checkedAt: '2025-12-01T08:00:00Z',
+      openSource: 'yes',
+      repositoryUrl: 'https://github.com/acme/other'
+    }
+  ] as const)('rejects OSI data without a matching verified identity: %j', proof => {
+    const pkg = pageOf(
+      docker({
+        openSource: {
+          repo: 'acme/osi',
+          url: 'https://github.com/acme/osi',
+          license: 'MIT',
+          archived: false,
+          checkedAt: '2025-12-01T08:00:00Z'
+        }
+      })
+    );
+    const identity = pkg.facts.security!.identities[0]!;
+    Object.assign(identity, { openSource: proof.openSource, repositoryUrl: proof.repositoryUrl });
+    Object.assign(identity.evidence, { status: proof.status, checkedAt: proof.checkedAt });
+    pkg.repository = { url: 'https://github.com/acme/osi', stars: 12345 };
+    expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
+    pkg.facts.security!.identities = [];
+    expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
+  });
+
+  it.each(LOCALES)('keeps only the new repository Q&A free of check dates in %s', code => {
+    const pkg = pageOf(
+      docker({
+        appStore,
+        price: {
+          type: 'free',
+          amount: null,
+          currency: null,
+          region: null,
+          plan: null,
+          period: null,
+          appVersion: null,
+          sourceUrl: 'https://vendor.example/pricing',
+          method: 'vendor_site',
+          verifiedAt: '2025-12-01T08:00:00Z',
+          stale: false,
+          offer: true
+        },
+        openSource: {
+          repo: 'acme/osi',
+          url: 'https://github.com/acme/osi',
+          license: 'MIT',
+          archived: false,
+          checkedAt: '2025-12-01T08:00:00Z'
+        },
+        macosSupplement: {
+          ranges: [{ arch: 'arm64', support: 'native', minimum: '12', maximum: null }],
+          appVersion: '4.95.0,242831',
+          sourceUrl: 'https://vendor.example/requirements',
+          method: 'vendor_docs',
+          verifiedAt: '2025-12-01T08:00:00Z',
+          stale: false,
+          conflicts: []
+        }
+      })
+    );
+    pkg.repository = { url: 'https://github.com/acme/osi', stars: 12345, signalsCheckedAt: '2026-10-02T00:00:00Z' };
+    const t = translator(code);
+    const verified = faqItems(pkg, t, code);
+    expect(verified.find(item => item.key === 'openSource')?.question).toBe(
+      t('package.faq.openSourceQ', { name: pkg.displayName })
+    );
+    expect(verified.find(item => item.key === 'chips')?.answer).toContain('vendor.example/requirements');
+    const checkedDate = formatDate('2025-12-01T08:00:00Z', { locale: code });
+    for (const key of ['price', 'chips', ...(code === 'en-US' ? [] : ['language'])])
+      expect(verified.find(item => item.key === key)?.answer).toContain(checkedDate);
+    const prices = faqItems(
+      { ...pkg, facts: { ...pkg.facts, prices: pkg.facts.prices.filter(price => price.channel === 'app_store') } },
+      t,
+      code
+    );
+    expect(prices.find(item => item.key === 'price')?.answer).toContain(checkedDate);
+    expect(prices.find(item => item.key === 'price')?.answer).toContain('apps.apple.com');
+    pkg.openSource = null;
+    pkg.facts.overview.artifacts.binaries = [];
+    pkg.conflictsWith = { casks: [], formulae: [] };
+    const publicOnly = faqItems(pkg, t, code);
+    expect(publicOnly.find(item => item.key === 'openSource')?.question).toBe(
+      t('package.faq.repositoryQ', { name: pkg.displayName })
+    );
+    const repositoryAnswer = publicOnly.find(item => item.key === 'openSource')!.answer;
+    expect(repositoryAnswer).not.toContain(checkedDate);
+    for (const item of [...verified, ...prices, ...publicOnly]) {
+      expect(item.answer).not.toMatch(/★|12[,.]?345|12[,.]3K|\{\w+\}/);
+      expect(item.answer).not.toContain(formatDate('2026-10-02T00:00:00Z', { locale: code }));
+    }
+  });
+
+  it('omits repository-only questions without a repository URL', () => {
+    const pkg = pageOf(docker());
+    pkg.repository = { stars: 12345, signalsCheckedAt: '2026-10-02T00:00:00Z' };
+    expect(faqItems(pkg, translator('en-US'), 'en-US').some(item => item.key === 'openSource')).toBe(false);
+  });
+
+  it.each(LOCALES)('preserves main’s questions at the FAQ limit in %s', locale => {
+    const pkg = pageOf(
+      docker({
+        appStore,
+        price: {
+          type: 'free',
+          amount: null,
+          currency: null,
+          region: null,
+          plan: null,
+          period: null,
+          appVersion: null,
+          sourceUrl: 'https://vendor.example/pricing',
+          method: 'vendor_site',
+          verifiedAt: '2025-12-01T08:00:00Z',
+          stale: false,
+          offer: true
+        }
+      })
+    );
+    const t = translator(locale);
+    const expected = mainFaqItems(pkg, t, locale);
+    pkg.repository = { url: 'https://github.com/acme/public-only' };
+    const result = faqItems(pkg, t, locale);
+    expect(result.length).toBeLessThanOrEqual(FAQ_LIMIT);
+    expect(result.filter(item => item.question !== t('package.faq.repositoryQ', { name: pkg.displayName }))).toEqual(
+      expected
     );
   });
 
@@ -367,6 +598,42 @@ describe('App questions', () => {
     expect(items[0]!.answer).toBe('Run `brew uninstall --cask docker-desktop`.');
     const font = docker({ isFont: true });
     expect(faqItems(pageOf(font), t, 'en-US').map(item => item.key)).toEqual(['uninstall', 'data', 'version']);
+  });
+});
+
+// Public production records, projected to FAQ inputs without changing their facts. The frozen
+// implementation and existing translations come from main; only the new repository Q&A may differ.
+const production = JSON.parse(readFileSync(new URL('./fixtures/packageFaq.production.json', import.meta.url), 'utf8'))
+  .packages as Record<string, PackageDetail>;
+
+describe.each(['rectangle', 'iterm2', 'discord', 'ely-office'])('%s FAQ parity with main', token => {
+  it.each(LOCALES)('preserves every existing question and answer byte-for-byte in %s', locale => {
+    const pkg = slimPackage(production[token]!);
+    const t = translator(locale);
+    const expected = mainFaqItems(pkg, t, locale);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(JSON.stringify(faqItems(pkg, t, locale))).toBe(JSON.stringify(expected));
+
+    // Simulate the future repository contract using only the record's real repository URL.
+    if (pkg.repoUrl) {
+      pkg.repository = {
+        url: pkg.repoUrl,
+        stars: 12345,
+        archived: !pkg.openSource?.archived,
+        signalsCheckedAt: '2026-10-02T00:00:00Z'
+      };
+      const result = faqItems(pkg, t, locale);
+      const addedQuestion = t('package.faq.repositoryQ', { name: pkg.displayName });
+      const unchanged = result.filter(item => item.question !== addedQuestion);
+      expect(JSON.stringify(unchanged)).toBe(JSON.stringify(expected));
+      if (!pkg.openSource && expected.length < FAQ_LIMIT) {
+        const added = result.find(item => item.question === addedQuestion)!;
+        expect(added).toBeDefined();
+        expect(added.answer).toContain(pkg.repoUrl);
+        expect(added.answer).not.toMatch(/★|12[,.]?345|12[,.]3K/);
+        expect(added.answer).not.toContain(formatDate('2026-10-02T00:00:00Z', { locale }));
+      }
+    }
   });
 });
 
