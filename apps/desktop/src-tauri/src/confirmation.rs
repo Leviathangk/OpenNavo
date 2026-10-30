@@ -1,9 +1,10 @@
-//! Native confirmation gates for writes that originate outside the app UI.
+//! Native confirmation gate for deep-link-initiated installs (and future MCP callers).
 //!
-//! The service deliberately keeps the policy state separate from the dialog adapter. That makes the
-//! one-dialog rule and grant lifecycle testable without creating an AppKit window in a libtest worker,
-//! while confirm always delegates rendering to the dialog plugin, which marshals the dialog to Tauri's
-//! main thread on desktop.
+//! Requests made by the app's own UI do not pass through this gate. The service deliberately keeps
+//! the policy state separate from the dialog adapter. That makes the one-dialog rule and grant
+//! lifecycle testable without creating an AppKit window in a libtest worker, while confirm always
+//! delegates rendering to the dialog plugin, which marshals the dialog to Tauri's main thread on
+//! desktop.
 
 use crate::{AppError, model::Locale, native_i18n};
 use sha2::{Digest, Sha256};
@@ -24,8 +25,8 @@ const GRANT_TTL: Duration = Duration::from_secs(30);
 // keeps the single slot occupied until the native callback arrives; a late click only releases the slot and never
 // produces a grant.
 
-/// A write request presented to the user. Install callers bind an immutable resolved execution plan;
-/// deletion callers can bind their own plan digest.
+/// A deep-link install request presented to the user. Install callers bind an immutable resolved
+/// execution plan; future non-UI callers may bind their own plan digest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmationRequest {
     pub caller: String,
