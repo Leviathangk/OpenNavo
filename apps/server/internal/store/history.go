@@ -334,6 +334,15 @@ func (s *Store) RestoreHistoryState(ctx context.Context, ref content.Ref, state 
 			return err
 		}
 	}
+	if ref.Entity == "package" && state != nil && len(state["package_meta"]) == 0 && len(current["package_meta"]) > 0 {
+		private, reason := historyVisibility(current["package_meta"][0])
+		if private || reason != "" {
+			// A pre-migration snapshot may predate the metadata row itself.
+			// Recreate its defaults while retaining the later visibility group.
+			state = maps.Clone(state)
+			state["package_meta"] = []map[string]any{{"package_id": ref.ID, "private": private, "visibility_reason": reason}}
+		}
+	}
 	for i := len(tables) - 1; i >= 1; i-- {
 		t := tables[i]
 		if err := s.DB.WithContext(ctx).Exec("DELETE FROM "+t.Name+" WHERE "+t.Where, t.Args...).Error; err != nil {
