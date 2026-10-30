@@ -134,24 +134,24 @@ describe('desktop quick-info field parity', () => {
 
 describe('desktop alternate names', () => {
   const locales = ['en-US', 'zh-CN', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
-  it.each(locales)('filters online and offline aliases in %s for all package kinds', locale => {
+  const names = [
+    'Visual Studio Code',
+    'vscode',
+    'VS Code 编辑器',
+    'VS Code エディター',
+    'Редактор VS Code',
+    'VS Code 편집기'
+  ];
+  const aliases = 'vscode, VS Code 编辑器, VS Code エディター, Редактор VS Code, VS Code 편집기';
+  it.each(locales)('keeps every alias except the displayed name in %s for all package kinds', locale => {
     for (const kind of ['cask', 'formula', 'link'] as const) {
-      const pkg = detail({
-        kind,
-        displayName: 'Visual Studio Code',
-        names: ['Visual Studio Code', 'vscode', 'VS Code 编辑器']
-      });
+      const pkg = detail({ kind, displayName: 'Visual Studio Code', names });
       const local = { ...pkg, name: pkg.displayName } as unknown as LocalItem;
-      const expected = ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? 'vscode, VS Code 编辑器' : 'vscode';
       for (const spec of [
         packageSpec(pkg, null, null, t, locale, SPEC_NOW),
         packageSpec(null, local, null, t, locale, SPEC_NOW)
       ])
-        expect(spec.rows.find(row => row.key === 'names')?.value).toBe(expected);
-      pkg.names = ['Visual Studio Code', 'VS Code 编辑器'];
-      expect(packageSpec(pkg, null, null, t, locale, SPEC_NOW).rows.some(row => row.key === 'names')).toBe(
-        ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale)
-      );
+        expect(spec.rows.find(row => row.key === 'names')?.value).toBe(aliases);
     }
   });
 });

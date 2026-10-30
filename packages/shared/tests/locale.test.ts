@@ -58,22 +58,22 @@ describe('Locale matching', () => {
 });
 
 describe('Package alternate names', () => {
-  it.each(SITE_LOCALES)('keeps only matching scripts and Latin product names in %s', locale => {
-    const names = [
-      'Visual Studio Code',
-      'vscode',
-      'VS Code 编辑器',
-      'VS Code エディター',
-      'Редактор VS Code',
-      'VS Code 편집기'
-    ];
-    expect(packageAliases(names, 'Visual Studio Code', locale)).toEqual([
-      'vscode',
-      ...(['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? ['VS Code 编辑器'] : []),
-      ...(locale === 'ja-JP' ? ['VS Code エディター'] : []),
-      ...(locale === 'ru-RU' ? ['Редактор VS Code'] : [])
-    ]);
+  const names = [
+    'Visual Studio Code',
+    'vscode',
+    'VS Code 编辑器',
+    'VS Code エディター',
+    'Редактор VS Code',
+    'VS Code 편집기'
+  ];
+  const aliases = ['vscode', 'VS Code 编辑器', 'VS Code エディター', 'Редактор VS Code', 'VS Code 편집기'];
+
+  it.each(SITE_LOCALES)('keeps every name except the displayed name in %s, like main Quick facts', locale => {
+    expect(packageAliases(names, 'Visual Studio Code', locale)).toEqual(aliases);
     expect(names).toHaveLength(6);
+  });
+  it('keeps aliases in their original languages on English pages', () => {
+    expect(packageAliases(names, 'Visual Studio Code', 'en-US')).toEqual(aliases);
   });
   it('handles empty input and preserves Latin aliases with accents', () => {
     expect(packageAliases([], 'Example', 'en-US')).toEqual([]);

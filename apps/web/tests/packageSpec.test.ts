@@ -209,20 +209,24 @@ describe('quick-info field parity with main', () => {
 
 describe('spec card alternate names', () => {
   const locales = ['en-US', 'zh-CN', 'zh-Hant', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'] as const;
-  it.each(locales)('filters aliases in %s for all package kinds', locale => {
+  const names = [
+    'Visual Studio Code',
+    'vscode',
+    'VS Code 编辑器',
+    'VS Code エディター',
+    'Редактор VS Code',
+    'VS Code 편집기'
+  ];
+  const aliases = 'vscode, VS Code 编辑器, VS Code エディター, Редактор VS Code, VS Code 편집기';
+  it.each(locales)('keeps every alias except the displayed name in %s for all package kinds', locale => {
     for (const kind of ['cask', 'formula', 'link'] as const) {
-      const pkg = page({
-        kind,
-        displayName: 'Visual Studio Code',
-        names: ['Visual Studio Code', 'vscode', 'VS Code 编辑器']
-      });
-      const value = packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value;
-      expect(value).toBe(['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale) ? 'vscode, VS Code 编辑器' : 'vscode');
-      pkg.names = ['Visual Studio Code', 'VS Code 编辑器'];
-      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.some(row => row.key === 'names')).toBe(
-        ['zh-CN', 'zh-Hant', 'ja-JP'].includes(locale)
-      );
+      const pkg = page({ kind, displayName: 'Visual Studio Code', names });
+      expect(packageSpec(pkg, t, locale, SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(aliases);
     }
+  });
+  it('keeps aliases in their original languages on English pages, like main Quick facts', () => {
+    const pkg = page({ kind: 'cask', displayName: 'Visual Studio Code', names });
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(row => row.key === 'names')?.value).toBe(aliases);
   });
 });
 
