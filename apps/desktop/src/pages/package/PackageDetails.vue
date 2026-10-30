@@ -13,7 +13,7 @@ import { useLibraryStore } from '@/stores';
 const { t } = useI18n();
 const toasts = useToasts();
 const library = useLibraryStore();
-const { kind, token, detail, error } = usePackage();
+const { kind, token, detail, local, error } = usePackage();
 
 const messages = useUiMessages();
 const downloadSha = computed(() => detail.value?.downloadSha256);
@@ -125,11 +125,7 @@ async function copySha() {
 
 <template>
   <OfflineNotice v-if="error && !detail" />
-<<<<<<< HEAD
   <div v-else-if="detail || local" class="pt-4px">
-=======
-  <div v-else-if="detail" class="pt-4px">
->>>>>>> origin/main
     <div class="flex min-w-0 flex-col gap-16px">
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px">
         <OnKeyValueList :items="items" />
