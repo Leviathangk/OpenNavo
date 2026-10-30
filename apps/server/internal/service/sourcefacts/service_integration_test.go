@@ -284,6 +284,102 @@ func TestSourceFactsSignalRedirectChecksAllLicenseCandidates(t *testing.T) {
 	require.Equal(t, "https://github.com/acme/c", detail.Repository.Url)
 }
 
+func TestSourceFactsSignalEscalationQuotaCutoffPreservesStoredFact(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		remaining int64
+	}{
+		{name: "exactly_ten_percent", remaining: 500},
+		{name: "below_ten_percent", remaining: 499},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			st := testutil.NewFactsStore(t)
+			addCask(t, st, `{"token":"quota","name":["Quota"],"version":"1","homepage":"https://github.com/acme/a","url":"https://github.com/acme/b/releases/download/v1/Quota.dmg","artifacts":[{"app":["Quota.app"]}]}`)
+			require.NoError(t, st.DB.Exec(`INSERT INTO package_meta(package_id,repo_url) SELECT id,'https://github.com/acme/c' FROM packages WHERE token='quota'`).Error)
+
+			now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
+			refresh := false
+			github := &githubStub{repo: func(repo, etag string) (sources.RepoResult, error) {
+				if !refresh {
+					result := mitRepo(repo)
+					if repo == "acme/a" {
+						result.Repository.License.SPDXID = "BUSL-1.1"
+					}
+					return result, nil
+				}
+				switch repo {
+				case "acme/b":
+					require.Equal(t, `W/"e1"`, etag)
+					result := repoResultForTest("acme/renamed", "BUSL-1.1", 2000, now.Add(-time.Hour))
+					result.Requests, result.Remaining = 2, 501
+					return result, nil
+				case "acme/a":
+					require.Empty(t, etag)
+					// This non-OSI response drops quota to the boundary. The cached
+					// redirect is also non-OSI, so completion needs an uncached c.
+					result := repoResultForTest(repo, "BUSL-1.1", 3000, now.Add(-2*time.Hour))
+					result.Remaining = tc.remaining
+					return result, nil
+				case "acme/c":
+					return repoResultForTest(repo, "Apache-2.0", 4000, now.Add(-3*time.Hour)), nil
+				default:
+					t.Fatalf("unexpected repository: %s", repo)
+					return sources.RepoResult{}, nil
+				}
+			}}
+			svc := &Service{Store: st, GitHub: github, Now: func() time.Time { return now }}
+			_, err := svc.Run(ctx)
+			require.NoError(t, err)
+			require.Equal(t, []string{"acme/a", "acme/b"}, github.calls)
+			require.NoError(t, st.DB.Exec(`UPDATE package_source_facts SET fail_count=2,signals_unavailable_count=2 WHERE source='github'`).Error)
+			rows, err := st.SourceFacts(ctx)
+			require.NoError(t, err)
+			key := store.SourceFactKey{PackageID: 1, Source: GitHub}
+			initial := rows[key]
+			require.Equal(t, "acme/a acme/b acme/c", initial.Input)
+			require.Equal(t, "acme/b", initial.Subject)
+			detailBefore, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "quota", "en-US")
+			require.NoError(t, err)
+			require.NotNil(t, detailBefore.OpenSource)
+			require.Equal(t, "MIT", detailBefore.OpenSource.License)
+			invalidations(t, st)
+
+			refresh = true
+			now = now.Add(25 * time.Hour)
+			for attempt, backoff := range []time.Duration{time.Hour, 2 * time.Hour} {
+				require.True(t, initial.NextCheckAt.After(now), "only the daily signal refresh is due")
+				github.calls, github.etags = nil, nil
+				stats, err := svc.Run(ctx)
+				require.NoError(t, err)
+				rows, err = st.SourceFacts(ctx)
+				require.NoError(t, err)
+				refreshed := rows[key]
+				require.Equal(t, attempt+1, refreshed.SignalsFailCount)
+				require.NotNil(t, refreshed.SignalsNextCheckAt)
+				require.Equal(t, now.Add(backoff), refreshed.SignalsNextCheckAt.UTC())
+				expected := initial
+				expected.SignalsFailCount = attempt + 1
+				expected.SignalsNextCheckAt = refreshed.SignalsNextCheckAt
+				require.Equal(t, expected, refreshed, "quota cutoff must preserve the subject, signals, license and their successful check state")
+				require.Equal(t, []string{"acme/b", "acme/a"}, github.calls)
+				require.EqualValues(t, 3, stats["githubRequests"])
+				require.EqualValues(t, tc.remaining, stats["githubRemaining"])
+				require.EqualValues(t, 1, stats["failed"].(map[string]any)[GitHub])
+				require.Equal(t, "quota", stats["stopped"].(map[string]any)[GitHub])
+				require.Equal(t, true, stats["githubQuotaReserved"])
+				require.Zero(t, stats["changed"])
+				require.Empty(t, invalidations(t, st))
+				detailAfter, err := (&catalog.PublicService{Store: st}).Detail(ctx, "cask", "quota", "en-US")
+				require.NoError(t, err)
+				require.Equal(t, detailBefore.OpenSource, detailAfter.OpenSource)
+				require.Equal(t, detailBefore.Repository, detailAfter.Repository)
+				now = refreshed.SignalsNextCheckAt.UTC()
+			}
+		})
+	}
+}
+
 func TestSourceFactsSignalRefreshUsesSignalsUpdate(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewFactsStore(t)

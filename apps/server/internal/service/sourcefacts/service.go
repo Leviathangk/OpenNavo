@@ -243,6 +243,11 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 		}
 		result, fetched := results[strings.ToLower(repo)]
 		if !fetched {
+			// An escalated signal refresh can exhaust its quota between candidates.
+			// Keep the previous fact until the license check can finish.
+			if item.signalsOnly && fullCheck && low {
+				return *item.row, low, errGitHubSignalRefreshFailed
+			}
 			if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
 				return fact, low, errGitHubRequestCap
 			}
