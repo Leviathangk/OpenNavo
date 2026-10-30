@@ -101,6 +101,34 @@ describe('Shared UI external links in the desktop app', () => {
     }
   );
 
+  it('opens http links through the scoped opener', async () => {
+    stop = startExternalLinks();
+    const link = document.createElement('a');
+    link.href = 'http://example.test/plain';
+    link.target = '_blank';
+    document.body.append(link);
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    expect(preventedByApp(link, click)).toBe(true);
+    await flushPromises();
+    expect(openUrl).toHaveBeenCalledExactlyOnceWith('http://example.test/plain');
+  });
+
+  it('opener capability matches the delegated scheme filter', () => {
+    type CapabilityPermission = { identifier: string; allow?: { url: string }[] };
+    const capability = JSON.parse(readFileSync('src-tauri/capabilities/main.json', 'utf8')) as {
+      permissions: (string | CapabilityPermission)[];
+    };
+    const opener = capability.permissions.find(
+      (permission): permission is CapabilityPermission & { allow: { url: string }[] } =>
+        typeof permission !== 'string' && permission.identifier === 'opener:allow-open-url'
+    );
+    expect(opener).toBeDefined();
+    const allowed = opener?.allow.map(entry => entry.url) ?? [];
+    for (const url of ['http://*', 'https://*', 'x-apple.systempreferences:*']) {
+      expect(allowed).toContain(url);
+    }
+  });
+
   it('respects an existing source-link handler without opening the URL twice', async () => {
     const { version } = mountLinks(event => {
       event.preventDefault();
