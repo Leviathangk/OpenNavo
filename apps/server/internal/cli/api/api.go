@@ -77,7 +77,7 @@ func run(ctx context.Context) error {
 		cacheClient = redis.NewClient(opts)
 		defer func() { _ = cacheClient.Close() }()
 	}
-	cacheBackend := cache.Redis{Client: cacheClient}
+	cacheBackend := cache.Visibility{Backend: cache.Redis{Client: cacheClient}, Generation: st.VisibilityGeneration}
 	catalogService := &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL, Secrets: cfg}
 	warmContext, stopWarm := context.WithCancel(ctx)
 	defer stopWarm()

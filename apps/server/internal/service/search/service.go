@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/searchtext"
@@ -131,8 +132,9 @@ func (s *Service) Suggest(ctx context.Context, query, locale string, limit int) 
 		return nil, domain.Validation()
 	}
 	key := fmt.Sprintf("c:sug:c2:%s:%s", locale, query) + domain.LinksCacheKey(ctx)
-	if s.Cache != nil {
-		data, err := s.Cache.Load(ctx, key)
+	backend := cache.Scope(ctx, s.Cache)
+	if backend != nil {
+		data, err := backend.Load(ctx, key)
 		if err == nil {
 			var items []domain.Suggestion
 			if json.Unmarshal(data, &items) == nil {
@@ -145,9 +147,9 @@ func (s *Service) Suggest(ctx context.Context, query, locale string, limit int) 
 	if err != nil {
 		return nil, fmt.Errorf("suggest packages: %w", err)
 	}
-	if s.Cache != nil {
+	if backend != nil {
 		if data, err := json.Marshal(items); err == nil {
-			_ = s.Cache.Save(ctx, key, data, 10*time.Minute)
+			_ = backend.Save(ctx, key, data, 10*time.Minute)
 		}
 	}
 	return items[:min(limit, len(items))], nil

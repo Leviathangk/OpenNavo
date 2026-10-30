@@ -12,7 +12,36 @@ ALTER TABLE package_meta ADD CONSTRAINT package_private_reason
 
 CREATE INDEX package_meta_private ON package_meta(package_id) WHERE private;
 
+CREATE TABLE catalog_visibility (
+    id boolean PRIMARY KEY DEFAULT true CHECK (id),
+    generation bigint NOT NULL DEFAULT 0
+);
+INSERT INTO catalog_visibility(id) VALUES(true);
+
+-- +goose StatementBegin
+CREATE FUNCTION bump_catalog_visibility() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD.hidden IS NOT DISTINCT FROM NEW.hidden AND OLD.private IS NOT DISTINCT FROM NEW.private THEN
+            RETURN NEW;
+        END IF;
+    ELSIF TG_OP = 'INSERT' THEN
+        IF NOT NEW.hidden AND NOT NEW.private THEN RETURN NEW; END IF;
+    ELSE
+        IF NOT OLD.hidden AND NOT OLD.private THEN RETURN OLD; END IF;
+    END IF;
+    UPDATE catalog_visibility SET generation=generation+1 WHERE id=true;
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+-- +goose StatementEnd
+CREATE TRIGGER package_visibility_generation AFTER INSERT OR UPDATE OR DELETE ON package_meta
+    FOR EACH ROW EXECUTE FUNCTION bump_catalog_visibility();
+
 -- +goose Down
+DROP TRIGGER package_visibility_generation ON package_meta;
+DROP FUNCTION bump_catalog_visibility();
+DROP TABLE catalog_visibility;
 ALTER TABLE package_meta
     DROP CONSTRAINT package_private_reason,
     DROP COLUMN visibility_reason,

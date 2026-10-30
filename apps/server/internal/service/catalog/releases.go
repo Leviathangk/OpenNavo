@@ -13,6 +13,7 @@ import (
 )
 
 func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale string, current, size int, onlyWithNotes bool) (publicapi.ReleasePage, error) {
+	s = s.cacheScope(ctx)
 	out := publicapi.ReleasePage{Current: current, Size: size, Records: []publicapi.ReleaseEntry{}}
 	if !ValidPage(current, size, 100) {
 		return out, domain.Validation()

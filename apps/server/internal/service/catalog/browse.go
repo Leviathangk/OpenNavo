@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -53,6 +54,9 @@ func browseFreshKey(kind string) string {
 }
 
 func (s *PublicService) Browse(ctx context.Context, kind, bucket, locale string, page int) (publicapi.BrowsePage, error) {
+	scoped := *s
+	scoped.Cache = cache.Scope(ctx, s.Cache)
+	s = &scoped
 	if (kind != "apps" && kind != "fonts") || page < 1 || !i18n.Valid(locale) {
 		return publicapi.BrowsePage{}, domain.Validation()
 	}
@@ -116,6 +120,9 @@ func waitBrowseBuild(ctx context.Context, result <-chan singleflight.Result) (ma
 // startBrowseBuild joins the kind's running build or starts one. The build outlives the caller that started it
 // (others may be waiting for it, or it refreshes stale pages in the background) but stops at browseBuildTimeout.
 func (s *PublicService) startBrowseBuild(ctx context.Context, kind string, force bool) <-chan singleflight.Result {
+	scoped := *s
+	scoped.Cache = cache.Scope(ctx, s.Cache)
+	s = &scoped
 	key := s.browseBuildKey(kind)
 	if force {
 		key += "|materialize"
@@ -172,7 +179,7 @@ func (s *PublicService) startBrowseBuild(ctx context.Context, kind string, force
 
 // browseBuildKey names one kind's build of one store, so a build never serves another database.
 func (s *PublicService) browseBuildKey(kind string) string {
-	return fmt.Sprintf("%p|%s", s.Store, kind)
+	return fmt.Sprintf("%p|%s|%s", s.Store, kind, cache.Namespace(s.Cache))
 }
 
 // refreshStaleBrowse starts a background build of the kind once its pages are older than browseTTL. The caller
@@ -222,6 +229,9 @@ func (s *PublicService) cachedBrowsePage(ctx context.Context, key string) (publi
 // buildBrowse reads the catalog once for every site language and stores each language's root and pages,
 // keeping individual entries below the cache's size limit even when the whole catalog exceeds it.
 func (s *PublicService) buildBrowse(ctx context.Context, kind string) (map[string]store.BrowseDirectory, error) {
+	scoped := *s
+	scoped.Cache = cache.Scope(ctx, s.Cache)
+	s = &scoped
 	policy, err := s.Store.IndexPolicy(ctx)
 	if err != nil {
 		return nil, err
