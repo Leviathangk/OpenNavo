@@ -138,6 +138,121 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 			body: "[**Tencent** Meeting](/apps/private-sample)",
 			want: "**Tencent** Meeting",
 		},
+		{
+			name: "explicit default ports",
+			body: "[Secure](https://opennavo.com:443/apps/private-sample) [Plain](http://www.opennavo.com:80/apps/private-alias)",
+			want: "Secure Plain",
+		},
+		{
+			name: "non-default ports kept",
+			body: "[Port](https://opennavo.com:8443/apps/private-sample)",
+			want: "[Port](https://opennavo.com:8443/apps/private-sample)",
+		},
+		{
+			name: "percent encoded paths",
+			body: "[Encoded](/%61pps/private-sample) and [Absolute](https://opennavo.com/%61pps/private-sample)",
+			want: "Encoded and Absolute",
+		},
+		{
+			name: "markdown character references in destinations",
+			body: "[Entity](/apps/&#112;rivate-sample) and [Hex](/apps/&#x70;rivate-sample)",
+			want: "Entity and Hex",
+		},
+		{
+			name: "backslash escapes in destinations",
+			body: "[Escaped](/apps/private\\-sample) and [Host](https://opennavo\\.com/apps/private-sample)",
+			want: "Escaped and Host",
+		},
+		{
+			name: "uppercase host with default port",
+			body: "[Upper](HTTPS://OPENNAVO.COM:443/apps/private-sample)",
+			want: "Upper",
+		},
+		{
+			name: "multiline reference destination",
+			body: "[x][p]\n\n[p]:\n  /apps/private-sample\n",
+			want: "x\n\n",
+		},
+		{
+			name: "multiline reference destination inside a blockquote",
+			body: "[x][p]\n\n> [p]:\n>   /apps/private-sample\n",
+			want: "x\n\n",
+		},
+		{
+			name: "reference definition inside a blockquote",
+			body: "[x][p]\n\n> [p]: /apps/private-sample\n",
+			want: "x\n\n",
+		},
+		{
+			name: "reference definition inside a list",
+			body: "[x][p]\n\n- [p]: /apps/private-sample\n",
+			want: "x\n\n",
+		},
+		{
+			name: "first reference definition wins over a later private duplicate",
+			body: "[public][p]\n\n[p]: /apps/public-child\n[p]: /apps/private-sample\n",
+			want: "[public][p]\n\n[p]: /apps/public-child\n[p]: /apps/private-sample\n",
+		},
+		{
+			name: "first private reference definition wins over a later public duplicate",
+			body: "[public][p]\n\n[p]: /apps/private-sample\n[p]: /apps/public-child\n",
+			want: "public\n\n",
+		},
+		{
+			name: "link text containing inline code is redacted",
+			body: "[Use `tool`](/apps/private-sample)",
+			want: "Use `tool`",
+		},
+		{
+			name: "indented code block is preserved",
+			body: "Before [x](/apps/private-sample)\n\n    [x](/apps/private-sample)\n    https://opennavo.com/apps/private-sample\n    ::app[private-sample]\n\nAfter [y](/apps/private-sample)",
+			want: "Before x\n\n    [x](/apps/private-sample)\n    https://opennavo.com/apps/private-sample\n    ::app[private-sample]\n\nAfter y",
+		},
+		{
+			name: "fenced code block inside a blockquote is preserved",
+			body: "> ```\n> [x](/apps/private-sample)\n> https://opennavo.com/apps/private-sample\n> ::app[private-sample]\n> ```\n\nAfter [y](/apps/private-sample)",
+			want: "> ```\n> [x](/apps/private-sample)\n> https://opennavo.com/apps/private-sample\n> ::app[private-sample]\n> ```\n\nAfter y",
+		},
+		{
+			name: "multiline code span is preserved",
+			body: "`multi\n[x](/apps/private-sample)\n::app[private-sample]\nline` and [y](/apps/private-sample)",
+			want: "`multi\n[x](/apps/private-sample)\n::app[private-sample]\nline` and y",
+		},
+		{
+			name: "external URL containing an OpenNavo URL is not truncated",
+			body: "See https://example.com/https://opennavo.com/apps/private-sample and [Ext](https://example.com/https://opennavo.com/apps/private-sample).",
+			want: "See https://example.com/https://opennavo.com/apps/private-sample and [Ext](https://example.com/https://opennavo.com/apps/private-sample).",
+		},
+		{
+			name: "host suffix and subdomain lookalikes kept",
+			body: "See https://notopennavo.com/apps/private-sample, https://opennavo.com.evil.com/apps/private-sample and foo.opennavo.com/apps/private-sample.",
+			want: "See https://notopennavo.com/apps/private-sample, https://opennavo.com.evil.com/apps/private-sample and foo.opennavo.com/apps/private-sample.",
+		},
+		{
+			name: "HTML data-href is not the href attribute",
+			body: "<a data-href=\"/apps/private-sample\" href=\"/apps/public-child\">Public</a>",
+			want: "<a data-href=\"/apps/private-sample\" href=\"/apps/public-child\">Public</a>",
+		},
+		{
+			name: "HTML href character references are decoded",
+			body: "Raw <a href=\"/apps/&#112;rivate-sample\">Private</a>.",
+			want: "Raw Private.",
+		},
+		{
+			name: "HTML attribute value containing a greater-than sign",
+			body: "Raw <a href=\"/apps/private-sample\" title=\"1 > 0\">Label</a>.",
+			want: "Raw Label.",
+		},
+		{
+			name: "nested parentheses in destinations",
+			body: "[x](/apps/private-sample?q=(a)) and [Public](/apps/public-child?q=(a))",
+			want: "x and [Public](/apps/public-child?q=(a))",
+		},
+		{
+			name: "angle destination with nested parentheses",
+			body: "[x](</apps/private-sample?q=(a)>) and [y](</apps/private-sample?q=(a)> \"title > here\")",
+			want: "x and y",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -182,4 +297,58 @@ Raw HTML <a href="https://opennavo.com/zh/apps/private-sample">Tencent Meeting</
 	require.Contains(t, got, "[Public child](/apps/public-child)")
 	require.Contains(t, got, "::app[public-child]")
 	require.Contains(t, got, "[public]: https://opennavo.com/apps/public-child")
+}
+
+func TestAppReferencesUsesTheSameLinkInterpretation(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want []string
+	}{
+		{
+			name: "explicit port percent encoding and character references",
+			body: "[a](https://opennavo.com:443/apps/private-sample) [b](/%61pps/private-alias) [c](/apps/&#112;rivate-sample)",
+			want: []string{"private-sample", "private-alias"},
+		},
+		{
+			name: "reference definitions in containers and multiline destinations",
+			body: "[a][p] and [b][q]\n\n[p]:\n  /apps/private-sample\n> [q]: /apps/private-alias\n",
+			want: []string{"private-sample", "private-alias"},
+		},
+		{
+			name: "first definition wins in discovery",
+			body: "[a][p]\n\n[p]: /apps/public-child\n[p]: /apps/private-sample\n",
+			want: []string{"public-child"},
+		},
+		{
+			name: "a private first definition is discovered",
+			body: "[a][p]\n\n[p]: /apps/private-sample\n[p]: /apps/public-child\n",
+			want: []string{"private-sample"},
+		},
+		{
+			name: "code is not discovered",
+			body: "```\n[a](/apps/private-sample)\n::app[private-alias]\n```\n`[b](/apps/private-sample)`\n\n[c](/apps/public-child)",
+			want: []string{"public-child"},
+		},
+		{
+			name: "external URLs embedding an OpenNavo URL are not discovered",
+			body: "https://example.com/https://opennavo.com/apps/private-sample and [x](https://example.com/https://opennavo.com/apps/private-sample)",
+			want: []string{},
+		},
+		{
+			name: "HTML href is decoded and data-href is ignored",
+			body: "<a data-href=\"/apps/private-alias\" href=\"/apps/&#112;rivate-sample\">Private</a>",
+			want: []string{"private-sample"},
+		},
+		{
+			name: "host suffix lookalikes are not discovered",
+			body: "https://notopennavo.com/apps/private-sample https://opennavo.com.evil.com/apps/private-alias",
+			want: []string{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.ElementsMatch(t, test.want, AppReferences(test.body))
+		})
+	}
 }
