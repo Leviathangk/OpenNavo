@@ -234,38 +234,44 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	haveFirst := false
 	sawUnavailable := false
 	sawSignalFailure := false
+	results := make(map[string]sources.RepoResult)
 	for index := 0; index < len(item.items); index++ {
 		repo := item.items[index]
-		if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
-			return fact, low, errGitHubRequestCap
-		}
 		etag := ""
 		if item.row != nil && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
 			etag = *item.row.ETag
 		}
-		result, err := s.GitHub.Repo(ctx, repo, etag)
-		requests := result.Requests
-		if requests <= 0 {
-			requests = 1
-		}
-		stats.GitHubRequests += requests
-		if result.NotModified {
-			stats.GitHubNotModified++
-		}
-		if result.Remaining >= 0 && (stats.GitHubRemaining < 0 || result.Remaining < stats.GitHubRemaining) {
-			stats.GitHubRemaining = result.Remaining
-		}
-		if result.Remaining < 0 || result.Limit < 0 {
-			stats.githubQuotaUnknown = true
-		}
-		if result.Remaining >= 0 && result.Limit > 0 && result.Remaining*10 <= result.Limit {
-			low = true
-		}
-		if stats.githubQuotaUnknown && stats.GitHubRequests >= maxGitHubRequestsWithoutQuota {
-			low = true
-		}
-		if err != nil {
-			return fact, low, err
+		result, fetched := results[strings.ToLower(repo)]
+		if !fetched {
+			if stats.githubQuotaUnknown && stats.GitHubRequests+maxGitHubRepoRequests > maxGitHubRequestsWithoutQuota {
+				return fact, low, errGitHubRequestCap
+			}
+			var err error
+			result, err = s.GitHub.Repo(ctx, repo, etag)
+			requests := result.Requests
+			if requests <= 0 {
+				requests = 1
+			}
+			stats.GitHubRequests += requests
+			if result.NotModified {
+				stats.GitHubNotModified++
+			}
+			if result.Remaining >= 0 && (stats.GitHubRemaining < 0 || result.Remaining < stats.GitHubRemaining) {
+				stats.GitHubRemaining = result.Remaining
+			}
+			if result.Remaining < 0 || result.Limit < 0 {
+				stats.githubQuotaUnknown = true
+			}
+			if result.Remaining >= 0 && result.Limit > 0 && result.Remaining*10 <= result.Limit {
+				low = true
+			}
+			if stats.githubQuotaUnknown && stats.GitHubRequests >= maxGitHubRequestsWithoutQuota {
+				low = true
+			}
+			if err != nil {
+				return fact, low, err
+			}
+			results[strings.ToLower(repo)] = result
 		}
 		if result.NotModified && etag != "" {
 			if item.row == nil || !hasGitHubRepository(*item.row) {
@@ -302,21 +308,23 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			}
 			continue
 		}
-		if !haveFirst {
-			first, firstETag, haveFirst = current, result.ETag, true
-		}
 		if !fullCheck && !strings.EqualFold(item.row.Subject, current.Repo) {
 			// Recovery or a redirect can select a different repository. Its license
 			// must be checked before publishing a new open-source decision.
+			if low {
+				return fact, low, errGitHubSignalRefreshFailed
+			}
 			fullCheck = true
 			fact = licenseCheck
-			// Restore any candidates omitted from the daily refresh so a non-OSI
-			// redirect does not hide another repository's OSI-approved license.
-			for _, candidate := range candidates(GitHub, item.pkg) {
-				if !contains(item.items, candidate) {
-					item.items = append(item.items, candidate)
-				}
-			}
+			// Restart in the full check's candidate order, reusing fetched responses
+			// so the OSI choice and the first public fallback match a 30-day check.
+			item.items = candidates(GitHub, item.pkg)
+			haveFirst = false
+			index = -1
+			continue
+		}
+		if !haveFirst {
+			first, firstETag, haveFirst = current, result.ETag, true
 		}
 		if !fullCheck {
 			// A daily refresh of the same repository keeps its OSI judgment and
@@ -382,8 +390,8 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			fact.ETag = &firstETag
 		}
 	}
-	// Every candidate was read (at most three requests), so "none" is a complete answer even when
-	// the quota turned low on the way; the run stops after this app.
+	// Every candidate was checked (at most three repository lookups, each allowing one redirect),
+	// so "none" is complete even if quota turned low during the full check; the run stops after this app.
 	return fact, low, nil
 }
 

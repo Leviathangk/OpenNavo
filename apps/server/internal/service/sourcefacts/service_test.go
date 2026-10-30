@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,6 +72,152 @@ func TestGitHubSignalRefreshTreatsPrivateRepositoryAsUnavailable(t *testing.T) {
 	require.ErrorIs(t, err, errGitHubRepositoryUnavailable)
 }
 
+func TestGitHubSignalEscalationMatchesFullLicenseCheck(t *testing.T) {
+	for index, tc := range []struct {
+		name                                       string
+		firstLicense, redirectLicense, lastLicense string
+		status, subject, selected, license         string
+		refreshCalls, fullCalls                    []string
+	}{
+		{
+			name: "stored_subject_after_first_candidate", firstLicense: "Apache-2.0", redirectLicense: "MIT", lastLicense: "GPL-3.0",
+			status: "found", subject: "acme/a", selected: "acme/a", license: "Apache-2.0",
+			refreshCalls: []string{"acme/b", "acme/a"}, fullCalls: []string{"acme/a"},
+		},
+		{
+			name: "reuse_redirect_after_earlier_non_osi_candidate", firstLicense: "BUSL-1.1", redirectLicense: "MIT", lastLicense: "Apache-2.0",
+			status: "found", subject: "acme/renamed", selected: "acme/b", license: "MIT",
+			refreshCalls: []string{"acme/b", "acme/a"}, fullCalls: []string{"acme/a", "acme/b"},
+		},
+		{
+			name: "non_osi_redirect_before_later_osi_candidate", firstLicense: "BUSL-1.1", redirectLicense: "NOASSERTION", lastLicense: "Apache-2.0",
+			status: "found", subject: "acme/c", selected: "acme/c", license: "Apache-2.0",
+			refreshCalls: []string{"acme/b", "acme/a", "acme/c"}, fullCalls: []string{"acme/a", "acme/b", "acme/c"},
+		},
+		{
+			name: "all_non_osi_candidates_keep_first_public_subject", firstLicense: "BUSL-1.1", redirectLicense: "NOASSERTION",
+			status: "none", subject: "acme/a", selected: "acme/a",
+			refreshCalls: []string{"acme/b", "acme/a", "acme/c"}, fullCalls: []string{"acme/a", "acme/b", "acme/c"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+			homepage, download, recorded := "https://github.com/acme/a", "https://github.com/acme/b/releases", "https://github.com/acme/c"
+			pkg := store.SourceFactPackage{ID: 1, Homepage: &homepage, DownloadURL: &download, RepoURL: &recorded}
+			items := candidates(GitHub, pkg)
+			require.Equal(t, []string{"acme/a", "acme/b", "acme/c"}, items)
+			base := int64(1000 + index*10)
+			fixtures := map[string]sources.RepoResult{
+				"acme/a": repoResultForTest("acme/a", tc.firstLicense, base+1, now.Add(-time.Duration(base+1)*time.Minute)),
+				"acme/b": repoResultForTest("acme/renamed", tc.redirectLicense, base+2, now.Add(-time.Duration(base+2)*time.Minute)),
+				"acme/c": repoResultForTest("acme/c", tc.lastLicense, base+3, now.Add(-time.Duration(base+3)*time.Minute)),
+			}
+			redirect := fixtures["acme/b"]
+			redirect.Requests = 2
+			fixtures["acme/b"] = redirect
+			data, err := json.Marshal(sources.GitHubFact{Repo: "acme/b", URL: "https://github.com/acme/b", License: "MIT", Stars: int64PointerForTest(base + 4), PushedAt: timePointer(now.Add(-time.Duration(base+4) * time.Minute))})
+			require.NoError(t, err)
+			etag := `"before-redirect"`
+			row := store.SourceFact{PackageID: pkg.ID, Source: GitHub, Input: strings.Join(items, " "), Status: "found", Subject: "acme/b", Data: data, ETag: &etag,
+				CheckedAt: now.Add(-24 * time.Hour), NextCheckAt: now.Add(29 * 24 * time.Hour), FailCount: 2, SignalsFailCount: 1, SignalsUnavailableCount: 1}
+			var calls []string
+			svc := &Service{
+				GitHub: GitHubSourceFunc(func(_ context.Context, repo, conditional string) (sources.RepoResult, error) {
+					calls = append(calls, repo)
+					require.Contains(t, fixtures, repo)
+					if repo == row.Subject {
+						require.Equal(t, etag, conditional)
+					} else {
+						require.Empty(t, conditional)
+					}
+					return fixtures[repo], nil
+				}),
+				Now: func() time.Time { return now },
+			}
+			stats := &Stats{GitHubRemaining: -1}
+			refreshed, low, err := svc.checkGitHub(context.Background(), pending{pkg: pkg, input: row.Input, items: []string{row.Subject}, row: &row, signalsOnly: true}, stats)
+			require.NoError(t, err)
+			require.False(t, low)
+			require.Equal(t, tc.refreshCalls, calls, "reuse the redirect response without another request")
+			require.Equal(t, len(calls)+1, stats.GitHubRequests, "count the redirect's two HTTP requests only once")
+
+			calls = nil
+			full, low, err := svc.checkGitHub(context.Background(), pending{pkg: pkg, input: row.Input, items: items, row: &row}, &Stats{GitHubRemaining: -1})
+			require.NoError(t, err)
+			require.False(t, low)
+			require.Equal(t, tc.fullCalls, calls)
+			require.Equal(t, full, refreshed, "escalation must match the complete 30-day license check, including its fallback subject and signals")
+			require.Equal(t, tc.status, refreshed.Status)
+			require.Equal(t, tc.subject, refreshed.Subject)
+			var published sources.GitHubFact
+			require.NoError(t, json.Unmarshal(refreshed.Data, &published))
+			require.Equal(t, tc.license, published.License)
+			require.Equal(t, fixtures[tc.selected].Repository.StargazersCount, published.Stars)
+			require.Equal(t, fixtures[tc.selected].Repository.PushedAt, published.PushedAt)
+		})
+	}
+}
+
+func TestGitHubSignalEscalationRespectsQuotaBoundary(t *testing.T) {
+	for index, tc := range []struct {
+		name      string
+		remaining int64
+		escalate  bool
+	}{
+		{name: "below_ten_percent", remaining: 499},
+		{name: "exactly_ten_percent", remaining: 500},
+		{name: "just_above_ten_percent", remaining: 501, escalate: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+			homepage, download := "https://github.com/acme/a", "https://github.com/acme/b/releases"
+			pkg := store.SourceFactPackage{ID: 1, Homepage: &homepage, DownloadURL: &download}
+			base := int64(2000 + index*10)
+			first := repoResultForTest("acme/a", "Apache-2.0", base+1, now.Add(-time.Duration(base+1)*time.Minute))
+			first.Remaining = tc.remaining - 1
+			redirect := repoResultForTest("acme/renamed", "BUSL-1.1", base+2, now.Add(-time.Duration(base+2)*time.Minute))
+			redirect.Requests, redirect.Remaining = 2, tc.remaining
+			data, err := json.Marshal(sources.GitHubFact{Repo: "acme/b", URL: "https://github.com/acme/b", License: "MIT", Stars: int64PointerForTest(base + 3), PushedAt: timePointer(now.Add(-time.Duration(base+3) * time.Minute))})
+			require.NoError(t, err)
+			row := store.SourceFact{PackageID: pkg.ID, Source: GitHub, Input: "acme/a acme/b", Status: "found", Subject: "acme/b", Data: data,
+				CheckedAt: now.Add(-24 * time.Hour), NextCheckAt: now.Add(29 * 24 * time.Hour)}
+			var calls []string
+			svc := &Service{
+				GitHub: GitHubSourceFunc(func(_ context.Context, repo, _ string) (sources.RepoResult, error) {
+					calls = append(calls, repo)
+					switch repo {
+					case "acme/b":
+						return redirect, nil
+					case "acme/a":
+						return first, nil
+					default:
+						t.Fatalf("unexpected repository: %s", repo)
+						return sources.RepoResult{}, nil
+					}
+				}),
+				Now: func() time.Time { return now },
+			}
+			stats := &Stats{GitHubRemaining: -1}
+			fact, low, err := svc.checkGitHub(context.Background(), pending{pkg: pkg, input: row.Input, items: []string{row.Subject}, row: &row, signalsOnly: true}, stats)
+			require.True(t, low, "the remaining quota is at most ten percent after the final request")
+			if !tc.escalate {
+				require.ErrorIs(t, err, errGitHubSignalRefreshFailed)
+				require.Equal(t, []string{"acme/b"}, calls)
+				require.Equal(t, 2, stats.GitHubRequests)
+				require.Equal(t, tc.remaining, stats.GitHubRemaining)
+				require.Equal(t, row, fact, "defer the new license decision without changing the stored repository")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, []string{"acme/b", "acme/a"}, calls)
+			require.Equal(t, 3, stats.GitHubRequests)
+			require.Equal(t, tc.remaining-1, stats.GitHubRemaining)
+			require.Equal(t, "found", fact.Status)
+			require.Equal(t, "acme/a", fact.Subject)
+		})
+	}
+}
+
 func TestMergeGitHubSignalsPreservesExistingLicenseFacts(t *testing.T) {
 	oldPushed := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	newPushed := time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC)
@@ -98,3 +245,15 @@ func TestMergeGitHubSignalsDoesNotCarryLicenseAcrossRepositories(t *testing.T) {
 }
 
 func int64PointerForTest(value int64) *int64 { return &value }
+
+func repoResultForTest(repo, license string, stars int64, pushed time.Time) sources.RepoResult {
+	language := "Go"
+	result := sources.RepoResult{Repository: sources.Repository{FullName: repo, HTMLURL: "https://github.com/" + repo, Language: &language, StargazersCount: &stars, PushedAt: &pushed},
+		ETag: `"` + repo + `"`, Requests: 1, Remaining: 4000, Limit: 5000}
+	if license != "" {
+		result.Repository.License = &struct {
+			SPDXID string `json:"spdx_id"`
+		}{SPDXID: license}
+	}
+	return result
+}
