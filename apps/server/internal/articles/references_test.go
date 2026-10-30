@@ -104,14 +104,47 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 			want: "See https://notopennavo.com/apps/private-sample and foo.opennavo.com/apps/private-sample.",
 		},
 		{
+			name: "codex r2: invalid definition after a paragraph cannot hide a private reference",
+			body: "intro\n[p]: /apps/public-child\n\n[x][p]\n\n[p]: /apps/private-sample\n",
+			// markdown-it resolves [p] to the private definition, so it becomes plain text.
+			want: "intro\np: /apps/public-child\n\nx\n\n",
+		},
+		{
+			name: "codex r2: escaped backslash before a private link keeps the public link",
+			body: "[public](/apps/public-child) \\\\[private](/apps/private-sample)",
+			want: "[public](/apps/public-child) \\\\private",
+		},
+		{
+			name: "codex r2: multiline link in a blockquote leaves no private URL",
+			body: "> [x](https://opennavo.com/apps/private-sample\n> \"title\")",
+			want: "> \n> \"title\")",
+		},
+		{
+			name: "codex r2: uppercase bare URLs",
+			body: "HTTPS://opennavo.com/apps/private-sample and https://OPENNAVO.COM/apps/private-sample end",
+			want: " and  end",
+		},
+		{
+			name: "codex r2: zero padded default port",
+			body: "https://opennavo.com:0443/apps/private-sample end",
+			want: " end",
+		},
+		{
+			name: "codex r2: embedded and lookalike URLs untouched by the residual pass",
+			body: "https://example.com/https://opennavo.com/apps/private-sample https://notopennavo.com/apps/private-sample https://opennavo.com:8443/apps/private-sample",
+			want: "https://example.com/https://opennavo.com/apps/private-sample https://notopennavo.com/apps/private-sample https://opennavo.com:8443/apps/private-sample",
+		},
+		{
 			name: "reference links and definitions",
-			body: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: https://opennavo.com/apps/private-sample\n[Alias]: /ja/apps/private-alias",
-			want: "Tencent Meeting and Alias and tm.\n",
+			body: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: https://opennavo.com/apps/private-sample\n[Alias]: /ja/apps/private-alias\n",
+			// Definitions cannot interrupt a paragraph, so markdown-it renders these lines as text;
+			// the residual pass strips the private paths from that text.
+			want: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: \n[Alias]: \n",
 		},
 		{
 			name: "http reference links and definitions",
-			body: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: http://opennavo.com/apps/private-sample\n[Alias]: http://www.opennavo.com/ja/apps/private-alias",
-			want: "Tencent Meeting and Alias and tm.\n",
+			body: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: http://opennavo.com/apps/private-sample\n[Alias]: http://www.opennavo.com/ja/apps/private-alias\n",
+			want: "[Tencent Meeting][tm] and [Alias][] and [tm].\n[tm]: \n[Alias]: \n",
 		},
 		{
 			name: "public reference links kept",
@@ -131,7 +164,8 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 		{
 			name: "other paths hosts and syntax untouched",
 			body: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) ![Image](https://opennavo.com/apps/private-sample/icon.png)",
-			want: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) ![Image](https://opennavo.com/apps/private-sample/icon.png)",
+			// Article images without a listing render as links, so a private image path is removed too.
+			want: "[Other](/packages/private-sample) [External](https://example.com/apps/private-sample) ",
 		},
 		{
 			name: "formatted link text kept",
@@ -191,7 +225,8 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 		{
 			name: "first reference definition wins over a later private duplicate",
 			body: "[public][p]\n\n[p]: /apps/public-child\n[p]: /apps/private-sample\n",
-			want: "[public][p]\n\n[p]: /apps/public-child\n[p]: /apps/private-sample\n",
+			// The unused duplicate is invisible; only its private path is removed.
+			want: "[public][p]\n\n[p]: /apps/public-child\n[p]: \n",
 		},
 		{
 			name: "first private reference definition wins over a later public duplicate",
@@ -231,7 +266,8 @@ func TestRedactPrivatePackageReferences(t *testing.T) {
 		{
 			name: "HTML data-href is not the href attribute",
 			body: "<a data-href=\"/apps/private-sample\" href=\"/apps/public-child\">Public</a>",
-			want: "<a data-href=\"/apps/private-sample\" href=\"/apps/public-child\">Public</a>",
+			// Raw HTML renders as text (html:false), so the private path in data-href is removed.
+			want: "<a  href=\"/apps/public-child\">Public</a>",
 		},
 		{
 			name: "HTML href character references are decoded",
@@ -318,12 +354,13 @@ func TestAppReferencesUsesTheSameLinkInterpretation(t *testing.T) {
 		{
 			name: "first definition wins in discovery",
 			body: "[a][p]\n\n[p]: /apps/public-child\n[p]: /apps/private-sample\n",
-			want: []string{"public-child"},
+			// Discovery is a superset: every app path is looked up, the effective one first.
+			want: []string{"public-child", "private-sample"},
 		},
 		{
 			name: "a private first definition is discovered",
 			body: "[a][p]\n\n[p]: /apps/private-sample\n[p]: /apps/public-child\n",
-			want: []string{"private-sample"},
+			want: []string{"private-sample", "public-child"},
 		},
 		{
 			name: "code is not discovered",
@@ -338,7 +375,7 @@ func TestAppReferencesUsesTheSameLinkInterpretation(t *testing.T) {
 		{
 			name: "HTML href is decoded and data-href is ignored",
 			body: "<a data-href=\"/apps/private-alias\" href=\"/apps/&#112;rivate-sample\">Private</a>",
-			want: []string{"private-sample"},
+			want: []string{"private-sample", "private-alias"},
 		},
 		{
 			name: "host suffix lookalikes are not discovered",

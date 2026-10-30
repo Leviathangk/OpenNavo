@@ -71,6 +71,9 @@ func AppReferences(body string) []string {
 			add(token)
 		}
 	}
+	for _, token := range residualAppTokens(body, doc) {
+		add(token)
+	}
 	return out
 }
 
@@ -89,7 +92,7 @@ func RedactPrivateAppReferences(body string, private map[string]bool) string {
 
 	for _, link := range doc.links {
 		token, ok := appToken(link.destination)
-		if !ok || !private[token] {
+		if !ok || !private[token] || link.unlocated {
 			continue
 		}
 		replacement := ""
@@ -122,7 +125,55 @@ func RedactPrivateAppReferences(body string, private map[string]bool) string {
 		edits = append(edits, appEdit{start: match[0], end: end})
 	}
 
+	return redactResidualAppPaths(applyAppEdits(text, edits), private)
+}
+
+// residualAppPath is a site-relative or opennavo.com app path in any letter case and with any
+// port. The preceding byte must not continue a hostname, path or scheme, so lookalike hosts and
+// OpenNavo URLs embedded in another site's URL are left alone.
+var residualAppPath = regexp.MustCompile(`(?i)(^|[^a-z0-9./:@_%-])(?:(?:https?:)?//)?(?:(?:www\.)?opennavo\.com(?::0*(?:443|80))?)?/(?:[a-z]{2}(?:-[a-z0-9]{2,8})?/)?apps/([a-z0-9][a-z0-9@+._-]*)`)
+
+// residualAppTokens lists every token that appears as an apps/<token> path outside code. Discovery
+// uses it as a superset so lookups never miss a form the structured parser could not interpret.
+func residualAppTokens(body string, doc *appDocument) []string {
+	out := []string{}
+	for _, match := range residualAppPath.FindAllStringSubmatchIndex(body, -1) {
+		if doc.inCode(match[3]) {
+			continue
+		}
+		out = append(out, strings.ToLower(body[match[4]:match[5]]))
+	}
+	return out
+}
+
+// redactResidualAppPaths is the fail-safe after structured redaction: any remaining private
+// apps/<token> path outside code removes the whole whitespace-delimited word that carries it, so
+// no renderer interpretation (linkify, container lines, unusual casing) can turn it into a link.
+func redactResidualAppPaths(text string, private map[string]bool) string {
+	doc := parseAppDocument(text)
+	edits := []appEdit{}
+	for _, match := range residualAppPath.FindAllStringSubmatchIndex(text, -1) {
+		// match[3] is the end of the boundary byte, so the path itself starts there.
+		if doc.inCode(match[3]) || !private[strings.ToLower(text[match[4]:match[5]])] {
+			continue
+		}
+		start, end := match[3], match[1]
+		for start > 0 && !isWordBreak(text[start-1]) {
+			start--
+		}
+		for end < len(text) && !isWordBreak(text[end]) {
+			end++
+		}
+		edits = append(edits, appEdit{start: start, end: end})
+	}
+	if len(edits) == 0 {
+		return text
+	}
 	return applyAppEdits(text, edits)
+}
+
+func isWordBreak(value byte) bool {
+	return value == ' ' || value == '\t' || value == '\n' || value == '\r'
 }
 
 type sourceSpan struct {
@@ -135,6 +186,7 @@ type appLink struct {
 	text        sourceSpan
 	destination []byte
 	auto        bool
+	unlocated   bool // parsed by goldmark, but its source range could not be traced
 }
 
 type appDefinition struct {
@@ -156,31 +208,10 @@ type appDocument struct {
 
 func parseAppDocument(body string) *appDocument {
 	first := parseAppAST(body, nil)
-	scanned := scanReferenceDefinitions(first.source, first.code)
-	merged := mergeAppDefinitions(first.allDefs, scanned)
-	unparsed := false
-	for _, definition := range scanned {
-		if !hasAppDefinitionAt(first.allDefs, definition.span.start) {
-			unparsed = true
-			break
-		}
-	}
-	if !unparsed {
-		first.allDefs = merged
-		first.finishDefinitions()
-		return first
-	}
-	// Goldmark, like CommonMark, does not treat a definition directly after a paragraph as a
-	// definition. Existing article bodies rely on that form, so preload those references and parse
-	// again: links now resolve, while code and block structure keep goldmark's interpretation.
-	context := parser.NewContext()
-	for _, definition := range merged {
-		context.AddReference(parser.NewReference(definition.rawLabel, definition.destination, definition.title))
-	}
-	second := parseAppAST(body, context)
-	second.allDefs = mergeAppDefinitions(second.allDefs, scanned)
-	second.finishDefinitions()
-	return second
+	// Definitions goldmark does not recognise (for example directly after a paragraph) render as
+	// plain text in markdown-it too, so they are not links; the residual pass strips their paths.
+	first.finishDefinitions()
+	return first
 }
 
 func parseAppAST(body string, context parser.Context) *appDocument {
@@ -189,7 +220,7 @@ func parseAppAST(body string, context parser.Context) *appDocument {
 	if context != nil {
 		options = append(options, parser.WithContext(context))
 	}
-	ast.Walk(appMarkdown.Parser().Parse(text.NewReader(doc.source), options...), func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+	_ = ast.Walk(appMarkdown.Parser().Parse(text.NewReader(doc.source), options...), func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
@@ -240,229 +271,6 @@ func (d *appDocument) finishDefinitions() {
 	}
 }
 
-func mergeAppDefinitions(parsed, scanned []appDefinition) []appDefinition {
-	merged := make([]appDefinition, 0, len(parsed)+len(scanned))
-	seen := map[int]bool{}
-	for _, definition := range append(append([]appDefinition{}, parsed...), scanned...) {
-		if seen[definition.span.start] {
-			continue
-		}
-		seen[definition.span.start] = true
-		merged = append(merged, definition)
-	}
-	sort.SliceStable(merged, func(i, j int) bool { return merged[i].span.start < merged[j].span.start })
-	return merged
-}
-
-func hasAppDefinitionAt(definitions []appDefinition, start int) bool {
-	for _, definition := range definitions {
-		if definition.span.start == start {
-			return true
-		}
-	}
-	return false
-}
-
-// scanReferenceDefinitions finds definition-shaped lines even where CommonMark would not start a
-// definition because the previous line is paragraph text. Existing article bodies use that form.
-// Container prefixes are skipped, a destination may sit on the following line, and code is ignored.
-func scanReferenceDefinitions(source []byte, code []sourceSpan) []appDefinition {
-	definitions := []appDefinition{}
-	for lineStart := 0; lineStart <= len(source); {
-		lineEnd := len(source)
-		next := len(source)
-		if offset := bytes.IndexByte(source[lineStart:], '\n'); offset >= 0 {
-			lineEnd = lineStart + offset
-			next = lineEnd + 1
-		}
-		if !insideSourceSpans(lineStart, code) {
-			if definition, ok := scanReferenceDefinition(source, lineStart, lineEnd); ok {
-				definitions = append(definitions, definition)
-				lineStart = definition.span.stop
-				continue
-			}
-		}
-		if next == len(source) {
-			break
-		}
-		lineStart = next
-	}
-	return definitions
-}
-
-func scanReferenceDefinition(source []byte, lineStart, lineEnd int) (appDefinition, bool) {
-	position := skipContainerPrefix(source, lineStart, lineEnd)
-	if position >= lineEnd || source[position] != '[' {
-		return appDefinition{}, false
-	}
-	labelStart := position + 1
-	labelEnd := labelStart
-	for labelEnd < lineEnd {
-		if source[labelEnd] == '\\' && labelEnd+1 < lineEnd {
-			labelEnd += 2
-			continue
-		}
-		if source[labelEnd] == ']' {
-			break
-		}
-		labelEnd++
-	}
-	if labelEnd >= lineEnd || labelEnd == labelStart || source[labelEnd] != ']' {
-		return appDefinition{}, false
-	}
-	position = labelEnd + 1
-	if position >= lineEnd || source[position] != ':' {
-		return appDefinition{}, false
-	}
-	rawLabel := source[labelStart:labelEnd]
-	position++
-	for position < lineEnd && (source[position] == ' ' || source[position] == '\t') {
-		position++
-	}
-
-	destinationEnd := lineEnd
-	stop := lineEnd
-	if position >= lineEnd || source[position] == '\r' {
-		// A multiline destination starts on the next line.
-		if lineEnd >= len(source) {
-			return appDefinition{}, false
-		}
-		nextStart := lineEnd + 1
-		nextEnd := len(source)
-		if offset := bytes.IndexByte(source[nextStart:], '\n'); offset >= 0 {
-			nextEnd = nextStart + offset
-		}
-		stop = nextEnd
-		position = skipContainerPrefix(source, nextStart, nextEnd)
-		destinationEnd = nextEnd
-	}
-	destination, position, ok := scanDefinitionDestination(source, position, destinationEnd)
-	if !ok {
-		return appDefinition{}, false
-	}
-	for position < destinationEnd && (source[position] == ' ' || source[position] == '\t' || source[position] == '\r') {
-		position++
-	}
-	if position < destinationEnd {
-		opener := source[position]
-		if opener != '"' && opener != '\'' && opener != '(' {
-			return appDefinition{}, false
-		}
-		closer := opener
-		if opener == '(' {
-			closer = ')'
-		}
-		position++
-		for position < destinationEnd {
-			if source[position] == '\\' && position+1 < destinationEnd {
-				position += 2
-				continue
-			}
-			if source[position] == closer {
-				position++
-				break
-			}
-			position++
-		}
-		for position < destinationEnd && (source[position] == ' ' || source[position] == '\t' || source[position] == '\r') {
-			position++
-		}
-		if position != destinationEnd {
-			return appDefinition{}, false
-		}
-	}
-	return appDefinition{
-		span:        sourceSpan{start: lineStart, stop: includeLineEnding(source, stop)},
-		label:       util.ToLinkReference(rawLabel),
-		rawLabel:    rawLabel,
-		destination: destination,
-	}, true
-}
-
-func scanDefinitionDestination(source []byte, position, limit int) ([]byte, int, bool) {
-	if position >= limit {
-		return nil, position, false
-	}
-	if source[position] == '<' {
-		start := position + 1
-		position++
-		for position < limit {
-			if source[position] == '\\' && position+1 < limit {
-				position += 2
-				continue
-			}
-			if source[position] == '>' {
-				return source[start:position], position + 1, true
-			}
-			position++
-		}
-		return nil, position, false
-	}
-	start := position
-	depth := 0
-	for position < limit {
-		switch source[position] {
-		case '\\':
-			if position+1 < limit {
-				position += 2
-				continue
-			}
-		case '(':
-			depth++
-		case ')':
-			if depth == 0 {
-				return source[start:position], position, true
-			}
-			depth--
-		case ' ', '\t', '\r':
-			if depth == 0 {
-				return source[start:position], position, true
-			}
-		}
-		position++
-	}
-	if position == start {
-		return nil, position, false
-	}
-	return source[start:position], position, true
-}
-
-func skipContainerPrefix(source []byte, start, end int) int {
-	position := start
-	for {
-		for position < end && (source[position] == ' ' || source[position] == '\t') {
-			position++
-		}
-		if position >= end {
-			return position
-		}
-		switch source[position] {
-		case '>':
-			position++
-			continue
-		case '-', '*', '+':
-			if position+1 < end && (source[position+1] == ' ' || source[position+1] == '\t') {
-				position++
-				continue
-			}
-		default:
-			if source[position] >= '0' && source[position] <= '9' {
-				number := position
-				for number < end && source[number] >= '0' && source[number] <= '9' {
-					number++
-				}
-				if number < end && (source[number] == '.' || source[number] == ')') &&
-					number+1 < end && (source[number+1] == ' ' || source[number+1] == '\t') {
-					position = number + 1
-					continue
-				}
-			}
-			return position
-		}
-		return position
-	}
-}
-
 func (d *appDocument) collectInline(parent ast.Node, lines *text.Segments) {
 	if lines == nil || lines.Len() == 0 {
 		return
@@ -507,6 +315,8 @@ func (d *appDocument) collectInlineNode(node ast.Node, cursor *int) {
 	case *ast.Link:
 		span, label, ok := markdownLinkSpan(d.source, n, *cursor)
 		if !ok {
+			// Keep the destination for discovery; the residual pass removes the path from the text.
+			d.links = append(d.links, appLink{destination: n.Destination, unlocated: true})
 			return
 		}
 		d.collectNestedCode(n)
@@ -820,7 +630,7 @@ func markdownLinkSpan(source []byte, node ast.Node, cursor int) (sourceSpan, sou
 	innerStart := firstTextStart(node)
 	start := -1
 	if innerStart >= 0 {
-		start = linkOpen(source, innerStart)
+		start = linkOpen(source, innerStart, cursor)
 	}
 	if start < 0 {
 		index := bytes.IndexByte(source[cursor:], '[')
@@ -835,9 +645,12 @@ func markdownLinkSpan(source []byte, node ast.Node, cursor int) (sourceSpan, sou
 	}
 	stop := labelEnd + 1
 	if stop < len(source) && source[stop] == '(' {
-		if end := inlineLinkEnd(source, stop); end > stop {
-			stop = end
+		end := inlineLinkEnd(source, stop)
+		if end <= stop {
+			// Never accept a label-only range for an inline link: the destination would survive.
+			return sourceSpan{}, sourceSpan{}, false
 		}
+		stop = end
 	} else if stop < len(source) && source[stop] == '[' {
 		if end := matchBracket(source, stop); end >= stop {
 			stop = end + 1
@@ -859,20 +672,30 @@ func firstTextStart(node ast.Node) int {
 	return start
 }
 
-func linkOpen(source []byte, innerStart int) int {
+func linkOpen(source []byte, innerStart, floor int) int {
 	position := innerStart
-	for position > 0 {
-		index := bytes.LastIndexByte(source[:position], '[')
+	for position > floor {
+		index := bytes.LastIndexByte(source[floor:position], '[')
 		if index < 0 {
 			return -1
 		}
-		if index > 0 && (source[index-1] == '\\' || source[index-1] == '!') {
+		index += floor
+		if escapedAt(source, index) || (index > 0 && source[index-1] == '!' && !escapedAt(source, index-1)) {
 			position = index
 			continue
 		}
 		return index
 	}
 	return -1
+}
+
+// escapedAt reports whether the byte at position is preceded by an odd number of backslashes.
+func escapedAt(source []byte, position int) bool {
+	count := 0
+	for index := position - 1; index >= 0 && source[index] == '\\'; index-- {
+		count++
+	}
+	return count%2 == 1
 }
 
 func matchBracket(source []byte, open int) int {
