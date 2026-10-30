@@ -180,6 +180,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn renderer_restore_replay_does_not_require_a_native_grant() {
+        let tmp = tempfile::tempdir().unwrap();
+        let core = open_core(tmp.path());
+        // RestorePrompt replays tasks through the renderer's generic IPC. No confirmation service
+        // or grant is installed here: that renderer trust is an accepted boundary of this PR.
+        let app = tauri::test::mock_app();
+        app.manage(core.clone());
+        let tasks = enqueue(
+            &app,
+            TaskOp::Install,
+            true,
+            TaskTrigger::Manual,
+            TaskOptions::default(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(tasks.len(), 2);
+        assert!(tasks.iter().all(|task| task.trigger == TaskTrigger::Manual));
+        assert_eq!(core.database.tasks().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
     async fn generic_task_commands_enforce_unattended_options() {
         let tmp = tempfile::tempdir().unwrap();
         let core = open_core(tmp.path());

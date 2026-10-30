@@ -207,6 +207,9 @@ struct PendingInstallState {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CollectionInstallItem {
     pub name: String,
+    pub kind: String,
+    pub token: String,
+    pub tap: Option<String>,
     pub disabled: bool,
     pub installed: bool,
     pub already_queued: bool,
@@ -218,7 +221,7 @@ pub struct CollectionInstallItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CollectionInstallPlan {
     pub items: Vec<CollectionInstallItem>,
-    pub targets: Vec<TaskTarget>,
+    pub installs: Vec<crate::queue::ResolvedInstallPlan>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -819,6 +822,8 @@ mod install_request_tests {
 
     #[test]
     fn collection_install_reserves_one_ordered_plan() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = crate::db::Database::open(&directory.path().join("test.db")).unwrap();
         let events = Arc::new(Mutex::new(Vec::new()));
         let router = router(events.clone());
         router.ready();
@@ -838,6 +843,9 @@ mod install_request_tests {
                 CollectionInstallPlan {
                     items: vec![CollectionInstallItem {
                         name: "Zed".into(),
+                        kind: "cask".into(),
+                        token: "zed".into(),
+                        tap: None,
                         disabled: false,
                         installed: false,
                         already_queued: false,
@@ -845,10 +853,17 @@ mod install_request_tests {
                         duplicate: false,
                         installable: true,
                     }],
-                    targets: vec![TaskTarget {
-                        kind: TaskKind::Cask,
-                        token: "zed".into(),
-                    }],
+                    installs: vec![
+                        crate::queue::ResolvedInstallPlan::resolve(
+                            &database,
+                            TaskTarget {
+                                kind: TaskKind::Cask,
+                                token: "zed".into(),
+                            },
+                            Default::default(),
+                        )
+                        .unwrap(),
+                    ],
                 },
             )
             .unwrap();
@@ -857,7 +872,7 @@ mod install_request_tests {
             panic!("collection plan must be ready");
         };
         assert_eq!(slug, "dev-setup");
-        assert_eq!(plan.targets.len(), 1);
+        assert_eq!(plan.installs.len(), 1);
         assert_eq!(router.finish_install(&pending_id).unwrap(), 0);
         assert_eq!(
             router.begin_install(&pending_id).unwrap_err().code,

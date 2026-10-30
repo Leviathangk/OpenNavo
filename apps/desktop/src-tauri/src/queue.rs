@@ -1,5 +1,6 @@
 mod history;
 mod native;
+mod plan;
 use crate::{
     AppError,
     brew::{
@@ -13,6 +14,7 @@ use crate::{
     model::*,
 };
 pub(crate) use native::NATIVE_STAGING;
+pub use plan::{ResolvedInstallPlan, ordered_install_plans_digest};
 use std::{
     collections::{BTreeMap, HashMap},
     future::Future,
@@ -27,13 +29,6 @@ use std::{
 use tokio::sync::Notify;
 
 type Completion = Arc<dyn Fn(Task) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
-
-fn active_task_matches(task: &Task, op: TaskOp, target: Option<&TaskTarget>) -> bool {
-    if !matches!(task.state, TaskState::Queued | TaskState::Running) || task.op != op {
-        return false;
-    }
-    task.target.as_ref() == target
-}
 
 /// The brew operations whose sudo prompt gets a sentence of its own; the rest keep the neutral one.
 fn password_reason(op: TaskOp) -> Option<Reason> {
@@ -174,14 +169,73 @@ impl TaskQueue {
         trigger: TaskTrigger,
     ) -> Result<Task, AppError> {
         let _gate = self.enqueue_gate.lock().map_err(poison)?;
-        self.enqueue_unlocked(op, target, options, trigger)
+        self.enqueue_unlocked(op, target, options, trigger, None)
     }
+
+    /// Only Rust callers can hand the queue an already reviewed execution plan.
+    pub fn enqueue_resolved_install(
+        &self,
+        plan: ResolvedInstallPlan,
+        trigger: TaskTrigger,
+    ) -> Result<Task, AppError> {
+        let _gate = self.enqueue_gate.lock().map_err(poison)?;
+        self.enqueue_unlocked(
+            TaskOp::Install,
+            Some(plan.target().clone()),
+            plan.options().clone(),
+            trigger,
+            Some(plan),
+        )
+    }
+
+    pub fn enqueue_resolved_installs(
+        &self,
+        plans: Vec<ResolvedInstallPlan>,
+        trigger: TaskTrigger,
+    ) -> Result<Vec<Task>, AppError> {
+        if plans.len() > 200 {
+            return Err(AppError::new("E_INVALID_ARG", "too_many_targets"));
+        }
+        let _gate = self.enqueue_gate.lock().map_err(poison)?;
+        plans
+            .into_iter()
+            .map(|plan| {
+                self.enqueue_unlocked(
+                    TaskOp::Install,
+                    Some(plan.target().clone()),
+                    plan.options().clone(),
+                    trigger,
+                    Some(plan),
+                )
+            })
+            .collect()
+    }
+
+    fn install_plan(&self, task: &Task) -> Result<Option<ResolvedInstallPlan>, AppError> {
+        self.database
+            .meta(&format!("task_install_plan:{}", task.id))?
+            .map(|json| {
+                let plan: ResolvedInstallPlan = serde_json::from_str(&json)?;
+                plan.validate_task(task)?;
+                Ok(plan)
+            })
+            .transpose()
+    }
+
+    fn task_digest(&self, task: &Task) -> Result<String, AppError> {
+        Ok(self.install_plan(task)?.map_or_else(
+            || plan::request_digest(task.op, task.target.as_ref(), &task.options),
+            |plan| plan.digest(),
+        ))
+    }
+
     fn enqueue_unlocked(
         &self,
         op: TaskOp,
         target: Option<TaskTarget>,
         options: TaskOptions,
         trigger: TaskTrigger,
+        resolved: Option<ResolvedInstallPlan>,
     ) -> Result<Task, AppError> {
         // Reject before stopping-state checks, validation, deduplication or any DB
         // write. A link is never a queued task, including with uninstall plans.
@@ -241,6 +295,23 @@ impl TaskQueue {
         {
             return Err(AppError::new("E_INVALID_ARG", "unattended_quit"));
         }
+        let resolved = if resolved.is_some() {
+            resolved
+        } else if op == TaskOp::Install && !native {
+            Some(ResolvedInstallPlan::resolve(
+                &self.database,
+                target
+                    .clone()
+                    .ok_or_else(|| AppError::new("E_INVALID_ARG", "target"))?,
+                options.clone(),
+            )?)
+        } else {
+            None
+        };
+        let digest = resolved.as_ref().map_or_else(
+            || plan::request_digest(op, target.as_ref(), &options),
+            |plan| plan.digest(),
+        );
         let mut tasks = self.tasks.lock().map_err(poison)?;
         if self.is_stopping() {
             return Err(AppError::new("E_INTERRUPTED", "queue_stopped"));
@@ -251,14 +322,15 @@ impl TaskQueue {
         ) {
             self.paused.store(false, Ordering::Release);
         }
-        if let Some(existing) = tasks
-            .iter()
-            .find(|task| active_task_matches(task, op, target.as_ref()))
-        {
-            let task = existing.clone();
-            drop(tasks);
-            self.wake.notify_one();
-            return Ok(task);
+        for existing in tasks.iter().filter(|task| {
+            matches!(task.state, TaskState::Queued | TaskState::Running) && task.op == op
+        }) {
+            if self.task_digest(existing)? == digest {
+                let task = existing.clone();
+                drop(tasks);
+                self.wake.notify_one();
+                return Ok(task);
+            }
         }
         let now = chrono::Utc::now().timestamp_millis();
         let id = uuid::Uuid::now_v7().to_string();
@@ -299,6 +371,14 @@ impl TaskQueue {
             started_at: None,
             finished_at: None,
         };
+        if let Some(plan) = &resolved {
+            plan.validate_task(&task)?;
+            // Save before the task: recovery can never find a persisted task without its plan.
+            self.database.set_meta(
+                &format!("task_install_plan:{id}"),
+                &serde_json::to_string(plan)?,
+            )?;
+        }
         if trigger == TaskTrigger::Retry
             && let Some(parent) = self
                 .database
@@ -351,7 +431,7 @@ impl TaskQueue {
         let group = uuid::Uuid::now_v7().to_string();
         let tasks = targets
             .into_iter()
-            .map(|target| self.enqueue_unlocked(op, Some(target), options.clone(), trigger))
+            .map(|target| self.enqueue_unlocked(op, Some(target), options.clone(), trigger, None))
             .collect::<Result<Vec<_>, _>>()?;
         for task in &tasks {
             if task
@@ -718,48 +798,57 @@ impl TaskQueue {
                 .await
                 .ok()
                 .map(PathBuf::from);
-            // Installs use the catalog; upgrades/reinstalls retain the installed source and reject catalog conflicts.
-            let catalog_cask = match &task.target {
-                Some(target) if target.kind == Kind::Cask => {
-                    let database = self.database.clone();
-                    let token = target.token.clone();
-                    crate::blocking(move || crate::catalog::get(&database, Kind::Cask, &token))
-                        .await?
+            let args = if let Some(plan) = self.install_plan(task)? {
+                // Execute exactly the immutable snapshot that was reviewed, including aliases and options.
+                plan.args().to_vec()
+            } else {
+                if task.op == TaskOp::Install
+                    && matches!(task.trigger, TaskTrigger::Deeplink | TaskTrigger::Mcp)
+                {
+                    return Err(AppError::new(
+                        "E_CONFIRMATION_MISMATCH",
+                        "install_plan_missing",
+                    ));
                 }
-                _ => None,
-            };
-            let catalog_tap = catalog_cask.as_ref().map(|i| i.tap.clone());
-            let command_target = task
-                .target
-                .as_ref()
-                .map(|target| crate::brew::args::catalog_target(target, catalog_cask.as_ref()))
-                .transpose()?;
-            let mut tap = catalog_tap.clone().flatten();
-            if matches!(task.op, TaskOp::Upgrade | TaskOp::Reinstall)
-                && let Some(target) = &command_target
-                && target.kind == Kind::Cask
-            {
-                let json =
-                    locate::read(&brew, &settings, crate::brew::args::ReadOp::Installed, None)
-                        .await?;
-                let installed: crate::brew::json::Info = serde_json::from_str(&json)?;
-                tap = verify_installed_cask_tap(
-                    &installed,
-                    &target.token,
-                    catalog_tap.as_ref().map(|tap| tap.as_deref()),
-                )?;
-            }
-            (
-                PathBuf::from(brew.path),
+                // Legacy UI tasks may lack snapshots. Upgrades/reinstalls retain the installed source and reject conflicts.
+                let catalog_cask = match &task.target {
+                    Some(target) if target.kind == Kind::Cask => {
+                        let database = self.database.clone();
+                        let token = target.token.clone();
+                        crate::blocking(move || crate::catalog::get(&database, Kind::Cask, &token))
+                            .await?
+                    }
+                    _ => None,
+                };
+                let catalog_tap = catalog_cask.as_ref().map(|i| i.tap.clone());
+                let command_target = task
+                    .target
+                    .as_ref()
+                    .map(|target| crate::brew::args::catalog_target(target, catalog_cask.as_ref()))
+                    .transpose()?;
+                let mut tap = catalog_tap.clone().flatten();
+                if matches!(task.op, TaskOp::Upgrade | TaskOp::Reinstall)
+                    && let Some(target) = &command_target
+                    && target.kind == Kind::Cask
+                {
+                    let json =
+                        locate::read(&brew, &settings, crate::brew::args::ReadOp::Installed, None)
+                            .await?;
+                    let installed: crate::brew::json::Info = serde_json::from_str(&json)?;
+                    tap = verify_installed_cask_tap(
+                        &installed,
+                        &target.token,
+                        catalog_tap.as_ref().map(|tap| tap.as_deref()),
+                    )?;
+                }
                 write_args_in_tap(
                     task.op,
                     command_target.as_ref(),
                     &task.options,
                     tap.as_deref(),
-                )?,
-                brew.prefix,
-                cache,
-            )
+                )?
+            };
+            (PathBuf::from(brew.path), args, brew.prefix, cache)
         };
         if cancel.load(Ordering::Acquire) {
             return Err(AppError::new("E_INTERRUPTED", "task_canceled"));
@@ -1257,6 +1346,241 @@ else:
         TaskTarget {
             kind: Kind::Cask.into(),
             token: token.into(),
+        }
+    }
+
+    #[test]
+    fn resolved_install_dedup_binds_tap_arguments_and_all_options() {
+        let (_directory, queue, _) = fixture("install_ok");
+        let mut item = catalog_alias(&queue, "reviewed-app", "owner/original", "original");
+        let original = ResolvedInstallPlan::resolve(
+            &queue.database,
+            target("reviewed-app"),
+            Default::default(),
+        )
+        .unwrap();
+        let first = queue
+            .enqueue_resolved_install(original.clone(), TaskTrigger::Deeplink)
+            .unwrap();
+        assert_eq!(
+            queue
+                .enqueue_resolved_install(original.clone(), TaskTrigger::Deeplink)
+                .unwrap()
+                .id,
+            first.id
+        );
+
+        item.tap = Some("owner/changed".into());
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        let changed_tap = ResolvedInstallPlan::resolve(
+            &queue.database,
+            target("reviewed-app"),
+            Default::default(),
+        )
+        .unwrap();
+        let second = queue
+            .enqueue_resolved_install(changed_tap.clone(), TaskTrigger::Deeplink)
+            .unwrap();
+        assert_ne!(first.id, second.id);
+        assert_ne!(original.digest(), changed_tap.digest());
+
+        item.brew_token = Some("different-argument".into());
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        let changed_args = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target("reviewed-app")),
+                Default::default(),
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        assert_ne!(changed_args.id, second.id);
+        let changed_options = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target("reviewed-app")),
+                TaskOptions {
+                    adopt: true,
+                    ..Default::default()
+                },
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        assert_ne!(changed_args.id, changed_options.id);
+        // Even options without a brew flag must be part of the resolved plan's dedup key.
+        let other_options = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(target("reviewed-app")),
+                TaskOptions {
+                    source: Some(UpdateSource::Mas),
+                    ..Default::default()
+                },
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        assert_ne!(changed_args.id, other_options.id);
+        assert_eq!(queue.active().unwrap().len(), 5);
+    }
+
+    fn catalog_alias(queue: &TaskQueue, token: &str, tap: &str, brew_token: &str) -> CatalogItem {
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../apps/server/testdata/desktop/v2/catalog.json.gz");
+        let file = std::fs::File::open(fixture_path).unwrap();
+        let json: serde_json::Value =
+            serde_json::from_reader(flate2::read::GzDecoder::new(file)).unwrap();
+        let mut json = json["items"][0].clone();
+        json["kind"] = "cask".into();
+        json["token"] = token.into();
+        json["brewToken"] = brew_token.into();
+        json["tap"] = tap.into();
+        let item: CatalogItem = serde_json::from_value(json).unwrap();
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        item
+    }
+
+    async fn assert_confirmed_install_snapshot(batch: bool) {
+        let (directory, queue, _) = fixture("install_ok");
+        let wrapper = directory.path().join("brew");
+        let argv_path = directory.path().join("executed-args.jsonl");
+        let source = std::fs::read_to_string(&wrapper).unwrap();
+        let capture = format!(
+            "    if sys.argv[1] == 'install':\n        with open({argv_path:?}, 'a') as output: output.write(json.dumps(sys.argv[1:]) + '\\n')\n    os.execv"
+        );
+        std::fs::write(&wrapper, source.replace("    os.execv", &capture)).unwrap();
+        let mut item = catalog_alias(&queue, "reviewed-app", "owner/confirmed", "confirmed-token");
+        let options = TaskOptions {
+            adopt: true,
+            ..Default::default()
+        };
+        // This is the snapshot handed to native confirmation. Change the catalog on both sides of enqueue.
+        let plan =
+            ResolvedInstallPlan::resolve(&queue.database, target("reviewed-app"), options).unwrap();
+        let expected = plan.args().to_vec();
+        let digest = plan.digest();
+        item.tap = Some("owner/before-enqueue".into());
+        item.brew_token = Some("before-enqueue".into());
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        let tasks = if batch {
+            let other = ResolvedInstallPlan::resolve(
+                &queue.database,
+                target("other-app"),
+                Default::default(),
+            )
+            .unwrap();
+            queue
+                .enqueue_resolved_installs(vec![plan, other], TaskTrigger::Deeplink)
+                .unwrap()
+        } else {
+            vec![
+                queue
+                    .enqueue_resolved_install(plan, TaskTrigger::Deeplink)
+                    .unwrap(),
+            ]
+        };
+        assert_eq!(queue.task_digest(&tasks[0]).unwrap(), digest);
+        item.tap = Some("owner/before-execution".into());
+        item.brew_token = Some("before-execution".into());
+        queue
+            .database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        // A recovered collection must retain its reviewed plan too.
+        let queue = if batch {
+            let recovered = TaskQueue::new(
+                queue.database.clone(),
+                queue.settings.clone(),
+                queue.logs.clone(),
+                queue.askpass.clone(),
+                Arc::new(|_| {}),
+            )
+            .unwrap();
+            *recovered.extra_env.lock().unwrap() = queue.extra_env.lock().unwrap().clone();
+            let restored_plan = recovered.install_plan(&tasks[0]).unwrap().unwrap();
+            assert_eq!(
+                recovered
+                    .enqueue_resolved_install(restored_plan, TaskTrigger::Deeplink)
+                    .unwrap()
+                    .id,
+                tasks[0].id,
+            );
+            recovered
+        } else {
+            queue
+        };
+        queue.start();
+        for task in &tasks {
+            let ended = terminal(&queue, &task.id).await;
+            assert_eq!(ended.state, TaskState::Succeeded, "{:?}", ended.error);
+        }
+        queue.shutdown();
+        let executed: Vec<Vec<String>> = std::fs::read_to_string(argv_path)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert_eq!(
+            executed[0], expected,
+            "only the reviewed tap, token and arguments may run"
+        );
+    }
+
+    #[tokio::test]
+    async fn confirmed_install_runs_the_reviewed_tap_and_arguments() {
+        assert_confirmed_install_snapshot(false).await;
+    }
+
+    #[tokio::test]
+    async fn confirmed_collection_runs_reviewed_plans_after_catalog_change_and_recovery() {
+        assert_confirmed_install_snapshot(true).await;
+    }
+
+    #[tokio::test]
+    async fn confirmed_install_refuses_a_missing_or_modified_execution_plan() {
+        for modified in [false, true] {
+            let (_directory, queue, _) = fixture("install_ok");
+            let plan = ResolvedInstallPlan::resolve(
+                &queue.database,
+                target("calibre"),
+                Default::default(),
+            )
+            .unwrap();
+            let task = queue
+                .enqueue_resolved_install(plan, TaskTrigger::Deeplink)
+                .unwrap();
+            let key = format!("task_install_plan:{}", task.id);
+            if modified {
+                let mut json: serde_json::Value =
+                    serde_json::from_str(&queue.database.meta(&key).unwrap().unwrap()).unwrap();
+                json["args"] = serde_json::json!(["install", "--cask", "unreviewed"]);
+                queue.database.set_meta(&key, &json.to_string()).unwrap();
+            } else {
+                queue
+                    .database
+                    .with(|c| {
+                        c.execute("DELETE FROM meta WHERE key=?1", [&key])?;
+                        Ok(())
+                    })
+                    .unwrap();
+            }
+            queue.start();
+            let ended = terminal(&queue, &task.id).await;
+            assert_eq!(ended.state, TaskState::Failed);
+            assert_eq!(ended.error.unwrap().code, "E_CONFIRMATION_MISMATCH");
+            assert_eq!(ended.exit_code, None);
+            queue.shutdown();
         }
     }
 

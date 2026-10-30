@@ -22,14 +22,8 @@ const GRANT_TTL: Duration = Duration::from_secs(30);
 // tauri-plugin-dialog's async `MessageDialogBuilder::show` returns no dialog handle (rfd exposes only `show`), so
 // a timeout can invalidate the grant but cannot programmatically dismiss the native dialog. A late click is ignored.
 
-/// Digest the exact ordered target list that a collection confirmation will enqueue.
-pub fn ordered_targets_digest(targets: &[crate::model::TaskTarget]) -> String {
-    let canonical = serde_json::to_vec(targets).expect("task targets are serializable");
-    format!("{:x}", Sha256::digest(canonical))
-}
-
-/// A write request presented to the user. The optional plan digest is reserved for future deletion callers
-/// and binds the ordered target list for collection installs.
+/// A write request presented to the user. Install callers bind an immutable resolved execution plan;
+/// deletion callers can bind their own plan digest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmationRequest {
     pub caller: String,
@@ -44,6 +38,9 @@ pub struct ConfirmationRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmationListItem {
     pub name: String,
+    pub kind: String,
+    pub token: String,
+    pub tap: Option<String>,
     pub disabled: bool,
     pub installed: bool,
     pub already_queued: bool,
@@ -93,12 +90,24 @@ impl ConfirmationRequest {
             .len()
             .checked_sub(install_count)
             .ok_or_else(|| AppError::new("E_INVALID_ARG", "collection_counts"))?;
-        let mut message = text(locale, "collection")?
-            .replace("{install}", &install_count.to_string())
-            .replace("{skip}", &skip_count.to_string());
+        let mut message = self.message(locale)?;
+        message.push_str("\n\n");
+        message.push_str(
+            &text(locale, "collection")?
+                .replace("{install}", &install_count.to_string())
+                .replace("{skip}", &skip_count.to_string()),
+        );
         for item in items {
             message.push_str("• ");
             message.push_str(&display_value(&item.name));
+            message.push_str(&format!(
+                " [{}/{}]",
+                display_value(&item.kind),
+                display_value(&item.token)
+            ));
+            if let Some(tap) = &item.tap {
+                message.push_str(&format!(" [{}]", display_value(tap)));
+            }
             let status = if item.disabled {
                 Some("disabled")
             } else if item.installed {
@@ -214,15 +223,16 @@ impl ConfirmationService {
             ))
             // tauri-plugin-dialog's desktop adapter calls run_on_main_thread before showing AppKit/rfd.
             .show(move |allowed| {
-                let result = service.finish(dialog_id, allowed);
-                let _ = sender.send(result);
+                service.finish_reply(dialog_id, allowed, |result| {
+                    let _ = sender.send(result);
+                });
             });
 
         self.wait_for_reply(pending, receiver, guard).await
     }
 
     /// Show one native dialog for a collection. The request's plan digest binds the displayed plan to the
-    /// ordered targets that the caller enqueues after the grant is consumed.
+    /// ordered execution plans that the caller enqueues after the grant is consumed.
     pub async fn confirm_collection<R: Runtime>(
         self: &std::sync::Arc<Self>,
         app: &tauri::AppHandle<R>,
@@ -245,8 +255,9 @@ impl ConfirmationService {
                 text(locale, "cancel")?,
             ))
             .show(move |allowed| {
-                let result = service.finish(dialog_id, allowed);
-                let _ = sender.send(result);
+                service.finish_reply(dialog_id, allowed, |result| {
+                    let _ = sender.send(result);
+                });
             });
 
         self.wait_for_reply(pending, receiver, guard).await
@@ -303,35 +314,48 @@ impl ConfirmationService {
         Ok(pending)
     }
 
-    fn finish(&self, id: u64, allowed: bool) -> Result<ConfirmationGrant, AppError> {
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| AppError::new("E_UNKNOWN", "confirmation_state"))?;
+    fn finish_reply(
+        &self,
+        id: u64,
+        allowed: bool,
+        reply: impl FnOnce(Result<ConfirmationGrant, AppError>),
+    ) {
+        let Ok(mut state) = self.state.lock() else {
+            reply(Err(AppError::new("E_UNKNOWN", "confirmation_state")));
+            return;
+        };
         if state.active.as_ref().is_none_or(|active| active.id != id) {
-            return Err(AppError::new(
+            drop(state);
+            reply(Err(AppError::new(
                 "E_CONFIRMATION_TIMEOUT",
                 "confirmation_expired",
-            ));
+            )));
+            return;
         }
         let active = state
             .active
             .take()
             .expect("active confirmation id was checked above");
-        if !allowed {
-            return Err(AppError::new(
+        let result = if !allowed {
+            Err(AppError::new(
                 "E_CONFIRMATION_DENIED",
                 "confirmation_denied",
-            ));
-        }
-        let grant = ConfirmationGrant {
-            token: uuid::Uuid::new_v4().to_string(),
-            digest: active.digest,
-            plan_digest: active.request.plan_digest,
-            expires_at: Instant::now() + GRANT_TTL,
+            ))
+        } else {
+            let grant = ConfirmationGrant {
+                token: uuid::Uuid::new_v4().to_string(),
+                digest: active.digest.clone(),
+                plan_digest: active.request.plan_digest.clone(),
+                expires_at: Instant::now() + GRANT_TTL,
+            };
+            state.grants.insert(grant.token.clone(), grant.clone());
+            Ok(grant)
         };
-        state.grants.insert(grant.token.clone(), grant.clone());
-        Ok(grant)
+        drop(state);
+        // Keep _cancel alive through delivery. Even if the waiting future is polled between these
+        // statements, cancellation cannot win against an allow that has not been sent yet.
+        reply(result);
+        drop(active);
     }
 
     fn expire(&self, id: u64) {
@@ -389,7 +413,9 @@ impl ConfirmationService {
 
     #[cfg(test)]
     fn test_finish(&self, id: u64, allowed: bool) -> Result<ConfirmationGrant, AppError> {
-        self.finish(id, allowed)
+        let mut result = None;
+        self.finish_reply(id, allowed, |reply| result = Some(reply));
+        result.expect("terminal reply")
     }
 
     #[cfg(test)]
@@ -401,7 +427,7 @@ impl ConfirmationService {
     fn test_issue_expired(&self, request: ConfirmationRequest) -> ConfirmationGrant {
         let pending = self.begin(request).expect("test confirmation starts");
         let mut grant = self
-            .finish(pending.id, true)
+            .test_finish(pending.id, true)
             .expect("test confirmation grants");
         grant.expires_at = Instant::now() - Duration::from_secs(1);
         if let Ok(mut state) = self.state.lock() {
@@ -505,6 +531,9 @@ mod tests {
                 &[
                     ConfirmationListItem {
                         name: "Ghostty".into(),
+                        kind: "cask".into(),
+                        token: "fixture".into(),
+                        tap: None,
                         disabled: false,
                         installed: false,
                         already_queued: false,
@@ -513,6 +542,9 @@ mod tests {
                     },
                     ConfirmationListItem {
                         name: "Legacy app".into(),
+                        kind: "cask".into(),
+                        token: "fixture".into(),
+                        tap: None,
                         disabled: true,
                         installed: false,
                         already_queued: false,
@@ -521,6 +553,9 @@ mod tests {
                     },
                     ConfirmationListItem {
                         name: "Installed app".into(),
+                        kind: "cask".into(),
+                        token: "fixture".into(),
+                        tap: None,
                         disabled: false,
                         installed: true,
                         already_queued: false,
@@ -529,6 +564,9 @@ mod tests {
                     },
                     ConfirmationListItem {
                         name: "Queued app".into(),
+                        kind: "cask".into(),
+                        token: "fixture".into(),
+                        tap: None,
                         disabled: false,
                         installed: false,
                         already_queued: true,
@@ -537,6 +575,9 @@ mod tests {
                     },
                     ConfirmationListItem {
                         name: "Duplicate app".into(),
+                        kind: "cask".into(),
+                        token: "fixture".into(),
+                        tap: None,
                         disabled: false,
                         installed: false,
                         already_queued: false,
@@ -545,6 +586,9 @@ mod tests {
                     },
                     ConfirmationListItem {
                         name: "Formula".into(),
+                        kind: "formula".into(),
+                        token: "ripgrep".into(),
+                        tap: None,
                         disabled: false,
                         installed: false,
                         already_queued: false,
@@ -558,11 +602,11 @@ mod tests {
             .unwrap();
         assert!(message.contains("will install 1, skip 5"));
         assert!(message.contains("Ghostty"));
-        assert!(message.contains("Legacy app (disabled)"));
-        assert!(message.contains("Installed app (already installed)"));
-        assert!(message.contains("Queued app (already queued)"));
-        assert!(message.contains("Duplicate app (duplicate)"));
-        assert!(message.contains("Formula (not a cask)"));
+        assert!(message.contains("Legacy app [cask/fixture] (disabled)"));
+        assert!(message.contains("Installed app [cask/fixture] (already installed)"));
+        assert!(message.contains("Queued app [cask/fixture] (already queued)"));
+        assert!(message.contains("Duplicate app [cask/fixture] (duplicate)"));
+        assert!(message.contains("Formula [formula/ripgrep] (not a cask)"));
     }
 
     #[test]
@@ -570,6 +614,9 @@ mod tests {
         let request = request("collection/dev-setup");
         let item = ConfirmationListItem {
             name: "Ghostty".into(),
+            kind: "cask".into(),
+            token: "fixture".into(),
+            tap: None,
             disabled: false,
             installed: false,
             already_queued: false,
@@ -598,6 +645,8 @@ mod tests {
 
     #[test]
     fn collection_grant_binds_the_exact_ordered_target_list() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = crate::db::Database::open(&directory.path().join("test.db")).unwrap();
         let targets = vec![
             crate::model::TaskTarget {
                 kind: crate::model::TaskKind::Cask,
@@ -610,13 +659,36 @@ mod tests {
         ];
         let mut original = request("collection/dev-setup");
         original.action = "install collection".into();
-        original.plan_digest = Some(ordered_targets_digest(&targets));
+        original.plan_digest = Some(crate::queue::ordered_install_plans_digest(
+            &targets
+                .iter()
+                .map(|target| {
+                    crate::queue::ResolvedInstallPlan::resolve(
+                        &database,
+                        target.clone(),
+                        Default::default(),
+                    )
+                    .unwrap()
+                })
+                .collect::<Vec<_>>(),
+        ));
         let service = ConfirmationService::default();
         let pending = service.test_begin(original.clone()).unwrap();
         let grant = service.test_finish(pending.id, true).unwrap();
         let mut reordered = original.clone();
-        reordered.plan_digest = Some(ordered_targets_digest(
-            &targets.into_iter().rev().collect::<Vec<_>>(),
+        reordered.plan_digest = Some(crate::queue::ordered_install_plans_digest(
+            &targets
+                .into_iter()
+                .rev()
+                .map(|target| {
+                    crate::queue::ResolvedInstallPlan::resolve(
+                        &database,
+                        target,
+                        Default::default(),
+                    )
+                    .unwrap()
+                })
+                .collect::<Vec<_>>(),
         ));
         assert_eq!(
             service.consume(&grant, &reordered).unwrap_err().code,
@@ -813,13 +885,69 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn allow_is_delivered_before_cancellation_channel_closes() {
+        use std::{
+            future::Future,
+            task::{Context, Poll, Waker},
+        };
+        let service = std::sync::Arc::new(ConfirmationService::default());
+        let request = request("cask/ghostty");
+        let pending = service.begin(request.clone()).unwrap();
+        let id = pending.id;
+        let guard = ConfirmationDropGuard::new(service.clone(), id);
+        let (sender, receiver) = oneshot::channel();
+        let mut waiting = Box::pin(service.wait_for_reply(pending, receiver, guard));
+        let mut context = Context::from_waker(Waker::noop());
+        assert!(matches!(waiting.as_mut().poll(&mut context), Poll::Pending));
+        service.finish_reply(id, true, |result| {
+            // Force the exact old race: poll after grant creation but before sending the allow.
+            // Closure of _cancel here must never turn that allow into a denial.
+            assert!(matches!(waiting.as_mut().poll(&mut context), Poll::Pending));
+            sender.send(result).unwrap();
+        });
+        let grant = waiting.await.expect("allow must always return allow");
+        service.consume(&grant, &request).unwrap();
+    }
+
+    #[test]
+    fn collection_prompt_distinguishes_same_name_with_different_tokens_and_taps() {
+        let mut request = request("collection/dev-setup");
+        request.source = "opennavo://collection/dev-setup?action=install".into();
+        request.action = "install collection".into();
+        let first = ConfirmationListItem {
+            name: "Same App".into(),
+            kind: "cask".into(),
+            token: "official".into(),
+            tap: None,
+            disabled: false,
+            installed: false,
+            already_queued: false,
+            unsupported: false,
+            duplicate: false,
+        };
+        let second = ConfirmationListItem {
+            token: "different".into(),
+            tap: Some("owner/third-party".into()),
+            ..first.clone()
+        };
+        let message = request
+            .collection_message(&[first, second], 2, Locale::EnUs)
+            .unwrap();
+        let (header, rows) = message.split_once('•').unwrap();
+        assert!(header.contains("collection/dev-setup"));
+        assert!(header.contains("will install 2, skip 0"));
+        assert!(rows.contains("Same App [cask/official]\n"));
+        assert!(rows.contains("Same App [cask/different] [owner/third-party]\n"));
+    }
+
+    #[tokio::test]
     async fn completed_native_reply_wins_over_closed_cancellation_channel() {
         let service = std::sync::Arc::new(ConfirmationService::default());
         let request = request("cask/ghostty");
         let pending = service.begin(request.clone()).unwrap();
         let guard = ConfirmationDropGuard::new(service.clone(), pending.id);
         let (sender, receiver) = oneshot::channel();
-        sender.send(service.finish(pending.id, true)).unwrap();
+        sender.send(service.test_finish(pending.id, true)).unwrap();
         let grant = service
             .wait_for_reply(pending, receiver, guard)
             .await
@@ -858,6 +986,9 @@ mod tests {
             let items = vec![
                 ConfirmationListItem {
                     name: "Fixture".into(),
+                    kind: "cask".into(),
+                    token: "fixture".into(),
+                    tap: None,
                     disabled: false,
                     installed: false,
                     already_queued: false,

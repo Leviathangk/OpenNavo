@@ -1,11 +1,10 @@
 use crate::{
     AppError,
-    confirmation::{
-        ConfirmationListItem, ConfirmationRequest, ConfirmationService, ordered_targets_digest,
-    },
+    confirmation::{ConfirmationListItem, ConfirmationRequest, ConfirmationService},
     core::DesktopCore,
     deeplink::{CollectionInstallItem, CollectionInstallPlan, InstallStep, InstallTarget, Router},
     model::{InstalledItem, PermissionState, Permissions, Task, TaskKind, TaskTarget, TaskTrigger},
+    queue::{ResolvedInstallPlan, ordered_install_plans_digest},
 };
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::Deserialize;
@@ -172,13 +171,8 @@ async fn confirm_single(
         return Ok(DeepLinkInstallResult { tasks: vec![] });
     }
     ensure_install_environment(context.state).await?;
-    let request = ConfirmationRequest {
-        caller: "deep link".into(),
-        source,
-        action: "install".into(),
-        target: format!("{}/{}", target.kind.as_str(), target.token),
-        plan_digest: None,
-    };
+    let plan = ResolvedInstallPlan::resolve(&context.state.database, target, Default::default())?;
+    let request = single_install_request(source, &plan);
     let grant = match context
         .confirmation
         .confirm(context.app, request.clone())
@@ -202,27 +196,35 @@ async fn confirm_single(
     ensure_install_environment(context.state).await?;
 
     let queue = context.state.queue.clone();
-    let task = match crate::blocking(move || {
-        queue.enqueue(
-            crate::model::TaskOp::Install,
-            Some(target),
-            crate::model::TaskOptions::default(),
-            TaskTrigger::Deeplink,
-        )
-    })
-    .await
-    {
-        Ok(task) => task,
-        Err(error) => {
-            context.router.cancel_install(context.pending_id);
-            return Err(error);
-        }
-    };
+    let task =
+        match crate::blocking(move || queue.enqueue_resolved_install(plan, TaskTrigger::Deeplink))
+            .await
+        {
+            Ok(task) => task,
+            Err(error) => {
+                context.router.cancel_install(context.pending_id);
+                return Err(error);
+            }
+        };
     if let Err(error) = context.router.finish_install(context.pending_id) {
         context.router.cancel_install(context.pending_id);
         return Err(error);
     }
     Ok(DeepLinkInstallResult { tasks: vec![task] })
+}
+
+fn single_install_request(source: String, plan: &ResolvedInstallPlan) -> ConfirmationRequest {
+    let target = plan.command_target();
+    let identity = format!("{}/{}", target.kind.as_str(), target.token);
+    ConfirmationRequest {
+        caller: "deep link".into(),
+        source,
+        action: "install".into(),
+        target: plan
+            .tap()
+            .map_or(identity.clone(), |tap| format!("{identity} [{tap}]")),
+        plan_digest: Some(plan.digest()),
+    }
 }
 
 async fn confirm_collection(
@@ -237,13 +239,16 @@ async fn confirm_collection(
         source,
         action: "install collection".into(),
         target: format!("collection/{slug}"),
-        plan_digest: Some(ordered_targets_digest(&plan.targets)),
+        plan_digest: Some(ordered_install_plans_digest(&plan.installs)),
     };
     let items = plan
         .items
         .iter()
         .map(|item| ConfirmationListItem {
             name: item.name.clone(),
+            kind: item.kind.clone(),
+            token: item.token.clone(),
+            tap: item.tap.clone(),
             disabled: item.disabled,
             installed: item.installed,
             already_queued: item.already_queued,
@@ -253,7 +258,7 @@ async fn confirm_collection(
         .collect();
     let grant = match context
         .confirmation
-        .confirm_collection(context.app, request.clone(), items, plan.targets.len())
+        .confirm_collection(context.app, request.clone(), items, plan.installs.len())
         .await
     {
         Ok(grant) => grant,
@@ -274,14 +279,9 @@ async fn confirm_collection(
     ensure_install_environment(context.state).await?;
 
     let queue = context.state.queue.clone();
-    let targets = plan.targets;
+    let installs = plan.installs;
     let tasks = match crate::blocking(move || {
-        queue.enqueue_many(
-            crate::model::TaskOp::Install,
-            targets,
-            crate::model::TaskOptions::default(),
-            TaskTrigger::Deeplink,
-        )
+        queue.enqueue_resolved_installs(installs, TaskTrigger::Deeplink)
     })
     .await
     {
@@ -417,7 +417,7 @@ async fn load_collection_plan(
         .read()
         .map_err(|_| AppError::new("E_UNKNOWN", "library_state"))?;
     let active = state.queue.active()?;
-    build_collection_plan(detail, &installed, &active)
+    build_collection_plan(&state.database, detail, &installed, &active)
 }
 
 fn decode_collection_response(bytes: &[u8]) -> Result<CollectionResponse, AppError> {
@@ -428,6 +428,7 @@ fn decode_collection_response(bytes: &[u8]) -> Result<CollectionResponse, AppErr
 }
 
 fn build_collection_plan(
+    database: &crate::db::Database,
     detail: CollectionDetail,
     installed: &[InstalledItem],
     active: &[Task],
@@ -439,7 +440,7 @@ fn build_collection_plan(
         ));
     }
     let mut items = Vec::with_capacity(detail.items.len());
-    let mut targets = Vec::new();
+    let mut installs: Vec<ResolvedInstallPlan> = Vec::new();
     for item in detail.items {
         let package = item.package;
         let name = if package.display_name.trim().is_empty() {
@@ -463,6 +464,8 @@ fn build_collection_plan(
         let mut installed_match = false;
         let mut already_queued = false;
         let mut duplicate = false;
+        let mut token = package.token.clone();
+        let mut tap = None;
         if let Some(kind) = installable_kind {
             crate::brew::args::validate_token(&package.token)?;
             installed_match = installed
@@ -470,15 +473,19 @@ fn build_collection_plan(
                 .any(|entry| entry.kind == kind && entry.matches_token(&package.token));
             let target = TaskTarget {
                 kind,
-                token: package.token,
+                token: package.token.clone(),
             };
+            let resolved =
+                ResolvedInstallPlan::resolve(database, target.clone(), Default::default())?;
+            token = resolved.command_target().token.clone();
+            tap = resolved.tap().map(str::to_owned);
             already_queued = active
                 .iter()
                 .any(|task| task.target.as_ref() == Some(&target));
             installable = !package.disabled && !installed_match && !already_queued;
             if installable {
-                if !targets.contains(&target) {
-                    targets.push(target);
+                if !installs.iter().any(|plan| plan.target() == &target) {
+                    installs.push(resolved);
                 } else {
                     installable = false;
                     duplicate = true;
@@ -487,6 +494,9 @@ fn build_collection_plan(
         }
         items.push(CollectionInstallItem {
             name,
+            kind: package.kind,
+            token,
+            tap,
             disabled: package.disabled,
             installed: installed_match,
             already_queued,
@@ -495,13 +505,45 @@ fn build_collection_plan(
             installable,
         });
     }
-    Ok(CollectionInstallPlan { items, targets })
+    Ok(CollectionInstallPlan { items, installs })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::TaskOp;
+
+    fn test_collection_plan(
+        detail: CollectionDetail,
+        installed: &[InstalledItem],
+        active: &[Task],
+    ) -> Result<CollectionInstallPlan, AppError> {
+        let directory = tempfile::tempdir().unwrap();
+        let database = crate::db::Database::open(&directory.path().join("test.db")).unwrap();
+        build_collection_plan(&database, detail, installed, active)
+    }
+
+    #[test]
+    fn single_install_confirmation_has_a_resolved_plan_digest() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = crate::db::Database::open(&directory.path().join("test.db")).unwrap();
+        let plan = ResolvedInstallPlan::resolve(
+            &database,
+            TaskTarget {
+                kind: TaskKind::Cask,
+                token: "ghostty".into(),
+            },
+            Default::default(),
+        )
+        .unwrap();
+        let request = single_install_request(
+            "opennavo://package/cask/ghostty?action=install".into(),
+            &plan,
+        );
+        assert_eq!(request.plan_digest.as_deref(), Some(plan.digest().as_str()));
+        assert_eq!(request.plan_digest.unwrap().len(), 64);
+        assert_eq!(plan.args(), ["install", "--cask", "ghostty"]);
+    }
 
     fn package(kind: &str, token: &str, name: &str, disabled: bool) -> CollectionItem {
         CollectionItem {
@@ -516,6 +558,42 @@ mod tests {
     }
 
     #[test]
+    fn collection_plan_keeps_same_named_distinct_tokens_and_resolved_taps() {
+        let (_tmp, core) = core_fixture();
+        let mut item = crate::catalog::links::tests::item();
+        item.kind = crate::model::Kind::Cask;
+        item.link = None;
+        item.token = "third-party".into();
+        item.tap = Some("owner/tools".into());
+        item.brew_token = Some("upstream-token".into());
+        core.database
+            .with(|c| crate::catalog::upsert(c, &item))
+            .unwrap();
+        let detail = CollectionDetail {
+            items: vec![
+                package("cask", "official", "Same App", false),
+                package("cask", "third-party", "Same App", false),
+            ],
+        };
+        let plan = build_collection_plan(&core.database, detail, &[], &[]).unwrap();
+        assert_eq!(plan.installs.len(), 2);
+        assert!(
+            plan.items
+                .iter()
+                .all(|item| item.installable && !item.duplicate)
+        );
+        assert_eq!(plan.items[0].name, plan.items[1].name);
+        assert_eq!(plan.items[0].token, "official");
+        assert_eq!(plan.items[0].tap, None);
+        assert_eq!(plan.items[1].token, "upstream-token");
+        assert_eq!(plan.items[1].tap.as_deref(), Some("owner/tools"));
+        assert_eq!(
+            plan.installs[1].args(),
+            ["install", "--cask", "owner/tools/upstream-token"]
+        );
+    }
+
+    #[test]
     fn collection_plan_preserves_display_order_and_excludes_disabled_or_non_casks() {
         let detail = CollectionDetail {
             items: vec![
@@ -525,7 +603,7 @@ mod tests {
                 package("link", "external", "External App", false),
             ],
         };
-        let plan = build_collection_plan(detail, &[], &[]).unwrap();
+        let plan = test_collection_plan(detail, &[], &[]).unwrap();
         assert_eq!(
             plan.items
                 .iter()
@@ -534,7 +612,10 @@ mod tests {
             ["Zed", "Disabled App", "ripgrep", "External App"]
         );
         assert_eq!(
-            plan.targets,
+            plan.installs
+                .iter()
+                .map(|plan| plan.target().clone())
+                .collect::<Vec<_>>(),
             vec![TaskTarget {
                 kind: TaskKind::Cask,
                 token: "zed".into()
@@ -553,7 +634,7 @@ mod tests {
                 .map(|index| package("cask", &format!("app-{index}"), "App", false))
                 .collect(),
         };
-        let error = build_collection_plan(detail, &[], &[]).unwrap_err();
+        let error = test_collection_plan(detail, &[], &[]).unwrap_err();
         assert_eq!(error.code, "E_INVALID_ARG");
         assert!(error.message.contains("Open the collection in OpenNavo"));
     }
@@ -619,7 +700,7 @@ mod tests {
                 package("cask", "fresh", "Fresh", false),
             ],
         };
-        let plan = build_collection_plan(
+        let plan = test_collection_plan(
             detail,
             &[installed("installed")],
             &[active_install("queued")],
@@ -629,8 +710,8 @@ mod tests {
         assert!(plan.items[1].already_queued);
         assert!(!plan.items[0].installable);
         assert!(!plan.items[1].installable);
-        assert_eq!(plan.targets.len(), 1);
-        assert_eq!(plan.targets[0].token, "fresh");
+        assert_eq!(plan.installs.len(), 1);
+        assert_eq!(plan.installs[0].target().token, "fresh");
     }
 
     #[test]
