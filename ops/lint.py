@@ -70,6 +70,9 @@ for key in ['NUXT_PUBLIC_SITE_URL', 'NUXT_PUBLIC_I18N_BASE_URL']:
 for script in ['backup.sh', 'restore.sh', 'migrate.sh']:
     verification.run(['sh', '-n', 'ops/' + script])
 verification.run(['python3', '-I', '-m', 'unittest', 'discover', '-s', 'ops', '-p', 'test_*.py'], capture=False)
+# `discover -s ops` only recurses into packages; ops/prometheus is plain files mounted into the
+# container, so run its probe tests explicitly or they never reach CI.
+verification.run(['python3', '-I', '-m', 'unittest', 'discover', '-s', 'ops/prometheus', '-p', 'test_*.py'], capture=False)
 verification.run(['docker', 'run', '--rm', '-v', str(ROOT / 'ops/prometheus') + ':/etc/prometheus:ro',
     '--entrypoint', '/bin/promtool', 'registry.hub.docker.com/prom/prometheus:v3.15.0',
     'check', 'config', '/etc/prometheus/prometheus.yml'], capture=False)

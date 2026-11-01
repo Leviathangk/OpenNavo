@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import datetime
 import hashlib
 import importlib.util
 import io
@@ -923,8 +924,8 @@ class DeployTests(unittest.TestCase):
         }
         process = {
             deploy.SWITCH_CADDY_WRITTEN: 'may still run the previous release',
-            deploy.SWITCH_CADDY_RELOADED: 'USR1 was sent to Caddy (it runs the candidate Caddyfile), but routing was not verified',
-            deploy.SWITCH_CONFIG_PROMOTED: 'USR1 was sent to Caddy (it runs the candidate Caddyfile), but routing was not verified',
+            deploy.SWITCH_CADDY_RELOADED: 'USR1 sent to Caddy; routing not verified',
+            deploy.SWITCH_CONFIG_PROMOTED: 'USR1 sent to Caddy; routing not verified',
         }
         for label, (before_caddy, mode, inject, error) in aborts.items():
             for phase, running in process.items():
@@ -1112,6 +1113,24 @@ class DeployTests(unittest.TestCase):
                 self.assertEqual((retry.state['release'], retry.state['services'], retry.state['unverified']),
                                  (obj.release, obj.services, True))
                 self._staged.start()
+
+    def test_retry_accepts_legacy_switch_record_without_sha_or_services(self):
+        """Intermediate #68 revisions wrote records with only release and phase; a retry must reconcile."""
+        with tempfile.TemporaryDirectory() as root:
+            obj, candidate_caddy = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            state = json.loads(obj.state_path.read_text())
+            state['switch'] = {'release': obj.release, 'phase': deploy.SWITCH_CADDY_RELOADED}
+            obj.state_path.write_text(json.dumps(state))
+            (obj.directory / 'manifest.json').write_text(json.dumps({'sha': 'a' * 40}))
+            obj.degraded_path.unlink(missing_ok=True)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            with contextlib.redirect_stdout(io.StringIO()):
+                retry.reconcile_interrupted_switch()
+            self.assertEqual(retry.state['services'], obj.services)
+            self.assertEqual(retry.state['release'], obj.release)
+            self.assertEqual(retry.state['sha'], 'a' * 40)
+            self.assertTrue(retry.state['unverified'])
+            self.assertEqual(obj.live_caddy.read_bytes(), candidate_caddy)
 
     def test_retry_after_rollback_killed_at_each_point_restores_previous(self):
         class Killed(BaseException):
@@ -1824,7 +1843,7 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
                 self.assertIn('DEGRADED', output.getvalue())
                 self.assertIn('all name the candidate release', output.getvalue())
                 self.assertIn('may still run the previous release' if not promoted
-                              else 'USR1 was sent to Caddy (it runs the candidate Caddyfile), but routing was not verified', output.getvalue())
+                              else 'USR1 sent to Caddy; routing not verified', output.getvalue())
                 marker = json.loads(obj.degraded_path.read_text())
                 self.assertEqual(marker['release'], obj.release)
                 self.assertEqual(marker['sha'], obj.payload['sha'])
@@ -2406,6 +2425,67 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             self.assertEqual(events.count('verify'), 2)
             self.assertEqual(events[-2:], ['cleanup', 'prune'])
             self.assertLess(events.index(('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker')), len(events) - 1)
+
+
+    def test_sweep_stale_temp_files_removes_only_old_write_temp_files(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            (root / 'deploy').mkdir()
+            (root / 'releases/gh-aaaaaaaaaaaa-1-1').mkdir(parents=True)
+            stale = [root / 'deploy/.github-state.json-abc12345',
+                     root / 'releases/gh-aaaaaaaaaaaa-1-1/.manifest.json-abc12345']
+            fresh = root / 'deploy/.current-release.env-abc12345'
+            kept = [root / 'deploy/.keep', root / '.Caddyfile.intent']
+            for path in [*stale, fresh, *kept]:
+                path.write_text('x')
+            for path in stale:
+                os.utime(path, (0, 0))
+            self.assertEqual(deploy.sweep_stale_temp_files(root, 'Caddyfile'), 2)
+            for path in stale:
+                self.assertFalse(path.exists())
+            for path in [fresh, *kept]:
+                self.assertTrue(path.exists())
+
+    def test_retry_after_accepts_http_date(self):
+        now = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+        self.assertEqual(deploy._retry_after_seconds(
+            {'Retry-After': 'Thu, 01 Jan 2026 00:00:12 GMT'}, now=now), 12)
+        self.assertEqual(deploy._retry_after_seconds(
+            {'Retry-After': 'Thu, 01 Jan 2026 00:00:12 GMT'}, now=now.replace(minute=1)), 0)
+        self.assertEqual(deploy._retry_after_seconds({'Retry-After': 'not-a-date'}), None)
+        self.assertEqual(deploy._retry_after_seconds({'Retry-After': '7'}), 7)
+
+    def test_public_mcp_host_requires_config_or_web_domain(self):
+        obj = deploy.Deployment.__new__(deploy.Deployment)
+        obj.config = {'local_origin': 'http://127.0.0.1:80',
+                      'checks': [{'host': 'admin.opennavo.com', 'path': '/'}]}
+        with self.assertRaisesRegex(RuntimeError, 'public_mcp_host or WEB_DOMAIN'):
+            obj.verify_public_mcp()
+
+    def test_public_mcp_host_derives_from_web_domain_in_host_env(self):
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root) / '.env').write_text('# host configuration\nWEB_DOMAIN=opennavo.com\n')
+            obj = deploy.Deployment.__new__(deploy.Deployment)
+            obj.root = Path(root)
+            obj.config = {'local_origin': 'http://127.0.0.1:80',
+                          'checks': [{'host': 'admin.opennavo.com', 'path': '/'}]}
+            seen = []
+            fake = fake_public_mcp()
+
+            def urlopen(request, timeout):
+                seen.append(request)
+                return fake(request, timeout)
+            with patch.object(deploy.urllib.request, 'urlopen', side_effect=urlopen):
+                obj.verify_public_mcp()
+            self.assertTrue(seen)
+            self.assertEqual({request.get_header('Host') for request in seen}, {'opennavo.com'})
+
+    def test_redact_preview_masks_short_provider_keys(self):
+        # Assembled at runtime so secret scanners do not flag the fixtures.
+        secrets = ['sk-' + 'a' * 16, 'ghp_' + 'b' * 16, 'AKIA' + 'C' * 16, 'xoxb-' + '1' * 10 + '-abc']
+        text = deploy.redact_preview(' '.join(secrets).encode())
+        for secret in secrets:
+            self.assertNotIn(secret, text)
 
 
 if __name__ == '__main__': unittest.main()

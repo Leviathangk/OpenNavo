@@ -8,6 +8,7 @@ import base64
 import concurrent.futures
 import contextlib
 import copy
+import datetime
 import fcntl
 import hashlib
 import io
@@ -25,6 +26,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from email.utils import parsedate_to_datetime
 
 # DNS targets expose IP scrape URLs; the discovered DNS name identifies the release.
 # Require every configured replica of each job to be healthy, not just one matching endpoint.
@@ -267,6 +269,16 @@ def release_manifest(payload, web_assets):
     return manifest
 
 
+def release_snapshot_sha(directory):
+    """Source revision recorded in a release snapshot, or None when it has no readable manifest."""
+    try:
+        manifest = json.loads((Path(directory) / 'manifest.json').read_text())
+    except (OSError, ValueError):
+        return None
+    sha = manifest.get('sha') if isinstance(manifest, dict) else None
+    return sha if isinstance(sha, str) and sha else None
+
+
 def merge_web_assets(current, destination, now=None, previous_current=None):
     """Keep old fingerprinted assets for seven days and mark current assets as fresh."""
     timestamp = time.time() if now is None else now
@@ -367,6 +379,12 @@ _TOKEN_PATTERNS = (
     re.compile(r'(?i)(bearer\s+)[^\s"\',;]+'),
     re.compile(r'(?i)((?:access_|refresh_|id_)?token|secret|password|passwd|api[_-]?key|authorization|cookie|'
                r'session(?:[_-]?id)?|signature|credential)(["\']?\s*[:=]\s*["\']?)[^\s"\',;&}]+'),
+    # Short provider keys: the opaque-token rule below only catches 32+ characters.
+    re.compile(r'\b(?:sk|pk|rk)-[A-Za-z0-9_\-]{8,}'),
+    re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{8,}|github_pat_[A-Za-z0-9_]{8,})'),
+    re.compile(r'\b(?:AKIA|ASIA)[0-9A-Z]{12,}'),
+    re.compile(r'\bxox[baprs]-[A-Za-z0-9-]{8,}'),
+    re.compile(r'\bAIza[0-9A-Za-z_\-]{20,}'),
     re.compile(r'[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}'),  # JWT-like
     re.compile(r'[A-Za-z0-9+/_\-]{32,}={0,2}'),  # long opaque token / key material
 )
@@ -411,12 +429,25 @@ class RouteCheckError(RuntimeError):
         super().__init__(detail)
 
 
-def _retry_after_seconds(headers):
-    try:
-        value = int(str((headers or {}).get('Retry-After', '')).strip())
-    except ValueError:
+def _retry_after_seconds(headers, now=None):
+    """Retry-After as delta-seconds or HTTP-date, capped so one header cannot stall a deploy."""
+    value = str((headers or {}).get('Retry-After', '')).strip()
+    if not value:
         return None
-    return max(0, min(value, PUBLIC_MCP_RETRY_AFTER_LIMIT))
+    try:
+        seconds = int(value)
+    except ValueError:
+        try:
+            when = parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return None
+        if when is None:
+            return None
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=datetime.timezone.utc)
+        reference = now or datetime.datetime.now(datetime.timezone.utc)
+        seconds = max(0, (when - reference).total_seconds())
+    return max(0, min(int(seconds), PUBLIC_MCP_RETRY_AFTER_LIMIT))
 
 
 def route_check_error(error, method, url, host, *, public_mcp=False):
@@ -596,6 +627,45 @@ def write_atomic(path, content, mode=None):
         Path(staged.name).unlink(missing_ok=True)
         raise
     fsync_directory(path.parent)
+
+
+STALE_TEMP_NAME = re.compile(r'^\..+?-[a-z0-9_]{8}$')
+STALE_TEMP_AGE_SECONDS = 3600
+
+
+def sweep_stale_temp_files(root, caddy_file=None, max_age=STALE_TEMP_AGE_SECONDS):
+    """Remove temp files left by a killed write_atomic(), outside any in-progress write.
+
+    The receiver holds its lock while this runs, so no other deployment is writing. Only
+    `.<name>-<random>` files older than `max_age` are removed; current writes, release
+    snapshots, intent records and anything outside the known directories are left alone.
+    """
+    root = Path(root)
+    directories = {root, root / 'deploy'}
+    if caddy_file:
+        directories.add((root / caddy_file).parent)
+    releases = root / 'releases'
+    if releases.is_dir():
+        directories.update(path for path in releases.iterdir() if path.is_dir())
+    cutoff = time.time() - max_age
+    removed = 0
+    for directory in directories:
+        try:
+            entries = list(directory.iterdir())
+        except OSError:
+            continue
+        for path in entries:
+            if (path.is_symlink() or not path.is_file()
+                    or not STALE_TEMP_NAME.match(path.name)):
+                continue
+            try:
+                if path.stat().st_mtime > cutoff:
+                    continue
+                path.unlink()
+                removed += 1
+            except OSError:
+                continue
+    return removed
 
 
 def interrupted_caddy_write(path):
@@ -826,8 +896,8 @@ SWITCH_PROCESS = {
                            'previous release'),
     SWITCH_CADDY_WRITTEN: ('the live Caddyfile file is the candidate but Caddy reload (USR1) was not confirmed, '
                            'so the Caddy process may still run the previous release'),
-    SWITCH_CADDY_RELOADED: 'USR1 was sent to Caddy (it runs the candidate Caddyfile), but routing was not verified',
-    SWITCH_CONFIG_PROMOTED: 'USR1 was sent to Caddy (it runs the candidate Caddyfile), but routing was not verified',
+    SWITCH_CADDY_RELOADED: 'USR1 sent to Caddy; routing not verified',
+    SWITCH_CONFIG_PROMOTED: 'USR1 sent to Caddy; routing not verified',
 }
 
 
@@ -1512,12 +1582,43 @@ class Deployment:
                 raise RuntimeError('public MCP returned an invalid response')
             return events[-1]
 
+    def web_domain(self):
+        """The site host WEB_DOMAIN from config or the host .env, or None."""
+        configured = getattr(self, 'config', {}) or {}
+        value = str(configured.get('web_domain') or '').strip()
+        if value:
+            return value
+        root = getattr(self, 'root', None)
+        if root is None:
+            return None
+        try:
+            lines = (Path(root) / '.env').read_text().splitlines()
+        except OSError:
+            return None
+        for line in lines:
+            if line.lstrip().startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            if key.strip() == 'WEB_DOMAIN':
+                value = value.strip().strip('"\'')
+                if value:
+                    return value
+        return None
+
+    def public_mcp_host(self):
+        """Host for public-MCP verification; never inferred from a check (admin is not public)."""
+        configured = getattr(self, 'config', {}) or {}
+        host = str(configured.get('public_mcp_host') or '').strip()
+        if host:
+            return host
+        host = self.web_domain()
+        if host:
+            return host
+        raise RuntimeError('public MCP verification requires public_mcp_host or WEB_DOMAIN in the host '
+                           'configuration or .env; refusing to infer it from the route checks')
+
     def verify_public_mcp(self):
-        checks = self.config.get('checks', [])
-        host = self.config.get('public_mcp_host') or next(
-            (check.get('host') for check in checks if check.get('path') == '/'), None)
-        if not host:
-            raise RuntimeError('public MCP verification requires WEB_DOMAIN host')
+        host = self.public_mcp_host()
         endpoint = self.config['local_origin'].rstrip('/') + '/mcp'
         session = None
 
@@ -1716,11 +1817,24 @@ class Deployment:
                 sources, route = ('before-release.env', 'before-rolling.json'), 'previous'
                 # Still unverified: the live file was replaced or restored after the last verification.
                 state = {**base, 'unverified': True}
-            elif phase in SWITCH_ROUTED_TO_CANDIDATE and record.get('sha') and record.get('services'):
+            elif phase in SWITCH_ROUTED_TO_CANDIDATE:
                 sources, route = ('release.env', 'rolling.compose.json'), 'candidate'
-                state = {'sha': record['sha'], 'release': release, 'services': record['services'],
+                services = record.get('services')
+                if not services:
+                    # Records written by intermediate revisions carry no services; the release
+                    # name fully determines them, so a retry does not have to fail here.
+                    services = {kind: kind + '_' + release.replace('-', '_') for kind in APPLICATION_SERVICES}
+                    print(f'WARNING: switch record for {release} has no services; derived them from the '
+                          f'release name.', flush=True)
+                sha = record.get('sha') or release_snapshot_sha(previous_dir)
+                if not sha:
+                    print(f'WARNING: switch record for {release} has no sha and the release snapshot has no '
+                          f'manifest; the next deployment will not take the already-deployed shortcut.', flush=True)
+                state = {'release': release, 'services': services,
                          'previous': {key: value for key, value in base.items() if key != 'previous'},
                          'unverified': True}
+                if sha:
+                    state['sha'] = sha
             else:
                 raise RuntimeError('unknown or incomplete switch record')
             write_atomic(self.env, (previous_dir / sources[0]).read_bytes())
@@ -2081,6 +2195,9 @@ def main():
     config = json.loads(Path('/etc/opennavo/github-deploy.json').read_text())
     with (Path(config['root']) / 'deploy/github-deploy.lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        swept = sweep_stale_temp_files(config['root'], config.get('caddy_file'))
+        if swept:
+            print(f'Removed {swept} stale temporary file(s) left by an interrupted write.', flush=True)
         raw = sys.stdin.buffer.read(MAX_ARCHIVE * 2 + 1)
         if len(raw) > MAX_ARCHIVE * 2:
             raise ValueError('deployment payload exceeds the limit')
