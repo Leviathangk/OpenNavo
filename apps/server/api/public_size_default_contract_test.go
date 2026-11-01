@@ -322,6 +322,120 @@ func specSizeExampleMismatches(t *testing.T, path string) []string {
 	return mismatches
 }
 
+// responsePageSize returns the page size a documented 200 response body advertises at data.size.
+// A body without data (or without data.size, as in the author page, whose articles are nested one
+// level deeper) has no page size of its own and reports ok as false.
+func responsePageSize(example any) (float64, bool, bool) {
+	body, isObject := example.(map[string]any)
+	if !isObject {
+		return 0, false, false
+	}
+	data, isObject := body["data"].(map[string]any)
+	if !isObject {
+		return 0, false, false
+	}
+	size, present := data["size"]
+	if !present {
+		return 0, false, false
+	}
+	number, isNumber := size.(float64)
+	return number, true, isNumber
+}
+
+// specResponseSizeMismatches reports documented 200 responses whose data.size contradicts the
+// request's documented ?size= default. Parameters alone were not enough: the response example is
+// what readers copy, and a body advertising a page size the default never produces is the same
+// kind of contradiction in a place the parameter check cannot see.
+func specResponseSizeMismatches(t *testing.T, path string) []string {
+	t.Helper()
+	loader := openapi3.NewLoader()
+	spec, err := loader.LoadFromFile(path)
+	require.NoError(t, err)
+	var mismatches []string
+	withExamples, checked := 0, 0
+	for route, item := range spec.Paths.Map() {
+		for _, op := range item.Operations() {
+			var def float64
+			documented := false
+			for _, ref := range op.Parameters {
+				p := ref.Value
+				if p == nil || p.In != "query" || p.Name != "size" || p.Schema == nil || p.Schema.Value == nil {
+					continue
+				}
+				number, isNumber := p.Schema.Value.Default.(float64)
+				if !isNumber {
+					mismatches = append(mismatches, fmt.Sprintf("%s: %s documents a non-integer size default", path, op.OperationID))
+					continue
+				}
+				def, documented = number, true
+			}
+			if !documented {
+				continue
+			}
+			// The external spec documents no response bodies, so an operation may legitimately
+			// have nothing to compare. When a body exists, every example in it must agree.
+			examples := map[string]any{}
+			if response := op.Responses.Status(200); response != nil && response.Value != nil {
+				if media := response.Value.Content.Get("application/json"); media != nil {
+					if media.Schema != nil && media.Schema.Value != nil {
+						schema := media.Schema.Value
+						if schema.Example != nil {
+							examples["schema example"] = schema.Example
+						}
+						// A generated client reads the field example, not the whole-body one, so a
+						// property left at the old page size is just as wrong and far easier to miss.
+						if data, ok := schema.Properties["data"]; ok && data.Value != nil {
+							if size, ok := data.Value.Properties["size"]; ok && size.Value != nil && size.Value.Example != nil {
+								examples["schema data.size example"] = map[string]any{
+									"data": map[string]any{"size": size.Value.Example},
+								}
+							}
+						}
+					}
+					for name, example := range media.Examples {
+						if example.Value == nil || example.Value.Value == nil {
+							mismatches = append(mismatches, fmt.Sprintf("%s: %s example %s has no value to check", path, op.OperationID, name))
+							continue
+						}
+						examples[name] = example.Value.Value
+					}
+				}
+			}
+			if len(examples) == 0 {
+				continue
+			}
+			withExamples++
+			for name, example := range examples {
+				size, hasPage, isNumber := responsePageSize(example)
+				if !hasPage {
+					continue
+				}
+				if !isNumber {
+					mismatches = append(mismatches, fmt.Sprintf("%s: %s %s has a non-integer data.size", path, op.OperationID, name))
+					continue
+				}
+				if size != def {
+					mismatches = append(mismatches, fmt.Sprintf("%s: %s (%s) %s documents data.size %g but the ?size= default is %g",
+						path, route, op.OperationID, name, size, def))
+				}
+			}
+			checked++
+		}
+	}
+	// Deleting the response examples would make the spec unreadable rather than correct, so a
+	// shrunken sweep fails here instead of passing with nothing left to compare.
+	require.Equal(t, withExamples, checked, path)
+	require.GreaterOrEqual(t, checked, documentedResponseBodies[path], path)
+	return mismatches
+}
+
+// documentedResponseBodies is how many operations in each spec carry a documented 200 example
+// with a ?size= default. It only ever moves up; lowering it is a decision, not a fix.
+var documentedResponseBodies = map[string]int{
+	"public.openapi.yaml":          9,
+	"public-external.openapi.yaml": 0,
+}
+
 // The documented ?size= default must be what the handler really uses when the client omits it.
 func TestPublicSpecSizeDefaultsMatchHandlerFallbacks(t *testing.T) {
 	handler, problems := handlerSizeDefaults(t)
@@ -341,8 +455,10 @@ func TestPublicSpecSizeDefaultsMatchHandlerFallbacks(t *testing.T) {
 			require.Equal(t, actual, documented, "%s: %s documents size default %d, handler falls back to %d",
 				path, operation, documented, actual)
 		}
-		// A documented example is what readers copy, so it must not contradict the default.
+		// A documented example is what readers copy, so it must not contradict the default,
+		// in the parameter block and in the 200 response bodies alike.
 		require.Empty(t, specSizeExampleMismatches(t, path), path)
+		require.Empty(t, specResponseSizeMismatches(t, path), path)
 	}
 }
 
