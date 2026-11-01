@@ -223,7 +223,7 @@ export default {
       requires: '系统要求',
       category: '类别',
       region: '商店地区',
-      bundleId: 'Bundle ID'
+      bundleId: '应用包标识符'
     },
     privacyNote: '这些信息由你的 Mac 直接向 Apple 获取，不经过 OpenNavo 的服务器。',
     notInRegion: '这款 App 在{region}商店不可用',
@@ -478,7 +478,7 @@ export default {
       developer: '开发者',
       homepage: '主页',
       token: '软件包标识符',
-      bundleId: 'Bundle ID',
+      bundleId: '应用包标识符',
       installedVersion: '已安装版本',
       installLocation: '安装位置',
       yes: '是',
@@ -1556,7 +1556,7 @@ export default {
     footprintPartial: '有些文件读不到，实际占用可能更大。',
     fields: {
       path: '位置',
-      bundleId: 'Bundle ID',
+      bundleId: '应用包标识符',
       version: '版本',
       vendor: '开发者',
       arch: '架构',

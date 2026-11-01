@@ -223,7 +223,7 @@
       "requires": "Требования",
       "category": "Категория",
       "region": "Регион магазина",
-      "bundleId": "Bundle ID"
+      "bundleId": "ID пакета"
     },
     "privacyNote": "Ваш Mac получает эти данные напрямую от Apple, без серверов OpenNavo.",
     "notInRegion": "Это приложение недоступно в магазине этого региона ({region})",
@@ -484,7 +484,7 @@
       "developer": "Разработчик",
       "homepage": "Сайт",
       "token": "Идентификатор",
-      "bundleId": "Bundle ID",
+      "bundleId": "ID пакета",
       "installedVersion": "Установленная версия",
       "installLocation": "Путь установки",
       "yes": "Да",
@@ -1559,7 +1559,7 @@
     "footprintPartial": "Некоторые файлы прочитать не удалось, реальный объём может быть больше.",
     "fields": {
       "path": "Расположение",
-      "bundleId": "Bundle ID",
+      "bundleId": "ID пакета",
       "version": "Версия",
       "vendor": "Разработчик",
       "arch": "Архитектура",
