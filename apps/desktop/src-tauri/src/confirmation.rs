@@ -1303,7 +1303,8 @@ mod tests {
 
     /// A destroyed webview clears the slot of a confirmation that already timed out, and it must also
     /// drop every grant that survived the timeout: an earlier approval would otherwise still be
-    /// usable after the window is gone (#85).
+    /// usable after the window is gone (#85). The same confirmation id is never reusable, and a
+    /// second cancel_active is a no-op.
     #[test]
     fn webview_destruction_after_a_timeout_revokes_earlier_grants() {
         let service = ConfirmationService::default();
@@ -1311,7 +1312,8 @@ mod tests {
         let pending = service.test_begin(approved.clone()).unwrap();
         let grant = service.test_finish(pending.id, true).unwrap();
         let timed_out = service.test_begin(request("cask/zed")).unwrap();
-        service.test_timeout(timed_out.id);
+        let timed_out_id = timed_out.id;
+        service.test_timeout(timed_out_id);
         assert!(
             service
                 .state
@@ -1328,8 +1330,24 @@ mod tests {
             service.consume(&grant, &approved).unwrap_err().code,
             "E_CONFIRMATION_REUSED"
         );
-        assert!(service.state.lock().unwrap().grants.is_empty());
+        let state = service.state.lock().unwrap();
+        assert!(
+            state.grants.is_empty(),
+            "no grant survives the destroyed webview"
+        );
+        assert!(state.active.is_none(), "the slot is free, not left busy");
+        drop(state);
+        assert_eq!(
+            service.test_finish(timed_out_id, true).unwrap_err().code,
+            "E_CONFIRMATION_TIMEOUT",
+            "the timed-out id cannot be answered after the window is gone"
+        );
         assert!(service.test_begin(request("cask/zed")).is_ok());
+
+        // The webview can report its destruction more than once.
+        service.cancel_active();
+        assert!(service.state.lock().unwrap().grants.is_empty());
+        assert!(service.state.lock().unwrap().active.is_none());
     }
 
     #[test]
