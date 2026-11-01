@@ -298,7 +298,17 @@ through Caddy and requires at least one tool. The `Host` header comes from
 configuration or `WEB_DOMAIN` in the host `.env`; it is never taken from a
 `checks` entry, so a homepage check cannot point the probe at the admin MCP.
 A missing `WEB_DOMAIN` and `public_mcp_host` aborts the deployment with a
-clear error. At startup, before reading a payload, the receiver removes
+clear error. The `/mcp/x` sub-path probe also requires the public-MCP route's
+body marker (`opennavo-public-mcp-subpath`), so a site-wide or upstream 404
+cannot pass as a healthy public route; releases deployed before the marker
+existed are still accepted while their own live Caddyfile lacks it. Public-MCP
+failures back off exponentially (2/4/8/16 s) so a short post-switch cold start
+does not exhaust the five attempts or the 60/min per-client quota. Every
+public-MCP failure keeps its endpoint, status and a redacted body preview in the
+deploy log; a missing `public_mcp_host`/`WEB_DOMAIN` is a permanent
+configuration error, so its fixed message is printed once and the run stops
+instead of retrying. At startup,
+before reading a payload, the receiver removes
 `.<name>-<random>` temp files older than an hour that an interrupted atomic
 write left in the root, `deploy/`, release or Caddy directories.
 Schema changes must remain compatible with the previous application during the
