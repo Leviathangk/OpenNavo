@@ -2,9 +2,7 @@ openapi: 3.0.3
 info:
   title: OpenNavo Admin API
   version: 1.0.0
-  license:
-    name: Proprietary
-    url: https://opennavo.example/terms
+  termsOfService: https://opennavo.com/developers#terms
   description: 'API for the admin console (soybean-admin v2.2.0), prefixed with `/admin-api`.
 
 

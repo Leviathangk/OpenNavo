@@ -2,9 +2,7 @@ openapi: 3.0.3
 info:
   title: OpenNavo Public API
   version: 1.0.0
-  license:
-    name: Proprietary
-    url: https://opennavo.example/terms
+  termsOfService: https://opennavo.com/developers#terms
   description: 'Public API for the web and macOS clients.
 
 
@@ -3869,7 +3867,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 5
                       records:
                         - id: 101
@@ -3945,7 +3943,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 5
                       records:
                         - id: 101
@@ -4021,7 +4019,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 5
                       records:
                         - id: 101
@@ -4097,7 +4095,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 5
                       records:
                         - id: 101
@@ -4173,7 +4171,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 5
                       records:
                         - id: 101
@@ -4249,7 +4247,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 5
                       records:
                         - id: 101
@@ -6225,7 +6223,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 1
                       records:
                         - slug: new-mac
@@ -6262,7 +6260,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 1
                       records:
                         - slug: new-mac
@@ -6299,7 +6297,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 1
                       records:
                         - slug: new-mac
@@ -6336,7 +6334,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 1
                       records:
                         - slug: new-mac
@@ -6373,7 +6371,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 1
                       records:
                         - slug: new-mac
@@ -6410,7 +6408,7 @@ paths:
                     msg: ok
                     data:
                       current: 1
-                      size: 24
+                      size: 20
                       total: 1
                       records:
                         - slug: new-mac
@@ -9530,7 +9528,7 @@ components:
       in: query
       schema:
         $ref: '#/components/schemas/Locale'
-      description: 'locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language.'
+      description: 'locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language.'
     KindPath:
       name: kind
       in: path
@@ -9582,7 +9580,7 @@ components:
 
   responses:
     Error:
-      description: 'Error response; see the domain error codes in apps/server/internal/domain. data is null.'
+      description: 'Error response. code is a stable numeric OpenNavo error code, msg a localized message, and data is null.'
       content:
         application/json:
           schema:
@@ -12939,7 +12937,7 @@ components:
           example: 1
         size:
           type: integer
-          example: 24
+          example: 20
         total:
           type: integer
           example: 5
@@ -12953,7 +12951,7 @@ components:
           $ref: "#/components/schemas/PageDecision"
       example:
         current: 1
-        size: 24
+        size: 20
         total: 5
         records:
           - id: 101
@@ -18051,7 +18049,7 @@ components:
         msg: ok
         data:
           current: 1
-          size: 24
+          size: 20
           total: 5
           records:
             - id: 101
@@ -18385,7 +18383,7 @@ components:
               example: 1
             size:
               type: integer
-              example: 24
+              example: 20
             total:
               type: integer
               example: 1
@@ -18398,7 +18396,7 @@ components:
         msg: ok
         data:
           current: 1
-          size: 24
+          size: 20
           total: 1
           records:
             - slug: new-mac
