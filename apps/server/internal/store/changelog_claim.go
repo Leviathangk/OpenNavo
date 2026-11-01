@@ -39,7 +39,12 @@ func (s *Store) ClaimChangelogDue(ctx context.Context, now, leaseUntil time.Time
 	return claimed, err
 }
 
-// ChangelogCanceled makes a canceled fetch due again without counting it as a failure.
-func (s *Store) ChangelogCanceled(ctx context.Context, id int64, now time.Time) error {
-	return s.DB.WithContext(ctx).Exec("UPDATE changelog_sources SET next_fetch_at=?,updated_at=? WHERE id=?", now, now, id).Error
+// ReleaseChangelogClaim gives back the lease of sources whose claim never became a task, so they are due on
+// the next tick instead of waiting out fetchLease. Only rows still on the lease are touched: a source whose
+// task did start owns its own next_fetch_at by then.
+func (s *Store) ReleaseChangelogClaim(ctx context.Context, ids []int64, now time.Time) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return s.DB.WithContext(ctx).Exec("UPDATE changelog_sources SET next_fetch_at=? WHERE id IN ? AND next_fetch_at>=?", now, ids, now).Error
 }

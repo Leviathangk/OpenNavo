@@ -101,7 +101,8 @@ func TestFetchStatsIdentifySourceAndBackoffReenqueues(t *testing.T) {
 		require.Equal(t, before+1, after, "the failure is recorded even after the deadline")
 	})
 	// Cancellation (worker shutdown) reports the source but is not a failure: fail_count and the backoff
-	// stay, and the source is due again.
+	// stay, and so does next_fetch_at. The canceled task is requeued by asynq itself; making the source due
+	// now would add a second queue entry once the uniqueness lock expires.
 	t.Run("canceled", func(t *testing.T) {
 		runCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -111,6 +112,8 @@ func TestFetchStatsIdentifySourceAndBackoffReenqueues(t *testing.T) {
 		}
 		var before int
 		require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT fail_count FROM changelog_sources WHERE id=?", sid).Scan(&before).Error)
+		var beforeNext time.Time
+		require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT next_fetch_at FROM changelog_sources WHERE id=?", sid).Scan(&beforeNext).Error)
 		stats, err := fetch(runCtx, sid)
 		require.Error(t, err)
 		requireSourceFields(t, stats, sid, before+1)
@@ -121,7 +124,7 @@ func TestFetchStatsIdentifySourceAndBackoffReenqueues(t *testing.T) {
 		}
 		require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT fail_count,next_fetch_at FROM changelog_sources WHERE id=?", sid).Scan(&after).Error)
 		require.Equal(t, before, after.FailCount, "cancellation does not count as a failure")
-		require.WithinDuration(t, now, after.NextFetchAt, time.Second)
+		require.Equal(t, beforeNext.UTC(), after.NextFetchAt.UTC(), "cancellation leaves the schedule to the requeued task")
 	})
 
 	// Success carries the same fields; attempt resets with fail_count.

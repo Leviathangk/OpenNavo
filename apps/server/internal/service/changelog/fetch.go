@@ -18,6 +18,10 @@ import (
 // lost without running waits out the lease.
 const fetchLease = 2 * time.Hour
 
+// identityLookupTimeout bounds the stats-only source lookup that runs after a failed fetch, when the run
+// context may already be over. It only fills in observability fields, so it must never hold the job open.
+const identityLookupTimeout = 5 * time.Second
+
 type Enqueuer interface {
 	Enqueue(context.Context, string, jobs.Payload, jobs.Metadata) (string, error)
 }
@@ -46,8 +50,13 @@ func (s *Service) Fetch(ctx context.Context, id int64) (map[string]any, error) {
 	stats, err := s.fetch(ctx, id, observed)
 	if _, known := observed["package_token"]; !known {
 		// Early exits (a source outside the fetchable scope such as sparkle/webpage, a missing package,
-		// a store error) still say which source and package it was when the row exists.
-		if identity, lookupErr := s.Store.ChangelogSourceIdentity(context.WithoutCancel(ctx), id); lookupErr == nil {
+		// a store error) still say which source and package it was when the row exists. The run context is
+		// usually already canceled or past its deadline here, so this lookup gets its own short deadline:
+		// WithoutCancel alone would let a stuck database hold the job open for as long as the pool waits.
+		lookup, cancel := context.WithTimeout(context.WithoutCancel(ctx), identityLookupTimeout)
+		identity, lookupErr := s.Store.ChangelogSourceIdentity(lookup, id)
+		cancel()
+		if lookupErr == nil {
 			var settings map[string]any
 			_ = json.Unmarshal(identity.Config, &settings)
 			observed["attempt"], observed["source"], observed["package_token"] = identity.FailCount+1, identity.Type, identity.Token
@@ -118,13 +127,11 @@ func (s *Service) fetch(ctx context.Context, id int64, observed map[string]any) 
 	}
 	result, err := s.Fetcher.Fetch(ctx, p, source)
 	if err != nil && errors.Is(err, context.Canceled) {
-		// A worker shutdown cancels the run and asynq requeues it: not an upstream failure, so the backoff
-		// and fail_count stay as they were. The source becomes due again right away.
-		write, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		if saveErr := s.Store.ChangelogCanceled(write, id, s.now()); saveErr != nil {
-			return nil, saveErr
-		}
+		// A worker shutdown cancels the run and asynq requeues the in-flight task itself, so this source
+		// is not a failure and must not be made due either: moving next_fetch_at to now would let the next
+		// schedule tick enqueue a second copy as soon as the 20-minute uniqueness lock expires, while the
+		// requeued task may still be waiting. The lease from the claim stays until the requeued run
+		// finishes and sets the real next_fetch_at.
 		category, _ := pipeline.Failure(err)
 		return map[string]any{"status": "canceled", "source": state.Type, "errorCategory": category}, err
 	}
@@ -187,16 +194,33 @@ func (s *Service) Schedule(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 	queued := 0
-	for _, id := range ids {
+	unqueued := []int64{}
+	var queueErr error
+	for i, id := range ids {
 		_, err := s.Queue.Enqueue(ctx, "changelog:fetch", jobs.Payload{SourceID: id}, jobs.Metadata{Trigger: "event"})
 		if err != nil {
+			// The lease was taken for this source, but nothing will run: give its next_fetch_at back, or it
+			// waits two hours for a task that never existed.
+			unqueued = append(unqueued, id)
 			var app *domain.AppError
 			if errors.As(err, &app) && app.Code == domain.CodeInvalidState {
 				continue
 			}
-			return nil, err
+			// The queue itself is failing; the rest of this batch is not attempted either and must not
+			// keep the lease. The tick still reports the failure so an operator sees the queue problem.
+			unqueued = append(unqueued, ids[i+1:]...)
+			queueErr = err
+			break
 		}
 		queued++
+	}
+	if len(unqueued) > 0 {
+		if err := s.Store.ReleaseChangelogClaim(ctx, unqueued, s.now()); err != nil {
+			return nil, err
+		}
+	}
+	if queueErr != nil {
+		return nil, queueErr
 	}
 	return map[string]any{"sources": len(ids), "enqueued": queued}, nil
 }
