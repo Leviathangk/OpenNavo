@@ -2776,6 +2776,46 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
         self.assertIn('/mcp/x', str(raised.exception))
         self.assertIn('request error (TimeoutError)', str(raised.exception))
 
+    def test_rollback_drains_exactly_the_candidates_it_listed(self):
+        """Discarding the probe result would stop still-serving candidates without draining them."""
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            obj = object.__new__(deploy.Deployment)
+            obj.config = {'project': 'example-prod'}
+            obj.state = {'sha': 'c' * 40, 'services': {'api': 'api_previous', 'web': 'web_previous'}}
+            obj.services = {'api': 'api_new', 'web': 'web_new'}
+            obj.directory = directory
+            obj.state_path = directory / 'state.json'
+            deploy.write_private(directory / 'before-state.json', obj.state)
+            obj.root, obj.release, obj.payload = directory, 'gh-test', payload()
+            obj.live_caddy, obj.env, obj.rolling = (directory / name for name in ['live', 'env', 'rolling'])
+            (directory / 'deploy').mkdir()
+            obj.live_caddy.write_text('candidate')
+            for name in ['before-caddy', 'before-release.env', 'before-rolling.json']:
+                (directory / name).write_text('old')
+            obj.reload = unittest.mock.Mock()
+            obj.verify = unittest.mock.Mock()
+            obj.update_monitoring = unittest.mock.Mock()
+            obj.compose = unittest.mock.Mock()
+            obj.drain_retired = unittest.mock.Mock(return_value=True)
+            listed = {'api_new': ['cand-api-1', 'cand-api-2'], 'web_new': ['cand-web-1']}
+
+            def command(args):
+                for flag, value in zip(args, args[1:]):
+                    if flag == '--filter' and value.startswith('label=com.docker.compose.service='):
+                        return '\n'.join(listed[value.removeprefix('label=com.docker.compose.service=')])
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
+                obj.rollback()
+            obj.drain_retired.assert_called_once_with(
+                [{'Id': 'cand-api-1', 'State': {'Running': True},
+                  'Config': {'Labels': {'com.docker.compose.service': 'api_new'}}},
+                 {'Id': 'cand-api-2', 'State': {'Running': True},
+                  'Config': {'Labels': {'com.docker.compose.service': 'api_new'}}},
+                 {'Id': 'cand-web-1', 'State': {'Running': True},
+                  'Config': {'Labels': {'com.docker.compose.service': 'web_new'}}}],
+                preserve_stream_grace=False, timeout=deploy.ROLLBACK_DRAIN_TIMEOUT_SECONDS)
+
     def test_rollback_candidate_listing_skips_oneoff_containers(self):
         """`docker compose run` containers must never be listed as rollback candidates."""
         with tempfile.TemporaryDirectory() as root:
