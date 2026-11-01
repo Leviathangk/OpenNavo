@@ -112,12 +112,12 @@ func TestV2KeepsLegacyDesktopLanguageContract(t *testing.T) {
 	modern, err := svc.Latest(domain.WithAllCatalogLocales(ctx, true))
 	require.NoError(t, err)
 	require.Equal(t, bundle.Info, modern)
-	_, skip, err := svc.bundle(ctx, true)
+	_, skip, err := svc.bundle(ctx, true, false)
 	require.NoError(t, err)
 	require.True(t, skip)
 	// Snapshots without modern metadata must be rebuilt.
 	require.NoError(t, st.DB.Exec("DELETE FROM app_config WHERE key=?", "catalog.snapshotModernBase:"+bundle.Record.SHA256).Error)
-	_, skip, err = svc.bundle(ctx, true)
+	_, skip, err = svc.bundle(ctx, true, false)
 	require.NoError(t, err)
 	require.False(t, skip)
 

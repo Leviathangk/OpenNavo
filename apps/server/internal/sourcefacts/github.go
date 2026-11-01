@@ -293,7 +293,8 @@ var licenseSignatures = []licenseSignature{
 	{spdx: "BSD-3-Clause", phrases: []string{
 		"redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met",
 		"neither the name of",
-	}},
+		// BSD-4-Clause repeats these lines and adds the advertising clause; it is not BSD-3.
+	}, absent: []string{"all advertising materials"}},
 	{spdx: "BSD-2-Clause", phrases: []string{
 		"redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met",
 	}, absent: []string{"neither the name of"}},

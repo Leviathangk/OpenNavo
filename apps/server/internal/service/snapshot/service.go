@@ -34,6 +34,9 @@ type Service struct {
 	Objects Objects
 	Now     func() time.Time
 	Purge   func(context.Context, []string) error
+	// SelfCheck verifies that a new bundle publishes no private token; tests replace it to prove
+	// that a failing check blocks the revocation instead of acknowledging it.
+	SelfCheck func(Bundle, []string) (string, bool)
 }
 type Document struct {
 	FormatVersion int                      `json:"formatVersion"`
@@ -192,7 +195,6 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 		purgeWarning := ""
 		var obsolete []string
 		var objects revocableObjects
-		var privateTokens []string
 		if revoke {
 			var ok bool
 			objects, ok = s.Objects.(revocableObjects)
@@ -203,12 +205,10 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 			if err != nil {
 				return err
 			}
-			privateTokens, err = s.Store.PrivatePackageTokens(ctx)
-			if err != nil {
-				return err
-			}
 		}
-		bundle, skip, err := s.bundle(ctx, !revoke)
+		// The private set comes from the bundle's own transaction, so a package that turns private
+		// while the documents are built cannot slip past the self-check below.
+		bundle, skip, err := s.bundle(ctx, !revoke, revoke)
 		if err != nil {
 			return err
 		}
@@ -216,9 +216,23 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 			stats = map[string]any{"skipped": true, "cursor": bundle.Info.Cursor}
 			return nil
 		}
+		if revoke {
+			// A package that turned private after the read-only snapshot is still in these
+			// documents. Publish nothing that names them; the caller rebuilds.
+			if err = s.revocationCurrent(ctx, visibility); err != nil {
+				return err
+			}
+		}
 		// Publish latest only after the base object and every language object are readable; intermediate failures never touch the previous latest.
 		for _, file := range bundle.Files {
 			if err = s.Objects.Put(ctx, file.Key, file.Data, "application/gzip"); err != nil {
+				return err
+			}
+		}
+		if revoke {
+			// The bundle files are unreferenced until latest.json names them, so this is the last
+			// moment to stop a manifest that would publish a package that just turned private.
+			if err = s.revocationCurrent(ctx, visibility); err != nil {
 				return err
 			}
 		}
@@ -247,7 +261,11 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 					}
 				}
 			}
-			if token, found := bundleContainsToken(bundle, privateTokens); found {
+			check := s.SelfCheck
+			if check == nil {
+				check = bundleContainsToken
+			}
+			if token, found := check(bundle, bundle.PrivateTokens); found {
 				slog.Default().Error("snapshot self-check found a private package", "token", token)
 				return fmt.Errorf("snapshot self-check still contains private package %q", token)
 			}
@@ -266,6 +284,9 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 					slog.Default().Error("snapshot CDN purge deferred", "status", "paused: Cloudflare purge unavailable", "error", purgeErr)
 				}
 			}
+			if err = s.revocationCurrent(ctx, visibility); err != nil {
+				return err
+			}
 			if err = s.Store.CompleteSnapshotRevocation(ctx, visibility.RevocationGeneration, bundle.Record); err != nil {
 				return err
 			}
@@ -281,16 +302,40 @@ type revocableObjects interface {
 	Delete(context.Context, string) error
 }
 
-// RevokePrivate waits for older publishers and completes durable revocation
-// before acknowledging a visibility write. Build also retries it from the outbox.
+// errRevocationSuperseded reports a revocation whose generation moved to a newer build before it
+// could be acknowledged. The bundle on screen may still hold the package that turned private, so
+// the build publishes nothing it has not already written and the caller runs again.
+var errRevocationSuperseded = errors.New("snapshot revocation superseded by a newer visibility change")
+
+// revocationCurrent fails when a visibility change has advanced the revocation generation since
+// the build read it, so no acknowledgement can cover a package the build never filtered.
+func (s *Service) revocationCurrent(ctx context.Context, seen store.SnapshotVisibility) error {
+	current, err := s.Store.SnapshotVisibility(ctx)
+	if err != nil {
+		return err
+	}
+	if current.RevocationGeneration > seen.RevocationGeneration {
+		slog.Default().Warn("snapshot revocation superseded", "generation", seen.RevocationGeneration, "current", current.RevocationGeneration)
+		return errRevocationSuperseded
+	}
+	return nil
+}
+
+// RevokePrivate completes durable revocation before a visibility write is acknowledged. A build
+// that another change superseded returns errRevocationSuperseded; the loop then reads the newer
+// generation and builds again, up to a bound that keeps a burst of admin writes from looping here.
+// Build also retries the same work from the outbox.
 func (s *Service) RevokePrivate(ctx context.Context) (string, error) {
 	warning := ""
-	for {
+	for attempt := 0; attempt < maxRevocationAttempts; attempt++ {
 		state, err := s.Store.SnapshotVisibility(ctx)
 		if err != nil || state.RevocationGeneration <= state.SnapshotRevocation {
 			return warning, err
 		}
 		stats, err := s.Build(ctx)
+		if errors.Is(err, errRevocationSuperseded) {
+			continue
+		}
 		if err != nil {
 			return warning, err
 		}
@@ -298,44 +343,14 @@ func (s *Service) RevokePrivate(ctx context.Context) (string, error) {
 			warning = value
 		}
 	}
+	// Every attempt lost to a newer visibility change; the write is not acknowledged and the
+	// outbox rebuilds against the final generation.
+	return warning, errRevocationSuperseded
 }
 
-// bundleContainsToken decompresses the new bundle and reports whether any private package token
-// survives, the last check between building the tombstone and acknowledging the revocation.
-func bundleContainsToken(bundle Bundle, tokens []string) (string, bool) {
-	if len(tokens) == 0 {
-		return "", false
-	}
-	for _, file := range bundle.Files {
-		data := file.Data
-		if bytes.HasPrefix(data, []byte{0x1f, 0x8b}) {
-			reader, err := gzip.NewReader(bytes.NewReader(data))
-			if err != nil {
-				return file.Key, true
-			}
-			raw, err := gzipReaderAll(reader)
-			if err != nil {
-				return file.Key, true
-			}
-			data = raw
-		}
-		for _, token := range tokens {
-			if bytes.Contains(data, []byte(token)) {
-				return token, true
-			}
-		}
-	}
-	return "", false
-}
-
-func gzipReaderAll(reader *gzip.Reader) ([]byte, error) {
-	var out bytes.Buffer
-	_, err := out.ReadFrom(reader)
-	if closeErr := reader.Close(); err == nil {
-		err = closeErr
-	}
-	return out.Bytes(), err
-}
+// maxRevocationAttempts bounds the rebuilds one admin write triggers when other changes keep
+// advancing the generation while it runs.
+const maxRevocationAttempts = 5
 
 func encodeDocument(doc Document) ([]byte, []byte, error) {
 	var value any = doc

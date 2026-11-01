@@ -294,3 +294,109 @@ func TestAddCanonicalCandidateDeduplicatesCaseInsensitively(t *testing.T) {
 	require.Equal(t, items, addCanonicalCandidate(items, "new/name"))
 	require.Equal(t, items, addCanonicalCandidate(items, ""))
 }
+
+// A row that found the repository but published no license must not stay "none" forever behind a
+// 304: the full check asks again without its ETag so the license file is read (#65, F-02).
+func TestGitHubLicenseRetryIgnoresETagForUnlicensedRepository(t *testing.T) {
+	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	stored := `"W/\"1\""`
+	row := store.SourceFact{PackageID: 1, Source: GitHub, Input: "owner/app", Subject: "owner/app", Status: "none", ETag: &stored,
+		Data: json.RawMessage(`{"repo":"owner/app","url":"https://github.com/owner/app"}`), CheckedAt: now.Add(-24 * time.Hour), NextCheckAt: now.Add(-time.Minute)}
+	calls := 0
+	svc := &Service{
+		GitHub: GitHubSourceFunc(func(_ context.Context, repo, etag string) (sources.RepoResult, error) {
+			calls++
+			require.Empty(t, etag, "the full check must read the repository, not the cached 304")
+			return repoResultForTest(repo, "MIT", 10, now), nil
+		}),
+		Now: func() time.Time { return now },
+	}
+	item := pending{pkg: store.SourceFactPackage{ID: 1, RepoURL: stringPointerForTest("https://github.com/owner/app")}, input: "owner/app", items: []string{"owner/app"}, row: &row}
+	fact, _, err := svc.checkGitHub(context.Background(), item, &Stats{GitHubRemaining: -1})
+	require.NoError(t, err)
+	require.Equal(t, "found", fact.Status)
+	require.Equal(t, 1, calls)
+	var published sources.GitHubFact
+	require.NoError(t, json.Unmarshal(fact.Data, &published))
+	require.Equal(t, "MIT", published.License)
+
+	// The daily signal refresh keeps its conditional request; it cannot publish a license.
+	calls = 0
+	signals := &Service{
+		GitHub: GitHubSourceFunc(func(_ context.Context, _ string, etag string) (sources.RepoResult, error) {
+			calls++
+			require.Equal(t, stored, etag)
+			return sources.RepoResult{NotModified: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+		}),
+		Now: func() time.Time { return now },
+	}
+	due := now.Add(-time.Minute)
+	row.SignalsNextCheckAt = &due
+	refreshed, _, err := signals.checkGitHub(context.Background(), pending{pkg: item.pkg, input: item.input, items: item.items, row: &row, signalsOnly: true}, &Stats{GitHubRemaining: -1})
+	require.NoError(t, err)
+	require.Equal(t, 1, calls)
+	require.Equal(t, "none", refreshed.Status)
+	require.Equal(t, stored, *refreshed.ETag)
+}
+
+// A license decision that is already published keeps its conditional request even though the URL
+// check is due again, so a repository that has not changed costs no quota.
+func TestGitHubLicensedRepositoryKeepsConditionalRequest(t *testing.T) {
+	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	stored := `"W/\"2\""`
+	row := store.SourceFact{PackageID: 1, Source: GitHub, Input: "owner/app", Subject: "owner/app", Status: "found", ETag: &stored,
+		Data: json.RawMessage(`{"repo":"owner/app","url":"https://github.com/owner/app","license":"MIT"}`), CheckedAt: now.Add(-30 * 24 * time.Hour), NextCheckAt: now.Add(-time.Minute)}
+	svc := &Service{
+		GitHub: GitHubSourceFunc(func(_ context.Context, _ string, etag string) (sources.RepoResult, error) {
+			require.Equal(t, stored, etag)
+			return sources.RepoResult{NotModified: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+		}),
+		Now: func() time.Time { return now },
+	}
+	item := pending{pkg: store.SourceFactPackage{ID: 1, RepoURL: stringPointerForTest("https://github.com/owner/app")}, input: "owner/app", items: []string{"owner/app"}, row: &row}
+	fact, _, err := svc.checkGitHub(context.Background(), item, &Stats{GitHubRemaining: -1})
+	require.NoError(t, err)
+	require.Equal(t, "found", fact.Status)
+	require.Equal(t, "MIT", factLicenseForTest(t, fact.Data))
+}
+
+func stringPointerForTest(value string) *string { return &value }
+
+func factLicenseForTest(t *testing.T, data json.RawMessage) string {
+	t.Helper()
+	var fact sources.GitHubFact
+	require.NoError(t, json.Unmarshal(data, &fact))
+	return fact.License
+}
+
+// The canonical name of a rename becomes a candidate, so a later check that no longer lists the old
+// name still reaches the repository. The response cache alone would not do this (#78 F-11).
+func TestGitHubRenameCandidateSurvivesAFailedFirstCandidate(t *testing.T) {
+	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	homepage := "https://github.com/old/name"
+	pkg := store.SourceFactPackage{ID: 1, Homepage: &homepage}
+	var calls []string
+	svc := &Service{
+		GitHub: GitHubSourceFunc(func(_ context.Context, repo, _ string) (sources.RepoResult, error) {
+			calls = append(calls, repo)
+			switch repo {
+			case "old/name":
+				// The old name is gone; only a candidate derived from the stored subject or a
+				// rename response can still find the repository.
+				return sources.RepoResult{NotFound: true, Requests: 1, Remaining: 4000, Limit: 5000}, nil
+			case "new/name":
+				return repoResultForTest("new/name", "MIT", 10, now), nil
+			}
+			return sources.RepoResult{}, nil
+		}),
+		Now: func() time.Time { return now },
+	}
+	storedEtag := `"new/name"`
+	row := store.SourceFact{PackageID: 1, Source: GitHub, Input: "old/name", Subject: "new/name", Status: "none", ETag: &storedEtag,
+		Data: json.RawMessage(`{"repo":"new/name","url":"https://github.com/new/name"}`), CheckedAt: now.Add(-24 * time.Hour), NextCheckAt: now.Add(-time.Minute)}
+	fact, _, err := svc.checkGitHub(context.Background(), pending{pkg: pkg, input: "old/name", items: []string{"old/name"}, row: &row}, &Stats{GitHubRemaining: -1})
+	require.NoError(t, err)
+	require.Equal(t, "found", fact.Status, "the stored canonical subject still reaches the repository")
+	require.Equal(t, "new/name", fact.Subject)
+	require.Equal(t, []string{"old/name", "new/name"}, calls)
+}

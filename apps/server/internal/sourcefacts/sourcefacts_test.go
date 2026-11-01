@@ -252,6 +252,9 @@ func TestClassifyLicenseToleratesExtraCopyrightLines(t *testing.T) {
 	bsd := "Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:"
 	require.Equal(t, "BSD-2-Clause", classifyLicense(bsd+"\n\nTHIS LIST OF CONDITIONS"))
 	require.Equal(t, "BSD-3-Clause", classifyLicense(bsd+"\n\nNeither the name of the copyright holder"))
+	// BSD-4-Clause carries the same two lines and adds the advertising clause, so it must not
+	// publish BSD-3 (#65 F-10).
+	require.Empty(t, classifyLicense(bsd+"\n\nNeither the name of the copyright holder\n\nAll advertising materials mentioning features or use of this software must display the following acknowledgement"))
 	// Ambiguous, unrelated and empty files publish nothing.
 	require.Empty(t, classifyLicense(rectangleMIT+"\nMozilla Public License Version 2.0"))
 	require.Empty(t, classifyLicense("All rights reserved."))

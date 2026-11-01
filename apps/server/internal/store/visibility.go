@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sort"
 
 	"gorm.io/gorm"
 )
@@ -35,10 +36,13 @@ func (s *Store) CompleteSnapshotRevocation(ctx context.Context, generation int64
 	})
 }
 
-// PrivatePackageTokens lists the tokens of packages marked private. Revocation uses it for its
-// self-check; these tokens must not survive in a newly built bundle.
+// PrivatePackageTokens lists the tokens of packages that are private and still in the catalog.
+// Revocation uses it for its self-check. Removed packages are excluded: they never enter a bundle,
+// so keeping them would only make the check refuse a token that cannot appear. The order is fixed
+// so the set is reproducible for logs and tests.
 func (s *Store) PrivatePackageTokens(ctx context.Context) ([]string, error) {
 	tokens := []string{}
-	err := s.DB.WithContext(ctx).Raw(`SELECT p.token FROM packages p JOIN package_meta m ON m.package_id=p.id WHERE m.private`).Scan(&tokens).Error
+	err := s.DB.WithContext(ctx).Raw(`SELECT p.token FROM packages p JOIN package_meta m ON m.package_id=p.id WHERE m.private AND p.removed_at IS NULL ORDER BY p.token`).Scan(&tokens).Error
+	sort.Strings(tokens)
 	return tokens, err
 }

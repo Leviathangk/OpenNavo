@@ -27,6 +27,10 @@ type Bundle struct {
 	Info   publicapi.CatalogSnapshotInfo
 	Record store.SnapshotRecord
 	Files  []File
+	// PrivateTokens is the private package set read in the same read-only transaction as the
+	// documents. A set read outside that snapshot could miss a package that turned private while
+	// the bundle was built, and the revocation would then acknowledge a snapshot still holding it.
+	PrivateTokens []string
 }
 
 func localized(values map[string]*string) (publicapi.LocalizedNullableString, error) {
@@ -157,10 +161,19 @@ func compress(value any) ([]byte, error) {
 	}
 	return buffer.Bytes(), nil
 }
-func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, error) {
+func (s *Service) bundle(ctx context.Context, allowSkip, needPrivate bool) (Bundle, bool, error) {
 	var result Bundle
 	skip := false
 	err := s.Store.CatalogRead(ctx, func(view *store.Store) error {
+		if needPrivate {
+			// Read the private set in the bundle's own RepeatableRead snapshot, before the
+			// documents: a later commit cannot then be missed while the files are built.
+			tokens, err := view.PrivatePackageTokens(ctx)
+			if err != nil {
+				return err
+			}
+			result.PrivateTokens = tokens
+		}
 		now := s.now()
 		_, cursor, err := view.CatalogBounds(ctx)
 		if err != nil {
@@ -308,7 +321,7 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 
 // BuildLocal uses a read-only transaction; it publishes no objects and changes neither metadata nor run records.
 func (s *Service) BuildLocal(ctx context.Context) (Bundle, error) {
-	bundle, _, err := s.bundle(ctx, false)
+	bundle, _, err := s.bundle(ctx, false, false)
 	return bundle, err
 }
 

@@ -195,3 +195,25 @@ ANALYZE package_meta`).Error)
 	// upper bound, including goose bookkeeping; sampling supplies a lower bound.
 	t.Logf("00126 synthetic scale: package_meta=%d hidden=%d; migration/AccessExclusive upper bound=%s; observed held interval=%s (1ms sampling); PostgreSQL 18, local isolated Docker, no contending workload", count, hidden, elapsed, locks.last.Sub(locks.first))
 }
+
+// A queue that already holds purges at deployment must not report a debt age of zero until the next
+// purge arrives (#88 F-07).
+func TestMigration127StartsPurgeDebtClockForAnExistingQueue(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStoreAtVersion(t, 126)
+	require.NoError(t, st.DB.Exec(`UPDATE url_notify_state SET pending_purges='["cdn.example.test/snapshots/"]'::jsonb WHERE id=true`).Error)
+	db, err := st.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 127))
+	var since *time.Time
+	require.NoError(t, st.DB.Raw(`SELECT pending_purges_since FROM url_notify_state WHERE id=true AND pending_purges_since IS NOT NULL`).Scan(&since).Error)
+	require.NotNil(t, since, "an existing queue starts the debt clock")
+	require.WithinDuration(t, time.Now().UTC(), *since, time.Minute)
+	// An empty queue keeps it NULL: there is no debt to age, including after a reinstall.
+	require.NoError(t, st.DB.Exec(`UPDATE url_notify_state SET pending_purges='[]'::jsonb,pending_purges_since=NULL WHERE id=true`).Error)
+	require.NoError(t, goose.DownToContext(ctx, db, ".", 126))
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 127))
+	var rows int64
+	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM url_notify_state WHERE id=true AND pending_purges_since IS NOT NULL`).Scan(&rows).Error)
+	require.Zero(t, rows, "no queue, no debt clock")
+}
