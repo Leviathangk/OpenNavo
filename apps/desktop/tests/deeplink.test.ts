@@ -106,6 +106,7 @@ describe('Deep links', () => {
     'E_CONFIRMATION_DENIED',
     'E_CONFIRMATION_TIMEOUT',
     'E_BUSY',
+    'E_DEEPLINK_BUSY',
     'E_CONFIRMATION_REUSED',
     'E_CONFIRMATION_MISMATCH'
   ])('does not enqueue when Rust denies a deep-link grant (%s)', async code => {
@@ -129,6 +130,7 @@ describe('Deep links', () => {
 
   it.each([
     ['E_BUSY', '另一个确认窗口还开着。请先关闭它，再重试。'],
+    ['E_DEEPLINK_BUSY', '这个链接的安装确认还在进行中。请等它结束后再试。'],
     ['E_CONFIRMATION_TIMEOUT', '确认窗口已超时。请先关闭它，再重试。']
   ])('shows a localized message when a deep-link confirmation fails with %s', async (code, message) => {
     const context = await setup('/discover');

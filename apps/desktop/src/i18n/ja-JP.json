@@ -1235,6 +1235,7 @@
     "formulaUnsupported": "OpenNavo で扱うのは App（Homebrew Cask）のみです。このリンク先はコマンドラインツールです。",
     "confirmationBusy": "別の確認ダイアログが開いています。閉じてからもう一度お試しください。",
     "confirmationTimeout": "確認ダイアログがタイムアウトしました。閉じてからもう一度お試しください。",
+    "installBusy": "このリンクのインストール確認はまだ進行中です。完了してからもう一度お試しください。",
     "preview": {
       "invalid": "このリンクは開けません",
       "invalidBody": "リンクのパラメータが足りないか、OpenNavo が受け付ける形式ではありません。何も実行していません。",
