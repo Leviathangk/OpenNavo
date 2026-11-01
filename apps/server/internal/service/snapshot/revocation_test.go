@@ -61,18 +61,25 @@ func TestBundleContainsTokenMatchesExactTokensOnly(t *testing.T) {
 	}
 }
 
-// A variant `name@variant` is the same package, so a private base token covers every variant in the
-// bundle, and a private variant covers exactly that variant.
-func TestBundleContainsTokenCoversVariants(t *testing.T) {
+// Privacy is per catalog token: `aerial@beta` is a directory entry of its own, so a private base
+// token does not cover it and a private variant does not cover the base entry. The directory filter
+// makes the same exact-token comparison, and the self-check must not disagree with it.
+func TestBundleContainsTokenTreatsVariantAsSeparateToken(t *testing.T) {
 	bundle := testBundle(t, map[string]any{"token": "aerial@beta"}, map[string]any{"token": "aerial@nightly"})
-	token, found := bundleContainsToken(bundle, []string{"aerial"})
-	require.True(t, found)
-	require.Equal(t, "aerial", token)
-	token, found = bundleContainsToken(bundle, []string{"aerial@nightly"})
+	_, found := bundleContainsToken(bundle, []string{"aerial"})
+	require.False(t, found, "a private base token must not block a public variant that is still published")
+	token, found := bundleContainsToken(bundle, []string{"aerial@nightly"})
 	require.True(t, found)
 	require.Equal(t, "aerial@nightly", token)
 	_, found = bundleContainsToken(bundle, []string{"aerial@insiders"})
 	require.False(t, found)
+	// A private variant leaves the public base entry alone in the same way.
+	base := testBundle(t, map[string]any{"token": "aerial"})
+	_, found = bundleContainsToken(base, []string{"aerial@beta"})
+	require.False(t, found, "a private variant must not block the public base entry")
+	token, found = bundleContainsToken(base, []string{"aerial"})
+	require.True(t, found)
+	require.Equal(t, "aerial", token)
 }
 
 func TestBundleContainsTokenFailsClosedOnUnreadableDocuments(t *testing.T) {

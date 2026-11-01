@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 )
 
 // bundleTokenList is the part of every bundle document the revocation self-check reads: the base
@@ -21,10 +20,11 @@ type bundleTokenList struct {
 // bundleContainsToken reports the exact token of a private package that survives in the new bundle.
 // It parses the documents instead of scanning their bytes: a private token is often a prefix of a
 // public one (1password and 1password-cli, ray and raycast, obs and obsidian) or appears in ordinary
-// copy, and a byte scan would refuse to acknowledge a revocation forever. A variant token
-// `name@variant` belongs to the same package, so it matches too. A file that cannot be decompressed
-// or decoded fails closed with its key, because a bundle that cannot be checked is not a bundle that
-// can be acknowledged.
+// copy, and a byte scan would refuse to acknowledge a revocation forever. Privacy applies to one
+// catalog token at a time, exactly as the directory filter does: a private base token does not cover
+// its variants (`aerial` private leaves `aerial@beta` public), and a private variant covers only
+// itself. A file that cannot be decompressed or decoded fails closed with its key, because a bundle
+// that cannot be checked is not a bundle that can be acknowledged.
 func bundleContainsToken(bundle Bundle, tokens []string) (string, bool) {
 	if len(tokens) == 0 {
 		return "", false
@@ -39,25 +39,14 @@ func bundleContainsToken(bundle Bundle, tokens []string) (string, bool) {
 			return file.Key, true
 		}
 		for _, item := range document.Items {
-			base, _, _ := splitVariantToken(item.Token)
-			// A private entry matches its own token and every variant of it; a private variant
-			// matches that variant alone, so `aerial@beta` does not hide `aerial@nightly`.
-			for _, candidate := range []string{item.Token, base} {
-				if original, ok := wanted[candidate]; ok {
-					return original, true
-				}
+			// The comparison is the whole token: `aerial@beta` is a directory entry of its own, so a
+			// private `aerial` does not hide it and a private variant does not hide the base entry.
+			if original, ok := wanted[item.Token]; ok {
+				return original, true
 			}
 		}
 	}
 	return "", false
-}
-
-// splitVariantToken separates `name@variant` into the package token and its variant.
-func splitVariantToken(token string) (string, string, bool) {
-	if index := strings.IndexByte(token, '@'); index > 0 {
-		return token[:index], token[index+1:], true
-	}
-	return token, "", false
 }
 
 func decodeGzipJSON(data []byte, out any) error {
