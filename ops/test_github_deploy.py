@@ -2805,11 +2805,21 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
                 return ''
             with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
                 obj.rollback()
+            # Prove this exercised rollback() itself, not another cleanup path.
+            obj.verify.assert_called_once_with(expected='c' * 12)
+            obj.compose.assert_any_call('stop', '--timeout', '90', *obj.services.values())
+            obj.compose.assert_any_call('rm', '--force', '--stop', *obj.services.values())
             probes = [args for args in commands if args[:3] == ['docker', 'ps', '-q']]
             self.assertEqual(len(probes), len(obj.services))
+            probed = []
             for args in probes:
                 self.assertIn('label=com.docker.compose.oneoff=False', args)
                 self.assertIn('label=com.docker.compose.project=example-prod', args)
+                services = [value for flag, value in zip(args, args[1:])
+                            if flag == '--filter' and value.startswith('label=com.docker.compose.service=')]
+                self.assertEqual(len(services), 1)
+                probed.append(services[0].removeprefix('label=com.docker.compose.service='))
+            self.assertEqual(sorted(probed), sorted(obj.services.values()))
 
     def test_rollback_candidate_cleanup_failure_marks_degraded(self):
         with tempfile.TemporaryDirectory() as root:
