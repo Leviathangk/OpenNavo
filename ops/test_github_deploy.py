@@ -2723,6 +2723,59 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             obj.verify()
         self.assertEqual(sleeps[:4], [2, 4, 8, 16])
 
+    def test_verify_logs_a_missing_public_mcp_host_in_full_and_stops(self):
+        """The fixed configuration message must reach the deploy log, not just the type name."""
+        obj = object.__new__(deploy.Deployment)
+        obj.payload = payload()
+        obj.services = {'public-mcp': 'public-mcp_new'}
+        obj.config = {'local_origin': 'http://127.0.0.1:80',
+                      'checks': []}
+        sleeps = []
+        output = io.StringIO()
+        with patch.object(deploy.urllib.request, 'urlopen',
+                          side_effect=fake_public_mcp()), \
+                patch.object(deploy.time, 'sleep', side_effect=sleeps.append), \
+                contextlib.redirect_stdout(output), \
+                self.assertRaisesRegex(RuntimeError, 'requires public_mcp_host or WEB_DOMAIN'):
+            obj.verify()
+        # A misconfiguration cannot heal by waiting: one attempt, no retry, no sleep.
+        self.assertEqual(sleeps, [])
+        self.assertEqual(output.getvalue().count('Post-deployment check attempt'), 1)
+        self.assertIn('requires public_mcp_host or WEB_DOMAIN', output.getvalue())
+        self.assertNotIn('RuntimeError\n', output.getvalue())
+
+    def test_subpath_probe_connection_failure_is_a_route_check_error(self):
+        """A refused connection on the probe kept only the type name; keep the endpoint instead."""
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+        fake = fake_public_mcp()
+
+        def urlopen(request, timeout):
+            if request.data is None:
+                raise deploy.urllib.error.URLError(ConnectionRefusedError('refused'))
+            return fake(request, timeout)
+        with patch.object(deploy.urllib.request, 'urlopen', side_effect=urlopen), \
+                self.assertRaises(deploy.RouteCheckError) as raised:
+            obj.verify_public_mcp()
+        message = str(raised.exception)
+        self.assertIn('/mcp/x', message)
+        self.assertIn('request error (ConnectionRefusedError)', message)
+
+    def test_subpath_probe_timeout_is_a_route_check_error(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+        fake = fake_public_mcp()
+
+        def urlopen(request, timeout):
+            if request.data is None:
+                raise TimeoutError('timed out')
+            return fake(request, timeout)
+        with patch.object(deploy.urllib.request, 'urlopen', side_effect=urlopen), \
+                self.assertRaises(deploy.RouteCheckError) as raised:
+            obj.verify_public_mcp()
+        self.assertIn('/mcp/x', str(raised.exception))
+        self.assertIn('request error (TimeoutError)', str(raised.exception))
+
     def test_rollback_candidate_cleanup_failure_marks_degraded(self):
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)

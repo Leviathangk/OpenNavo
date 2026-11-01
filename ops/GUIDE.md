@@ -303,7 +303,11 @@ body marker (`opennavo-public-mcp-subpath`), so a site-wide or upstream 404
 cannot pass as a healthy public route; releases deployed before the marker
 existed are still accepted while their own live Caddyfile lacks it. Public-MCP
 failures back off exponentially (2/4/8/16 s) so a short post-switch cold start
-does not exhaust the five attempts or the 60/min per-client quota. At startup,
+does not exhaust the five attempts or the 60/min per-client quota. Every
+public-MCP failure keeps its endpoint, status and a redacted body preview in the
+deploy log; a missing `public_mcp_host`/`WEB_DOMAIN` is a permanent
+configuration error, so its fixed message is printed once and the run stops
+instead of retrying. At startup,
 before reading a payload, the receiver removes
 `.<name>-<random>` temp files older than an hour that an interrupted atomic
 write left in the root, `deploy/`, release or Caddy directories.

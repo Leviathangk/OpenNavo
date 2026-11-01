@@ -422,6 +422,14 @@ def redact_url(url):
         return '(invalid url)'
 
 
+class ConfigurationError(RuntimeError):
+    """A host configuration problem whose fixed message is safe to print in the public deploy log.
+
+    Only messages built here from constant text belong in this class; never put a credential, a
+    response body or a raw exception message into it.
+    """
+
+
 class RouteCheckError(RuntimeError):
     """A post-deployment request failed; the message is safe for the public deploy log."""
 
@@ -476,6 +484,11 @@ def route_check_error(error, method, url, host, *, public_mcp=False):
     if isinstance(error, urllib.error.URLError):
         reason = getattr(error, 'reason', None)
         return RouteCheckError(method, url, host, f'request error ({type(reason).__name__ if reason else "URLError"})',
+                               public_mcp=public_mcp)
+    if isinstance(error, OSError):
+        # A bare socket timeout or connection reset reaches these request loops as well; keep the
+        # endpoint and the failure class instead of losing both in verify()'s type-name logging.
+        return RouteCheckError(method, url, host, f'request error ({type(error).__name__})',
                                public_mcp=public_mcp)
     return None
 
@@ -1632,8 +1645,8 @@ class Deployment:
         host = self.web_domain()
         if host:
             return host
-        raise RuntimeError('public MCP verification requires public_mcp_host or WEB_DOMAIN in the host '
-                           'configuration or .env; refusing to infer it from the route checks')
+        raise ConfigurationError('public MCP verification requires public_mcp_host or WEB_DOMAIN in the host '
+                                 'configuration or .env; refusing to infer it from the route checks')
 
     def verify_public_mcp(self):
         host = self.public_mcp_host()
@@ -1718,6 +1731,13 @@ class Deployment:
                 marker = error.read(256).decode('utf-8', 'replace')
             except Exception:
                 marker = ''
+        except Exception as error:
+            # Caddy not ready yet, or the connection refused: keep the endpoint in the log instead
+            # of letting verify() collapse the failure to a bare exception type name.
+            converted = route_check_error(error, 'GET', endpoint + '/x', host, public_mcp=True)
+            if converted is None:
+                raise
+            raise converted from None
         if status != 404:
             # Same contract as the marker check below: the public log keeps the endpoint, the
             # status and a redacted preview instead of a bare exception type name.
@@ -1786,6 +1806,11 @@ class Deployment:
                     self.verify_public_mcp()
                 return
             except Exception as error:
+                if isinstance(error, ConfigurationError):
+                    # A permanent host misconfiguration cannot be fixed by waiting, and its fixed
+                    # message is safe for the public log: print it whole and stop instead of retrying.
+                    print(f'Post-deployment check attempt {attempt} failed: {error}', flush=True)
+                    raise RuntimeError(f'post-deployment route checks failed: {error}') from None
                 last_error = str(error) if isinstance(error, RouteCheckError) else type(error).__name__
                 if last_error != logged:
                     print(f'Post-deployment check attempt {attempt} failed: {last_error}', flush=True)
