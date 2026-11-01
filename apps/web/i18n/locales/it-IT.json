@@ -684,7 +684,7 @@
       "yes": "Sì",
       "no": "No",
       "checked": "Verificato",
-      "bundleId": "Bundle ID"
+      "bundleId": "ID del bundle"
     },
     "repo": {
       "stars": "★",
@@ -695,9 +695,6 @@
       "archived": "Archiviato"
     },
     "quick": {
-      "title": "Informazioni di base",
-      "checked": "Le informazioni qui sopra sono state verificate il {date} o successivamente.",
-      "sourcesLink": "Mostra le fonti di ogni dato",
       "source": "Fonte del download",
       "fontFiles": "File dei font",
       "chips": "Chip",
@@ -782,6 +779,8 @@
       "hint": "Qui trovi solo fatti verificabili, ciascuno con fonte e data: non è una certificazione di sicurezza. Per controllare i file che hai scaricato, puoi analizzarli sul tuo Mac con OpenNavo.",
       "identity": "Identità dello sviluppatore",
       "teamId": "Team ID",
+      "source": "Codice sorgente",
+      "sourceNotPublic": "Non pubblico",
       "channels": "Canali di distribuzione",
       "openSource": "Open source",
       "cves": "Vulnerabilità note (CVE)",

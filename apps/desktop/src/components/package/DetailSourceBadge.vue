@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PackageDetail } from '@opennavo/api';
-import { packageInstallState, toPackageSource } from '@opennavo/shared';
+import { lifecycleReasonOf, packageInstallState, toPackageSource } from '@opennavo/shared';
 import { OnPackageSourceBadge } from '@opennavo/ui';
 import { useAppLocale } from '@/composables/useAppLocale';
 
@@ -25,15 +25,13 @@ const description = computed(() => {
   ]);
   lines.push(
     state.value === 'disabled'
-      ? t('package.disabledNotice', {
-          reason: props.pkg.disable?.reason ?? props.pkg.homebrewStatus?.reason ?? t('package.noReason')
-        })
+      ? t('package.disabledNotice', { reason: lifecycleReasonOf(props.pkg, 'disabled') ?? t('package.noReason') })
       : t('package.sourceBadge.active')
   );
   if (state.value === 'deprecated')
     lines.push(
       t('package.deprecatedNotice', {
-        reason: props.pkg.deprecation?.reason ?? props.pkg.homebrewStatus?.reason ?? t('package.noReason')
+        reason: lifecycleReasonOf(props.pkg, 'deprecated') ?? t('package.noReason')
       })
     );
   if (state.value === 'paused') lines.push(t('package.staleNotice'));
@@ -60,5 +58,6 @@ const description = computed(() => {
     :description="description"
     :state="state"
     :verified="source.verified"
+    :label-has-check="state === 'active' && source.verified"
   />
 </template>

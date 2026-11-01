@@ -684,7 +684,7 @@
       "yes": "是",
       "no": "否",
       "checked": "核查日期",
-      "bundleId": "Bundle ID"
+      "bundleId": "應用程式套件識別碼"
     },
     "repo": {
       "stars": "★",
@@ -695,9 +695,6 @@
       "archived": "已歸檔"
     },
     "quick": {
-      "title": "基本資訊",
-      "checked": "以上資訊最早核查於 {date}。",
-      "sourcesLink": "檢視各項來源",
       "source": "下載來源",
       "fontFiles": "字型檔案",
       "chips": "晶片",
@@ -782,6 +779,8 @@
       "hint": "這裡只列可以核驗的事實，並註明來源和日期，不是安全認證。要檢查你下載的檔案，可以用 OpenNavo 在本機掃描。",
       "identity": "開發者身份",
       "teamId": "Team ID",
+      "source": "原始碼",
+      "sourceNotPublic": "未公開",
       "channels": "分發渠道",
       "openSource": "是否開源",
       "cves": "已知漏洞（CVE）",

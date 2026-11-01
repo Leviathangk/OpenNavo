@@ -5,6 +5,7 @@ import { OnPackageSourceBadge } from '@opennavo/ui';
 import { formatDate } from '~/utils/packageDate';
 import { officialSource } from '~/utils/packageFacts';
 import type { PackagePage } from '~/utils/packageFacts';
+import { lifecycleReason } from '~/utils/packageInstall';
 
 const props = defineProps<{ pkg: PackagePage }>();
 const { t, locale } = useI18n();
@@ -24,17 +25,11 @@ const description = computed(() => {
   ]);
   lines.push(
     state.value === 'disabled'
-      ? t('package.disabledNotice', {
-          reason: props.pkg.disable?.reason ?? props.pkg.homebrewStatus?.reason ?? t('package.noReason')
-        })
+      ? t('package.disabledNotice', { reason: lifecycleReason(props.pkg, state.value, t) })
       : t('package.officialDownload.active')
   );
   if (state.value === 'deprecated')
-    lines.push(
-      t('package.deprecatedNotice', {
-        reason: props.pkg.deprecation?.reason ?? props.pkg.homebrewStatus?.reason ?? t('package.noReason')
-      })
-    );
+    lines.push(t('package.deprecatedNotice', { reason: lifecycleReason(props.pkg, state.value, t) }));
   if (state.value === 'paused') lines.push(t('package.staleNotice'));
   lines.push(
     value.checkedAt
@@ -52,5 +47,6 @@ const description = computed(() => {
     :description="description"
     :state="state"
     :verified="source.verified"
+    :label-has-check="state === 'active' && source.verified"
   />
 </template>

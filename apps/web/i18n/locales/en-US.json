@@ -695,9 +695,6 @@
       "archived": "Archived"
     },
     "quick": {
-      "title": "Quick facts",
-      "checked": "These facts were checked on or after {date}.",
-      "sourcesLink": "See each source",
       "source": "Download source",
       "fontFiles": "Font files",
       "chips": "Chips",
@@ -782,6 +779,8 @@
       "hint": "Only facts that can be checked, each with its source and date. This is not a safety certification. To check the files you downloaded, scan them on your Mac with OpenNavo.",
       "identity": "Developer identity",
       "teamId": "Team ID",
+      "source": "Source",
+      "sourceNotPublic": "Not public",
       "channels": "Distribution",
       "openSource": "Open source",
       "cves": "Known vulnerabilities (CVE)",

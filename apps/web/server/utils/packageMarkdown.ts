@@ -276,7 +276,13 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
   if (!pkg.isFont) {
     const identities = verifiedIdentities(model);
     const vulnerabilities = (model.facts.security?.vulnerabilities ?? []).filter(item => isVerified(item.evidence));
-    if (identities.length || vulnerabilities.length) {
+    // The same neutral source row the page states, so a .md reader is not told less than a page reader,
+    // including the record's own source that lets the claim be checked.
+    const closedIdentity =
+      !pkg.openSource && !model.repository && !identities.some(item => item.openSource === 'yes' || item.repositoryUrl)
+        ? identities.find(item => item.openSource === 'no')
+        : undefined;
+    if (identities.length || vulnerabilities.length || closedIdentity) {
       lines.push(
         `## ${m('package.safety.title', { name: mdText(pkg.displayName) })}`,
         '',
@@ -300,6 +306,10 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
         );
         lines.push(`- ${values.join(' · ')} — ${evidenceText(identity.evidence, locale)}`);
       }
+      if (closedIdentity)
+        lines.push(
+          `- ${m('package.safety.source')}: ${m('package.safety.sourceNotPublic')} — ${evidenceText(closedIdentity.evidence, locale)}`
+        );
       for (const item of vulnerabilities)
         lines.push(
           `- ${mdText(item.id)} · ${m('package.safety.cveVersion', { version: mdText(item.appVersion) })} · ${mdUrl(item.sourceUrl)} · ${evidenceText(item.evidence, locale)}`

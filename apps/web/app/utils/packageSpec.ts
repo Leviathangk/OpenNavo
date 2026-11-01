@@ -87,7 +87,11 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
   const repository = pkg.repository;
   const osi = pkg.openSource;
   const github = pkg.kind === 'link' && pkg.link?.github;
-  const repoIdentity = verifiedIdentities(pkg).find(item => item.openSource === 'yes' || item.repositoryUrl);
+  // A verified identity can settle the source question on its own: an open one with its repository. A closed
+  // one is stated as a neutral fact in the security facts block, not as this card's repository answer, and an
+  // open identity wins over a closed one so a mixed record never claims closed.
+  const identities = verifiedIdentities(pkg);
+  const repoIdentity = identities.find(item => item.openSource === 'yes' || item.repositoryUrl);
   const identityOpenSource = !osi && repoIdentity?.openSource === 'yes';
   const repositoryUrl = httpsUrl(
     repository?.url ??

@@ -31,6 +31,17 @@ function checked(evidence: FactEvidence) {
 const identity = computed(() => identities.value.find(item => item.developer || item.teamId));
 const identityChecked = computed(() => (identity.value ? checked(identity.value.evidence) : null));
 
+// A verified record that says the source is not public. It is a neutral fact in the same list, stated without a
+// warning tone and without a claim either way: a closed record beside an open one, a catalog repository or an
+// OSI licence leaves the row out, because only the open source answers the question there. An "unknown" record
+// claims nothing and is not shown at all. The row keeps the record's evidence, so a reader can check the claim.
+const closedIdentity = computed(() => {
+  if (props.pkg.openSource || props.pkg.repository) return undefined;
+  if (identities.value.some(item => item.openSource === 'yes' || item.repositoryUrl)) return undefined;
+  return identities.value.find(item => item.openSource === 'no');
+});
+const closedChecked = computed(() => (closedIdentity.value ? checked(closedIdentity.value.evidence) : null));
+
 // Channels a verified record names; without one, the ones the catalog itself shows (Homebrew for casks,
 // the developer's download for link apps, a Mac App Store listing with a verified price).
 const channels = computed(() => {
@@ -85,6 +96,25 @@ const visible = computed(() => Boolean(security.value) || channels.value.length 
               >{{ ` · ${identityChecked.before}`
               }}<time :datetime="identityChecked.iso">{{ identityChecked.date }}</time
               >{{ identityChecked.after }}</template
+            ></span
+          >
+        </dd>
+      </div>
+      <div v-if="closedIdentity" data-testid="package-safety-source">
+        <dt class="text-12px text-ink-tertiary">{{ t('package.safety.source') }}</dt>
+        <dd class="m-0 text-ink-primary">
+          {{ t('package.safety.sourceNotPublic') }}
+          <!-- The record's own source, so the claim can be checked; a record with no repository has no other link. -->
+          <span class="mt-2px block text-12px text-ink-tertiary"
+            ><a
+              :href="closedIdentity.evidence.sourceUrl"
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              class="text-ink-secondary underline-offset-2 hover:text-ink-primary"
+              >{{ displayUrl(closedIdentity.evidence.sourceUrl) }}</a
+            ><template v-if="showChecked !== false && closedChecked"
+              >{{ ` · ${closedChecked.before}` }}<time :datetime="closedChecked.iso">{{ closedChecked.date }}</time
+              >{{ closedChecked.after }}</template
             ></span
           >
         </dd>

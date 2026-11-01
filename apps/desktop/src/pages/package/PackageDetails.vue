@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { isThirdPartyTap, packageInstallState } from '@opennavo/shared';
+import { isThirdPartyTap, lifecycleReasonOf, packageInstallState } from '@opennavo/shared';
 import {
   displayUrl,
   OnButton,
@@ -31,10 +31,7 @@ const installNotice = computed(() => {
   const value = detail.value;
   const state = installState.value;
   if (!value || state === 'active') return undefined;
-  const reason =
-    (state === 'deprecated' ? value.deprecation?.reason : value.disable?.reason) ??
-    value.homebrewStatus?.reason ??
-    t('package.noReason');
+  const reason = lifecycleReasonOf(value, state) ?? t('package.noReason');
   return {
     text: t(
       state === 'disabled'

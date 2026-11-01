@@ -684,7 +684,7 @@
       "yes": "はい",
       "no": "いいえ",
       "checked": "確認日",
-      "bundleId": "Bundle ID"
+      "bundleId": "バンドルID"
     },
     "repo": {
       "stars": "★",
@@ -695,9 +695,6 @@
       "archived": "アーカイブ済み"
     },
     "quick": {
-      "title": "基本情報",
-      "checked": "上記の情報は {date} 以降に確認したものです。",
-      "sourcesLink": "各項目の出典を見る",
       "source": "ダウンロード元",
       "fontFiles": "フォントファイル",
       "chips": "チップ",
@@ -782,6 +779,8 @@
       "hint": "ここでは確認できる事実だけを、出典と日付を添えて掲載しています。安全性を認証するものではありません。ダウンロードしたファイルを確かめるには、OpenNavo を使ってお使いの Mac 上でスキャンできます。",
       "identity": "開発元の身元",
       "teamId": "Team ID",
+      "source": "ソースコード",
+      "sourceNotPublic": "非公開",
       "channels": "配布経路",
       "openSource": "オープンソース",
       "cves": "既知の脆弱性（CVE）",

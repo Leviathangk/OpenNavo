@@ -206,6 +206,42 @@ describe('Markdown alternates (X4)', () => {
       expect(md.includes(command), command).toBe(commands);
   });
 
+  it('Writes the same neutral source row as the page for a closed-source identity', () => {
+    // The HTML page states this row (PackageSafety); the .md alternate must not tell a reader less.
+    const identity = {
+      channels: [],
+      openSource: 'no' as const,
+      evidence: {
+        sourceUrl: 'https://vendor.example/identity',
+        checkedAt: '2026-10-01T00:00:00Z',
+        validUntil: null,
+        status: 'verified' as const
+      }
+    };
+    const detail = {
+      ...pkg,
+      openSource: null,
+      repository: undefined,
+      facts: { ...pkg.facts!, security: { identities: [identity] } }
+    };
+    const md = renderPackageMarkdown(detail as PackageDetail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
+    expect(md).toContain(
+      `- ${siteMessage('en-US', 'package.safety.source')}: ${siteMessage('en-US', 'package.safety.sourceNotPublic')} — <https://vendor.example/identity>`
+    );
+    // A record that only says unknown claims nothing, and a stated open source keeps the row out.
+    const unknown = {
+      ...detail,
+      facts: { ...detail.facts, security: { identities: [{ ...identity, openSource: 'unknown' as const }] } }
+    };
+    expect(
+      renderPackageMarkdown(unknown as PackageDetail, { siteUrl: 'https://opennavo.example', locale: 'en-US' })
+    ).not.toContain(siteMessage('en-US', 'package.safety.sourceNotPublic'));
+    const alreadyOpen = { ...detail, openSource: { url: 'https://github.com/acme/app', license: 'MIT' } };
+    expect(
+      renderPackageMarkdown(alreadyOpen as PackageDetail, { siteUrl: 'https://opennavo.example', locale: 'en-US' })
+    ).not.toContain(siteMessage('en-US', 'package.safety.sourceNotPublic'));
+  });
+
   it('Writes the page language with its own links', () => {
     const md = renderPackageMarkdown(pkg, { siteUrl: 'https://opennavo.example', locale: 'zh-CN' });
     expect(md).toContain('https://opennavo.example/zh/apps/facts-app');

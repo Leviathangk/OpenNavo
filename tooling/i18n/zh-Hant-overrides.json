@@ -50,6 +50,12 @@
       "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
     },
     {
+      "key": ["package", "spec", "bundleId"],
+      "source": "应用包标识符",
+      "text": "應用程式套件識別碼",
+      "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"
+    },
+    {
       "key": [
         "package",
         "release",

@@ -4,6 +4,7 @@ import { createSSRApp, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { OnPackageSpecCard } from '@opennavo/ui';
 import { packageSpec } from '../app/utils/packageSpec';
+import { SITE_LOCALES } from '@opennavo/shared';
 import { siteMessage } from '../server/utils/siteCopy';
 import type { PackagePage } from '../app/utils/packageFacts';
 
@@ -473,5 +474,82 @@ describe('product star formatting', () => {
     const label = spec.rows.find(row => row.key === 'openSource')?.stars?.label;
     expect(label).toBe(`★${expected}`);
     expect(label).not.toMatch(/1000[.,]0/);
+  });
+});
+
+describe('identity-only source evidence', () => {
+  const identity = (openSource: 'yes' | 'no' | 'unknown', repositoryUrl?: string) => ({
+    channels: [],
+    openSource,
+    ...(repositoryUrl ? { repositoryUrl } : {}),
+    evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z' }
+  });
+
+  it('leaves a closed source to the security facts block instead of the repository answer', () => {
+    // Product: a closed identity is a neutral fact in PackageSafety; this card answers where a repository is.
+    const pkg = page({ facts: { ...page().facts, security: { identities: [identity('no')] } } });
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'openSource')).toBe(false);
+  });
+
+  it('keeps a closed identity from hiding a repository the catalog already states', () => {
+    const pkg = page({
+      repository: { url: 'https://github.com/acme/public', stars: 12 },
+      facts: { ...page().facts, security: { identities: [identity('no')] } }
+    });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row.value).toBe('GitHub repository');
+    expect(row.href).toBe('https://github.com/acme/public');
+  });
+
+  it('still prefers an open identity over a closed one in the same record', () => {
+    const pkg = page({
+      facts: {
+        ...page().facts,
+        security: { identities: [identity('no'), identity('yes', 'https://github.com/acme/open')] }
+      }
+    });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row).toMatchObject({ value: 'Open source', href: 'https://github.com/acme/open' });
+  });
+
+  it('renders the repository an identity gives without an open-source claim', () => {
+    // The guard is "an open identity or a repository url": a record that merely links a repository still
+    // answers this card's question, and a closed record beside it does not turn that answer into "open".
+    const pkg = page({
+      facts: {
+        ...page().facts,
+        security: { identities: [identity('unknown', 'https://github.com/acme/identity-repo')] }
+      }
+    });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row).toMatchObject({ value: 'GitHub repository', href: 'https://github.com/acme/identity-repo' });
+  });
+
+  it('renders the open-source answer an identity states without a repository', () => {
+    const pkg = page({ facts: { ...page().facts, security: { identities: [identity('yes')] } } });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row.value).toBe('Open source');
+    expect(row.href).toBeUndefined();
+  });
+});
+
+describe('Bundle ID label', () => {
+  it('is written in each language instead of the English "Bundle ID"', () => {
+    for (const code of SITE_LOCALES) {
+      const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
+      const label = messages.package.spec.bundleId;
+      expect(label, code).toBeTruthy();
+      if (code !== 'en-US') expect(label, code).not.toBe('Bundle ID');
+      // The value under the label is a raw identifier, so the label stays short and free of placeholders.
+      expect(label, code).not.toMatch(/[{}]/);
+    }
+  });
+
+  it('does not reuse the package token label, so the two identifier rows stay apart', () => {
+    // Both rows say "identifier" and Traditional Chinese could otherwise render them with one name.
+    for (const code of SITE_LOCALES) {
+      const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
+      expect(messages.package.spec.bundleId, code).not.toBe(messages.package.spec.token);
+    }
   });
 });
