@@ -2995,7 +2995,7 @@ export interface components {
         /**
          * @example {
          *       "current": 1,
-         *       "size": 24,
+         *       "size": 20,
          *       "total": 5,
          *       "records": [
          *         {
@@ -3093,7 +3093,7 @@ export interface components {
         ReleasePage: {
             /** @example 1 */
             current: number;
-            /** @example 24 */
+            /** @example 20 */
             size: number;
             /** @example 5 */
             total: number;
@@ -7555,7 +7555,7 @@ export interface components {
          *       "msg": "ok",
          *       "data": {
          *         "current": 1,
-         *         "size": 24,
+         *         "size": 20,
          *         "total": 5,
          *         "records": [
          *           {
@@ -7892,7 +7892,7 @@ export interface components {
          *       "msg": "ok",
          *       "data": {
          *         "current": 1,
-         *         "size": 24,
+         *         "size": 20,
          *         "total": 1,
          *         "records": [
          *           {
@@ -7941,7 +7941,7 @@ export interface components {
             data: {
                 /** @example 1 */
                 current: number;
-                /** @example 24 */
+                /** @example 20 */
                 size: number;
                 /** @example 1 */
                 total: number;
@@ -8499,7 +8499,7 @@ export interface components {
         };
     };
     responses: {
-        /** @description Error response; see the domain error codes in apps/server/internal/domain. data is null. */
+        /** @description Error response. code is a stable numeric OpenNavo error code, msg a localized message, and data is null. */
         Error: {
             headers: {
                 [name: string]: unknown;
@@ -8510,7 +8510,7 @@ export interface components {
         };
     };
     parameters: {
-        /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+        /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
         Locale: components["schemas"]["Locale"];
         KindPath: components["schemas"]["PackageKind"];
         KindQuery: components["schemas"]["PackageKind"];
@@ -8535,7 +8535,7 @@ export interface operations {
     listBackgroundItems: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
                 q?: string;
                 current?: number;
@@ -8562,7 +8562,7 @@ export interface operations {
     getBackgroundItem: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8591,7 +8591,7 @@ export interface operations {
                 kind?: "apps" | "fonts";
                 bucket?: string;
                 page?: number;
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8618,7 +8618,7 @@ export interface operations {
             query?: {
                 /** @description Number of apps or collections per Discover group. */
                 sectionSize?: number;
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8647,7 +8647,7 @@ export interface operations {
     listCategories: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8685,7 +8685,7 @@ export interface operations {
                 includeDisabled?: boolean;
                 current?: components["parameters"]["Current"];
                 size?: components["parameters"]["Size"];
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8714,7 +8714,7 @@ export interface operations {
     getPackage: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8755,7 +8755,7 @@ export interface operations {
                 current?: components["parameters"]["Current"];
                 /** @description Page size; these listings default to 20. */
                 size?: components["parameters"]["SizeTwenty"];
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8792,7 +8792,7 @@ export interface operations {
                 /** @description macOS label from supported_platforms. When provided, resolve the dependency tree and conflicts for that platform; unsupported labels return 400. */
                 platform?: string;
                 depth?: number;
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8827,7 +8827,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8860,7 +8860,7 @@ export interface operations {
     getPackageLifecycle: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8893,7 +8893,7 @@ export interface operations {
     listArticles: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
                 current?: components["parameters"]["Current"];
                 size?: number;
@@ -8925,7 +8925,7 @@ export interface operations {
     getArticle: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -8956,7 +8956,7 @@ export interface operations {
     getAuthor: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
                 current?: components["parameters"]["Current"];
                 size?: number;
@@ -9015,7 +9015,7 @@ export interface operations {
     lookupPackages: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9065,7 +9065,7 @@ export interface operations {
                 platform?: "web" | "desktop";
                 current?: components["parameters"]["Current"];
                 size?: components["parameters"]["Size"];
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9096,7 +9096,7 @@ export interface operations {
             query: {
                 q: string;
                 limit?: number;
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9169,7 +9169,7 @@ export interface operations {
                 includeFonts?: boolean;
                 current?: components["parameters"]["Current"];
                 size?: components["parameters"]["Size"];
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9201,7 +9201,7 @@ export interface operations {
                 current?: components["parameters"]["Current"];
                 /** @description Page size; these listings default to 20. */
                 size?: components["parameters"]["SizeTwenty"];
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9230,7 +9230,7 @@ export interface operations {
     getCollection: {
         parameters: {
             query?: {
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9392,7 +9392,7 @@ export interface operations {
                 platform: "desktop" | "web";
                 /** @description Client version; required for desktop */
                 version?: string;
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
@@ -9422,7 +9422,7 @@ export interface operations {
         parameters: {
             query?: {
                 channel?: "stable" | "beta";
-                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };
             header?: never;
