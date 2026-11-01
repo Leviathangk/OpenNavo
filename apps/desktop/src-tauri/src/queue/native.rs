@@ -446,7 +446,9 @@ impl TaskQueue {
         .await
     }
     pub(super) fn mas_batch(&self, first: &Task) -> Result<Vec<Task>, AppError> {
-        let group = self.database.meta(&format!("mas_batch:{}", first.id))?;
+        let group = self
+            .database
+            .meta(&format!("{}{}", crate::db::MAS_BATCH_PREFIX, first.id))?;
         let Some(group) = group else {
             return Ok(vec![first.clone()]);
         };
@@ -458,7 +460,7 @@ impl TaskQueue {
         }) {
             if self
                 .database
-                .meta(&format!("mas_batch:{}", task.id))?
+                .meta(&format!("{}{}", crate::db::MAS_BATCH_PREFIX, task.id))?
                 .as_deref()
                 != Some(&group)
             {
