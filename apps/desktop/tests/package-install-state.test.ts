@@ -186,7 +186,24 @@ it('prefers the disabled Homebrew reason over a stale pause reason in every desk
     // PackageDetails reads the definition and formulae links, so the fixture needs them to render.
     sourceUrl: 'https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/d/disabled-example.rb',
     formulaeUrl: 'https://formulae.brew.sh/cask/disabled-example',
-    tap: 'homebrew/cask'
+    tap: 'homebrew/cask',
+    // The source badge needs a verified download row for this definition, or it renders nothing to read.
+    facts: {
+      overview: { version: '1.0.0' },
+      requirements: [
+        {
+          architectures: ['arm64', 'x86_64'],
+          versions: ['1.0.0'],
+          downloadUrl: 'https://downloads.example.com/disabled-example.dmg',
+          sha256: 'a'.repeat(64),
+          evidence: {
+            sourceUrl: 'https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/d/disabled-example.rb',
+            checkedAt: '2026-10-30T00:00:00Z',
+            status: 'verified'
+          }
+        }
+      ]
+    }
   } as unknown as PackageDetail;
   state.detail = fields;
   const { pinia, router } = await setup('/package/cask/disabled-example');
@@ -197,6 +214,12 @@ it('prefers the disabled Homebrew reason over a stale pause reason in every desk
   const overview = mount(PackageOverview, { global });
   const details = mount(PackageDetails, { global });
   const layout = mount(PackageLayout, { props: { kind: 'cask', token: 'disabled-example' }, global });
+  // The header is mounted on its own: the layout stubs it, and its source badge is a fourth surface.
+  const header = mount(DetailHeader, {
+    props: { kind: 'cask', token: 'disabled-example', detail: fields },
+    global: { plugins: [pinia, router, i18n] },
+    attachTo: document.body
+  });
   try {
     const expected = i18n.global.t('package.disabledNotice', { reason: 'fails_gatekeeper_check' });
     const pauseCopy = i18n.global.t('package.disabledNotice', { reason: 'No version update for more than 90 days' });
@@ -210,11 +233,16 @@ it('prefers the disabled Homebrew reason over a stale pause reason in every desk
     // PackageDetails' install notice.
     const detailsNote = details.get('[role="note"]').text();
     expect(detailsNote).toBe(expected);
-    for (const text of [note, banner, detailsNote]) expect(text).not.toContain('90 days');
+    // The header badge's tooltip.
+    const badge = header.get('[data-testid="package-source-badge"]');
+    const tooltip = document.getElementById(badge.attributes('aria-describedby')!)!;
+    expect(tooltip.textContent).toContain('fails_gatekeeper_check');
+    for (const text of [note, banner, detailsNote, tooltip.textContent ?? '']) expect(text).not.toContain('90 days');
   } finally {
     overview.unmount();
     details.unmount();
     layout.unmount();
+    header.unmount();
     state.detail = null;
   }
 });
