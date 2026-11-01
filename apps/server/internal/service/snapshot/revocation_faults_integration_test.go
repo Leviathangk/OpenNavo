@@ -180,6 +180,33 @@ WHEN (NEW.snapshot_revocation IS DISTINCT FROM OLD.snapshot_revocation) EXECUTE 
 	requireRecovered(t, st, svc, objects, "snapshot-private")
 }
 
+// A private base package whose variant stays public publishes the variant in the bundle. The
+// self-check compares exact tokens, so the revocation is acknowledged and Latest() recovers; the
+// old variant-base comparison blocked every rebuild and left the catalog at 503 until the attempts
+// ran out.
+func TestRevocationAcknowledgesWhenAPublicVariantOfAPrivateBaseIsPublished(t *testing.T) {
+	ctx := context.Background()
+	st, objects, svc := seedRevocationStore(t, "snapshot-aerial", "snapshot-aerial@beta")
+	makePrivate(t, st, "snapshot-aerial")
+	_, err := svc.Latest(ctx)
+	require.Error(t, err, "metadata is unavailable until the revocation is acknowledged")
+	warning, err := svc.RevokePrivate(ctx)
+	require.NoError(t, err)
+	require.Empty(t, warning)
+	state, err := st.SnapshotVisibility(ctx)
+	require.NoError(t, err)
+	require.Equal(t, state.RevocationGeneration, state.SnapshotRevocation, "the public variant does not block the acknowledgement")
+	latest, err := svc.Latest(ctx)
+	require.NoError(t, err)
+	key := strings.TrimPrefix(latest.Url, objects.URL(""))
+	data, ok := objects.memoryObjects[key]
+	require.True(t, ok, key)
+	tokens, err := bundleDocumentTokens(File{Key: key, Data: data})
+	require.NoError(t, err)
+	require.NotContains(t, tokens, "snapshot-aerial", "the private base entry is gone")
+	require.Contains(t, tokens, "snapshot-aerial@beta", "the public variant is still published")
+}
+
 // AC-88-08: when the catalog filter no longer removes a private entry, the self-check must block the
 // revocation and log it at error level, never acknowledge the bundle.
 func TestRevocationSelfCheckBlocksAVariantOfAPrivatePackage(t *testing.T) {
