@@ -24,6 +24,7 @@ func NewBusinessMetrics(st *store.Store) *BusinessMetrics {
 		"content_translation_requests_total": {"entity", "status"}, "content_translation_tokens_total": {"entity", "status"},
 		"sync_runs_total": {"job", "status"}, "catalog_packages": {"kind"}, "changelog_fetch_total": {"source", "status"}, "github_ratelimit_remaining": {},
 		"catalog_last_success_timestamp_seconds": {}, "opennavo_metrics_collection_success": {},
+		"snapshot_revocation_generation_gap": {}, "snapshot_purge_debt_age_seconds": {}, "snapshot_latest_unavailable_seconds": {},
 	} {
 		m.desc[name] = prometheus.NewDesc(name, "OpenNavo "+name, labels, nil)
 	}
@@ -91,6 +92,9 @@ func (m *BusinessMetrics) Collect(ch chan<- prometheus.Metric) {
 	}
 	emit("github_ratelimit_remaining", prometheus.GaugeValue, float64(m.state.GitHubRemaining))
 	emit("catalog_last_success_timestamp_seconds", prometheus.GaugeValue, lastSuccess)
+	emit("snapshot_revocation_generation_gap", prometheus.GaugeValue, float64(m.state.SnapshotRevocationGap))
+	emit("snapshot_purge_debt_age_seconds", prometheus.GaugeValue, m.state.OldestPurgeDebtSeconds)
+	emit("snapshot_latest_unavailable_seconds", prometheus.GaugeValue, m.state.SnapshotUnavailableSeconds)
 
 }
 func metricLabels(key string) (string, string) {

@@ -28,7 +28,7 @@ const (
 	priceRecheck                  = 24 * time.Hour
 	maxBackoff                    = 7 * 24 * time.Hour
 	maxGitHubRequestsWithoutQuota = 100 // A missing quota header caps one run at 100 requests to protect the shared token.
-	maxGitHubRepoRequests         = 2   // GitHub.Repo follows at most one rename redirect.
+	maxGitHubRepoRequests         = 3   // GitHub.Repo follows one rename redirect and may read one license file.
 )
 
 var (
@@ -155,6 +155,19 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	return out, json.Unmarshal(encoded, &out)
 }
 
+// addCanonicalCandidate appends a rename's canonical owner/name once, case-insensitively.
+func addCanonicalCandidate(items []string, canonical string) []string {
+	if canonical == "" {
+		return items
+	}
+	for _, item := range items {
+		if strings.EqualFold(item, canonical) {
+			return items
+		}
+	}
+	return append(items, canonical)
+}
+
 func candidates(source string, p store.SourceFactPackage) []string {
 	if source == GitHub {
 		return sources.GitHubRepos(text(p.Homepage), text(p.DownloadURL), text(p.RepoURL))
@@ -235,11 +248,24 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	sawUnavailable := false
 	sawSignalFailure := false
 	results := make(map[string]sources.RepoResult)
+	// A stored subject is the canonical name a previous rename published, so it stays a candidate
+	// even when the app's definition no longer lists it: otherwise a rename followed by an edit to
+	// the homepage would hide the repository from the very next check.
+	if item.row != nil && licenseUnverified(item.row) && !contains(item.items, item.row.Subject) {
+		item.items = append(item.items, item.row.Subject)
+	}
 	for index := 0; index < len(item.items); index++ {
 		repo := item.items[index]
 		etag := ""
 		if item.row != nil && item.row.ETag != nil && strings.EqualFold(item.row.Subject, repo) {
 			etag = *item.row.ETag
+		}
+		// A row that found the repository but published no license read the repository before the
+		// license file lookup existed, or the lookup failed. Its ETag would answer 304 and the
+		// license would never be reconsidered, so a full check asks again without one. A daily
+		// signal refresh keeps the conditional request: it cannot publish a license anyway.
+		if fullCheck && etag != "" && licenseUnverified(item.row) {
+			etag = ""
 		}
 		result, fetched := results[strings.ToLower(repo)]
 		if !fetched {
@@ -312,6 +338,12 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 				}
 			}
 			continue
+		}
+		// A renamed repository answers under its canonical full_name. Keep that name as a candidate
+		// for later checks and reuse this response for it instead of spending another request.
+		if !strings.EqualFold(current.Repo, repo) {
+			results[strings.ToLower(current.Repo)] = result
+			item.items = addCanonicalCandidate(item.items, current.Repo)
 		}
 		if !fullCheck && !strings.EqualFold(item.row.Subject, current.Repo) {
 			// Recovery or a redirect can select a different repository. Its license
@@ -510,6 +542,13 @@ func (s *Service) logger() *slog.Logger {
 
 func githubSignalsDue(row store.SourceFact, now time.Time) bool {
 	return row.SignalsNextCheckAt == nil || !row.SignalsNextCheckAt.After(now)
+}
+
+// licenseUnverified reports a row that knew the repository but never published a license: status
+// "none" with a stored subject. GitHub would answer a conditional request with 304 and the row
+// would keep "none" forever, including rows stored before the license file lookup existed.
+func licenseUnverified(row *store.SourceFact) bool {
+	return row != nil && row.Status == "none" && hasGitHubRepository(*row)
 }
 
 func mergeGitHubSignals(data json.RawMessage, repository sources.Repository) ([]byte, error) {

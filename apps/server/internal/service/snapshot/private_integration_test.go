@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/homebrew"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -30,11 +31,14 @@ func TestPrivateSnapshotPublicationRevokesAllPriorObjects(t *testing.T) {
 	}
 	objects := memoryObjects{}
 	purges := []string{}
-	failPurge := false
+	purgeMode := ""
 	svc := &Service{Store: st, Objects: objects, Purge: func(_ context.Context, prefixes []string) error {
 		purges = append(purges, prefixes...)
-		if failPurge {
-			return errors.New("injected CDN failure")
+		switch purgeMode {
+		case "block":
+			return errors.New("purge queue unavailable")
+		case "defer":
+			return urlnotify.ErrPurgeDeferred
 		}
 		return nil
 	}}
@@ -50,17 +54,28 @@ func TestPrivateSnapshotPublicationRevokesAllPriorObjects(t *testing.T) {
 SELECT id,true,'Owner decision' FROM packages WHERE token='snapshot-private'`).Error)
 	_, err = svc.Latest(ctx)
 	require.Error(t, err, "metadata is unavailable until revocation completes")
-	// A failed purge must not acknowledge privacy or lose the durable retry.
-	failPurge = true
-	require.ErrorContains(t, svc.RevokePrivate(ctx), "injected CDN failure")
+	// A purge that cannot be queued is origin-side debt: block and keep the generation difference.
+	purgeMode = "block"
+	_, err = svc.RevokePrivate(ctx)
+	require.ErrorContains(t, err, "purge queue unavailable")
 	state, err := st.SnapshotVisibility(ctx)
 	require.NoError(t, err)
 	require.Greater(t, state.RevocationGeneration, state.SnapshotRevocation)
+	_, err = svc.Latest(ctx)
+	require.Error(t, err)
+
+	// A deferred purge still acknowledges revocation: the new tombstone is the latest.json,
+	// origin objects are gone, and the warning tells the admin edge copies may persist.
+	purgeMode = "defer"
+	warning, err := svc.RevokePrivate(ctx)
+	require.NoError(t, err)
+	require.Equal(t, PurgePendingWarning, warning)
+	state, err = st.SnapshotVisibility(ctx)
+	require.NoError(t, err)
+	require.Equal(t, state.RevocationGeneration, state.SnapshotRevocation)
 	var queued int64
 	require.NoError(t, st.DB.Table("job_outbox").Where("unique_key='snapshot:private'").Count(&queued).Error)
 	require.Equal(t, int64(1), queued)
-	failPurge = false
-	require.NoError(t, svc.RevokePrivate(ctx))
 	latest, err := svc.Latest(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, latest.ItemCount)
@@ -134,7 +149,10 @@ func TestSnapshotRevocationWaitsForInflightPublisher(t *testing.T) {
 	<-objects.started // The bundle still contains the public package.
 	require.NoError(t, st.DB.Exec(`INSERT INTO package_meta(package_id,private,visibility_reason) SELECT id,true,'Owner decision' FROM packages WHERE token='inflight-private'`).Error)
 	revoked := make(chan error, 1)
-	go func() { revoked <- svc.RevokePrivate(ctx) }()
+	go func() {
+		_, err := svc.RevokePrivate(ctx)
+		revoked <- err
+	}()
 	select {
 	case err := <-revoked:
 		t.Fatalf("revocation must join the active publisher: %v", err)

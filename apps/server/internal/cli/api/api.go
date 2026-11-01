@@ -105,9 +105,6 @@ func run(ctx context.Context) error {
 	tapGitHub.ObserveQuota = st.ObserveGitHubQuota
 	tapGitHub.TokenProvider = func(ctx context.Context) (string, error) { return st.GitHubToken(ctx, cfg) }
 	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent, Taps: &taps.Service{Store: st, GitHub: tapGitHub}}
-	adminService.InvalidatePublic = func(ctx context.Context) error {
-		return cache.Invalidate(ctx, cacheClient, []string{"c:*"})
-	}
 	adminService.InvalidateShareImages = func(ctx context.Context, token string) (string, error) {
 		return (&urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}).QueueShareImagePurgeWithWarning(ctx, token)
 	}

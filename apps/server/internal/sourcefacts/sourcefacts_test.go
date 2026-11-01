@@ -2,9 +2,11 @@ package sourcefacts
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -211,4 +213,99 @@ func TestAppStoreLookupRateLimit(t *testing.T) {
 	defer server.Close()
 	_, err := (&AppStore{Client: server.Client(), Base: server.URL}).Lookup(context.Background(), []string{"a.b"})
 	require.ErrorIs(t, err, ErrRateLimited)
+}
+
+const rectangleMIT = `MIT License
+
+Copyright (c) 2017 Ryan Hanson
+
+Based on the Spectacle app, Copyright (c) 2016 Eric Czarny
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`
+
+func TestClassifyLicenseToleratesExtraCopyrightLines(t *testing.T) {
+	require.Equal(t, "MIT", classifyLicense(rectangleMIT))
+	require.Equal(t, "MIT", classifyLicense(strings.ReplaceAll(rectangleMIT, "\"AS IS\"", "“AS IS”")))
+	require.Equal(t, "Apache-2.0", classifyLicense("Apache License\nVersion 2.0, January 2004\nhttp://www.apache.org/licenses/LICENSE-2.0"))
+	require.Equal(t, "ISC", classifyLicense("Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted."))
+	require.Equal(t, "MPL-2.0", classifyLicense("Mozilla Public License Version 2.0\n\n1. Definitions"))
+	require.Equal(t, "GPL-3.0", classifyLicense("GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007"))
+	require.Equal(t, "GPL-2.0", classifyLicense("GNU GENERAL PUBLIC LICENSE\nVersion 2, June 1991"))
+	require.Equal(t, "LGPL-3.0", classifyLicense("GNU LESSER GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007"))
+	require.Equal(t, "LGPL-2.1", classifyLicense("GNU LESSER GENERAL PUBLIC LICENSE\nVersion 2.1, February 1999"))
+	bsd := "Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:"
+	require.Equal(t, "BSD-2-Clause", classifyLicense(bsd+"\n\nTHIS LIST OF CONDITIONS"))
+	require.Equal(t, "BSD-3-Clause", classifyLicense(bsd+"\n\nNeither the name of the copyright holder"))
+	// BSD-4-Clause carries the same two lines and adds the advertising clause, so it must not
+	// publish BSD-3 (#65 F-10).
+	require.Empty(t, classifyLicense(bsd+"\n\nNeither the name of the copyright holder\n\nAll advertising materials mentioning features or use of this software must display the following acknowledgement"))
+	// Ambiguous, unrelated and empty files publish nothing.
+	require.Empty(t, classifyLicense(rectangleMIT+"\nMozilla Public License Version 2.0"))
+	require.Empty(t, classifyLicense("All rights reserved."))
+	require.Empty(t, classifyLicense(""))
+}
+
+func TestRepoClassifiesLicenseFileWhenGitHubSaysNoAssertion(t *testing.T) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(rectangleMIT))
+	licenseBody, err := json.Marshal(map[string]any{
+		"license":  map[string]any{"spdx_id": "NOASSERTION", "key": "other"},
+		"content":  encoded,
+		"encoding": "base64",
+	})
+	require.NoError(t, err)
+	repo := `{"full_name":"rxhanson/Rectangle","html_url":"https://github.com/rxhanson/Rectangle","language":"Swift","license":{"spdx_id":"NOASSERTION"}}`
+	getter := &fakeGetter{answers: []fakeAnswer{
+		{status: 200, body: repo, header: http.Header{"Etag": {`W/"1"`}, "X-Ratelimit-Remaining": {"4998"}}},
+		{status: 200, body: string(licenseBody), header: http.Header{"X-Ratelimit-Remaining": {"4997"}}},
+	}}
+	result, err := (&GitHub{HTTP: getter}).Repo(context.Background(), "rxhanson/Rectangle", "")
+	require.NoError(t, err)
+	require.Equal(t, []string{"https://api.github.com/repos/rxhanson/Rectangle", "https://api.github.com/repos/rxhanson/Rectangle/license"}, getter.calls)
+	require.Equal(t, 2, result.Requests)
+	require.Equal(t, int64(4997), result.Remaining)
+	open, ok := result.Repository.OpenSource()
+	require.True(t, ok)
+	require.Equal(t, "MIT", open.License)
+
+	// A repository GitHub already names stays at one request.
+	getter = &fakeGetter{answers: []fakeAnswer{{status: 200, body: `{"full_name":"a/b","html_url":"https://github.com/a/b","language":"Go","license":{"spdx_id":"MIT"}}`}}}
+	_, err = (&GitHub{HTTP: getter}).Repo(context.Background(), "a/b", "")
+	require.NoError(t, err)
+	require.Len(t, getter.calls, 1)
+
+	// A license lookup that exhausts the quota still stops the batch.
+	getter = &fakeGetter{answers: []fakeAnswer{
+		{status: 200, body: repo},
+		{status: 403, header: http.Header{"X-Ratelimit-Remaining": {"0"}}},
+	}}
+	_, err = (&GitHub{HTTP: getter}).Repo(context.Background(), "rxhanson/Rectangle", "")
+	require.ErrorIs(t, err, ErrRateLimited)
+}
+
+func TestLicenseFileUsesGitHubsOwnSpdxWhenAvailable(t *testing.T) {
+	body, err := json.Marshal(map[string]any{"license": map[string]any{"spdx_id": "BSD-3-Clause"}, "content": "", "encoding": "none"})
+	require.NoError(t, err)
+	getter := &fakeGetter{answers: []fakeAnswer{
+		{status: 200, body: `{"full_name":"a/b","html_url":"https://github.com/a/b","language":"Go","license":{"spdx_id":"NOASSERTION"}}`},
+		{status: 200, body: string(body)},
+	}}
+	result, err := (&GitHub{HTTP: getter}).Repo(context.Background(), "a/b", "")
+	require.NoError(t, err)
+	require.Equal(t, "BSD-3-Clause", result.Repository.License.SPDXID)
 }
