@@ -60,5 +60,6 @@ const description = computed(() => {
     :description="description"
     :state="state"
     :verified="source.verified"
+    :label-has-check="state === 'active' && source.verified"
   />
 </template>

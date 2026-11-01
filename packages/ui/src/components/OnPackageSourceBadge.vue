@@ -9,14 +9,22 @@ export interface OnPackageSourceBadgeProps {
   description: string;
   state: PackageInstallState;
   verified: boolean;
+  /**
+   * The label already shows a check mark of its own (every `package.sourceBadge.verified` string carries
+   * one), so a verified active source needs no icon. The host sets this because it picks the label.
+   */
+  labelHasCheck?: boolean;
 }
-const props = defineProps<OnPackageSourceBadgeProps>();
 
-// Verified labels already carry a visible check, so only older labels without one keep the icon.
+const props = withDefaults(defineProps<OnPackageSourceBadgeProps>(), { labelHasCheck: false });
+
+// The icon follows the typed props. It used to be found by scanning the translated label for "✓", which
+// made it depend on copy: a language that moved or dropped the mark lost the icon, and one that mentioned
+// the mark elsewhere drew the icon under a second check.
 const icon = computed(() => {
   if (props.state !== 'active') return 'triangle-alert';
   if (!props.verified) return 'info';
-  return props.label.includes('✓') ? undefined : 'check';
+  return props.labelHasCheck ? undefined : 'check';
 });
 </script>
 

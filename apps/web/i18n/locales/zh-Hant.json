@@ -684,7 +684,8 @@
       "yes": "是",
       "no": "否",
       "checked": "核查日期",
-      "bundleId": "Bundle ID"
+      "bundleId": "套件識別碼",
+      "closedSource": "閉源"
     },
     "repo": {
       "stars": "★",
@@ -695,9 +696,6 @@
       "archived": "已歸檔"
     },
     "quick": {
-      "title": "基本資訊",
-      "checked": "以上資訊最早核查於 {date}。",
-      "sourcesLink": "檢視各項來源",
       "source": "下載來源",
       "fontFiles": "字型檔案",
       "chips": "晶片",

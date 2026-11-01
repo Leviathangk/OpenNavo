@@ -684,7 +684,8 @@
       "yes": "Oui",
       "no": "Non",
       "checked": "Vérifié le",
-      "bundleId": "Bundle ID"
+      "bundleId": "ID du bundle",
+      "closedSource": "Code fermé"
     },
     "repo": {
       "stars": "★",
@@ -695,9 +696,6 @@
       "archived": "Archivé"
     },
     "quick": {
-      "title": "Informations clés",
-      "checked": "Ces informations ont été vérifiées au plus tôt le {date}.",
-      "sourcesLink": "Voir les sources de chaque information",
       "source": "Source de téléchargement",
       "fontFiles": "Fichiers de police",
       "chips": "Puce",

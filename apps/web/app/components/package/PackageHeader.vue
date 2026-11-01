@@ -14,6 +14,7 @@ import { trackEvent } from '~/utils/analytics';
 import { httpsUrl, linkDownloadUrl, linkSource } from '~/utils/linkApp';
 import { officialSource } from '~/utils/packageFacts';
 import type { PackagePage } from '~/utils/packageFacts';
+import { lifecycleReason } from '~/utils/packageInstall';
 import PackageSourceBadge from './PackageSourceBadge.vue';
 import { useToasts } from '~/composables/useToasts';
 
@@ -59,10 +60,7 @@ const source = computed(() => officialSource(props.pkg));
 const installNotice = computed(() => {
   const state = installState.value;
   if (state === 'active' || isLink.value) return undefined;
-  const reason =
-    (state === 'deprecated' ? props.pkg.deprecation?.reason : props.pkg.disable?.reason) ??
-    props.pkg.homebrewStatus?.reason ??
-    t('package.noReason');
+  const reason = lifecycleReason(props.pkg, state, t);
   return {
     text: t(
       state === 'disabled'

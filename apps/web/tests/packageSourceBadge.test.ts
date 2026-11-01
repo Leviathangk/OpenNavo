@@ -367,3 +367,51 @@ it('hides the star chip without stars or without a GitHub repository', async () 
 it.each(SITE_LOCALES)('has star badge copy in %s', value => {
   expect(siteMessage(value, 'package.repo.starsBadge', { count: '1' })).toMatch(/GitHub.*1|1.*GitHub/);
 });
+
+// The 90-day pause writes its reason into `disable`; a later Homebrew disable leaves that copy behind.
+// Both the header notice and the badge tooltip read the same helper, so they cannot disagree, and both
+// state Homebrew's current reason first (the desktop overview does the same, since PR #63 follow-ups).
+const stalePauseCopy = 'No version update for more than 90 days';
+
+it('states Homebrew’s current reason in the badge tooltip, not a stale pause copy', async () => {
+  const value = Object.assign(pkg(), {
+    homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check' },
+    disable: { reason: stalePauseCopy },
+    deprecation: null,
+    recommendationPaused: false
+  }) as PackagePage;
+  const page = await render(value);
+  const badge = page.querySelector('[data-testid="package-source-badge"]')!;
+  const tooltip = page.querySelector(`[id="${badge.getAttribute('aria-describedby')}"]`)!;
+  expect(tooltip.textContent).toContain('Homebrew has disabled this package: fails_gatekeeper_check');
+  expect(tooltip.textContent).not.toContain(stalePauseCopy);
+});
+
+it('states the same reason in the header notice and the badge tooltip', async () => {
+  const value = Object.assign(pkg(), {
+    homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check' },
+    disable: { reason: stalePauseCopy },
+    deprecation: null,
+    recommendationPaused: false
+  }) as PackagePage;
+  const page = await render(value);
+  const notice = page.querySelector('[data-testid="package-mobile-install-notice"]')!;
+  const badge = page.querySelector('[data-testid="package-source-badge"]')!;
+  const tooltip = page.querySelector(`[id="${badge.getAttribute('aria-describedby')}"]`)!;
+  expect(notice.textContent?.trim()).toBe('Homebrew has disabled this package: fails_gatekeeper_check');
+  expect(tooltip.textContent).toContain(notice.textContent!.trim());
+});
+
+it('keeps the catalog pause reason for an app OpenNavo paused while Homebrew still offers it', async () => {
+  const value = Object.assign(pkg(), {
+    homebrewStatus: { state: 'active', reason: null },
+    disable: { reason: stalePauseCopy },
+    deprecation: null
+  }) as PackagePage;
+  const page = await render(value);
+  const badge = page.querySelector('[data-testid="package-source-badge"]')!;
+  expect(badge.getAttribute('data-state')).toBe('paused');
+  const tooltip = page.querySelector(`[id="${badge.getAttribute('aria-describedby')}"]`)!;
+  expect(tooltip.textContent).toContain(siteMessage(locale, 'package.staleNotice'));
+  expect(tooltip.textContent).not.toContain('Homebrew has disabled');
+});

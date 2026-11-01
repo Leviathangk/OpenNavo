@@ -5,6 +5,7 @@ import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
 import { OnBreadcrumb, OnErrorState, OnIcon, OnPackageNotice, OnTabs } from '@opennavo/ui';
 import { packageLink, packagePath } from '~/utils/packageView';
+import { lifecycleReason } from '~/utils/packageInstall';
 import { appEntityId } from '~/utils/structuredData';
 import { hasTroubleshootingPage, troubleshootingPath } from '~/utils/troubleshooting';
 
@@ -197,7 +198,7 @@ const notice = computed(() => {
   const state = packageInstallState(value);
   if (state === 'active') return null;
   const lifecycle = state === 'deprecated' ? value.deprecation : value.disable;
-  const reason = lifecycle?.reason ?? value.homebrewStatus?.reason ?? t('package.noReason');
+  const reason = lifecycleReason(value, state, t);
   return {
     tone: state === 'disabled' ? ('danger' as const) : ('warning' as const),
     text: t(

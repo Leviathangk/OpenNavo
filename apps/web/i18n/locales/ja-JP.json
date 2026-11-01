@@ -684,7 +684,8 @@
       "yes": "はい",
       "no": "いいえ",
       "checked": "確認日",
-      "bundleId": "Bundle ID"
+      "bundleId": "バンドルID",
+      "closedSource": "クローズドソース"
     },
     "repo": {
       "stars": "★",
@@ -695,9 +696,6 @@
       "archived": "アーカイブ済み"
     },
     "quick": {
-      "title": "基本情報",
-      "checked": "上記の情報は {date} 以降に確認したものです。",
-      "sourcesLink": "各項目の出典を見る",
       "source": "ダウンロード元",
       "fontFiles": "フォントファイル",
       "chips": "チップ",

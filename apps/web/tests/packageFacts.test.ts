@@ -378,9 +378,9 @@ describe('T2 one facts model', () => {
   it('Splits a sentence around its date so the date can be a time element', () => {
     const t = translator('zh-CN');
     expect(aroundDate(t, 'package.facts.asOf')).toEqual({ before: '截至 ', after: '' });
-    expect(aroundDate(translator('en-US'), 'package.quick.checked')).toEqual({
-      before: 'These facts were checked on or after ',
-      after: '.'
+    expect(aroundDate(translator('en-US'), 'package.facts.checkedOn')).toEqual({
+      before: 'Checked ',
+      after: ''
     });
   });
 });

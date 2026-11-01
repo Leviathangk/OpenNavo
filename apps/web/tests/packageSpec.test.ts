@@ -4,6 +4,7 @@ import { createSSRApp, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { OnPackageSpecCard } from '@opennavo/ui';
 import { packageSpec } from '../app/utils/packageSpec';
+import { SITE_LOCALES } from '@opennavo/shared';
 import { siteMessage } from '../server/utils/siteCopy';
 import type { PackagePage } from '../app/utils/packageFacts';
 
@@ -23,6 +24,7 @@ const t = (key: string, named: Record<string, unknown> = {}, plural?: number) =>
     'package.spec.chip': 'Chip',
     'package.spec.autoUpdates': 'Auto-updates',
     'package.spec.openSource': 'Open source',
+    'package.spec.closedSource': 'Closed source',
     'package.spec.repository': 'Repository',
     'package.spec.githubRepository': 'GitHub repository',
     'package.spec.developer': 'Developer',
@@ -473,5 +475,79 @@ describe('product star formatting', () => {
     const label = spec.rows.find(row => row.key === 'openSource')?.stars?.label;
     expect(label).toBe(`★${expected}`);
     expect(label).not.toMatch(/1000[.,]0/);
+  });
+});
+
+describe('identity-only source evidence', () => {
+  const identity = (openSource: 'yes' | 'no' | 'unknown', repositoryUrl?: string) => ({
+    channels: [],
+    openSource,
+    ...(repositoryUrl ? { repositoryUrl } : {}),
+    evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z' }
+  });
+
+  it('shows a closed source stated by a verified identity', () => {
+    const pkg = page({ facts: { ...page().facts, security: { identities: [identity('no')] } } });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row).toMatchObject({ label: 'Repository', value: 'Closed source' });
+    expect(row.href).toBeUndefined();
+    expect(row.stars).toBeUndefined();
+  });
+
+  it('keeps a closed identity from hiding a repository the catalog already states', () => {
+    const pkg = page({
+      repository: { url: 'https://github.com/acme/public', stars: 12 },
+      facts: { ...page().facts, security: { identities: [identity('no')] } }
+    });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row.value).toBe('GitHub repository');
+    expect(row.href).toBe('https://github.com/acme/public');
+  });
+
+  it('does not claim closed source from an identity that is pending review', () => {
+    const pkg = page({
+      facts: {
+        ...page().facts,
+        security: {
+          identities: [identity('no')].map(item => ({
+            ...item,
+            evidence: { status: 'needs_review', checkedAt: '2026-10-01T00:00:00Z' }
+          }))
+        }
+      }
+    });
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'openSource')).toBe(false);
+  });
+
+  it('still prefers an open identity over a closed one in the same record', () => {
+    const pkg = page({
+      facts: {
+        ...page().facts,
+        security: { identities: [identity('no'), identity('yes', 'https://github.com/acme/open')] }
+      }
+    });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row).toMatchObject({ value: 'Open source', href: 'https://github.com/acme/open' });
+  });
+});
+
+describe('Bundle ID label', () => {
+  it('is written in each language instead of the English "Bundle ID"', () => {
+    for (const code of SITE_LOCALES) {
+      const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
+      const label = messages.package.spec.bundleId;
+      expect(label, code).toBeTruthy();
+      if (code !== 'en-US') expect(label, code).not.toBe('Bundle ID');
+      // The value under the label is a raw identifier, so the label stays short and free of placeholders.
+      expect(label, code).not.toMatch(/[{}]/);
+    }
+  });
+
+  it('states closed source in each language', () => {
+    for (const code of SITE_LOCALES) {
+      const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
+      expect(messages.package.spec.closedSource, code).toBeTruthy();
+      if (code !== 'en-US') expect(messages.package.spec.closedSource, code).not.toBe('Closed source');
+    }
   });
 });
