@@ -181,6 +181,21 @@ describe('desktop article browsing', () => {
     expect(openExternal).toHaveBeenCalledExactlyOnceWith('http://example.com/plain');
   });
 
+  it('leaves internal hash routes to the router', async () => {
+    const routed: Article = {
+      ...article,
+      bodyMarkdown: '## Links\n\n[Settings](#/settings)\n\n[Sources](#sources)'
+    };
+    stubFetch(() => ok({ state: 'published', slug: routed.slug, article: routed }));
+    const { wrapper } = await mounted(`/articles/${routed.slug}`);
+    const link = wrapper.get('[data-testid="article-body"] a[href="#/settings"]');
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    link.element.dispatchEvent(event);
+    await flushPromises();
+    expect(event.defaultPrevented).toBe(false);
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
   it('replaces old addresses, and removes the body when a refresh reports withdrawal', async () => {
     let withdrawn = false;
     stubFetch(url =>

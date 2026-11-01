@@ -122,15 +122,18 @@ interface ParsedWebUrl {
 }
 
 function parseWebUrl(value: string): ParsedWebUrl | null {
+  const text = value.trim();
+  // WHATWG parsing turns "http:///path" into host "path"; an empty authority is never a web URL.
+  if (!/^https?:\/\/[^/]/i.test(text)) return null;
   let url: URL;
   try {
-    url = new URL(value.trim());
+    url = new URL(text);
   } catch {
     return null;
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (url.username || url.password) return null;
-  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  const host = url.hostname.toLowerCase().replace(/\.+$/, '');
   return host ? { url, host } : null;
 }
 
@@ -141,21 +144,29 @@ export function isPublicHttpUrl(value: string): boolean {
 }
 
 /**
- * Whether openExternal may hand this URL to the OS: a public web URL or an explicit system-settings
- * link. allowLocal is for trusted configuration links in development builds only.
+ * Whether openExternal may hand this URL to the OS: a public web URL, or a system-settings link only
+ * when the caller says it built the link itself. Delegated content and article links never opt in.
+ * allowLocal is for trusted configuration links in development builds only.
  */
-export function isAllowedExternalUrl(value: string, allowLocal = false): boolean {
+export function isAllowedExternalUrl(value: string, allowLocal = false, allowSystemPreferences = false): boolean {
   const url = value.trim();
-  if (url.startsWith(SYSTEM_SETTINGS_PREFIX)) return url.length > SYSTEM_SETTINGS_PREFIX.length;
+  if (url.startsWith(SYSTEM_SETTINGS_PREFIX))
+    return allowSystemPreferences && url.length > SYSTEM_SETTINGS_PREFIX.length;
   const parsed = parseWebUrl(url);
   if (!parsed) return false;
   if (allowLocal) return !isPrivateHost(parsed.host) || isLoopbackHost(parsed.host);
   return !isPrivateHost(parsed.host);
 }
 
+export interface OpenExternalOptions {
+  allowLocal?: boolean;
+  /** Only a component that hard-codes or validates a macOS settings link may set this. */
+  allowSystemPreferences?: boolean;
+}
+
 /** Open external links in the system browser (opener permits http:, https: and x-apple.systempreferences:, 06 §14); browser mode opens a new tab. */
-export async function openExternal(url: string, options: { allowLocal?: boolean } = {}): Promise<void> {
-  if (!isAllowedExternalUrl(url, options.allowLocal === true)) {
+export async function openExternal(url: string, options: OpenExternalOptions = {}): Promise<void> {
+  if (!isAllowedExternalUrl(url, options.allowLocal === true, options.allowSystemPreferences === true)) {
     reportExternalLinkRejection(url);
     throw new Error('external_url_rejected');
   }

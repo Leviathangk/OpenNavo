@@ -18,7 +18,7 @@ import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useSettingsStore, useTasksStore, useUpdatesStore } from '@/stores';
-import { openExternal } from '@/utils/external';
+import { isPublicHttpUrl, openExternal, reportExternalLinkRejection } from '@/utils/external';
 import { optionalPublicPackage } from '@/utils/publicCatalog';
 
 // Version history (08 §10.6, mockup 04): toolbar (all / with notes / previously installed; Chinese / original) and timeline.
@@ -213,7 +213,8 @@ function openSource(_entry: ReleaseEntry, event: MouseEvent) {
   const link = event.currentTarget as HTMLAnchorElement | null;
   if (!link?.href) return;
   event.preventDefault();
-  void openExternal(link.href);
+  if (!isPublicHttpUrl(link.href)) return reportExternalLinkRejection(link.href);
+  void openExternal(link.href).catch(() => {});
 }
 
 // Median Homebrew lag behind upstream; within one hour counts as synchronized.

@@ -83,6 +83,9 @@ async function followLink(event: MouseEvent) {
         toasts.push({ tone: 'danger', title: t('errors.actionFailed') });
       }
     }
+  } else if (href.startsWith('#/')) {
+    // Vue Router hash links such as #/settings stay with the router.
+    return;
   } else if (isPublicHttpUrl(href)) {
     event.preventDefault();
     try {

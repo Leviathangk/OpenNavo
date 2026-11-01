@@ -85,7 +85,7 @@ function detail(check: PostureCheck): string {
 async function fix(check: PostureCheck) {
   if (!check.settingsUrl) return;
   try {
-    await openExternal(check.settingsUrl);
+    await openExternal(check.settingsUrl, { allowSystemPreferences: true });
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   }

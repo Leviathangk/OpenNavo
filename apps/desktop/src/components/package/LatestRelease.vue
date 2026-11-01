@@ -7,7 +7,7 @@ import { formatDate, formatReleaseVersion } from '@opennavo/shared';
 import { displayUrl, OnChip, OnIcon } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
 import { useAppLocale } from '@/composables/useAppLocale';
-import { openExternal } from '@/utils/external';
+import { isPublicHttpUrl, openExternal, reportExternalLinkRejection } from '@/utils/external';
 
 // Latest release card (mockup 03 .latest): up to three grouped highlights, View all N versions, and original link.
 const props = defineProps<{ release: ReleaseEntry; total: number; versionsTo: string }>();
@@ -20,6 +20,12 @@ const rows = computed(() =>
     .flatMap(section => (section.items[0] ? [{ area: section.area, text: section.items[0] }] : []))
     .slice(0, 3)
 );
+
+// The release source is catalog content, not a trusted settings link.
+function openSourceUrl(url: string) {
+  if (!isPublicHttpUrl(url)) return reportExternalLinkRejection(url);
+  void openExternal(url).catch(() => {});
+}
 
 const meta = computed(() =>
   [
@@ -61,7 +67,7 @@ const meta = computed(() =>
         v-if="release.sourceUrl"
         type="button"
         class="m-0 inline-flex items-center gap-4px rounded-tiny border-none bg-transparent p-0 font-sans text-12.5px text-ink-tertiary outline-none hover:text-ink-primary focus-visible:shadow-focus-ring"
-        @click="openExternal(release.sourceUrl)"
+        @click="openSourceUrl(release.sourceUrl)"
       >
         {{ displayUrl(release.sourceUrl) }}
         <OnIcon name="arrow-up-right" :size="14" />

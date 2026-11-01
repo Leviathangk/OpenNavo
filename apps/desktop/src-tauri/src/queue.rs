@@ -9,7 +9,7 @@ use crate::{
         locate,
         pty::{Execution, Progress, execute},
     },
-    db::{Database, TASK_INSTALL_PLAN_PREFIX, TASK_RETRY_PARENT_PREFIX},
+    db::{Database, MAS_BATCH_PREFIX, TASK_INSTALL_PLAN_PREFIX, TASK_RETRY_PARENT_PREFIX},
     events::{CoreEvent, EventSink},
     model::*,
 };
@@ -399,13 +399,13 @@ impl TaskQueue {
                 self.uninstall_engine
                     .release(&entry.plan.plan_id, &app.app_id);
             }
-            if resolved.is_some() {
-                // The plan was written before the task on purpose; a failed save must not leave it behind.
-                if let Err(cleanup) = self
-                    .database
-                    .delete_meta(&format!("{TASK_INSTALL_PLAN_PREFIX}{id}"))
-                {
-                    tracing::warn!(task_id = %id, error = %cleanup, "failed to remove orphaned install plan");
+            // Both relationships are written before the task on purpose; a failed save must not leave them behind.
+            for key in [
+                format!("{TASK_INSTALL_PLAN_PREFIX}{id}"),
+                format!("{TASK_RETRY_PARENT_PREFIX}{id}"),
+            ] {
+                if let Err(cleanup) = self.database.delete_meta(&key) {
+                    tracing::warn!(task_id = %id, key = %key, error = %cleanup, "failed to remove orphaned task metadata");
                 }
             }
             return Err(error);
@@ -449,7 +449,7 @@ impl TaskQueue {
                 .is_some_and(|t| t.kind == TaskKind::Mas)
             {
                 self.database
-                    .set_meta(&format!("mas_batch:{}", task.id), &group)?;
+                    .set_meta(&format!("{MAS_BATCH_PREFIX}{}", task.id), &group)?;
             }
         }
         Ok(tasks)
@@ -2489,20 +2489,40 @@ else:
     #[test]
     fn history_clear_removes_retry_parent_metadata_with_its_task() {
         let (_directory, queue, _) = fixture("install_ok");
-        let task = queue
+        let parent = queue
             .enqueue(
                 TaskOp::Upgrade,
                 Some(target("calibre")),
                 TaskOptions::default(),
                 TaskTrigger::Manual,
             )
-            .expect("task");
+            .expect("parent task");
+        let mut failed = parent.clone();
+        failed.state = TaskState::Failed;
+        failed.error = Some(AppError::new("E_FAKE", "fixture_failure"));
+        failed.finished_at = Some(chrono::Utc::now().timestamp_millis());
+        queue.database.save_task(&failed).expect("fail parent");
+        // A real retry writes the relationship; the test never fabricates the meta key.
+        // The queued parent still lives in memory, so the retry request differs in its options to
+        // avoid the in-flight dedupe; the failed parent in the database is what the retry links to.
+        let task = queue
+            .enqueue(
+                TaskOp::Upgrade,
+                Some(target("calibre")),
+                TaskOptions {
+                    quit_running: true,
+                    ..TaskOptions::default()
+                },
+                TaskTrigger::Retry,
+            )
+            .expect("retry task");
+        assert_eq!(task.trigger, TaskTrigger::Retry);
         queue.shutdown();
         let key = format!("{TASK_RETRY_PARENT_PREFIX}{}", task.id);
-        queue
-            .database
-            .set_meta(&key, "parent")
-            .expect("relationship");
+        assert_eq!(
+            queue.database.meta(&key).expect("read").as_deref(),
+            Some(parent.id.as_str())
+        );
         let mut ended = task.clone();
         ended.state = TaskState::Succeeded;
         ended.finished_at = Some(chrono::Utc::now().timestamp_millis());
@@ -2520,20 +2540,41 @@ else:
     #[test]
     fn prune_removes_retry_parent_metadata_with_its_task_and_keeps_active_ones() {
         let (_directory, queue, _) = fixture("install_ok");
+        let failed_parent = |name: &str| {
+            let parent = queue
+                .enqueue(
+                    TaskOp::Upgrade,
+                    Some(target(name)),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .expect("parent task");
+            let mut failed = parent.clone();
+            failed.state = TaskState::Failed;
+            failed.error = Some(AppError::new("E_FAKE", "fixture_failure"));
+            failed.finished_at = Some(chrono::Utc::now().timestamp_millis());
+            queue.database.save_task(&failed).expect("fail parent");
+        };
+        failed_parent("calibre");
+        failed_parent("other");
+        let retry_options = || TaskOptions {
+            quit_running: true,
+            ..TaskOptions::default()
+        };
         let old = queue
             .enqueue(
                 TaskOp::Upgrade,
                 Some(target("calibre")),
-                TaskOptions::default(),
-                TaskTrigger::Manual,
+                retry_options(),
+                TaskTrigger::Retry,
             )
             .expect("old task");
         let active = queue
             .enqueue(
                 TaskOp::Upgrade,
                 Some(target("other")),
-                TaskOptions::default(),
-                TaskTrigger::Manual,
+                retry_options(),
+                TaskTrigger::Retry,
             )
             .expect("active task");
         queue.shutdown();
@@ -2541,12 +2582,8 @@ else:
         let day: i64 = 86_400_000;
         let old_key = format!("{TASK_RETRY_PARENT_PREFIX}{}", old.id);
         let active_key = format!("{TASK_RETRY_PARENT_PREFIX}{}", active.id);
-        for key in [&old_key, &active_key] {
-            queue
-                .database
-                .set_meta(key, "parent")
-                .expect("relationship");
-        }
+        assert!(queue.database.meta(&old_key).expect("read").is_some());
+        assert!(queue.database.meta(&active_key).expect("read").is_some());
         let mut ended = old.clone();
         ended.state = TaskState::Succeeded;
         ended.finished_at = Some(now - 731 * day);
@@ -2561,21 +2598,78 @@ else:
     }
 
     #[test]
-    fn failed_save_task_removes_install_plan_metadata() {
+    fn history_clear_removes_mas_batch_metadata_with_its_task() {
         let (_directory, queue, _) = fixture("install_ok");
-        let plans = |queue: &TaskQueue| {
+        *queue.native_runtime.lock().unwrap() = native::Runtime {
+            store: Some(crate::appstore::install::Runner {
+                executable: Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fake-store/store"),
+                environment: [
+                    ("OPENNAVO_FAKE_STORE_SCENARIO".into(), "install_ok".into()),
+                    ("OPENNAVO_FAKE_STORE_FIXTURES".into(), "1".into()),
+                ]
+                .into(),
+            }),
+            admin: None,
+        };
+        let tasks = queue
+            .enqueue_many(
+                TaskOp::Install,
+                vec![TaskTarget {
+                    kind: TaskKind::Mas,
+                    token: "42".into(),
+                }],
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .expect("mas task");
+        queue.shutdown();
+        let task = &tasks[0];
+        let key = format!("{MAS_BATCH_PREFIX}{}", task.id);
+        assert!(queue.database.meta(&key).expect("read").is_some());
+        let mut ended = task.clone();
+        ended.state = TaskState::Succeeded;
+        ended.finished_at = Some(chrono::Utc::now().timestamp_millis());
+        queue.database.save_task(&ended).expect("finish");
+
+        queue
+            .database
+            .delete_finished(std::slice::from_ref(&task.id))
+            .expect("clear");
+
+        assert!(queue.database.task(&task.id).expect("read").is_none());
+        assert!(queue.database.meta(&key).expect("read").is_none());
+    }
+
+    #[test]
+    fn failed_save_task_removes_install_plan_and_retry_parent_metadata() {
+        let (_directory, queue, _) = fixture("install_ok");
+        let count = |queue: &TaskQueue, prefix: &str| {
             queue
                 .database
                 .with(|c| {
                     Ok(c.query_row(
                         "SELECT COUNT(*) FROM meta WHERE key LIKE ?1",
-                        [format!("{TASK_INSTALL_PLAN_PREFIX}%")],
+                        [format!("{prefix}%")],
                         |row| row.get::<_, i64>(0),
                     )?)
                 })
                 .expect("count")
         };
-        let before = plans(&queue);
+        let parent = queue
+            .enqueue(
+                TaskOp::Upgrade,
+                Some(target("calibre")),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .expect("parent task");
+        let mut failed = parent.clone();
+        failed.state = TaskState::Failed;
+        failed.error = Some(AppError::new("E_FAKE", "fixture_failure"));
+        failed.finished_at = Some(chrono::Utc::now().timestamp_millis());
+        queue.database.save_task(&failed).expect("fail parent");
+        let plans_before = count(&queue, TASK_INSTALL_PLAN_PREFIX);
+        let retries_before = count(&queue, TASK_RETRY_PARENT_PREFIX);
         queue
             .database
             .with(|c| {
@@ -2590,11 +2684,12 @@ else:
                 .expect("plan");
 
         let error = queue
-            .enqueue_resolved_install(resolved, TaskTrigger::Deeplink)
+            .enqueue_resolved_install(resolved, TaskTrigger::Retry)
             .expect_err("insert must fail");
 
         assert_eq!(error.code, "E_UNKNOWN");
-        assert_eq!(plans(&queue), before);
+        assert_eq!(count(&queue, TASK_INSTALL_PLAN_PREFIX), plans_before);
+        assert_eq!(count(&queue, TASK_RETRY_PARENT_PREFIX), retries_before);
     }
 
     #[test]

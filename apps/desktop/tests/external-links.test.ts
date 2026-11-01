@@ -108,6 +108,10 @@ describe('External URL policy', () => {
     'http://[fe80::1]/',
     'http://[::ffff:127.0.0.1]/',
     'http://[::ffff:192.168.0.1]/',
+    'http://127.0.0.1./',
+    'http://10.0.0.1../',
+    'http:///path',
+    'http://.',
     'http://2130706433/',
     'http://0177.0.0.1/',
     'http://printer.local/',
@@ -124,10 +128,23 @@ describe('External URL policy', () => {
     expect(isAllowedExternalUrl(url)).toBe(false);
   });
 
-  it('allows only explicit system-settings links outside http(s)', () => {
-    expect(isAllowedExternalUrl('x-apple.systempreferences:com.apple.preference.security')).toBe(true);
-    expect(isAllowedExternalUrl('x-apple.systempreferences:')).toBe(false);
-    expect(isPublicHttpUrl('x-apple.systempreferences:com.apple.preference.security')).toBe(false);
+  it('allows system-settings links only for callers that opt in', () => {
+    const settings = 'x-apple.systempreferences:com.apple.preference.security';
+    expect(isAllowedExternalUrl(settings)).toBe(false);
+    expect(isAllowedExternalUrl(settings, false, true)).toBe(true);
+    expect(isAllowedExternalUrl('x-apple.systempreferences:', false, true)).toBe(false);
+    expect(isPublicHttpUrl(settings)).toBe(false);
+  });
+
+  it('rejects a system-settings URL coming from page or catalog content', async () => {
+    // The same scheme that a security panel may open by construction is content everywhere else.
+    await expect(
+      openExternal('x-apple.systempreferences:com.apple.preference.security', { allowLocal: true })
+    ).rejects.toThrow('external_url_rejected');
+    await expect(openExternal('x-apple.systempreferences:com.apple.Network-Settings.extension')).rejects.toThrow(
+      'external_url_rejected'
+    );
+    expect(openUrl).not.toHaveBeenCalled();
   });
 
   it('allows loopback only for trusted local development links', () => {
