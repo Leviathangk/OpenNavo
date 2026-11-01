@@ -450,7 +450,7 @@ describe('desktop link price types', () => {
     ['it-IT', itIT]
   ] as const)('localises the Bundle ID labels in %s', (locale, messages) => {
     const catalog = messages as unknown as {
-      package: { spec: { bundleId: string } };
+      package: { spec: { bundleId: string; token: string } };
       appStore: { info: { bundleId: string } };
       appInfo: { fields: { bundleId: string } };
     };
@@ -462,6 +462,8 @@ describe('desktop link price types', () => {
       // "Bundle ID" is the Xcode term; a machine-translated "identifier" sentence is not a label.
       expect(label.length).toBeLessThanOrEqual(20);
     }
+    // The package token is a different row in the same card; one language must not name both the same way.
+    expect(catalog.package.spec.bundleId).not.toBe(catalog.package.spec.token);
     // All three surfaces read the same term in one language, so the app never names the field two ways.
     expect(new Set(labels).size).toBe(1);
   });
