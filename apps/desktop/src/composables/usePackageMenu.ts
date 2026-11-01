@@ -110,7 +110,12 @@ export function usePackageMenu() {
       }
       case 'web': {
         const config = await fetchClientConfig().catch(() => null);
-        if (config) await run(openExternal(`${config.links.web}/${kind === 'formula' ? 'cli' : 'apps'}/${token}`));
+        if (config)
+          await run(
+            openExternal(`${config.links.web}/${kind === 'formula' ? 'cli' : 'apps'}/${token}`, {
+              allowLocal: import.meta.env.DEV
+            })
+          );
         break;
       }
       case 'uninstall':
