@@ -216,6 +216,24 @@ describe('Title width budget', () => {
       }
   });
 
+  it('covers fr, de, it and pt app titles with the same budget', () => {
+    for (const code of ['fr-FR', 'de-DE', 'it-IT', 'pt-BR'] as const) {
+      const title = overviewTitle({ ...app, displayName: 'ABCDEFGHIJKLMNOPQRST' }, translator(code));
+      expect(textWidth(title), title).toBeLessThanOrEqual(TITLE_WIDTH);
+      expect(title).toContain('ABCDEFGHIJKLMNOPQRST');
+    }
+  });
+
+  it('applies the same budget to release-note and legacy meta titles', () => {
+    const t = translator('en-US');
+    const versions = versionsTitle({ ...app, displayName: longName, version: '1.2.3' }, t);
+    expect(versions).toContain(longName);
+    expect(versions.endsWith(' · OpenNavo')).toBe(false);
+    const legacy = fitTitle(t('package.metaTitleCask', { name: longName, summary: 'A long summary' }));
+    expect(legacy).toContain(longName);
+    expect(legacy.endsWith(' · OpenNavo')).toBe(false);
+  });
+
   it('drops the brand before the name and never cuts the name', () => {
     const t = translator('en-US');
     const short = overviewTitle({ ...app, displayName: 'Zen' }, t);

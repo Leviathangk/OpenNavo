@@ -370,9 +370,11 @@ export interface VersionFacts {
 
 export function versionsTitle(pkg: VersionFacts, t: Translate): string {
   const version = reliableVersion(pkg.version);
-  return version
-    ? withName(t, 'package.seo.versionsTitleLatest', pkg.displayName, { version })
-    : withName(t, 'package.seo.versionsTitle', pkg.displayName);
+  return fitTitle(
+    version
+      ? withName(t, 'package.seo.versionsTitleLatest', pkg.displayName, { version })
+      : withName(t, 'package.seo.versionsTitle', pkg.displayName)
+  );
 }
 
 /**

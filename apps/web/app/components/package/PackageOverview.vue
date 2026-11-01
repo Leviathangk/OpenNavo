@@ -8,6 +8,7 @@ import { capabilities } from '~/utils/packageFacts';
 import { packagePath } from '~/utils/packageView';
 import { appEntityId, softwareAppNode } from '~/utils/structuredData';
 import {
+  fitTitle,
   overrideDescription,
   overrideTitle,
   overviewDescription,
@@ -137,7 +138,7 @@ usePageSeo({
     const custom = overrideTitle(value);
     if (custom) return custom;
     if (!legacyTitles.value) return overviewTitle(value, t);
-    return t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' });
+    return fitTitle(t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' }));
   },
   description: () => {
     const value = pkg.value;
