@@ -2613,7 +2613,7 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
             retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
             retry.reload = unittest.mock.Mock()
-            retry.state = {**retry.state, 'services': {}, 'previous': {}}
+            retry.state = {**retry.state, 'services': {'api': 'api_live'}, 'previous': {}}
             def command(args):
                 if args[:2] == ['docker', 'ps']:
                     raise RuntimeError('docker unavailable')
@@ -2622,6 +2622,49 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
                     contextlib.redirect_stdout(io.StringIO()) as output:
                 retry.stop_interrupted_candidates()
             self.assertIn('could not list candidate containers', output.getvalue())
+
+    def test_candidate_cleanup_never_runs_without_a_claimed_release(self):
+        """An empty claimed set would make every application container an orphan."""
+        for state in [{}, {'services': {}}, {'previous': {}}]:
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as root:
+                obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+                retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+                retry.state = state
+                with patch.object(deploy, 'command') as command, \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    retry.stop_interrupted_candidates()
+                command.assert_not_called()
+                self.assertIn('skipping candidate container cleanup', output.getvalue())
+
+    def test_candidate_cleanup_skips_oneoff_compose_run_containers(self):
+        """`docker compose run` containers carry a bare service label that no release claims."""
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            retry.state = {'services': {'api': 'api_live'}, 'previous': {}}
+            def container(name, service, oneoff=False):
+                labels = {'com.docker.compose.project': retry.config['project'],
+                          'com.docker.compose.service': service}
+                if oneoff:
+                    labels['com.docker.compose.oneoff'] = 'True'
+                return {'Id': name, 'Config': {'Labels': labels}}
+            containers = [container('manual', 'api', oneoff=True),
+                          container('orphan', 'api_ghdeadbeef12')]
+            calls = []
+            def command(args):
+                calls.append(args)
+                if args[:2] == ['docker', 'ps']:
+                    # The receiver also filters by label; keep the fake honest about both filters.
+                    self.assertIn('label=com.docker.compose.oneoff=False', args)
+                    return '\n'.join(c['Id'] for c in containers)
+                if args[:2] == ['docker', 'inspect']:
+                    return json.dumps(containers)
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
+                retry.stop_interrupted_candidates()
+            mutations = [call for call in calls if call[:2] in (['docker', 'stop'], ['docker', 'rm'])]
+            self.assertEqual(mutations, [['docker', 'stop', '--timeout', '30', 'orphan'],
+                                         ['docker', 'rm', 'orphan']])
 
     def test_install_caddy_validates_before_refreshing_the_backup(self):
         with tempfile.TemporaryDirectory() as root:
@@ -2639,8 +2682,12 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             with self.subTest(body=body), patch.object(
                     deploy.urllib.request, 'urlopen',
                     side_effect=fake_public_mcp(subpath_body=body)), \
-                    self.assertRaisesRegex(RuntimeError, 'without the public-MCP route marker'):
+                    self.assertRaises(deploy.RouteCheckError) as raised:
                 obj.verify_public_mcp()
+            # The deploy log must say what the probe wanted, not only what it got.
+            self.assertIn(deploy.PUBLIC_MCP_SUBPATH_MARKER, str(raised.exception))
+            self.assertIn('expected body containing', str(raised.exception))
+            self.assertEqual(raised.exception.status, 404)
 
     def test_public_mcp_subpath_marker_is_not_required_for_a_legacy_live_caddyfile(self):
         """A rollback to a release that answers /mcp/* with a bare 404 must still verify."""
@@ -2656,7 +2703,7 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
             live.write_text(deploy.public_mcp_route('public-mcp-proxy-x'))
             with patch.object(deploy.urllib.request, 'urlopen',
                               side_effect=fake_public_mcp(subpath_body='404')), \
-                    self.assertRaisesRegex(RuntimeError, 'without the public-MCP route marker'):
+                    self.assertRaises(deploy.RouteCheckError):
                 obj.verify_public_mcp()
 
     def test_verify_backs_off_on_public_mcp_failures(self):

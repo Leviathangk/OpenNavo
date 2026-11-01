@@ -425,12 +425,15 @@ def redact_url(url):
 class RouteCheckError(RuntimeError):
     """A post-deployment request failed; the message is safe for the public deploy log."""
 
-    def __init__(self, method, url, host, status, body=b'', *, retry_after=None, location=None, public_mcp=False):
+    def __init__(self, method, url, host, status, body=b'', *, retry_after=None, location=None,
+                 public_mcp=False, expected=None):
         self.method, self.url, self.host, self.status = method, redact_url(url), host, status
         self.preview = redact_preview(body)
         self.retry_after = retry_after
         self.public_mcp = public_mcp
         detail = f'{method} {self.url} (Host {host}) -> {status}'
+        if expected:
+            detail += f', expected {expected}'
         if location:
             detail += f' Location {redact_url(location)}'
         detail += f'; body[:{VERIFY_BODY_PREVIEW_BYTES}]={self.preview!r}'
@@ -1721,8 +1724,13 @@ class Deployment:
         # when the live Caddyfile this run installed carries it; a rollback to such an older
         # release still validates its own route instead of failing on the newer contract.
         if self._live_caddy_requires_subpath_marker() and PUBLIC_MCP_SUBPATH_MARKER not in marker:
-            raise RuntimeError('public MCP sub-path /mcp/x returned 404 without the public-MCP route '
-                               'marker; the response did not come from the public-MCP handle')
+            # RouteCheckError keeps the endpoint, status and a redacted preview in the public log;
+            # a bare RuntimeError would only ever print its type there.
+            raise RouteCheckError(
+                'GET', endpoint + '/x', host, status,
+                marker.encode('utf-8', 'replace'),
+                expected=f'body containing {PUBLIC_MCP_SUBPATH_MARKER!r} from the public-MCP handle',
+                public_mcp=True)
         print(f'Public MCP route verified ({len(result["tools"])} tools).', flush=True)
 
     def _live_caddy_requires_subpath_marker(self):
@@ -1785,7 +1793,9 @@ class Deployment:
                     backoff = min(PUBLIC_MCP_BACKOFF_BASE * 2 ** max(0, public_mcp_attempts - 1),
                                   PUBLIC_MCP_BACKOFF_MAX)
                     delay = max(delay, backoff)
-                time.sleep(delay)
+                # Do not wait after the last attempt: nothing follows it but the failure.
+                if attempt < VERIFY_ATTEMPTS:
+                    time.sleep(delay)
         if check_public_mcp and public_mcp_attempts >= PUBLIC_MCP_VERIFY_ATTEMPTS:
             print(f'Public MCP verification stopped after {public_mcp_attempts} attempts '
                   f'to stay within the public rate limit.', flush=True)
@@ -1907,9 +1917,16 @@ class Deployment:
         """Remove application containers left by an interrupted run that no release claims."""
         wanted = set(self.state.get('services', {}).values())
         wanted |= set(self.state.get('previous', {}).get('services', {}).values())
+        # Nothing is claimed, so nothing can be proven unclaimed: an empty set would make every
+        # application container an orphan. Without a recorded live release, leave Docker alone.
+        if not wanted:
+            print('WARNING: state records no live or previous services; skipping candidate container '
+                  'cleanup so running containers are never treated as orphans.', flush=True)
+            return
         try:
             ids = command(['docker', 'ps', '-aq', '--filter',
-                           'label=com.docker.compose.project=' + self.config['project']]).splitlines()
+                           'label=com.docker.compose.project=' + self.config['project'],
+                           '--filter', 'label=com.docker.compose.oneoff=False']).splitlines()
             if not ids:
                 return
             containers = json.loads(command(['docker', 'inspect', *ids]))
@@ -1922,6 +1939,7 @@ class Deployment:
             labels = container.get('Config', {}).get('Labels') or {}
             service = labels.get('com.docker.compose.service', '')
             if (labels.get('com.docker.compose.project') != self.config['project']
+                    or labels.get('com.docker.compose.oneoff') == 'True'
                     or not re.fullmatch(APPLICATION_SERVICE_PATTERN, service)
                     or service in wanted):
                 continue
@@ -2087,7 +2105,8 @@ class Deployment:
             for service in self.services.values():
                 ids = command([
                     'docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + self.config['project'],
-                    '--filter', 'label=com.docker.compose.service=' + service
+                    '--filter', 'label=com.docker.compose.service=' + service,
+                    '--filter', 'label=com.docker.compose.oneoff=False'
                 ]).splitlines()
                 candidates.extend({'Id': container, 'State': {'Running': True},
                                    'Config': {'Labels': {'com.docker.compose.service': service}}}
@@ -2122,7 +2141,8 @@ class Deployment:
         current = set(self.services.values())
         retained = set(previous.get('services', {}).values())
         ids = command(['docker', 'ps', '-aq', '--filter',
-                       'label=com.docker.compose.project=' + self.config['project']]).splitlines()
+                       'label=com.docker.compose.project=' + self.config['project'],
+                       '--filter', 'label=com.docker.compose.oneoff=False']).splitlines()
         if not ids:
             return
         containers = json.loads(command(['docker', 'inspect', *ids]))
@@ -2131,6 +2151,7 @@ class Deployment:
             labels = container['Config'].get('Labels') or {}
             service = labels.get('com.docker.compose.service', '')
             if (labels.get('com.docker.compose.project') != self.config['project']
+                    or labels.get('com.docker.compose.oneoff') == 'True'
                     or not re.fullmatch(APPLICATION_SERVICE_PATTERN, service)
                     or service in current):
                 continue
