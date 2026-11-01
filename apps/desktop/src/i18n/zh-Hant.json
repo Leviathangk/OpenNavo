@@ -223,7 +223,7 @@
       "requires": "系統要求",
       "category": "類別",
       "region": "商店地區",
-      "bundleId": "Bundle ID"
+      "bundleId": "應用程式套件識別碼"
     },
     "privacyNote": "這些資訊由你的 Mac 直接向 Apple 獲取，不經過 OpenNavo 的伺服器。",
     "notInRegion": "這款 App 在{region}商店不可用",
@@ -484,7 +484,7 @@
       "developer": "開發者",
       "homepage": "主頁",
       "token": "套件識別碼",
-      "bundleId": "Bundle ID",
+      "bundleId": "應用程式套件識別碼",
       "installedVersion": "已安裝版本",
       "installLocation": "安裝位置",
       "yes": "是",
@@ -1560,7 +1560,7 @@
     "footprintPartial": "有些檔案讀不到，實際佔用可能更大。",
     "fields": {
       "path": "位置",
-      "bundleId": "Bundle ID",
+      "bundleId": "應用程式套件識別碼",
       "version": "版本",
       "vendor": "開發者",
       "arch": "架構",

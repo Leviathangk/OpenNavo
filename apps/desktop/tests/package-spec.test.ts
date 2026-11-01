@@ -435,4 +435,52 @@ describe('desktop link price types', () => {
     const pricing = messages.package.link.pricing as Record<string, string>;
     for (const key of ['free_with_iap', 'trial']) expect(pricing[key]).toBeTruthy();
   });
+
+  // The label names a field, so it is translated; the identifier under it is the app's own and stays raw.
+  it.each([
+    ['en-US', enUS],
+    ['zh-CN', zhCN],
+    ['zh-Hant', zhHant],
+    ['ja-JP', jaJP],
+    ['es-ES', esES],
+    ['pt-BR', ptBR],
+    ['ru-RU', ruRU],
+    ['de-DE', deDE],
+    ['fr-FR', frFR],
+    ['it-IT', itIT]
+  ] as const)('localises the Bundle ID labels in %s', (locale, messages) => {
+    const catalog = messages as unknown as {
+      package: { spec: { bundleId: string; token: string } };
+      appStore: { info: { bundleId: string } };
+      appInfo: { fields: { bundleId: string } };
+    };
+    const labels = [catalog.package.spec.bundleId, catalog.appStore.info.bundleId, catalog.appInfo.fields.bundleId];
+    for (const label of labels) expect(label.trim()).toBeTruthy();
+    for (const label of labels) {
+      // Every locale but English must actually translate it: the identical English string was the #87 defect.
+      if (locale !== 'en-US') expect(label).not.toBe('Bundle ID');
+      // "Bundle ID" is the Xcode term; a machine-translated "identifier" sentence is not a label.
+      expect(label.length).toBeLessThanOrEqual(20);
+    }
+    // The package token is a different row in the same card; one language must not name both the same way.
+    expect(catalog.package.spec.bundleId).not.toBe(catalog.package.spec.token);
+    // All three surfaces read the same term in one language, so the app never names the field two ways.
+    expect(new Set(labels).size).toBe(1);
+  });
+
+  it('keeps the Bundle ID value raw while the label is translated', () => {
+    const spec = packageSpec(
+      detail({ kind: 'link', bundleIds: ['org.example.ely-office'] } as Partial<PackageDetail>),
+      null,
+      null,
+      (key: string) => (key === 'package.spec.bundleId' ? '应用包标识符' : key),
+      'zh-CN',
+      SPEC_NOW
+    ).rows;
+    expect(spec.find(row => row.key === 'bundle')).toMatchObject({
+      label: '应用包标识符',
+      value: 'org.example.ely-office',
+      mono: true
+    });
+  });
 });

@@ -223,7 +223,7 @@
       "requires": "Configuration requise",
       "category": "Catégorie",
       "region": "Région de la boutique",
-      "bundleId": "Bundle ID"
+      "bundleId": "ID du bundle"
     },
     "privacyNote": "Votre Mac obtient ces informations directement auprès d’Apple, sans passer par les serveurs d’OpenNavo.",
     "notInRegion": "Cette app est indisponible dans la boutique {region}",
@@ -484,7 +484,7 @@
       "developer": "Développeur",
       "homepage": "Site web",
       "token": "Identifiant",
-      "bundleId": "Bundle ID",
+      "bundleId": "ID du bundle",
       "installedVersion": "Version installée",
       "installLocation": "Emplacement d’installation",
       "yes": "Oui",
@@ -1560,7 +1560,7 @@
     "footprintPartial": "Certains fichiers sont illisibles ; l’espace réel peut être supérieur.",
     "fields": {
       "path": "Emplacement",
-      "bundleId": "Bundle ID",
+      "bundleId": "ID du bundle",
       "version": "Version",
       "vendor": "Développeur",
       "arch": "Architecture",

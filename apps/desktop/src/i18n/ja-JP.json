@@ -223,7 +223,7 @@
       "requires": "動作環境",
       "category": "カテゴリ",
       "region": "ストアの地域",
-      "bundleId": "Bundle ID"
+      "bundleId": "バンドルID"
     },
     "privacyNote": "この情報は Mac が Apple から直接取得しています。OpenNavo のサーバーは経由しません。",
     "notInRegion": "この App は{region}のストアでは入手できません",
@@ -484,7 +484,7 @@
       "developer": "開発元",
       "homepage": "ホームページ",
       "token": "パッケージ識別子",
-      "bundleId": "Bundle ID",
+      "bundleId": "バンドルID",
       "installedVersion": "インストール済みのバージョン",
       "installLocation": "インストール先",
       "yes": "はい",
@@ -1560,7 +1560,7 @@
     "footprintPartial": "一部のファイルを読み取れなかったため、実際の使用量はさらに大きい可能性があります。",
     "fields": {
       "path": "場所",
-      "bundleId": "Bundle ID",
+      "bundleId": "バンドルID",
       "version": "バージョン",
       "vendor": "開発元",
       "arch": "アーキテクチャ",
