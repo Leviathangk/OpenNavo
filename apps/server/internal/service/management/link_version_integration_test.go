@@ -72,3 +72,52 @@ func TestLinkVersionRevisionAndSourceNormalization(t *testing.T) {
 		require.ErrorContains(t, err, "version_managed_by_source", "dryrun=%v", dry)
 	}
 }
+
+// Creating a link app follows the same manual-version rule as updating one: a version is accepted
+// and recorded as the creation event only when no release source owns it.
+func TestAddLinkPackageManualVersionRule(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{Store: st}
+
+	// A GitHub or Sparkle source owns the version, so a create that writes both is rejected like an update.
+	for name, body := range map[string]map[string]any{
+		"github":  {"githubRepo": "owner/app"},
+		"sparkle": {"sparkleFeed": "https://vendor.example.test/appcast.xml"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			create := map[string]any{"token": "create-sourced-" + name, "name": "Create Sourced", "homepage": "https://vendor.example.test", "version": "1.0.7"}
+			for key, value := range body {
+				create[key] = value
+			}
+			_, err := svc.Execute(ctx, "AddLinkPackage", Input{Body: create})
+			require.ErrorContains(t, err, "version_managed_by_source")
+			var count int64
+			require.NoError(t, st.DB.Raw("SELECT count(*) FROM packages WHERE token=?", create["token"]).Scan(&count).Error)
+			require.Zero(t, count, "a rejected create writes nothing")
+		})
+	}
+
+	// Without a release source the version is accepted and belongs to the creation itself.
+	created, err := svc.Execute(ctx, "AddLinkPackage", Input{Body: map[string]any{"token": "create-manual", "name": "Create Manual", "homepage": "https://vendor.example.test", "version": "1.0.7"}})
+	require.NoError(t, err)
+	id := valueID(created.(map[string]any)["id"])
+	app, err := st.LinkApp(ctx, id)
+	require.NoError(t, err)
+	require.Equal(t, "1.0.7", *app.Version)
+	var versions []string
+	require.NoError(t, st.DB.Raw("SELECT version FROM package_versions WHERE package_id=?", id).Scan(&versions).Error)
+	require.Equal(t, []string{"1.0.7"}, versions)
+	var events []struct{ EventType, Version string }
+	require.NoError(t, st.DB.Raw("SELECT event_type,version FROM catalog_changes WHERE package_id=? AND reason='link' ORDER BY seq", id).Scan(&events).Error)
+	require.Len(t, events, 1)
+	require.Equal(t, "created", events[0].EventType, "the version belongs to the creation, not a later update")
+	require.Equal(t, "1.0.7", events[0].Version)
+
+	// An invalid version is rejected before anything is written.
+	_, err = svc.Execute(ctx, "AddLinkPackage", Input{Body: map[string]any{"token": "create-invalid", "name": "Create Invalid", "homepage": "https://vendor.example.test", "version": "beta"}})
+	require.ErrorContains(t, err, "version_invalid")
+	var count int64
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM packages WHERE token='create-invalid'").Scan(&count).Error)
+	require.Zero(t, count)
+}

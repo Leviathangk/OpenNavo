@@ -4420,7 +4420,7 @@ export interface components {
             sourceLocale?: components["schemas"]["Locale"];
             homepage?: string | null;
             downloadUrl?: string | null;
-            /** @description GitHub owner/name, without a URL or .git suffix. */
+            /** @description GitHub owner/name, without a URL or .git suffix. An empty string clears the release source (stored as null), which also lets a manual `version` be accepted in the same request. A non-empty value makes sync own the version, so `version` is then rejected with version_managed_by_source. */
             githubRepo?: string | null;
             /** @description Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes. */
             githubTagPrefix?: string | null;
@@ -4465,7 +4465,7 @@ export interface components {
             sourceLocale?: components["schemas"]["Locale"];
             homepage?: string | null;
             downloadUrl?: string | null;
-            /** @description GitHub owner/name, without a URL or .git suffix. */
+            /** @description GitHub owner/name, without a URL or .git suffix. An empty string clears the release source (stored as null), which also lets a manual `version` be accepted in the same request. A non-empty value makes sync own the version, so `version` is then rejected with version_managed_by_source. */
             githubRepo?: string | null;
             /** @description Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes. */
             githubTagPrefix?: string | null;
@@ -4546,7 +4546,7 @@ export interface components {
             version?: string | null;
             /**
              * Format: int64
-             * @description Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate.
+             * @description Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate. One write can advance it by more than one: whenever the trigger-relevant fields change and a `version` is written, a separate bump records the version, so a name-and-version edit is +2 and an edit that changes both a link field and a package field along with the version is +3. Compare equality only; never assume a step size.
              * @example 0
              */
             revision?: number;
@@ -4555,7 +4555,7 @@ export interface components {
             sourceLocale: components["schemas"]["Locale"];
             homepage: string | null;
             downloadUrl: string | null;
-            /** @description GitHub owner/name, without a URL or .git suffix. */
+            /** @description GitHub owner/name, without a URL or .git suffix. An empty string clears the release source (stored as null), which also lets a manual `version` be accepted in the same request. A non-empty value makes sync own the version, so `version` is then rejected with version_managed_by_source. */
             githubRepo: string | null;
             /** @description Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes. */
             githubTagPrefix?: string | null;
