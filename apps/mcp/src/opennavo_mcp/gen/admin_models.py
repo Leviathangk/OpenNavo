@@ -4861,7 +4861,7 @@ class LinkPackageAdd(BaseModel):
     sourceLocale: Locale | MISSING = MISSING
     homepage: str | None | MISSING = MISSING
     downloadUrl: str | None | MISSING = MISSING
-    githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix.')] = MISSING
+    githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix. An empty string clears the release source (stored as null), which also lets a manual `version` be accepted in the same request. A non-empty value makes sync own the version, so `version` is then rejected with version_managed_by_source.')] = MISSING
     githubTagPrefix: Annotated[str | None | MISSING, Field(description='Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.', max_length=256, min_length=1)] = MISSING
     githubTagRegex: Annotated[str | None | MISSING, Field(description='Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.', max_length=1024, min_length=1)] = MISSING
     githubAssetPattern: Annotated[str | None | MISSING, Field(description='Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.', max_length=512, min_length=1)] = MISSING
@@ -4883,7 +4883,7 @@ class LinkPackageUpdate(BaseModel):
     sourceLocale: Locale | MISSING = MISSING
     homepage: str | None | MISSING = MISSING
     downloadUrl: str | None | MISSING = MISSING
-    githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix.')] = MISSING
+    githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix. An empty string clears the release source (stored as null), which also lets a manual `version` be accepted in the same request. A non-empty value makes sync own the version, so `version` is then rejected with version_managed_by_source.')] = MISSING
     githubTagPrefix: Annotated[str | None | MISSING, Field(description='Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.', max_length=256, min_length=1)] = MISSING
     githubTagRegex: Annotated[str | None | MISSING, Field(description='Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.', max_length=1024, min_length=1)] = MISSING
     githubAssetPattern: Annotated[str | None | MISSING, Field(description='Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.', max_length=512, min_length=1)] = MISSING
@@ -4902,13 +4902,13 @@ class LinkPackage(BaseModel):
         extra='forbid',
     )
     version: Annotated[str | None | MISSING, Field(description='Current version, from the release source or set by an editor.')] = MISSING
-    revision: Annotated[int | MISSING, Field(description='Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate.', examples=[0], ge=0)] = MISSING
+    revision: Annotated[int | MISSING, Field(description='Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate. One write can advance it by more than one: whenever the trigger-relevant fields change and a `version` is written, a separate bump records the version, so a name-and-version edit is +2 and an edit that changes both a link field and a package field along with the version is +3. Compare equality only; never assume a step size.', examples=[0], ge=0)] = MISSING
     token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
     name: Annotated[str, Field(max_length=256, min_length=1)]
     sourceLocale: Locale
     homepage: Annotated[str | None, Field(...)]
     downloadUrl: Annotated[str | None, Field(...)]
-    githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix.')]
+    githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix. An empty string clears the release source (stored as null), which also lets a manual `version` be accepted in the same request. A non-empty value makes sync own the version, so `version` is then rejected with version_managed_by_source.')]
     githubTagPrefix: Annotated[str | None | MISSING, Field(description='Case-sensitive literal prefix on the raw GitHub tag; mutually exclusive with githubTagRegex. Removed before the leading v when deriving the version. Limits are UTF-8 bytes.', max_length=256, min_length=1)] = MISSING
     githubTagRegex: Annotated[str | None | MISSING, Field(description='Go RE2 expression matched against the raw tag; use ^ and $ for a whole-tag match. Mutually exclusive with githubTagPrefix. Compiled only by Go; limits are UTF-8 bytes.', max_length=1024, min_length=1)] = MISSING
     githubAssetPattern: Annotated[str | None | MISSING, Field(description='Case-sensitive Go path.Match glob on asset names (for example *.dmg). Requires at least one match and retains only matching assets. Supports *, ? and character classes; no globstar. Limits are UTF-8 bytes.', max_length=512, min_length=1)] = MISSING
