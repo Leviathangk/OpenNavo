@@ -167,8 +167,30 @@ describe('Markdown alternates (X4)', () => {
     expect(cleanup).toContain(siteMessage('en-US', 'package.guide.uninstall'));
     expect(cleanup).toContain('`~/Library/Preferences/facts.plist`');
     expect(cleanup).toContain(siteMessage('en-US', 'package.uninstall.checked', { date: '2026-10-01' }));
-    expect(md).toContain('### 11.0 (2026-09-30)\n\nFaster.\n\n**Editor**\n\n- Better **tabs**');
+    expect(md).toContain('### 11.0 (2026-09-30)\n\nFaster.\n\n**Editor**\n\n- Better \\*\\*tabs\\*\\*');
     expect(md.endsWith('\n')).toBe(true);
+  });
+
+  it('Escapes release note items that would become links or markup', () => {
+    const release = {
+      ...pkg,
+      latestRelease: {
+        ...pkg.latestRelease,
+        summary: 'Notes',
+        sections: [
+          {
+            area: 'Editor',
+            items: ['See [the update](https://evil.example) for details', 'Use `cmd` now', 'Better **tabs**']
+          }
+        ]
+      }
+    } as PackageDetail;
+    const md = renderPackageMarkdown(release, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
+    expect(md).toContain(
+      `## ${siteMessage('en-US', 'markdown.latestRelease')}\n\n### 11.0 (2026-09-30)\n\nNotes\n\n**Editor**\n\n` +
+        '- See \\[the update\\](https://evil.example) for details\n- Use \\`cmd\\` now\n- Better \\*\\*tabs\\*\\*'
+    );
+    expect(md).not.toContain('[the update](https://evil.example)');
   });
 
   it.each([

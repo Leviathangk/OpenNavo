@@ -127,7 +127,7 @@ function releaseLines(entry: ReleaseEntry): string[] {
   if (entry.summary) lines.push(mdText(entry.summary), '');
   for (const section of entry.sections) {
     lines.push(`**${mdText(section.area)}**`, '');
-    for (const item of section.items) lines.push(`- ${item.replace(/\s+/g, ' ').trim()}`);
+    for (const item of section.items) lines.push(`- ${mdText(item)}`);
     lines.push('');
   }
   // The release is an h3 under the h2 section, so its own headings start at h4.
