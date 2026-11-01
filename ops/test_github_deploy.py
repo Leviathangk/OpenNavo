@@ -121,11 +121,13 @@ def prepare_on_host(root, api_environment, include_public_mcp=False, api_proxy_a
 
 
 
-def fake_public_mcp(requests=None, *, call_result=None, subpath_status=404):
+def fake_public_mcp(requests=None, *, call_result=None, subpath_status=404, subpath_body=None):
     """urlopen fake for the public MCP: handshake, tools/list, tools/call and the /mcp/x probe."""
     requests = [] if requests is None else requests
     if call_result is None:
         call_result = {'result': {'content': [{'type': 'text', 'text': '[{"slug":"developer-tools"}]'}]}}
+    if subpath_body is None:
+        subpath_body = deploy.PUBLIC_MCP_SUBPATH_MARKER
 
     class Response(io.BytesIO):
         def __init__(self, body, session=None, status=200):
@@ -137,7 +139,8 @@ def fake_public_mcp(requests=None, *, call_result=None, subpath_status=404):
         if request.data is None:
             requests.append(('GET', request.full_url))
             if subpath_status >= 400:
-                raise deploy.urllib.error.HTTPError(request.full_url, subpath_status, 'probe', {}, None)
+                raise deploy.urllib.error.HTTPError(request.full_url, subpath_status, 'probe', {},
+                                                    io.BytesIO(subpath_body.encode()))
             return Response({}, status=subpath_status)
         method = json.loads(request.data)['method']
         requests.append(method)
@@ -1124,7 +1127,8 @@ class DeployTests(unittest.TestCase):
             (obj.directory / 'manifest.json').write_text(json.dumps({'sha': 'a' * 40}))
             obj.degraded_path.unlink(missing_ok=True)
             retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
-            with contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(deploy, 'command', side_effect=FakeCaddy(obj.live_caddy, good=(candidate_caddy,))), \
+                    contextlib.redirect_stdout(io.StringIO()):
                 retry.reconcile_interrupted_switch()
             self.assertEqual(retry.state['services'], obj.services)
             self.assertEqual(retry.state['release'], obj.release)
@@ -1331,8 +1335,9 @@ class DeployTests(unittest.TestCase):
         with patch.object(deploy, 'open_without_redirects',
                           side_effect=lambda request, timeout: fake(request, timeout) if request.data is not None
                           else real_open(request, timeout)), \
-                self.assertRaisesRegex(RuntimeError, '/mcp/x returned 301'):
+                self.assertRaises(deploy.RouteCheckError) as raised:
             obj.verify_public_mcp()
+        self.assertEqual(raised.exception.status, 301)
 
     def test_public_mcp_route_requires_one_web_block_and_catch_all_proxy(self):
         for source in ['reverse_proxy {\n}\n', '{$WEB_DOMAIN} {\nreverse_proxy web:3000\n}\n']:
@@ -1383,9 +1388,12 @@ class DeployTests(unittest.TestCase):
                     obj.verify_public_mcp()
         for status in (200, 301, 502):
             with self.subTest(subpath=status), patch.object(
-                    deploy.urllib.request, 'urlopen', side_effect=fake_public_mcp(subpath_status=status)):
-                with self.assertRaisesRegex(RuntimeError, f'/mcp/x returned {status}'):
-                    obj.verify_public_mcp()
+                    deploy.urllib.request, 'urlopen', side_effect=fake_public_mcp(subpath_status=status)), \
+                    self.assertRaises(deploy.RouteCheckError) as raised:
+                obj.verify_public_mcp()
+            # A non-404 must reach the deploy log with its status, not just an exception type name.
+            self.assertEqual(raised.exception.status, status)
+            self.assertIn('expected 404 from the public-MCP sub-path handle', str(raised.exception))
 
     def test_first_public_mcp_uses_the_new_versioned_api_proxy_alias(self):
         # Production hosts only expose versioned aliases; the base Compose api-proxy name does not resolve.
@@ -2486,6 +2494,364 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
         text = deploy.redact_preview(' '.join(secrets).encode())
         for secret in secrets:
             self.assertNotIn(secret, text)
+
+    def test_successful_apply_clears_switch_and_unverified_state(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = prepare_on_host(root, {}, include_public_mcp=True)
+            obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in deploy.APPLICATION_SERVICES}}
+            deploy.write_private(obj.state_path, obj.state)
+            deploy.write_private(obj.directory / 'before-state.json', obj.state)
+            for name in ['capacity_gate', 'backup', 'warm_candidates', 'verify', 'update_monitoring',
+                         'cleanup', 'prune', 'prepare']:
+                setattr(obj, name, unittest.mock.Mock())
+            obj.install_caddy = lambda content, before_write=None: (
+                before_write and before_write(), deploy.write_caddy_in_place(obj.live_caddy, content))
+            obj.write_manifest = unittest.mock.Mock()
+            obj.compose = unittest.mock.Mock()
+            obj.reload = unittest.mock.Mock()
+
+            def cmd(args):
+                if args[:3] == ['docker', 'image', 'inspect']:
+                    return json.dumps({'org.opencontainers.image.revision': obj.payload['sha']})
+                if args[:3] == ['docker', 'network', 'inspect']:
+                    return json.dumps([{'Containers': {}}])
+                return ''
+            with patch.object(deploy, 'command', side_effect=cmd), contextlib.redirect_stdout(io.StringIO()):
+                obj.apply(archive())
+            state = json.loads(obj.state_path.read_text())
+            self.assertEqual(state['sha'], obj.payload['sha'])
+            self.assertNotIn('switch', state)
+            self.assertNotIn('unverified', state)
+            # The next deployment takes the already-deployed shortcut instead of a full rollout.
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            with patch.object(retry, 'capacity_gate') as capacity:
+                retry.validate_live_caddy = unittest.mock.Mock()
+                retry.ensure_live_manifest = unittest.mock.Mock()
+                retry.verify = unittest.mock.Mock()
+                retry.update_monitoring = unittest.mock.Mock()
+                retry.cleanup = unittest.mock.Mock()
+                retry.prune = unittest.mock.Mock()
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    retry.apply(archive())
+                capacity.assert_not_called()
+            self.assertIn('already deployed', out.getvalue())
+
+    def test_not_switched_reconcile_keeps_the_verified_previous_release(self):
+        """A run killed before the live write leaves a verified previous release, not an unverified one."""
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = prepare_on_host(root, {}, include_public_mcp=True)
+            obj.state['sha'] = 'c' * 40
+            deploy.write_private(obj.state_path, obj.state)
+            deploy.write_private(obj.directory / 'before-state.json', obj.state)
+            obj.record_switch(deploy.SWITCH_NONE)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            retry.reload = unittest.mock.Mock()
+            retry.stop_interrupted_candidates = unittest.mock.Mock()
+            with contextlib.redirect_stdout(io.StringIO()):
+                retry.reconcile_interrupted_switch()
+            self.assertNotIn('switch', retry.state)
+            self.assertNotIn('unverified', retry.state)
+            self.assertEqual(retry.state['sha'], 'c' * 40)
+            retry.reload.assert_not_called()
+
+    def test_reconcile_reloads_caddy_after_an_interrupted_switch(self):
+        """Files alone do not prove the process: a killed reload must be re-issued before trusting state."""
+        with tempfile.TemporaryDirectory() as root:
+            obj, candidate_caddy = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            obj.degraded_path.unlink(missing_ok=True)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            events = []
+            retry.reload = lambda: events.append('reload')
+            retry.stop_interrupted_candidates = lambda: events.append('stop candidates')
+            with contextlib.redirect_stdout(io.StringIO()):
+                retry.reconcile_interrupted_switch()
+            self.assertEqual(events, ['reload', 'stop candidates'])
+            self.assertEqual(obj.live_caddy.read_bytes(), candidate_caddy)
+
+    def test_reconcile_reload_failure_marks_degraded(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj, candidate_caddy = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            obj.degraded_path.unlink(missing_ok=True)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            def fail_reload():
+                retry.mark_degraded('reload failed')
+                raise RuntimeError('reload failed')
+            retry.reload = unittest.mock.Mock(side_effect=fail_reload)
+            retry.stop_interrupted_candidates = unittest.mock.Mock()
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(RuntimeError, 'reload failed'):
+                retry.reconcile_interrupted_switch()
+            self.assertTrue(retry.degraded_path.exists())
+            retry.stop_interrupted_candidates.assert_not_called()
+
+    def test_reconcile_removes_candidate_containers_no_release_claims(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            obj.degraded_path.unlink(missing_ok=True)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            retry.reload = unittest.mock.Mock()
+            retry.state = {**retry.state, 'services': {'api': 'api_live'}, 'previous': {'services': {'api': 'api_old'}}}
+            def container(name, service):
+                return {'Id': name, 'Config': {'Labels': {
+                    'com.docker.compose.project': retry.config['project'],
+                    'com.docker.compose.service': service}}}
+            containers = [container('live', 'api_live'), container('old', 'api_old'),
+                          container('orphan', 'api_ghdeadbeef12'), container('foreign', 'worker')]
+            calls = []
+            def command(args):
+                calls.append(args)
+                if args[:2] == ['docker', 'ps']:
+                    return '\n'.join(c['Id'] for c in containers)
+                if args[:2] == ['docker', 'inspect']:
+                    return json.dumps(containers)
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
+                retry.stop_interrupted_candidates()
+            self.assertIn(['docker', 'stop', '--timeout', '30', 'orphan'], calls)
+            self.assertIn(['docker', 'rm', 'orphan'], calls)
+            mutations = [call for call in calls if call[:2] in (['docker', 'stop'], ['docker', 'rm'])]
+            self.assertEqual(mutations, [['docker', 'stop', '--timeout', '30', 'orphan'],
+                                         ['docker', 'rm', 'orphan']])
+
+    def test_reconcile_candidate_cleanup_failure_warns_without_failing(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            retry.reload = unittest.mock.Mock()
+            retry.state = {**retry.state, 'services': {'api': 'api_live'}, 'previous': {}}
+            def command(args):
+                if args[:2] == ['docker', 'ps']:
+                    raise RuntimeError('docker unavailable')
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), \
+                    contextlib.redirect_stdout(io.StringIO()) as output:
+                retry.stop_interrupted_candidates()
+            self.assertIn('could not list candidate containers', output.getvalue())
+
+    def test_candidate_cleanup_never_runs_without_a_claimed_release(self):
+        """An empty claimed set would make every application container an orphan."""
+        for state in [{}, {'services': {}}, {'previous': {}}]:
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as root:
+                obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+                retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+                retry.state = state
+                with patch.object(deploy, 'command') as command, \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    retry.stop_interrupted_candidates()
+                command.assert_not_called()
+                self.assertIn('skipping candidate container cleanup', output.getvalue())
+
+    def test_candidate_cleanup_skips_oneoff_compose_run_containers(self):
+        """`docker compose run` containers carry a bare service label that no release claims."""
+        with tempfile.TemporaryDirectory() as root:
+            obj, _ = self._switched(root, GOOD_CADDY, deploy.SWITCH_CADDY_RELOADED)
+            retry = deploy.Deployment(obj.config, {**payload(), 'run_id': '124'})
+            retry.state = {'services': {'api': 'api_live'}, 'previous': {}}
+            def container(name, service, oneoff=False):
+                labels = {'com.docker.compose.project': retry.config['project'],
+                          'com.docker.compose.service': service}
+                if oneoff:
+                    labels['com.docker.compose.oneoff'] = 'True'
+                return {'Id': name, 'Config': {'Labels': labels}}
+            containers = [container('manual', 'api', oneoff=True),
+                          container('orphan', 'api_ghdeadbeef12')]
+            calls = []
+            def command(args):
+                calls.append(args)
+                if args[:2] == ['docker', 'ps']:
+                    # The receiver also filters by label; keep the fake honest about both filters.
+                    self.assertIn('label=com.docker.compose.oneoff=False', args)
+                    return '\n'.join(c['Id'] for c in containers)
+                if args[:2] == ['docker', 'inspect']:
+                    return json.dumps(containers)
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
+                retry.stop_interrupted_candidates()
+            mutations = [call for call in calls if call[:2] in (['docker', 'stop'], ['docker', 'rm'])]
+            self.assertEqual(mutations, [['docker', 'stop', '--timeout', '30', 'orphan'],
+                                         ['docker', 'rm', 'orphan']])
+
+    def test_install_caddy_validates_before_refreshing_the_backup(self):
+        with tempfile.TemporaryDirectory() as root:
+            obj = self._caddy_obj(root, live=GOOD_CADDY, backup=b'previous-backup')
+            with patch.object(deploy, 'command', side_effect=FakeCaddy(obj.live_caddy)), \
+                    self.assertRaisesRegex(RuntimeError, 'invalid staged Caddyfile'):
+                obj.install_caddy(TRUNCATED_CADDY)
+            self.assertEqual((obj.root / 'Caddyfile.bak').read_bytes(), b'previous-backup')
+            self.assertEqual(obj.live_caddy.read_bytes(), GOOD_CADDY)
+
+    def test_public_mcp_subpath_requires_the_route_marker(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+        for body in ['', '404 page not found', '{"error":"not found"}']:
+            with self.subTest(body=body), patch.object(
+                    deploy.urllib.request, 'urlopen',
+                    side_effect=fake_public_mcp(subpath_body=body)), \
+                    self.assertRaises(deploy.RouteCheckError) as raised:
+                obj.verify_public_mcp()
+            # The deploy log must say what the probe wanted, not only what it got.
+            self.assertIn(deploy.PUBLIC_MCP_SUBPATH_MARKER, str(raised.exception))
+            self.assertIn('expected body containing', str(raised.exception))
+            self.assertEqual(raised.exception.status, 404)
+
+    def test_public_mcp_subpath_marker_is_not_required_for_a_legacy_live_caddyfile(self):
+        """A rollback to a release that answers /mcp/* with a bare 404 must still verify."""
+        with tempfile.TemporaryDirectory() as root:
+            live = Path(root) / 'Caddyfile'
+            live.write_text('{$WEB_DOMAIN} {\n\thandle /mcp/* {\n\t\trespond 404\n\t}\n}\n')
+            obj = object.__new__(deploy.Deployment)
+            obj.live_caddy = live
+            obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+            with patch.object(deploy.urllib.request, 'urlopen',
+                              side_effect=fake_public_mcp(subpath_body='404')):
+                obj.verify_public_mcp()
+            live.write_text(deploy.public_mcp_route('public-mcp-proxy-x'))
+            with patch.object(deploy.urllib.request, 'urlopen',
+                              side_effect=fake_public_mcp(subpath_body='404')), \
+                    self.assertRaises(deploy.RouteCheckError):
+                obj.verify_public_mcp()
+
+    def test_verify_backs_off_on_public_mcp_failures(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.payload = payload()
+        obj.services = {'public-mcp': 'public-mcp_new'}
+        obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+        sleeps = []
+        with patch.object(deploy.urllib.request, 'urlopen', side_effect=RuntimeError('cold start')), \
+                patch.object(deploy.time, 'sleep', side_effect=sleeps.append), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                self.assertRaisesRegex(RuntimeError, 'route checks failed'):
+            obj.verify()
+        self.assertEqual(sleeps[:4], [2, 4, 8, 16])
+
+    def test_verify_logs_a_missing_public_mcp_host_in_full_and_stops(self):
+        """The fixed configuration message must reach the deploy log, not just the type name."""
+        obj = object.__new__(deploy.Deployment)
+        obj.payload = payload()
+        obj.services = {'public-mcp': 'public-mcp_new'}
+        obj.config = {'local_origin': 'http://127.0.0.1:80',
+                      'checks': []}
+        sleeps = []
+        output = io.StringIO()
+        with patch.object(deploy.urllib.request, 'urlopen',
+                          side_effect=fake_public_mcp()), \
+                patch.object(deploy.time, 'sleep', side_effect=sleeps.append), \
+                contextlib.redirect_stdout(output), \
+                self.assertRaisesRegex(RuntimeError, 'requires public_mcp_host or WEB_DOMAIN'):
+            obj.verify()
+        # A misconfiguration cannot heal by waiting: one attempt, no retry, no sleep.
+        self.assertEqual(sleeps, [])
+        self.assertEqual(output.getvalue().count('Post-deployment check attempt'), 1)
+        self.assertIn('requires public_mcp_host or WEB_DOMAIN', output.getvalue())
+        self.assertNotIn('RuntimeError\n', output.getvalue())
+
+    def test_subpath_probe_connection_failure_is_a_route_check_error(self):
+        """A refused connection on the probe kept only the type name; keep the endpoint instead."""
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+        fake = fake_public_mcp()
+
+        def urlopen(request, timeout):
+            if request.data is None:
+                raise deploy.urllib.error.URLError(ConnectionRefusedError('refused'))
+            return fake(request, timeout)
+        with patch.object(deploy.urllib.request, 'urlopen', side_effect=urlopen), \
+                self.assertRaises(deploy.RouteCheckError) as raised:
+            obj.verify_public_mcp()
+        message = str(raised.exception)
+        self.assertIn('/mcp/x', message)
+        self.assertIn('request error (ConnectionRefusedError)', message)
+
+    def test_subpath_probe_timeout_is_a_route_check_error(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'local_origin': 'http://127.0.0.1:80', 'public_mcp_host': 'opennavo.com', 'checks': []}
+        fake = fake_public_mcp()
+
+        def urlopen(request, timeout):
+            if request.data is None:
+                raise TimeoutError('timed out')
+            return fake(request, timeout)
+        with patch.object(deploy.urllib.request, 'urlopen', side_effect=urlopen), \
+                self.assertRaises(deploy.RouteCheckError) as raised:
+            obj.verify_public_mcp()
+        self.assertIn('/mcp/x', str(raised.exception))
+        self.assertIn('request error (TimeoutError)', str(raised.exception))
+
+    def test_rollback_candidate_listing_skips_oneoff_containers(self):
+        """`docker compose run` containers must never be listed as rollback candidates."""
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            obj = object.__new__(deploy.Deployment)
+            obj.config = {'project': 'example-prod'}
+            obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web']}}
+            obj.services = {k: k + '_new' for k in ['api', 'web']}
+            obj.directory = directory
+            obj.state_path = directory / 'state.json'
+            deploy.write_private(directory / 'before-state.json', obj.state)
+            obj.root, obj.release, obj.payload = directory, 'gh-test', payload()
+            obj.live_caddy, obj.env, obj.rolling = (directory / name for name in ['live', 'env', 'rolling'])
+            (directory / 'deploy').mkdir()
+            obj.live_caddy.write_text('candidate')
+            for name in ['before-caddy', 'before-release.env', 'before-rolling.json']:
+                (directory / name).write_text('old')
+            obj.reload = unittest.mock.Mock()
+            obj.verify = unittest.mock.Mock()
+            obj.update_monitoring = unittest.mock.Mock()
+            obj.compose = unittest.mock.Mock()
+            obj.drain_retired = unittest.mock.Mock(return_value=True)
+            commands = []
+
+            def command(args):
+                commands.append(args)
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
+                obj.rollback()
+            # Prove this exercised rollback() itself, not another cleanup path.
+            obj.verify.assert_called_once_with(expected='c' * 12)
+            obj.compose.assert_any_call('stop', '--timeout', '90', *obj.services.values())
+            obj.compose.assert_any_call('rm', '--force', '--stop', *obj.services.values())
+            probes = [args for args in commands if args[:3] == ['docker', 'ps', '-q']]
+            self.assertEqual(len(probes), len(obj.services))
+            probed = []
+            for args in probes:
+                self.assertIn('label=com.docker.compose.oneoff=False', args)
+                self.assertIn('label=com.docker.compose.project=example-prod', args)
+                services = [value for flag, value in zip(args, args[1:])
+                            if flag == '--filter' and value.startswith('label=com.docker.compose.service=')]
+                self.assertEqual(len(services), 1)
+                probed.append(services[0].removeprefix('label=com.docker.compose.service='))
+            self.assertEqual(sorted(probed), sorted(obj.services.values()))
+
+    def test_rollback_candidate_cleanup_failure_marks_degraded(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            obj = object.__new__(deploy.Deployment)
+            obj.config = {'project': 'example-prod'}
+            obj.state = {'sha': 'c' * 40, 'services': {'api': 'api_previous'}}
+            obj.services = {'api': 'api_new'}
+            obj.directory = directory
+            obj.state_path = directory / 'state.json'
+            obj.root, obj.release, obj.payload = directory, 'gh-test', payload()
+            obj.live_caddy, obj.env, obj.rolling = (directory / name for name in ['live', 'env', 'rolling'])
+            (directory / 'deploy').mkdir()
+            obj.live_caddy.write_text('candidate')
+            for name in ['before-caddy', 'before-release.env', 'before-rolling.json']:
+                (directory / name).write_text('old')
+            deploy.write_private(directory / 'before-state.json', obj.state)
+            obj.reload = unittest.mock.Mock()
+            obj.verify = unittest.mock.Mock()
+            obj.update_monitoring = unittest.mock.Mock()
+            obj.drain_retired = unittest.mock.Mock(return_value=True)
+            def compose(*args, **kwargs):
+                if args[0] == 'stop':
+                    raise RuntimeError('docker stop failed')
+            obj.compose = compose
+            with patch.object(deploy, 'command', return_value='candidate-id'), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    self.assertRaisesRegex(RuntimeError, 'docker stop failed'):
+                obj.rollback()
+            reason = json.loads(obj.degraded_path.read_text())['reason']
+            self.assertIn('candidate cleanup failed', reason)
+            self.assertIn('rollback restore was verified', reason)
 
 
 if __name__ == '__main__': unittest.main()

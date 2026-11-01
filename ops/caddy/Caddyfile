@@ -58,7 +58,7 @@
 	}
 	@publicMcpOther path /mcp/*
 	handle @publicMcpOther {
-		respond 404
+		respond "opennavo-public-mcp-subpath" 404
 	}
 	# END opennavo public-mcp
 	import security-web
