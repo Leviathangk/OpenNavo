@@ -22,13 +22,13 @@ func (n *Notifier) PurgeSnapshots(ctx context.Context, prefixes []string) error 
 	}
 	settings, err := n.Store.SEOSettings(ctx)
 	if err != nil {
-		return fmt.Errorf("%w: read purge settings: %v", ErrPurgeDeferred, err)
+		return fmt.Errorf("%w: read purge settings: %w", ErrPurgeDeferred, err)
 	}
 	if !settings.Settings.Cloudflare.PurgeEnabled || settings.Settings.Cloudflare.ZoneID == "" {
 		return fmt.Errorf("%w: Cloudflare purge disabled", ErrPurgeDeferred)
 	}
 	if _, err := n.purgeNow(ctx, settings, prefixes); err != nil {
-		return fmt.Errorf("%w: %v", ErrPurgeDeferred, err)
+		return fmt.Errorf("%w: %w", ErrPurgeDeferred, err)
 	}
 	return nil
 }

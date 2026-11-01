@@ -74,10 +74,10 @@ func (r Repository) needsLicenseFile() bool {
 
 // licenseFile fetches /license and classifies it locally when GitHub's own SPDX ID is still
 // "NOASSERTION". The repository ETag already avoids this request on a 304.
-func (g *GitHub) licenseFile(ctx context.Context, base, repo string) (string, int, http.Header, error) {
+func (g *GitHub) licenseFile(ctx context.Context, base, repo string) (string, http.Header, error) {
 	body, status, header, err := g.HTTP.Get(ctx, base+"/repos/"+repo+"/license", 1<<20, http.Header{})
 	if err != nil {
-		return "", 1, nil, err
+		return "", nil, err
 	}
 	switch status {
 	case http.StatusOK:
@@ -89,30 +89,30 @@ func (g *GitHub) licenseFile(ctx context.Context, base, repo string) (string, in
 			Encoding string `json:"encoding"`
 		}
 		if err := json.Unmarshal(body, &value); err != nil {
-			return "", 1, header, fmt.Errorf("decode github license: %w", err)
+			return "", header, fmt.Errorf("decode github license: %w", err)
 		}
 		if value.License != nil && value.License.SPDXID != "" && value.License.SPDXID != "NOASSERTION" && osiLicenses[value.License.SPDXID] {
 			// The lookup may know the license even when the repository response did not.
-			return value.License.SPDXID, 1, header, nil
+			return value.License.SPDXID, header, nil
 		}
 		text := value.Content
 		if value.Encoding == "base64" {
 			decoded, err := base64.StdEncoding.DecodeString(value.Content)
 			if err != nil {
-				return "", 1, header, nil
+				return "", header, nil
 			}
 			text = string(decoded)
 		}
-		return classifyLicense(text), 1, header, nil
+		return classifyLicense(text), header, nil
 	case http.StatusNotFound, http.StatusGone, http.StatusUnavailableForLegalReasons:
-		return "", 1, header, nil
+		return "", header, nil
 	case http.StatusForbidden, http.StatusTooManyRequests:
 		if quota(header, "X-Ratelimit-Remaining") == 0 || header.Get("Retry-After") != "" || status == http.StatusTooManyRequests {
-			return "", 1, header, ErrRateLimited
+			return "", header, ErrRateLimited
 		}
-		return "", 1, header, fmt.Errorf("github license status %d", status)
+		return "", header, fmt.Errorf("github license status %d", status)
 	default:
-		return "", 1, header, fmt.Errorf("github license status %d", status)
+		return "", header, fmt.Errorf("github license status %d", status)
 	}
 }
 
@@ -214,8 +214,8 @@ func (g *GitHub) Repo(ctx context.Context, repo, etag string) (RepoResult, error
 				return result, fmt.Errorf("decode github repository: %w", err)
 			}
 			if result.Repository.needsLicenseFile() {
-				spdx, licenseRequests, licenseHeader, licenseErr := g.licenseFile(ctx, base, result.Repository.FullName)
-				requests += licenseRequests
+				spdx, licenseHeader, licenseErr := g.licenseFile(ctx, base, result.Repository.FullName)
+				requests++
 				result.Requests = requests
 				if licenseHeader != nil {
 					if remaining := quota(licenseHeader, "X-Ratelimit-Remaining"); remaining >= 0 {

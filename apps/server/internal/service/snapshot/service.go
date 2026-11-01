@@ -329,9 +329,11 @@ func bundleContainsToken(bundle Bundle, tokens []string) (string, bool) {
 }
 
 func gzipReaderAll(reader *gzip.Reader) ([]byte, error) {
-	defer reader.Close()
 	var out bytes.Buffer
 	_, err := out.ReadFrom(reader)
+	if closeErr := reader.Close(); err == nil {
+		err = closeErr
+	}
 	return out.Bytes(), err
 }
 
