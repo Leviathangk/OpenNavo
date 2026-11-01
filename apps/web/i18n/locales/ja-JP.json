@@ -396,6 +396,8 @@
     "seo": {
       "titleApp": "{name} for Mac ダウンロード · OpenNavo",
       "titleFont": "{name} フォント for Mac ダウンロード · OpenNavo",
+      "titleAppShort": "{name} ダウンロード",
+      "titleFontShort": "{name} フォント ダウンロード",
       "titleUnavailable": "{name}の Mac 版 · OpenNavo",
       "descriptionFacts": "{summary}。Mac 版 {name} の{parts}をご確認ください。",
       "descriptionFactsNoSummary": "Mac 版 {name} の{parts}をご確認ください。",

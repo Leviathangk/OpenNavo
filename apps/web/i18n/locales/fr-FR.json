@@ -396,6 +396,8 @@
     "seo": {
       "titleApp": "{name} pour Mac – Télécharger et installer · OpenNavo",
       "titleFont": "Police {name} pour Mac – Télécharger et installer · OpenNavo",
+      "titleAppShort": "{name} pour Mac – Télécharger et installer",
+      "titleFontShort": "Police {name} pour Mac – Télécharger et installer",
       "titleUnavailable": "{name} pour Mac · OpenNavo",
       "descriptionFacts": "{summary}. Consultez {parts} de {name} pour Mac.",
       "descriptionFactsNoSummary": "Consultez {parts} de {name} pour Mac.",

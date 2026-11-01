@@ -199,15 +199,6 @@ export const TITLE_WIDTH = 60;
 /** The level a title had to fall back to: T0 branded template, T1 brandless, T2 short, T3 published as is. */
 export type TitleTier = 'T0' | 'T1' | 'T2' | 'T3';
 
-/**
- * T2 short templates, confirmed by product for the two locales whose base template cannot hold a wide
- * name. Other locales stop at T1, as their short copy has not been approved yet.
- */
-const SHORT_TITLES: Partial<Record<string, { app: string; font: string }>> = {
-  ru: { app: '{name} — скачать', font: 'Шрифт {name} — скачать' },
-  ja: { app: '{name} ダウンロード', font: '{name} フォント ダウンロード' }
-};
-
 export interface TitleOverflow {
   locale: string;
   nameWidth: number;
@@ -244,12 +235,6 @@ export function fitTitle(title: string, fit: TitleFit = {}): string {
     titleWidth: textWidth(brandless)
   });
   return brandless;
-}
-
-function shortTitle(locale: string | undefined, kind: 'app' | 'font', name: string): string | undefined {
-  if (!locale) return undefined;
-  const template = SHORT_TITLES[locale.split('-')[0] ?? locale]?.[kind];
-  return template?.replace('{name}', name);
 }
 
 // Sentence ends skip abbreviations such as "e.g. PDF"; clause ends skip Latin commas, which also
@@ -311,6 +296,11 @@ function hasUninstallFacts(pkg: OverviewFacts): boolean {
   return [...uninstallFacts(pkg, 'uninstall'), ...uninstallFacts(pkg, 'zap')].some(item => item.value.trim());
 }
 
+/** The approved T2 copy keeps its own spacing, including the space before Japanese kana after a CJK name. */
+function withShortName(t: Translate, key: string, name: string): string {
+  return t(key, { name: NAME_MARK }).split(NAME_MARK).join(name);
+}
+
 function titleLocale(t: Translate, locale?: string): string | undefined {
   return locale ?? (t as Translate & { locale?: string }).locale;
 }
@@ -323,15 +313,18 @@ export function overviewTitle(pkg: OverviewFacts, t: Translate, locale?: string)
       ? 'package.seo.titleFont'
       : 'package.seo.titleApp';
   const name = titleName(pkg.displayName);
-  const language = titleLocale(t, locale);
   return fitTitle(withName(t, key, name), {
-    locale: language,
+    locale: titleLocale(t, locale),
     name,
-    // A disabled package keeps its template; only the app and font templates have approved short copy.
+    // A disabled package keeps its template; the short copy is the approved T2 text for this page type.
     short:
       key === 'package.seo.titleUnavailable'
         ? undefined
-        : shortTitle(language, key === 'package.seo.titleFont' ? 'font' : 'app', name)
+        : withShortName(
+            t,
+            key === 'package.seo.titleFont' ? 'package.seo.titleFontShort' : 'package.seo.titleAppShort',
+            name
+          )
   });
 }
 

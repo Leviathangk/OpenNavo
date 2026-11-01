@@ -396,6 +396,8 @@
     "seo": {
       "titleApp": "{name} для Mac — скачать · OpenNavo",
       "titleFont": "Шрифт {name} для Mac — скачать · OpenNavo",
+      "titleAppShort": "{name} — скачать",
+      "titleFontShort": "Шрифт {name} — скачать",
       "titleUnavailable": "{name} для компьютеров Mac · OpenNavo",
       "descriptionFacts": "{summary}. Узнайте про {parts} для {name} на Mac.",
       "descriptionFactsNoSummary": "Узнайте про {parts} для {name} на Mac.",
