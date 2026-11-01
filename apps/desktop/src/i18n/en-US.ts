@@ -987,6 +987,8 @@ const messages: MessageSchema = {
       copied: '{client} configuration copied',
       copyFailed: "Couldn't copy the configuration.",
       moved: 'OpenNavo has moved since you copied the configuration. Copy it again so your AI apps can still find it.',
+      movedLegacy:
+        'OpenNavo has moved since a configuration was copied. Copy it again for each AI app you use, since the earlier copy did not record which one it was for.',
       notRunning: "Local MCP is on but not running, so AI apps can't connect. Turn it off and on again to retry.",
       statusFailed: "Couldn't read the Local MCP status.",
       movedClients: 'Still pointing to the old location: {clients}',

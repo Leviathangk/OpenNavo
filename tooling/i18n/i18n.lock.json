@@ -2246,6 +2246,7 @@
         "settings.mcp.copied": "79c734ed3c5efd126d441939f496ebf7c4762ff50821bff37d256f5b6210a321",
         "settings.mcp.copyFailed": "7b718221d6fc4284fcdd5939aa8c38eb527a358e70c0a50230db954d21152b22",
         "settings.mcp.moved": "9bae1fd5f8e2a1ae8379379687735ef64f983bc9d75547694aeec0be2d25b453",
+        "settings.mcp.movedLegacy": "845bb0dd79039ec82dbe929bcb20009e72e3fd9a703276475889a30939191885",
         "settings.mcp.notRunning": "9d4124955f434bebecec657f148ce82ee43229c8fa333b2da19ee7573ef1a094",
         "settings.mcp.statusFailed": "5c11a094a2200edc4cc9ad198f7641a10d3b7554eed0db4289c29f401b4bc0bb",
         "settings.mcp.movedClients": "fb25b954b00bd2cb96950a46f231c1f2a2dd0faff45bce5c7f9c59e39bdb0e56",

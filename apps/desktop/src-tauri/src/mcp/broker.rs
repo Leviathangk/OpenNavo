@@ -54,6 +54,24 @@ pub struct McpStatus {
     pub error: Option<String>,
     /// Absolute path of the running app executable, for client config presets.
     pub command_path: Option<String>,
+    /// Whether the volume holding `command_path` compares names case-sensitively. The settings page needs
+    /// this to tell a real move from a case-only spelling of the same path.
+    pub case_sensitive: bool,
+}
+
+/// Whether the volume that holds `path` compares names case-sensitively (`/Volumes` entries can be either
+/// kind). A volume that cannot be asked falls back to the macOS default, case-insensitive.
+#[cfg(target_os = "macos")]
+fn volume_case_sensitive(path: &std::path::Path) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    let Ok(raw) = std::ffi::CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+    unsafe { nix::libc::pathconf(raw.as_ptr(), nix::libc::_PC_CASE_SENSITIVE) == 1 }
+}
+#[cfg(not(target_os = "macos"))]
+fn volume_case_sensitive(_: &std::path::Path) -> bool {
+    false
 }
 
 /// Broker operation failure with a stable code.
@@ -184,6 +202,7 @@ impl Broker {
     /// Current status for Settings and diagnostics.
     pub fn status(&self) -> McpStatus {
         let inner = self.lock();
+        let exe = std::env::current_exe().ok();
         McpStatus {
             enabled: inner.enabled,
             write_enabled: inner.enabled && inner.write_enabled,
@@ -193,9 +212,8 @@ impl Broker {
                 .as_ref()
                 .map(|path| path.to_string_lossy().into_owned()),
             error: inner.error.clone(),
-            command_path: std::env::current_exe()
-                .ok()
-                .map(|path| path.to_string_lossy().into_owned()),
+            command_path: exe.as_ref().map(|path| path.to_string_lossy().into_owned()),
+            case_sensitive: exe.as_deref().is_some_and(volume_case_sensitive),
         }
     }
 
@@ -1235,6 +1253,23 @@ mod tests {
         let broker = Broker::new(dir.path().to_path_buf());
         let path = broker.status().command_path.expect("current exe");
         assert!(std::path::Path::new(&path).is_absolute());
+    }
+
+    #[test]
+    fn status_reports_whether_the_volume_is_case_sensitive() {
+        let dir = tempdir();
+        let broker = Broker::new(dir.path().to_path_buf());
+        let status = broker.status();
+        // The test binary lives on the boot volume, which is case-insensitive unless it was formatted otherwise.
+        let exe = status.command_path.clone().expect("current exe");
+        assert_eq!(
+            status.case_sensitive,
+            volume_case_sensitive(std::path::Path::new(&exe))
+        );
+        // A path that cannot be asked falls back to the macOS default rather than panicking.
+        assert!(!volume_case_sensitive(std::path::Path::new(
+            "/nonexistent-opennavo-volume/x"
+        )));
     }
 
     #[test]

@@ -965,6 +965,7 @@
       "copied": "Configuration de {client} copiée",
       "copyFailed": "Impossible de copier la configuration.",
       "moved": "OpenNavo a été déplacé depuis que vous avez copié la configuration. Copiez-la à nouveau pour que vos apps d’IA puissent le retrouver.",
+      "movedLegacy": "OpenNavo a été déplacé depuis qu’une configuration a été copiée. La copie précédente n’a pas mémorisé pour quelle app elle était ; copiez-la à nouveau dans chaque app d’IA que vous utilisez.",
       "notRunning": "Le MCP local est activé mais ne fonctionne pas : les apps d’IA ne peuvent pas s’y connecter. Désactivez-le puis réactivez-le pour réessayer.",
       "statusFailed": "Impossible de lire l’état du MCP local.",
       "movedClients": "Pointe encore vers l’ancien emplacement : {clients}",

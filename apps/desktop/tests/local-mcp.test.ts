@@ -9,8 +9,10 @@ import {
   MCP_COPIED_PATHS_KEY,
   MCP_COPIED_PATH_KEY,
   copiedMcpPaths,
+  copiedMcpState,
   mcpAppMoved,
   mcpConfig,
+  mcpLegacyStale,
   mcpMovedClients,
   normalizeMcpPath
 } from '@/utils/mcpConfig';
@@ -70,19 +72,38 @@ describe('Local MCP config presets', () => {
     expect(mcpAppMoved('/Users/me/Caf\u00e9/x', '/Users/me/Cafe\u0301/x')).toBe(false);
   });
 
-  it('Tracks the copied path per client, reading the old single-slot key as every client', () => {
+  it('Treats a case-only difference as a move on a case-sensitive volume', () => {
+    const lower = APP.toLowerCase();
+    // Case-insensitive (the macOS default): both spellings are the same app.
+    expect(normalizeMcpPath(lower, false)).toBe(normalizeMcpPath(APP, false));
+    expect(mcpAppMoved(APP, lower, false)).toBe(false);
+    // Case-sensitive: the two spellings name different directories, so the copied path is stale.
+    expect(normalizeMcpPath(lower, true)).not.toBe(normalizeMcpPath(APP, true));
+    expect(mcpAppMoved(APP, lower, true)).toBe(true);
+    // Trailing and repeated slashes still compare equal either way.
+    expect(mcpAppMoved(APP, `${APP}/`, true)).toBe(false);
+    expect(mcpMovedClients(APP, { claude: lower, cursor: APP }, true)).toEqual(['claude']);
+  });
+
+  it('Does not expand the old single-slot key into every client', () => {
     const OLD = '/Users/me/Downloads/OpenNavo.app/Contents/MacOS/opennavo-desktop';
     localStorage.setItem(MCP_COPIED_PATH_KEY, OLD);
-    expect(mcpMovedClients(APP)).toEqual(['claude', 'cursor', 'codex', 'generic']);
-    localStorage.setItem(MCP_COPIED_PATHS_KEY, JSON.stringify({ claude: OLD, cursor: APP, codex: 7 }));
-    expect(copiedMcpPaths()).toEqual({ claude: OLD, cursor: APP });
-    expect(mcpMovedClients(APP)).toEqual(['claude']);
-    // A corrupt per-client value falls back to the old key instead of forgetting it.
-    localStorage.setItem(MCP_COPIED_PATHS_KEY, '{not json');
-    expect(copiedMcpPaths()).toEqual({ claude: OLD, cursor: OLD, codex: OLD, generic: OLD });
-    expect(mcpMovedClients(APP)).toEqual(['claude', 'cursor', 'codex', 'generic']);
-    localStorage.removeItem(MCP_COPIED_PATH_KEY);
+    // The key names no client, so it is reported on its own instead of four guessed clients.
+    expect(copiedMcpState()).toEqual({ paths: {}, legacy: OLD });
     expect(copiedMcpPaths()).toEqual({});
+    expect(mcpMovedClients(APP)).toEqual([]);
+    expect(mcpLegacyStale(APP, OLD)).toBe(true);
+    expect(mcpLegacyStale(OLD, OLD)).toBe(false);
+    expect(mcpLegacyStale(null, OLD)).toBe(false);
+    // Once a configuration is copied for any client, the ambiguous key is gone and only that client is tracked.
+    localStorage.setItem(MCP_COPIED_PATHS_KEY, JSON.stringify({ claude: OLD, cursor: APP, codex: 7 }));
+    expect(copiedMcpState()).toEqual({ paths: { claude: OLD, cursor: APP }, legacy: null });
+    expect(mcpLegacyStale(APP, null)).toBe(false);
+    // A corrupt per-client value keeps the old key readable instead of forgetting the copy.
+    localStorage.setItem(MCP_COPIED_PATHS_KEY, '{not json');
+    expect(copiedMcpState()).toEqual({ paths: {}, legacy: OLD });
+    localStorage.removeItem(MCP_COPIED_PATH_KEY);
+    expect(copiedMcpState()).toEqual({ paths: {}, legacy: null });
   });
 });
 
@@ -148,7 +169,8 @@ describe('Settings: Local MCP errors', () => {
     running: false,
     socketPath: null,
     error: 'E_MCP_BROKER: bind failed',
-    commandPath: APP
+    commandPath: APP,
+    caseSensitive: false
   };
 
   it('Shows a startup error and that Local MCP is not running, with writes unavailable', async () => {
@@ -216,6 +238,24 @@ describe('Settings: Local MCP configuration', () => {
     );
   });
 
+  it('Warns about the old single-slot key without naming clients', async () => {
+    const OLD = '/Users/me/Downloads/OpenNavo.app/Contents/MacOS/opennavo-desktop';
+    localStorage.setItem(MCP_COPIED_PATH_KEY, OLD);
+    const wrapper = await page();
+    expect(wrapper.get('[data-test="mcp-moved"]').text()).toBe(i18n.global.t('settings.mcp.movedLegacy'));
+    // No client is singled out: the old key cannot say which one was copied.
+    expect(wrapper.find('[data-test="mcp-moved-clients"]').exists()).toBe(false);
+    // Copying one configuration replaces the ambiguous record with a per-client one.
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true
+    });
+    await wrapper.get('[data-test="mcp-copy"]').trigger('click');
+    await flushPromises();
+    expect(localStorage.getItem(MCP_COPIED_PATH_KEY)).toBeNull();
+    expect(wrapper.find('[data-test="mcp-moved"]').exists()).toBe(false);
+  });
+
   it('Re-checks the copied paths when the window regains focus', async () => {
     const wrapper = await page();
     expect(wrapper.find('[data-test="mcp-moved"]').exists()).toBe(false);
@@ -230,6 +270,28 @@ describe('Settings: Local MCP configuration', () => {
     expect(wrapper.get('[data-test="mcp-moved-clients"]').text()).toContain(
       i18n.global.t('settings.mcp.clients.codex')
     );
+  });
+
+  it('Stops listening for focus and visibility after it unmounts', async () => {
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const docAdd = vi.spyOn(document, 'addEventListener');
+    const docRemove = vi.spyOn(document, 'removeEventListener');
+    const wrapper = await page();
+    // Find the listeners this page registered, by handler identity, so unrelated ones do not count.
+    const added = add.mock.calls.filter(([name]) => name === 'focus').map(([, handler]) => handler);
+    const docAdded = docAdd.mock.calls.filter(([name]) => name === 'visibilitychange').map(([, handler]) => handler);
+    expect(added.length).toBeGreaterThan(0);
+    expect(docAdded.length).toBeGreaterThan(0);
+    wrappers.splice(wrappers.indexOf(wrapper), 1);
+    wrapper.unmount();
+    for (const handler of added) expect(remove).toHaveBeenCalledWith('focus', handler);
+    for (const handler of docAdded) expect(docRemove).toHaveBeenCalledWith('visibilitychange', handler);
+    // A later focus no longer reads the status through this page.
+    const status = vi.spyOn(commands, 'mcpStatus');
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(status).not.toHaveBeenCalled();
   });
 });
 

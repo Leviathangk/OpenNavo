@@ -396,6 +396,7 @@ export function installMockIpc(
   // Comma-separated ?mock= switches: no-brew, first-run (fresh settings), slow-official / official-down (slow/failed official probe), slow-mirrors (mirrors slower than official),
   // brew-install-fail-download / brew-install-fail-sudo (Homebrew install failures), no-app-management (permission denied for app update/uninstall),
   // mcp-on / mcp-write-on (Local MCP starts on) / mcp-off-fails (turning Local MCP or its writes off cannot be saved),
+  // case-sensitive-volume (the app's volume compares names case-sensitively),
   // full_disk_access / no-permission-check / permission-relaunch / permission-relaunch-ineffective (privacy, below), restore, update.
   const flags = new Set(
     typeof location !== 'undefined' ? (new URLSearchParams(location.search).get('mock') ?? '').split(',') : []
@@ -409,7 +410,9 @@ export function installMockIpc(
     running: mcpOn,
     socketPath: mcpOn ? MOCK_MCP_SOCKET : null,
     error: null,
-    commandPath: MOCK_MCP_COMMAND
+    commandPath: MOCK_MCP_COMMAND,
+    // ?mock=case-sensitive-volume simulates an app on a case-sensitive volume.
+    caseSensitive: flags.has('case-sensitive-volume')
   };
   const auditNow = Date.now();
   let mcpAudit: AuditEntry[] = flags.has('mcp-write-on')

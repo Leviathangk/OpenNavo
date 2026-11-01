@@ -960,6 +960,8 @@ export default {
       copied: '已复制 {client} 配置',
       copyFailed: '无法复制配置。',
       moved: '复制配置后 OpenNavo 移动了位置，请重新复制，AI 应用才能继续找到它。',
+      movedLegacy:
+        '复制配置后 OpenNavo 移动了位置。早先的复制没有记录是给哪个应用的，请在用到的那几个 AI 应用里分别重新复制。',
       notRunning: '本地 MCP 已打开，但没有在运行，AI 应用连不上。关掉再打开可以重试。',
       statusFailed: '无法读取本地 MCP 状态。',
       movedClients: '仍指向旧位置：{clients}',
