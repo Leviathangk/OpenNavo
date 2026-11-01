@@ -2776,6 +2776,41 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
         self.assertIn('/mcp/x', str(raised.exception))
         self.assertIn('request error (TimeoutError)', str(raised.exception))
 
+    def test_rollback_candidate_listing_skips_oneoff_containers(self):
+        """`docker compose run` containers must never be listed as rollback candidates."""
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            obj = object.__new__(deploy.Deployment)
+            obj.config = {'project': 'example-prod'}
+            obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web']}}
+            obj.services = {k: k + '_new' for k in ['api', 'web']}
+            obj.directory = directory
+            obj.state_path = directory / 'state.json'
+            deploy.write_private(directory / 'before-state.json', obj.state)
+            obj.root, obj.release, obj.payload = directory, 'gh-test', payload()
+            obj.live_caddy, obj.env, obj.rolling = (directory / name for name in ['live', 'env', 'rolling'])
+            (directory / 'deploy').mkdir()
+            obj.live_caddy.write_text('candidate')
+            for name in ['before-caddy', 'before-release.env', 'before-rolling.json']:
+                (directory / name).write_text('old')
+            obj.reload = unittest.mock.Mock()
+            obj.verify = unittest.mock.Mock()
+            obj.update_monitoring = unittest.mock.Mock()
+            obj.compose = unittest.mock.Mock()
+            obj.drain_retired = unittest.mock.Mock(return_value=True)
+            commands = []
+
+            def command(args):
+                commands.append(args)
+                return ''
+            with patch.object(deploy, 'command', side_effect=command), contextlib.redirect_stdout(io.StringIO()):
+                obj.rollback()
+            probes = [args for args in commands if args[:3] == ['docker', 'ps', '-q']]
+            self.assertEqual(len(probes), len(obj.services))
+            for args in probes:
+                self.assertIn('label=com.docker.compose.oneoff=False', args)
+                self.assertIn('label=com.docker.compose.project=example-prod', args)
+
     def test_rollback_candidate_cleanup_failure_marks_degraded(self):
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)
