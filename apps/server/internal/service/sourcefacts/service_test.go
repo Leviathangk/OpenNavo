@@ -55,8 +55,9 @@ func TestGitHubRequestsStopWhenRateLimitHeadersAreMissing(t *testing.T) {
 		require.False(t, low)
 		require.LessOrEqual(t, stats.GitHubRequests, maxGitHubRequestsWithoutQuota)
 	}
-	require.Equal(t, maxGitHubRequestsWithoutQuota-1, calls)
-	require.Equal(t, maxGitHubRequestsWithoutQuota-1, stats.GitHubRequests)
+	reserved := maxGitHubRequestsWithoutQuota - maxGitHubRepoRequests + 1
+	require.Equal(t, reserved, calls, "stop before a repository lookup could cross the cap")
+	require.Equal(t, reserved, stats.GitHubRequests)
 }
 
 func TestGitHubSignalRefreshTreatsPrivateRepositoryAsUnavailable(t *testing.T) {
@@ -256,4 +257,40 @@ func repoResultForTest(repo, license string, stars int64, pushed time.Time) sour
 		}{SPDXID: license}
 	}
 	return result
+}
+
+func TestGitHubRenameAddsCanonicalCandidateWithoutAnotherRequest(t *testing.T) {
+	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	homepage, recorded := "https://github.com/old/name", "https://github.com/other/repo"
+	pkg := store.SourceFactPackage{ID: 1, Homepage: &homepage, RepoURL: &recorded}
+	items := candidates(GitHub, pkg)
+	require.Equal(t, []string{"old/name", "other/repo"}, items)
+	var calls []string
+	svc := &Service{
+		GitHub: GitHubSourceFunc(func(_ context.Context, repo, _ string) (sources.RepoResult, error) {
+			calls = append(calls, repo)
+			switch repo {
+			case "old/name":
+				return repoResultForTest("new/name", "NOASSERTION", 10, now), nil
+			case "other/repo":
+				return repoResultForTest("other/repo", "NOASSERTION", 20, now), nil
+			default:
+				t.Fatalf("canonical name must reuse the rename response, got request for %s", repo)
+				return sources.RepoResult{}, nil
+			}
+		}),
+		Now: func() time.Time { return now },
+	}
+	fact, low, err := svc.checkGitHub(context.Background(), pending{pkg: pkg, input: "old/name other/repo", items: items}, &Stats{GitHubRemaining: -1})
+	require.NoError(t, err)
+	require.False(t, low)
+	require.Equal(t, []string{"old/name", "other/repo"}, calls)
+	require.Equal(t, "new/name", fact.Subject, "later checks use the canonical repository")
+}
+
+func TestAddCanonicalCandidateDeduplicatesCaseInsensitively(t *testing.T) {
+	items := addCanonicalCandidate([]string{"old/name", "other/repo"}, "NEW/Name")
+	require.Equal(t, []string{"old/name", "other/repo", "NEW/Name"}, items)
+	require.Equal(t, items, addCanonicalCandidate(items, "new/name"))
+	require.Equal(t, items, addCanonicalCandidate(items, ""))
 }

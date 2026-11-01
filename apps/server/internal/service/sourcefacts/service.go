@@ -28,7 +28,7 @@ const (
 	priceRecheck                  = 24 * time.Hour
 	maxBackoff                    = 7 * 24 * time.Hour
 	maxGitHubRequestsWithoutQuota = 100 // A missing quota header caps one run at 100 requests to protect the shared token.
-	maxGitHubRepoRequests         = 2   // GitHub.Repo follows at most one rename redirect.
+	maxGitHubRepoRequests         = 3   // GitHub.Repo follows one rename redirect and may read one license file.
 )
 
 var (
@@ -153,6 +153,19 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 	return out, json.Unmarshal(encoded, &out)
+}
+
+// addCanonicalCandidate appends a rename's canonical owner/name once, case-insensitively.
+func addCanonicalCandidate(items []string, canonical string) []string {
+	if canonical == "" {
+		return items
+	}
+	for _, item := range items {
+		if strings.EqualFold(item, canonical) {
+			return items
+		}
+	}
+	return append(items, canonical)
 }
 
 func candidates(source string, p store.SourceFactPackage) []string {
@@ -312,6 +325,12 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 				}
 			}
 			continue
+		}
+		// A renamed repository answers under its canonical full_name. Keep that name as a candidate
+		// for later checks and reuse this response for it instead of spending another request.
+		if !strings.EqualFold(current.Repo, repo) {
+			results[strings.ToLower(current.Repo)] = result
+			item.items = addCanonicalCandidate(item.items, current.Repo)
 		}
 		if !fullCheck && !strings.EqualFold(item.row.Subject, current.Repo) {
 			// Recovery or a redirect can select a different repository. Its license

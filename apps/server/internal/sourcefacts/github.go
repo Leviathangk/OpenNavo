@@ -2,6 +2,7 @@ package sourcefacts
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,9 +66,60 @@ var osiLicenses = map[string]bool{
 	"Unlicense": true, "Zlib": true,
 }
 
+// needsLicenseFile reports whether GitHub could not name the license but the repository can still
+// publish one: it must be public, hold code, and have a canonical name to request the file for.
+func (r Repository) needsLicenseFile() bool {
+	return r.License != nil && r.License.SPDXID == "NOASSERTION" && r.Public() && r.Language != nil && *r.Language != ""
+}
+
+// licenseFile fetches /license and classifies it locally when GitHub's own SPDX ID is still
+// "NOASSERTION". The repository ETag already avoids this request on a 304.
+func (g *GitHub) licenseFile(ctx context.Context, base, repo string) (string, int, http.Header, error) {
+	body, status, header, err := g.HTTP.Get(ctx, base+"/repos/"+repo+"/license", 1<<20, http.Header{})
+	if err != nil {
+		return "", 1, nil, err
+	}
+	switch status {
+	case http.StatusOK:
+		var value struct {
+			License *struct {
+				SPDXID string `json:"spdx_id"`
+			} `json:"license"`
+			Content  string `json:"content"`
+			Encoding string `json:"encoding"`
+		}
+		if err := json.Unmarshal(body, &value); err != nil {
+			return "", 1, header, fmt.Errorf("decode github license: %w", err)
+		}
+		if value.License != nil && value.License.SPDXID != "" && value.License.SPDXID != "NOASSERTION" && osiLicenses[value.License.SPDXID] {
+			// The lookup may know the license even when the repository response did not.
+			return value.License.SPDXID, 1, header, nil
+		}
+		text := value.Content
+		if value.Encoding == "base64" {
+			decoded, err := base64.StdEncoding.DecodeString(value.Content)
+			if err != nil {
+				return "", 1, header, nil
+			}
+			text = string(decoded)
+		}
+		return classifyLicense(text), 1, header, nil
+	case http.StatusNotFound, http.StatusGone, http.StatusUnavailableForLegalReasons:
+		return "", 1, header, nil
+	case http.StatusForbidden, http.StatusTooManyRequests:
+		if quota(header, "X-Ratelimit-Remaining") == 0 || header.Get("Retry-After") != "" || status == http.StatusTooManyRequests {
+			return "", 1, header, ErrRateLimited
+		}
+		return "", 1, header, fmt.Errorf("github license status %d", status)
+	default:
+		return "", 1, header, fmt.Errorf("github license status %d", status)
+	}
+}
+
 // OpenSource publishes a license only for a public repository that holds code (GitHub detects a
-// language) under an OSI-approved license GitHub recognized. Releases-only repositories, missing
-// or unrecognized licenses ("NOASSERTION") publish nothing rather than a guess.
+// language) under an OSI-approved license. GitHub reports "NOASSERTION" when its licensee cannot
+// match the file exactly; Repo then classifies the license file itself and only fills the SPDX ID on
+// a confident match. Releases-only repositories and unrecognized licenses publish nothing.
 func (r Repository) OpenSource() (OpenSource, bool) {
 	if !r.Public() || r.License == nil || !osiLicenses[r.License.SPDXID] || r.Language == nil || *r.Language == "" {
 		return OpenSource{}, false
@@ -161,6 +213,27 @@ func (g *GitHub) Repo(ctx context.Context, repo, etag string) (RepoResult, error
 			if err := json.Unmarshal(body, &result.Repository); err != nil {
 				return result, fmt.Errorf("decode github repository: %w", err)
 			}
+			if result.Repository.needsLicenseFile() {
+				spdx, licenseRequests, licenseHeader, licenseErr := g.licenseFile(ctx, base, result.Repository.FullName)
+				requests += licenseRequests
+				result.Requests = requests
+				if licenseHeader != nil {
+					if remaining := quota(licenseHeader, "X-Ratelimit-Remaining"); remaining >= 0 {
+						result.Remaining = remaining
+					}
+					if limit := quota(licenseHeader, "X-Ratelimit-Limit"); limit >= 0 {
+						result.Limit = limit
+					}
+				}
+				if errors.Is(licenseErr, ErrRateLimited) {
+					return result, ErrRateLimited
+				}
+				// A license file that cannot be read leaves the fact unset rather than failing the
+				// repository signals; the next 30-day check retries it.
+				if licenseErr == nil && spdx != "" && result.Repository.License != nil {
+					result.Repository.License.SPDXID = spdx
+				}
+			}
 			return result, nil
 		case status == http.StatusNotModified:
 			result.NotModified = true
@@ -191,4 +264,68 @@ func quota(header http.Header, name string) int64 {
 		return -1
 	}
 	return value
+}
+
+// licenseSignature is a license text fingerprint. All phrases must occur after normalization;
+// any absent phrase means a different license. Extra copyright lines never affect a match.
+type licenseSignature struct {
+	spdx    string
+	phrases []string
+	absent  []string
+}
+
+var licenseSignatures = []licenseSignature{
+	{spdx: "MIT", phrases: []string{
+		"permission is hereby granted, free of charge, to any person obtaining a copy",
+		`the software is provided "as is", without warranty of any kind`,
+	}},
+	{spdx: "ISC", phrases: []string{
+		"permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted",
+	}},
+	{spdx: "Apache-2.0", phrases: []string{
+		"apache license", "version 2.0, january 2004", "www.apache.org/licenses/license-2.0",
+	}},
+	{spdx: "MPL-2.0", phrases: []string{"mozilla public license version 2.0"}},
+	{spdx: "GPL-3.0", phrases: []string{"gnu general public license", "version 3, 29 june 2007"}},
+	{spdx: "GPL-2.0", phrases: []string{"gnu general public license", "version 2, june 1991"}},
+	{spdx: "LGPL-3.0", phrases: []string{"gnu lesser general public license", "version 3, 29 june 2007"}},
+	{spdx: "LGPL-2.1", phrases: []string{"gnu lesser general public license", "version 2.1, february 1999"}},
+	{spdx: "BSD-3-Clause", phrases: []string{
+		"redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met",
+		"neither the name of",
+	}},
+	{spdx: "BSD-2-Clause", phrases: []string{
+		"redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met",
+	}, absent: []string{"neither the name of"}},
+}
+
+// classifyLicense identifies one OSI license from its text. It returns "" when nothing matches or
+// more than one does, so an ambiguous or dual-license file never becomes a published fact.
+func classifyLicense(text string) string {
+	normalized := strings.ToLower(strings.NewReplacer("“", `"`, "”", `"`, "‘", "'", "’", "'").Replace(text))
+	normalized = strings.Join(strings.Fields(normalized), " ")
+	matched := ""
+	for _, signature := range licenseSignatures {
+		ok := true
+		for _, phrase := range signature.phrases {
+			if !strings.Contains(normalized, phrase) {
+				ok = false
+				break
+			}
+		}
+		for _, phrase := range signature.absent {
+			if strings.Contains(normalized, phrase) {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		if matched != "" && matched != signature.spdx {
+			return ""
+		}
+		matched = signature.spdx
+	}
+	return matched
 }
