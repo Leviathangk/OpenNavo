@@ -684,8 +684,7 @@
       "yes": "Oui",
       "no": "Non",
       "checked": "Vérifié le",
-      "bundleId": "ID du bundle",
-      "closedSource": "Code fermé"
+      "bundleId": "ID du bundle"
     },
     "repo": {
       "stars": "★",
@@ -780,6 +779,8 @@
       "hint": "Cette page présente uniquement des faits vérifiables, avec leur source et leur date. Elle ne constitue pas une certification de sécurité. Pour vérifier les fichiers téléchargés, analysez-les localement avec OpenNavo.",
       "identity": "Identité du développeur",
       "teamId": "Team ID",
+      "source": "Code source",
+      "sourceNotPublic": "Non public",
       "channels": "Canaux de distribution",
       "openSource": "Open source",
       "cves": "Vulnérabilités connues (CVE)",

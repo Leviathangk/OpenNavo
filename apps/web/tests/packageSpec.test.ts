@@ -24,7 +24,6 @@ const t = (key: string, named: Record<string, unknown> = {}, plural?: number) =>
     'package.spec.chip': 'Chip',
     'package.spec.autoUpdates': 'Auto-updates',
     'package.spec.openSource': 'Open source',
-    'package.spec.closedSource': 'Closed source',
     'package.spec.repository': 'Repository',
     'package.spec.githubRepository': 'GitHub repository',
     'package.spec.developer': 'Developer',
@@ -486,12 +485,10 @@ describe('identity-only source evidence', () => {
     evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z' }
   });
 
-  it('shows a closed source stated by a verified identity', () => {
+  it('leaves a closed source to the security facts block instead of the repository answer', () => {
+    // Product: a closed identity is a neutral fact in PackageSafety; this card answers where a repository is.
     const pkg = page({ facts: { ...page().facts, security: { identities: [identity('no')] } } });
-    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
-    expect(row).toMatchObject({ label: 'Repository', value: 'Closed source' });
-    expect(row.href).toBeUndefined();
-    expect(row.stars).toBeUndefined();
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'openSource')).toBe(false);
   });
 
   it('keeps a closed identity from hiding a repository the catalog already states', () => {
@@ -502,21 +499,6 @@ describe('identity-only source evidence', () => {
     const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
     expect(row.value).toBe('GitHub repository');
     expect(row.href).toBe('https://github.com/acme/public');
-  });
-
-  it('does not claim closed source from an identity that is pending review', () => {
-    const pkg = page({
-      facts: {
-        ...page().facts,
-        security: {
-          identities: [identity('no')].map(item => ({
-            ...item,
-            evidence: { status: 'needs_review', checkedAt: '2026-10-01T00:00:00Z' }
-          }))
-        }
-      }
-    });
-    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.some(row => row.key === 'openSource')).toBe(false);
   });
 
   it('still prefers an open identity over a closed one in the same record', () => {
@@ -540,14 +522,6 @@ describe('Bundle ID label', () => {
       if (code !== 'en-US') expect(label, code).not.toBe('Bundle ID');
       // The value under the label is a raw identifier, so the label stays short and free of placeholders.
       expect(label, code).not.toMatch(/[{}]/);
-    }
-  });
-
-  it('states closed source in each language', () => {
-    for (const code of SITE_LOCALES) {
-      const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
-      expect(messages.package.spec.closedSource, code).toBeTruthy();
-      if (code !== 'en-US') expect(messages.package.spec.closedSource, code).not.toBe('Closed source');
     }
   });
 });

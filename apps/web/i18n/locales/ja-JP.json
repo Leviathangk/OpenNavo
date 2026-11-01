@@ -684,8 +684,7 @@
       "yes": "はい",
       "no": "いいえ",
       "checked": "確認日",
-      "bundleId": "バンドルID",
-      "closedSource": "クローズドソース"
+      "bundleId": "バンドルID"
     },
     "repo": {
       "stars": "★",
@@ -780,6 +779,8 @@
       "hint": "ここでは確認できる事実だけを、出典と日付を添えて掲載しています。安全性を認証するものではありません。ダウンロードしたファイルを確かめるには、OpenNavo を使ってお使いの Mac 上でスキャンできます。",
       "identity": "開発元の身元",
       "teamId": "Team ID",
+      "source": "ソースコード",
+      "sourceNotPublic": "非公開",
       "channels": "配布経路",
       "openSource": "オープンソース",
       "cves": "既知の脆弱性（CVE）",

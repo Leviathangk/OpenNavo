@@ -684,8 +684,7 @@
       "yes": "是",
       "no": "否",
       "checked": "核查日期",
-      "bundleId": "应用包标识符",
-      "closedSource": "闭源"
+      "bundleId": "应用包标识符"
     },
     "repo": {
       "stars": "★",
@@ -780,6 +779,8 @@
       "hint": "这里只列可以核验的事实，并注明来源和日期，不是安全认证。要检查你下载的文件，可以用 OpenNavo 在本机扫描。",
       "identity": "开发者身份",
       "teamId": "Team ID",
+      "source": "源代码",
+      "sourceNotPublic": "未公开",
       "channels": "分发渠道",
       "openSource": "是否开源",
       "cves": "已知漏洞（CVE）",

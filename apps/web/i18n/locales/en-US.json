@@ -684,8 +684,7 @@
       "yes": "Yes",
       "no": "No",
       "checked": "Checked",
-      "bundleId": "Bundle ID",
-      "closedSource": "Closed source"
+      "bundleId": "Bundle ID"
     },
     "repo": {
       "stars": "★",
@@ -780,6 +779,8 @@
       "hint": "Only facts that can be checked, each with its source and date. This is not a safety certification. To check the files you downloaded, scan them on your Mac with OpenNavo.",
       "identity": "Developer identity",
       "teamId": "Team ID",
+      "source": "Source",
+      "sourceNotPublic": "Not public",
       "channels": "Distribution",
       "openSource": "Open source",
       "cves": "Known vulnerabilities (CVE)",

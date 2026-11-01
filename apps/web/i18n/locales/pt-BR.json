@@ -684,8 +684,7 @@
       "yes": "Sim",
       "no": "Não",
       "checked": "Verificado",
-      "bundleId": "ID do pacote",
-      "closedSource": "Código fechado"
+      "bundleId": "ID do pacote"
     },
     "repo": {
       "stars": "★",
@@ -780,6 +779,8 @@
       "hint": "Aqui só aparecem fatos que podem ser conferidos, cada um com fonte e data. Isto não é uma certificação de segurança. Para verificar os arquivos que você baixou, use o OpenNavo para analisá-los no seu Mac.",
       "identity": "Identidade do desenvolvedor",
       "teamId": "Team ID",
+      "source": "Código-fonte",
+      "sourceNotPublic": "Não público",
       "channels": "Canais de distribuição",
       "openSource": "Código aberto",
       "cves": "Vulnerabilidades conhecidas (CVE)",

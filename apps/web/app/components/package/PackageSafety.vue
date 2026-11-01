@@ -31,6 +31,18 @@ function checked(evidence: FactEvidence) {
 const identity = computed(() => identities.value.find(item => item.developer || item.teamId));
 const identityChecked = computed(() => (identity.value ? checked(identity.value.evidence) : null));
 
+// A verified record that says the source is not public. It is a neutral fact in the same list, stated without a
+// warning tone and without a claim either way: a closed record beside an open one, a catalog repository or an
+// OSI licence leaves the row out, because only the open source answers the question there. An "unknown" record
+// claims nothing and is not shown at all.
+const closedSource = computed(
+  () =>
+    !props.pkg.openSource &&
+    !props.pkg.repository &&
+    !identities.value.some(item => item.openSource === 'yes' || item.repositoryUrl) &&
+    identities.value.some(item => item.openSource === 'no')
+);
+
 // Channels a verified record names; without one, the ones the catalog itself shows (Homebrew for casks,
 // the developer's download for link apps, a Mac App Store listing with a verified price).
 const channels = computed(() => {
@@ -88,6 +100,10 @@ const visible = computed(() => Boolean(security.value) || channels.value.length 
             ></span
           >
         </dd>
+      </div>
+      <div v-if="closedSource" data-testid="package-safety-source">
+        <dt class="text-12px text-ink-tertiary">{{ t('package.safety.source') }}</dt>
+        <dd class="m-0 text-ink-primary">{{ t('package.safety.sourceNotPublic') }}</dd>
       </div>
       <div v-if="channels.length">
         <dt class="text-12px text-ink-tertiary">{{ t('package.safety.channels') }}</dt>

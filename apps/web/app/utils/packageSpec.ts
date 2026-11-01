@@ -87,12 +87,11 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
   const repository = pkg.repository;
   const osi = pkg.openSource;
   const github = pkg.kind === 'link' && pkg.link?.github;
-  // A verified identity can settle the source question on its own: an open one with its repository, or a
-  // closed one with none. An open identity wins over a closed one, so a mixed record never claims closed.
+  // A verified identity can settle the source question on its own: an open one with its repository. A closed
+  // one is stated as a neutral fact in the security facts block, not as this card's repository answer, and an
+  // open identity wins over a closed one so a mixed record never claims closed.
   const identities = verifiedIdentities(pkg);
   const repoIdentity = identities.find(item => item.openSource === 'yes' || item.repositoryUrl);
-  const closedSource =
-    !osi && !repository && !github && !repoIdentity && identities.some(item => item.openSource === 'no');
   const identityOpenSource = !osi && repoIdentity?.openSource === 'yes';
   const repositoryUrl = httpsUrl(
     repository?.url ??
@@ -100,7 +99,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
       (github ? `https://github.com/${github.repo}` : undefined) ??
       repoIdentity?.repositoryUrl
   );
-  if (osi || repository || github || identityOpenSource || closedSource || repoIdentity?.repositoryUrl) {
+  if (osi || repository || github || identityOpenSource || repoIdentity?.repositoryUrl) {
     const repo = repoText(
       signals,
       {
@@ -114,11 +113,7 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
       key: 'openSource',
       label: t('package.spec.repository'),
       value: [
-        osi || identityOpenSource
-          ? t('package.spec.openSource')
-          : closedSource
-            ? t('package.spec.closedSource')
-            : t('package.spec.githubRepository'),
+        osi || identityOpenSource ? t('package.spec.openSource') : t('package.spec.githubRepository'),
         osi?.license,
         repo.value
       ]
