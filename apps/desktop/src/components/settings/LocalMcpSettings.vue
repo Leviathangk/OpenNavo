@@ -7,8 +7,15 @@ import type { AuditCaller, AuditEntry, McpStatus } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
 import { useToasts } from '@/composables/useToasts';
 import { useAppLocale } from '@/composables/useAppLocale';
-import { MCP_CLIENTS, copiedMcpPaths, mcpConfig, mcpMovedClients, rememberCopiedMcpPath } from '@/utils/mcpConfig';
-import type { McpClient } from '@/utils/mcpConfig';
+import {
+  MCP_CLIENTS,
+  copiedMcpState,
+  mcpConfig,
+  mcpLegacyStale,
+  mcpMovedClients,
+  rememberCopiedMcpPath
+} from '@/utils/mcpConfig';
+import type { McpClient, McpCopiedState } from '@/utils/mcpConfig';
 
 // Settings → Local MCP. The switches are never updated optimistically: every change shows the state the
 // backend reports afterwards. When turning something off fails, the backend keeps it on, so this page
@@ -22,7 +29,7 @@ const status = ref<McpStatus | null>(null);
 const busy = ref(false);
 const failure = ref<Failure | null>(null);
 const client = ref<McpClient>('claude');
-const copied = ref(copiedMcpPaths());
+const copied = ref<McpCopiedState>(copiedMcpState());
 const loadFailed = ref(false);
 
 // Every status update takes a new token; a read only lands if nothing newer arrived meanwhile, so a slow
@@ -45,7 +52,7 @@ async function load() {
 // The app may be moved, or another window may copy a configuration, while this page stays open.
 function recheck() {
   if (document.visibilityState === 'hidden') return;
-  copied.value = copiedMcpPaths();
+  copied.value = copiedMcpState();
   if (!busy.value) void load();
 }
 onMounted(() => {
@@ -82,9 +89,15 @@ async function change(kind: 'enabled' | 'write', next: boolean) {
 
 const clients = computed(() => MCP_CLIENTS.map(value => ({ value, label: t(`settings.mcp.clients.${value}`) })));
 const commandPath = computed(() => status.value?.commandPath ?? null);
+// The backend asks the volume whether its paths are case-sensitive; until it answers, assume the common Mac.
+const caseSensitive = computed(() => status.value?.caseSensitive ?? false);
 const config = computed(() => (commandPath.value ? mcpConfig(client.value, commandPath.value) : ''));
-const movedClients = computed(() => mcpMovedClients(commandPath.value, copied.value));
+const movedClients = computed(() => mcpMovedClients(commandPath.value, copied.value.paths, caseSensitive.value));
 const movedLabels = computed(() => movedClients.value.map(value => t(`settings.mcp.clients.${value}`)).join(', '));
+// The pre-per-client key names no client, so it gets its own sentence instead of four guessed ones.
+const legacyStale = computed(
+  () => !movedClients.value.length && mcpLegacyStale(commandPath.value, copied.value.legacy, caseSensitive.value)
+);
 // Writes need a listener that is actually up; an "on" switch with a failed bind accepts nothing.
 const serving = computed(() => !!status.value?.enabled && !!status.value?.running);
 const notRunning = computed(() => !!status.value?.enabled && !status.value.running);
@@ -97,7 +110,7 @@ async function copyConfig() {
     toasts.push({ tone: 'danger', title: t('settings.mcp.copyFailed') });
     return;
   }
-  copied.value = rememberCopiedMcpPath(client.value, commandPath.value);
+  copied.value = { paths: rememberCopiedMcpPath(client.value, commandPath.value), legacy: null };
   toasts.push({
     tone: 'success',
     title: t('settings.mcp.copied', { client: t(`settings.mcp.clients.${client.value}`) })
@@ -218,6 +231,9 @@ function auditCaller(caller: AuditCaller) {
           <span class="block" data-test="mcp-moved-clients">{{
             t('settings.mcp.movedClients', { clients: movedLabels })
           }}</span>
+        </p>
+        <p v-else-if="legacyStale" role="status" class="m-0 text-12.5px text-status-warning" data-test="mcp-moved">
+          {{ t('settings.mcp.movedLegacy') }}
         </p>
         <div class="flex flex-wrap items-center justify-between gap-8px">
           <OnSegmented v-model="client" :options="clients" size="sm" :aria-label="t('settings.mcp.config')" />

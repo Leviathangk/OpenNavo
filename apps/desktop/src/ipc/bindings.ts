@@ -1582,6 +1582,11 @@ export type McpStatus = {
 	error: string | null,
 	/**  Absolute path of the running app executable, for client config presets. */
 	commandPath: string | null,
+	/**
+	 *  Whether the volume holding `command_path` compares names case-sensitively. The settings page needs
+	 *  this to tell a real move from a case-only spelling of the same path.
+	 */
+	caseSensitive: boolean,
 };
 
 export type MemoryPressure = "normal" | "warning" | "critical";

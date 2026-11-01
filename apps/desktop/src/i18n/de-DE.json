@@ -965,6 +965,7 @@
       "copied": "{client}-Konfiguration kopiert",
       "copyFailed": "Die Konfiguration konnte nicht kopiert werden.",
       "moved": "OpenNavo wurde verschoben, nachdem Sie die Konfiguration kopiert haben. Kopieren Sie sie erneut, damit Ihre KI-Apps OpenNavo weiterhin finden.",
+      "movedLegacy": "OpenNavo wurde verschoben, nachdem eine Konfiguration kopiert wurde. Die frühere Kopie hat nicht festgehalten, für welche App sie war; kopieren Sie sie daher in jeder KI-App erneut, die Sie verwenden.",
       "notRunning": "Lokales MCP ist eingeschaltet, läuft aber nicht. KI-Apps können sich nicht verbinden. Schalten Sie es aus und wieder ein, um es erneut zu versuchen.",
       "statusFailed": "Der Status von lokalem MCP konnte nicht gelesen werden.",
       "movedClients": "Zeigt noch auf den alten Ort: {clients}",
