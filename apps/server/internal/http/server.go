@@ -77,10 +77,21 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 	})
 	// The externally documented contract is deliberately separate from the internal public API
 	// contract. Keep it on the /api path so the API host's existing Caddy allowlist serves it.
-	engine.GET("/api/v1/openapi.yaml", func(c *gin.Context) {
+	// It carries the public rate limiter too: it is the largest body the public host serves, and an
+	// unlimited copy would be the cheapest way to spend its bandwidth.
+	var publicRate *middleware.RateLimiter
+	if len(deps) > 0 {
+		publicRate = deps[0].Rate
+	}
+	specHandlers := []gin.HandlerFunc{}
+	if publicRate != nil {
+		specHandlers = append(specHandlers, middleware.RateLimit(*publicRate, logger))
+	}
+	specHandlers = append(specHandlers, func(c *gin.Context) {
 		c.Header("Cache-Control", "public, max-age=3600")
 		c.Data(http.StatusOK, "application/yaml; charset=utf-8", publiccontract.PublicExternalOpenAPI)
 	})
+	engine.GET("/api/v1/openapi.yaml", specHandlers...)
 	engine.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/agent-api/") {
 			respond.Error(c, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: http.StatusForbidden}, true)
@@ -115,8 +126,8 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 		if deps[0].Public != nil {
 			publicService = deps[0].Public
 		}
-		if deps[0].Rate != nil {
-			publicMiddleware = append([]gin.HandlerFunc{middleware.RateLimit(*deps[0].Rate, logger)}, publicMiddleware...)
+		if publicRate != nil {
+			publicMiddleware = append([]gin.HandlerFunc{middleware.RateLimit(*publicRate, logger)}, publicMiddleware...)
 		}
 	}
 	publicMiddleware = append(publicMiddleware, func(c *gin.Context) {
