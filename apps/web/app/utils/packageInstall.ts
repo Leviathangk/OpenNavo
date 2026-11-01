@@ -1,4 +1,4 @@
-import { packageInstallState } from '@opennavo/shared';
+import { lifecycleReasonOf, packageInstallState } from '@opennavo/shared';
 import type { PackageInstallState } from '@opennavo/shared';
 import type { PackagePage } from './packageFacts';
 import type { Translate } from './seoTitles';
@@ -10,23 +10,16 @@ export interface InstallLifecycle {
 }
 
 /**
- * The reason a lifecycle notice shows, in the order the state itself comes from. `disable` mixes Homebrew's
- * own disable with OpenNavo's 90-day pause, and its reason can be the pause copy from an earlier sync, so a
- * disabled package states Homebrew's current reason first. A pause keeps the catalog's localized pause reason.
+ * The reason a lifecycle notice shows, in the order the state itself comes from: the shared
+ * `lifecycleReasonOf` holds the order, so the website and the Mac client cannot disagree. A missing reason
+ * becomes the localized "no reason" text here, because only a caller with a translator can say it.
  */
 export function lifecycleReason(
   pkg: Pick<PackagePage, 'disable' | 'deprecation' | 'homebrewStatus'>,
   state: PackageInstallState,
   t: Translate
 ): string {
-  const homebrew = pkg.homebrewStatus?.reason;
-  const reason =
-    state === 'disabled'
-      ? (homebrew ?? pkg.disable?.reason)
-      : state === 'deprecated'
-        ? (pkg.deprecation?.reason ?? homebrew)
-        : (pkg.disable?.reason ?? homebrew);
-  return reason ?? t('package.noReason');
+  return lifecycleReasonOf(pkg, state) ?? t('package.noReason');
 }
 
 /**

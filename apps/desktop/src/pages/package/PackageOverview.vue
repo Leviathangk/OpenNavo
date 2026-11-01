@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
-import { packageInstallState, withRecentReturn } from '@opennavo/shared';
+import { lifecycleReasonOf, packageInstallState, withRecentReturn } from '@opennavo/shared';
 import { catalogInstallCommand } from '@/utils/brew';
 import { OnPackageOverview, OnPackageSpecCard } from '@opennavo/ui';
 import type { OnRelatedPackage } from '@opennavo/ui';
@@ -75,13 +75,8 @@ const installNotice = computed(() => {
         ? 'package.deprecatedNotice'
         : 'package.staleNotice';
   const remote = detail.value;
-  // A disabled package uses Homebrew's current reason before any stale pause notice.
-  const reason =
-    (state === 'disabled'
-      ? (remote?.homebrewStatus?.reason ?? remote?.disable?.reason)
-      : state === 'deprecated'
-        ? (remote?.deprecation?.reason ?? remote?.homebrewStatus?.reason)
-        : (remote?.disable?.reason ?? remote?.homebrewStatus?.reason)) ?? t('package.noReason');
+  // Homebrew's current reason first when disabled: the disable object may still hold a stale pause copy.
+  const reason = lifecycleReasonOf(remote ?? {}, state) ?? t('package.noReason');
   return { text: t(key, { reason }), disabled: state === 'disabled' };
 });
 

@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import type { PackageDetail } from '@opennavo/api';
 import { OnMenu, OnPackageHeader, OnPackageNotice } from '@opennavo/ui';
-import { DESKTOP_LOCALES } from '@opennavo/shared';
+import { DESKTOP_LOCALES, lifecycleReasonOf } from '@opennavo/shared';
 import lifecycleCasesData from '../../../packages/shared/tests/fixtures/packageInstallStates.json';
 import type { LocalItem } from '@/ipc/client';
 import PackageLayout from '@/pages/package/PackageLayout.vue';
@@ -149,10 +149,11 @@ it.each(lifecycleCases)(
           deprecated: 'package.deprecatedNotice',
           paused: 'package.staleNotice'
         };
-        const lifecycle = expected === 'deprecated' ? fields.deprecation : fields.disable;
+        // The reason order is the shared rule, not a copy of whatever the component happens to do: a case
+        // that gives both reasons (below) is what catches a reversed order.
         expect(banner.props('text')).toBe(
           i18n.global.t(noticeKeys[expected], {
-            reason: lifecycle?.reason ?? fields.homebrewStatus?.reason ?? i18n.global.t('package.noReason')
+            reason: lifecycleReasonOf(fields, expected) ?? i18n.global.t('package.noReason')
           })
         );
         expect(command.get('[role="note"]').text()).toBe(banner.props('text'));
@@ -166,9 +167,9 @@ it.each(lifecycleCases)(
   }
 );
 
-it('prefers the disabled Homebrew reason over a stale pause reason in PackageOverview', async () => {
+it('prefers the disabled Homebrew reason over a stale pause reason in every desktop surface', async () => {
   state.local = null;
-  state.detail = {
+  const fields = {
     kind: 'cask',
     token: 'disabled-example',
     displayName: 'Disabled Example',
@@ -178,22 +179,42 @@ it('prefers the disabled Homebrew reason over a stale pause reason in PackageOve
     artifacts: { apps: [], binaries: [], pkgs: [], entries: [] },
     supports: { status: 'known', arm64: true, x86_64: true },
     installs: { d30: 0, d90: 0, d365: 0 },
-    homebrewStatus: { state: 'disabled', reason: 'discontinued upstream' },
-    disable: { reason: 'stale pause notice' }
+    // Both reasons at once, different: the 90-day pause left its copy on `disable`, and Homebrew then
+    // disabled the app for its own reason. Disabled must state Homebrew's current reason, not the pause copy.
+    homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check' },
+    disable: { reason: 'No version update for more than 90 days' },
+    // PackageDetails reads the definition and formulae links, so the fixture needs them to render.
+    sourceUrl: 'https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/d/disabled-example.rb',
+    formulaeUrl: 'https://formulae.brew.sh/cask/disabled-example',
+    tap: 'homebrew/cask'
   } as unknown as PackageDetail;
+  state.detail = fields;
   const { pinia, router } = await setup('/package/cask/disabled-example');
-  const wrapper = mount(PackageOverview, {
-    global: {
-      plugins: [pinia, router, i18n],
-      stubs: { MonthlyInstallsCard: true, MasAlsoPanel: true, DetailHeader: true, DetailStats: true }
-    }
-  });
+  const global = {
+    plugins: [pinia, router, i18n],
+    stubs: { MonthlyInstallsCard: true, MasAlsoPanel: true, DetailHeader: true, DetailStats: true }
+  };
+  const overview = mount(PackageOverview, { global });
+  const details = mount(PackageDetails, { global });
+  const layout = mount(PackageLayout, { props: { kind: 'cask', token: 'disabled-example' }, global });
   try {
-    const note = wrapper.get('[data-testid="package-install-command"] [role="note"]');
-    expect(note.text()).toContain('discontinued upstream');
-    expect(note.text()).not.toContain('stale pause notice');
+    const expected = i18n.global.t('package.disabledNotice', { reason: 'fails_gatekeeper_check' });
+    const pauseCopy = i18n.global.t('package.disabledNotice', { reason: 'No version update for more than 90 days' });
+    // PackageOverview's install block.
+    const note = overview.get('[data-testid="package-install-command"] [role="note"]').text();
+    expect(note).toBe(expected);
+    expect(note).not.toBe(pauseCopy);
+    // PackageLayout's breadcrumb banner.
+    const banner = layout.findComponent(OnPackageNotice).props('text');
+    expect(banner).toBe(expected);
+    // PackageDetails' install notice.
+    const detailsNote = details.get('[role="note"]').text();
+    expect(detailsNote).toBe(expected);
+    for (const text of [note, banner, detailsNote]) expect(text).not.toContain('90 days');
   } finally {
-    wrapper.unmount();
+    overview.unmount();
+    details.unmount();
+    layout.unmount();
     state.detail = null;
   }
 });

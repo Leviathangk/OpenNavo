@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { packageInstallState, recentReturnPath, withRecentReturn } from '@opennavo/shared';
+import { lifecycleReasonOf, packageInstallState, recentReturnPath, withRecentReturn } from '@opennavo/shared';
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -90,7 +90,8 @@ const notice = computed(() => {
   const state = packageInstallState(value);
   if (state === 'active') return null;
   const lifecycle = state === 'deprecated' ? detail.value?.deprecation : detail.value?.disable;
-  const reason = lifecycle?.reason ?? detail.value?.homebrewStatus?.reason ?? t('package.noReason');
+  // Reasons live on the remote detail only; the local catalog states none, so it renders the "no reason" text.
+  const reason = lifecycleReasonOf(detail.value ?? {}, state) ?? t('package.noReason');
   return {
     tone: state === 'disabled' ? ('danger' as const) : ('warning' as const),
     text: t(

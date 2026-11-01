@@ -31,3 +31,22 @@ export function disabledByHomebrew(pkg: { disabled?: boolean; homebrewStatus?: H
   if (!pkg.disabled) return false;
   return pkg.homebrewStatus ? pkg.homebrewStatus.state === 'disabled' : true;
 }
+
+export interface LifecycleReasons {
+  disable?: { reason?: string | null } | null;
+  deprecation?: { reason?: string | null } | null;
+  homebrewStatus?: HomebrewLifecycle | null;
+}
+
+/**
+ * The reason a lifecycle notice states, in the order the state itself comes from. `disable` mixes Homebrew's
+ * own disable with OpenNavo's 90-day pause, and the pause writes its copy into it, so a disabled package states
+ * Homebrew's current reason first. A pause keeps the catalog's localized pause reason; a deprecation keeps the
+ * deprecation text. Null means every source is silent and the caller supplies its own "no reason" text.
+ */
+export function lifecycleReasonOf(pkg: LifecycleReasons, state: PackageInstallState): string | null {
+  const homebrew = pkg.homebrewStatus?.reason ?? null;
+  if (state === 'disabled') return homebrew ?? pkg.disable?.reason ?? null;
+  if (state === 'deprecated') return pkg.deprecation?.reason ?? homebrew;
+  return pkg.disable?.reason ?? homebrew;
+}

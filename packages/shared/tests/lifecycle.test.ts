@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { disabledByHomebrew, packageInstallState } from '../src/lifecycle';
+import { disabledByHomebrew, lifecycleReasonOf, packageInstallState } from '../src/lifecycle';
 
 describe('disabledByHomebrew', () => {
   it('Is false for packages the catalog has not disabled', () => {
@@ -54,4 +54,49 @@ const lifecycleCases = JSON.parse(
 
 it.each(lifecycleCases)('shares the lifecycle priority for $name', ({ fields, expected }) => {
   expect(packageInstallState(fields)).toBe(expected);
+});
+
+describe('lifecycleReasonOf', () => {
+  // The 90-day pause writes its copy into `disable` and leaves it behind when Homebrew later disables the app.
+  const stalePauseCopy = 'No version update for more than 90 days';
+
+  it('prefers Homebrew’s current reason over a stale pause reason when disabled', () => {
+    expect(
+      lifecycleReasonOf(
+        {
+          homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check' },
+          disable: { reason: stalePauseCopy }
+        },
+        'disabled'
+      )
+    ).toBe('fails_gatekeeper_check');
+  });
+
+  it('falls back to the disable reason when disabled and Homebrew states none', () => {
+    expect(lifecycleReasonOf({ disable: { reason: 'discontinued' } }, 'disabled')).toBe('discontinued');
+  });
+
+  it('keeps the catalog pause reason for a package OpenNavo paused', () => {
+    expect(
+      lifecycleReasonOf(
+        { homebrewStatus: { state: 'active', reason: 'homebrew note' }, disable: { reason: stalePauseCopy } },
+        'paused'
+      )
+    ).toBe(stalePauseCopy);
+  });
+
+  it('prefers the deprecation reason and falls back to Homebrew’s', () => {
+    expect(
+      lifecycleReasonOf(
+        { deprecation: { reason: 'unmaintained' }, homebrewStatus: { state: 'deprecated', reason: 'other' } },
+        'deprecated'
+      )
+    ).toBe('unmaintained');
+    expect(lifecycleReasonOf({ homebrewStatus: { state: 'deprecated', reason: 'other' } }, 'deprecated')).toBe('other');
+  });
+
+  it('returns null when every source is silent, so the caller writes its own text', () => {
+    expect(lifecycleReasonOf({}, 'disabled')).toBeNull();
+    expect(lifecycleReasonOf({}, 'paused')).toBeNull();
+  });
 });

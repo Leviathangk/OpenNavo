@@ -40,6 +40,22 @@
     "expected": "disabled"
   },
   {
+    "name": "disabled with both Homebrew and a stale pause reason",
+    "fields": {
+      "homebrewStatus": { "state": "disabled", "reason": "fails_gatekeeper_check" },
+      "disable": { "reason": "No version update for more than 90 days" }
+    },
+    "expected": "disabled"
+  },
+  {
+    "name": "paused with both a Homebrew note and the pause reason",
+    "fields": {
+      "homebrewStatus": { "state": "active", "reason": "homebrew note" },
+      "disable": { "reason": "No version update for more than 90 days" }
+    },
+    "expected": "paused"
+  },
+  {
     "name": "active Homebrew keeps paused app installable",
     "fields": { "homebrewStatus": { "state": "active" }, "disabled": true, "disable": { "reason": "stale" } },
     "expected": "paused"
