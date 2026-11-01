@@ -449,11 +449,16 @@ describe('desktop link price types', () => {
     ['fr-FR', frFR],
     ['it-IT', itIT]
   ] as const)('localises the Bundle ID labels in %s', (locale, messages) => {
+    const catalog = messages as unknown as {
+      package: { spec: { bundleId: string } };
+      appStore: { info: { bundleId: string } };
+      appInfo: { fields: { bundleId: string } };
+    };
     const labels = [
-      (messages as Record<string, any>).package.spec.bundleId,
-      (messages as Record<string, any>).appStore.info.bundleId,
-      (messages as Record<string, any>).appInfo.fields.bundleId
-    ] as string[];
+      catalog.package.spec.bundleId,
+      catalog.appStore.info.bundleId,
+      catalog.appInfo.fields.bundleId
+    ];
     for (const label of labels) expect(label.trim()).toBeTruthy();
     for (const label of labels) {
       // Every locale but English must actually translate it: the identical English string was the #87 defect.
