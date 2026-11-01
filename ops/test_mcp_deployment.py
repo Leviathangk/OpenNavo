@@ -100,6 +100,8 @@ class MCPDeploymentTests(unittest.TestCase):
         self.assertIn('@publicMcp path /mcp', web)
         self.assertIn('reverse_proxy public-mcp-proxy:8790', web)
         self.assertIn('@publicMcpOther path /mcp/*', web)
+        # The sub-path 404 carries the marker the deploy probe requires.
+        self.assertIn('respond "opennavo-public-mcp-subpath" 404', web)
         admin = text[text.index('{$ADMIN_DOMAIN} {'):]
         self.assertIn('reverse_proxy mcp-proxy:8790', admin)
 

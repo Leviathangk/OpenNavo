@@ -375,6 +375,14 @@ VERIFY_ATTEMPTS = 30
 # (60/min). Cap the attempts so retries cannot exhaust it and turn the real failure into a 429.
 PUBLIC_MCP_VERIFY_ATTEMPTS = 5
 PUBLIC_MCP_RETRY_AFTER_LIMIT = 30
+# Public-MCP failures back off exponentially (2/4/8/16 s) so a ~10-20 s post-switch window does not
+# exhaust the five attempts, while staying inside the 60/min per-client quota.
+PUBLIC_MCP_BACKOFF_BASE = 2
+PUBLIC_MCP_BACKOFF_MAX = 16
+# The /mcp/x probe must prove the public-MCP handle answered it. A bare 404 also comes from the
+# site catch-all, an upstream page or Cloudflare, so the route responds with this body marker and
+# the probe requires it; anything else is "a 404 we cannot attribute" and fails.
+PUBLIC_MCP_SUBPATH_MARKER = 'opennavo-public-mcp-subpath'
 _TOKEN_PATTERNS = (
     re.compile(r'(?i)(bearer\s+)[^\s"\',;]+'),
     re.compile(r'(?i)((?:access_|refresh_|id_)?token|secret|password|passwd|api[_-]?key|authorization|cookie|'
@@ -731,7 +739,7 @@ def public_mcp_route(alias):
             '\t}\n'
             '\t@publicMcpOther path /mcp/*\n'
             '\thandle @publicMcpOther {\n'
-            '\t\trespond 404\n'
+            f'\t\trespond "{PUBLIC_MCP_SUBPATH_MARKER}" 404\n'
             '\t}\n'
             f'{PUBLIC_MCP_END}\n')
 
@@ -1499,11 +1507,18 @@ class Deployment:
                     command(['docker', 'exec', container, 'rm', '-f', remote])
 
     def install_caddy(self, content, before_write=None):
-        """Back up the live file and validate a staged copy before updating its inode."""
-        backup = self.live_caddy.with_name('Caddyfile.bak')
-        write_atomic(backup, self.live_caddy.read_bytes())
+        """Validate the candidate first, then back up the live file and update its inode.
+
+        The live file is read once: the backup and the staged validation both use that snapshot,
+        so a backup is never taken from a candidate that has not been validated yet.
+        """
+        live = self.live_caddy.read_bytes()
         if not self._validate_staged(content):
             raise RuntimeError('invalid staged Caddyfile; live configuration left untouched')
+        backup = self.live_caddy.with_name('Caddyfile.bak')
+        # Keep the pre-write live version even when an earlier backup exists: the release's own
+        # before-caddy snapshot is only a fallback, this file is what recovery restores in place.
+        write_atomic(backup, live)
         if before_write:
             before_write()
         try:
@@ -1687,16 +1702,36 @@ class Deployment:
                                   '200 tool error or no content', text.encode(), public_mcp=True)
         # Only the exact /mcp path is public; sub-paths must not reach the MCP service.
         # A redirect must not count: a 404 at the redirect target says nothing about /mcp/x.
+        # The body marker proves the public-MCP handle produced this 404, not the site catch-all.
         probe = urllib.request.Request(endpoint + '/x', method='GET',
                                        headers={'Host': host, 'User-Agent': VERIFY_USER_AGENT})
         try:
             with open_without_redirects(probe, timeout=15) as response:
                 status = getattr(response, 'status', None) or response.getcode()
+                marker = response.read(256).decode('utf-8', 'replace')
         except urllib.error.HTTPError as error:
             status = error.code
+            try:
+                marker = error.read(256).decode('utf-8', 'replace')
+            except Exception:
+                marker = ''
         if status != 404:
             raise RuntimeError(f'public MCP sub-path /mcp/x returned {status}, expected 404')
+        # Older releases answer this probe with a bare `respond 404`. The marker is required only
+        # when the live Caddyfile this run installed carries it; a rollback to such an older
+        # release still validates its own route instead of failing on the newer contract.
+        if self._live_caddy_requires_subpath_marker() and PUBLIC_MCP_SUBPATH_MARKER not in marker:
+            raise RuntimeError('public MCP sub-path /mcp/x returned 404 without the public-MCP route '
+                               'marker; the response did not come from the public-MCP handle')
         print(f'Public MCP route verified ({len(result["tools"])} tools).', flush=True)
+
+    def _live_caddy_requires_subpath_marker(self):
+        """True when the live Caddyfile answers /mcp/* with the marker body."""
+        try:
+            return PUBLIC_MCP_SUBPATH_MARKER in self.live_caddy.read_text()
+        except (OSError, AttributeError):
+            # Unit-test doubles may not have a live file; keep the stricter contract.
+            return True
 
     def verify(self, expected=None):
         # A legacy deployment may have no recorded SHA; still check its routes without a header match.
@@ -1708,6 +1743,7 @@ class Deployment:
         public_mcp_attempts = 0
         for attempt in range(1, VERIFY_ATTEMPTS + 1):
             delay = 2
+            attempted_public_mcp = False
             try:
                 for check in self.config['checks']:
                     url = self.config['local_origin'] + check['path']
@@ -1733,6 +1769,7 @@ class Deployment:
                     if public_mcp_attempts >= PUBLIC_MCP_VERIFY_ATTEMPTS:
                         break
                     public_mcp_attempts += 1
+                    attempted_public_mcp = True
                     self.verify_public_mcp()
                 return
             except Exception as error:
@@ -1742,6 +1779,12 @@ class Deployment:
                     logged = last_error
                 if isinstance(error, RouteCheckError) and error.retry_after is not None:
                     delay = max(delay, error.retry_after)
+                elif attempted_public_mcp:
+                    # Each public-MCP attempt sends three POSTs against a 60/min per-client quota;
+                    # back off so a slow cold start cannot consume the whole budget in seconds.
+                    backoff = min(PUBLIC_MCP_BACKOFF_BASE * 2 ** max(0, public_mcp_attempts - 1),
+                                  PUBLIC_MCP_BACKOFF_MAX)
+                    delay = max(delay, backoff)
                 time.sleep(delay)
         if check_public_mcp and public_mcp_attempts >= PUBLIC_MCP_VERIFY_ATTEMPTS:
             print(f'Public MCP verification stopped after {public_mcp_attempts} attempts '
@@ -1815,8 +1858,13 @@ class Deployment:
                     if self.live_caddy.read_bytes() != backup:
                         write_caddy_in_place(self.live_caddy, backup)
                 sources, route = ('before-release.env', 'before-rolling.json'), 'previous'
-                # Still unverified: the live file was replaced or restored after the last verification.
-                state = {**base, 'unverified': True}
+                # not-switched means the run stopped before the live file was touched, so the
+                # previous release is still the verified one: a same-sha retry keeps its
+                # already-deployed shortcut. The later phases replaced or restored the live file
+                # after the last verification, so those stay unverified.
+                state = {**base}
+                if phase != SWITCH_NONE or before_state.get('unverified'):
+                    state['unverified'] = True
             elif phase in SWITCH_ROUTED_TO_CANDIDATE:
                 sources, route = ('release.env', 'rolling.compose.json'), 'candidate'
                 services = record.get('services')
@@ -1848,6 +1896,46 @@ class Deployment:
         self.state = state
         print(f'Reconciled interrupted switch of {release} (phase {phase}): live Caddyfile, env, rolling and '
               f'state now all name the {route} release (unverified).', flush=True)
+        # Files alone do not prove what the Caddy process runs: a run killed between the live write
+        # and the reload leaves the process on the other release. Send USR1 now so the process
+        # matches the reconciled file; a failure marks the deployment degraded via reload().
+        if phase != SWITCH_NONE:
+            self.reload()
+        self.stop_interrupted_candidates()
+
+    def stop_interrupted_candidates(self):
+        """Remove application containers left by an interrupted run that no release claims."""
+        wanted = set(self.state.get('services', {}).values())
+        wanted |= set(self.state.get('previous', {}).get('services', {}).values())
+        try:
+            ids = command(['docker', 'ps', '-aq', '--filter',
+                           'label=com.docker.compose.project=' + self.config['project']]).splitlines()
+            if not ids:
+                return
+            containers = json.loads(command(['docker', 'inspect', *ids]))
+        except Exception as error:
+            print(f'WARNING: could not list candidate containers from an interrupted run '
+                  f'({type(error).__name__}); the next cleanup retries it.', flush=True)
+            return
+        orphaned = []
+        for container in containers:
+            labels = container.get('Config', {}).get('Labels') or {}
+            service = labels.get('com.docker.compose.service', '')
+            if (labels.get('com.docker.compose.project') != self.config['project']
+                    or not re.fullmatch(APPLICATION_SERVICE_PATTERN, service)
+                    or service in wanted):
+                continue
+            orphaned.append(container['Id'])
+        if not orphaned:
+            return
+        try:
+            command(['docker', 'stop', '--timeout', '30', *orphaned])
+            command(['docker', 'rm', *orphaned])
+        except Exception as error:
+            print(f'WARNING: could not remove {len(orphaned)} candidate container(s) from an interrupted '
+                  f'run ({type(error).__name__}); the next cleanup retries it.', flush=True)
+            return
+        print(f'Removed {len(orphaned)} candidate container(s) left by an interrupted run.', flush=True)
 
     def _previous_state(self):
         return json.loads((self.directory / 'before-state.json').read_text())
@@ -1995,24 +2083,38 @@ class Deployment:
                                f'failed; {restored}; candidate containers retained')
             raise
         candidates = []
-        for service in self.services.values():
-            ids = command([
-                'docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + self.config['project'],
-                '--filter', 'label=com.docker.compose.service=' + service
-            ]).splitlines()
-            candidates.extend({'Id': container, 'State': {'Running': True},
-                               'Config': {'Labels': {'com.docker.compose.service': service}}}
-                              for container in ids)
-        drained = self.drain_retired(candidates, preserve_stream_grace=False, timeout=ROLLBACK_DRAIN_TIMEOUT_SECONDS)
-        if not drained and self.config.get('retain_undrained_containers') is True:
-            print('WARNING: retain_undrained_containers=true; rollback candidates were kept.', flush=True)
-        else:
-            if not drained:
-                print('WARNING: rollback drain failed; stopping candidates with a 90s grace period.', flush=True)
-            self.compose('stop', '--timeout', '90', *self.services.values())
-            # The previous release remains on its original fixed address; remove only the
-            # candidate service containers after the old route has been verified.
-            self.compose('rm', '--force', '--stop', *self.services.values())
+        try:
+            for service in self.services.values():
+                ids = command([
+                    'docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + self.config['project'],
+                    '--filter', 'label=com.docker.compose.service=' + service
+                ]).splitlines()
+                candidates.extend({'Id': container, 'State': {'Running': True},
+                                   'Config': {'Labels': {'com.docker.compose.service': service}}}
+                                  for container in ids)
+        except Exception as error:
+            self.mark_degraded(f'rollback restored and verified the previous release, but listing its candidate '
+                               f'containers failed ({type(error).__name__}); candidates may still run and must be '
+                               f'removed manually; {restored}')
+            raise
+        try:
+            drained = self.drain_retired(candidates, preserve_stream_grace=False, timeout=ROLLBACK_DRAIN_TIMEOUT_SECONDS)
+            if not drained and self.config.get('retain_undrained_containers') is True:
+                print('WARNING: retain_undrained_containers=true; rollback candidates were kept.', flush=True)
+            else:
+                if not drained:
+                    print('WARNING: rollback drain failed; stopping candidates with a 90s grace period.', flush=True)
+                self.compose('stop', '--timeout', '90', *self.services.values())
+                # The previous release remains on its original fixed address; remove only the
+                # candidate service containers after the old route has been verified.
+                self.compose('rm', '--force', '--stop', *self.services.values())
+        except Exception as error:
+            # The previous release is live and verified; only candidate cleanup failed. Record it so
+            # leftover candidates are not mistaken for the running release.
+            self.mark_degraded(f'rollback restore was verified but candidate cleanup failed '
+                               f'({type(error).__name__}); candidate containers may still run and need manual '
+                               f'removal; {restored}')
+            raise
         print('Previous routes and worker restored; database was not rolled back.', flush=True)
 
     def cleanup(self, previous):
