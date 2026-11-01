@@ -13,12 +13,14 @@ import {
   overrideTitle,
   overviewDescription as describeOverview,
   type OverviewFacts,
+  overviewPageTitle,
   overviewTitle,
   brandlessTitle,
   pagedDescription,
   pagedTitle,
   reliableVersion,
   textWidth,
+  TITLE_SUFFIX,
   TITLE_WIDTH,
   titleName,
   usableSummary,
@@ -127,7 +129,11 @@ describe('WP1 titles and descriptions', () => {
       'Open-source code editor. Homebrew has disabled Visual Studio Code; see its release history and similar apps.'
     );
     // Paused only by the 90-day rule (or deprecated): Homebrew still installs it, so the page says so.
-    const disabledHere = { ...app, disabled: true, homebrewStatus: { state: 'disabled' } };
+    const disabledHere = {
+      ...app,
+      disabled: true,
+      homebrewStatus: { state: 'disabled' }
+    };
     expect(overviewTitle(disabledHere, t)).toBe('Visual Studio Code for Mac · OpenNavo');
     for (const state of ['active', 'deprecated']) {
       const paused = { ...app, disabled: true, homebrewStatus: { state } };
@@ -153,13 +159,20 @@ describe('WP1 titles and descriptions', () => {
     const pkg = {
       displayName: 'The Unarchiver',
       version: '4.3.9',
-      latestRelease: { version: '4.3.9', publishedAt: null, brewCommittedAt: '2025-03-18T10:00:00Z' }
+      latestRelease: {
+        version: '4.3.9',
+        publishedAt: null,
+        brewCommittedAt: '2025-03-18T10:00:00Z'
+      }
     };
     expect(currentReleaseDate(pkg)).toBe('2025-03-18T10:00:00Z');
     expect(versionsDescription(pkg, t, format)).toBe(
       'The Unarchiver latest version 4.3.9 (2025-03-18). See what changed in every release.'
     );
-    const stale = { ...pkg, latestRelease: { ...pkg.latestRelease, version: '4.3.8' } };
+    const stale = {
+      ...pkg,
+      latestRelease: { ...pkg.latestRelease, version: '4.3.8' }
+    };
     expect(currentReleaseDate(stale)).toBeUndefined();
     expect(versionsDescription(stale, t, format)).toBe(
       'The Unarchiver latest version 4.3.9. See what changed in every release.'
@@ -243,7 +256,57 @@ describe('Title width budget', () => {
         expect(textWidth(title)).toBeGreaterThan(TITLE_WIDTH);
         expect(warn).toHaveBeenCalledTimes(1);
         const line = String(warn.mock.calls[0]?.[0]);
-        expect(JSON.parse(line.slice(line.indexOf('{')))).toMatchObject({ locale: code, nameWidth: 60, tier: 'T3' });
+        expect(JSON.parse(line.slice(line.indexOf('{')))).toMatchObject({
+          locale: code,
+          nameWidth: 60,
+          tier: 'T3'
+        });
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('resolves override, new and legacy titles through the page entry point', () => {
+    const t = translator('en-US');
+    const name = longName;
+    expect(overviewPageTitle({ ...app, displayName: name }, t, 'en-US', false)).toBe(
+      overviewTitle({ ...app, displayName: name }, t, 'en-US')
+    );
+    const legacy = overviewPageTitle({ ...app, displayName: name }, t, 'en-US', true);
+    expect(legacy).toBe(
+      fitTitle(t('package.metaTitleCask', { name, summary: app.summary }), {
+        locale: 'en-US',
+        name
+      })
+    );
+    expect(legacy).toContain(name);
+    expect(legacy.endsWith(TITLE_SUFFIX)).toBe(false);
+    expect(
+      overviewPageTitle({ ...app, displayName: name, seoOverride: { title: 'Editor title' } }, t, 'en-US', true)
+    ).toBe('Editor title · OpenNavo');
+  });
+
+  it('keeps the overview component wired to the title entry point', () => {
+    const source = readFileSync(new URL('../app/components/package/PackageOverview.vue', import.meta.url), 'utf8');
+    expect(source).toContain('overviewPageTitle(value, t, locale.value, legacyTitles.value)');
+  });
+
+  it('records font title fallbacks for fr, de, it and pt', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      for (const [code, expected] of [
+        ['fr-FR', { branded: false, fits: false }],
+        ['de-DE', { branded: false, fits: false }],
+        ['it-IT', { branded: false, fits: true }],
+        ['pt-BR', { branded: true, fits: true }]
+      ] as const) {
+        warn.mockClear();
+        const title = overviewTitle({ ...app, displayName: 'ABCDEFGHIJKLMNOPQRST', isFont: true }, translator(code));
+        expect(title, code).toContain('ABCDEFGHIJKLMNOPQRST');
+        expect(title.endsWith(TITLE_SUFFIX), code).toBe(expected.branded);
+        expect(textWidth(title) <= TITLE_WIDTH, code).toBe(expected.fits);
+        expect(warn, code).toHaveBeenCalledTimes(expected.fits ? 0 : 1);
       }
     } finally {
       warn.mockRestore();
@@ -408,7 +471,12 @@ describe('Variant casks', () => {
   });
 
   it('changes nothing when applied twice and keeps the rest of the detail', () => {
-    const detail = { token: 'aerial@beta', displayName: 'Aerial', names: ['Aerial'], version: '3.6' };
+    const detail = {
+      token: 'aerial@beta',
+      displayName: 'Aerial',
+      names: ['Aerial'],
+      version: '3.6'
+    };
     const once = withVariantName(detail);
     expect(once).toEqual({ ...detail, displayName: 'Aerial Beta' });
     expect(withVariantName(once)).toBe(once);
@@ -420,10 +488,27 @@ describe('Variant casks', () => {
     const response = {
       total: 2,
       records: [
-        { rank: 1, package: { kind: 'cask', token: 'aerial@beta', displayName: 'Aerial' } },
+        {
+          rank: 1,
+          package: {
+            kind: 'cask',
+            token: 'aerial@beta',
+            displayName: 'Aerial'
+          }
+        },
         { rank: 2, package: main }
       ],
-      facts: { alternatives: [{ package: { kind: 'cask', token: 'parallels@19', displayName: 'Parallels Desktop' } }] }
+      facts: {
+        alternatives: [
+          {
+            package: {
+              kind: 'cask',
+              token: 'parallels@19',
+              displayName: 'Parallels Desktop'
+            }
+          }
+        ]
+      }
     };
     const result = withVariantNames(response);
     expect(result.records[0]!.package.displayName).toBe('Aerial Beta');
@@ -442,7 +527,11 @@ describe('Variant casks', () => {
     const summary =
       'Screensaver that plays the aerial videos Apple filmed for Apple TV, with a choice of places, times of day and weather.';
     const main = { ...app, token: 'aerial', displayName: 'Aerial', summary };
-    const beta = { ...main, token: 'aerial@beta', displayName: named('aerial@beta', 'Aerial') };
+    const beta = {
+      ...main,
+      token: 'aerial@beta',
+      displayName: named('aerial@beta', 'Aerial')
+    };
     expect(overviewDescription(main, t)).toBe(summary);
     const description = overviewDescription(beta, t);
     expect(description).toContain('Aerial Beta');
@@ -626,7 +715,16 @@ describe('C2 page descriptions', () => {
       'Web browsers. 42 Mac apps in Browsers, including Vivaldi and Opera.'
     );
     expect(
-      categoryDescription(browsers({ total: 1, totalLabel: '1', apps: ['Arc'], description: null }), t, list('en-US'))
+      categoryDescription(
+        browsers({
+          total: 1,
+          totalLabel: '1',
+          apps: ['Arc'],
+          description: null
+        }),
+        t,
+        list('en-US')
+      )
     ).toBe('1 Mac app in Browsers: Arc.');
     // An empty category keeps its own description; without one the page falls back to the generic copy.
     expect(categoryDescription(browsers({ total: 0, apps: [] }), t, list('en-US'))).toBe('Web browsers');
@@ -651,7 +749,14 @@ describe('C2 page descriptions', () => {
 
   it.each(LOCALES)('%s counts what the dependencies page lists and names the details page content', code => {
     const t = translator(code);
-    const facts = { displayName: 'Example App', runtime: 3, build: 1, other: 0, conflicts: 2, dependents: 12 };
+    const facts = {
+      displayName: 'Example App',
+      runtime: 3,
+      build: 1,
+      other: 0,
+      conflicts: 2,
+      dependents: 12
+    };
     const text = dependenciesDescription(facts, t, list(code), String);
     expect(text).toContain('Example App');
     expect(text).toContain('12');
@@ -670,7 +775,14 @@ describe('C2 page descriptions', () => {
   });
 
   it('Reads naturally in English and Russian plural forms', () => {
-    const facts = { displayName: 'Example App', runtime: 1, build: 2, other: 0, conflicts: 0, dependents: 5 };
+    const facts = {
+      displayName: 'Example App',
+      runtime: 1,
+      build: 2,
+      other: 0,
+      conflicts: 0,
+      dependents: 5
+    };
     expect(dependenciesDescription(facts, translator('en-US'), list('en-US'), String)).toBe(
       'Dependencies of Example App on Mac: 1 runtime dependency, 2 build dependencies, and 5 packages that depend on it. See what Homebrew installs along with it.'
     );
@@ -782,7 +894,10 @@ describe('C2 factual overview descriptions', () => {
       order.slice(0, shown.length + 1).map(part => partText(t, part)),
       { locale: t.locale }
     );
-    const closing = t('package.seo.descriptionFactsNoSummary', { name: complete.displayName, parts });
+    const closing = t('package.seo.descriptionFactsNoSummary', {
+      name: complete.displayName,
+      parts
+    });
     expect(textWidth(closing), closing).toBeGreaterThan(DESCRIPTION_WIDTH);
   };
 
@@ -804,7 +919,10 @@ describe('C2 factual overview descriptions', () => {
     for (const status of ['stale', 'needs_review', 'unknown'] as const) {
       const prices = [{ ...free, evidence: { ...free.evidence, status } }];
       expect(overviewDescription(changeFacts({ prices }), t)).not.toContain(t('package.seo.overviewParts.price'));
-      const requirements = complete.facts.requirements.map(row => ({ ...row, evidence: { ...row.evidence, status } }));
+      const requirements = complete.facts.requirements.map(row => ({
+        ...row,
+        evidence: { ...row.evidence, status }
+      }));
       const description = overviewDescription(changeFacts({ requirements }), t);
       expect(description.includes(t('package.seo.overviewParts.requirements'))).toBe(status === 'stale');
     }
@@ -832,7 +950,10 @@ describe('C2 factual overview descriptions', () => {
 describe('Overview search overrides', () => {
   it('use each field that is set, trimmed, and brand the title once', () => {
     const both = {
-      seoOverride: { title: '  Arc for Mac, picked by editors ', description: ' Fast, private browsing. ' }
+      seoOverride: {
+        title: '  Arc for Mac, picked by editors ',
+        description: ' Fast, private browsing. '
+      }
     };
     expect(overrideTitle(both)).toBe('Arc for Mac, picked by editors · OpenNavo');
     expect(overrideDescription(both)).toBe('Fast, private browsing.');
@@ -858,10 +979,18 @@ describe('Overview search overrides', () => {
 
   it.each(LOCALES)('%s never let an override promise a download Homebrew has disabled', code => {
     const t = translator(code);
-    const seoOverride = { title: 'Arc for Mac – Free Download', description: 'Download Arc for free on your Mac.' };
+    const seoOverride = {
+      title: 'Arc for Mac – Free Download',
+      description: 'Download Arc for free on your Mac.'
+    };
     for (const pkg of [
       { ...app, disabled: true, seoOverride },
-      { ...app, disabled: true, homebrewStatus: { state: 'disabled' }, seoOverride }
+      {
+        ...app,
+        disabled: true,
+        homebrewStatus: { state: 'disabled' },
+        seoOverride
+      }
     ]) {
       expect(overrideTitle(pkg)).toBeUndefined();
       expect(overrideDescription(pkg)).toBeUndefined();
@@ -870,7 +999,12 @@ describe('Overview search overrides', () => {
       expect(overviewDescription(pkg, t)).not.toContain('Download Arc');
     }
     // Paused only by the catalog's 90-day rule, Homebrew still installs it, so the override stays.
-    const paused = { ...app, disabled: true, homebrewStatus: { state: 'active' }, seoOverride };
+    const paused = {
+      ...app,
+      disabled: true,
+      homebrewStatus: { state: 'active' },
+      seoOverride
+    };
     expect(overrideTitle(paused)).toBe('Arc for Mac – Free Download · OpenNavo');
     expect(overrideDescription(paused)).toBe('Download Arc for free on your Mac.');
   });

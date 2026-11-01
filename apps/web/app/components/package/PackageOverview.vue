@@ -7,14 +7,7 @@ import type { OnRelatedPackage } from '@opennavo/ui';
 import { capabilities } from '~/utils/packageFacts';
 import { packagePath } from '~/utils/packageView';
 import { appEntityId, softwareAppNode } from '~/utils/structuredData';
-import {
-  fitTitle,
-  overrideDescription,
-  overrideTitle,
-  overviewDescription,
-  overviewTitle,
-  withVariantNames
-} from '~/utils/seoTitles';
+import { overrideDescription, overviewDescription, overviewPageTitle, withVariantNames } from '~/utils/seoTitles';
 import { packageSpec } from '~/utils/packageSpec';
 import PackageLead from './PackageLead.vue';
 import PackagePrice from './PackagePrice.vue';
@@ -56,7 +49,10 @@ const { data: related } = await useAsyncData(
   () =>
     unwrap(
       api.GET('/packages/{kind}/{token}/related', {
-        params: { path: { kind: kind.value, token: token.value }, query: { limit: 4 } }
+        params: {
+          path: { kind: kind.value, token: token.value },
+          query: { limit: 4 }
+        }
       })
     ).catch(() => []),
   { transform: withVariantNames }
@@ -67,7 +63,10 @@ const shots = computed(() =>
     src: shot.url,
     thumb: shot.thumbUrl,
     // The card crop at 1x plus the 640 px thumbnail for 2x screens; both fill the same cropped box.
-    thumbSrcset: imageSrcset(shot.thumbnailVariants, { url: shot.thumbUrl, width: 640 }),
+    thumbSrcset: imageSrcset(shot.thumbnailVariants, {
+      url: shot.thumbUrl,
+      width: 640
+    }),
     caption: shot.caption ?? undefined
   }))
 );
@@ -117,7 +116,13 @@ useSchemaOrg(
           ]
         : []),
       ...(iconId.value && value.iconUrl
-        ? [defineImage({ '@id': iconId.value, url: value.iconUrl, contentUrl: value.iconUrl })]
+        ? [
+            defineImage({
+              '@id': iconId.value,
+              url: value.iconUrl,
+              contentUrl: value.iconUrl
+            })
+          ]
         : [])
     ];
   })
@@ -135,13 +140,7 @@ usePageSeo({
   title: () => {
     const value = pkg.value;
     if (!value) return token.value;
-    const custom = overrideTitle(value);
-    if (custom) return custom;
-    if (!legacyTitles.value) return overviewTitle(value, t, locale.value);
-    return fitTitle(t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' }), {
-      locale: locale.value,
-      name: value.displayName
-    });
+    return overviewPageTitle(value, t, locale.value, legacyTitles.value);
   },
   description: () => {
     const value = pkg.value;
@@ -157,7 +156,9 @@ usePageSeo({
         summary: (value.summary ?? value.displayName).replace(/[。.]$/, ''),
         command: value.installCommand,
         version: formatVersion(value.version),
-        installs: formatCount(value.installs.d30, { locale: formattingLocale.value })
+        installs: formatCount(value.installs.d30, {
+          locale: formattingLocale.value
+        })
       },
       { plural: value.installs.d30 }
     );

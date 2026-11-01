@@ -347,6 +347,26 @@ export function overrideTitle(pkg: OverrideFacts): string | undefined {
   return title.endsWith(TITLE_SUFFIX) ? title : `${title}${TITLE_SUFFIX}`;
 }
 
+/**
+ * The overview title the page renders: an editor or agent override wins (branded once), then the new
+ * template, or the legacy meta title while the rollout switch is on. One entry point, so the page cannot
+ * apply one branch without the budget.
+ */
+export function overviewPageTitle(
+  pkg: OverviewFacts & OverrideFacts,
+  t: Translate,
+  locale?: string,
+  legacy = false
+): string {
+  const custom = overrideTitle(pkg);
+  if (custom) return custom;
+  if (!legacy) return overviewTitle(pkg, t, locale);
+  return fitTitle(t('package.metaTitleCask', { name: pkg.displayName, summary: pkg.summary ?? '' }), {
+    locale: titleLocale(t, locale),
+    name: pkg.displayName
+  });
+}
+
 /** The overview description from the override; undefined leaves the template in charge, as for the title. */
 export function overrideDescription(pkg: OverrideFacts): string | undefined {
   if (disabledByHomebrew(pkg)) return undefined;
