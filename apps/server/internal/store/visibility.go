@@ -34,3 +34,11 @@ func (s *Store) CompleteSnapshotRevocation(ctx context.Context, generation int64
 		return tx.Exec("UPDATE catalog_visibility SET snapshot_revocation=GREATEST(snapshot_revocation,?) WHERE id=true", generation).Error
 	})
 }
+
+// PrivatePackageTokens lists the tokens of packages marked private. Revocation uses it for its
+// self-check; these tokens must not survive in a newly built bundle.
+func (s *Store) PrivatePackageTokens(ctx context.Context) ([]string, error) {
+	tokens := []string{}
+	err := s.DB.WithContext(ctx).Raw(`SELECT p.token FROM packages p JOIN package_meta m ON m.package_id=p.id WHERE m.private`).Scan(&tokens).Error
+	return tokens, err
+}

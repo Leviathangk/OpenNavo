@@ -10,6 +10,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -68,4 +69,27 @@ INSERT INTO package_meta(package_id) VALUES(994)`).Error)
 	require.NotEqual(t, old.Url, fresh.Url)
 	require.NotContains(t, objects, strings.TrimPrefix(old.Url, objects.URL("")))
 	require.Equal(t, 1, purges, "a successful private write includes CDN revocation")
+}
+
+func TestPrivateWriteWarnsWhenSnapshotPurgeIsDeferred(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
+VALUES(995,'cask','private-warning','private-warning','homebrew/cask','Private warning','1','1','{}','fixture');
+INSERT INTO package_meta(package_id) VALUES(995)`).Error)
+	objects := privateSnapshotObjects{}
+	snapshots := &snapshot.Service{Store: st, Objects: objects, Purge: func(context.Context, []string) error {
+		return urlnotify.ErrPurgeDeferred
+	}}
+	_, err := snapshots.Build(ctx)
+	require.NoError(t, err)
+	svc := &Service{Store: st, Snapshots: snapshots}
+	in := Input{ID: 995, Body: map[string]any{"private": true, "visibilityReason": "Owner decision"}}
+	result, err := svc.Execute(ctx, "UpdatePackageMeta", in)
+	require.NoError(t, err)
+	warning, _ := result.(map[string]any)["warning"].(string)
+	require.Equal(t, snapshot.PurgePendingWarning, warning)
+	latest, err := snapshots.Latest(ctx)
+	require.NoError(t, err)
+	require.Zero(t, latest.ItemCount, "the warning still leaves a self-checked, private-free snapshot")
 }

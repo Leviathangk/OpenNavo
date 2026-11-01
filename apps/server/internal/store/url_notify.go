@@ -34,6 +34,8 @@ type URLNotifyState struct {
 	// IndexBackfill names the completed backfill, or "<name>:purging" once its purge queue is durable.
 	IndexBackfill        string
 	PendingPurgePrefixes []string `gorm:"-"`
+	// PendingPurgesSince is when the queue became non-empty; NULL while it is empty.
+	PendingPurgesSince *time.Time
 }
 
 // URLNotifyQueue summarizes undelivered announcements, so a stalled feed shows up on the
@@ -65,7 +67,7 @@ func (s *Store) URLNotifyState(ctx context.Context) (URLNotifyState, error) {
 		URLNotifyState
 		PendingPurges string
 	}
-	err := s.DB.WithContext(ctx).Raw("SELECT cursor,content_cursor,last_run_at,last_urls,last_indexnow_status,last_purge_status,last_error,index_backfill,pending_purges::text FROM url_notify_state WHERE id=true").Scan(&row).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT cursor,content_cursor,last_run_at,last_urls,last_indexnow_status,last_purge_status,last_error,index_backfill,pending_purges::text,pending_purges_since FROM url_notify_state WHERE id=true").Scan(&row).Error
 	if err == nil {
 		err = json.Unmarshal([]byte(row.PendingPurges), &row.PendingPurgePrefixes)
 	}
@@ -131,12 +133,15 @@ func (s *Store) IndexRowsByID(ctx context.Context, ids []int64) ([]IndexRow, err
 // purge clears instead of that many pages.
 func (s *Store) QueueURLPurges(ctx context.Context, prefixes []string, limit int, fallback []string) error {
 	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var raw string
-		if err := tx.Raw("SELECT pending_purges::text FROM url_notify_state WHERE id=true FOR UPDATE").Scan(&raw).Error; err != nil {
+		var row struct {
+			Pending string
+			Since   *time.Time
+		}
+		if err := tx.Raw("SELECT pending_purges::text AS pending,pending_purges_since AS since FROM url_notify_state WHERE id=true FOR UPDATE").Scan(&row).Error; err != nil {
 			return err
 		}
 		var queue []string
-		if err := json.Unmarshal([]byte(raw), &queue); err != nil {
+		if err := json.Unmarshal([]byte(row.Pending), &queue); err != nil {
 			return err
 		}
 		seen := map[string]bool{}
@@ -156,7 +161,15 @@ func (s *Store) QueueURLPurges(ctx context.Context, prefixes []string, limit int
 		if err != nil {
 			return err
 		}
-		return tx.Exec("UPDATE url_notify_state SET pending_purges=?::jsonb WHERE id=true", string(next)).Error
+		since := row.Since
+		if len(queue) > 0 && since == nil {
+			now := time.Now().UTC()
+			since = &now
+		}
+		if len(queue) == 0 {
+			since = nil
+		}
+		return tx.Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,pending_purges_since=? WHERE id=true", string(next), since).Error
 	})
 }
 
@@ -165,8 +178,17 @@ func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) er
 	if err != nil {
 		return err
 	}
-	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=?,index_backfill=? WHERE id=true",
-		string(pending), state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError, state.IndexBackfill).Error
+	var since *time.Time
+	if len(state.PendingPurgePrefixes) > 0 {
+		if state.PendingPurgesSince != nil {
+			since = state.PendingPurgesSince
+		} else {
+			now := time.Now().UTC()
+			since = &now
+		}
+	}
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,pending_purges_since=?,cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=?,index_backfill=? WHERE id=true",
+		string(pending), since, state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError, state.IndexBackfill).Error
 }
 
 // ContentURLChange is a batch of changed pages outside the catalog (articles, authors).

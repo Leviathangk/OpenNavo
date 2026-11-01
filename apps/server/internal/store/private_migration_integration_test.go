@@ -187,6 +187,9 @@ ANALYZE package_meta`).Error)
 	var backfilled int64
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM package_meta WHERE hidden AND NOT private AND visibility_reason='Legacy setting; reason not recorded.'").Scan(&backfilled).Error)
 	require.EqualValues(t, 35, backfilled)
+	// A regression that rewrites the table under the exclusive lock must fail here, not only be
+	// visible in the log. 60 s is generous for a cold CI runner on the 20,000-row fixture.
+	require.Less(t, elapsed, 60*time.Second, "migration 126 lock hold regressed")
 	// PostgreSQL holds ALTER TABLE's AccessExclusive lock until the migration
 	// transaction commits. Its entire elapsed time is a conservative lock-hold
 	// upper bound, including goose bookkeeping; sampling supplies a lower bound.

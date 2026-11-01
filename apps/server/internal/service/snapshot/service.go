@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"path"
 	"time"
@@ -15,9 +16,14 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/pinyin"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
+
+// PurgePendingWarning is returned to the admin write when origin revocation completed but the CDN
+// purge is queued. Edge copies can persist until the queue resumes.
+const PurgePendingWarning = "Snapshot revocation committed; CDN purge is pending; edge copies may persist until the purge is resumed."
 
 type Objects interface {
 	Put(context.Context, string, []byte, string) error
@@ -143,17 +149,38 @@ func (s *Service) Latest(ctx context.Context) (publicapi.CatalogSnapshotInfo, er
 		return publicapi.CatalogSnapshotInfo{}, err
 	}
 	if visibility.RevocationGeneration > visibility.SnapshotRevocation {
+		s.markUnavailable(ctx)
 		return publicapi.CatalogSnapshotInfo{}, &domain.AppError{Code: domain.CodeUpstreamUnavailable, HTTPStatus: 503}
 	}
 	r, err := s.Store.LatestSnapshot(ctx)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		s.markUnavailable(ctx)
 		return publicapi.CatalogSnapshotInfo{}, &domain.AppError{Code: domain.CodeUpstreamUnavailable, HTTPStatus: 503}
 	}
+	if err != nil {
+		return publicapi.CatalogSnapshotInfo{}, err
+	}
+	s.clearUnavailable(ctx)
 	if domain.AllCatalogLocales(ctx) {
 		return modernInfo(r), err
 	}
 	return legacyInfo(info(r)), err
 }
+
+// markUnavailable records the first moment Latest() answered 503; clearUnavailable resets it.
+// The metric is advisory, so a Redis failure never changes the response.
+func (s *Service) markUnavailable(ctx context.Context) {
+	if s.Store != nil && s.Store.Redis != nil {
+		_ = s.Store.Redis.SetNX(ctx, "metrics:snapshot:unavailable_since", s.now().Unix(), 0).Err()
+	}
+}
+
+func (s *Service) clearUnavailable(ctx context.Context) {
+	if s.Store != nil && s.Store.Redis != nil {
+		_ = s.Store.Redis.Del(ctx, "metrics:snapshot:unavailable_since").Err()
+	}
+}
+
 func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 	var stats map[string]any
 	err := s.Store.WithBlockingAdvisoryLock(ctx, "snapshot:build", func(ctx context.Context) error {
@@ -162,15 +189,21 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 			return err
 		}
 		revoke := visibility.RevocationGeneration > visibility.SnapshotRevocation
+		purgeWarning := ""
 		var obsolete []string
 		var objects revocableObjects
+		var privateTokens []string
 		if revoke {
 			var ok bool
 			objects, ok = s.Objects.(revocableObjects)
-			if !ok || s.Purge == nil {
-				return errors.New("snapshot revocation requires object deletion and CDN purge")
+			if !ok {
+				return errors.New("snapshot revocation requires object deletion")
 			}
 			obsolete, err = objects.List(ctx, "snapshots/")
+			if err != nil {
+				return err
+			}
+			privateTokens, err = s.Store.PrivatePackageTokens(ctx)
 			if err != nil {
 				return err
 			}
@@ -201,6 +234,8 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 			return err
 		}
 		if revoke {
+			// The rebuilt latest.json is the tombstone: it names only the new bundle. Old objects go
+			// before the revocation is acknowledged, so a retry continues from the same generation.
 			keep := map[string]bool{"snapshots/latest.json": true}
 			for _, file := range bundle.Files {
 				keep[file.Key] = true
@@ -212,18 +247,30 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 					}
 				}
 			}
-			prefix, err := url.Parse(s.Objects.URL("snapshots/"))
-			if err != nil || prefix.Host == "" {
-				return errors.New("invalid snapshot CDN URL")
+			if token, found := bundleContainsToken(bundle, privateTokens); found {
+				slog.Default().Error("snapshot self-check found a private package", "token", token)
+				return fmt.Errorf("snapshot self-check still contains private package %q", token)
 			}
-			if err = s.Purge(ctx, []string{prefix.Host + prefix.EscapedPath()}); err != nil {
-				return fmt.Errorf("purge revoked snapshots: %w", err)
+			if s.Purge == nil {
+				purgeWarning = PurgePendingWarning
+			} else {
+				prefix, parseErr := url.Parse(s.Objects.URL("snapshots/"))
+				if parseErr != nil || prefix.Host == "" {
+					return errors.New("invalid snapshot CDN URL")
+				}
+				if purgeErr := s.Purge(ctx, []string{prefix.Host + prefix.EscapedPath()}); purgeErr != nil {
+					if !errors.Is(purgeErr, urlnotify.ErrPurgeDeferred) {
+						return fmt.Errorf("queue revoked snapshot purge: %w", purgeErr)
+					}
+					purgeWarning = PurgePendingWarning
+					slog.Default().Error("snapshot CDN purge deferred", "status", "paused: Cloudflare purge unavailable", "error", purgeErr)
+				}
 			}
 			if err = s.Store.CompleteSnapshotRevocation(ctx, visibility.RevocationGeneration, bundle.Record); err != nil {
 				return err
 			}
 		}
-		stats = map[string]any{"cursor": bundle.Info.Cursor, "items": bundle.Info.ItemCount, "bytes": bundle.Info.Bytes, "textPacks": bundle.Info.TextPacks, "sha256": bundle.Info.Sha256, "url": bundle.Info.Url}
+		stats = map[string]any{"cursor": bundle.Info.Cursor, "items": bundle.Info.ItemCount, "bytes": bundle.Info.Bytes, "textPacks": bundle.Info.TextPacks, "sha256": bundle.Info.Sha256, "url": bundle.Info.Url, "purgeWarning": purgeWarning}
 		return nil
 	})
 	return stats, err
@@ -236,16 +283,56 @@ type revocableObjects interface {
 
 // RevokePrivate waits for older publishers and completes durable revocation
 // before acknowledging a visibility write. Build also retries it from the outbox.
-func (s *Service) RevokePrivate(ctx context.Context) error {
+func (s *Service) RevokePrivate(ctx context.Context) (string, error) {
+	warning := ""
 	for {
 		state, err := s.Store.SnapshotVisibility(ctx)
 		if err != nil || state.RevocationGeneration <= state.SnapshotRevocation {
-			return err
+			return warning, err
 		}
-		if _, err := s.Build(ctx); err != nil {
-			return err
+		stats, err := s.Build(ctx)
+		if err != nil {
+			return warning, err
+		}
+		if value, ok := stats["purgeWarning"].(string); ok && value != "" {
+			warning = value
 		}
 	}
+}
+
+// bundleContainsToken decompresses the new bundle and reports whether any private package token
+// survives, the last check between building the tombstone and acknowledging the revocation.
+func bundleContainsToken(bundle Bundle, tokens []string) (string, bool) {
+	if len(tokens) == 0 {
+		return "", false
+	}
+	for _, file := range bundle.Files {
+		data := file.Data
+		if bytes.HasPrefix(data, []byte{0x1f, 0x8b}) {
+			reader, err := gzip.NewReader(bytes.NewReader(data))
+			if err != nil {
+				return file.Key, true
+			}
+			raw, err := gzipReaderAll(reader)
+			if err != nil {
+				return file.Key, true
+			}
+			data = raw
+		}
+		for _, token := range tokens {
+			if bytes.Contains(data, []byte(token)) {
+				return token, true
+			}
+		}
+	}
+	return "", false
+}
+
+func gzipReaderAll(reader *gzip.Reader) ([]byte, error) {
+	defer reader.Close()
+	var out bytes.Buffer
+	_, err := out.ReadFrom(reader)
+	return out.Bytes(), err
 }
 
 func encodeDocument(doc Document) ([]byte, []byte, error) {

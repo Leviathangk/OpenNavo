@@ -23,6 +23,12 @@ type MetricState struct {
 	Jobs            []JobMetric
 	Packages        []PackageMetric
 	GitHubRemaining int64
+	// SnapshotRevocationGap is revocation_generation - snapshot_revocation.
+	SnapshotRevocationGap int64
+	// OldestPurgeDebtSeconds is the age of the oldest queued CDN purge, 0 when the queue is empty.
+	OldestPurgeDebtSeconds float64
+	// SnapshotUnavailableSeconds is how long Latest() has returned 503, 0 when it is healthy.
+	SnapshotUnavailableSeconds float64
 }
 
 func (s *Store) MetricState(ctx context.Context, now time.Time) (MetricState, error) {
@@ -36,9 +42,19 @@ func (s *Store) MetricState(ctx context.Context, now time.Time) (MetricState, er
 	if err := s.DB.WithContext(ctx).Raw("SELECT kind,count(*) AS count FROM packages WHERE removed_at IS NULL GROUP BY kind").Scan(&out.Packages).Error; err != nil {
 		return out, err
 	}
+	if err := s.DB.WithContext(ctx).Raw("SELECT revocation_generation-snapshot_revocation FROM catalog_visibility WHERE id=true").Scan(&out.SnapshotRevocationGap).Error; err != nil {
+		return out, err
+	}
+	if err := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM (?-pending_purges_since)),0)
+FROM url_notify_state WHERE id=true AND jsonb_array_length(pending_purges)>0`, now).Scan(&out.OldestPurgeDebtSeconds).Error; err != nil {
+		return out, err
+	}
 	if s.Redis != nil {
 		if value, err := s.Redis.Get(ctx, "metrics:github:remaining").Int64(); err == nil {
 			out.GitHubRemaining = value
+		}
+		if since, err := s.Redis.Get(ctx, "metrics:snapshot:unavailable_since").Int64(); err == nil {
+			out.SnapshotUnavailableSeconds = max(0, float64(now.Unix()-since))
 		}
 	}
 	return out, nil

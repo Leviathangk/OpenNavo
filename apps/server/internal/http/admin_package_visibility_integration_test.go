@@ -45,10 +45,8 @@ func TestAdminVisibilityRequiresReasonAndAuditsIt(t *testing.T) {
 	require.NoError(t, err)
 	pair, err := authentication.Login(ctx, "visibility-fixture", "isolated-test-only", store.AuditActor{})
 	require.NoError(t, err)
-	manager := &management.Service{Store: st, Config: cfg, InvalidatePublic: func(ctx context.Context) error {
-		return cache.Invalidate(ctx, st.Redis, []string{"c:*"})
-	}}
-	publicService := &catalog.PublicService{Store: st, Cache: cache.Redis{Client: st.Redis}}
+	manager := &management.Service{Store: st, Config: cfg}
+	publicService := &catalog.PublicService{Store: st, Cache: cache.Visibility{Backend: cache.Redis{Client: st.Redis}, Generation: st.VisibilityGeneration}}
 	server, err := httpserver.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), st,
 		httpserver.Dependencies{Admin: &admin.Handler{Auth: authentication, Management: manager}, Public: &public.Handler{Catalog: publicService}})
 	require.NoError(t, err)

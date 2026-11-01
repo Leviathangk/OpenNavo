@@ -39,9 +39,7 @@ type Service struct {
 	Now        func() time.Time
 	IconAccent func(context.Context, int64) (*string, error)
 	Taps       *taps.Service // reads third-party tap casks for AddTapPackage
-	// Visibility changes clear the public cache after commit, before acknowledging the write.
-	InvalidatePublic func(context.Context) error
-	Snapshots        *snapshot.Service
+	Snapshots  *snapshot.Service
 	// InvalidateShareImages queues the origin and CDN share-image purge. It accepts
 	// func(context.Context, string) error for the package token, or the same
 	// function with []string app paths, int64 package ID, or no arguments.
@@ -481,15 +479,16 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 		// A restore can also apply a recorded visibility change.
 		visibility = visibility || op == "RestoreRevision" || op == "RestoreTrash" || op == "RevertRequest"
 		if err == nil && visibility && !domain.CurrentOperation(ctx).DryRun && !agentTransaction(ctx) {
-			if s.InvalidatePublic != nil {
-				err = s.InvalidatePublic(ctx)
-			}
+			// Visibility generation prefixes every public cache key, so a committed generation
+			// bump makes old entries unreachable without a synchronous SCAN of the keyspace.
+			var warning string
 			if s.Snapshots != nil {
-				err = errors.Join(err, s.Snapshots.RevokePrivate(ctx))
+				snapshotWarning, snapshotErr := s.Snapshots.RevokePrivate(ctx)
+				err = errors.Join(err, snapshotErr)
+				warning = snapshotWarning
 			}
 			// Queue, never await, the share-image purge: a CDN or web outage must not
 			// turn a committed visibility change into a failed admin write.
-			var warning string
 			for _, packageID := range s.shareImagePackageIDs(ctx, op, in) {
 				if current := s.invalidateShareImages(ctx, packageID); current != "" && warning == "" {
 					warning = current
