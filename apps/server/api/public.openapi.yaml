@@ -2,9 +2,7 @@ openapi: 3.0.3
 info:
   title: OpenNavo Public API
   version: 1.0.0
-  license:
-    name: Proprietary
-    url: https://opennavo.example/terms
+  termsOfService: https://opennavo.com/developers#terms
   description: 'Public API for the web and macOS clients.
 
 

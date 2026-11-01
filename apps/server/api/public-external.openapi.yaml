@@ -4,9 +4,7 @@ openapi: 3.0.3
 info:
   title: OpenNavo Public Read API
   version: 1.0.0
-  license:
-    name: Proprietary
-    url: https://opennavo.com/developers#terms
+  termsOfService: https://opennavo.com/developers#terms
   description: |-
     Stable, anonymous, read-only catalog endpoints for OpenNavo.
 

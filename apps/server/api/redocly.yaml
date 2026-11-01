@@ -4,3 +4,4 @@ extends:
 rules:
   operation-4xx-response: off      # Errors use the default response
   no-server-example.com: off       # Domain is a placeholder
+  info-license: off                # Product publishes terms of service instead of a licence

@@ -77,6 +77,20 @@ func TestPublicExternalContractIsSubsetOfInternalContract(t *testing.T) {
 	requirePublicExternalContractSubset(t, external, internal)
 }
 
+// The published contract states the terms of service and claims no licence, so a reader is not sent to a
+// placeholder domain and is not told a licence the product has not chosen.
+func TestPublishedContractsPointAtTermsAndClaimNoLicence(t *testing.T) {
+	terms := "https://opennavo.com/developers#terms"
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = false
+	for _, name := range []string{"public.openapi.yaml", "public-external.openapi.yaml", "admin.openapi.yaml"} {
+		spec, err := loader.LoadFromFile(name)
+		require.NoError(t, err, name)
+		require.Equal(t, terms, spec.Info.TermsOfService, name)
+		require.Nil(t, spec.Info.License, name)
+	}
+}
+
 func loadPublicContracts(t *testing.T) (*openapi3.T, *openapi3.T) {
 	t.Helper()
 	loader := openapi3.NewLoader()
