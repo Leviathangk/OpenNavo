@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SITE_LOCALES, formatList, selectPlural } from '@opennavo/shared';
 import {
   categoryDescription,
@@ -214,6 +214,40 @@ describe('Title width budget', () => {
         expect(textWidth(title), title).toBeLessThanOrEqual(TITLE_WIDTH);
         expect(title).toContain('ABCDEFGHIJKLMNOPQRST');
       }
+  });
+
+  it('keeps a 14-character CJK ja name at T0 (AC-107-04)', () => {
+    const name = '漢'.repeat(14);
+    const title = overviewTitle({ ...app, displayName: name }, translator('ja-JP'));
+    expect(title).toBe(`${name} for Mac ダウンロード · OpenNavo`);
+    expect(textWidth(title)).toBe(TITLE_WIDTH);
+  });
+
+  it('falls back to the short ja template for a 20-character CJK name (AC-107-06)', () => {
+    const name = '漢'.repeat(20);
+    const title = overviewTitle({ ...app, displayName: name }, translator('ja-JP'));
+    expect(title).toBe(`${name} ダウンロード`);
+    expect(textWidth(title)).toBe(53);
+    expect(title).not.toContain('OpenNavo');
+  });
+
+  it('publishes an over-width name once and reports language, width and tier (AC-107-07)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const name = 'a'.repeat(60);
+    try {
+      for (const code of ['ru-RU', 'ja-JP'] as const) {
+        warn.mockClear();
+        const title = overviewTitle({ ...app, displayName: name }, translator(code));
+        expect(title).toContain(name);
+        expect(title).not.toContain('…');
+        expect(textWidth(title)).toBeGreaterThan(TITLE_WIDTH);
+        expect(warn).toHaveBeenCalledTimes(1);
+        const line = String(warn.mock.calls[0]?.[0]);
+        expect(JSON.parse(line.slice(line.indexOf('{')))).toMatchObject({ locale: code, nameWidth: 60, tier: 'T3' });
+      }
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('covers fr, de, it and pt app titles with the same budget', () => {

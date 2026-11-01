@@ -137,8 +137,11 @@ usePageSeo({
     if (!value) return token.value;
     const custom = overrideTitle(value);
     if (custom) return custom;
-    if (!legacyTitles.value) return overviewTitle(value, t);
-    return fitTitle(t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' }));
+    if (!legacyTitles.value) return overviewTitle(value, t, locale.value);
+    return fitTitle(t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' }), {
+      locale: locale.value,
+      name: value.displayName
+    });
   },
   description: () => {
     const value = pkg.value;

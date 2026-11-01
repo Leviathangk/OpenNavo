@@ -139,7 +139,7 @@ usePageSeo({
   title: () => {
     const value = pkg.value;
     if (legacyTitles.value) return t('package.versionsMetaTitle', { name: value?.displayName ?? token.value });
-    return value ? versionsTitle(value, t) : t('package.seo.versionsTitle', { name: token.value });
+    return value ? versionsTitle(value, t, locale.value) : t('package.seo.versionsTitle', { name: token.value });
   },
   page,
   description: () =>

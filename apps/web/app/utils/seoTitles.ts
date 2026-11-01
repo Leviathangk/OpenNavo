@@ -196,12 +196,60 @@ export function textWidth(text: string): number {
 /** Search results show about 60 columns (≈580 px at the site's type sizes); a wide glyph takes two. */
 export const TITLE_WIDTH = 60;
 
+/** The level a title had to fall back to: T0 branded template, T1 brandless, T2 short, T3 published as is. */
+export type TitleTier = 'T0' | 'T1' | 'T2' | 'T3';
+
+/**
+ * T2 short templates, confirmed by product for the two locales whose base template cannot hold a wide
+ * name. Other locales stop at T1, as their short copy has not been approved yet.
+ */
+const SHORT_TITLES: Partial<Record<string, { app: string; font: string }>> = {
+  ru: { app: '{name} — скачать', font: 'Шрифт {name} — скачать' },
+  ja: { app: '{name} ダウンロード', font: '{name} フォント ダウンロード' }
+};
+
+export interface TitleOverflow {
+  locale: string;
+  nameWidth: number;
+  tier: TitleTier;
+  titleWidth: number;
+}
+
+/** One warning per title that cannot fit without cutting the name; the name is never truncated. */
+export function reportTitleOverflow(record: TitleOverflow): void {
+  console.warn(`[seo-title] over budget: ${JSON.stringify(record)}`);
+}
+
+export interface TitleFit {
+  locale?: string;
+  name?: string;
+  /** T2 template, used only when both T0 and T1 exceed the budget. */
+  short?: string;
+}
+
 /**
  * A title that fits the result-page budget without cutting the package name. The name is what tells
- * similar pages apart, so the brand suffix goes first when a title does not fit.
+ * similar pages apart, so the brand suffix goes first, then a short template when the language has
+ * one. T3 keeps the full name and reports one warning with its language, width and final tier.
  */
-export function fitTitle(title: string): string {
-  return textWidth(title) <= TITLE_WIDTH ? title : brandlessTitle(title);
+export function fitTitle(title: string, fit: TitleFit = {}): string {
+  if (textWidth(title) <= TITLE_WIDTH) return title;
+  const brandless = brandlessTitle(title);
+  if (textWidth(brandless) <= TITLE_WIDTH) return brandless;
+  if (fit.short && textWidth(fit.short) <= TITLE_WIDTH) return fit.short;
+  reportTitleOverflow({
+    locale: fit.locale ?? 'unknown',
+    nameWidth: textWidth(fit.name ?? ''),
+    tier: 'T3',
+    titleWidth: textWidth(brandless)
+  });
+  return brandless;
+}
+
+function shortTitle(locale: string | undefined, kind: 'app' | 'font', name: string): string | undefined {
+  if (!locale) return undefined;
+  const template = SHORT_TITLES[locale.split('-')[0] ?? locale]?.[kind];
+  return template?.replace('{name}', name);
 }
 
 // Sentence ends skip abbreviations such as "e.g. PDF"; clause ends skip Latin commas, which also
@@ -263,14 +311,28 @@ function hasUninstallFacts(pkg: OverviewFacts): boolean {
   return [...uninstallFacts(pkg, 'uninstall'), ...uninstallFacts(pkg, 'zap')].some(item => item.value.trim());
 }
 
-export function overviewTitle(pkg: OverviewFacts, t: Translate): string {
+function titleLocale(t: Translate, locale?: string): string | undefined {
+  return locale ?? (t as Translate & { locale?: string }).locale;
+}
+
+export function overviewTitle(pkg: OverviewFacts, t: Translate, locale?: string): string {
   // Names such as "FiraCode Nerd Font" already say they are fonts.
   const key = disabledByHomebrew(pkg)
     ? 'package.seo.titleUnavailable'
     : pkg.isFont && !/\bfonts?\b|字体/iu.test(pkg.displayName)
       ? 'package.seo.titleFont'
       : 'package.seo.titleApp';
-  return fitTitle(withName(t, key, titleName(pkg.displayName)));
+  const name = titleName(pkg.displayName);
+  const language = titleLocale(t, locale);
+  return fitTitle(withName(t, key, name), {
+    locale: language,
+    name,
+    // A disabled package keeps its template; only the app and font templates have approved short copy.
+    short:
+      key === 'package.seo.titleUnavailable'
+        ? undefined
+        : shortTitle(language, key === 'package.seo.titleFont' ? 'font' : 'app', name)
+  });
 }
 
 /** An overview's own search title and description in the page's language, set by editors or agents. */
@@ -368,12 +430,13 @@ export interface VersionFacts {
   latestRelease?: { version: string; publishedAt?: string | null; brewCommittedAt?: string | null } | null;
 }
 
-export function versionsTitle(pkg: VersionFacts, t: Translate): string {
+export function versionsTitle(pkg: VersionFacts, t: Translate, locale?: string): string {
   const version = reliableVersion(pkg.version);
   return fitTitle(
     version
       ? withName(t, 'package.seo.versionsTitleLatest', pkg.displayName, { version })
-      : withName(t, 'package.seo.versionsTitle', pkg.displayName)
+      : withName(t, 'package.seo.versionsTitle', pkg.displayName),
+    { locale: titleLocale(t, locale), name: pkg.displayName }
   );
 }
 
