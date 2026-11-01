@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -285,6 +286,42 @@ func specSizeDefaults(t *testing.T, path string) map[string]int {
 	return defaults
 }
 
+// specSizeExampleMismatches reports documented ?size= examples that contradict the documented
+// default. Only the default was compared with the handler before, so an example could keep
+// advertising a page size the endpoint never uses.
+func specSizeExampleMismatches(t *testing.T, path string) []string {
+	t.Helper()
+	loader := openapi3.NewLoader()
+	spec, err := loader.LoadFromFile(path)
+	require.NoError(t, err)
+	var mismatches []string
+	for _, item := range spec.Paths.Map() {
+		for _, op := range item.Operations() {
+			for _, ref := range op.Parameters {
+				p := ref.Value
+				if p == nil || p.In != "query" || p.Name != "size" || p.Schema == nil || p.Schema.Value == nil {
+					continue
+				}
+				if p.Schema.Value.Example == nil {
+					continue
+				}
+				def, defOK := p.Schema.Value.Default.(float64)
+				example, exampleOK := p.Schema.Value.Example.(float64)
+				if !defOK || !exampleOK {
+					mismatches = append(mismatches, fmt.Sprintf("%s: %s documents a non-integer size default or example",
+						path, op.OperationID))
+					continue
+				}
+				if def != example {
+					mismatches = append(mismatches, fmt.Sprintf("%s: %s documents size example %g but default %g",
+						path, op.OperationID, example, def))
+				}
+			}
+		}
+	}
+	return mismatches
+}
+
 // The documented ?size= default must be what the handler really uses when the client omits it.
 func TestPublicSpecSizeDefaultsMatchHandlerFallbacks(t *testing.T) {
 	handler, problems := handlerSizeDefaults(t)
@@ -304,6 +341,8 @@ func TestPublicSpecSizeDefaultsMatchHandlerFallbacks(t *testing.T) {
 			require.Equal(t, actual, documented, "%s: %s documents size default %d, handler falls back to %d",
 				path, operation, documented, actual)
 		}
+		// A documented example is what readers copy, so it must not contradict the default.
+		require.Empty(t, specSizeExampleMismatches(t, path), path)
 	}
 }
 

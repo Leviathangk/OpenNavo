@@ -8785,7 +8785,7 @@ paths:
             minimum: 1
             maximum: 500
             default: 500
-            example: 24
+            example: 500
       responses:
         '200':
           description: OK
