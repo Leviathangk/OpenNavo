@@ -17,6 +17,10 @@ pub struct Database(Arc<Mutex<Connection>>);
 /// reads them, and task deletion must remove them together with their task, so the prefix lives
 /// here where the cleanup SQL can reference it.
 pub const TASK_INSTALL_PLAN_PREFIX: &str = "task_install_plan:";
+/// Retry and MAS batch relationships are also `<prefix><task id>`, written and read by the queue and
+/// deleted together with the task. Keep the prefixes here, where the cleanup SQL can reference them.
+pub const TASK_RETRY_PARENT_PREFIX: &str = "task_retry_parent:";
+pub const MAS_BATCH_PREFIX: &str = "mas_batch:";
 impl Database {
     pub fn open(path: &Path) -> Result<Self, AppError> {
         if let Some(parent) = path.parent() {
@@ -122,6 +126,12 @@ impl Database {
     pub fn set_meta(&self, key: &str, value: &str) -> Result<(), AppError> {
         self.with(|c|{c.execute("INSERT INTO meta(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",params![key,value])?;Ok(())})
     }
+    pub fn delete_meta(&self, key: &str) -> Result<(), AppError> {
+        self.with(|c| {
+            c.execute("DELETE FROM meta WHERE key=?1", [key])?;
+            Ok(())
+        })
+    }
     pub fn save_task(&self, task: &Task) -> Result<(), AppError> {
         self.with(|c|{
         c.execute("INSERT INTO tasks(id,op,kind,token,options,trigger,state,from_version,to_version,error_code,error_message,exit_code,log_path,created_at,started_at,finished_at,target_name,outcome) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18) ON CONFLICT(id) DO UPDATE SET state=excluded.state,from_version=excluded.from_version,to_version=excluded.to_version,error_code=excluded.error_code,error_message=excluded.error_message,exit_code=excluded.exit_code,log_path=excluded.log_path,started_at=excluded.started_at,finished_at=excluded.finished_at,target_name=excluded.target_name,outcome=excluded.outcome",params![task.id,enum_text(task.op)?,task.target.as_ref().map(|t|t.kind.as_str()),task.target.as_ref().map(|t|t.token.as_str()),serde_json::to_string(&task.options)?,enum_text(task.trigger)?,enum_text(task.state)?,task.from_version,task.to_version,task.error.as_ref().map(|e|&e.code),task.error.as_ref().map(|e|&e.message),task.exit_code,task.log_path,task.created_at,task.started_at,task.finished_at,task.target_name,task.outcome.as_ref().map(serde_json::to_string).transpose()?])?;Ok(())
@@ -173,17 +183,22 @@ impl Database {
             let mut deleted = 0;
             for chunk in ids.chunks(500) {
                 let marks = vec!["?"; chunk.len()].join(",");
-                // Remove plan metadata first, and only for rows the task delete below really
-                // removes: a queued or running task must keep its plan.
-                tx.execute(
-                    &format!(
-                        "DELETE FROM meta WHERE key IN (SELECT ?1 || id FROM tasks WHERE state IN ('succeeded','failed','canceled') AND id IN ({marks}))"
-                    ),
-                    rusqlite::params_from_iter(
-                        std::iter::once(TASK_INSTALL_PLAN_PREFIX)
-                            .chain(chunk.iter().map(String::as_str)),
-                    ),
-                )?;
+                // Remove task metadata first, and only for rows the task delete below really
+                // removes: a queued or running task must keep its plan and relationships.
+                for prefix in [
+                    TASK_INSTALL_PLAN_PREFIX,
+                    TASK_RETRY_PARENT_PREFIX,
+                    MAS_BATCH_PREFIX,
+                ] {
+                    tx.execute(
+                        &format!(
+                            "DELETE FROM meta WHERE key IN (SELECT ?1 || id FROM tasks WHERE state IN ('succeeded','failed','canceled') AND id IN ({marks}))"
+                        ),
+                        rusqlite::params_from_iter(
+                            std::iter::once(prefix).chain(chunk.iter().map(String::as_str)),
+                        ),
+                    )?;
+                }
                 deleted += tx.execute(
                     &format!(
                         "DELETE FROM tasks WHERE state IN ('succeeded','failed','canceled') AND id IN ({marks})"
@@ -288,11 +303,17 @@ impl Database {
         }
         self.with(|c| {
             let tx = c.transaction()?;
-            // Plan metadata must go before the task rows, while the subquery can still find them.
-            tx.execute(
-                "DELETE FROM meta WHERE key IN (SELECT ?1 || id FROM tasks WHERE finished_at < ?2)",
-                params![TASK_INSTALL_PLAN_PREFIX, task_cutoff],
-            )?;
+            // Task metadata must go before the task rows, while the subquery can still find them.
+            for prefix in [
+                TASK_INSTALL_PLAN_PREFIX,
+                TASK_RETRY_PARENT_PREFIX,
+                MAS_BATCH_PREFIX,
+            ] {
+                tx.execute(
+                    "DELETE FROM meta WHERE key IN (SELECT ?1 || id FROM tasks WHERE finished_at < ?2)",
+                    params![prefix, task_cutoff],
+                )?;
+            }
             tx.execute("DELETE FROM tasks WHERE finished_at < ?1", [task_cutoff])?;
             tx.commit()?;
             Ok(())

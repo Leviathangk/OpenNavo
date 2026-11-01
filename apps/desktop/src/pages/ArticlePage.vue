@@ -15,7 +15,7 @@ import { useLoader } from '@/composables/useLoader';
 import { useToasts } from '@/composables/useToasts';
 import { fetchClientConfig } from '@/composables/useClientConfig';
 import { ARTICLE_SLUG } from '@/utils/article';
-import { openExternal } from '@/utils/external';
+import { isPublicHttpUrl, openExternal, reportExternalLinkRejection } from '@/utils/external';
 
 const props = defineProps<{ slug: string }>();
 const { t } = useI18n();
@@ -83,16 +83,20 @@ async function followLink(event: MouseEvent) {
         toasts.push({ tone: 'danger', title: t('errors.actionFailed') });
       }
     }
-  } else if (/^https:\/\//i.test(href)) {
+  } else if (href.startsWith('#/')) {
+    // Vue Router hash links such as #/settings stay with the router.
+    return;
+  } else if (isPublicHttpUrl(href)) {
     event.preventDefault();
     try {
       await openExternal(href);
     } catch {
       toasts.push({ tone: 'danger', title: t('errors.actionFailed') });
     }
-  } else if (!href.startsWith('#/')) {
-    // The native opener only permits HTTPS; never navigate the webview to an arbitrary scheme.
+  } else {
+    // Never navigate the webview to an arbitrary scheme, a private address or a credentialed URL.
     event.preventDefault();
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href)) reportExternalLinkRejection(href);
   }
 }
 </script>

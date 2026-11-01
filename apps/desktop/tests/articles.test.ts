@@ -12,7 +12,10 @@ import { articlePage, articleType } from '@/utils/article';
 import { setup } from './helpers';
 
 const { openExternal } = vi.hoisted(() => ({ openExternal: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/utils/external', () => ({ openExternal }));
+vi.mock('@/utils/external', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/external')>()),
+  openExternal
+}));
 const wrappers: VueWrapper[] = [];
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
@@ -152,6 +155,45 @@ describe('desktop article browsing', () => {
     await wrapper.get('[data-testid="article-body"] a[href="/articles/another-guide"]').trigger('click');
     await flushPromises();
     expect(router.currentRoute.value.path).toBe(`/articles/${article.slug}`); // The API resolves the alias back.
+  });
+
+  it('never opens article links that point at private addresses or carry credentials', async () => {
+    const hostile: Article = {
+      ...article,
+      bodyMarkdown:
+        '## Links\n\n[Loopback](http://127.0.0.1:8080/admin)\n\n[LAN](http://192.168.1.1/)\n\n[IPv6](http://[::1]/)\n\n[Credentials](https://user:pass@example.com/)\n\n[Public](http://example.com/plain)'
+    };
+    stubFetch(() => ok({ state: 'published', slug: hostile.slug, article: hostile }));
+    const { wrapper } = await mounted(`/articles/${hostile.slug}`);
+    for (const href of [
+      'http://127.0.0.1:8080/admin',
+      'http://192.168.1.1/',
+      'http://[::1]/',
+      'https://user:pass@example.com/'
+    ]) {
+      const link = wrapper.find(`[data-testid="article-body"] a[href="${href}"]`);
+      if (!link.exists()) continue; // The renderer may drop a rejected href instead of linking it.
+      await link.trigger('click');
+      await flushPromises();
+      expect(openExternal).not.toHaveBeenCalled();
+    }
+    await wrapper.get('[data-testid="article-body"] a[href="http://example.com/plain"]').trigger('click');
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith('http://example.com/plain');
+  });
+
+  it('leaves internal hash routes to the router', async () => {
+    const routed: Article = {
+      ...article,
+      bodyMarkdown: '## Links\n\n[Settings](#/settings)\n\n[Sources](#sources)'
+    };
+    stubFetch(() => ok({ state: 'published', slug: routed.slug, article: routed }));
+    const { wrapper } = await mounted(`/articles/${routed.slug}`);
+    const link = wrapper.get('[data-testid="article-body"] a[href="#/settings"]');
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    link.element.dispatchEvent(event);
+    await flushPromises();
+    expect(event.defaultPrevented).toBe(false);
+    expect(openExternal).not.toHaveBeenCalled();
   });
 
   it('replaces old addresses, and removes the body when a refresh reports withdrawal', async () => {

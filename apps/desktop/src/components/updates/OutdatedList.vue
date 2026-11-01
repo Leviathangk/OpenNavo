@@ -17,7 +17,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useLocalAppsStore, useUpdatesStore } from '@/stores';
 import { rowHref, rowKey } from '@/stores/updates';
-import { openExternal } from '@/utils/external';
+import { isPublicHttpUrl, openExternal, reportExternalLinkRejection } from '@/utils/external';
 
 const { appLocale: formattingLocale } = useFormattingLocale();
 
@@ -85,6 +85,12 @@ function hint(item: OutdatedItem): string | null {
 
 const hasInlineNotes = (item: OutdatedItem) => Boolean(item.notes && 'body' in item.notes && item.notes.body);
 const notesUrl = (item: OutdatedItem) => (item.notes && 'url' in item.notes ? (item.notes.url ?? null) : null);
+// Appcast and release links are content, never a trusted settings link.
+function openContent(url: string | null) {
+  if (!url) return;
+  if (!isPublicHttpUrl(url)) return reportExternalLinkRejection(url);
+  void openExternal(url).catch(() => {});
+}
 
 // One menu for every source (Rust keeps skips and ignores per app, Homebrew included); channels only where a feed has one.
 function menu(item: OutdatedItem): OnMenuItem[] {
@@ -199,7 +205,7 @@ const rows = computed(() =>
             variant="ghost"
             size="sm"
             icon="arrow-up-right"
-            @click="openExternal(notesUrl(item)!)"
+            @click="openContent(notesUrl(item))"
           >
             {{ t('updates.changelog') }}
           </OnButton>
@@ -220,7 +226,7 @@ const rows = computed(() =>
             variant="secondary"
             size="sm"
             icon="arrow-up-right"
-            @click="openExternal(item.informationalUrl)"
+            @click="openContent(item.informationalUrl)"
           >
             {{ t('updates.actions.view') }}
           </OnButton>

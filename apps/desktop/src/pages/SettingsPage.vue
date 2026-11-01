@@ -48,6 +48,8 @@ type Section =
   | 'privacy'
   | 'about';
 
+// Trusted configuration links may point at the local web app in development builds only.
+const allowLocalLinks = import.meta.env.DEV;
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const route = useRoute();
@@ -441,19 +443,27 @@ onMounted(async () => {
               :hint="appInfo ? t('settings.about.version', { version: appInfo.version }) : undefined"
             >
               <template v-if="config">
-                <OnButton variant="ghost" size="sm" icon="arrow-up-right" @click="openExternal(config.links.web)">{{
-                  t('settings.about.website')
-                }}</OnButton>
                 <OnButton
                   variant="ghost"
                   size="sm"
                   icon="arrow-up-right"
-                  @click="openExternal(config.links.feedback)"
+                  @click="openExternal(config.links.web, { allowLocal: allowLocalLinks })"
+                  >{{ t('settings.about.website') }}</OnButton
+                >
+                <OnButton
+                  variant="ghost"
+                  size="sm"
+                  icon="arrow-up-right"
+                  @click="openExternal(config.links.feedback, { allowLocal: allowLocalLinks })"
                   >{{ t('settings.about.feedback') }}</OnButton
                 >
-                <OnButton variant="ghost" size="sm" icon="arrow-up-right" @click="openExternal(config.links.privacy)">{{
-                  t('settings.about.privacy')
-                }}</OnButton>
+                <OnButton
+                  variant="ghost"
+                  size="sm"
+                  icon="arrow-up-right"
+                  @click="openExternal(config.links.privacy, { allowLocal: allowLocalLinks })"
+                  >{{ t('settings.about.privacy') }}</OnButton
+                >
               </template>
             </SettingRow>
             <AppUpdater :current-version="appInfo?.version ?? null" />

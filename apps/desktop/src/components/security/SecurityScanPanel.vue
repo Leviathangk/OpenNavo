@@ -165,7 +165,9 @@ const deniedText = computed(() => {
   });
 });
 function openPrivacy() {
-  void openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders');
+  void openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders', {
+    allowSystemPreferences: true
+  });
 }
 
 const menu = (finding: AvFinding): OnMenuItem[] => [

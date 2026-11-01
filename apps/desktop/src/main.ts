@@ -23,7 +23,8 @@ import {
   useSettingsStore
 } from './stores';
 import { useStateSubscriptions } from './stores/stateSubscriptions';
-import { startExternalLinks } from './utils/external';
+import { useToasts } from './composables/useToasts';
+import { EXTERNAL_LINK_REJECTED, startExternalLinks } from './utils/external';
 
 // Regular browsers (pnpm dev:web) have no Tauri runtime; simulate IPC with fixtures (06 §16).
 if (!isTauri()) {
@@ -37,7 +38,12 @@ app.use(i18n);
 app.use(router);
 app.use(createOnUi({ locale: computed(() => i18n.global.locale.value) }));
 const subscriptions = useStateSubscriptions();
-const navigationCleanups: (() => void)[] = [startExternalLinks()];
+const rejectedExternalLink = () => useToasts().push({ tone: 'danger', title: i18n.global.t('errors.actionFailed') });
+window.addEventListener(EXTERNAL_LINK_REJECTED, rejectedExternalLink);
+const navigationCleanups: (() => void)[] = [
+  startExternalLinks(),
+  () => window.removeEventListener(EXTERNAL_LINK_REJECTED, rejectedExternalLink)
+];
 await subscriptions.start('locale', async register => {
   await register(startAppLocale());
 });
