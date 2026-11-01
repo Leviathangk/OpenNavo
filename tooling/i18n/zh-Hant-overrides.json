@@ -52,8 +52,8 @@
     {
       "key": ["package", "spec", "bundleId"],
       "source": "应用包标识符",
-      "text": "套件識別碼",
-      "why": "Bundle identifier, the Xcode term; the converter renders 标识符 as 識別符號"
+      "text": "應用程式套件識別碼",
+      "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"
     },
     {
       "key": [

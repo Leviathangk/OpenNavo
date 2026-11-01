@@ -684,7 +684,7 @@
       "yes": "是",
       "no": "否",
       "checked": "核查日期",
-      "bundleId": "套件識別碼"
+      "bundleId": "應用程式套件識別碼"
     },
     "repo": {
       "stars": "★",

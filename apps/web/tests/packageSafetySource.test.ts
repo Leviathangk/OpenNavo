@@ -85,11 +85,19 @@ describe('a verified closed-source identity', () => {
     const row = page.querySelector('[data-testid="package-safety-source"]')!;
     expect(row).not.toBeNull();
     expect(row.querySelector('dt')?.textContent?.trim()).toBe('Source');
-    expect(row.querySelector('dd')?.textContent?.trim()).toBe('Not public');
+    expect(row.querySelector('dd')?.textContent?.trim()).toContain('Not public');
     // A neutral fact, so neither the row nor its value carries a warning or danger tone.
     expect(row.innerHTML).not.toMatch(/warning|danger|text-(amber|red|orange)-/);
     // Nothing infers safety or risk from it.
     expect(row.textContent).not.toMatch(/safe|unsafe|risk|danger|warning/i);
+  });
+
+  it('links the record it came from, so the claim can be checked', async () => {
+    const page = await render(withIdentity('no'));
+    const row = page.querySelector('[data-testid="package-safety-source"]')!;
+    // A closed identity has no repository URL, so its own evidence is the only link a reader can follow.
+    expect(row.querySelector('a')?.getAttribute('href')).toBe('https://example.com/identity');
+    expect(row.querySelector('a')?.getAttribute('rel')).toBe('nofollow noopener noreferrer');
   });
 
   it('sits after the developer identity and before the distribution', async () => {
@@ -132,6 +140,25 @@ describe('a verified closed-source identity', () => {
       ]
     };
     const page = await render(pkg);
+    expect(page.querySelector('[data-testid="package-safety-source"]')).toBeNull();
+  });
+
+  it('stays hidden when another verified identity only gives its repository', async () => {
+    const pkg = withIdentity('no');
+    pkg.facts.security = {
+      ...pkg.facts.security,
+      identities: [
+        ...(pkg.facts.security?.identities ?? []),
+        {
+          channels: [],
+          openSource: 'unknown',
+          repositoryUrl: 'https://github.com/acme/repo',
+          evidence: { status: 'verified', checkedAt: '2026-10-14T06:35:05Z', sourceUrl: 'https://example.com/repo' }
+        }
+      ]
+    };
+    const page = await render(pkg);
+    // The guard is "an open identity or any repository url", not only `openSource: 'yes'`.
     expect(page.querySelector('[data-testid="package-safety-source"]')).toBeNull();
   });
 

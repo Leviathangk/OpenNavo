@@ -511,6 +511,26 @@ describe('identity-only source evidence', () => {
     const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
     expect(row).toMatchObject({ value: 'Open source', href: 'https://github.com/acme/open' });
   });
+
+  it('renders the repository an identity gives without an open-source claim', () => {
+    // The guard is "an open identity or a repository url": a record that merely links a repository still
+    // answers this card's question, and a closed record beside it does not turn that answer into "open".
+    const pkg = page({
+      facts: {
+        ...page().facts,
+        security: { identities: [identity('unknown', 'https://github.com/acme/identity-repo')] }
+      }
+    });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row).toMatchObject({ value: 'GitHub repository', href: 'https://github.com/acme/identity-repo' });
+  });
+
+  it('renders the open-source answer an identity states without a repository', () => {
+    const pkg = page({ facts: { ...page().facts, security: { identities: [identity('yes')] } } });
+    const row = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(item => item.key === 'openSource')!;
+    expect(row.value).toBe('Open source');
+    expect(row.href).toBeUndefined();
+  });
 });
 
 describe('Bundle ID label', () => {
@@ -522,6 +542,14 @@ describe('Bundle ID label', () => {
       if (code !== 'en-US') expect(label, code).not.toBe('Bundle ID');
       // The value under the label is a raw identifier, so the label stays short and free of placeholders.
       expect(label, code).not.toMatch(/[{}]/);
+    }
+  });
+
+  it('does not reuse the package token label, so the two identifier rows stay apart', () => {
+    // Both rows say "identifier" and Traditional Chinese could otherwise render them with one name.
+    for (const code of SITE_LOCALES) {
+      const messages = JSON.parse(readFileSync(`i18n/locales/${code}.json`, 'utf8'));
+      expect(messages.package.spec.bundleId, code).not.toBe(messages.package.spec.token);
     }
   });
 });

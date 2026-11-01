@@ -226,7 +226,7 @@ describe('Markdown alternates (X4)', () => {
     };
     const md = renderPackageMarkdown(detail as PackageDetail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
     expect(md).toContain(
-      `- ${siteMessage('en-US', 'package.safety.source')}: ${siteMessage('en-US', 'package.safety.sourceNotPublic')}`
+      `- ${siteMessage('en-US', 'package.safety.source')}: ${siteMessage('en-US', 'package.safety.sourceNotPublic')} — <https://vendor.example/identity>`
     );
     // A record that only says unknown claims nothing, and a stated open source keeps the row out.
     const unknown = {
