@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnKeyValueList, OnVersionEntry } from '@opennavo/ui';
 import type { ReleaseEntry } from '@opennavo/api';
-import { startExternalLinks } from '@/utils/external';
+import { isAllowedExternalUrl, isPublicHttpUrl, openExternal, startExternalLinks } from '@/utils/external';
 
 const { isTauri, openUrl } = vi.hoisted(() => ({ isTauri: vi.fn(), openUrl: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ isTauri }));
@@ -68,6 +68,72 @@ function preventedByApp(element: Element, event: MouseEvent) {
   element.dispatchEvent(event);
   return prevented;
 }
+
+describe('External URL policy', () => {
+  it.each([
+    'https://example.com/',
+    'http://example.com/plain',
+    'https://8.8.8.8/',
+    'http://[2606:4700:4700::1111]/',
+    'https://example.com./'
+  ])('allows public web URL %s', url => {
+    expect(isPublicHttpUrl(url)).toBe(true);
+    expect(isAllowedExternalUrl(url)).toBe(true);
+  });
+
+  it.each([
+    'http://localhost/',
+    'http://localhost./',
+    'http://api.localhost/',
+    'http://127.0.0.1/',
+    'http://127.1.2.3/',
+    'http://0.0.0.0/',
+    'http://10.0.0.1/',
+    'http://172.16.0.1/',
+    'http://172.31.255.255/',
+    'http://192.168.1.1/',
+    'http://169.254.169.254/',
+    'http://[::1]/',
+    'http://[::]/',
+    'http://[fc00::1]/',
+    'http://[fd12:3456::1]/',
+    'http://[fe80::1]/',
+    'http://[::ffff:127.0.0.1]/',
+    'http://[::ffff:192.168.0.1]/',
+    'https://user:pass@example.com/',
+    'https://user@example.com/',
+    'mailto:hello@example.test',
+    'javascript:alert(1)',
+    'file:///etc/passwd',
+    'not a url'
+  ])('rejects %s', url => {
+    expect(isPublicHttpUrl(url)).toBe(false);
+    expect(isAllowedExternalUrl(url)).toBe(false);
+  });
+
+  it('allows only explicit system-settings links outside http(s)', () => {
+    expect(isAllowedExternalUrl('x-apple.systempreferences:com.apple.preference.security')).toBe(true);
+    expect(isAllowedExternalUrl('x-apple.systempreferences:')).toBe(false);
+    expect(isPublicHttpUrl('x-apple.systempreferences:com.apple.preference.security')).toBe(false);
+  });
+
+  it('refuses to hand a rejected URL to the opener', async () => {
+    await expect(openExternal('http://127.0.0.1:8080/admin')).rejects.toThrow('external_url_rejected');
+    await expect(openExternal('https://user:pass@example.com/')).rejects.toThrow('external_url_rejected');
+    expect(openUrl).not.toHaveBeenCalled();
+  });
+
+  it('ignores delegated clicks on private hosts', () => {
+    stop = startExternalLinks();
+    const link = document.createElement('a');
+    link.href = 'http://192.168.1.10/router';
+    link.target = '_blank';
+    document.body.append(link);
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    expect(preventedByApp(link, click)).toBe(false);
+    expect(openUrl).not.toHaveBeenCalled();
+  });
+});
 
 describe('Shared UI external links in the desktop app', () => {
   it('installs delegated handling during desktop startup', () => {
