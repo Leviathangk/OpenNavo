@@ -454,11 +454,7 @@ describe('desktop link price types', () => {
       appStore: { info: { bundleId: string } };
       appInfo: { fields: { bundleId: string } };
     };
-    const labels = [
-      catalog.package.spec.bundleId,
-      catalog.appStore.info.bundleId,
-      catalog.appInfo.fields.bundleId
-    ];
+    const labels = [catalog.package.spec.bundleId, catalog.appStore.info.bundleId, catalog.appInfo.fields.bundleId];
     for (const label of labels) expect(label.trim()).toBeTruthy();
     for (const label of labels) {
       // Every locale but English must actually translate it: the identical English string was the #87 defect.
