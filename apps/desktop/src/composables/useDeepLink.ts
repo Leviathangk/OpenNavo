@@ -111,6 +111,7 @@ export async function openDeepLink(router: Router, event: DeepLinkEvent, ready: 
 
 const CONFIRMATION_ERROR_KEYS: Record<string, string> = {
   E_BUSY: 'deeplink.confirmationBusy',
+  E_DEEPLINK_BUSY: 'deeplink.installBusy',
   E_CONFIRMATION_TIMEOUT: 'deeplink.confirmationTimeout'
 };
 

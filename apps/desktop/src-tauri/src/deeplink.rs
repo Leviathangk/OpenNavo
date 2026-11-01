@@ -12,6 +12,10 @@ use std::{
 use tauri::Manager;
 use uuid::Uuid;
 
+/// A second confirmation call for a deep link whose install is already in flight. It is not the
+/// confirmation slot that is busy, so the frontend can tell the two apart (#85).
+pub const ROUTER_BUSY_CODE: &str = "E_DEEPLINK_BUSY";
+
 pub fn parse(input: &str) -> Option<DeepLinkEvent> {
     if input.len() > 8192 || input.chars().any(char::is_control) || input.trim() != input {
         return None;
@@ -390,8 +394,10 @@ impl Router {
             .installs
             .get_mut(pending_id)
             .ok_or_else(|| AppError::new("E_INVALID_ARG", "deeplink_pending_missing"))?;
+        // A second call for a link already being confirmed is not a confirmation-slot problem: the
+        // same pending link is in flight, so it reports its own code and its own message (#85).
         if pending.current {
-            return Err(AppError::new("E_BUSY", "confirmation_busy"));
+            return Err(AppError::new(ROUTER_BUSY_CODE, "deeplink_install_busy"));
         }
         match &mut pending.kind {
             PendingInstallKind::Single { target } => {
@@ -410,7 +416,7 @@ impl Router {
             } => {
                 let Some(plan) = plan.as_ref() else {
                     if *resolving {
-                        return Err(AppError::new("E_BUSY", "confirmation_busy"));
+                        return Err(AppError::new(ROUTER_BUSY_CODE, "deeplink_install_busy"));
                     }
                     *resolving = true;
                     return Ok(InstallStep::ResolveCollection {
@@ -811,7 +817,7 @@ mod install_request_tests {
         );
         assert_eq!(
             router.begin_install(&pending_id).unwrap_err().code,
-            "E_BUSY"
+            ROUTER_BUSY_CODE
         );
         assert_eq!(router.finish_install(&pending_id).unwrap(), 0);
         assert_eq!(

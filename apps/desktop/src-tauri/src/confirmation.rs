@@ -1301,6 +1301,37 @@ mod tests {
         assert!(service.test_begin(request("cask/zed")).is_ok());
     }
 
+    /// A destroyed webview clears the slot of a confirmation that already timed out, and it must also
+    /// drop every grant that survived the timeout: an earlier approval would otherwise still be
+    /// usable after the window is gone (#85).
+    #[test]
+    fn webview_destruction_after_a_timeout_revokes_earlier_grants() {
+        let service = ConfirmationService::default();
+        let approved = request("cask/ghostty");
+        let pending = service.test_begin(approved.clone()).unwrap();
+        let grant = service.test_finish(pending.id, true).unwrap();
+        let timed_out = service.test_begin(request("cask/zed")).unwrap();
+        service.test_timeout(timed_out.id);
+        assert!(
+            service
+                .state
+                .lock()
+                .unwrap()
+                .grants
+                .contains_key(&grant.token),
+            "a timeout keeps grants issued by an earlier confirmation"
+        );
+
+        service.cancel_active();
+
+        assert_eq!(
+            service.consume(&grant, &approved).unwrap_err().code,
+            "E_CONFIRMATION_REUSED"
+        );
+        assert!(service.state.lock().unwrap().grants.is_empty());
+        assert!(service.test_begin(request("cask/zed")).is_ok());
+    }
+
     #[test]
     fn display_values_strip_bidi_controls_and_use_an_ellipsis() {
         let controls = [

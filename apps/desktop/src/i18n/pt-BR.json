@@ -1235,6 +1235,7 @@
     "formulaUnsupported": "O OpenNavo inclui apenas apps (Homebrew Cask); este link aponta para uma ferramenta de linha de comando.",
     "confirmationBusy": "Há outra confirmação ainda aberta. Feche-a e tente novamente.",
     "confirmationTimeout": "A confirmação expirou. Feche-a e tente novamente.",
+    "installBusy": "A confirmação de instalação deste link ainda está em andamento. Aguarde terminar e tente novamente.",
     "preview": {
       "invalid": "Não foi possível abrir este link",
       "invalidBody": "Faltam parâmetros ou eles não estão no formato que o OpenNavo aceita, então nada foi feito.",

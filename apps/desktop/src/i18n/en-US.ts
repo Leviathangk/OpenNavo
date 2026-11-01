@@ -1259,6 +1259,7 @@ const messages: MessageSchema = {
     formulaUnsupported: 'OpenNavo only lists apps (Homebrew casks). This link points to a command-line tool.',
     confirmationBusy: 'Another confirmation is still open. Close it and try again.',
     confirmationTimeout: 'The confirmation prompt timed out. Close it and try again.',
+    installBusy: 'This link’s install confirmation is still in progress. Wait for it to finish and try again.',
     preview: {
       invalid: 'This link can’t be opened',
       invalidBody: 'Its parameters are missing or not in the form OpenNavo accepts, so nothing was done.',

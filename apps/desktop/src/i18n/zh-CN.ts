@@ -1230,6 +1230,7 @@ export default {
     formulaUnsupported: 'OpenNavo 只收录 App（Homebrew Cask），这个链接指向的是命令行工具。',
     confirmationBusy: '另一个确认窗口还开着。请先关闭它，再重试。',
     confirmationTimeout: '确认窗口已超时。请先关闭它，再重试。',
+    installBusy: '这个链接的安装确认还在进行中。请等它结束后再试。',
     preview: {
       invalid: '这个链接打不开',
       invalidBody: '链接里的参数不完整或不符合要求，OpenNavo 没有做任何操作。',
