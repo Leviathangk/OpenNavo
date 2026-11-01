@@ -1719,7 +1719,12 @@ class Deployment:
             except Exception:
                 marker = ''
         if status != 404:
-            raise RuntimeError(f'public MCP sub-path /mcp/x returned {status}, expected 404')
+            # Same contract as the marker check below: the public log keeps the endpoint, the
+            # status and a redacted preview instead of a bare exception type name.
+            raise RouteCheckError('GET', endpoint + '/x', host, status,
+                                  marker.encode('utf-8', 'replace'),
+                                  expected='404 from the public-MCP sub-path handle',
+                                  public_mcp=True)
         # Older releases answer this probe with a bare `respond 404`. The marker is required only
         # when the live Caddyfile this run installed carries it; a rollback to such an older
         # release still validates its own route instead of failing on the newer contract.

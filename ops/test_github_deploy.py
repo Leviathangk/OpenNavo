@@ -1335,8 +1335,9 @@ class DeployTests(unittest.TestCase):
         with patch.object(deploy, 'open_without_redirects',
                           side_effect=lambda request, timeout: fake(request, timeout) if request.data is not None
                           else real_open(request, timeout)), \
-                self.assertRaisesRegex(RuntimeError, '/mcp/x returned 301'):
+                self.assertRaises(deploy.RouteCheckError) as raised:
             obj.verify_public_mcp()
+        self.assertEqual(raised.exception.status, 301)
 
     def test_public_mcp_route_requires_one_web_block_and_catch_all_proxy(self):
         for source in ['reverse_proxy {\n}\n', '{$WEB_DOMAIN} {\nreverse_proxy web:3000\n}\n']:
@@ -1387,9 +1388,12 @@ class DeployTests(unittest.TestCase):
                     obj.verify_public_mcp()
         for status in (200, 301, 502):
             with self.subTest(subpath=status), patch.object(
-                    deploy.urllib.request, 'urlopen', side_effect=fake_public_mcp(subpath_status=status)):
-                with self.assertRaisesRegex(RuntimeError, f'/mcp/x returned {status}'):
-                    obj.verify_public_mcp()
+                    deploy.urllib.request, 'urlopen', side_effect=fake_public_mcp(subpath_status=status)), \
+                    self.assertRaises(deploy.RouteCheckError) as raised:
+                obj.verify_public_mcp()
+            # A non-404 must reach the deploy log with its status, not just an exception type name.
+            self.assertEqual(raised.exception.status, status)
+            self.assertIn('expected 404 from the public-MCP sub-path handle', str(raised.exception))
 
     def test_first_public_mcp_uses_the_new_versioned_api_proxy_alias(self):
         # Production hosts only expose versioned aliases; the base Compose api-proxy name does not resolve.
