@@ -394,8 +394,10 @@
     "metaTitleCask": "{name}: {summary} — установка через Homebrew · OpenNavo",
     "metaDescription": "{summary}. Установка: {command}. Последняя версия {version}, {installs} установка за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установки за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установок за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установки за последние 30 дней.",
     "seo": {
-      "titleApp": "{name} для Mac — скачать и установить · OpenNavo",
-      "titleFont": "Шрифт {name} для Mac — скачать и установить · OpenNavo",
+      "titleApp": "{name} для Mac — скачать · OpenNavo",
+      "titleFont": "Шрифт {name} для Mac — скачать · OpenNavo",
+      "titleAppShort": "{name} — скачать",
+      "titleFontShort": "Шрифт {name} — скачать",
       "titleUnavailable": "{name} для компьютеров Mac · OpenNavo",
       "descriptionFacts": "{summary}. Узнайте про {parts} для {name} на Mac.",
       "descriptionFactsNoSummary": "Узнайте про {parts} для {name} на Mac.",

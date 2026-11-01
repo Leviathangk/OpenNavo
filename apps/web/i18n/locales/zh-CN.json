@@ -396,6 +396,8 @@
     "seo": {
       "titleApp": "{name} Mac 版下载安装 · OpenNavo",
       "titleFont": "{name} 字体 Mac 版下载安装 · OpenNavo",
+      "titleAppShort": "{name} Mac 版下载安装",
+      "titleFontShort": "{name} 字体 Mac 版下载安装",
       "titleUnavailable": "{name} Mac 版 · OpenNavo",
       "descriptionFacts": "{summary}。查看 {name} 在 Mac 上的{parts}。",
       "descriptionFactsNoSummary": "查看 {name} 在 Mac 上的{parts}。",

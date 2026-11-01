@@ -2956,10 +2956,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const titles = {
       '': 'Example App @11 for Mac – Download &amp; Install · OpenNavo',
       '/zh': 'Example App @11 Mac 版下载安装 · OpenNavo',
-      '/ja': 'Example App @11 for Mac ダウンロード・インストール · OpenNavo',
+      '/ja': 'Example App @11 for Mac ダウンロード · OpenNavo',
       '/es': 'Descargar Example App @11 para Mac · OpenNavo',
       '/pt': 'Baixar Example App @11 para Mac · OpenNavo',
-      '/ru': 'Example App @11 для Mac — скачать и установить · OpenNavo'
+      '/ru': 'Example App @11 для Mac — скачать · OpenNavo'
     };
     for (const [prefix, expected] of Object.entries(titles))
       assert.equal(await title(`${prefix}/apps/versioned-app@11`), expected);
@@ -2991,10 +2991,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     for (const [prefix, expected] of [
       ['', 'WeChat for Mac – Download &amp; Install · OpenNavo'],
       ['/zh', '微信 Mac 版下载安装 · OpenNavo'],
-      ['/ja', 'WeChat for Mac ダウンロード・インストール · OpenNavo'],
+      ['/ja', 'WeChat for Mac ダウンロード · OpenNavo'],
       ['/es', 'Descargar WeChat para Mac · OpenNavo'],
       ['/pt', 'Baixar WeChat para Mac · OpenNavo'],
-      ['/ru', 'WeChat для Mac — скачать и установить · OpenNavo']
+      ['/ru', 'WeChat для Mac — скачать · OpenNavo']
     ])
       assert.equal(title(await page(`${prefix}/apps/wechat`)), expected, prefix || '/');
     // Keep the complete summary instead of shortening it for a generic closing sentence.

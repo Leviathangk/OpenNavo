@@ -3,6 +3,7 @@ import { Socket } from 'node:net';
 import { createEvent, getResponseHeader, setHeader, type H3Event } from 'h3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SITE_SETTINGS } from '../server/utils/siteSettings';
+import { appendHeaderValue } from '../server/utils/responseHeaders';
 
 vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin);
 const { default: inlineStyles } = await import('../server/plugins/html-styles');
@@ -39,6 +40,23 @@ async function respond(event: H3Event) {
   } as never);
   await beforeResponse(event);
 }
+
+it('appends headers per token, idempotently, and never splits a quoted comma', () => {
+  const event = eventFor('/apps/x');
+  const link = '</a>; rel="alternate", </b>; rel="preload"; title="x, y"';
+  setHeader(event, 'Link', link);
+  appendHeaderValue(event, 'Link', '</a>; rel="alternate"');
+  appendHeaderValue(event, 'Link', '</a>; rel="alternate"');
+  expect(getResponseHeader(event, 'Link')).toBe(link);
+  appendHeaderValue(event, 'Link', '</c>; rel="alternate"');
+  expect(getResponseHeader(event, 'Link')).toBe(`${link}, </c>; rel="alternate"`);
+
+  setHeader(event, 'Vary', 'Accept-Encoding, Accept');
+  appendHeaderValue(event, 'Vary', 'accept');
+  expect(getResponseHeader(event, 'Vary')).toBe('Accept-Encoding, Accept');
+  appendHeaderValue(event, 'Vary', 'Accept-Language');
+  expect(getResponseHeader(event, 'Vary')).toBe('Accept-Encoding, Accept, Accept-Language');
+});
 
 describe('HTML first-paint styles', () => {
   it('reads this build once, replaces only its stylesheet, and preserves the cascade on cached renders', async () => {

@@ -3,7 +3,7 @@ import { siteMessage } from '../server/utils/siteCopy';
 import { describe, expect, it } from 'vitest';
 import type { PublicComponents } from '@opennavo/api';
 import { SITE_LOCALES } from '@opennavo/shared';
-import { mdText, nestedMarkdown, renderPackageMarkdown } from '../server/utils/packageMarkdown';
+import { codeSpan, mdText, mdUrl, nestedMarkdown, renderPackageMarkdown } from '../server/utils/packageMarkdown';
 import {
   isOverviewPath,
   markdownAlternatesEnabled,
@@ -167,8 +167,30 @@ describe('Markdown alternates (X4)', () => {
     expect(cleanup).toContain(siteMessage('en-US', 'package.guide.uninstall'));
     expect(cleanup).toContain('`~/Library/Preferences/facts.plist`');
     expect(cleanup).toContain(siteMessage('en-US', 'package.uninstall.checked', { date: '2026-10-01' }));
-    expect(md).toContain('### 11.0 (2026-09-30)\n\nFaster.\n\n**Editor**\n\n- Better **tabs**');
+    expect(md).toContain('### 11.0 (2026-09-30)\n\nFaster.\n\n**Editor**\n\n- Better \\*\\*tabs\\*\\*');
     expect(md.endsWith('\n')).toBe(true);
+  });
+
+  it('Escapes release note items that would become links or markup', () => {
+    const release = {
+      ...pkg,
+      latestRelease: {
+        ...pkg.latestRelease,
+        summary: 'Notes',
+        sections: [
+          {
+            area: 'Editor',
+            items: ['See [the update](https://evil.example) for details', 'Use `cmd` now', 'Better **tabs**']
+          }
+        ]
+      }
+    } as PackageDetail;
+    const md = renderPackageMarkdown(release, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
+    expect(md).toContain(
+      `## ${siteMessage('en-US', 'markdown.latestRelease')}\n\n### 11.0 (2026-09-30)\n\nNotes\n\n**Editor**\n\n` +
+        '- See \\[the update\\](https://evil.example) for details\n- Use \\`cmd\\` now\n- Better \\*\\*tabs\\*\\*'
+    );
+    expect(md).not.toContain('[the update](https://evil.example)');
   });
 
   it.each([
@@ -246,6 +268,34 @@ describe('Markdown alternates (X4)', () => {
     expect(md).toContain(`## ${german.markdown.about}`);
     expect(md).toContain('https://opennavo.example/de/apps/facts-app');
     expect(siteMessage('de-DE', 'missing.test.key')).toBe('missing.test.key');
+  });
+
+  it('Escapes hostile catalog text and only links http(s) URLs', () => {
+    const detail = structuredClone(pkg);
+    detail.displayName = 'Evil [x](https://evil.example) `tick` <b>*';
+    detail.summary = 'Line one\nLine two';
+    detail.homepage = 'javascript:alert(1)';
+    detail.installCommand = 'brew install --cask evil`tick';
+    detail.facts!.overview.downloadUrl = 'https://vendor.example/a b<c>';
+    detail.facts!.prices[0]!.purchaseUrl = 'https://vendor.example/buy)evil';
+    detail.facts!.uninstall[0]!.value = 'bad`path[1]';
+    const md = renderPackageMarkdown(detail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
+    expect(md.startsWith('# Evil \\[x\\](https://evil.example) \\`tick\\` \\<b\\>\\*\n')).toBe(true);
+    expect(md).toContain('Line one Line two');
+    expect(md).not.toContain('javascript:');
+    expect(md).toContain('``brew install --cask evil`tick``');
+    expect(md).toContain('<https://vendor.example/a%20b%3Cc%3E>');
+    expect(md).toContain('<https://vendor.example/buy)evil>');
+    expect(md).toContain('``bad`path[1]``');
+  });
+
+  it('Keeps values from closing a code span and links nothing but http(s)', () => {
+    expect(codeSpan('plain')).toBe('`plain`');
+    expect(codeSpan('a`b')).toBe('``a`b``');
+    expect(codeSpan('`a`')).toBe('`` `a` ``');
+    expect(codeSpan('a\nb')).toBe('`a b`');
+    expect(mdUrl('https://a.example/b c<d>')).toBe('<https://a.example/b%20c%3Cd%3E>');
+    expect(mdUrl('javascript:alert(1)')).toBe('javascript:alert(1)');
   });
 
   it('Escapes markup in plain text and nests body headings', () => {

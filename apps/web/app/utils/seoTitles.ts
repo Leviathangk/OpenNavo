@@ -193,6 +193,50 @@ export function textWidth(text: string): number {
   return width;
 }
 
+/** Search results show about 60 columns (≈580 px at the site's type sizes); a wide glyph takes two. */
+export const TITLE_WIDTH = 60;
+
+/** The level a title had to fall back to: T0 branded template, T1 brandless, T2 short, T3 published as is. */
+export type TitleTier = 'T0' | 'T1' | 'T2' | 'T3';
+
+export interface TitleOverflow {
+  locale: string;
+  nameWidth: number;
+  tier: TitleTier;
+  titleWidth: number;
+}
+
+/** One warning per title that cannot fit without cutting the name; the name is never truncated. */
+export function reportTitleOverflow(record: TitleOverflow): void {
+  console.warn(`[seo-title] over budget: ${JSON.stringify(record)}`);
+}
+
+export interface TitleFit {
+  locale?: string;
+  name?: string;
+  /** T2 template, used only when both T0 and T1 exceed the budget. */
+  short?: string;
+}
+
+/**
+ * A title that fits the result-page budget without cutting the package name. The name is what tells
+ * similar pages apart, so the brand suffix goes first, then a short template when the language has
+ * one. T3 keeps the full name and reports one warning with its language, width and final tier.
+ */
+export function fitTitle(title: string, fit: TitleFit = {}): string {
+  if (textWidth(title) <= TITLE_WIDTH) return title;
+  const brandless = brandlessTitle(title);
+  if (textWidth(brandless) <= TITLE_WIDTH) return brandless;
+  if (fit.short && textWidth(fit.short) <= TITLE_WIDTH) return fit.short;
+  reportTitleOverflow({
+    locale: fit.locale ?? 'unknown',
+    nameWidth: textWidth(fit.name ?? ''),
+    tier: 'T3',
+    titleWidth: textWidth(brandless)
+  });
+  return brandless;
+}
+
 // Sentence ends skip abbreviations such as "e.g. PDF"; clause ends skip Latin commas, which also
 // separate list items ("text, files, voice").
 const SENTENCE_END = /(?<!\b\p{L})[.!?](?=\s)|[。！？]/gu;
@@ -252,14 +296,36 @@ function hasUninstallFacts(pkg: OverviewFacts): boolean {
   return [...uninstallFacts(pkg, 'uninstall'), ...uninstallFacts(pkg, 'zap')].some(item => item.value.trim());
 }
 
-export function overviewTitle(pkg: OverviewFacts, t: Translate): string {
+/** The approved T2 copy keeps its own spacing, including the space before Japanese kana after a CJK name. */
+function withShortName(t: Translate, key: string, name: string): string {
+  return t(key, { name: NAME_MARK }).split(NAME_MARK).join(name);
+}
+
+function titleLocale(t: Translate, locale?: string): string | undefined {
+  return locale ?? (t as Translate & { locale?: string }).locale;
+}
+
+export function overviewTitle(pkg: OverviewFacts, t: Translate, locale?: string): string {
   // Names such as "FiraCode Nerd Font" already say they are fonts.
   const key = disabledByHomebrew(pkg)
     ? 'package.seo.titleUnavailable'
     : pkg.isFont && !/\bfonts?\b|字体/iu.test(pkg.displayName)
       ? 'package.seo.titleFont'
       : 'package.seo.titleApp';
-  return withName(t, key, titleName(pkg.displayName));
+  const name = titleName(pkg.displayName);
+  return fitTitle(withName(t, key, name), {
+    locale: titleLocale(t, locale),
+    name,
+    // A disabled package keeps its template; the short copy is the approved T2 text for this page type.
+    short:
+      key === 'package.seo.titleUnavailable'
+        ? undefined
+        : withShortName(
+            t,
+            key === 'package.seo.titleFont' ? 'package.seo.titleFontShort' : 'package.seo.titleAppShort',
+            name
+          )
+  });
 }
 
 /** An overview's own search title and description in the page's language, set by editors or agents. */
@@ -279,6 +345,26 @@ export function overrideTitle(pkg: OverrideFacts): string | undefined {
   const title = pkg.seoOverride?.title?.trim();
   if (!title || disabledByHomebrew(pkg)) return undefined;
   return title.endsWith(TITLE_SUFFIX) ? title : `${title}${TITLE_SUFFIX}`;
+}
+
+/**
+ * The overview title the page renders: an editor or agent override wins (branded once), then the new
+ * template, or the legacy meta title while the rollout switch is on. One entry point, so the page cannot
+ * apply one branch without the budget.
+ */
+export function overviewPageTitle(
+  pkg: OverviewFacts & OverrideFacts,
+  t: Translate,
+  locale?: string,
+  legacy = false
+): string {
+  const custom = overrideTitle(pkg);
+  if (custom) return custom;
+  if (!legacy) return overviewTitle(pkg, t, locale);
+  return fitTitle(t('package.metaTitleCask', { name: pkg.displayName, summary: pkg.summary ?? '' }), {
+    locale: titleLocale(t, locale),
+    name: pkg.displayName
+  });
 }
 
 /** The overview description from the override; undefined leaves the template in charge, as for the title. */
@@ -357,11 +443,14 @@ export interface VersionFacts {
   latestRelease?: { version: string; publishedAt?: string | null; brewCommittedAt?: string | null } | null;
 }
 
-export function versionsTitle(pkg: VersionFacts, t: Translate): string {
+export function versionsTitle(pkg: VersionFacts, t: Translate, locale?: string): string {
   const version = reliableVersion(pkg.version);
-  return version
-    ? withName(t, 'package.seo.versionsTitleLatest', pkg.displayName, { version })
-    : withName(t, 'package.seo.versionsTitle', pkg.displayName);
+  return fitTitle(
+    version
+      ? withName(t, 'package.seo.versionsTitleLatest', pkg.displayName, { version })
+      : withName(t, 'package.seo.versionsTitle', pkg.displayName),
+    { locale: titleLocale(t, locale), name: pkg.displayName }
+  );
 }
 
 /**

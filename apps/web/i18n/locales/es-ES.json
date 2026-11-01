@@ -396,6 +396,8 @@
     "seo": {
       "titleApp": "Descargar {name} para Mac · OpenNavo",
       "titleFont": "Descargar la fuente {name} para Mac · OpenNavo",
+      "titleAppShort": "Descargar {name} para Mac",
+      "titleFontShort": "Descargar la fuente {name} para Mac",
       "titleUnavailable": "{name} para Mac · OpenNavo",
       "descriptionFacts": "{summary}. Consulta {parts} de {name} para Mac.",
       "descriptionFactsNoSummary": "Consulta {parts} de {name} para Mac.",

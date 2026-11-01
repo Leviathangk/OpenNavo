@@ -41,6 +41,29 @@ export function mdText(text: string): string {
     .trim();
 }
 
+/**
+ * A URL printed as a Markdown autolink. Only http(s) becomes a link; anything else stays escaped text.
+ * `<`, `>` and whitespace end an autolink, so they are percent-encoded instead of breaking the document.
+ */
+export function mdUrl(url: string): string {
+  const value = url.trim();
+  if (!/^https?:\/\//i.test(value)) return mdText(value);
+  const encoded = value.replace(
+    /[<>\s]/g,
+    char => `%${char.codePointAt(0)!.toString(16).toUpperCase().padStart(2, '0')}`
+  );
+  return `<${encoded}>`;
+}
+
+/** Inline code with a fence longer than any backtick run inside it, so a value cannot close the span. */
+export function codeSpan(value: string): string {
+  const text = value.replace(/\s+/g, ' ').trim();
+  const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map(match => match[0].length));
+  const fence = '`'.repeat(longest + 1);
+  const padding = text.startsWith('`') || text.endsWith('`') ? ' ' : '';
+  return `${fence}${padding}${text}${padding}${fence}`;
+}
+
 /** Body Markdown from the API nested inside this document: every heading moves down `levels` (h6 at most). */
 export function nestedMarkdown(source: string, levels = 1): string {
   return source
@@ -63,10 +86,10 @@ function evidenceText(evidence: FactEvidence, locale: SiteLocale, uninstall = fa
       ? 'package.facts.asOf'
       : 'package.facts.checkedOn';
   return [
-    evidence.sourceUrl,
-    evidence.checkedAt ? siteMessage(locale, key, { date: evidence.checkedAt.slice(0, 10) }) : '',
-    evidence.status === 'needs_review' ? siteMessage(locale, 'package.facts.pending') : '',
-    evidence.status === 'stale' ? siteMessage(locale, 'package.facts.stale') : ''
+    mdUrl(evidence.sourceUrl),
+    evidence.checkedAt ? mdText(siteMessage(locale, key, { date: evidence.checkedAt.slice(0, 10) })) : '',
+    evidence.status === 'needs_review' ? mdText(siteMessage(locale, 'package.facts.pending')) : '',
+    evidence.status === 'stale' ? mdText(siteMessage(locale, 'package.facts.stale')) : ''
   ]
     .filter(Boolean)
     .join(' · ');
@@ -81,7 +104,7 @@ function requirementLine(row: RequirementFact, locale: SiteLocale): string {
         .map(arch => (arch === 'arm64' || arch === 'x86_64' ? t(`package.arch.${arch}`) : arch))
         .join(', ')
     : t('package.requirements.allChips');
-  return [
+  const parts = [
     range ||
       (row.platformMacOS.length ? t('package.requirements.builtFor', { versions: row.platformMacOS.join(', ') }) : ''),
     `${t('package.requirements.version')}: ${row.versions.join(', ') || '—'}`,
@@ -90,12 +113,13 @@ function requirementLine(row: RequirementFact, locale: SiteLocale): string {
       ? t('package.facts.support.native')
       : row.appleSilicon === 'no'
         ? t('package.requirements.notNative')
-        : '',
-    evidenceText(row.evidence, locale)
+        : ''
   ]
     .filter(Boolean)
-    .map(mdText)
-    .join(' · ');
+    .map(mdText);
+  const evidence = evidenceText(row.evidence, locale);
+  if (evidence) parts.push(evidence);
+  return parts.join(' · ');
 }
 
 function releaseLines(entry: ReleaseEntry): string[] {
@@ -103,7 +127,7 @@ function releaseLines(entry: ReleaseEntry): string[] {
   if (entry.summary) lines.push(mdText(entry.summary), '');
   for (const section of entry.sections) {
     lines.push(`**${mdText(section.area)}**`, '');
-    for (const item of section.items) lines.push(`- ${item.replace(/\s+/g, ' ').trim()}`);
+    for (const item of section.items) lines.push(`- ${mdText(item)}`);
     lines.push('');
   }
   // The release is an h3 under the h2 section, so its own headings start at h4.
@@ -130,15 +154,15 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
   const lines: string[] = [`# ${mdText(pkg.displayName)}`, ''];
   if (pkg.summary) lines.push(mdText(pkg.summary), '');
   if (pkg.isFont) lines.push(m('package.answer.font', { name: mdText(pkg.displayName) }), '');
-  lines.push(`> ${m('markdown.note', { name: mdText(pkg.displayName) })} ${page}`, '');
+  lines.push(`> ${m('markdown.note', { name: mdText(pkg.displayName) })} ${mdUrl(page)}`, '');
 
   const facts: [string, string][] = [];
   const version = currentVersion(model);
-  if (hasVersion(version)) facts.push([m('package.stats.latest'), `\`${mdText(version)}\``]);
+  if (hasVersion(version)) facts.push([m('package.stats.latest'), codeSpan(version)]);
   const developer = verifiedIdentities(model).find(item => item.developer)?.developer || pkg.developer;
   if (developer) facts.push([m('markdown.developer'), mdText(developer)]);
   const homepage = pkg.homepage ?? pkg.link?.homepage;
-  if (homepage && /^https?:\/\//.test(homepage)) facts.push([m('package.homepage'), homepage]);
+  if (homepage && /^https?:\/\//.test(homepage)) facts.push([m('package.homepage'), mdUrl(homepage)]);
   if (pkg.license) facts.push([m('package.info.license'), mdText(pkg.license)]);
   if (pkg.categories.length)
     facts.push([
@@ -148,12 +172,12 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
         .join(', ')
     ]);
   if (pkg.kind !== 'link' && (pkg.kind !== 'cask' || commands))
-    facts.push([m('markdown.install'), `\`${pkg.installCommand || installCommand(pkg.kind, pkg.token)}\``]);
-  else if (pkg.link?.downloadUrl) facts.push([m('package.link.downloadTitle'), pkg.link.downloadUrl]);
+    facts.push([m('markdown.install'), codeSpan(pkg.installCommand || installCommand(pkg.kind, pkg.token))]);
+  else if (pkg.link?.downloadUrl) facts.push([m('package.link.downloadTitle'), mdUrl(pkg.link.downloadUrl)]);
   if (pkg.kind !== 'link') facts.push([m('package.stats.installs30d'), formatCount(pkg.installs.d30, { locale })]);
   const overview = model.facts.overview;
   const homebrewStatus = quickFacts(model, m, locale).rows.find(row => row.key === 'homebrew');
-  if (homebrewStatus) facts.push(['Homebrew', homebrewStatus.value]);
+  if (homebrewStatus) facts.push(['Homebrew', mdText(homebrewStatus.value)]);
   if (pkg.homebrewStatus?.state === 'deprecated')
     facts.push([
       m('package.deprecated'),
@@ -164,11 +188,12 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
         pkg.homebrewStatus.date
       ]
         .filter(Boolean)
+        .map(value => mdText(value!))
         .join(' · ')
     ]);
   if (overview.aliases?.length) facts.push([m('package.details.aliases'), overview.aliases.map(mdText).join(', ')]);
-  if (overview.downloadUrl) facts.push([m('package.details.download'), overview.downloadUrl]);
-  if (overview.sha256) facts.push(['SHA-256', `\`${overview.sha256}\``]);
+  if (overview.downloadUrl) facts.push([m('package.details.download'), mdUrl(overview.downloadUrl)]);
+  if (overview.sha256) facts.push(['SHA-256', codeSpan(overview.sha256)]);
   if (overview.artifacts?.binaries.length)
     facts.push([m('package.info.binaries'), overview.artifacts.binaries.map(mdText).join(', ')]);
   if (overview.artifacts?.pkgs.length)
@@ -191,8 +216,8 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
     lines.push(`## ${m('package.requirements.title')}`, '');
     for (const row of requirements) {
       lines.push(`- ${requirementLine(row, locale)}`);
-      if (row.downloadUrl) lines.push(`  - ${row.downloadUrl}`);
-      if (row.sha256) lines.push(`  - SHA-256: \`${row.sha256}\``);
+      if (row.downloadUrl) lines.push(`  - ${mdUrl(row.downloadUrl)}`);
+      if (row.sha256) lines.push(`  - SHA-256: ${codeSpan(row.sha256)}`);
     }
     lines.push('');
   }
@@ -202,7 +227,7 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
     const parts = [priceUsage(price, m), priceAmount(price, m, locale)].filter(Boolean);
     const scope = [priceRegionName(price.region, locale), priceEdition(price)].filter(Boolean).join(', ');
     const storeNote = price.channel === 'app_store' && price.usage === 'unknown' ? m('package.price.storeNote') : '';
-    return `- ${mdText(parts.join(' · ') || '—')}${scope ? ` (${mdText(scope)})` : ''} — ${mdText(m(`package.price.channels.${price.channel}`))}: ${price.purchaseUrl} · ${mdText(evidenceText(price.evidence, locale))}${storeNote ? ` · ${mdText(storeNote)}` : ''}`;
+    return `- ${mdText(parts.join(' · ') || '—')}${scope ? ` (${mdText(scope)})` : ''} — ${mdText(m(`package.price.channels.${price.channel}`))}: ${mdUrl(price.purchaseUrl)} · ${evidenceText(price.evidence, locale)}${storeNote ? ` · ${mdText(storeNote)}` : ''}`;
   });
   if (prices.length) lines.push(`## ${m('package.facts.price')}`, '', ...prices, '');
 
@@ -226,7 +251,7 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
           (attribute.booleanValue === undefined
             ? ''
             : m(attribute.booleanValue ? 'package.facts.yes' : 'package.facts.no'));
-        if (value) lines.push(`  - ${m(key)}: ${mdText(value)} · ${mdText(evidenceText(attribute.evidence, locale))}`);
+        if (value) lines.push(`  - ${m(key)}: ${mdText(value)} · ${evidenceText(attribute.evidence, locale)}`);
       }
       const migration = item.migration;
       if (migration && isVerified(migration.evidence)) {
@@ -239,7 +264,7 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
           );
           for (const step of steps)
             lines.push(
-              `- ${m(`package.compare.actions.${step.action}`)}: ${mdText(step.text)} · ${mdText(evidenceText(step.evidence, locale))}`
+              `- ${m(`package.compare.actions.${step.action}`)}: ${mdText(step.text)} · ${evidenceText(step.evidence, locale)}`
             );
           lines.push(m('package.compare.migrationNote', { name: mdText(pkg.displayName) }));
         }
@@ -259,9 +284,11 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
         ''
       );
       for (const identity of identities) {
-        const values = [identity.developer, identity.teamId, identity.repositoryUrl]
-          .filter(Boolean)
-          .map(value => mdText(value!));
+        const values = [
+          identity.developer && mdText(identity.developer),
+          identity.teamId && mdText(identity.teamId),
+          identity.repositoryUrl && mdUrl(identity.repositoryUrl)
+        ].filter((value): value is string => Boolean(value));
         if (identity.openSource !== 'unknown')
           values.push(
             `${m('package.safety.openSource')}: ${m(identity.openSource === 'yes' ? 'package.facts.yes' : 'package.facts.no')}`
@@ -271,11 +298,11 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
             channel === 'homebrew' ? 'Homebrew' : m(`package.price.channels.${channel}`)
           )
         );
-        lines.push(`- ${values.join(' · ')} — ${mdText(evidenceText(identity.evidence, locale))}`);
+        lines.push(`- ${values.join(' · ')} — ${evidenceText(identity.evidence, locale)}`);
       }
       for (const item of vulnerabilities)
         lines.push(
-          `- ${mdText(item.id)} · ${m('package.safety.cveVersion', { version: mdText(item.appVersion) })} · ${item.sourceUrl} · ${mdText(evidenceText(item.evidence, locale))}`
+          `- ${mdText(item.id)} · ${m('package.safety.cveVersion', { version: mdText(item.appVersion) })} · ${mdUrl(item.sourceUrl)} · ${evidenceText(item.evidence, locale)}`
         );
       if (vulnerabilities.length) lines.push(m('package.safety.cveNote'));
       lines.push('');
@@ -288,11 +315,12 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
   const cleanup = zap.length > 0 && (pkg.kind !== 'cask' || commands);
   if (commands || regular.length || cleanup) {
     lines.push(`## ${m('markdown.uninstall')}`, '');
-    if (commands) lines.push(`- \`brew uninstall --cask ${pkg.token}\``, '', m('package.guide.uninstall'), '');
+    if (commands)
+      lines.push(`- ${codeSpan(`brew uninstall --cask ${pkg.token}`)}`, '', m('package.guide.uninstall'), '');
     const declarations = (items: typeof regular) => {
       for (const item of items)
         lines.push(
-          `- ${mdText(m(`package.uninstall.kinds.${item.kind}`))}: \`${item.value.replace(/`/g, "'")}\` — ${mdText(evidenceText(item.evidence, locale, true))}`
+          `- ${mdText(m(`package.uninstall.kinds.${item.kind}`))}: ${codeSpan(item.value)} — ${evidenceText(item.evidence, locale, true)}`
         );
       lines.push('');
     };
@@ -302,7 +330,7 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
     }
     if (cleanup) {
       lines.push(`### ${m('package.guide.zapTitle')}`, '');
-      if (commands) lines.push(`- \`brew uninstall --zap --cask ${pkg.token}\``, '');
+      if (commands) lines.push(`- ${codeSpan(`brew uninstall --zap --cask ${pkg.token}`)}`, '');
       // Keep the user-data risk and the choice to omit --zap immediately beside the command.
       lines.push(m('package.guide.zap'), '');
       if (commands) lines.push(m('package.guide.uninstall'), '');
@@ -317,10 +345,10 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
     lines.push(...releaseLines(latest));
   }
 
-  lines.push(`## ${m('package.facts.title')}`, '', `- ${page}`, `- ${page}/versions`);
+  lines.push(`## ${m('package.facts.title')}`, '', `- ${mdUrl(page)}`, `- ${mdUrl(`${page}/versions`)}`);
   for (const source of factSources(model))
     lines.push(
-      `- ${source.url}${source.checkedAt ? ` · ${m(source.stale ? 'package.facts.asOf' : 'package.facts.checkedOn', { date: source.checkedAt.slice(0, 10) })}` : ''}`
+      `- ${mdUrl(source.url)}${source.checkedAt ? ` · ${m(source.stale ? 'package.facts.asOf' : 'package.facts.checkedOn', { date: source.checkedAt.slice(0, 10) })}` : ''}`
     );
   return `${lines
     .join('\n')
