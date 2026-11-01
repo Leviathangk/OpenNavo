@@ -293,9 +293,14 @@ For public MCP it maintains a marker-delimited route in the unique
 `WEB_DOMAIN` site block, immediately before the catch-all web proxy; a missing
 or ambiguous block aborts preparation before any switch. The post-switch check
 then sends streamable HTTP JSON-RPC `initialize` and `tools/list` requests
-through Caddy and requires at least one tool. Keep `public_mcp_host` (the
-`WEB_DOMAIN` host used with `local_origin`) in the receiver configuration when
-the homepage check does not identify it automatically.
+through Caddy and requires at least one tool. The `Host` header comes from
+`public_mcp_host` when set, otherwise from `web_domain` in the receiver
+configuration or `WEB_DOMAIN` in the host `.env`; it is never taken from a
+`checks` entry, so a homepage check cannot point the probe at the admin MCP.
+A missing `WEB_DOMAIN` and `public_mcp_host` aborts the deployment with a
+clear error. At startup, before reading a payload, the receiver removes
+`.<name>-<random>` temp files older than an hour that an interrupted atomic
+write left in the root, `deploy/`, release or Caddy directories.
 Schema changes must remain compatible with the previous application during the
 rollout. After both route checks and the worker update succeed, the receiver stops
 all retired application containers, retains at most one stopped previous release
