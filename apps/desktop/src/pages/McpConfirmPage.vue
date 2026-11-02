@@ -10,8 +10,8 @@ import { useAppLocale } from '@/composables/useAppLocale';
 // One confirmation (a Local MCP write, an opennavo:// deep-link install, or one of OpenNavo's own destructive commands:
 // Brewfile install, cleanup, uninstall, emptying from the Trash), in the window Rust creates for it. Everything shown comes from Rust as plain
 // text (already filtered for display) and is rendered with text interpolation only. Deny is the default: Return,
-// Escape and closing the window all deny. Allow only counts as a click, and Rust refuses it for about a second after
-// this page first reads the request, whatever this page shows.
+// Escape and closing the window all deny. Allow takes a click or Command-Return while Allow holds focus, and Rust
+// refuses it for about a second after this page first reads the request, whatever this page shows.
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const view = ref<McpConfirmView | null>(null);
@@ -19,6 +19,7 @@ const armed = ref(false);
 const answering = ref(false);
 const failure = ref<'expired' | 'failed' | null>(null);
 const denyButton = ref<{ $el?: HTMLElement } | null>(null);
+const allowButton = ref<{ $el?: HTMLElement } | null>(null);
 let arming: ReturnType<typeof setTimeout> | undefined;
 
 function arm(afterMs: number) {
@@ -55,14 +56,22 @@ async function answer(allow: boolean) {
   }
 }
 
-// Return, Space and Escape never approve, wherever the focus is (Tab onto Allow included): they deny. The browser
-// activates a focused button on Return keydown and Space keyup, so both phases are cancelled before it can.
+// Return, Space and Escape never approve on their own, wherever the focus is (Tab onto Allow included): they deny.
+// The browser activates a focused button on Return keydown and Space keyup, so both phases are cancelled before it can.
+// The one keyboard way to allow is Command-Return, and only while Allow itself holds focus: a deliberate chord on the
+// approving control, never a lone key. Deny keeps the initial focus, so that chord also needs a Tab first (#104 A-2).
 const ANSWER_KEYS = new Set(['Enter', 'Escape', ' ', 'Spacebar']);
+// A chord with no other modifier, and not mid-composition: a Chinese or Japanese input method emits Enter as well.
+function isAllowChord(event: KeyboardEvent) {
+  return event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && !event.isComposing;
+}
 function onKey(event: KeyboardEvent) {
   if (!ANSWER_KEYS.has(event.key)) return;
   event.preventDefault();
   event.stopPropagation();
-  if (event.type === 'keydown') void answer(false);
+  if (event.type !== 'keydown') return;
+  const onAllow = document.activeElement === allowButton.value?.$el;
+  void answer(event.key === 'Enter' && onAllow && isAllowChord(event));
 }
 
 onMounted(() => {
@@ -281,9 +290,17 @@ const unlisted = computed(() =>
           @click="answer(false)"
           >{{ t('mcpConfirm.deny') }}</OnButton
         >
-        <OnButton :disabled="!armed || answering" data-test="mcp-confirm-allow" @click="answer(true)">{{
-          t('mcpConfirm.allow')
-        }}</OnButton>
+        <OnButton
+          ref="allowButton"
+          :disabled="!armed || answering"
+          aria-keyshortcuts="Meta+Enter"
+          data-test="mcp-confirm-allow"
+          @click="answer(true)"
+          >{{ t('mcpConfirm.allow')
+          }}<kbd aria-hidden="true" class="ml-6px rounded-tiny bg-surface-chip px-5px font-sans text-11px"
+            >⌘⏎</kbd
+          ></OnButton
+        >
       </footer>
     </template>
     <p v-else-if="failure" class="m-0 my-auto text-center text-12.5px text-ink-tertiary" data-test="mcp-confirm-none">

@@ -3,6 +3,7 @@ import type { VueWrapper } from '@vue/test-utils';
 import { readFileSync } from 'node:fs';
 import { formatBytes } from '@opennavo/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { OnButton } from '@opennavo/ui';
 import McpConfirmPage from '@/pages/McpConfirmPage.vue';
 import { i18n } from '@/i18n';
 import { commands } from '@/ipc/client';
@@ -99,6 +100,21 @@ describe('Local MCP confirmation window', () => {
     await wrapper.get('[data-test="mcp-confirm-allow"]').trigger('click');
     await flushPromises();
     expect(answer).toHaveBeenCalledWith('confirm-1', true);
+  });
+
+  it('Answers nothing at all from Allow before it is armed', async () => {
+    // The guard in answer() is what still holds if the disabled attribute ever stops doing its job (a DOM change, or
+    // a refactor that drops it), so it needs a test of its own. A plain click cannot reach it: OnButton swallows the
+    // click of a disabled button, so the guard is exercised through the component's own click event instead.
+    const answer = vi.spyOn(commands, 'mcpConfirmAnswer');
+    const wrapper = await page('mcp-confirm-install');
+    expect(wrapper.get('[data-test="mcp-confirm-allow"]').attributes('disabled')).toBeDefined();
+    wrapper
+      .findAllComponents(OnButton)
+      .find(button => button.attributes('data-test') === 'mcp-confirm-allow')!
+      .vm.$emit('click');
+    await flushPromises();
+    expect(answer).not.toHaveBeenCalled();
   });
 
   it('Renders nothing from HTML and loads no remote content', () => {
@@ -250,4 +266,111 @@ describe('Confirmation keyboard', () => {
       expect(answer.mock.calls.every(([, value]) => value === false)).toBe(true);
     });
   }
+});
+
+// #104 A-2: a keyboard-only user has to be able to allow without a mouse, and without making Return alone approve.
+describe('Keyboard allow chord (#104 A-2)', () => {
+  async function armed(mock = 'mcp-confirm-install') {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const answer = vi.spyOn(commands, 'mcpConfirmAnswer');
+    const wrapper = await page(mock);
+    await vi.advanceTimersByTimeAsync(1100);
+    await flushPromises();
+    const allow = wrapper.get('[data-test="mcp-confirm-allow"]').element as HTMLButtonElement;
+    expect(allow.disabled).toBe(false);
+    return { answer, wrapper, allow };
+  }
+
+  function chord(target: EventTarget, key: string, init: KeyboardEventInit = {}) {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  for (const mock of ['mcp-confirm-install', 'deeplink-confirm-install', 'deeplink-confirm-collection']) {
+    it(`Command-Return allows while Allow holds focus (${mock})`, async () => {
+      const { answer, allow } = await armed(mock);
+      allow.focus();
+      expect(document.activeElement).toBe(allow);
+      chord(allow, 'Enter', { metaKey: true });
+      await flushPromises();
+      expect(answer).toHaveBeenCalledTimes(1);
+      expect(answer.mock.calls[0]?.[1]).toBe(true);
+    });
+  }
+
+  it('Command-Return does nothing while Deny still holds the initial focus', async () => {
+    // Allow is the approving control, so the chord only counts on it. Otherwise the default focus would carry an
+    // allow shortcut and the deliberate Tab would be gone.
+    const { answer, wrapper } = await armed();
+    expect(document.activeElement).toBe(wrapper.get('[data-test="mcp-confirm-deny"]').element);
+    chord(window, 'Enter', { metaKey: true });
+    await flushPromises();
+    expect(answer.mock.calls.every(([, value]) => value === false)).toBe(true);
+  });
+
+  it('Command-Return before the delay falls back to deny, never to allow', async () => {
+    // Before arming Allow is disabled, so it cannot hold focus: the chord can never reach the approving control and
+    // the ordinary Return rule applies. Denying is the safe side of that, and the point is that it never allows.
+    const answer = vi.spyOn(commands, 'mcpConfirmAnswer');
+    await page('mcp-confirm-install');
+    chord(window, 'Enter', { metaKey: true });
+    await flushPromises();
+    expect(answer.mock.calls.every(([, value]) => value === false)).toBe(true);
+  });
+
+  for (const extra of [{ shiftKey: true }, { altKey: true }, { ctrlKey: true }]) {
+    it(`Command-Return with ${Object.keys(extra)[0]} does not allow`, async () => {
+      const { answer, allow } = await armed();
+      allow.focus();
+      chord(allow, 'Enter', { metaKey: true, ...extra });
+      await flushPromises();
+      expect(answer.mock.calls.every(([, value]) => value === false)).toBe(true);
+    });
+  }
+
+  it('Command-Return mid-composition denies, not allows', async () => {
+    // A Chinese or Japanese input method reports Enter while the user is only picking a candidate. Without this guard
+    // the chord would approve a Local MCP write the moment someone chose a word with Command held.
+    const { answer, allow } = await armed();
+    allow.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'isComposing', { value: true });
+    allow.dispatchEvent(event);
+    await flushPromises();
+    // The handler ran (one answer went out) and refused: `every` alone would also pass on an empty call list, so a
+    // handler that stopped reacting to Enter altogether would look identical to a correct guard.
+    expect(answer).toHaveBeenCalledTimes(1);
+    expect(answer).toHaveBeenCalledWith('confirm-1', false);
+  });
+
+  it('Space with the Command modifier still denies', async () => {
+    const { answer, allow } = await armed();
+    allow.focus();
+    chord(allow, ' ', { metaKey: true });
+    await flushPromises();
+    expect(answer.mock.calls.every(([, value]) => value === false)).toBe(true);
+  });
+
+  it('Advertises the chord to assistive technology and shows it on the button', async () => {
+    const { wrapper } = await armed();
+    const allow = wrapper.get('[data-test="mcp-confirm-allow"]');
+    expect(allow.attributes('aria-keyshortcuts')).toBe('Meta+Enter');
+    expect(allow.get('kbd').text()).toBe('⌘⏎');
+  });
+
+  it('Names the Allow button by its copy alone, without the shortcut hint', async () => {
+    // The hint is decoration: aria-keyshortcuts already announces the chord, so a screen reader reading the hint
+    // again would say "Allow Command-Return" as if that were the name of the control.
+    const { wrapper } = await armed();
+    const allow = wrapper.get('[data-test="mcp-confirm-allow"]');
+    // A button takes its accessible name from its contents, and aria-hidden subtrees are left out of that per
+    // accname 2.0 §4.3.2, which is what this strips. No accessible-name library is installed, so the rule is spelled
+    // out here rather than approximated by textContent.
+    const clone = allow.element.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('[aria-hidden="true"]').forEach(hidden => hidden.remove());
+    expect(clone.textContent?.trim()).toBe(i18n.global.t('mcpConfirm.allow'));
+    expect(clone.textContent).not.toContain('⌘⏎');
+    expect(allow.get('kbd').attributes('aria-hidden')).toBe('true');
+  });
 });
