@@ -322,9 +322,14 @@ func specSizeExampleMismatches(t *testing.T, path string) []string {
 	return mismatches
 }
 
-// responsePageSize returns the page size a documented 200 response body advertises at data.size.
-// A body without data (or without data.size, as in the author page, whose articles are nested one
-// level deeper) has no page size of its own and reports ok as false.
+// responsePageSize returns the page size a documented 200 response body advertises, and reports ok
+// as false when it advertises none.
+//
+// A page sits at data.size for most operations, but the author page carries the profile beside its
+// articles, so its page is data.articles.size. Looking only at the top level read every getAuthor
+// example as "no page" and skipped it, which left the eleven locale examples uncompared while the
+// sweep still counted the operation as checked (see the compared flag below). Both levels are read
+// here so a documented author page is actually held to the ?size= default.
 func responsePageSize(example any) (float64, bool, bool) {
 	body, isObject := example.(map[string]any)
 	if !isObject {
@@ -336,7 +341,14 @@ func responsePageSize(example any) (float64, bool, bool) {
 	}
 	size, present := data["size"]
 	if !present {
-		return 0, false, false
+		// One level down, for a response that nests its page inside a named field. Only a map is
+		// descended into: a scalar at data.articles says nothing about a page size.
+		if articles, ok := data["articles"].(map[string]any); ok {
+			size, present = articles["size"]
+		}
+		if !present {
+			return 0, false, false
+		}
 	}
 	number, isNumber := size.(float64)
 	return number, true, isNumber
@@ -405,11 +417,13 @@ func specResponseSizeMismatches(t *testing.T, path string) []string {
 				continue
 			}
 			withExamples++
+			compared := false
 			for name, example := range examples {
 				size, hasPage, isNumber := responsePageSize(example)
 				if !hasPage {
 					continue
 				}
+				compared = true
 				if !isNumber {
 					mismatches = append(mismatches, fmt.Sprintf("%s: %s %s has a non-integer data.size", path, op.OperationID, name))
 					continue
@@ -419,7 +433,13 @@ func specResponseSizeMismatches(t *testing.T, path string) []string {
 						path, route, op.OperationID, name, size, def))
 				}
 			}
-			checked++
+			// Counted only when at least one example was really compared. Incrementing unconditionally
+			// made this operation "checked" even when every one of its examples had no page size to
+			// read, so the sweep could shrink to nothing while both the equality below and the floor
+			// after it still held — the exact blindness the floor exists to catch.
+			if compared {
+				checked++
+			}
 		}
 	}
 	// Deleting the response examples would make the spec unreadable rather than correct, so a
@@ -513,4 +533,42 @@ func (h *Handler) ListAliased(ctx context.Context, request publicapi.ListAliased
 	require.Contains(t, problems[0], "listUnknown: size fallback defaultPageSize is a bare name")
 	require.Contains(t, problems[1], "listAlias: size default defaultPageSize is a bare name")
 	require.Contains(t, problems[2], "listComputed: size fallback pageSize() cannot be read")
+}
+
+// A page is at data.size for most responses, but the author page nests its page under data.articles.
+// Reading only the top level left every getAuthor example uncompared, so the sweep has to descend one
+// level and must not mistake a non-map there for a page.
+func TestResponsePageSizeReadsNestedArticlePages(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		example       any
+		want          float64
+		wantHasPage   bool
+		wantIsInteger bool
+	}{
+		{"a top-level page", map[string]any{"data": map[string]any{"size": float64(24)}}, 24, true, true},
+		{"an author page, nested one level", map[string]any{"data": map[string]any{
+			"author":   map[string]any{"slug": "lin-wei"},
+			"articles": map[string]any{"size": float64(12)},
+		}}, 12, true, true},
+		{"the top-level page wins when both exist", map[string]any{"data": map[string]any{
+			"size":     float64(24),
+			"articles": map[string]any{"size": float64(12)},
+		}}, 24, true, true},
+		{"articles without a size is not a page", map[string]any{"data": map[string]any{
+			"articles": map[string]any{"total": float64(0)},
+		}}, 0, false, false},
+		{"a scalar at articles is not a page", map[string]any{"data": map[string]any{"articles": float64(3)}}, 0, false, false},
+		{"a nested non-integer is reported, not skipped", map[string]any{"data": map[string]any{
+			"articles": map[string]any{"size": "12"},
+		}}, 0, true, false},
+		{"no data at all", map[string]any{"code": "0000"}, 0, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			size, hasPage, isNumber := responsePageSize(tc.example)
+			require.Equal(t, tc.wantHasPage, hasPage, "hasPage")
+			require.Equal(t, tc.wantIsInteger, isNumber, "isNumber")
+			require.Equal(t, tc.want, size, "size")
+		})
+	}
 }
