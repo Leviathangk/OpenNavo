@@ -153,6 +153,10 @@ jobs:
           path: admin-dist.tar.gz
   deploy:
     needs: [source, images, admin]
+    # Stated here rather than inherited: images and admin skip on needed=false, so without this
+    # line the job is skipped only by GitHub's skip propagation through `needs`. Any `if: always()`
+    # or a narrowed `needs` would then run the deploy against a revision that needs none.
+    if: needs.source.outputs.needed == 'true'
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 35

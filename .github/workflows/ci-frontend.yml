@@ -72,7 +72,6 @@ jobs:
       - run: node tooling/scripts/check-hardcoded-i18n.mjs
       - run: node tooling/scripts/sync-brand-readme.mjs --check
       - run: node tooling/scripts/derive-traditional.mjs --check
-      - run: node --test tooling/scripts/traditional-markdown.test.mjs
       - run: pnpm --filter "@opennavo/*" --if-present run lint
       - run: pnpm --filter "@opennavo/*" --if-present run typecheck
       - uses: ./.github/actions/go-cache-save
@@ -94,9 +93,11 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # A glob for the same reason as ci-security: a list is missed when a test is added.
+      # interface-i18n is here rather than in ci-security because it imports typescript, so it
+      # needs the install above; ci-security has none and would fail on the import.
       - run: >-
-          node --test tooling/scripts/check-hardcoded-i18n.test.mjs tooling/scripts/derive-traditional.test.mjs
-          tooling/scripts/sync-brand-readme.test.mjs apps/web/scripts/og-font.test.mjs
+          node --test tooling/scripts/*.test.mjs apps/web/scripts/og-font.test.mjs
       - run: pnpm --filter "@opennavo/*" --if-present run test
 
   frontend-build:
