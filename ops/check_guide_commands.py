@@ -15,7 +15,13 @@ Two checks, both of which caught real defects in this file:
    runs overwrite each other's stderr, so one reads another run's error as its
    own result. Reproduced with two concurrent runs of the block that used
    /tmp/lvs.err: 5/5 rounds both processes read the same file. This check
-   rejects a literal /tmp/<name>.err and requires mktemp.
+   rejects a literal /tmp/<name> and requires mktemp.
+
+3. Redirects into a placeholder. `2><WINDOW_TIMESTAMP>` passes `sh -n` - `<`
+   starts an input redirect - and fails only when run, with the script still
+   exiting 0 because the failing command is a bare assignment. Checked
+   separately because `sh -n` is not enough on its own; measured:
+   `sh -n` exit 0, run exit 0, `syntax error near unexpected token '<'`.
 
 What this deliberately does not check: whether a command produces the correct
 answer, whether its flags exist on the host's version of the tool, or whether
@@ -53,6 +59,20 @@ FIXED_TMP = re.compile(
 # Lines that legitimately name a /tmp path for another reason: a comment, or a
 # mktemp template. Checked per line so one mention does not excuse a real one.
 EXEMPT = re.compile(r"mktemp|^\s*#")
+
+# A redirect target written as a placeholder: `2><WINDOW_TIMESTAMP>`, `> <PATH>`.
+#
+# `sh -n` accepts this. `<` starts an input redirect, so `2><X>` parses as "stderr
+# to the file named by the input of <X>", which is nonsense the parser cannot see
+# yet. At run time the command substitution dies with `syntax error near
+# unexpected token '<'` - and because the failing command is the last in an
+# assignment, the script's own exit status is still 0. The reader gets no error
+# from `$?` and an empty result, which reads as "ran cleanly, found nothing".
+# That is the wrong answer this whole section exists to avoid.
+#
+# `<worker-container>` in a command position is a legitimate "substitute your own
+# value" placeholder and must keep working, so this matches only a redirect.
+REDIR_TO_PLACEHOLDER = re.compile(r"[0-9]?>>?\s*<[^<>\s]+>")
 
 
 def shell_blocks(text: str) -> list[tuple[int, str]]:
@@ -114,6 +134,15 @@ def main() -> int:
                     f"  Two concurrent runs then read each other's stderr, which is "
                     f"the answer this section exists to get right."
                 )
+            for match in REDIR_TO_PLACEHOLDER.finditer(line):
+                real_line = block_line + 1 + index
+                failures.append(
+                    f"ops/GUIDE.md:{real_line}: {match.group(0).strip()} redirects into "
+                    f"a placeholder, which `sh -n` accepts and the shell cannot run.\n"
+                    f"  At run time this is `syntax error near unexpected token '<'`; "
+                    f"the script still exits 0, so the reader sees an empty result and "
+                    f"no error."
+                )
 
     if failures:
         for failure in failures:
@@ -121,7 +150,10 @@ def main() -> int:
         print(f"\n{len(failures)} problem(s) in {len(blocks)} shell block(s)", file=sys.stderr)
         return 1
 
-    print(f"ops/GUIDE.md: {len(blocks)} shell block(s) parse, none use a shared /tmp path")
+    print(
+        f"ops/GUIDE.md: {len(blocks)} shell block(s) parse, none use a shared /tmp "
+        f"path, no redirect into a placeholder"
+    )
     return 0
 
 
