@@ -209,24 +209,47 @@ def wait_ready(process):
 # Matched case-insensitively: libpq writes "Connection refused" while the server writes
 # "the database system is shutting down", and pinning the case would silently stop matching.
 #
-# The socket path is the actual signal for "the init server has gone and the real one is not
-# listening yet". A bare 'No such file or directory' was too wide: it also matched permanent
-# errors that merely mention that phrase, so the path is required.
+# The refusal is a tuple, not a bare string: every one of these must appear. `connection refused`
+# alone also ends Docker's "dial unix /var/run/docker.sock: connect: connection refused", which
+# retrying cannot fix, and a daemon that is down would otherwise cost four sleeps before the real
+# error surfaced. libpq names the server it failed to reach in both of its spellings ("connection
+# to server at ... failed: Connection refused" and "could not connect to server: Connection
+# refused"), so "to server" is the lead-in that separates postgres from the Docker socket. Bare
+# 'connection to server' would be no anchor at all: libpq prefixes every failure with it.
 #
-# A bare 'could not connect' is not here either: libpq puts it in front of every failure to reach
-# the server, a permanent one included ("could not connect to server: Permission denied"), so it
-# would retry a real misconfiguration five times. The retryable reach failures are the refusal and
-# the missing socket, both listed.
+# A bare 'No such file or directory' was too wide, and so was the socket path it was replaced
+# with: libpq prefixes every failure to reach a socket with that path, a permanent one included
+# (".../PGSQL.5432" failed: FATAL: password authentication failed), so the path alone retried
+# real misconfigurations five times. The phrase only follows "failed:" when the socket is actually
+# missing, so that is what is matched.
 #
-# `duplicate key` is here because the init server creates the database itself, so createdb can lose
-# the race and find it already there. That is only retryable because retried() re-runs the whole
-# sequence: the next attempt's existence query returns 1 and the create is skipped. Retrying createdb
-# on its own would never converge — `already exists` is a different, permanent error and is not here.
+# A bare 'could not connect' is not here either, for the same reason: libpq puts it in front of
+# every failure to reach the server, a permanent one included.
+#
+# The last two are the same race spelled two ways. The init server creates the database itself, so
+# createdb can lose and find it already there: either as a unique violation naming pg_database's
+# datname index, or as `already exists` when the create reaches the server after the check.
+# `already exists` is retryable *here and only here* because step_database() runs createdb solely
+# when the existence query said absent, so it cannot mean anything but this race. Both converge
+# only because retried() re-runs the whole sequence: the next attempt's existence query returns 1
+# and the create is skipped. Retrying createdb on its own would never converge.
 TRANSIENT = ('the database system is shutting down', 'the database system is starting up',
              'terminating connection due to administrator command',
-             'connection refused',
-             '/var/run/postgresql/.s.pgsql',
-             'pg_database_datname_index')
+             ('to server', 'connection refused'),
+             'failed: no such file or directory',
+             'pg_database_datname_index',
+             f'database "{DB_NAME}" already exists')
+
+
+def transient(detail):
+    """Whether a failure's detail matches a retryable marker.
+
+    A marker is a string (that substring) or a tuple (every substring). The tuple form exists so a
+    phrase too generic to stand alone can be pinned to the context that makes it retryable.
+    """
+    return any(all(part in detail for part in marker) if isinstance(marker, tuple)
+               else marker in detail
+               for marker in TRANSIENT)
 
 
 def retried(stage, action, *, attempts=5, delay=1.0):
@@ -241,7 +264,7 @@ def retried(stage, action, *, attempts=5, delay=1.0):
             return labelled(stage, action)
         except StepError as error:
             detail = error.detail.lower()
-            if attempt == attempts or not any(marker in detail for marker in TRANSIENT):
+            if attempt == attempts or not transient(detail):
                 raise
             time.sleep(delay)
 

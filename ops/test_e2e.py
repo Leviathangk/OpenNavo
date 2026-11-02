@@ -260,13 +260,20 @@ class DatabaseRetryTests(unittest.TestCase):
                 self.assertEqual(calls[2][3], 'createdb')
 
     def test_a_permanent_failure_is_not_retried(self):
-        # A syntax error is a real bug; retrying it only delays the report. `already exists` is what
-        # a non-idempotent create turns into, and 'could not connect to server: perm denied' is a
-        # permanent permission failure that merely shares a prefix with the retryable refusal.
+        # A syntax error is a real bug; retrying it only delays the report. The FATAL cases are the
+        # ones that decide whether the reach markers are narrow enough: each arrives through libpq
+        # with the very socket path and "connection to server" lead-in a retryable failure carries,
+        # and only the words after them say the server answered and refused us.
         for message in ('ERROR: syntax error at or near "SELEC"',
                         'permission denied for database postgres',
-                        'database "opennavo_e2e" already exists',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: FATAL:  permission denied for database "postgres"',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: FATAL:  password authentication failed for user "opennavo"',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: FATAL:  role "nosuchuser" does not exist',
                         'could not connect to server: perm denied',
+                        'dial unix /var/run/docker.sock: connect: connection refused',
                         'ERROR: relation "x" does not exist: No such file or directory candidate'):
             with self.subTest(message=message):
                 with self.assertRaises(e2e.StepError) as caught:
@@ -290,6 +297,22 @@ class DatabaseRetryTests(unittest.TestCase):
         calls = self.run_database([
             '',                                                          # attempt 1: query -> absent
             self.failure('duplicate key value violates unique constraint "pg_database_datname_index"'),
+            '1',                                                         # attempt 2: query -> now exists
+        ])
+        self.assertEqual([call[3] for call in calls], ['psql', 'createdb', 'psql'],
+                         'the retry re-queried and did not retry createdb')
+        self.assertNotIn('createdb', [call[3] for call in calls[2:]], 'no second createdb')
+
+    def test_the_other_spelling_of_the_same_race_converges(self):
+        # The same loss reported the other way. The init server creates the database itself, so a
+        # create that reaches the server after the existence check finds it there; Postgres says
+        # `already exists` rather than raising a unique violation. It is retryable only because
+        # step_database() runs createdb solely when the query said absent, so here this message
+        # cannot mean anything but the race. Retrying the sequence resolves it exactly as above.
+        calls = self.run_database([
+            '',                                                          # attempt 1: query -> absent
+            self.failure('createdb: error: database creation failed: ERROR:  database '
+                         '"opennavo_e2e" already exists'),
             '1',                                                         # attempt 2: query -> now exists
         ])
         self.assertEqual([call[3] for call in calls], ['psql', 'createdb', 'psql'],
