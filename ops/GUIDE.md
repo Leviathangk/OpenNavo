@@ -165,6 +165,92 @@ evidence that production is backed up — check the host snapshot instead.
 
 The rest of this section applies only if you deliberately enable that optional path.
 
+### Backup fact sheet
+
+**Nothing in this repository can tell you whether production is backed up.** The snapshot
+above is taken by the host owner with tooling outside this repository: no code here creates
+it, no alert fires when it stops, and no metric reports when it last succeeded. That is a
+deliberate split of responsibilities, not an oversight — but it means the only way to know
+the backup is real is to check the host and write down the answer.
+
+Keep this table current. Every row is either a fact you verified with the command beside it,
+or `unknown`. **An unverified row is the finding.** Do not fill a row from memory or from
+another document, and do not delete the `unknown` marker before the command has been run.
+
+| # | Question | How to verify (on the host) | Record |
+|---|---|---|---|
+| 1 | Is a whole-server snapshot scheduled at all? | Whichever applies: `systemctl list-timers --all`, `crontab -l` and `/etc/cron.*`, or the provider's snapshot policy in its console | Mechanism and schedule, or `unknown` |
+| 2 | When did a snapshot last succeed? | The same source as row 1, plus the provider's snapshot list | Date and time of the newest **successful** snapshot, or `unknown` |
+| 3 | Does the snapshot include the PostgreSQL data directory? | Compare the snapshot's scope against the directory the `local-db` service mounts (`ops/docker-compose.prod.yml`, `local-db`) | Covered / not covered, or `unknown` |
+| 4 | Does the snapshot include what the database does not? | Check the same scope covers the `.env` and `current-release.env` files, the Caddy volumes, and the object storage the app writes to | Each item covered / not covered |
+| 5 | When was a restore last actually performed, not just planned? | The restore drill below, run against a non-production copy | Date, and whether the restored data matched |
+| 6 | Who is responsible for rows 1–4? | An agreement, not a command | Name or role |
+
+**Row 5 is the one that matters.** Rows 1–4 establish that a backup exists; only a restore
+establishes that it works. A snapshot nobody has ever restored is a hypothesis.
+
+Record each verification in the operations record with the date, the person, and the answers.
+When a row changes from `unknown` to a concrete answer, that change is the whole point of
+this table — it is the first moment anyone can say the backup is real.
+
+#### Checking the host snapshot
+
+These commands read only. Run them on the host, not through the deploy key: the forced
+command runs the deployment receiver, which accepts a deploy payload and nothing else.
+
+```sh
+# Scheduled jobs: systemd timers, then cron. One of these will show the snapshot job if
+# it is scheduled from inside the host. A provider-side policy will not appear in either.
+# The cron directories are listed explicitly rather than as /etc/cron.*: when that glob
+# matches nothing, zsh aborts the command line before grep runs.
+systemctl list-timers --all 2>/dev/null | grep -iE 'snapshot|backup' || echo "no matching timer"
+crontab -l 2>/dev/null | grep -iE 'snapshot|backup' || echo "no matching user cron"
+if [ -d /etc/cron.d ]; then
+    grep -rniE 'snapshot|backup' /etc/cron.d /etc/cron.daily /etc/cron.hourly \
+        /etc/cron.weekly /etc/cron.monthly /etc/crontab 2>/dev/null \
+        || echo "no matching system cron"
+else
+    echo "no /etc/cron.d on this host"
+fi
+
+# Filesystem-level snapshots, if the host uses one of these. The columns name the snapshot
+# and when it was taken; an empty list means this is not how the host snapshots.
+lvs --noheadings -o lv_name,snap_time 2>/dev/null || echo "not LVM, or no LVM tools"
+zfs list -t snapshot -o name,creation 2>/dev/null || echo "not ZFS, or no ZFS tools"
+btrfs subvolume list / 2>/dev/null | grep -i snapshot || echo "not btrfs, or no btrfs tools"
+
+# The data directory the snapshot must contain. This prints the mount, not its contents.
+docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' \
+  "$(docker compose -f ops/docker-compose.prod.yml --profile ops ps -q local-db)" 2>/dev/null \
+  || echo "local-db is not running under the ops profile"
+```
+
+If every command reports nothing, the snapshot is not scheduled from inside the host. That
+does not prove there is no backup: a provider-side policy would not show up here, and row 1
+is then answered in the provider's console, not on the host.
+
+#### Restore drill
+
+The drill restores a snapshot into a throwaway environment, never over production. Two
+properties make it safe to run:
+
+- it targets a copy, so a wrong command costs a discarded directory rather than the live data;
+- it measures whether the restored data matches, so a snapshot that restores to an empty
+  database fails the drill instead of passing it.
+
+A drill that only checks the restore command exited zero proves nothing: `pg_restore`
+succeeds on an empty dump. Compare row counts for a few tables before and after, and keep the
+comparison with the date in the operations record.
+
+If the snapshot is a whole-server image, the drill is: start a throwaway server from the
+snapshot, and query the database there. Do not test the snapshot by restoring it onto the
+production host.
+
+The optional single-database path below has its own drill, which requires a second database
+and the object storage credentials. It is not the drill for the host snapshot.
+
+### Optional single-database backup
+
 The ops image includes PostgreSQL tools. The helper reads `MIGRATION_DATABASE_URL` through Compose and uploads backups to private object storage:
 
 ```sh
