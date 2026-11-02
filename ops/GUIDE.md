@@ -184,10 +184,19 @@ another document, and do not delete the `unknown` marker before the command has 
 | 3 | Does the snapshot include the PostgreSQL data directory? | Find where the running database keeps its data, then check that path is inside the snapshot's scope (see below) | The path and whether the snapshot covers it, or `unknown` |
 | 4 | Does the snapshot include what the database does not? | Check the same scope covers the `.env` and `current-release.env` files, the Caddy volumes, and the object storage the app writes to | Each item covered / not covered, or `unknown` |
 | 5 | When was a restore last actually performed, not just planned? | The restore drill below, run against a non-production copy | Date, and whether the restored data matched |
-| 6 | Who is responsible for rows 1–4? | An agreement, not a command | Name or role |
+| 6 | Who is responsible for rows 1–4? | An agreement, not a command. **`owner: user`** — the user names the owner. Record `unknown` until they do | Name or role, or `unknown` |
+| 7 | When was this table last reviewed? | An agreement, not a command. Read the date recorded beside this row against the quarterly cadence below | Date last reviewed and who reviewed it, or `unknown` |
 
 **Row 5 is the one that matters.** Rows 1–4 establish that a backup exists; only a restore
 establishes that it works. A snapshot nobody has ever restored is a hypothesis.
+
+**Row 6 is not ours to fill.** Who is accountable for the backup is a decision for the user
+and the organisation. Filling it in-house would mean assigning ourselves a responsibility and
+then grading our own work. Leave it `unknown` until the user names someone.
+
+**Review this table every quarter, and treat a row older than one quarter as `unknown`
+again, whatever it says.** Row 7 records when that last happened. A stale answer reads
+exactly like a current one, which is how a checklist becomes a decoration.
 
 Record each verification in the operations record with the date, the person, and the answers.
 When a row changes from `unknown` to a concrete answer, that change is the whole point of
