@@ -3,15 +3,18 @@
 // releases untested code or blocks every release; it had no test.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 
 // The script runs at import time, so each case runs it as a child process with a
 // fake `git` first on PATH and a stubbed fetch. Anything else would need the
 // module to be restructured, and the point is to test it as it runs in CI.
 const gitdir = mkdtempSync(join(tmpdir(), 'require-ci-'));
+// Every run of this file made a new directory and left it behind: a full suite
+// accumulates one per invocation. Removed once, after the last test.
+after(() => rmSync(gitdir, { recursive: true, force: true }));
 const fakeGit = join(gitdir, 'git');
 writeFileSync(
   fakeGit,
@@ -28,7 +31,11 @@ esac
 
 const runner = `
 const responses = JSON.parse(process.env.FAKE_RESPONSES);
-globalThis.fetch = async url => {
+// Record every request so a test can assert what the real call sends. A stub that
+// only answers would accept a request with no Authorization header, which is a
+// silent downgrade to the 60/hour anonymous quota rather than a visible failure.
+globalThis.fetch = async (url, init = {}) => {
+  console.log('REQUEST ' + JSON.stringify({ url, headers: init.headers ?? null }));
   const workflow = url.match(/workflows\\/([^/]+)\\/runs/)[1];
   const body = responses[workflow] ?? { workflow_runs: [] };
   if (body.status) return { ok: false, status: body.status, json: async () => ({}) };
@@ -62,7 +69,10 @@ function execRequireCi({ responses = {}, mergeBaseExit = 0, desktop = false } = 
     const stdout = execFileSync(process.execPath, ['--input-type=module', '-e', runner], {
       encoding: 'utf8',
       env,
-      stdio: 'pipe'
+      stdio: 'pipe',
+      // Without this a child that never exits hangs the job until the workflow's
+      // own timeout: this gate runs inside a deploy, so it must fail, not stall.
+      timeout: 30_000
     });
     return { code: 0, stdout, stderr: '' };
   } catch (error) {
@@ -151,4 +161,22 @@ test('a missing token fails instead of querying anonymously', () => {
   const result = runRequireCiWithToken({ responses: allGreen(), token: undefined });
   assert.notEqual(result.code, 0, 'no token must not be treated as authenticated');
   assert.match(result.stderr, /GitHub authentication is required/);
+});
+
+test('every request carries the bearer token', () => {
+  // Deleting the header from the real module left this file 8/8 green before this
+  // test existed: the stub answered regardless, so the request was never observed.
+  // The effect is not fail-open -- an anonymous 403 still blocks the release --
+  // but the 60/hour anonymous quota turns a missing credential into a rate-limit
+  // error, which reads like flakiness instead of a broken gate.
+  const result = runRequireCi({ responses: allGreen() });
+  assert.equal(result.code, 0, result.stderr);
+  const requests = result.stdout
+    .split('\n')
+    .filter(line => line.startsWith('REQUEST '))
+    .map(line => JSON.parse(line.slice('REQUEST '.length)));
+  assert.equal(requests.length, 3, 'one request per gate workflow');
+  for (const request of requests) {
+    assert.equal(request.headers?.Authorization, 'Bearer test-token', `${request.url} went out unauthenticated`);
+  }
 });
