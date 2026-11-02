@@ -10,9 +10,8 @@ afterEach(() => {
   localStorage.clear();
 });
 
-it('starts first-party usage without consent, honors the operator switch and cleans up', async () => {
+async function start(afterStart?: () => void) {
   const settings = ref({ analytics: { usageEnabled: true } });
-  localStorage.setItem('onv:analytics-consent', 'denied');
   let lock = Promise.resolve();
   vi.stubGlobal('navigator', {
     locks: {
@@ -36,6 +35,13 @@ it('starts first-party usage without consent, honors the operator switch and cle
   const unmount = vi.fn();
   const { default: plugin } = await import('../app/plugins/usage.client');
   await plugin({ $i18n: { locale: ref('en-US') }, vueApp: { onUnmount: unmount } } as never);
+  afterStart?.();
+  return { settings, post, unmount };
+}
+
+it('starts first-party usage without consent, honors the operator switch and cleans up', async () => {
+  localStorage.setItem('onv:analytics-consent', 'denied');
+  const { settings, post, unmount } = await start();
   expect(observeUsage).toHaveBeenCalledTimes(1);
   const tracker = vi.mocked(observeUsage).mock.calls[0]![0];
   await tracker.activity();
@@ -45,4 +51,29 @@ it('starts first-party usage without consent, honors the operator switch and cle
   await tracker.activity();
   expect(post).toHaveBeenCalledTimes(1);
   unmount.mock.calls[0]![0]();
+});
+
+// Safari 15.4 has navigator.locks but neither AbortSignal.timeout (16) nor AbortSignal.any (17.4).
+// A visit must still be reported, with the 15 s deadline as the only bound.
+it('reports when the newer abort APIs are missing', async () => {
+  const { AbortSignal: Original } = globalThis;
+  // Own statics shadow the inherited ones, so this class really lacks both methods.
+  class LegacyAbortSignal extends Original {
+    static any = undefined;
+    static timeout = undefined;
+  }
+  vi.stubGlobal('AbortSignal', LegacyAbortSignal);
+  const { post } = await start();
+  expect(observeUsage).toHaveBeenCalledTimes(1);
+  await vi.mocked(observeUsage).mock.calls[0]![0].activity();
+  expect(post).toHaveBeenCalledTimes(1);
+  expect(post.mock.calls[0]![1].signal).toBeInstanceOf(Original);
+});
+
+it('does not report a response the server did not acknowledge', async () => {
+  const { post } = await start();
+  post.mockResolvedValueOnce({ response: new Response(null, { status: 202 }) });
+  await vi.mocked(observeUsage).mock.calls[0]![0].activity();
+  expect(post).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(localStorage.getItem('onv:usage:v1:web')!).pending).toHaveLength(1);
 });
