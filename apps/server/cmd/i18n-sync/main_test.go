@@ -265,6 +265,56 @@ func TestGatewayRetriesOnlyFailedKeyWithStructuredPlural(t *testing.T) {
 	require.NotContains(t, string(raw), "admin/ja-JP/label")
 }
 
+// The model is configurable: a gateway that cannot serve the built-in default (or a deployment that
+// pins a different one) must be able to name its own. The request body is what proves it reached the
+// wire; the unset case pins the default so an existing run keeps its behaviour.
+func TestModelComesFromTheEnvironmentAndDefaultsWhenUnset(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "set", value: "newapi/deepseek-v4.1-flash", want: "newapi/deepseek-v4.1-flash"},
+		{name: "unset", value: "", want: "gpt-6-luna"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			seen := make([]string, 0, 1)
+			gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var request struct {
+					Model string `json:"model"`
+				}
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+				seen = append(seen, request.Model)
+				translated := `{"ja-JP":{"path":"src/theme/settings.tsの変数"}}`
+				w.Header().Set("Content-Type", "application/json")
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"id": "unit", "object": "chat.completion", "model": request.Model, "choices": []any{map[string]any{"index": 0, "finish_reason": "stop", "message": map[string]any{"role": "assistant", "content": translated}}}, "usage": map[string]any{"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18}}))
+			}))
+			defer gateway.Close()
+			t.Setenv("LLM_BASE_URL", gateway.URL)
+			t.Setenv("LLM_API_KEY", "unit-test-credential")
+			t.Setenv("LLM_MODEL", tc.value)
+			t.Setenv("DATABASE_URL", "")
+			source := "src/theme/settings.ts 中的变量"
+			target := interfacesync.Target{
+				Source:       map[string]string{"path": source},
+				English:      map[string]string{"path": "Variable in src/theme/settings.ts"},
+				Hashes:       map[string]string{"path": interfacesync.Hash(source)},
+				Translations: map[string]map[string]string{"es-ES": {"path": "manual"}, "pt-BR": {"path": "manual"}, "ru-RU": {"path": "manual"}},
+			}
+			encoded, err := json.Marshal(interfacesync.Plan{Targets: map[string]interfacesync.Target{"admin": target}})
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile("input.json", encoded, 0600))
+			previousFlags, previousArgs := flag.CommandLine, os.Args
+			t.Cleanup(func() { flag.CommandLine = previousFlags; os.Args = previousArgs })
+			flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+			os.Args = []string{"test", "--input", "input.json", "--output", "output.json"}
+			require.NoError(t, run())
+			require.Equal(t, []string{tc.want}, seen, "the request carries the configured model")
+		})
+	}
+}
+
 func TestOfflineReplayDoesNotReadCredentialsOrWriteResults(t *testing.T) {
 	t.Chdir(t.TempDir())
 	source := map[string]string{"count": "{count}/{max}"}

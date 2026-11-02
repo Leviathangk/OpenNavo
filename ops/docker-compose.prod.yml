@@ -24,16 +24,6 @@ x-backend-env: &backend-env
   # URL change feed: the worker refreshes web page caches through the web's internal port.
   WEB_INTERNAL_URL: http://web:9091
   WEB_INTERNAL_SECRET: ${WEB_INTERNAL_SECRET:-}
-  LLM_ENABLED: ${LLM_ENABLED:-false}
-  LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
-  LLM_API_KEY: ${LLM_API_KEY:-}
-  LLM_MODEL: gpt-6-luna
-  LLM_REASONING_EFFORT: high
-  LLM_CONCURRENCY: ${LLM_CONCURRENCY:-8}
-  LLM_RPM: ${LLM_RPM:-120}
-  LLM_TIMEOUT: 5m
-  LLM_MONTHLY_TOKEN_BUDGET: ${LLM_MONTHLY_TOKEN_BUDGET:-30000000}
-  LLM_MONTHLY_BUDGET_USD: ${LLM_MONTHLY_BUDGET_USD:-0}
   HOMEBREW_API_BASE: ${HOMEBREW_API_BASE:-https://formulae.brew.sh/api}
   TZ_SCHEDULE: Asia/Shanghai
   # Explicit Traditional Chinese backfill command after a converter upgrade; see ops/GUIDE.md.
