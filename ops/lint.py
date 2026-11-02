@@ -77,6 +77,9 @@ verification.run(['docker', 'run', '--rm', '-v', str(ROOT / 'ops/prometheus') + 
     '--entrypoint', '/bin/promtool', 'registry.hub.docker.com/prom/prometheus:v3.15.0',
     'check', 'config', '/etc/prometheus/prometheus.yml'], capture=False)
 verification.run(['node', 'tooling/scripts/tasks/server.mjs', 'alerts-test'], capture=False)
+# ops/GUIDE.md is read by a human on the production host, so a block that does not
+# parse costs a debugging session there. Nothing else in CI executes those blocks.
+verification.run(['python3', '-I', str(ROOT / 'ops/check_guide_commands.py')], capture=False)
 verification.run(['docker', 'run', '--rm', '-v', str(ROOT / 'ops/caddy/Caddyfile') + ':/etc/caddy/Caddyfile:ro',
     '-e', 'WEB_DOMAIN', '-e', 'API_DOMAIN', '-e', 'ADMIN_DOMAIN', '-e', 'PUBLIC_BASE_URL', '-e', 'CADDY_GLOBAL_OPTIONS',
     'registry.hub.docker.com/library/caddy:2.11.6-alpine', 'caddy', 'validate', '--config', '/etc/caddy/Caddyfile'], capture=False)
