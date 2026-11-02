@@ -97,7 +97,6 @@ def main() -> int:
                 f"ops/GUIDE.md:{block_line}: shell block does not parse:\n{problem}"
             )
         # Report each distinct fixed path once, at its real line in the file.
-        fence = "```bash\n" if text[offset:].startswith("```bash") else "```sh\n"
         body_lines = body.split("\n")
         seen: set[str] = set()
         for index, line in enumerate(body_lines):
