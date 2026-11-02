@@ -25,11 +25,42 @@ BUCKET = 'opennavo-e2e'
 API_BASE = 'http://127.0.0.1:18082'
 
 
+class StepError(RuntimeError):
+    """A setup step failed. Carries only the stage name and exit status: never the command line or environment."""
+
+    def __init__(self, stage, returncode=None):
+        # returncode is None when the step never started (a missing binary, a full disk): OSError's own
+        # message names the path it could not open, which is the command line, so it is not used either.
+        super().__init__(f'{stage} exited {returncode}' if returncode is not None else f'{stage} could not start')
+        self.stage = stage
+        self.returncode = returncode
+
+
 def command(args, *, env=None, capture=True, cwd=ROOT):
     result = subprocess.run(args, cwd=cwd, env=env, check=True, text=True,
                             stdout=subprocess.PIPE if capture else None,
                             stderr=subprocess.PIPE if capture else None)
     return result.stdout.strip() if capture else ''
+
+
+def labelled(stage, action):
+    """Run one setup action, naming the stage if it fails.
+
+    The stage name is all that a failure reports: the command line and environment never reach the
+    log. Both carry connection settings (see the exec rule in environment()), a step whose output
+    streams already prints its own diagnostics, and OSError's message can name the binary's path.
+    """
+    try:
+        return action()
+    except subprocess.CalledProcessError as error:
+        raise StepError(stage, error.returncode) from None
+    except OSError:
+        raise StepError(stage) from None
+
+
+def step(stage, args, *, env=None, cwd=ROOT):
+    """Run one setup step with its output streaming, naming it on failure."""
+    return labelled(stage, lambda: command(args, env=env, cwd=cwd, capture=False))
 
 
 def compose_files(ci):
@@ -154,18 +185,24 @@ def wait_ready(process):
 
 
 def database(ci, *, reset=False):
-    exists = compose(ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', 'postgres',
-                     '-Atc', "SELECT 1 FROM pg_database WHERE datname='opennavo_e2e'")
+    # Both calls capture their output, so a failure there reports nothing at all; name the stage so
+    # the job log says which command failed even before anyone can see the server's own message.
+    exists = labelled('database: query opennavo_e2e', lambda: compose(
+        ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', 'postgres',
+        '-Atc', "SELECT 1 FROM pg_database WHERE datname='opennavo_e2e'"))
     if exists != '1':
-        compose(ci, 'exec', '-T', 'postgres', 'createdb', '-U', 'opennavo', DB_NAME)
+        labelled('database: create opennavo_e2e', lambda: compose(
+            ci, 'exec', '-T', 'postgres', 'createdb', '-U', 'opennavo', DB_NAME))
     if reset:
         # Database name and Redis database index are constants; never accept user-supplied development connections.
         # Migrations also create seo_archive (00110), so a reset drops it with public.
-        compose(ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', DB_NAME, '-v', 'ON_ERROR_STOP=1',
-                '-c', 'DROP SCHEMA IF EXISTS seo_archive CASCADE; DROP SCHEMA public CASCADE; '
-                'CREATE SCHEMA public AUTHORIZATION opennavo;')
+        labelled('database: reset schema', lambda: compose(
+            ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', DB_NAME, '-v', 'ON_ERROR_STOP=1',
+            '-c', 'DROP SCHEMA IF EXISTS seo_archive CASCADE; DROP SCHEMA public CASCADE; '
+            'CREATE SCHEMA public AUTHORIZATION opennavo;'))
         for number in (REDIS_DB, WEB_REDIS_DB):
-            compose(ci, 'exec', '-T', 'redis', 'redis-cli', '-n', str(number), 'FLUSHDB')
+            labelled(f'database: flush redis db {number}', lambda number=number: compose(
+                ci, 'exec', '-T', 'redis', 'redis-cli', '-n', str(number), 'FLUSHDB'))
 
 
 def prepare(ci, *, reset=False):
@@ -174,16 +211,16 @@ def prepare(ci, *, reset=False):
     for executable in ('migrate', 'storage-init', 'seed-e2e'):
         # Run tools from the isolated directory too, preventing configuration loaders from reading development .env.local files.
         binary = STATE / executable
-        command(['go', 'build', '-o', str(binary), './cmd/' + executable],
-                cwd=ROOT / 'apps/server', env=env, capture=False)
-        command([str(binary)], cwd=STATE, env=env, capture=False)
+        step('go build ./cmd/' + executable,
+             ['go', 'build', '-o', str(binary), './cmd/' + executable], env=env, cwd=ROOT / 'apps/server')
+        step(executable, [str(binary)], env=env, cwd=STATE)
 
 
 def start(ci):
     ports_free()
     env = environment(ci)
-    command(['go', 'build', '-trimpath', '-o', str(BINARY), './cmd/api'], cwd=ROOT / 'apps/server',
-            env=env, capture=False)
+    step('go build ./cmd/api',
+         ['go', 'build', '-trimpath', '-o', str(BINARY), './cmd/api'], env=env, cwd=ROOT / 'apps/server')
     with (STATE / 'api.log').open('a') as log:
         process = subprocess.Popen([str(BINARY)], cwd=STATE, env=env,
                                    stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
@@ -254,7 +291,8 @@ def main():
             if ci:
                 # CI infrastructure uses only public, fixed development defaults. Stream its
                 # build/start diagnostics; keep database commands and application output captured.
-                compose(True, 'up', '-d', '--wait', '--wait-timeout', '240', capture=False)
+                labelled('compose up --wait', lambda: compose(
+                    True, 'up', '-d', '--wait', '--wait-timeout', '240', capture=False))
             prepare(ci, reset=args.task == 'reset')
             if args.task == 'up' or record:
                 start(ci)
@@ -263,7 +301,11 @@ def main():
                 print('E2E data reset; API remains stopped')
         except BaseException:
             if ci:
-                compose(True, 'down', '--volumes', '--remove-orphans')
+                try:
+                    compose(True, 'down', '--volumes', '--remove-orphans')
+                except (subprocess.CalledProcessError, OSError):
+                    # Best effort: a failure here must not replace the setup error that caused it.
+                    pass
             raise
 
 
@@ -272,5 +314,8 @@ if __name__ == '__main__':
         main()
     except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
         # Never echo subprocess arguments/environment or responses; secrets enter only the subprocess environment.
+        # StepError and every other RuntimeError already say which step failed and with what exit status;
+        # a CalledProcessError that reaches here comes from a step that streams its own diagnostics, so its
+        # type name is enough to tell the two apart.
         print('E2E setup failed: ' + (str(error) if isinstance(error, RuntimeError) else type(error).__name__), file=sys.stderr)
         sys.exit(1)

@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -102,6 +103,115 @@ class IsolationTests(unittest.TestCase):
                 e2e.down()
                 kill.assert_not_called()
                 self.assertFalse(pid_file.exists())
+
+
+class FailingStepTests(unittest.TestCase):
+    """A failed setup step must say which one, and must not say anything else.
+
+    A CI run once failed in `prepare()` and printed only `E2E setup failed: CalledProcessError`, so
+    the log could not distinguish the database call from a `go build` or one of the seeded tools.
+    """
+
+    # A realistic command line and environment: the message must never echo either.
+    ARGS = ['go', 'build', '-o', '/tmp/e2e/migrate', './cmd/migrate']
+    ENV = {'DATABASE_URL': 'postgres://opennavo:opennavo-dev-only@127.0.0.1:55433/opennavo_e2e', 'PATH': '/usr/bin'}
+
+    def failing(self, code=1):
+        return subprocess.CalledProcessError(code, self.ARGS, output='', stderr='compile: something broke')
+
+    def test_a_failed_step_names_the_stage_and_exit_status(self):
+        for stage in ('go build ./cmd/migrate', 'migrate', 'go build ./cmd/storage-init',
+                      'storage-init', 'go build ./cmd/seed-e2e', 'seed-e2e', 'go build ./cmd/api'):
+            with patch.object(e2e, 'command', side_effect=self.failing(7)):
+                with self.assertRaises(e2e.StepError) as caught:
+                    e2e.step(stage, self.ARGS, env=self.ENV)
+            self.assertEqual(caught.exception.stage, stage)
+            self.assertEqual(caught.exception.returncode, 7)
+            self.assertEqual(str(caught.exception), f'{stage} exited 7')
+
+    def test_the_message_never_echoes_the_command_line_or_environment(self):
+        with patch.object(e2e, 'command', side_effect=self.failing()):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.step('seed-e2e', self.ARGS, env=self.ENV)
+        message = str(caught.exception)
+        for secret in ('/tmp/e2e/migrate', './cmd/migrate', 'postgres://', 'opennavo-dev-only', '/usr/bin'):
+            self.assertNotIn(secret, message)
+
+    def test_prepare_names_the_exact_step_that_failed(self):
+        # The loop must attribute a failure to the right tool, not merely to "prepare".
+        for failing_at in ('go build ./cmd/migrate', 'migrate', 'go build ./cmd/storage-init',
+                           'storage-init', 'go build ./cmd/seed-e2e', 'seed-e2e'):
+            def fake_step(stage, args, **kwargs):
+                if stage == failing_at:
+                    raise e2e.StepError(stage, 1)
+                return ''
+            with patch.object(e2e, 'step', side_effect=fake_step), \
+                 patch.object(e2e, 'database'), patch.object(e2e, 'environment', return_value={}):
+                with self.assertRaises(e2e.StepError) as caught:
+                    e2e.prepare(True)
+            self.assertEqual(caught.exception.stage, failing_at)
+
+    def test_database_names_the_query_and_the_create_separately(self):
+        # These two calls capture their output, so before this the log showed neither which one failed
+        # nor what the server said.
+        with patch.object(e2e, 'compose', side_effect=self.failing(1)):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.database(True)
+        self.assertEqual(caught.exception.stage, 'database: query opennavo_e2e')
+
+        with patch.object(e2e, 'compose', side_effect=['', self.failing(2)]):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.database(True)
+        self.assertEqual(caught.exception.stage, 'database: create opennavo_e2e')
+        self.assertEqual(caught.exception.returncode, 2)
+
+    def test_compose_up_failure_is_attributed_to_the_stack_not_the_step_before_it(self):
+        with patch.object(e2e, 'compose', side_effect=self.failing(3)):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.labelled('compose up --wait', lambda: e2e.compose(
+                    True, 'up', '-d', '--wait', '--wait-timeout', '240', capture=False))
+        self.assertEqual(caught.exception.stage, 'compose up --wait')
+        self.assertEqual(caught.exception.returncode, 3)
+
+    def test_a_non_zero_exit_is_the_only_thing_treated_as_a_step_failure(self):
+        # A successful step returns its captured stdout unchanged.
+        with patch.object(e2e, 'command', return_value='1') as command:
+            self.assertEqual(e2e.step('go build ./cmd/migrate', self.ARGS), '1')
+        self.assertFalse(command.call_args.kwargs['capture'], 'step output streams; it is not captured')
+
+    def test_a_step_that_never_started_names_the_stage_without_its_path(self):
+        # A missing binary raises OSError, whose message carries the path it could not open — that is
+        # the command line. The stage alone is what the log gets.
+        with patch.object(e2e, 'command', side_effect=FileNotFoundError(2, 'No such file or directory', '/tmp/e2e/migrate')):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.step('migrate', self.ARGS, env=self.ENV)
+        self.assertEqual(caught.exception.stage, 'migrate')
+        self.assertIsNone(caught.exception.returncode)
+        self.assertEqual(str(caught.exception), 'migrate could not start')
+        self.assertNotIn('/tmp/e2e/migrate', str(caught.exception))
+
+    def test_the_cleanup_after_a_failure_does_not_replace_the_original_error(self):
+        # The `ci` path tears the stack down on any exception. If that teardown fails too (docker is
+        # gone, a container is wedged), its error must not become the one the log reports.
+        def fake_compose(ci, *args, **kwargs):
+            if 'down' in args:
+                raise FileNotFoundError(2, 'No such file or directory', 'docker')
+            return ''
+
+        with patch.object(e2e, 'ports_free'), patch.object(e2e, 'owned_process', return_value=None), \
+             patch.object(e2e, 'prepare', side_effect=e2e.StepError('migrate', 1)), \
+             patch.object(e2e, 'compose', side_effect=fake_compose), \
+             patch.object(e2e, 'STATE', Path(tempfile.mkdtemp())), \
+             patch.object(e2e.sys, 'argv', ['e2e.py', 'up', '--ci']):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.main()
+        self.assertEqual(caught.exception.stage, 'migrate')
+
+    def test_runtime_failures_still_print_their_own_message(self):
+        # main()'s handler prints str(error) for RuntimeError and StepError, and the type name for
+        # everything else; a step failure must not regress to a bare type name.
+        self.assertTrue(issubclass(e2e.StepError, RuntimeError))
+        self.assertEqual(str(e2e.StepError('seed-e2e', 1)), 'seed-e2e exited 1')
 
 
 if __name__ == '__main__':
