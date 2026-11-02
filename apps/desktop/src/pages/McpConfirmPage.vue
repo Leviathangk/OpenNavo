@@ -197,6 +197,12 @@ const unlisted = computed(() =>
               {{ view.callerPath }}
             </dd>
           </template>
+          <template v-if="view.teamId">
+            <dt class="text-ink-tertiary">{{ t('mcpConfirm.teamId') }}</dt>
+            <dd class="m-0 min-w-0 break-all font-mono text-11.5px text-ink-secondary" data-test="mcp-confirm-team">
+              {{ view.teamId }}
+            </dd>
+          </template>
           <template v-if="view.mayComeFrom">
             <dt class="text-ink-tertiary">{{ t('mcpConfirm.mayComeFrom') }}</dt>
             <dd class="m-0 min-w-0 break-all text-ink-secondary" data-test="mcp-confirm-origin">

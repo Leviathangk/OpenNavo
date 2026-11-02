@@ -131,8 +131,9 @@ impl WriteRequest {
 pub struct WriteContext {
     /// Broker connection the request arrived on; approval is bound to it.
     pub connection: u64,
-    /// Process id of the `mcp` subprocess on the other end of the socket.
-    pub peer_pid: Option<i32>,
+    /// The `mcp` subprocess on the other end of the socket, stamped with its
+    /// start time at accept. A recycled pid no longer matches.
+    pub peer: Option<super::caller::PidStamp>,
     /// Sanitized, self-reported `clientInfo.name`.
     pub client_name: Option<String>,
     /// Whether an approval may still be used: the connection is open and both
@@ -145,7 +146,7 @@ impl std::fmt::Debug for WriteContext {
         formatter
             .debug_struct("WriteContext")
             .field("connection", &self.connection)
-            .field("peer_pid", &self.peer_pid)
+            .field("peer", &self.peer)
             .field("client_name", &self.client_name)
             .finish_non_exhaustive()
     }

@@ -484,7 +484,7 @@ fn accept_loop(
                 let spawned = thread::Builder::new()
                     .name(format!("opennavo-mcp-conn-{id}"))
                     .spawn(move || {
-                        connection_loop(unregister_weak, id, peer.pid, stream, connection_host);
+                        connection_loop(unregister_weak, id, peer.stamp(), stream, connection_host);
                     });
                 if spawned.is_err()
                     && let Some(broker) = weak.upgrade()
@@ -543,7 +543,7 @@ fn rpc_error(code: &str, message: &str) -> RpcError {
 fn connection_loop(
     weak: Weak<Broker>,
     id: u64,
-    peer_pid: Option<i32>,
+    peer: Option<super::caller::PidStamp>,
     stream: UnixStream,
     host: Option<Arc<dyn ToolHost>>,
 ) {
@@ -602,8 +602,8 @@ fn connection_loop(
                 Some("tools/call") => {
                     let name = params.get("name").and_then(Value::as_str).unwrap_or("");
                     if super::tools::is_write_tool(name) {
-                        let peer = reader.get_ref().try_clone().ok();
-                        call_write(&weak, connection, peer_pid, peer, host.as_deref(), params)
+                        let stream = reader.get_ref().try_clone().ok();
+                        call_write(&weak, connection, peer, stream, host.as_deref(), params)
                     } else {
                         call_tool(host.as_deref(), params)
                     }
@@ -627,8 +627,8 @@ fn connection_loop(
 fn call_write(
     weak: &Weak<Broker>,
     connection: u64,
-    peer_pid: Option<i32>,
-    peer: Option<UnixStream>,
+    peer: Option<super::caller::PidStamp>,
+    stream: Option<UnixStream>,
     host: Option<&dyn ToolHost>,
     params: Value,
 ) -> Result<Value, RpcError> {
@@ -650,7 +650,7 @@ fn call_write(
     // Only OpenNavo's own `mcp` subcommand may ask for writes; the dialog
     // names that process's parent, which means nothing for an arbitrary peer.
     let trusted = broker.trusted_client.as_deref().is_some_and(|expected| {
-        super::caller::peer_runs(&super::caller::SystemProcesses, peer_pid, expected)
+        super::caller::peer_runs(&super::caller::SystemProcesses, peer, expected)
     });
     if !trusted {
         return Err(rpc_error(
@@ -675,13 +675,13 @@ fn call_write(
     let check = weak.clone();
     let context = super::tools::WriteContext {
         connection,
-        peer_pid,
+        peer,
         client_name,
         // The connection stays registered while its thread waits on the
         // dialog, so also look at the socket itself: a client that hung up
         // must not leave an approval behind.
         still_valid: Arc::new(move || {
-            peer.as_ref().is_some_and(peer_open)
+            stream.as_ref().is_some_and(peer_open)
                 && check.upgrade().is_some_and(|broker| {
                     broker.write_generation.load(Ordering::Acquire) == generation
                         && broker.write_valid(connection)
@@ -1545,7 +1545,11 @@ mod tests {
             .recv_timeout(Duration::from_secs(5))
             .expect("first write");
         assert_eq!(context.client_name.as_deref(), Some("Claude"));
-        assert!(context.peer_pid.is_some());
+        assert!(context.peer.is_some());
+        assert!(
+            context.peer.is_some_and(|peer| peer.started_at.is_some()),
+            "the connection must be stamped with the peer's start time, not just its pid"
+        );
 
         let second = request(&path, install_call("2"));
         assert_eq!(second["ok"], false);

@@ -124,6 +124,9 @@ pub struct McpConfirmView {
     pub path: Option<String>,
     /// Signing authority of the requesting process, only when it is validly signed.
     pub signer: Option<String>,
+    /// Team ID of that signature, always shown beside the signer so the name can
+    /// be checked against a team rather than taken on trust.
+    pub team_id: Option<String>,
     /// Executable of the requesting process.
     pub caller_path: Option<String>,
     /// Nearest `.app` ancestor, unverified.
@@ -171,6 +174,7 @@ impl McpConfirmView {
         target: &str,
         path: Option<&str>,
         signer: Option<&str>,
+        team_id: Option<&str>,
         caller_path: Option<&str>,
         may_come_from: Option<&str>,
         claimed_name: Option<&str>,
@@ -182,6 +186,7 @@ impl McpConfirmView {
             target: display_value(target),
             path: path.map(display_value),
             signer: signer.map(display_value),
+            team_id: team_id.map(display_value),
             caller_path: caller_path.map(display_value),
             may_come_from: may_come_from.map(display_value),
             claimed_name: claimed_name.map(display_value),
@@ -210,7 +215,7 @@ impl McpConfirmView {
             install_count: u32::try_from(install_count).unwrap_or(u32::MAX),
             bytes,
             permanent: matches!(action, "uninstallDelete" | "purge" | "brewUninstall"),
-            ..Self::new(action, name, "", None, None, None, None, None)
+            ..Self::new(action, name, "", None, None, None, None, None, None)
         }
         .without_empty_name(name)
     }
@@ -233,6 +238,7 @@ impl McpConfirmView {
                 "install",
                 name,
                 &request.target,
+                None,
                 None,
                 None,
                 None,
@@ -1508,6 +1514,7 @@ mod tests {
             "install",
             "IINA\u{202E}",
             "cask/iina",
+            None,
             None,
             None,
             Some("/opt/homebrew/bin/node\u{2028}"),

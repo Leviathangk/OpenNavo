@@ -869,6 +869,7 @@
     "target": "Pacote",
     "path": "Caminho",
     "requestedBy": "Solicitado por",
+    "teamId": "ID da equipe",
     "unsigned": "Sem assinatura · {path}",
     "unknownCaller": "Processo desconhecido",
     "mayComeFrom": "Pode vir de",

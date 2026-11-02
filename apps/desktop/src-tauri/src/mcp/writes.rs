@@ -30,7 +30,10 @@ use crate::{
     core::DesktopCore,
     model::{TaskKind, TaskTarget, TaskTrigger},
     queue::ResolvedInstallPlan,
-    security::{signature, types::SignatureStatus},
+    security::{
+        signature,
+        types::{SignatureInfo, SignatureStatus},
+    },
     uninstall::{AppSource, DeleteMode, ItemCategory, UninstallChoice},
 };
 
@@ -388,38 +391,59 @@ impl Writes {
     }
 
     fn identify(&self, context: &WriteContext) -> Identity {
-        let process = caller::resolve(&SystemProcesses, context.peer_pid);
+        let process = caller::resolve(&SystemProcesses, context.peer);
         let signature = process
             .parent_path
             .as_deref()
             .and_then(|path| signature::inspect(path).ok());
-        let signed = signature.as_ref().is_some_and(|info| {
+        identity(process, signature, context.client_name.clone())
+    }
+}
+
+/// Turn a resolved process and its signature into what the dialog and the audit
+/// log are allowed to say.
+///
+/// A caller is "signed" only when all three hold: the process tree still matches
+/// the stamped peer, the executable carries a signature macOS trusts, and that
+/// signature names a Team ID. The third is what makes the claim checkable — the
+/// dialog shows the Team ID next to the signer name, so a process cannot borrow
+/// a name without also showing the team behind it. A signature with no Team ID
+/// (an ad-hoc or a self-signed one) is not trusted.
+fn identity(
+    process: caller::CallerProcess,
+    signature: Option<SignatureInfo>,
+    claimed_name: Option<String>,
+) -> Identity {
+    // No resolved executable means the peer could not be named at all (a
+    // recycled pid, an orphan, a platform that hides the parent). A signature
+    // can only describe a path, so there is nothing to trust.
+    let trusted = process.parent_path.is_some()
+        && signature.as_ref().is_some_and(|info| {
             matches!(
                 info.status,
                 SignatureStatus::Apple | SignatureStatus::AppStore | SignatureStatus::DeveloperId
-            )
+            ) && info.team_id.as_deref().is_some_and(|team| !team.is_empty())
         });
-        let may_come_from = process.may_come_from.as_deref().map(caller::bundle_name);
-        Identity {
-            caller: AuditCaller {
-                path: process
-                    .parent_path
-                    .as_ref()
-                    .map(|path| path.to_string_lossy().into_owned()),
-                signer: signature
-                    .as_ref()
-                    .filter(|_| signed)
-                    .and_then(|info| info.signer.clone()),
-                team_id: signature
-                    .as_ref()
-                    .filter(|_| signed)
-                    .and_then(|info| info.team_id.clone()),
-                signed,
-                may_come_from,
-                claimed_name: context.client_name.clone(),
-                pid: process.parent_pid,
-            },
-        }
+    let may_come_from = process.may_come_from.as_deref().map(caller::bundle_name);
+    Identity {
+        caller: AuditCaller {
+            path: process
+                .parent_path
+                .as_ref()
+                .map(|path| path.to_string_lossy().into_owned()),
+            signer: signature
+                .as_ref()
+                .filter(|_| trusted)
+                .and_then(|info| info.signer.clone()),
+            team_id: signature
+                .as_ref()
+                .filter(|_| trusted)
+                .and_then(|info| info.team_id.clone()),
+            signed: trusted,
+            may_come_from,
+            claimed_name,
+            pid: process.parent_pid,
+        },
     }
 }
 
@@ -487,6 +511,7 @@ fn confirm_view(plan: &Plan, identity: &Identity) -> McpConfirmView {
                 &format!("{}/{}", target.kind.as_str(), target.token),
                 None,
                 signer,
+                caller.team_id.as_deref(),
                 caller.path.as_deref(),
                 caller.may_come_from.as_deref(),
                 caller.claimed_name.as_deref(),
@@ -498,6 +523,7 @@ fn confirm_view(plan: &Plan, identity: &Identity) -> McpConfirmView {
             path,
             Some(path),
             signer,
+            caller.team_id.as_deref(),
             caller.path.as_deref(),
             caller.may_come_from.as_deref(),
             caller.claimed_name.as_deref(),
@@ -519,6 +545,100 @@ mod tests {
             claimed_name: Some("cursor-vscode".into()),
             pid: Some(42),
         }
+    }
+
+    fn process(path: &str) -> caller::CallerProcess {
+        caller::CallerProcess {
+            parent_pid: Some(42),
+            parent_path: Some(std::path::PathBuf::from(path)),
+            may_come_from: None,
+        }
+    }
+
+    fn signed_as(status: SignatureStatus, team: Option<&str>) -> SignatureInfo {
+        SignatureInfo {
+            status,
+            team_id: team.map(str::to_owned),
+            signer: Some("Developer ID Application: Example Inc".into()),
+            notarized: None,
+        }
+    }
+
+    #[test]
+    fn a_signature_without_a_team_id_is_not_a_trusted_caller() {
+        // The point of showing a Team ID is that the name can be checked against
+        // it. A signature that names no team cannot be checked, so the dialog
+        // must not present it as a verified signer.
+        for status in [
+            SignatureStatus::DeveloperId,
+            SignatureStatus::Apple,
+            SignatureStatus::AppStore,
+        ] {
+            let anonymous = identity(
+                process("/opt/homebrew/bin/node"),
+                Some(signed_as(status, None)),
+                None,
+            );
+            assert!(!anonymous.caller.signed, "{status:?} without a team");
+            assert_eq!(anonymous.caller.team_id, None);
+            assert_eq!(anonymous.caller.signer, None);
+
+            let empty = identity(
+                process("/opt/homebrew/bin/node"),
+                Some(signed_as(status, Some(""))),
+                None,
+            );
+            assert!(!empty.caller.signed, "{status:?} with an empty team");
+            assert_eq!(empty.caller.team_id, None, "an empty team is not shown");
+        }
+        let named = identity(
+            process("/opt/homebrew/bin/node"),
+            Some(signed_as(SignatureStatus::DeveloperId, Some("ABCDE12345"))),
+            None,
+        );
+        assert!(named.caller.signed);
+        assert_eq!(named.caller.team_id.as_deref(), Some("ABCDE12345"));
+    }
+
+    #[test]
+    fn an_untrusted_status_is_not_a_trusted_caller_even_with_a_team_id() {
+        for status in [
+            SignatureStatus::Adhoc,
+            SignatureStatus::Modified,
+            SignatureStatus::Invalid,
+            SignatureStatus::Unknown,
+            SignatureStatus::Unsigned,
+            SignatureStatus::NotCode,
+        ] {
+            let untrusted = identity(
+                process("/opt/homebrew/bin/node"),
+                Some(signed_as(status, Some("ABCDE12345"))),
+                None,
+            );
+            assert!(!untrusted.caller.signed, "{status:?} must not be trusted");
+            assert_eq!(untrusted.caller.team_id, None);
+        }
+        // No signature at all is the same answer, not a crash.
+        let missing = identity(process("/opt/homebrew/bin/node"), None, None);
+        assert!(!missing.caller.signed);
+        assert_eq!(missing.caller.team_id, None);
+    }
+
+    #[test]
+    fn a_peer_the_tree_could_not_resolve_yields_no_caller() {
+        // A recycled pid, an orphan, or a platform that hides the parent: the
+        // caller is unknown, so nothing may be claimed about who it is.
+        let unknown = identity(
+            caller::CallerProcess::default(),
+            Some(signed_as(SignatureStatus::DeveloperId, Some("ABCDE12345"))),
+            Some("claude-ai".into()),
+        );
+        assert!(!unknown.caller.signed);
+        assert_eq!(unknown.caller.path, None);
+        assert_eq!(unknown.caller.team_id, None);
+        assert_eq!(unknown.caller.pid, None);
+        // The self-reported name is still recorded, but only as a claim.
+        assert_eq!(unknown.caller.claimed_name.as_deref(), Some("claude-ai"));
     }
 
     #[test]
@@ -569,10 +689,15 @@ mod tests {
                 .as_deref()
                 .is_some_and(|s| s.contains("Example Inc"))
         );
+        assert_eq!(signed.team_id.as_deref(), Some("ABCDE12345"));
         assert_eq!(signed.may_come_from.as_deref(), Some("Cursor"));
         assert_eq!(signed.claimed_name.as_deref(), Some("cursor-vscode"));
         let unsigned = confirm_view(&plan, &identity(false));
         assert_eq!(unsigned.signer, None);
+        assert_eq!(
+            unsigned.team_id, None,
+            "an unsigned caller has no team to show"
+        );
         assert_eq!(
             unsigned.caller_path.as_deref(),
             Some("/opt/homebrew/bin/node")

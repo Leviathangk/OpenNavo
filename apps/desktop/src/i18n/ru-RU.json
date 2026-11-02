@@ -869,6 +869,7 @@
     "target": "Пакет",
     "path": "Путь",
     "requestedBy": "Запрос от",
+    "teamId": "ID команды",
     "unsigned": "Без подписи · {path}",
     "unknownCaller": "Неизвестный процесс",
     "mayComeFrom": "Возможно, из",

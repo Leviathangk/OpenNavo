@@ -32,6 +32,8 @@ describe('Local MCP confirmation window', () => {
     expect(text).toContain('Rectangle');
     expect(text).toContain('/Applications/Rectangle.app');
     expect(wrapper.get('[data-test="mcp-confirm-caller"]').text()).toContain('Developer ID Application: Anthropic PBC');
+    // The team is what makes the name checkable: it must sit beside the signer.
+    expect(wrapper.get('[data-test="mcp-confirm-team"]').text()).toBe('Q6L2SF6YDW');
     expect(wrapper.get('[data-test="mcp-confirm-origin"]').text()).toBe('Claude（未验证）');
     expect(wrapper.get('[data-test="mcp-confirm-claims"]').text()).toBe('claude-ai');
     expect(wrapper.get('[data-test="mcp-confirm-footer"]').text()).toBe(
@@ -42,6 +44,13 @@ describe('Local MCP confirmation window', () => {
   it('Shows an unsigned caller by path', async () => {
     const wrapper = await page('mcp-confirm-install');
     expect(wrapper.get('[data-test="mcp-confirm-caller"]').text()).toBe('未签名 · /opt/homebrew/bin/node');
+  });
+
+  it('Names no team for a caller whose signature could not be verified', async () => {
+    // The Rust side only fills `teamId` next to a trusted signer; the window must
+    // never invent one, or the two lines would disagree about who asked.
+    const wrapper = await page('mcp-confirm-install');
+    expect(wrapper.find('[data-test="mcp-confirm-team"]').exists()).toBe(false);
   });
 
   it('Defaults to Deny: focus, Return and Escape all deny; Allow waits', async () => {

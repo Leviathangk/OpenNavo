@@ -17,7 +17,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::state;
+use super::{caller, state};
 
 /// Parent directory mode.
 pub const DIRECTORY_MODE: u32 = 0o700;
@@ -283,6 +283,17 @@ pub fn remove_if_same(data_dir: &Path, id: SocketId) {
 pub struct Peer {
     pub uid: u32,
     pub pid: Option<i32>,
+    /// When the peer process started, read once at accept time. The kernel
+    /// reuses pids, so a pid is only an identity together with this.
+    pub started_at: Option<u64>,
+}
+
+impl Peer {
+    /// The peer as a stamped pid, for code that must not trust a recycled one.
+    pub fn stamp(&self) -> Option<caller::PidStamp> {
+        self.pid
+            .map(|pid| caller::PidStamp::new(pid, self.started_at))
+    }
 }
 
 /// Verify that the peer belongs to the current user. On platforms where peer
@@ -341,9 +352,13 @@ fn peer_credentials(stream: &UnixStream) -> io::Result<Peer> {
             &mut length,
         )
     };
+    let observed = (result == 0 && pid > 0).then_some(pid);
     Ok(Peer {
         uid,
-        pid: (result == 0 && pid > 0).then_some(pid),
+        pid: observed,
+        // Read now, not later: a pid that is recycled between accept and the
+        // dialog would otherwise describe a different process.
+        started_at: observed.and_then(caller::started_at_now),
     })
 }
 
@@ -369,6 +384,9 @@ fn peer_credentials(stream: &UnixStream) -> io::Result<Peer> {
     Ok(Peer {
         uid: credentials.uid,
         pid: (credentials.pid > 0).then_some(credentials.pid),
+        started_at: (credentials.pid > 0)
+            .then(|| caller::started_at_now(credentials.pid))
+            .flatten(),
     })
 }
 

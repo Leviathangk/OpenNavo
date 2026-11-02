@@ -869,6 +869,7 @@
     "target": "軟體包",
     "path": "路徑",
     "requestedBy": "請求方",
+    "teamId": "團隊 ID",
     "unsigned": "未簽名 · {path}",
     "unknownCaller": "未知程序",
     "mayComeFrom": "可能來自",

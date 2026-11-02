@@ -888,6 +888,7 @@ const messages: MessageSchema = {
     target: 'Package',
     path: 'Path',
     requestedBy: 'Requested by',
+    teamId: 'Team ID',
     unsigned: 'Unsigned · {path}',
     unknownCaller: 'Unknown process',
     mayComeFrom: 'May come from',

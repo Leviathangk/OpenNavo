@@ -869,6 +869,7 @@
     "target": "Paket",
     "path": "Pfad",
     "requestedBy": "Angefragt von",
+    "teamId": "Team-ID",
     "unsigned": "Nicht signiert · {path}",
     "unknownCaller": "Unbekannter Prozess",
     "mayComeFrom": "Stammt möglicherweise von",

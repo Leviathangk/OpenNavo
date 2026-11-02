@@ -230,6 +230,11 @@ export const commands = {
 	path: string | null,
 	/**  Signing authority of the requesting process, only when it is validly signed. */
 	signer: string | null,
+	/**
+	 *  Team ID of that signature, always shown beside the signer so the name can
+	 *  be checked against a team rather than taken on trust.
+	 */
+	teamId: string | null,
 	/**  Executable of the requesting process. */
 	callerPath: string | null,
 	/**  Nearest `.app` ancestor, unverified. */
@@ -1547,6 +1552,11 @@ export type McpConfirmView = {
 	path: string | null,
 	/**  Signing authority of the requesting process, only when it is validly signed. */
 	signer: string | null,
+	/**
+	 *  Team ID of that signature, always shown beside the signer so the name can
+	 *  be checked against a team rather than taken on trust.
+	 */
+	teamId: string | null,
 	/**  Executable of the requesting process. */
 	callerPath: string | null,
 	/**  Nearest `.app` ancestor, unverified. */

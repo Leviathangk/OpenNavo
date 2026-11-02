@@ -863,6 +863,7 @@ export default {
     target: '软件包',
     path: '路径',
     requestedBy: '请求方',
+    teamId: '团队 ID',
     unsigned: '未签名 · {path}',
     unknownCaller: '未知进程',
     mayComeFrom: '可能来自',

@@ -869,6 +869,7 @@
     "target": "パッケージ",
     "path": "パス",
     "requestedBy": "依頼元",
+    "teamId": "チーム ID",
     "unsigned": "署名なし · {path}",
     "unknownCaller": "不明なプロセス",
     "mayComeFrom": "発信元の可能性",
