@@ -28,8 +28,10 @@ API_BASE = 'http://127.0.0.1:18082'
 class StepError(RuntimeError):
     """A setup step failed. Carries only the stage name and exit status: never the command line or environment."""
 
-    def __init__(self, stage, returncode):
-        super().__init__(f'{stage} exited {returncode}')
+    def __init__(self, stage, returncode=None):
+        # returncode is None when the step never started (a missing binary, a full disk): OSError's own
+        # message names the path it could not open, which is the command line, so it is not used either.
+        super().__init__(f'{stage} exited {returncode}' if returncode is not None else f'{stage} could not start')
         self.stage = stage
         self.returncode = returncode
 
@@ -44,14 +46,16 @@ def command(args, *, env=None, capture=True, cwd=ROOT):
 def labelled(stage, action):
     """Run one setup action, naming the stage if it fails.
 
-    The stage name and exit status are all that a failure reports: the command line and environment
-    never reach the log. Both carry connection settings (see the exec rule in environment()), and a
-    failed step's own diagnostics already stream when capture is off.
+    The stage name is all that a failure reports: the command line and environment never reach the
+    log. Both carry connection settings (see the exec rule in environment()), a step whose output
+    streams already prints its own diagnostics, and OSError's message can name the binary's path.
     """
     try:
         return action()
     except subprocess.CalledProcessError as error:
         raise StepError(stage, error.returncode) from None
+    except OSError:
+        raise StepError(stage) from None
 
 
 def step(stage, args, *, env=None, cwd=ROOT):
@@ -297,7 +301,11 @@ def main():
                 print('E2E data reset; API remains stopped')
         except BaseException:
             if ci:
-                compose(True, 'down', '--volumes', '--remove-orphans')
+                try:
+                    compose(True, 'down', '--volumes', '--remove-orphans')
+                except (subprocess.CalledProcessError, OSError):
+                    # Best effort: a failure here must not replace the setup error that caused it.
+                    pass
             raise
 
 

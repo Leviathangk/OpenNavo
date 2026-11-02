@@ -179,6 +179,34 @@ class FailingStepTests(unittest.TestCase):
             self.assertEqual(e2e.step('go build ./cmd/migrate', self.ARGS), '1')
         self.assertFalse(command.call_args.kwargs['capture'], 'step output streams; it is not captured')
 
+    def test_a_step_that_never_started_names_the_stage_without_its_path(self):
+        # A missing binary raises OSError, whose message carries the path it could not open — that is
+        # the command line. The stage alone is what the log gets.
+        with patch.object(e2e, 'command', side_effect=FileNotFoundError(2, 'No such file or directory', '/tmp/e2e/migrate')):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.step('migrate', self.ARGS, env=self.ENV)
+        self.assertEqual(caught.exception.stage, 'migrate')
+        self.assertIsNone(caught.exception.returncode)
+        self.assertEqual(str(caught.exception), 'migrate could not start')
+        self.assertNotIn('/tmp/e2e/migrate', str(caught.exception))
+
+    def test_the_cleanup_after_a_failure_does_not_replace_the_original_error(self):
+        # The `ci` path tears the stack down on any exception. If that teardown fails too (docker is
+        # gone, a container is wedged), its error must not become the one the log reports.
+        def fake_compose(ci, *args, **kwargs):
+            if 'down' in args:
+                raise FileNotFoundError(2, 'No such file or directory', 'docker')
+            return ''
+
+        with patch.object(e2e, 'ports_free'), patch.object(e2e, 'owned_process', return_value=None), \
+             patch.object(e2e, 'prepare', side_effect=e2e.StepError('migrate', 1)), \
+             patch.object(e2e, 'compose', side_effect=fake_compose), \
+             patch.object(e2e, 'STATE', Path(tempfile.mkdtemp())), \
+             patch.object(e2e.sys, 'argv', ['e2e.py', 'up', '--ci']):
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.main()
+        self.assertEqual(caught.exception.stage, 'migrate')
+
     def test_runtime_failures_still_print_their_own_message(self):
         # main()'s handler prints str(error) for RuntimeError and StepError, and the type name for
         # everything else; a step failure must not regress to a bare type name.
