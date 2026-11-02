@@ -21,6 +21,15 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 /// runner, which is what this budget is for.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// How long the fixture client waits for one response.
+///
+/// This matches the client `Service::new` builds, which allows 30 seconds per
+/// request. At five seconds the fixture held itself to a stricter budget than
+/// the app does, so a request the app still accepted failed here instead. The
+/// CI failure observed was the start-up wait above, not this one; the two are
+/// aligned so a starved runner reads as a slow runner rather than a refusal.
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
+
 struct Probe;
 impl MetadataProbe for Probe {
     fn identity(&self, path: &Path) -> Identity {
@@ -391,9 +400,7 @@ async fn server_mode(
     // cold, loaded CI machine that took over five seconds and the read below
     // timed out, failing whichever test got there first. Five seconds is a
     // sane budget for a loopback server that is already running and far too
-    // tight for one that is about to generate a key, so this is a start-up
-    // budget, not a request one. The client timeout further down stays short
-    // on purpose: a slow keygen does not mean slow requests.
+    // tight for one that is about to generate a key.
     tokio::time::timeout(
         STARTUP_TIMEOUT,
         BufReader::new(process.stdout.take().unwrap()).read_line(&mut line),
@@ -409,7 +416,7 @@ async fn server_mode(
     let client = reqwest::Client::builder()
         .no_proxy()
         .tls_certs_only([cert])
-        .timeout(Duration::from_secs(5))
+        .timeout(CLIENT_TIMEOUT)
         .build()
         .unwrap();
     (

@@ -275,8 +275,14 @@ async fn server(path: &Path, mode: &str) -> (tokio::process::Child, String, reqw
         .spawn()
         .unwrap();
     let mut line = String::new();
+    // `https.py` generates a fresh RSA key with `openssl req -x509 -newkey
+    // rsa:2048` and imports the Python standard library before it prints its
+    // port, so five seconds covered a server that was already running rather
+    // than one that still had a key to mint. The observed CI failure was the
+    // unit-test copy of this wait in `src/updater/skip_tests.rs`; this target
+    // shares the fixture and the same tight budget, so it gets the same one.
     tokio::time::timeout(
-        std::time::Duration::from_secs(5),
+        std::time::Duration::from_secs(30),
         BufReader::new(process.stdout.take().unwrap()).read_line(&mut line),
     )
     .await
@@ -290,7 +296,7 @@ async fn server(path: &Path, mode: &str) -> (tokio::process::Child, String, reqw
     let client = reqwest::Client::builder()
         .no_proxy()
         .tls_certs_only([cert])
-        .timeout(std::time::Duration::from_secs(5))
+        .timeout(std::time::Duration::from_secs(30))
         .build()
         .unwrap();
     (
