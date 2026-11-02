@@ -188,6 +188,10 @@ test('the spec rules reject an insertion before the name and a leading path', ()
     }
     for (const prefix of prefixes) rejected.push(`${prefix}apps/server/api/${spec}.openapi.yaml`);
     for (const prefix of prefixes) rejected.push(`${prefix}apps/server/api/${spec}.openapi.yaml.bak`);
+    // A generator that produced nothing makes the assertion below vacuously true: it
+    // would pass with every rule widened. Emptying fillers and prefixes must fail here,
+    // not pass, so the guard is the length check rather than the comparison.
+    assert.ok(rejected.length > 0, 'the probe must generate at least one path');
     const accepted = rejected.filter(path => classify([path])[area]);
     assert.deepEqual(accepted, [], `the ${area} rule widened and accepts these`);
   }

@@ -505,8 +505,12 @@ class FailureTests(BootstrapTestCase):
         # The first thing an operator reads must be that the deployment failed, not
         # that the receiver is broken: the reason is in the log above, and pointing
         # them at the wrong component sends the investigation the wrong way.
-        self.assertIn('exited with status 1: the deployment failed on its own terms', written,
-                      'the exit status is reported without saying the deployment failed')
+        # The whole sentence, including "not the receiver": the half that says which
+        # component is NOT at fault is the part an operator acts on. Testing only up to
+        # "on its own terms" leaves it free to be deleted, which is how this survived.
+        self.assertIn('exited with status 1: the deployment failed on its own terms '
+                      '(see the log above), not the receiver', written,
+                      'the message does not say the deployment, not the receiver, failed')
         # The reason the receiver is put back, not just that it was: a desktop publish
         # carries no receiver, so without this line a restored pointer looks optional.
         self.assertIn('a desktop publish does not', written,
