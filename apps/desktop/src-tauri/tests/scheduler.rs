@@ -1,4 +1,4 @@
-use chrono::{Local, TimeZone, Timelike, Utc};
+use chrono::{DateTime, Local, TimeZone, Timelike, Utc};
 use opennavo_desktop_lib::{
     core::DesktopCore,
     model::*,
@@ -106,6 +106,23 @@ fn auto_updates_ignore_legacy_formula_flag_and_respect_cask_pins_and_ignores() {
             .collect::<Vec<_>>(),
         ["ghostty"]
     );
+}
+
+/// A fixed clock for the scheduled-check tests, deliberately placed after the default `09:00`
+/// check time rather than at `Local::now()`.
+///
+/// `tick()` refuses to run until `next_check_at`, and `next_check_in()` answers today's `09:00`
+/// whenever nothing has been checked yet. A test that takes its "now" from the wall clock
+/// therefore does not run the check at all before 09:00 local: the notice test below failed every
+/// day in that window, and its neighbour [`a_scheduled_check_never_notifies_about_a_homebrew_formula`]
+/// passed for the wrong reason, asserting on a notice list the skipped check never filled. Both now
+/// share this clock, so neither depends on when CI happens to run.
+///
+/// The date is fixed, not "today": pinning only the time would still leave the result dependent on
+/// the wall clock whenever a run lands before 09:00. 10:00 is late enough that the day's slot is
+/// already behind `now`, which is what lets `tick()` proceed.
+fn scheduled_check_time() -> DateTime<Local> {
+    Local.with_ymd_and_hms(2026, 10, 22, 10, 0, 0).unwrap()
 }
 
 fn core(root: &Path) -> Arc<DesktopCore> {
@@ -668,12 +685,19 @@ async fn a_scheduled_check_never_notifies_about_a_homebrew_formula() {
     settings.notify_updates = true;
     settings.auto_upgrade_casks = false;
     core.replace_settings(settings).await.unwrap();
-    let due = Local::now()
-        .with_second(0)
-        .unwrap()
-        .with_nanosecond(0)
+    let due = scheduled_check_time();
+    let ran = scheduler::tick(core.clone(), due.timestamp_millis())
+        .await
         .unwrap();
-    let _ = scheduler::tick(core.clone(), due.timestamp_millis()).await;
+    // The check must actually have run, or the assertion below would hold on an empty notice list
+    // no matter what the scheduler did. `tick` records `checked_at` only when it completes.
+    assert!(ran, "the pinned clock is past the day's check time");
+    assert_eq!(
+        core.updates_status_at(due.timestamp_millis())
+            .unwrap()
+            .checked_at,
+        Some(due.timestamp_millis())
+    );
     let seen: Vec<String> = notices
         .lock()
         .unwrap()
@@ -707,12 +731,13 @@ async fn a_notice_names_the_new_row_not_the_ones_already_listed() {
     settings.notify_updates = true;
     settings.auto_upgrade_casks = false;
     core.replace_settings(settings).await.unwrap();
-    let due = Local::now()
-        .with_second(0)
-        .unwrap()
-        .with_nanosecond(0)
+    let due = scheduled_check_time();
+    let ran = scheduler::tick(core.clone(), due.timestamp_millis())
+        .await
         .unwrap();
-    let _ = scheduler::tick(core.clone(), due.timestamp_millis()).await;
+    // Same guard as above: without it this test reports success whenever the scheduler declines to
+    // run, which is exactly what it did before 09:00 local.
+    assert!(ran, "the pinned clock is past the day's check time");
     let seen: Vec<String> = notices
         .lock()
         .unwrap()
