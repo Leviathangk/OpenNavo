@@ -12,6 +12,15 @@ use crate::{
 use std::{fs, process::Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+/// How long the fixture HTTPS server may take to start and print its port.
+///
+/// The server generates its own certificate at startup (see
+/// `tests/fixtures/updater/https.py`), so this covers a Python interpreter
+/// start plus an `openssl req -x509 -newkey rsa:2048`. That is a fraction of a
+/// second on an idle machine and has exceeded five seconds on a loaded CI
+/// runner, which is what this budget is for.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+
 struct Probe;
 impl MetadataProbe for Probe {
     fn identity(&self, path: &Path) -> Identity {
@@ -376,8 +385,17 @@ async fn server_mode(
         .spawn()
         .unwrap();
     let mut line = String::new();
+    // How long the fixture server may take to print its port. Before that
+    // line, `https.py` generates a fresh RSA key with `openssl req -x509
+    // -newkey rsa:2048` and imports the whole Python standard library; on a
+    // cold, loaded CI machine that took over five seconds and the read below
+    // timed out, failing whichever test got there first. Five seconds is a
+    // sane budget for a loopback server that is already running and far too
+    // tight for one that is about to generate a key, so this is a start-up
+    // budget, not a request one. The client timeout further down stays short
+    // on purpose: a slow keygen does not mean slow requests.
     tokio::time::timeout(
-        Duration::from_secs(5),
+        STARTUP_TIMEOUT,
         BufReader::new(process.stdout.take().unwrap()).read_line(&mut line),
     )
     .await
