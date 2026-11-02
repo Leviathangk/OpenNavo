@@ -237,53 +237,81 @@ fi
 # No outcome here is a statement about whether a backup exists.
 
 if command -v lvs >/dev/null 2>&1; then
-    OUT=$(lvs --noheadings -o lv_name,lv_time 2>/tmp/lvs.err)
-    if [ -s /tmp/lvs.err ]; then
-        echo "lvs could not read LVM metadata, so this check did not run:"
-        sed 's/^/  /' /tmp/lvs.err
+    if ! ERR=$(mktemp "${TMPDIR:-/tmp}/lvs.XXXXXX"); then
+        echo "no writable temporary directory, so this check did not run:"
         echo "  -> row 1 stays unknown"
-    elif [ -n "$OUT" ]; then
-        printf '%s\n' "$OUT"
     else
-        echo "lvs ran cleanly and listed no logical volumes: not LVM, or LVM with nothing on it"
+        OUT=$(lvs --noheadings -o lv_name,lv_time 2>"$ERR")
+        if [ -s "$ERR" ]; then
+            echo "lvs could not read LVM metadata, so this check did not run:"
+            sed 's/^/  /' "$ERR"
+            echo "  -> row 1 stays unknown"
+        elif [ -n "$OUT" ]; then
+            printf '%s\n' "$OUT"
+        else
+            echo "lvs ran cleanly and listed no logical volumes: not LVM, or LVM with nothing on it"
+        fi
+        rm -f "$ERR"
     fi
-    rm -f /tmp/lvs.err
 else
     echo "lvs not installed (package lvm2); LVM not checked, row 1 stays unknown"
 fi
 
 if command -v zfs >/dev/null 2>&1; then
-    OUT=$(zfs list -H -t snapshot -o name,creation 2>/tmp/zfs.err)
-    if [ -s /tmp/zfs.err ]; then
-        echo "zfs reported an error, so this check did not run:"
-        sed 's/^/  /' /tmp/zfs.err
+    if ! ERR=$(mktemp "${TMPDIR:-/tmp}/zfs.XXXXXX"); then
+        echo "no writable temporary directory, so this check did not run:"
         echo "  -> row 1 stays unknown"
-    elif [ -n "$OUT" ]; then
-        printf '%s\n' "$OUT"
     else
-        echo "zfs ran cleanly and listed no snapshots: not ZFS, or ZFS with none"
+        OUT=$(zfs list -H -t snapshot -o name,creation 2>"$ERR")
+        if [ -s "$ERR" ]; then
+            echo "zfs reported an error, so this check did not run:"
+            sed 's/^/  /' "$ERR"
+            echo "  -> row 1 stays unknown"
+        elif [ -n "$OUT" ]; then
+            printf '%s\n' "$OUT"
+        else
+            echo "zfs ran cleanly and listed no snapshots: not ZFS, or ZFS with none"
+        fi
+        rm -f "$ERR"
     fi
-    rm -f /tmp/zfs.err
 else
     echo "zfs not installed; ZFS not checked, row 1 stays unknown"
 fi
 
 if command -v btrfs >/dev/null 2>&1; then
-    OUT=$(btrfs subvolume list / 2>/tmp/btrfs.err)
-    if [ -s /tmp/btrfs.err ]; then
-        echo "btrfs reported an error, so this check did not run:"
-        sed 's/^/  /' /tmp/btrfs.err
+    if ! ERR=$(mktemp "${TMPDIR:-/tmp}/btrfs.XXXXXX"); then
+        echo "no writable temporary directory, so this check did not run:"
         echo "  -> row 1 stays unknown"
-    elif printf '%s\n' "$OUT" | grep -qi snapshot; then
-        printf '%s\n' "$OUT" | grep -i snapshot
     else
-        echo "btrfs ran cleanly; no subvolume name mentions snapshot"
+        OUT=$(btrfs subvolume list / 2>"$ERR")
+        if [ -s "$ERR" ]; then
+            echo "btrfs reported an error, so this check did not run:"
+            sed 's/^/  /' "$ERR"
+            echo "  -> row 1 stays unknown"
+        elif printf '%s\n' "$OUT" | grep -qi snapshot; then
+            printf '%s\n' "$OUT" | grep -i snapshot
+        else
+            echo "btrfs ran cleanly; no subvolume name mentions snapshot"
+        fi
+        rm -f "$ERR"
     fi
-    rm -f /tmp/btrfs.err
 else
     echo "btrfs not installed (package btrfs-progs); btrfs not checked, row 1 stays unknown"
 fi
 ```
+
+**Each block writes its stderr to a file of its own, not to `/tmp/lvs.err`.** A fixed
+path is shared by everyone running this guide on the host: two runs at once overwrite each
+other's file, so one operator reads the other's error as their own result — or clears it,
+and a run that did fail is reported as having run cleanly. Measured with two processes on
+one fixed path: the slower one read the faster one's stderr and its own error vanished.
+`/tmp` is also world-writable, so anyone can pre-create that path as a symlink. `mktemp`
+gives each run a fresh name and a file only its owner can open. The `XXXXXX` must be the
+last part of the template: the BSD `mktemp` that ships with macOS only substitutes a
+trailing run of `X`, and given `lvs.XXXXXX.err` it creates a file with those literal
+characters and hands that name back, so the second run on the same host fails outright.
+If `mktemp` itself fails, the block says the check did not run and row 1 stays `unknown`;
+it does not fall through to "ran cleanly", which is the answer that would be wrong.
 
 **The `lvs` field is `lv_time`, not `snap_time`.** `snap_time` does not exist in lvm2 — it
 prints the whole field list to stderr and exits 5, so the command could never have returned a
