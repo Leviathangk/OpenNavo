@@ -181,7 +181,7 @@ another document, and do not delete the `unknown` marker before the command has 
 |---|---|---|---|
 | 1 | Is a whole-server snapshot scheduled at all? | Whichever applies: `systemctl list-timers --all`, `crontab -l` and `/etc/cron.*`, or the provider's snapshot policy in its console | Mechanism and schedule, or `unknown` |
 | 2 | When did a snapshot last succeed? | The same source as row 1, plus the provider's snapshot list | Date and time of the newest **successful** snapshot, or `unknown` |
-| 3 | Does the snapshot include the PostgreSQL data directory? | Find where the running database keeps its data, then check that path is inside the snapshot's scope (see below) | The path and whether the snapshot covers it, or `unknown` |
+| 3 | Does the snapshot include the PostgreSQL data directory? | Produce one **absolute host path** for the running server (see below), then check that path is inside the snapshot's scope | The absolute path and whether the snapshot covers it, or `unknown` |
 | 4 | Does the snapshot include what the database does not? | Check the same scope covers the `.env` and `current-release.env` files, the Caddy volumes, and the object storage the app writes to | Each item covered / not covered, or `unknown` |
 | 5 | When was a restore last actually performed, not just planned? | The restore drill below, run against a non-production copy | Date, and whether the restored data matched |
 | 6 | Who is responsible for rows 1–4? | An agreement, not a command. **`owner: user`** — the user names the owner. Record `unknown` until they do | Name or role, or `unknown` |
@@ -212,82 +212,97 @@ command runs the deployment receiver, which accepts a deploy payload and nothing
 # it is scheduled from inside the host. A provider-side policy will not appear in either.
 # The cron directories are listed explicitly rather than as /etc/cron.*: when that glob
 # matches nothing, zsh aborts the command line before grep runs.
-systemctl list-timers --all 2>/dev/null | grep -iE 'snapshot|backup' || echo "no matching timer"
-crontab -l 2>/dev/null | grep -iE 'snapshot|backup' || echo "no matching user cron"
+#
+# Every fallback below says only that this command found nothing. It is not an answer:
+# read it as "row 1 still `unknown`", never as "there is no backup".
+systemctl list-timers --all 2>/dev/null | grep -iE 'snapshot|backup' || echo "no match here; row 1 stays unknown"
+crontab -l 2>/dev/null | grep -iE 'snapshot|backup' || echo "no match here; row 1 stays unknown"
 if [ -d /etc/cron.d ]; then
     grep -rniE 'snapshot|backup' /etc/cron.d /etc/cron.daily /etc/cron.hourly \
         /etc/cron.weekly /etc/cron.monthly /etc/crontab 2>/dev/null \
-        || echo "no matching system cron"
+        || echo "no match here; row 1 stays unknown"
 else
-    echo "no /etc/cron.d on this host"
+    echo "no /etc/cron.d here; row 1 stays unknown"
 fi
 
 # Filesystem-level snapshots, if the host uses one of these. The columns name the snapshot
-# and when it was taken; an empty list means this is not how the host snapshots.
-lvs --noheadings -o lv_name,snap_time 2>/dev/null || echo "not LVM, or no LVM tools"
-zfs list -t snapshot -o name,creation 2>/dev/null || echo "not ZFS, or no ZFS tools"
-btrfs subvolume list / 2>/dev/null | grep -i snapshot || echo "not btrfs, or no btrfs tools"
+# and when it was taken; an empty list means this is not how the host snapshots, not that
+# there are no snapshots.
+lvs --noheadings -o lv_name,snap_time 2>/dev/null || echo "not LVM, or no LVM tools; row 1 stays unknown"
+zfs list -t snapshot -o name,creation 2>/dev/null || echo "not ZFS, or no ZFS tools; row 1 stays unknown"
+btrfs subvolume list / 2>/dev/null | grep -i snapshot || echo "not btrfs, or no btrfs tools; row 1 stays unknown"
 ```
 
 **A command that fails answers nothing.** None of the commands above can report that a backup
 is *absent*: they can only fail to find one. If one exits non-zero or prints nothing, the row
-it feeds stays `unknown` — it does not become "no".
+it feeds stays `unknown` — it does not become "no". That is why the fallback messages name the
+row rather than the conclusion: a message saying "no backups scheduled" would be a finding
+these commands cannot produce.
 
 #### Where the database actually keeps its data
 
-Row 3 asks whether the snapshot contains the database, so it needs a path, not a container
-guess. Work out that path from the host, then check the path is inside the snapshot's scope.
+Row 3 asks whether the snapshot contains the database, so the answer has to be **one absolute
+path on the host**. A service name, a container id, or a path inside a container does not
+answer it. Work out that path with the commands below, then check that the path is inside the
+snapshot's scope.
 
-The compose file's `postgres` service is **not** how production necessarily runs the database:
-it sits behind the optional `local-db` profile, and the deploy never enables that profile
-(it passes `--profile ops --profile automation`). Production may well run PostgreSQL on the
-host instead, in which case there is no `postgres` container and no `postgres-data` volume to
-inspect. Read the host, do not copy the compose file.
+The compose file's `postgres` service is not how production necessarily runs the database. It
+sits behind the optional `local-db` profile, and the deploy never enables that profile — it
+passes `--profile ops --profile automation`. Production may run PostgreSQL on the host
+instead, in which case there is no `postgres` container and no `postgres-data` volume. Read
+the host; do not copy the compose file.
+
+**Do not reconstruct the project name either.** The compose file's header says `name:
+opennavo-prod`, but the deploy passes `-p <project>` from `/etc/opennavo/github-deploy.json`
+(`ops/github-deploy.py`, `compose()`), and `-p` wins over the header. The two agree only if
+that config happens to hold `opennavo-prod`. The commands below ask Docker for the project
+label the container actually carries, so no name has to be assumed.
 
 ```sh
-# Run every step; each one narrows the answer, and a step that fails keeps the question open.
-# 1. Is the compose-managed database running? The service is `postgres`, and it belongs to
-#    the `local-db` profile. Both matter: `ps -q local-db` asks for a service named local-db,
-#    which does not exist. An empty answer here is also what a stopped container gives, so it
-#    does not by itself mean production does not use this path.
-CONTAINER=$(docker compose -f ops/docker-compose.prod.yml --profile local-db ps -q postgres)
-echo "container: ${CONTAINER:-<none>}"
+# Read-only. None of these can prove a backup is missing: when one fails or prints
+# nothing, the row it feeds stays `unknown`. It never becomes a "no".
 
-# 2. If step 1 printed a container id, ask Docker where that container's data lives.
-#    Guarded, so an empty id does not turn into a misleading inspect error.
+# 1. Is there a PostgreSQL container at all? Asking Docker by label needs no env file
+#    and no project name, and unlike `docker compose ps -q` it also finds a stopped
+#    container — which is exactly the one whose data you still have to back up.
+docker ps -a --filter 'label=com.docker.compose.service=postgres' \
+  --format '{{.ID}}  {{.Label "com.docker.compose.project"}}  {{.State}}'
+
+# 2. If step 1 printed exactly one id, ask for its mounts. For a named volume the
+#    source is already the absolute host path. If it printed several, every one is a
+#    candidate data directory until you know which server is live.
+CONTAINER=$(docker ps -a --filter 'label=com.docker.compose.service=postgres' \
+  --format '{{.ID}}' | head -1)
 if [ -n "$CONTAINER" ]; then
     docker inspect --format '{{range .Mounts}}{{.Type}} {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' "$CONTAINER"
 else
-    echo "no compose-managed postgres container; try step 3"
+    echo "no PostgreSQL container; go to step 3"
 fi
 
-# 3. A host-installed PostgreSQL does not appear in step 1 at all. Ask the running server
-#    itself where its data directory is, rather than assuming a default.
-psql "postgresql:///postgres" -Atc 'show data_directory' 2>/dev/null \
-  || echo "no local psql, or it cannot connect without credentials"
+# 3. A PostgreSQL installed on the host has no container. Its postmaster command line
+#    carries -D when the server was started that way, and that is the data directory.
+ps -eo pid,args 2>/dev/null | grep '[p]ostgres.*-D' \
+  || echo "no postmaster started with -D; try step 4"
 
-# 4. Where a named volume lands on disk, if step 1 found one. The volume name is prefixed
-#    with the compose project, which the deploy passes explicitly rather than taking from
-#    the file, so read the project name from the host configuration instead of guessing.
-PROJECT=$(python3 -c "import json;print(json.load(open('/etc/opennavo/github-deploy.json'))['project'])" 2>/dev/null)
-if [ -n "$PROJECT" ]; then
-    echo "project: $PROJECT"
-    docker volume inspect --format '{{.Mountpoint}}' "${PROJECT}_postgres-data" 2>/dev/null \
-      || echo "no such volume; the database is not compose-managed, or the project name differs"
-else
-    echo "cannot read 'project' from /etc/opennavo/github-deploy.json; volume name unknown"
-fi
+# 4. Otherwise ask the server. This needs a superuser or `pg_read_all_settings`: a
+#    plain application role gets "permission denied to examine data_directory", which
+#    is a privilege limit, not a missing directory.
+psql "postgresql:///postgres" -Atc 'show data_directory'
 ```
 
-**Then answer row 3 from the path, not from a command's exit code.** Once you have a
-directory, confirm it is inside the snapshot's scope: compare it against what the snapshot
-actually covers (row 1's mechanism). Finding the path does not prove it is snapshotted, and
-failing to find it does not prove the database is unsnapshotted.
+**Then answer row 3 from the path, not from a command's exit code.** Finding the path does
+not prove it is snapshotted, and failing to find it does not prove the database is
+unsnapshotted. Compare the path against what the snapshot actually covers — row 1's
+mechanism — and record the path, or `unknown`.
 
-**This block reads the compose file, so it needs the same environment the deploy uses.** Run
-it from the deployment root with the same env files, or compose will stop on the first
-required variable it cannot interpolate and print nothing useful. The receiver builds that
-command line itself; its shape is in `ops/github-deploy.py`, in `compose()`.
+**A container's data directory is usually below the mount, not at it.** The compose file
+mounts the volume at `/var/lib/postgresql`, and the server inside reports
+`/var/lib/postgresql/18/docker` as its `data_directory`. The snapshot only has to cover the
+mount point; the path to record is the host source from step 2, which is the parent of both.
+
+**If the answer is a container file path, you have stopped one step early.** `/var/lib/...`
+inside the container is not a host path unless it is bind-mounted, so translate it through
+step 2's mount table before writing anything down.
 
 #### Restore drill
 
