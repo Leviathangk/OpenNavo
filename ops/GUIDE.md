@@ -181,8 +181,8 @@ another document, and do not delete the `unknown` marker before the command has 
 |---|---|---|---|
 | 1 | Is a whole-server snapshot scheduled at all? | Whichever applies: `systemctl list-timers --all`, `crontab -l` and `/etc/cron.*`, or the provider's snapshot policy in its console | Mechanism and schedule, or `unknown` |
 | 2 | When did a snapshot last succeed? | The same source as row 1, plus the provider's snapshot list | Date and time of the newest **successful** snapshot, or `unknown` |
-| 3 | Does the snapshot include the PostgreSQL data directory? | Compare the snapshot's scope against the directory the `local-db` service mounts (`ops/docker-compose.prod.yml`, `local-db`) | Covered / not covered, or `unknown` |
-| 4 | Does the snapshot include what the database does not? | Check the same scope covers the `.env` and `current-release.env` files, the Caddy volumes, and the object storage the app writes to | Each item covered / not covered |
+| 3 | Does the snapshot include the PostgreSQL data directory? | Find where the running database keeps its data, then check that path is inside the snapshot's scope (see below) | The path and whether the snapshot covers it, or `unknown` |
+| 4 | Does the snapshot include what the database does not? | Check the same scope covers the `.env` and `current-release.env` files, the Caddy volumes, and the object storage the app writes to | Each item covered / not covered, or `unknown` |
 | 5 | When was a restore last actually performed, not just planned? | The restore drill below, run against a non-production copy | Date, and whether the restored data matched |
 | 6 | Who is responsible for rows 1–4? | An agreement, not a command | Name or role |
 
@@ -218,16 +218,67 @@ fi
 lvs --noheadings -o lv_name,snap_time 2>/dev/null || echo "not LVM, or no LVM tools"
 zfs list -t snapshot -o name,creation 2>/dev/null || echo "not ZFS, or no ZFS tools"
 btrfs subvolume list / 2>/dev/null | grep -i snapshot || echo "not btrfs, or no btrfs tools"
-
-# The data directory the snapshot must contain. This prints the mount, not its contents.
-docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' \
-  "$(docker compose -f ops/docker-compose.prod.yml --profile ops ps -q local-db)" 2>/dev/null \
-  || echo "local-db is not running under the ops profile"
 ```
 
-If every command reports nothing, the snapshot is not scheduled from inside the host. That
-does not prove there is no backup: a provider-side policy would not show up here, and row 1
-is then answered in the provider's console, not on the host.
+**A command that fails answers nothing.** None of the commands above can report that a backup
+is *absent*: they can only fail to find one. If one exits non-zero or prints nothing, the row
+it feeds stays `unknown` — it does not become "no".
+
+#### Where the database actually keeps its data
+
+Row 3 asks whether the snapshot contains the database, so it needs a path, not a container
+guess. Work out that path from the host, then check the path is inside the snapshot's scope.
+
+The compose file's `postgres` service is **not** how production necessarily runs the database:
+it sits behind the optional `local-db` profile, and the deploy never enables that profile
+(it passes `--profile ops --profile automation`). Production may well run PostgreSQL on the
+host instead, in which case there is no `postgres` container and no `postgres-data` volume to
+inspect. Read the host, do not copy the compose file.
+
+```sh
+# Run every step; each one narrows the answer, and a step that fails keeps the question open.
+# 1. Is the compose-managed database running? The service is `postgres`, and it belongs to
+#    the `local-db` profile. Both matter: `ps -q local-db` asks for a service named local-db,
+#    which does not exist. An empty answer here is also what a stopped container gives, so it
+#    does not by itself mean production does not use this path.
+CONTAINER=$(docker compose -f ops/docker-compose.prod.yml --profile local-db ps -q postgres)
+echo "container: ${CONTAINER:-<none>}"
+
+# 2. If step 1 printed a container id, ask Docker where that container's data lives.
+#    Guarded, so an empty id does not turn into a misleading inspect error.
+if [ -n "$CONTAINER" ]; then
+    docker inspect --format '{{range .Mounts}}{{.Type}} {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' "$CONTAINER"
+else
+    echo "no compose-managed postgres container; try step 3"
+fi
+
+# 3. A host-installed PostgreSQL does not appear in step 1 at all. Ask the running server
+#    itself where its data directory is, rather than assuming a default.
+psql "postgresql:///postgres" -Atc 'show data_directory' 2>/dev/null \
+  || echo "no local psql, or it cannot connect without credentials"
+
+# 4. Where a named volume lands on disk, if step 1 found one. The volume name is prefixed
+#    with the compose project, which the deploy passes explicitly rather than taking from
+#    the file, so read the project name from the host configuration instead of guessing.
+PROJECT=$(python3 -c "import json;print(json.load(open('/etc/opennavo/github-deploy.json'))['project'])" 2>/dev/null)
+if [ -n "$PROJECT" ]; then
+    echo "project: $PROJECT"
+    docker volume inspect --format '{{.Mountpoint}}' "${PROJECT}_postgres-data" 2>/dev/null \
+      || echo "no such volume; the database is not compose-managed, or the project name differs"
+else
+    echo "cannot read 'project' from /etc/opennavo/github-deploy.json; volume name unknown"
+fi
+```
+
+**Then answer row 3 from the path, not from a command's exit code.** Once you have a
+directory, confirm it is inside the snapshot's scope: compare it against what the snapshot
+actually covers (row 1's mechanism). Finding the path does not prove it is snapshotted, and
+failing to find it does not prove the database is unsnapshotted.
+
+**This block reads the compose file, so it needs the same environment the deploy uses.** Run
+it from the deployment root with the same env files, or compose will stop on the first
+required variable it cannot interpolate and print nothing useful. The receiver builds that
+command line itself; its shape is in `ops/github-deploy.py`, in `compose()`.
 
 #### Restore drill
 
