@@ -19,13 +19,21 @@ use std::path::{Component, Path, PathBuf};
 /// Longest ancestry walk; a real tree is far shallower.
 const MAX_DEPTH: usize = 32;
 
-/// A pid and the moment that process started, in microseconds since the Unix
-/// epoch. Two reads are the same process only when both halves match, so a
-/// recycled pid cannot inherit the trust the previous holder had.
+/// A pid and a moment that process started. The scaling differs by platform
+/// (microseconds since the Unix epoch on macOS, clock ticks since boot times
+/// 10,000 on Linux), so the value is an opaque token: only `matches` compares
+/// it, and nothing may treat it as a wall-clock time. Two reads are the same
+/// process only when both halves match, so a recycled pid cannot inherit the
+/// trust the previous holder had.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PidStamp {
     pub pid: i32,
     /// `None` when the platform could not report one; see [`PidStamp::matches`].
+    ///
+    /// An opaque token, not a timestamp: the origin and the unit differ per
+    /// platform (see the type's own docs). Deriving a duration or formatting a
+    /// date from it gives a plausible-looking answer that means nothing, and
+    /// comparing values taken on different platforms means less than nothing.
     pub started_at: Option<u64>,
 }
 
@@ -246,6 +254,15 @@ impl ProcessTable for SystemProcesses {
             pid,
             ppid,
             path,
+            // `starttime` counts clock ticks since boot, at whatever `CLK_TCK`
+            // the kernel was built with (usually, but not guaranteed, 100). This
+            // multiplies it into the microseconds macOS reports so the two arms
+            // share a type, but the origin still differs: this value is an
+            // opaque token, never a time (see [`PidStamp`]). At the usual
+            // `CLK_TCK` of 100 the resolution here is 10 ms, so two starts
+            // inside one tick are indistinguishable — closing that would mean
+            // recycling a pid inside a single tick, which needs on the order of
+            // 4e8 forks per second against a measured ~3.4e3.
             started_at: Some(started_ticks.saturating_mul(10_000)),
         })
     }
@@ -539,5 +556,56 @@ mod tests {
             started_at: None,
             ..info
         }));
+    }
+
+    /// `started_at` is an identity token, never a time.
+    ///
+    /// The two platforms fill it from different origins and units: microseconds
+    /// since the Unix epoch on macOS, clock ticks since boot times 10,000 on
+    /// Linux. Only equality across the value therefore means "same process".
+    /// Nothing in this module orders the values, and this pins that: a stamp
+    /// must not match a process whose start value is merely greater or merely
+    /// less, because there is no ordering here to reason with in the first
+    /// place — the numbers are not on the same scale.
+    ///
+    /// The practical hazard is a later reader deciding to compute a duration or
+    /// format a date from this field. On one platform that yields a believable
+    /// answer and on the other a value near 1.7e15; either way it is noise, and
+    /// a comparison between the two is meaningless. If this test goes red,
+    /// something started treating the token as a clock.
+    #[test]
+    fn a_stamp_is_an_opaque_token_not_a_time() {
+        let at = |value: Option<u64>| ProcessInfo {
+            pid: 7,
+            ppid: 1,
+            path: None,
+            started_at: value,
+        };
+
+        // Identity: the same value is the same process.
+        assert!(PidStamp::new(7, Some(41)).matches(&at(Some(41))));
+        assert!(PidStamp::new(7, Some(42)).matches(&at(Some(42))));
+
+        // A different value is a different process, in **either** direction.
+        // The second assertion is what fails if the comparison ever loosens
+        // from `==` to an ordering: under `then < now` a stamp taken at 41
+        // would vouch for a process that started at 42.
+        assert!(!PidStamp::new(7, Some(42)).matches(&at(Some(41))));
+        assert!(!PidStamp::new(7, Some(41)).matches(&at(Some(42))));
+
+        // The two platforms' numbers are not comparable at all: a Linux-shaped
+        // value (small, ticks since boot) and a macOS-shaped one (large,
+        // microseconds since the epoch) are just two different tokens. Neither
+        // direction may be read as "older" or "newer".
+        let from_linux = PidStamp::new(7, Some(123_450_000));
+        let from_macos = PidStamp::new(7, Some(1_700_000_000_000_000));
+        assert!(!from_linux.matches(&at(Some(1_700_000_000_000_000))));
+        assert!(!from_macos.matches(&at(Some(123_450_000))));
+
+        // And the value is `Option` precisely because a missing one proves
+        // nothing: it can never be compared into a match.
+        assert!(!from_linux.matches(&at(None)));
+        assert!(!PidStamp::new(7, None).matches(&at(Some(123_450_000))));
+        assert!(!PidStamp::new(7, None).matches(&at(None)));
     }
 }
