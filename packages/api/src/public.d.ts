@@ -1149,8 +1149,8 @@ export interface components {
          *       "code": "0000",
          *       "msg": "ok",
          *       "data": {
-         *         "current": 0,
-         *         "size": 0,
+         *         "current": 1,
+         *         "size": 24,
          *         "total": 0,
          *         "records": []
          *       }
@@ -8371,7 +8371,7 @@ export interface components {
          *       "msg": "ok",
          *       "data": {
          *         "current": 1,
-         *         "size": 24,
+         *         "size": 500,
          *         "total": 1,
          *         "records": [
          *           {
@@ -8395,7 +8395,7 @@ export interface components {
                 lastmod?: string | null;
                 /** @example 1 */
                 current: number;
-                /** @example 24 */
+                /** @example 500 */
                 size: number;
                 /** @example 1 */
                 total: number;

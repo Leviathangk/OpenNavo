@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { baseline, classify, greenCommits, plan } from './changes.mjs';
 
@@ -6,7 +7,58 @@ const none = { server: false, mcp: false, frontend: false, desktop: false, e2e: 
 
 test('a server change runs server checks and full-stack E2E, not desktop builds', () => {
   assert.deepEqual(classify(['apps/server/internal/articles/evidence.go']), { ...none, server: true, e2e: true });
-  assert.deepEqual(classify(['apps/server/api/admin.openapi.yaml']), { ...none, server: true, mcp: true, e2e: true });
+  // frontend: the spec is generated into packages/api, see the generator test below.
+  assert.deepEqual(classify(['apps/server/api/admin.openapi.yaml']), {
+    ...none,
+    server: true,
+    mcp: true,
+    frontend: true,
+    e2e: true
+  });
+});
+
+// Every spec a generator reads, discovered from the scripts themselves rather than
+// listed here: a third spec added to a generator must reach the frontend jobs on its
+// own, without anyone remembering to come back to this file.
+function generatedSpecs() {
+  const found = new Set();
+  for (const directory of readdirSync(new URL('../../packages/', import.meta.url))) {
+    let pkg;
+    try {
+      pkg = JSON.parse(readFileSync(new URL(`../../packages/${directory}/package.json`, import.meta.url), 'utf8'));
+    } catch {
+      continue; // not a package
+    }
+    for (const script of Object.values(pkg.scripts ?? {})) {
+      for (const [, spec] of script.matchAll(/(apps\/server\/api\/[\w.-]+\.openapi\.yaml)/g)) found.add(spec);
+    }
+  }
+  return [...found].sort();
+}
+
+test('every API spec a generator reads reaches the frontend jobs', () => {
+  const specs = generatedSpecs();
+  // The discovery must find the package that is known to generate types, not
+  // merely something: a broken pattern would otherwise assert nothing and pass.
+  assert.ok(specs.includes('apps/server/api/public.openapi.yaml'), 'the discovery finds the public generator');
+  for (const spec of specs) {
+    assert.equal(classify([spec]).frontend, true, `${spec} is generated into packages/api, so the frontend jobs must run`);
+  }
+});
+
+test('spec files no generator reads do not reach the frontend jobs', () => {
+  // Derived for the same reason as generatedSpecs(): when a generator starts
+  // reading one of these it moves to the list above by itself, rather than
+  // leaving a stale entry here that only looks like coverage.
+  const generated = new Set(generatedSpecs());
+  const unread = readdirSync(new URL('../../apps/server/api/', import.meta.url))
+    .filter(name => name.endsWith('.openapi.yaml') && !generated.has(`apps/server/api/${name}`))
+    .map(name => `apps/server/api/${name}`);
+  // Config files, not specs: no generator can read them, so they never move.
+  const files = [...unread, 'apps/server/api/oapi-codegen.yaml', 'apps/server/api/redocly.yaml'];
+  for (const file of files) {
+    assert.equal(classify([file]).frontend, false, `${file} is not generated into packages/, so the frontend jobs must not run`);
+  }
 });
 
 test('shared packages reach the desktop only through frontend jobs', () => {

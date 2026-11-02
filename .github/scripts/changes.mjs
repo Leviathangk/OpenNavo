@@ -30,6 +30,10 @@ export const AREAS = {
     /^\.github\/workflows\/(ci-mcp|ci-server|release-mcp)\.yml$/
   ],
   frontend: [
+    // packages/api/src/{public,admin}.d.ts are generated from these two specs, and
+    // frontend-static regenerates them and fails on any diff; without this rule a
+    // spec-only change skipped the job that would have caught the drift.
+    /^apps\/server\/api\/(public|admin)\.openapi\.yaml$/,
     /^apps\/(web|admin|desktop)\//,
     // The Go converter derives the committed Traditional Chinese interface files.
     /^apps\/server\/(internal\/traditional|cmd\/derive-traditional)\//,
