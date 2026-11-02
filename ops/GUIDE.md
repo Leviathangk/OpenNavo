@@ -253,7 +253,7 @@ else
 fi
 
 if command -v zfs >/dev/null 2>&1; then
-    OUT=$(zfs list -t snapshot -o name,creation 2>/tmp/zfs.err)
+    OUT=$(zfs list -H -t snapshot -o name,creation 2>/tmp/zfs.err)
     if [ -s /tmp/zfs.err ]; then
         echo "zfs reported an error, so this check did not run:"
         sed 's/^/  /' /tmp/zfs.err
@@ -289,6 +289,19 @@ fi
 prints the whole field list to stderr and exits 5, so the command could never have returned a
 snapshot time no matter what the host ran. If you copy this block somewhere else, keep the
 field name.
+
+**`zfs` needs `-H`, and it is the only one of the three.** `lvs` is already asked for
+`--noheadings` and `btrfs subvolume list` prints no header, but `zfs list` prints `NAME` and
+`CREATION` even when the snapshot list is empty. Without `-H` the emptiness test below reads
+that header as a row, so a host with no ZFS snapshots at all would be reported as having some.
+Measured with a stub that imitates the header:
+
+```
+zfs list    -t snapshot -o name,creation   -> OUT = 'NAME                  CREATION'  -> "listed no snapshots" never fires
+zfs list -H -t snapshot -o name,creation   -> OUT = ''                                  -> "listed no snapshots" fires
+```
+
+Keep the `-H` if you copy this block.
 
 **A command that fails answers nothing.** None of the commands above can report that a backup
 is *absent*: they can only fail to find one. If one exits non-zero or prints nothing, the row
