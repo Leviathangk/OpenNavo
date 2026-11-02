@@ -263,7 +263,9 @@ class DatabaseRetryTests(unittest.TestCase):
         # A syntax error is a real bug; retrying it only delays the report. The FATAL cases are the
         # ones that decide whether the reach markers are narrow enough: each arrives through libpq
         # with the very socket path and "connection to server" lead-in a retryable failure carries,
-        # and only the words after them say the server answered and refused us.
+        # and only the words after them say the server answered and refused us. The last of those
+        # carries the socket path on its second hint line rather than in the failure itself, so it
+        # also pins that a marker must not key on "could not connect to server" or on the path.
         for message in ('ERROR: syntax error at or near "SELEC"',
                         'permission denied for database postgres',
                         'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
@@ -272,9 +274,13 @@ class DatabaseRetryTests(unittest.TestCase):
                         'failed: FATAL:  password authentication failed for user "opennavo"',
                         'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
                         'failed: FATAL:  role "nosuchuser" does not exist',
+                        'psql: error: could not connect to server: Permission denied\n'
+                        '        Is the server running locally and accepting connections on Unix domain socket '
+                        '"/var/run/postgresql/.s.pgsql.5432"?',
                         'could not connect to server: perm denied',
                         'dial unix /var/run/docker.sock: connect: connection refused',
-                        'ERROR: relation "x" does not exist: No such file or directory candidate'):
+                        'ERROR: relation "x" does not exist: No such file or directory candidate',
+                        'ERROR:  duplicate key value violates unique constraint "users_email_key"'):
             with self.subTest(message=message):
                 with self.assertRaises(e2e.StepError) as caught:
                     self.run_database([self.failure(message)])
