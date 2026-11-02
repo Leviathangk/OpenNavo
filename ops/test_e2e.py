@@ -244,9 +244,13 @@ class DatabaseRetryTests(unittest.TestCase):
         for message in ('the database system is shutting down',
                         'the database system is starting up',
                         'terminating connection due to administrator command',
-                        'connection refused',
-                        'could not connect',
-                        'dial tcp: connect: No such file or directory'):
+                        'could not connect to server: Connection refused',
+                        # libpq writes "Connection refused" with a capital C; the match must not
+                        # depend on which layer produced the message.
+                        'psql: error: connection to server at "127.0.0.1", port 55433 failed: '
+                        'Connection refused',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: No such file or directory'):
             with self.subTest(message=message):
                 # query fails once, then the retry re-runs the query and finds the database absent.
                 calls = self.run_database([self.failure(message), '', ''])
@@ -256,10 +260,14 @@ class DatabaseRetryTests(unittest.TestCase):
                 self.assertEqual(calls[2][3], 'createdb')
 
     def test_a_permanent_failure_is_not_retried(self):
-        # A syntax error is a real bug; retrying it only delays the report.
+        # A syntax error is a real bug; retrying it only delays the report. `already exists` is what
+        # a non-idempotent create turns into, and 'could not connect to server: perm denied' is a
+        # permanent permission failure that merely shares a prefix with the retryable refusal.
         for message in ('ERROR: syntax error at or near "SELEC"',
                         'permission denied for database postgres',
-                        'database "opennavo_e2e" already exists'):
+                        'database "opennavo_e2e" already exists',
+                        'could not connect to server: perm denied',
+                        'ERROR: relation "x" does not exist: No such file or directory candidate'):
             with self.subTest(message=message):
                 with self.assertRaises(e2e.StepError) as caught:
                     self.run_database([self.failure(message)])
@@ -308,6 +316,16 @@ class DatabaseRetryTests(unittest.TestCase):
             with self.assertRaises(e2e.StepError) as caught:
                 e2e.database(True)
         self.assertEqual(str(caught.exception), 'database: query opennavo_e2e exited 1')
+
+    def test_only_stderr_can_make_a_failure_retryable(self):
+        # psql and createdb report on stderr; stdout is data. Scanning both would let an echoed
+        # result that happens to contain a marker turn a permanent failure into five attempts.
+        with patch.object(e2e, 'compose') as compose, patch.object(e2e.time, 'sleep'):
+            compose.side_effect = subprocess.CalledProcessError(
+                1, ['docker'], output='the database system is starting up', stderr='')
+            with self.assertRaises(e2e.StepError):
+                e2e.database(True)
+        self.assertEqual(compose.call_count, 1, 'stdout must not be scanned for the whitelist')
 
     def test_the_retry_classification_never_reaches_the_log(self):
         # detail is used to classify and must never be printed: it can carry the command line.

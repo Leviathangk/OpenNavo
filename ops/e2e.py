@@ -40,17 +40,16 @@ class StepError(RuntimeError):
 
 
 def detail_of(error):
-    """A subprocess error's streams as text, whatever type subprocess produced.
+    """A subprocess error's stderr as text, whatever type subprocess produced.
 
-    text=True makes them str today; without it they would be bytes, and `str in bytes` raises
-    TypeError. Kept for classification only: the text is never printed (see labelled()).
+    text=True makes it str today; without it it would be bytes, and `str in bytes` raises TypeError.
+    stderr only: psql and createdb report there, and scanning stdout as well would widen the set of
+    text the retry whitelist is matched against. Kept for classification only, never printed.
     """
-    parts = []
-    for stream in (error.stderr, error.stdout):
-        if not stream:
-            continue
-        parts.append(stream.decode('utf-8', 'replace') if isinstance(stream, bytes) else stream)
-    return ''.join(parts)
+    stream = error.stderr
+    if not stream:
+        return ''
+    return stream.decode('utf-8', 'replace') if isinstance(stream, bytes) else stream
 
 
 def command(args, *, env=None, capture=True, cwd=ROOT):
@@ -204,17 +203,29 @@ def wait_ready(process):
 # Failures that a re-run of the whole sequence can resolve, never "the command is wrong".
 #
 # pg_isready answers during the init temporary server, so compose --wait can report healthy before
-# the instance accepts ordinary queries; createdb then fails inside that window. Only these exact
-# messages are retried: a syntax or permission error must fail on the first attempt.
+# the instance accepts ordinary queries; createdb then fails inside that window. Only these messages
+# are retried: a syntax or permission error must fail on the first attempt.
+#
+# Matched case-insensitively: libpq writes "Connection refused" while the server writes
+# "the database system is shutting down", and pinning the case would silently stop matching.
+#
+# The socket path is the actual signal for "the init server has gone and the real one is not
+# listening yet". A bare 'No such file or directory' was too wide: it also matched permanent
+# errors that merely mention that phrase, so the path is required.
+#
+# A bare 'could not connect' is not here either: libpq puts it in front of every failure to reach
+# the server, a permanent one included ("could not connect to server: Permission denied"), so it
+# would retry a real misconfiguration five times. The retryable reach failures are the refusal and
+# the missing socket, both listed.
 #
 # `duplicate key` is here because the init server creates the database itself, so createdb can lose
 # the race and find it already there. That is only retryable because retried() re-runs the whole
 # sequence: the next attempt's existence query returns 1 and the create is skipped. Retrying createdb
-# on its own would never converge — `already exists` is a different, permanent error.
+# on its own would never converge — `already exists` is a different, permanent error and is not here.
 TRANSIENT = ('the database system is shutting down', 'the database system is starting up',
              'terminating connection due to administrator command',
-             'connection refused', 'could not connect',
-             'No such file or directory',
+             'connection refused',
+             '/var/run/postgresql/.s.pgsql',
              'pg_database_datname_index')
 
 
@@ -229,7 +240,8 @@ def retried(stage, action, *, attempts=5, delay=1.0):
         try:
             return labelled(stage, action)
         except StepError as error:
-            if attempt == attempts or not any(marker in error.detail for marker in TRANSIENT):
+            detail = error.detail.lower()
+            if attempt == attempts or not any(marker in detail for marker in TRANSIENT):
                 raise
             time.sleep(delay)
 
