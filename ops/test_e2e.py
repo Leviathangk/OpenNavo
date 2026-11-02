@@ -214,5 +214,155 @@ class FailingStepTests(unittest.TestCase):
         self.assertEqual(str(e2e.StepError('seed-e2e', 1)), 'seed-e2e exited 1')
 
 
+class DatabaseRetryTests(unittest.TestCase):
+    """database() retries only a not-ready failure, and retries the whole sequence rather than one command."""
+
+    def failure(self, stderr, code=1):
+        return subprocess.CalledProcessError(code, ['docker'], output='', stderr=stderr)
+
+    def run_database(self, effects, reset=False):
+        # `effects` is consumed one per compose() call across every attempt, so a retry that re-runs
+        # the existence check is visible: the second attempt gets the next effect. The tail is padded
+        # so a test only has to spell out the calls it cares about.
+        effects = list(effects) + [''] * 8
+        calls = []
+
+        def fake_compose(ci, *args, **kwargs):
+            calls.append(args)
+            effect = effects.pop(0)
+            if isinstance(effect, Exception):
+                raise effect
+            return effect
+
+        with patch.object(e2e, 'compose', side_effect=fake_compose), \
+             patch.object(e2e, 'time') as clock:
+            clock.sleep = lambda seconds: None
+            e2e.database(True, reset=reset)
+        return calls
+
+    def test_a_transient_failure_is_retried_and_then_succeeds(self):
+        for message in ('the database system is shutting down',
+                        'the database system is starting up',
+                        'terminating connection due to administrator command',
+                        'could not connect to server: Connection refused',
+                        # libpq writes "Connection refused" with a capital C; the match must not
+                        # depend on which layer produced the message.
+                        'psql: error: connection to server at "127.0.0.1", port 55433 failed: '
+                        'Connection refused',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: No such file or directory'):
+            with self.subTest(message=message):
+                # query fails once, then the retry re-runs the query and finds the database absent.
+                calls = self.run_database([self.failure(message), '', ''])
+                self.assertEqual(len(calls), 3, 'the query was re-run, not resumed')
+                self.assertEqual(calls[0][3], 'psql')
+                self.assertEqual(calls[1][3], 'psql')
+                self.assertEqual(calls[2][3], 'createdb')
+
+    def test_a_permanent_failure_is_not_retried(self):
+        # A syntax error is a real bug; retrying it only delays the report. The FATAL cases are the
+        # ones that decide whether the reach markers are narrow enough: each arrives through libpq
+        # with the very socket path and "connection to server" lead-in a retryable failure carries,
+        # and only the words after them say the server answered and refused us. The last of those
+        # carries the socket path on its second hint line rather than in the failure itself, so it
+        # also pins that a marker must not key on "could not connect to server" or on the path.
+        for message in ('ERROR: syntax error at or near "SELEC"',
+                        'permission denied for database postgres',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: FATAL:  permission denied for database "postgres"',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: FATAL:  password authentication failed for user "opennavo"',
+                        'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: FATAL:  role "nosuchuser" does not exist',
+                        'psql: error: could not connect to server: Permission denied\n'
+                        '        Is the server running locally and accepting connections on Unix domain socket '
+                        '"/var/run/postgresql/.s.pgsql.5432"?',
+                        'could not connect to server: perm denied',
+                        'dial unix /var/run/docker.sock: connect: connection refused',
+                        'ERROR: relation "x" does not exist: No such file or directory candidate',
+                        'ERROR:  duplicate key value violates unique constraint "users_email_key"'):
+            with self.subTest(message=message):
+                with self.assertRaises(e2e.StepError) as caught:
+                    self.run_database([self.failure(message)])
+                self.assertEqual(caught.exception.stage, 'database: query opennavo_e2e')
+                self.assertEqual(caught.exception.returncode, 1)
+
+    def test_five_transient_failures_stop_at_five_attempts(self):
+        with patch.object(e2e, 'compose') as compose, patch.object(e2e.time, 'sleep') as sleep:
+            compose.side_effect = self.failure('the database system is shutting down')
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.database(True)
+        self.assertEqual(caught.exception.stage, 'database: query opennavo_e2e')
+        self.assertEqual(compose.call_count, 5, 'exactly five attempts, then raise')
+        self.assertEqual(sleep.call_count, 4, 'no sleep after the final attempt')
+
+    def test_a_raced_create_converges_because_the_whole_sequence_re_runs(self):
+        # The window this exists for: the query says the database is absent, but createdb loses a race
+        # with the init server and fails with `duplicate key`. Retrying createdb alone cannot recover
+        # (it is not idempotent); re-running the sequence must see it now exists and skip the create.
+        calls = self.run_database([
+            '',                                                          # attempt 1: query -> absent
+            self.failure('duplicate key value violates unique constraint "pg_database_datname_index"'),
+            '1',                                                         # attempt 2: query -> now exists
+        ])
+        self.assertEqual([call[3] for call in calls], ['psql', 'createdb', 'psql'],
+                         'the retry re-queried and did not retry createdb')
+        self.assertNotIn('createdb', [call[3] for call in calls[2:]], 'no second createdb')
+
+    def test_the_other_spelling_of_the_same_race_converges(self):
+        # The same loss reported the other way. The init server creates the database itself, so a
+        # create that reaches the server after the existence check finds it there; Postgres says
+        # `already exists` rather than raising a unique violation. It is retryable only because
+        # step_database() runs createdb solely when the query said absent, so here this message
+        # cannot mean anything but the race. Retrying the sequence resolves it exactly as above.
+        calls = self.run_database([
+            '',                                                          # attempt 1: query -> absent
+            self.failure('createdb: error: database creation failed: ERROR:  database '
+                         '"opennavo_e2e" already exists'),
+            '1',                                                         # attempt 2: query -> now exists
+        ])
+        self.assertEqual([call[3] for call in calls], ['psql', 'createdb', 'psql'],
+                         'the retry re-queried and did not retry createdb')
+        self.assertNotIn('createdb', [call[3] for call in calls[2:]], 'no second createdb')
+
+    def test_a_reset_retries_from_the_query_not_from_the_failed_statement(self):
+        # The reset DDL is not idempotent either; a transient failure there must restart the sequence.
+        calls = self.run_database([
+            '1',                                                        # attempt 1: query -> exists, no create
+            self.failure('terminating connection due to administrator command'),   # reset DDL fails here
+            '1',                                                        # attempt 2 starts at the query
+        ], reset=True)
+        # Attempt 1 stops at the DDL (2 calls). Attempt 2 runs it all: query, DDL, two FLUSHDBs.
+        self.assertEqual([call[3] for call in calls],
+                         ['psql', 'psql', 'psql', 'psql', 'redis-cli', 'redis-cli'])
+        self.assertIn("SELECT 1 FROM pg_database", calls[2][calls[2].index('-Atc') + 1],
+                      'the retry started again at the existence query, not at the failed DDL')
+
+    def test_the_retry_stage_name_keeps_the_step_that_failed(self):
+        # Retrying must not flatten the stage back to "database": #141's whole point was naming the step.
+        with patch.object(e2e, 'compose') as compose, patch.object(e2e.time, 'sleep'):
+            compose.side_effect = self.failure('the database system is shutting down')
+            with self.assertRaises(e2e.StepError) as caught:
+                e2e.database(True)
+        self.assertEqual(str(caught.exception), 'database: query opennavo_e2e exited 1')
+
+    def test_only_stderr_can_make_a_failure_retryable(self):
+        # psql and createdb report on stderr; stdout is data. Scanning both would let an echoed
+        # result that happens to contain a marker turn a permanent failure into five attempts.
+        with patch.object(e2e, 'compose') as compose, patch.object(e2e.time, 'sleep'):
+            compose.side_effect = subprocess.CalledProcessError(
+                1, ['docker'], output='the database system is starting up', stderr='')
+            with self.assertRaises(e2e.StepError):
+                e2e.database(True)
+        self.assertEqual(compose.call_count, 1, 'stdout must not be scanned for the whitelist')
+
+    def test_the_retry_classification_never_reaches_the_log(self):
+        # detail is used to classify and must never be printed: it can carry the command line.
+        error = e2e.StepError('database: create opennavo_e2e', 1,
+                              'psql: error: connection to server failed')
+        self.assertNotIn('psql: error', str(error))
+        self.assertIn('psql: error', error.detail)
+
+
 if __name__ == '__main__':
     unittest.main()

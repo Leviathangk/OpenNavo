@@ -28,12 +28,28 @@ API_BASE = 'http://127.0.0.1:18082'
 class StepError(RuntimeError):
     """A setup step failed. Carries only the stage name and exit status: never the command line or environment."""
 
-    def __init__(self, stage, returncode=None):
+    def __init__(self, stage, returncode=None, detail=''):
         # returncode is None when the step never started (a missing binary, a full disk): OSError's own
         # message names the path it could not open, which is the command line, so it is not used either.
         super().__init__(f'{stage} exited {returncode}' if returncode is not None else f'{stage} could not start')
         self.stage = stage
         self.returncode = returncode
+        # The step's own output, for classifying a failure. Never printed: it can name the command
+        # line and the connection settings, and a streaming step already printed it.
+        self.detail = detail
+
+
+def detail_of(error):
+    """A subprocess error's stderr as text, whatever type subprocess produced.
+
+    text=True makes it str today; without it it would be bytes, and `str in bytes` raises TypeError.
+    stderr only: psql and createdb report there, and scanning stdout as well would widen the set of
+    text the retry whitelist is matched against. Kept for classification only, never printed.
+    """
+    stream = error.stderr
+    if not stream:
+        return ''
+    return stream.decode('utf-8', 'replace') if isinstance(stream, bytes) else stream
 
 
 def command(args, *, env=None, capture=True, cwd=ROOT):
@@ -53,7 +69,7 @@ def labelled(stage, action):
     try:
         return action()
     except subprocess.CalledProcessError as error:
-        raise StepError(stage, error.returncode) from None
+        raise StepError(stage, error.returncode, detail_of(error)) from None
     except OSError:
         raise StepError(stage) from None
 
@@ -184,25 +200,98 @@ def wait_ready(process):
     raise RuntimeError('E2E API readiness timed out; see apps/server/tmp/e2e/api.log')
 
 
+# Failures that a re-run of the whole sequence can resolve, never "the command is wrong".
+#
+# pg_isready answers during the init temporary server, so compose --wait can report healthy before
+# the instance accepts ordinary queries; createdb then fails inside that window. Only these messages
+# are retried: a syntax or permission error must fail on the first attempt.
+#
+# Matched case-insensitively: libpq writes "Connection refused" while the server writes
+# "the database system is shutting down", and pinning the case would silently stop matching.
+#
+# The refusal is a tuple, not a bare string: every one of these must appear. `connection refused`
+# alone also ends Docker's "dial unix /var/run/docker.sock: connect: connection refused", which
+# retrying cannot fix, and a daemon that is down would otherwise cost four sleeps before the real
+# error surfaced. libpq names the server it failed to reach in both of its spellings ("connection
+# to server at ... failed: Connection refused" and "could not connect to server: Connection
+# refused"), so "to server" is the lead-in that separates postgres from the Docker socket. Bare
+# 'connection to server' would be no anchor at all: libpq prefixes every failure with it.
+#
+# A bare 'No such file or directory' was too wide, and so was the socket path it was replaced
+# with: libpq prefixes every failure to reach a socket with that path, a permanent one included
+# (".../PGSQL.5432" failed: FATAL: password authentication failed), so the path alone retried
+# real misconfigurations five times. The phrase only follows "failed:" when the socket is actually
+# missing, so that is what is matched.
+#
+# A bare 'could not connect' is not here either, for the same reason: libpq puts it in front of
+# every failure to reach the server, a permanent one included.
+#
+# The last two are the same race spelled two ways. The init server creates the database itself, so
+# createdb can lose and find it already there: either as a unique violation naming pg_database's
+# datname index, or as `already exists` when the create reaches the server after the check.
+# `already exists` is retryable *here and only here* because step_database() runs createdb solely
+# when the existence query said absent, so it cannot mean anything but this race. Both converge
+# only because retried() re-runs the whole sequence: the next attempt's existence query returns 1
+# and the create is skipped. Retrying createdb on its own would never converge.
+TRANSIENT = ('the database system is shutting down', 'the database system is starting up',
+             'terminating connection due to administrator command',
+             ('to server', 'connection refused'),
+             'failed: no such file or directory',
+             'pg_database_datname_index',
+             f'database "{DB_NAME}" already exists')
+
+
+def transient(detail):
+    """Whether a failure's detail matches a retryable marker.
+
+    A marker is a string (that substring) or a tuple (every substring). The tuple form exists so a
+    phrase too generic to stand alone can be pinned to the context that makes it retryable.
+    """
+    return any(all(part in detail for part in marker) if isinstance(marker, tuple)
+               else marker in detail
+               for marker in TRANSIENT)
+
+
+def retried(stage, action, *, attempts=5, delay=1.0):
+    """Run one setup action, retrying only a recognised not-ready failure.
+
+    The caller passes a whole sequence (database() as a unit), not a single command: createdb is
+    not idempotent, so retrying it alone cannot converge. Re-entering the sequence re-runs its
+    existence check, which is what makes a raced create resolve on the next attempt.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return labelled(stage, action)
+        except StepError as error:
+            detail = error.detail.lower()
+            if attempt == attempts or not transient(detail):
+                raise
+            time.sleep(delay)
+
+
 def database(ci, *, reset=False):
     # Both calls capture their output, so a failure there reports nothing at all; name the stage so
     # the job log says which command failed even before anyone can see the server's own message.
-    exists = labelled('database: query opennavo_e2e', lambda: compose(
-        ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', 'postgres',
-        '-Atc', "SELECT 1 FROM pg_database WHERE datname='opennavo_e2e'"))
-    if exists != '1':
-        labelled('database: create opennavo_e2e', lambda: compose(
-            ci, 'exec', '-T', 'postgres', 'createdb', '-U', 'opennavo', DB_NAME))
-    if reset:
-        # Database name and Redis database index are constants; never accept user-supplied development connections.
-        # Migrations also create seo_archive (00110), so a reset drops it with public.
-        labelled('database: reset schema', lambda: compose(
-            ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', DB_NAME, '-v', 'ON_ERROR_STOP=1',
-            '-c', 'DROP SCHEMA IF EXISTS seo_archive CASCADE; DROP SCHEMA public CASCADE; '
-            'CREATE SCHEMA public AUTHORIZATION opennavo;'))
-        for number in (REDIS_DB, WEB_REDIS_DB):
-            labelled(f'database: flush redis db {number}', lambda number=number: compose(
-                ci, 'exec', '-T', 'redis', 'redis-cli', '-n', str(number), 'FLUSHDB'))
+    def step_database():
+        exists = labelled('database: query opennavo_e2e', lambda: compose(
+            ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', 'postgres',
+            '-Atc', "SELECT 1 FROM pg_database WHERE datname='opennavo_e2e'"))
+        if exists != '1':
+            # Reached again on a retry, so a create that raced the init server is skipped, not repeated.
+            labelled('database: create opennavo_e2e', lambda: compose(
+                ci, 'exec', '-T', 'postgres', 'createdb', '-U', 'opennavo', DB_NAME))
+        if reset:
+            # Database name and Redis database index are constants; never accept user-supplied development connections.
+            # Migrations also create seo_archive (00110), so a reset drops it with public.
+            labelled('database: reset schema', lambda: compose(
+                ci, 'exec', '-T', 'postgres', 'psql', '-U', 'opennavo', '-d', DB_NAME, '-v', 'ON_ERROR_STOP=1',
+                '-c', 'DROP SCHEMA IF EXISTS seo_archive CASCADE; DROP SCHEMA public CASCADE; '
+                'CREATE SCHEMA public AUTHORIZATION opennavo;'))
+            for number in (REDIS_DB, WEB_REDIS_DB):
+                labelled(f'database: flush redis db {number}', lambda number=number: compose(
+                    ci, 'exec', '-T', 'redis', 'redis-cli', '-n', str(number), 'FLUSHDB'))
+
+    retried('database', step_database)
 
 
 def prepare(ci, *, reset=False):
