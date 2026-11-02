@@ -291,15 +291,28 @@ snapshot time no matter what the host ran. If you copy this block somewhere else
 field name.
 
 **`zfs` needs `-H`, and it is the only one of the three.** `lvs` is already asked for
-`--noheadings` and `btrfs subvolume list` prints no header, but `zfs list` prints `NAME` and
-`CREATION` even when the snapshot list is empty. Without `-H` the emptiness test below reads
+`--noheadings` and `btrfs subvolume list` prints no header, but `zfs list` prints its header
+row regardless of whether any dataset matched. Without `-H` the emptiness test below reads
 that header as a row, so a host with no ZFS snapshots at all would be reported as having some.
-Measured with a stub that imitates the header:
+
+OpenZFS documents the flag in `zfs-list(8)`:
+
+```
+-H    Used for scripting mode. Do not print headers and separate fields by a single tab
+      instead of arbitrary white space.
+```
+
+Read that as: the header is on by default, and `-H` is the switch that turns it off. The
+effect on this block, run against a stub that imitates the default header:
 
 ```
 zfs list    -t snapshot -o name,creation   -> OUT = 'NAME                  CREATION'  -> "listed no snapshots" never fires
 zfs list -H -t snapshot -o name,creation   -> OUT = ''                                  -> "listed no snapshots" fires
 ```
+
+The stub covers the block's branches; the man page is what says the real binary behaves that
+way. A container cannot load the ZFS kernel module, so the real `zfs list` could not be run
+here — if you have a ZFS host, confirm it there before trusting row 1 on one.
 
 Keep the `-H` if you copy this block.
 
