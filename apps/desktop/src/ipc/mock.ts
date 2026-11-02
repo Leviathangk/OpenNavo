@@ -495,32 +495,40 @@ export function installMockIpc(
           bytes: null,
           permanent: false
         }
-      : flags.has('deeplink-confirm-install')
+      : flags.has('mcp-confirm-cleanup')
         ? {
-            id: 'confirm-3',
-            action: 'install',
-            name: 'Ghostty',
-            target: 'cask/ghostty',
+            id: 'confirm-5',
+            action: 'cleanup',
+            name: '',
+            target: '',
             path: null,
-            signer: null,
-            teamId: null,
-            callerPath: null,
-            mayComeFrom: null,
-            claimedName: null,
+            signer: 'Developer ID Application: Anthropic PBC',
+            teamId: 'Q6L2SF6YDW',
+            callerPath: '/Applications/Claude.app/Contents/Helpers/node',
+            mayComeFrom: 'Claude',
+            claimedName: 'claude-ai',
             allowAfterMs: 1000,
-            origin: 'deepLink',
-            source: 'opennavo://package/cask/ghostty?action=install',
-            items: [],
-            installCount: 0,
-            bytes: null,
+            origin: 'mcp',
+            source: null,
+            items: [
+              {
+                name: 'Xcode DerivedData',
+                target: '/Users/mock/Library/Developer/Xcode/DerivedData',
+                skip: null,
+                note: null
+              },
+              { name: 'logs', target: '/Users/mock/Library/Logs/DiagnosticReports', skip: null, note: 'cleanupGroup' }
+            ],
+            installCount: 2,
+            bytes: 2048,
             permanent: false
           }
-        : flags.has('deeplink-confirm-collection')
+        : flags.has('deeplink-confirm-install')
           ? {
-              id: 'confirm-4',
-              action: 'installCollection',
-              name: 'dev-setup',
-              target: 'collection/dev-setup',
+              id: 'confirm-3',
+              action: 'install',
+              name: 'Ghostty',
+              target: 'cask/ghostty',
               path: null,
               signer: null,
               teamId: null,
@@ -529,20 +537,40 @@ export function installMockIpc(
               claimedName: null,
               allowAfterMs: 1000,
               origin: 'deepLink',
-              source: 'opennavo://collection/dev-setup?action=install',
-              items: [
-                { name: 'Ghostty', target: 'cask/ghostty', skip: null, note: null },
-                { name: 'Visual Studio Code', target: 'cask/visual-studio-code', skip: null, note: null },
-                { name: 'Rectangle', target: 'cask/rectangle', skip: 'installed', note: null },
-                { name: 'Legacy Tool', target: 'cask/legacy-tool', skip: 'disabled', note: null },
-                { name: 'Raycast', target: 'cask/raycast', skip: null, note: null },
-                { name: 'ripgrep', target: 'formula/ripgrep', skip: 'unsupported', note: null }
-              ],
-              installCount: 3,
+              source: 'opennavo://package/cask/ghostty?action=install',
+              items: [],
+              installCount: 0,
               bytes: null,
               permanent: false
             }
-          : ownConfirm(flags);
+          : flags.has('deeplink-confirm-collection')
+            ? {
+                id: 'confirm-4',
+                action: 'installCollection',
+                name: 'dev-setup',
+                target: 'collection/dev-setup',
+                path: null,
+                signer: null,
+                teamId: null,
+                callerPath: null,
+                mayComeFrom: null,
+                claimedName: null,
+                allowAfterMs: 1000,
+                origin: 'deepLink',
+                source: 'opennavo://collection/dev-setup?action=install',
+                items: [
+                  { name: 'Ghostty', target: 'cask/ghostty', skip: null, note: null },
+                  { name: 'Visual Studio Code', target: 'cask/visual-studio-code', skip: null, note: null },
+                  { name: 'Rectangle', target: 'cask/rectangle', skip: 'installed', note: null },
+                  { name: 'Legacy Tool', target: 'cask/legacy-tool', skip: 'disabled', note: null },
+                  { name: 'Raycast', target: 'cask/raycast', skip: null, note: null },
+                  { name: 'ripgrep', target: 'formula/ripgrep', skip: 'unsupported', note: null }
+                ],
+                installCount: 3,
+                bytes: null,
+                permanent: false
+              }
+            : ownConfirm(flags);
   const mcpOffFailed = () => {
     const message = 'Permission denied (os error 13)';
     mcp = { ...mcp, error: `E_MCP_BROKER: ${message}` };

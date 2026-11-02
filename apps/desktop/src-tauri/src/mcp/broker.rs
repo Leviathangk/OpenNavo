@@ -983,6 +983,65 @@ impl ToolHost for LiveTools {
         Ok(json!({ "task": task }))
     }
 
+    fn scan_cleanup(&self) -> Result<Value, ToolError> {
+        // The scan is a real filesystem walk, so it runs on the blocking pool.
+        // It never deletes: `scan_for_command` only measures and remembers the
+        // report, and the tool filters what came back so a client never even
+        // learns the id of an item it may not remove.
+        let core = self.core.clone();
+        let report = tauri::async_runtime::block_on(async {
+            let permissions = core.permissions().await.map_err(tool_error)?;
+            let request_id = format!("mcp-scan-{}", uuid::Uuid::new_v4());
+            core.queue
+                .cleanup_engine
+                .scan_for_command(request_id, None, permissions, Some(core.clone()))
+                .await
+                .map_err(tool_error)
+        })?;
+        let allowed = super::cleanup::candidates(&report);
+        let rows: Vec<Value> = allowed
+            .iter()
+            .filter(|(_, item)| super::cleanup::kind_allowed(item.kind))
+            .map(|(category, item)| {
+                let category_key = serde_json::to_value(category.key)
+                    .ok()
+                    .and_then(|value| value.as_str().map(str::to_owned))
+                    .unwrap_or_default();
+                let group = category
+                    .groups
+                    .iter()
+                    .find(|group| group.items.iter().any(|candidate| candidate.id == item.id));
+                json!({
+                    "id": item.id,
+                    "category": category_key,
+                    "name": group.map(|group| group.title.clone()).unwrap_or_default(),
+                    "path": item.path,
+                    "kind": match item.kind {
+                        crate::cleanup::types::CleanupItemKind::Dir => "dir",
+                        crate::cleanup::types::CleanupItemKind::File => "file",
+                        crate::cleanup::types::CleanupItemKind::Command => "command",
+                    },
+                    "bytes": item.size_bytes,
+                    "deleteMode": match item.delete_mode {
+                        crate::model::DeleteMode::Trash => "trash",
+                        crate::model::DeleteMode::Delete => "delete",
+                    },
+                })
+            })
+            .collect();
+        let bytes: u64 = allowed
+            .iter()
+            .filter(|(_, item)| super::cleanup::kind_allowed(item.kind))
+            .filter_map(|(_, item)| item.size_bytes)
+            .sum();
+        Ok(json!({
+            "reportId": report.report_id,
+            "expiresAt": report.expires_at,
+            "reclaimableBytes": bytes,
+            "items": rows,
+        }))
+    }
+
     fn cancel_writes(&self) {
         self.writes.cancel();
     }
@@ -1434,11 +1493,13 @@ mod tests {
                 "get_catalog_item",
                 "list_installed_apps",
                 "list_updatable_apps",
-                "get_task"
+                "get_task",
+                "scan_cleanup"
             ]
         );
         assert!(!names.contains(&"install_app"));
         assert!(!names.contains(&"uninstall_app"));
+        assert!(!names.contains(&"clean_cache"));
 
         for (name, code) in [
             ("install_app", "E_MCP_WRITE_DISABLED"),

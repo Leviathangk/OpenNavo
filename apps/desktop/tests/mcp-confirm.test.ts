@@ -209,6 +209,21 @@ describe("OpenNavo's own destructive confirmations (#77)", () => {
     expect(wrapper.text()).toContain('日志与崩溃报告');
     expect(wrapper.text()).not.toMatch(/\blogs\b/);
   });
+
+  it('Keeps the file list for a cleanup an AI app asked for, and still names that app', async () => {
+    // The Rust side gives an MCP cleanup the same file list OpenNavo's own window
+    // draws, so the list must stay; the caller line must appear, or the user would
+    // read it as something OpenNavo decided to do by itself.
+    const wrapper = await page('mcp-confirm-cleanup');
+    expect(wrapper.text()).toContain('确认清理');
+    expect(wrapper.get('[data-test="mcp-confirm-items"]').findAll('li').length).toBeGreaterThan(0);
+    expect(wrapper.text()).toContain('日志与崩溃报告');
+    expect(wrapper.get('[data-test="mcp-confirm-caller"]').text()).toContain('Developer ID Application: Anthropic PBC');
+    expect(wrapper.get('[data-test="mcp-confirm-team"]').text()).toBe('Q6L2SF6YDW');
+    expect(wrapper.get('[data-test="mcp-confirm-footer"]').text()).toBe(
+      '移到废纸篓的项目在清空前可以放回；命令类清理无法撤销。'
+    );
+  });
 });
 
 describe('Confirmation keyboard', () => {

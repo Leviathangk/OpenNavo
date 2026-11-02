@@ -87,22 +87,26 @@ const isInstall = computed(() => view.value?.action !== 'uninstall');
 const deepLink = computed(() => view.value?.origin === 'deepLink');
 // OpenNavo's own window asked (Rust builds the list from its plan; the main window can't answer it).
 const fromApp = computed(() => view.value?.origin === 'app');
+// A cleanup asked for over Local MCP arrives with the same file list OpenNavo's own window draws, but
+// an AI app asked for it: it keeps that layout and still names its caller like every other MCP request.
+const mcpCleanup = computed(() => view.value?.origin === 'mcp' && view.value?.action === 'cleanup');
+const ownLayout = computed(() => fromApp.value || mcpCleanup.value);
 const isCollection = computed(() => view.value?.action === 'installCollection');
 const isBrewfile = computed(() => fromApp.value && view.value?.action === 'brewfileInstall');
-const appAction = computed(() => (fromApp.value ? (view.value?.action ?? '') : ''));
-const hasList = computed(() => isCollection.value || (fromApp.value && Boolean(view.value?.items.length)));
+const appAction = computed(() => (ownLayout.value ? (view.value?.action ?? '') : ''));
+const hasList = computed(() => isCollection.value || (ownLayout.value && Boolean(view.value?.items.length)));
 const title = computed(() => {
-  if (fromApp.value) return t(`mcpConfirm.own.${appAction.value}.title`);
+  if (ownLayout.value) return t(`mcpConfirm.own.${appAction.value}.title`);
   return deepLink.value ? t('mcpConfirm.titleDeepLink') : t('mcpConfirm.title');
 });
 const intro = computed(() => {
-  if (fromApp.value) return t(`mcpConfirm.own.${appAction.value}.intro`);
+  if (ownLayout.value) return t(`mcpConfirm.own.${appAction.value}.intro`);
   if (isCollection.value) return t('mcpConfirm.introCollection');
   if (deepLink.value) return t('mcpConfirm.introDeepLink');
   return isInstall.value ? t('mcpConfirm.introInstall') : t('mcpConfirm.introUninstall');
 });
 const badge = computed(() => {
-  if (fromApp.value) return t(`mcpConfirm.own.${appAction.value}.badge`);
+  if (ownLayout.value) return t(`mcpConfirm.own.${appAction.value}.badge`);
   if (isCollection.value) return t('mcpConfirm.collection');
   return isInstall.value ? t('mcpConfirm.install') : t('mcpConfirm.uninstall');
 });
@@ -118,12 +122,12 @@ const summary = computed(() => {
   const size = formatBytes(current.bytes ?? 0, { locale: appLocale.value });
   return t('mcpConfirm.own.summary', { count: current.installCount, size }, { plural: current.installCount });
 });
-// Local MCP and deep links keep their line. OpenNavo's own requests say what happens to the files instead; when the red
-// "can't be recovered" line is already shown, it says it once.
+// Local MCP and deep links keep their line. A request that shows the file list says what happens to the
+// files instead; when the red "can't be recovered" line is already shown, it says it once.
 const footer = computed(() => {
   const current = view.value;
   if (!current) return '';
-  if (!fromApp.value) return t('mcpConfirm.footer');
+  if (!ownLayout.value) return t('mcpConfirm.footer');
   if (current.permanent) return '';
   if (current.action === 'uninstall') return t('mcpConfirm.own.footer.trash');
   if (current.action === 'cleanup') return t('mcpConfirm.own.footer.cleanup');
@@ -132,7 +136,9 @@ const footer = computed(() => {
 });
 // Rust lists at most 200 rows; the count above still covers everything.
 const unlisted = computed(() =>
-  fromApp.value && !isBrewfile.value && view.value ? Math.max(0, view.value.installCount - view.value.items.length) : 0
+  ownLayout.value && !isBrewfile.value && view.value
+    ? Math.max(0, view.value.installCount - view.value.items.length)
+    : 0
 );
 </script>
 

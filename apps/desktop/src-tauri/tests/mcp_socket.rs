@@ -426,11 +426,17 @@ fn read_tools_do_not_expose_write_names() {
             "get_catalog_item",
             "list_installed_apps",
             "list_updatable_apps",
-            "get_task"
+            "get_task",
+            "scan_cleanup"
         ]
     );
 
-    for forbidden in ["install_app", "uninstall_app", "get_latest_scan_result"] {
+    for forbidden in [
+        "install_app",
+        "uninstall_app",
+        "clean_cache",
+        "get_latest_scan_result",
+    ] {
         assert!(
             !names.contains(&forbidden),
             "{forbidden} must not be listed"

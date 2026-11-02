@@ -855,10 +855,16 @@ mod tests {
                 "get_catalog_item",
                 "list_installed_apps",
                 "list_updatable_apps",
-                "get_task"
+                "get_task",
+                "scan_cleanup"
             ]
         );
-        for forbidden in ["install_app", "uninstall_app", "get_latest_scan_result"] {
+        for forbidden in [
+            "install_app",
+            "uninstall_app",
+            "clean_cache",
+            "get_latest_scan_result",
+        ] {
             assert!(
                 !names.contains(&forbidden),
                 "{forbidden} must not be listed"
@@ -868,7 +874,7 @@ mod tests {
 
     #[test]
     fn write_tools_are_refused_while_writes_are_off() {
-        for name in ["install_app", "uninstall_app"] {
+        for name in ["install_app", "uninstall_app", "clean_cache"] {
             let input = with_initialize(&format!(
                 "{{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{{\"name\":\"{name}\",\"arguments\":{{}}}}}}\n"
             ));

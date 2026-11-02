@@ -1,4 +1,5 @@
-//! App-side Local MCP write tools: `install_app` and `uninstall_app`.
+//! App-side Local MCP write tools: `install_app`, `uninstall_app` and
+//! `clean_cache`.
 //!
 //! Every write goes through the same steps, in order:
 //! 1. The audit log must be writable, otherwise the write is refused.
@@ -26,7 +27,7 @@ use super::{
 };
 use crate::{
     AppError,
-    confirmation::{ConfirmationRequest, ConfirmationService, McpConfirmView},
+    confirmation::{ConfirmationRequest, ConfirmationService, McpConfirmView, display_value},
     core::DesktopCore,
     model::{TaskKind, TaskTarget, TaskTrigger},
     queue::ResolvedInstallPlan,
@@ -57,10 +58,51 @@ enum Plan {
         path: String,
         name: String,
     },
+    Clean {
+        report_id: String,
+        item_ids: Vec<String>,
+        digest: String,
+        view: Box<McpConfirmView>,
+    },
+}
+
+/// The cleanup rule, applied to a selection that arrives with a report id.
+///
+/// The scan tool already left unreachable items out of its answer, but a report
+/// id outlives one conversation: an older report (from before a rule change, or
+/// from a scan the client only half read) is still selectable by id. So the rule
+/// runs again here, on the report the grant will actually execute against.
+fn plan_clean_selection(
+    report: &crate::cleanup::types::CleanupReport,
+    ids: &[String],
+) -> Result<(), AppError> {
+    let chosen = super::cleanup::check_selection(report, ids).map_err(selection_error)?;
+    if chosen.is_empty() {
+        return Err(AppError::new("E_INVALID_ARG", "item_ids"));
+    }
+    Ok(())
 }
 
 fn tool_error(error: AppError) -> ToolError {
     ToolError::new(error.code, error.message)
+}
+
+/// A selection the cleanup rule refuses, as a tool error. The message names no
+/// path: the caller is told which id it may not use, not what is on disk.
+fn selection_error(error: super::cleanup::SelectionError) -> AppError {
+    use super::cleanup::SelectionError;
+    match error {
+        SelectionError::NotRemovable(id) => AppError::new(
+            "E_NOT_REMOVABLE",
+            format!(
+                "clean_cache cannot remove item {id}: it is not a regenerable cache, or the scan could not measure it completely."
+            ),
+        ),
+        SelectionError::Duplicate(id) => {
+            AppError::new("E_INVALID_ARG", format!("item {id} is named twice"))
+        }
+        SelectionError::Empty => AppError::new("E_INVALID_ARG", "no items selected"),
+    }
 }
 
 fn block_on<T>(future: impl std::future::Future<Output = T>) -> T {
@@ -97,6 +139,7 @@ impl Writes {
             plan_digest: match &plan {
                 Plan::Install { plan, .. } => Some(plan.digest()),
                 Plan::Uninstall { plan_id, .. } => Some(plan_id.clone()),
+                Plan::Clean { digest, .. } => Some(digest.clone()),
             },
         };
         let service = match self.confirmation() {
@@ -188,7 +231,40 @@ impl Writes {
         match request {
             WriteRequest::Install { kind, token } => self.plan_install(kind, token).await,
             WriteRequest::Uninstall { path } => self.plan_uninstall(path).await,
+            WriteRequest::Clean {
+                report_id,
+                item_ids,
+            } => self.plan_clean(report_id, item_ids).await,
         }
+    }
+
+    /// Plan a cleanup. The engine builds the very view the user will see, and
+    /// the digest of that selection travels with the grant, so the list in the
+    /// dialog is the list that runs.
+    async fn plan_clean(&self, report_id: &str, item_ids: &[String]) -> Result<Plan, ToolError> {
+        let engine = self.core.queue.cleanup_engine.clone();
+        let report_id = report_id.to_owned();
+        let item_ids = item_ids.to_vec();
+        let (digest, view) = {
+            let engine = engine.clone();
+            let report_id = report_id.clone();
+            let item_ids = item_ids.clone();
+            crate::blocking(move || {
+                let entry = engine.cached(&report_id, crate::uninstall::now())?;
+                // The same rule the scan tool applied, checked again here: a client
+                // could have kept ids from an older report, or never seen this one.
+                plan_clean_selection(&entry.report, &item_ids)?;
+                engine.confirm_plan(&report_id, &item_ids)
+            })
+            .await
+            .map_err(tool_error)?
+        };
+        Ok(Plan::Clean {
+            report_id,
+            item_ids,
+            digest,
+            view: Box::new(view),
+        })
     }
 
     async fn plan_install(&self, kind: &str, token: &str) -> Result<Plan, ToolError> {
@@ -269,18 +345,10 @@ impl Writes {
         if app.running {
             return Err(app_running());
         }
-        if app.source == AppSource::Homebrew {
-            return Err(ToolError::new(
-                "E_UNSUPPORTED",
-                "This app is managed by Homebrew. Uninstalling it would remove more than the app, so ask the user to uninstall it in OpenNavo.",
-            ));
-        }
-        if !app.removable || app.protected_reason.is_some() {
-            return Err(ToolError::new(
-                "E_PROTECTED",
-                "OpenNavo does not remove this app.",
-            ));
-        }
+        // The order matters: Homebrew before the generic protected check, so a
+        // Homebrew app gets the reason that says what to do instead of a bare
+        // "OpenNavo does not remove this app".
+        uninstall_refusal(&app)?;
         let permissions = self.core.permissions().await.map_err(tool_error)?;
         let request_id = format!("mcp-{}", uuid::Uuid::new_v4());
         let plan = self
@@ -385,6 +453,29 @@ impl Writes {
                 Ok((
                     label,
                     json!({ "status": "queued", "movesToTrash": [path], "task": task }),
+                ))
+            }
+            Plan::Clean {
+                report_id,
+                item_ids,
+                digest,
+                ..
+            } => {
+                if !(context.still_valid)() {
+                    return Err(invalidated());
+                }
+                let queue = self.core.queue.clone();
+                let engine = queue.cleanup_engine.clone();
+                let task = crate::blocking(move || {
+                    // The grant the user gave is the digest of the list the
+                    // dialog showed; the engine refuses if the selection moved.
+                    engine.enqueue_confirmed(&queue, &report_id, item_ids, &digest)
+                })
+                .await
+                .map_err(tool_error)?;
+                Ok((
+                    format!("queued:{}", task.id),
+                    json!({ "status": "queued", "task": task }),
                 ))
             }
         }
@@ -498,11 +589,57 @@ fn app_running() -> ToolError {
     )
 }
 
+/// Whether an installed app may be uninstalled through Local MCP at all, before
+/// any plan is built. Kept apart from `plan_uninstall` so the order of the two
+/// refusals is testable without an app inventory on disk.
+fn uninstall_refusal(app: &crate::uninstall::LocalApp) -> Result<(), ToolError> {
+    if app.source == AppSource::Homebrew {
+        return Err(homebrew_managed(&app.name));
+    }
+    if !app.removable || app.protected_reason.is_some() {
+        return Err(ToolError::new(
+            "E_PROTECTED",
+            "OpenNavo does not remove this app. Its Uninstall page can show why.",
+        ));
+    }
+    Ok(())
+}
+
+/// A Homebrew-managed app is never uninstalled through Local MCP.
+///
+/// `brew uninstall` also removes that cask's dependencies and anything else the
+/// formula owns, which reaches past the one app the confirmation dialog names.
+/// The app's own Uninstall page can show the whole footprint; a tool call cannot,
+/// so this stays closed. The message tells the client what to do next, and it
+/// does not name the cask: that is Homebrew's bookkeeping, not the user's app.
+fn homebrew_managed(name: &str) -> ToolError {
+    let app = display_value(name);
+    ToolError::new(
+        "E_UNSUPPORTED",
+        format!(
+            "OpenNavo does not uninstall Homebrew-managed apps over Local MCP: Homebrew also removes that package's dependencies, which is more than this confirmation can show. Ask the user to uninstall {app} in OpenNavo's Uninstall page, which lists everything that would be removed."
+        ),
+    )
+}
+
 /// Content of the confirmation window. `McpConfirmView::new` filters every string for display.
 fn confirm_view(plan: &Plan, identity: &Identity) -> McpConfirmView {
     let caller = &identity.caller;
     let signer = caller.signer.as_deref().filter(|_| caller.signed);
     match plan {
+        // The cleanup engine builds its own list (paths, sizes, irreversibility),
+        // the same one OpenNavo's own window shows. An AI app asked for it, so the
+        // origin says `mcp` and the caller is added here: the window keeps the
+        // file-list layout and still names who asked.
+        Plan::Clean { view, .. } => McpConfirmView {
+            origin: "mcp".into(),
+            signer: signer.map(display_value),
+            team_id: caller.team_id.as_deref().map(display_value),
+            caller_path: caller.path.as_deref().map(display_value),
+            may_come_from: caller.may_come_from.as_deref().map(display_value),
+            claimed_name: caller.claimed_name.as_deref().map(display_value),
+            ..view.as_ref().clone()
+        },
         Plan::Install { plan, name } => {
             let target = plan.command_target();
             McpConfirmView::new(
@@ -534,6 +671,7 @@ fn confirm_view(plan: &Plan, identity: &Identity) -> McpConfirmView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::uninstall::ProtectedReason;
 
     fn caller(signed: bool) -> AuditCaller {
         AuditCaller {
@@ -704,5 +842,200 @@ mod tests {
         );
         let json = serde_json::to_string(&unsigned).expect("json");
         assert!(!json.contains("\"pid\""));
+    }
+
+    #[test]
+    fn a_cleanup_asked_for_over_mcp_still_names_who_asked() {
+        // The engine builds the confirmation as OpenNavo's own request (`origin:
+        // "app"`), with no caller fields. Shown unchanged, an AI app's cleanup
+        // would look like something OpenNavo decided to do by itself.
+        let report = cleanup_report();
+        // Exactly what `Engine::confirm_plan` builds: OpenNavo's own layout.
+        let engine_view = McpConfirmView::app_action(
+            "cleanup",
+            "",
+            vec![crate::confirmation::ConfirmItemView::row(
+                "g",
+                "/Users/me/Library/Caches/cache",
+            )],
+            1,
+            Some(1024),
+        );
+        assert_eq!(engine_view.origin, "app");
+        let plan = Plan::Clean {
+            report_id: report.report_id.clone(),
+            item_ids: vec!["cache".into()],
+            digest: "d".into(),
+            view: Box::new(engine_view),
+        };
+        let view = confirm_view(
+            &plan,
+            &Identity {
+                caller: caller(true),
+            },
+        );
+        assert_eq!(view.origin, "mcp", "an AI app asked for this cleanup");
+        assert!(
+            view.signer
+                .as_deref()
+                .is_some_and(|s| s.contains("Example Inc")),
+            "the window must still name the caller"
+        );
+        assert_eq!(view.team_id.as_deref(), Some("ABCDE12345"));
+        assert_eq!(view.action, "cleanup");
+    }
+
+    #[test]
+    fn a_homebrew_app_is_refused_with_a_reason_the_client_can_act_on() {
+        // Homebrew uninstalls reach past the one app the dialog names, so this
+        // stays closed. What matters is that the refusal says so and points the
+        // client at the app's own Uninstall page instead of a bare "unsupported".
+        let app = uninstall_app(AppSource::Homebrew, true, None);
+        let error = uninstall_refusal(&app).expect_err("Homebrew stays closed");
+        assert_eq!(error.code, "E_UNSUPPORTED");
+        assert!(error.message.contains("Homebrew"), "{}", error.message);
+        assert!(
+            error.message.contains("Uninstall page"),
+            "the client must be told where the user can do this: {}",
+            error.message
+        );
+        assert!(
+            error.message.contains("Firefox"),
+            "the message names the app so the client can relay it: {}",
+            error.message
+        );
+    }
+
+    #[test]
+    fn a_homebrew_app_gets_the_homebrew_reason_not_the_generic_one() {
+        // A Homebrew app is also `removeable == false` in some inventories; the
+        // specific reason has to win, or the client is told nothing useful.
+        let app = uninstall_app(AppSource::Homebrew, false, Some(ProtectedReason::System));
+        assert_eq!(
+            uninstall_refusal(&app).expect_err("refused").code,
+            "E_UNSUPPORTED"
+        );
+        let protected = uninstall_app(AppSource::Direct, false, Some(ProtectedReason::System));
+        assert_eq!(
+            uninstall_refusal(&protected).expect_err("refused").code,
+            "E_PROTECTED"
+        );
+        assert!(uninstall_refusal(&uninstall_app(AppSource::Direct, true, None)).is_ok());
+    }
+
+    #[test]
+    fn a_homebrew_refusal_filters_the_app_name_it_echoes() {
+        // The name comes from the bundle on disk, not from the client, but it is
+        // still echoed into the tool result: bidi controls must not survive.
+        let app = uninstall_app(AppSource::Homebrew, true, None);
+        let mut named = app.clone();
+        named.name = "Fire\u{202E}fox".into();
+        let error = uninstall_refusal(&named).expect_err("refused");
+        assert!(!error.message.contains('\u{202E}'), "{}", error.message);
+    }
+
+    fn uninstall_app(
+        source: AppSource,
+        removable: bool,
+        protected_reason: Option<ProtectedReason>,
+    ) -> crate::uninstall::LocalApp {
+        let mut app: crate::uninstall::LocalApp = serde_json::from_value(serde_json::json!({
+            "id": "one",
+            "path": "/Applications/Firefox.app",
+            "name": "Firefox",
+            "source": "direct",
+            "running": false,
+            "removable": true
+        }))
+        .expect("fixture");
+        app.source = source;
+        app.removable = removable;
+        app.protected_reason = protected_reason;
+        app
+    }
+
+    fn cleanup_report() -> crate::cleanup::types::CleanupReport {
+        use crate::cleanup::types::{
+            CategoryReport, CleanupCategory, CleanupGroup, CleanupItem, CleanupItemKind,
+            CleanupReason, CleanupRisk, CleanupVolume,
+        };
+        let item = |id: &str, reason, mode| CleanupItem {
+            id: id.into(),
+            path: format!("/Users/me/Library/Caches/{id}"),
+            kind: CleanupItemKind::Dir,
+            command: None,
+            size_bytes: Some(1024),
+            size_complete: true,
+            kept_open_files: 0,
+            modified_at: None,
+            reason,
+            selected: false,
+            delete_mode: mode,
+            needs_admin: false,
+            note: None,
+        };
+        let category = |key, risk, items| CategoryReport {
+            key,
+            risk,
+            bytes: 1024,
+            complete: true,
+            groups: vec![CleanupGroup {
+                id: "g".into(),
+                title: "g".into(),
+                subtitle: None,
+                app_id: None,
+                bundle_id: None,
+                items,
+            }],
+            skipped: vec![],
+        };
+        crate::cleanup::types::CleanupReport {
+            report_id: "r".into(),
+            scanned_at: 0,
+            expires_at: i64::MAX,
+            volume: CleanupVolume {
+                name: "synthetic".into(),
+                total_bytes: 1,
+                free_bytes: 0,
+            },
+            categories: vec![
+                category(
+                    CleanupCategory::AppCaches,
+                    CleanupRisk::Rebuildable,
+                    vec![item("cache", CleanupReason::CacheDir, DeleteMode::Trash)],
+                ),
+                category(
+                    CleanupCategory::Trash,
+                    CleanupRisk::Review,
+                    vec![item("trash", CleanupReason::Trash, DeleteMode::Trash)],
+                ),
+            ],
+            incomplete: vec![],
+        }
+    }
+
+    #[test]
+    fn a_cleanup_selection_is_checked_against_the_report_that_will_execute() {
+        // The scan tool hides unreachable items, but a report id outlives the
+        // conversation: a client can name an id it never saw. The rule must run
+        // again here, against the same report the grant is bound to.
+        let report = cleanup_report();
+        assert!(plan_clean_selection(&report, &["cache".into()]).is_ok());
+        assert_eq!(
+            plan_clean_selection(&report, &["trash".into()])
+                .unwrap_err()
+                .code,
+            "E_NOT_REMOVABLE"
+        );
+        assert_eq!(
+            plan_clean_selection(&report, &["cache".into(), "cache".into()])
+                .unwrap_err()
+                .code,
+            "E_INVALID_ARG"
+        );
+        assert_eq!(
+            plan_clean_selection(&report, &[]).unwrap_err().code,
+            "E_INVALID_ARG"
+        );
     }
 }

@@ -74,6 +74,15 @@ pub trait ToolHost: Send + Sync {
     fn list_installed_apps(&self) -> Result<Value, ToolError>;
     fn list_updatable_apps(&self) -> Result<Value, ToolError>;
     fn get_task(&self, id: &str) -> Result<Value, ToolError>;
+    /// Scan the regenerable caches and return the items a `clean_cache` call
+    /// could name. Hosts without a cleanup engine keep the default, which
+    /// refuses rather than pretending there is nothing to clean.
+    fn scan_cleanup(&self) -> Result<Value, ToolError> {
+        Err(ToolError::new(
+            "E_MCP_DISABLED",
+            "Cleanup is unavailable in this build.",
+        ))
+    }
     /// Run one write tool after the user confirms it in a native dialog.
     /// Hosts without write support keep the default, which refuses.
     /// Withdraw a write in flight (its open dialog included) because a switch
@@ -89,11 +98,11 @@ pub trait ToolHost: Send + Sync {
 }
 
 /// Write tools served only while the write switch is on.
-pub const WRITE_TOOLS: &[&str] = &["install_app", "uninstall_app"];
+pub const WRITE_TOOLS: &[&str] = &["install_app", "uninstall_app", "clean_cache"];
 
 /// Returned for write tools while writes are off.
 pub const WRITE_DISABLED_MESSAGE: &str =
-    "Install and uninstall are turned off in OpenNavo Settings → Local MCP.";
+    "Install, uninstall and cleanup are turned off in OpenNavo Settings → Local MCP.";
 
 /// Returned while another confirmation is open. Writes are never queued.
 pub const BUSY_MESSAGE: &str =
@@ -106,6 +115,12 @@ pub enum WriteRequest {
     Install { kind: String, token: String },
     /// Move one application bundle to the Trash; related files stay.
     Uninstall { path: String },
+    /// Remove the named items of a finished cleanup scan. Only items the
+    /// regenerable-cache rule allows can be named; see `mcp::cleanup`.
+    Clean {
+        report_id: String,
+        item_ids: Vec<String>,
+    },
 }
 
 impl WriteRequest {
@@ -113,6 +128,7 @@ impl WriteRequest {
         match self {
             Self::Install { .. } => "install_app",
             Self::Uninstall { .. } => "uninstall_app",
+            Self::Clean { .. } => "clean_cache",
         }
     }
 
@@ -121,6 +137,12 @@ impl WriteRequest {
         match self {
             Self::Install { kind, token } => format!("{kind}/{token}"),
             Self::Uninstall { path } => path.clone(),
+            Self::Clean {
+                report_id,
+                item_ids,
+            } => {
+                format!("cleanup/{report_id}:{} items", item_ids.len())
+            }
         }
     }
 }
@@ -176,13 +198,33 @@ pub fn write_definitions() -> Vec<Value> {
         }),
         json!({
             "name": "uninstall_app",
-            "description": "Ask OpenNavo to move one application to the Trash. Only the .app bundle is moved; its related files are left in place. Refused while the app is running. OpenNavo shows the user a confirmation dialog listing the path; nothing happens unless the user clicks Allow. Returns E_BUSY while another confirmation is open: wait a moment and try again.",
+            "description": "Ask OpenNavo to move one application to the Trash. Only the .app bundle is moved; its related files are left in place. Refused while the app is running. Apps installed with Homebrew are always refused with E_UNSUPPORTED: `brew uninstall` also removes that package's dependencies, which is more than this confirmation can show, so the user must uninstall those in OpenNavo's own Uninstall page. OpenNavo shows the user a confirmation dialog listing the path; nothing happens unless the user clicks Allow. Returns E_BUSY while another confirmation is open: wait a moment and try again.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "minLength": 6, "maxLength": 1024, "description": "Absolute .app path from list_installed_apps." }
                 },
                 "required": ["path"],
+                "additionalProperties": false
+            },
+            "annotations": { "readOnlyHint": false, "destructiveHint": true }
+        }),
+        json!({
+            "name": "clean_cache",
+            "description": "Ask OpenNavo to remove some items of a finished cleanup scan. Call scan_cleanup first, then pass the reportId it returned and the item ids you want removed; only regenerable caches (app caches, logs, browser caches, dev caches, the Homebrew cache and temp files) can be named. Items that cannot be rebuilt — the Trash, device backups, installers, project build artifacts, large files and Docker data — are refused, whatever the report shows. OpenNavo shows the user a confirmation dialog with every path, the total size and whether anything is deleted for good; nothing happens unless the user clicks Allow. Returns E_BUSY while another confirmation is open, and E_PLAN_EXPIRED once the report ages out (it lasts ten minutes): scan again.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "reportId": { "type": "string", "minLength": 1, "maxLength": 128, "description": "`reportId` from scan_cleanup." },
+                    "itemIds": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 512,
+                        "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+                        "description": "Item ids from that same scan_cleanup report."
+                    }
+                },
+                "required": ["reportId", "itemIds"],
                 "additionalProperties": false
             },
             "annotations": { "readOnlyHint": false, "destructiveHint": true }
@@ -244,8 +286,51 @@ pub fn parse_write(name: &str, arguments: Value) -> Result<WriteRequest, ToolErr
                 path: trimmed.to_owned(),
             })
         }
+        "clean_cache" => {
+            reject_unknown(object, &["reportId", "itemIds"])?;
+            let report_id = required_string(object, "reportId")?;
+            validate_identifier(&report_id, "reportId")?;
+            let ids = required_string_list(object, "itemIds", 512)?;
+            if ids.is_empty() {
+                return Err(ToolError::invalid("itemIds must not be empty"));
+            }
+            for id in &ids {
+                validate_identifier(id, "itemId")?;
+            }
+            Ok(WriteRequest::Clean {
+                report_id,
+                item_ids: ids,
+            })
+        }
         _ => Err(ToolError::not_found(format!("Unknown tool: {name}"))),
     }
+}
+
+/// A required array of non-empty strings, with a ceiling so one call cannot
+/// name an unbounded list.
+fn required_string_list(
+    object: Option<&Map<String, Value>>,
+    key: &str,
+    max: usize,
+) -> Result<Vec<String>, ToolError> {
+    let Some(values) = object.and_then(|object| object.get(key)) else {
+        return Err(ToolError::invalid(format!("{key} is required")));
+    };
+    let Some(values) = values.as_array() else {
+        return Err(ToolError::invalid(format!("{key} must be an array")));
+    };
+    if values.len() > max {
+        return Err(ToolError::invalid(format!("{key} has too many entries")));
+    }
+    values
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .map(str::to_owned)
+                .ok_or_else(|| ToolError::invalid(format!("{key} must contain strings")))
+        })
+        .collect()
 }
 
 /// Tool definitions advertised through `tools/list`.
@@ -321,6 +406,16 @@ pub fn definitions() -> Vec<Value> {
             },
             "annotations": { "readOnlyHint": true }
         }),
+        json!({
+            "name": "scan_cleanup",
+            "description": "Scan this Mac's regenerable caches and return what a later clean_cache call may remove: app caches, logs, browser caches, dev caches, the Homebrew cache and temp files. Read-only: it deletes nothing and queues nothing. Every item that cannot be rebuilt is left out. The report lasts ten minutes; pass its reportId and any of its item ids to clean_cache. Scanning can take a while on a large disk.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            },
+            "annotations": { "readOnlyHint": true, "destructiveHint": false }
+        }),
     ]
 }
 
@@ -338,6 +433,7 @@ pub fn is_read_tool(name: &str) -> bool {
             | "list_installed_apps"
             | "list_updatable_apps"
             | "get_task"
+            | "scan_cleanup"
     )
 }
 
@@ -363,6 +459,10 @@ pub fn call(host: &dyn ToolHost, name: &str, arguments: Value) -> Result<Value, 
             let id = required_string(object, "id")?;
             validate_identifier(&id, "id")?;
             host.get_task(&id)
+        }
+        "scan_cleanup" => {
+            no_arguments(object)?;
+            host.scan_cleanup()
         }
         _ => Err(ToolError::not_found(format!("Unknown tool: {name}"))),
     }
@@ -568,13 +668,29 @@ mod tests {
                 "get_catalog_item",
                 "list_installed_apps",
                 "list_updatable_apps",
-                "get_task"
+                "get_task",
+                "scan_cleanup"
             ]
         );
         for tool in result["tools"].as_array().expect("tools") {
             assert_eq!(tool["inputSchema"]["additionalProperties"], false);
             assert_eq!(tool["annotations"]["readOnlyHint"], true);
         }
+    }
+
+    #[test]
+    fn the_uninstall_tool_says_homebrew_apps_are_refused_before_it_is_called() {
+        // A client that only reads the tool list should not have to discover the
+        // Homebrew refusal by calling and failing. The description must say so,
+        // and must say where the user can do it instead.
+        let uninstall = write_definitions()
+            .into_iter()
+            .find(|tool| tool["name"] == "uninstall_app")
+            .expect("uninstall_app listed");
+        let description = uninstall["description"].as_str().expect("description");
+        assert!(description.contains("Homebrew"), "{description}");
+        assert!(description.contains("E_UNSUPPORTED"), "{description}");
+        assert!(description.contains("Uninstall page"), "{description}");
     }
 
     #[test]
@@ -592,7 +708,12 @@ mod tests {
             .iter()
             .filter_map(|tool| tool["name"].as_str().map(str::to_owned))
             .collect();
-        for forbidden in ["install_app", "uninstall_app", "get_latest_scan_result"] {
+        for forbidden in [
+            "install_app",
+            "uninstall_app",
+            "clean_cache",
+            "get_latest_scan_result",
+        ] {
             assert!(
                 !listed.iter().any(|name| name == forbidden),
                 "{forbidden} must not be listed"
@@ -688,7 +809,10 @@ mod tests {
         let off = names(list_result_for(false));
         assert!(!off.iter().any(|name| is_write_tool(name)));
         let on = names(list_result_for(true));
-        assert_eq!(&on[on.len() - 2..], ["install_app", "uninstall_app"]);
+        assert_eq!(
+            &on[on.len() - 3..],
+            ["install_app", "uninstall_app", "clean_cache"]
+        );
         assert!(!on.iter().any(|name| name == "get_latest_scan_result"));
         for tool in write_definitions() {
             assert_eq!(tool["inputSchema"]["additionalProperties"], false);
@@ -790,6 +914,7 @@ mod tests {
             for (name, mut arguments) in [
                 ("install_app", json!({ "kind": "cask", "token": "iina" })),
                 ("uninstall_app", json!({ "path": "/Applications/IINA.app" })),
+                ("clean_cache", json!({ "reportId": "r", "itemIds": ["a"] })),
             ] {
                 arguments[field] = json!(true);
                 let error = parse_write(name, arguments).expect_err("must reject");
@@ -800,5 +925,52 @@ mod tests {
         let request =
             parse_write("install_app", json!({ "kind": "cask", "token": "iina" })).expect("ok");
         assert_eq!(request.object(), "cask/iina");
+    }
+
+    #[test]
+    fn parse_write_accepts_one_cleanup_selection_and_rejects_a_malformed_one() {
+        let request = parse_write(
+            "clean_cache",
+            json!({ "reportId": "report-1", "itemIds": ["cache-a", "cache-b"] }),
+        )
+        .expect("ok");
+        assert_eq!(
+            request,
+            WriteRequest::Clean {
+                report_id: "report-1".into(),
+                item_ids: vec!["cache-a".into(), "cache-b".into()],
+            }
+        );
+        assert_eq!(request.tool(), "clean_cache");
+        assert_eq!(request.object(), "cleanup/report-1:2 items");
+        for arguments in [
+            // No report, nothing to bind the grant to.
+            json!({ "itemIds": ["a"] }),
+            // No items: an empty list would confirm "remove nothing".
+            json!({ "reportId": "r", "itemIds": [] }),
+            // Ids are checked like every other identifier, not passed through.
+            // A path-looking id is legal: ids are matched by equality against a
+            // finished report and never turned into a path, so `../etc` simply
+            // matches nothing and is refused later as "not removable".
+            json!({ "reportId": "r", "itemIds": [""] }),
+            json!({ "reportId": "r", "itemIds": ["a\nb"] }),
+            json!({ "reportId": "r", "itemIds": [7] }),
+            json!({ "reportId": "", "itemIds": ["a"] }),
+            json!({ "reportId": "r", "itemIds": ["a"], "path": "/tmp/x" }),
+            json!({ "reportId": "r", "itemIds": "a" }),
+        ] {
+            let error = parse_write("clean_cache", arguments.clone()).expect_err("must reject");
+            assert_eq!(error.code, "E_INVALID_ARG", "{arguments}");
+        }
+        let too_many: Vec<String> = (0..513).map(|index| format!("id{index}")).collect();
+        assert_eq!(
+            parse_write(
+                "clean_cache",
+                json!({ "reportId": "r", "itemIds": too_many })
+            )
+            .expect_err("too many")
+            .code,
+            "E_INVALID_ARG"
+        );
     }
 }

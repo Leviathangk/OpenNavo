@@ -110,7 +110,8 @@ fn initialize_returns_tools_capability_and_server_info() {
             "get_catalog_item",
             "list_installed_apps",
             "list_updatable_apps",
-            "get_task"
+            "get_task",
+            "scan_cleanup"
         ]
     );
 }
