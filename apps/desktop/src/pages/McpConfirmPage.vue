@@ -297,7 +297,9 @@ const unlisted = computed(() =>
           data-test="mcp-confirm-allow"
           @click="answer(true)"
           >{{ t('mcpConfirm.allow')
-          }}<kbd class="ml-6px rounded-tiny bg-surface-chip px-5px font-sans text-11px">⌘⏎</kbd></OnButton
+          }}<kbd aria-hidden="true" class="ml-6px rounded-tiny bg-surface-chip px-5px font-sans text-11px"
+            >⌘⏎</kbd
+          ></OnButton
         >
       </footer>
     </template>

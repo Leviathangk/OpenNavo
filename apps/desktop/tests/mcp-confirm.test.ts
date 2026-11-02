@@ -358,4 +358,19 @@ describe('Keyboard allow chord (#104 A-2)', () => {
     expect(allow.attributes('aria-keyshortcuts')).toBe('Meta+Enter');
     expect(allow.get('kbd').text()).toBe('⌘⏎');
   });
+
+  it('Names the Allow button by its copy alone, without the shortcut hint', async () => {
+    // The hint is decoration: aria-keyshortcuts already announces the chord, so a screen reader reading the hint
+    // again would say "Allow Command-Return" as if that were the name of the control.
+    const { wrapper } = await armed();
+    const allow = wrapper.get('[data-test="mcp-confirm-allow"]');
+    // A button takes its accessible name from its contents, and aria-hidden subtrees are left out of that per
+    // accname 2.0 §4.3.2, which is what this strips. No accessible-name library is installed, so the rule is spelled
+    // out here rather than approximated by textContent.
+    const clone = allow.element.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('[aria-hidden="true"]').forEach(hidden => hidden.remove());
+    expect(clone.textContent?.trim()).toBe(i18n.global.t('mcpConfirm.allow'));
+    expect(clone.textContent).not.toContain('⌘⏎');
+    expect(allow.get('kbd').attributes('aria-hidden')).toBe('true');
+  });
 });
