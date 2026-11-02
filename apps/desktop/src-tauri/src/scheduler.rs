@@ -60,6 +60,43 @@ pub fn next_check_in<T: TimeZone>(
     None
 }
 
+/// Whether the updates page lists this row at all. The mirror of `shown()` in
+/// `apps/desktop/src/stores/updates.ts`, which is the product rule behind it: the catalog is
+/// cask-only (ADR-018), so a Homebrew formula or link is never listed, while a pinned, ignored,
+/// skipped or non-auto-upgraded row still is.
+///
+/// This is deliberately not `eligible()`. That one answers "may the scheduler upgrade this on its
+/// own" and therefore also drops pinned, ignored, skipped and non-auto-upgraded rows. A notification
+/// says what appeared on the page, so filtering it by `eligible()` would leave a row visible and
+/// silent, which is the same page-says-one-thing/notice-says-another defect this module is being
+/// fixed for, only mirrored.
+pub fn visible(item: &OutdatedItem) -> bool {
+    item.source != UpdateSource::Homebrew || item.kind == Kind::Cask
+}
+
+/// One row's identity across two checks: the source, the app, and the version on offer. `app_key()`
+/// fails only for a non-Homebrew row without a local app id, which `check_sources` already drops, so
+/// such a row has no stable identity to compare and is left out rather than collapsed to a shared
+/// empty key.
+fn identity(item: &OutdatedItem) -> Option<(UpdateSource, String, String)> {
+    item.app_key()
+        .ok()
+        .map(|key| (item.source, key, item.current_version.clone()))
+}
+
+/// The rows the user can now see that the previous list did not have: the only thing a scheduled
+/// check's "updates available" notice may describe.
+fn newly_visible<'a>(
+    items: &'a [OutdatedItem],
+    before: &HashSet<(UpdateSource, String, String)>,
+) -> Vec<&'a OutdatedItem> {
+    items
+        .iter()
+        .filter(|item| visible(item))
+        .filter(|item| identity(item).is_some_and(|key| !before.contains(&key)))
+        .collect()
+}
+
 pub fn eligible(items: &[OutdatedItem], settings: &Settings) -> Vec<TaskTarget> {
     items
         .iter()
@@ -96,23 +133,21 @@ pub async fn tick(core: Arc<DesktopCore>, now: i64) -> Result<bool, AppError> {
     let before: HashSet<_> = core
         .updates_list()?
         .into_iter()
-        .map(|i| (i.source, i.app_key().unwrap_or_default(), i.current_version))
+        .filter_map(|i| identity(&i))
         .collect();
     let items = core
         .check_update_sources(None, TaskTrigger::Schedule, Some(now))
         .await?;
-    if settings.notify_updates
-        && items.iter().any(|i| {
-            !before.contains(&(
-                i.source,
-                i.app_key().unwrap_or_default(),
-                i.current_version.clone(),
-            ))
-        })
-    {
-        core.notice(Notice::Available {
-            names: items.iter().map(|i| i.name.clone()).collect(),
-        });
+    if settings.notify_updates {
+        // The count and the names both come from the same new rows, so the notice describes what
+        // appeared rather than the whole outdated list: ten known updates plus one new one said
+        // "eleven" before, because the diff only decided whether to notify.
+        let added = newly_visible(&items, &before);
+        if !added.is_empty() {
+            core.notice(Notice::Available {
+                names: added.iter().map(|i| i.name.clone()).collect(),
+            });
+        }
     }
     let targets = eligible(&items, &settings);
     if !targets.is_empty() {
@@ -174,4 +209,156 @@ pub fn start(core: &Arc<DesktopCore>) {
             tokio::select! {_=tokio::time::sleep(Duration::from_secs(60))=>{},_=core.settings_changed.notified()=>{}}
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(source: UpdateSource, kind: Kind, token: &str) -> OutdatedItem {
+        OutdatedItem {
+            source,
+            app_id: (source != UpdateSource::Homebrew).then(|| format!("{token}-id")),
+            bundle_id: None,
+            channel: None,
+            major: false,
+            notes: None,
+            integrity: None,
+            requires_admin: false,
+            running: false,
+            relaunch_pending: false,
+            skipped_version: None,
+            critical_update: false,
+            informational_url: None,
+            download_host: None,
+            unsigned_update: None,
+            expected_team_match: None,
+            kind,
+            token: token.into(),
+            name: token.into(),
+            installed_version: "1".into(),
+            current_version: "2".into(),
+            auto_updates: false,
+            pinned: false,
+            ignored: false,
+            dependents: 0,
+            download_size: None,
+        }
+    }
+
+    /// The rows the page lists. Formula and link are never listed (cask-only catalog), every other
+    /// state the page still shows, which is what separates this from `eligible()`.
+    #[test]
+    fn visible_is_the_pages_rule_not_the_schedulers() {
+        assert!(!visible(&item(
+            UpdateSource::Homebrew,
+            Kind::Formula,
+            "node"
+        )));
+        assert!(!visible(&item(UpdateSource::Homebrew, Kind::Link, "node")));
+        assert!(visible(&item(
+            UpdateSource::Homebrew,
+            Kind::Cask,
+            "ghostty"
+        )));
+        assert!(visible(&item(UpdateSource::Mas, Kind::Cask, "mas-app")));
+        // States `eligible()` drops but the page still shows. A notice that used `eligible()`
+        // would leave each of these visible and silent.
+        let mut pinned = item(UpdateSource::Homebrew, Kind::Cask, "pinned");
+        pinned.pinned = true;
+        let mut ignored = item(UpdateSource::Homebrew, Kind::Cask, "ignored");
+        ignored.ignored = true;
+        let mut skipped = item(UpdateSource::Homebrew, Kind::Cask, "skipped");
+        skipped.skipped_version = Some(skipped.current_version.clone());
+        for (label, row) in [
+            ("pinned", pinned),
+            ("ignored", ignored),
+            ("skipped", skipped),
+        ] {
+            assert!(
+                visible(&row),
+                "{label} still appears on the page, so a notice must be able to name it"
+            );
+        }
+    }
+
+    /// The notice describes what appeared, not the whole list. Ten known rows plus one new one used
+    /// to say eleven.
+    #[test]
+    fn the_notice_names_only_the_rows_that_appeared() {
+        let known = item(UpdateSource::Homebrew, Kind::Cask, "known");
+        let fresh = item(UpdateSource::Homebrew, Kind::Cask, "fresh");
+        let before: HashSet<_> = [identity(&known).unwrap()].into_iter().collect();
+        let items = vec![known, fresh];
+        let added = newly_visible(&items, &before);
+        assert_eq!(
+            added.iter().map(|i| i.name.as_str()).collect::<Vec<_>>(),
+            ["fresh"],
+            "one new row out of two is one name, not the whole list"
+        );
+    }
+
+    /// A new Homebrew formula must stay silent: the user cannot see it on the page, so a notice
+    /// naming it would report something the app does not show.
+    #[test]
+    fn a_new_formula_alone_does_not_notify() {
+        let items = vec![item(UpdateSource::Homebrew, Kind::Formula, "node")];
+        assert!(newly_visible(&items, &HashSet::new()).is_empty());
+    }
+
+    /// A version bump on a row already listed counts as new: the page shows a different version.
+    #[test]
+    fn a_new_version_of_a_known_row_is_new() {
+        let old = item(UpdateSource::Homebrew, Kind::Cask, "ghostty");
+        let before: HashSet<_> = [identity(&old).unwrap()].into_iter().collect();
+        let mut bumped = item(UpdateSource::Homebrew, Kind::Cask, "ghostty");
+        bumped.current_version = "3".into();
+        assert_eq!(
+            newly_visible(&[bumped], &before)
+                .iter()
+                .map(|i| i.current_version.as_str())
+                .collect::<Vec<_>>(),
+            ["3"]
+        );
+    }
+
+    /// A non-Homebrew row without an app id has no identity to compare, so it is left out instead of
+    /// collapsing onto a shared empty key that would make every such row look like every other.
+    #[test]
+    fn a_row_without_an_identity_is_not_reported() {
+        let mut orphan = item(UpdateSource::Mas, Kind::Cask, "orphan");
+        orphan.app_id = None;
+        assert!(orphan.app_key().is_err());
+        assert!(newly_visible(&[orphan], &HashSet::new()).is_empty());
+    }
+
+    /// `eligible` is unchanged: it still refuses what the scheduler must not upgrade on its own.
+    #[test]
+    fn eligible_still_refuses_what_the_scheduler_must_not_touch() {
+        let mut settings = Settings {
+            auto_upgrade_casks: true,
+            ..Settings::default()
+        };
+        settings
+            .update_sources
+            .0
+            .insert(UpdateSource::Homebrew, true);
+        let mut pinned = item(UpdateSource::Homebrew, Kind::Cask, "pinned");
+        pinned.pinned = true;
+        let mut ignored = item(UpdateSource::Homebrew, Kind::Cask, "ignored");
+        ignored.ignored = true;
+        let items = vec![
+            pinned,
+            ignored,
+            item(UpdateSource::Homebrew, Kind::Formula, "node"),
+            item(UpdateSource::Homebrew, Kind::Cask, "ok"),
+        ];
+        assert_eq!(
+            eligible(&items, &settings)
+                .iter()
+                .map(|t| t.token.as_str())
+                .collect::<Vec<_>>(),
+            ["ok"]
+        );
+    }
 }

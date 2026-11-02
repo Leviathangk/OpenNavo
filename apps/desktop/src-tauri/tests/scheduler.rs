@@ -231,7 +231,10 @@ async fn check_schedule_serial_update_auto_upgrade_and_single_summary() {
     );
     let received = notices.lock().unwrap().clone();
     assert_eq!(received.len(), 2);
-    assert!(matches!(&received[0], Notice::Available { names } if names.len()==3));
+    // The fixture lists node and pcre2 as formulae and visual-studio-code as ignored, none of which
+    // the page shows; only ghostty is left. The notice names what appeared rather than the whole
+    // outdated list, so it is one name and not three (#147).
+    assert!(matches!(&received[0], Notice::Available { names } if names == &["Ghostty"]));
     assert_eq!(
         received[1],
         Notice::Completed {
@@ -639,4 +642,86 @@ async fn completed_checks_replace_failed_sources_and_empty_selection_preserves_s
         serde_json::json!([])
     );
     assert!(core.database.tasks().unwrap().is_empty());
+}
+
+/// #147: a scheduled check must not report updates the page cannot show. The user's report was a
+/// notification naming Homebrew formulae, which the cask-only catalog never lists.
+#[tokio::test]
+async fn a_scheduled_check_never_notifies_about_a_homebrew_formula() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core(tmp.path());
+    let notices = Arc::new(Mutex::new(Vec::new()));
+    let received = notices.clone();
+    core.install_notice_sink(Arc::new(move |n| received.lock().unwrap().push(n)))
+        .unwrap();
+    core.queue
+        .set_completion(Arc::new(|_| Box::pin(async {})))
+        .unwrap();
+    core.queue.start();
+    // Both casks were already listed before this check, so neither is new. What the check adds is
+    // the two formulae, and those are what must stay quiet.
+    *core.updates.write().unwrap() = vec![
+        item(Kind::Cask, "ghostty", false, false),
+        item(Kind::Cask, "visual-studio-code", false, false),
+    ];
+    let mut settings = core.current_settings().unwrap();
+    settings.notify_updates = true;
+    settings.auto_upgrade_casks = false;
+    core.replace_settings(settings).await.unwrap();
+    let due = Local::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let _ = scheduler::tick(core.clone(), due.timestamp_millis()).await;
+    let seen: Vec<String> = notices
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|n| format!("{n:?}"))
+        .collect();
+    assert!(
+        !seen.iter().any(|n| n.starts_with("Available")),
+        "only formulae were added, and the page never lists one: {seen:?}"
+    );
+    core.queue.shutdown();
+}
+
+/// #147, second half: a new row is announced alone, not padding out the ones already listed. The
+/// fixture's other cask was already known, so a notice built from the whole list would name two.
+#[tokio::test]
+async fn a_notice_names_the_new_row_not_the_ones_already_listed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core(tmp.path());
+    let notices = Arc::new(Mutex::new(Vec::new()));
+    let received = notices.clone();
+    core.install_notice_sink(Arc::new(move |n| received.lock().unwrap().push(n)))
+        .unwrap();
+    core.queue
+        .set_completion(Arc::new(|_| Box::pin(async {})))
+        .unwrap();
+    core.queue.start();
+    // visual-studio-code was already listed; ghostty is the one this check adds.
+    *core.updates.write().unwrap() = vec![item(Kind::Cask, "visual-studio-code", false, false)];
+    let mut settings = core.current_settings().unwrap();
+    settings.notify_updates = true;
+    settings.auto_upgrade_casks = false;
+    core.replace_settings(settings).await.unwrap();
+    let due = Local::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let _ = scheduler::tick(core.clone(), due.timestamp_millis()).await;
+    let seen: Vec<String> = notices
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|n| format!("{n:?}"))
+        .collect();
+    assert!(
+        seen.iter().any(|n| n.contains(r#"names: ["Ghostty"]"#)),
+        "the one new row is announced alone: {seen:?}"
+    );
+    core.queue.shutdown();
 }
