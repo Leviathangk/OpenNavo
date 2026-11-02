@@ -62,8 +62,46 @@ test('every config file in the API directory stays out of the frontend jobs', ()
     'apps/server/api/redocly.yaml', 'apps/server/api/public-external.openapi.yaml']) {
     assert.ok(files.includes(known), `the discovery finds ${known}`);
   }
+  // Paths the spec rules must reject although no generator reads them either. The
+  // directory walk above cannot produce them: it lists what is there, and these are
+  // the near-misses of what is there. Without them an anchor is unverified - dropping
+  // `$` makes every path ending in the spec name match, dropping `^` makes every path
+  // containing it match, and both leave the walk's own assertions green.
+  files.push(
+    'apps/server/api/public.openapi.yaml.bak',
+    'apps/server/api/public.openapi.yamlx',
+    'sub/apps/server/api/public.openapi.yaml',
+    'vendor/apps/server/api/public.openapi.yaml',
+    // A directory between `api/` and the name, as opposed to the prefix forms above. Only this
+    // shape catches a rule that kept both anchors and inserted `.*` after `api/`; `.bak`,
+    // `.yamlx` and a `sub/` prefix all survive that widening, because they differ from the spec
+    // name at its edges, not in the middle.
+    'apps/server/api/sub/public.openapi.yaml',
+    'apps/server/api/sub/admin.openapi.yaml',
+    'apps/server/api/admin.openapi.yaml.bak',
+    'apps/server/api/admin.openapi.yamlx',
+    'sub/apps/server/api/admin.openapi.yaml',
+    'vendor/apps/server/api/admin.openapi.yaml'
+  );
   for (const file of files) {
     assert.equal(classify([file]).frontend, false, `${file} is not generated into packages/, so the frontend jobs must not run`);
+  }
+});
+
+test('the mcp spec rule matches the admin spec and nothing around it', () => {
+  // The mcp area has its own rule for the same file. It must reject the same
+  // near-misses, plus a longer name: `xadmin.openapi.yaml` differs from the spec only
+  // before `admin`, so a rule that lost its `^` would classify it as mcp.
+  assert.equal(classify(['apps/server/api/admin.openapi.yaml']).mcp, true, 'the spec reaches mcp');
+  for (const file of ['apps/server/api/admin.openapi.yaml.bak',
+    'apps/server/api/admin.openapi.yamlx',
+    'sub/apps/server/api/admin.openapi.yaml',
+    'vendor/apps/server/api/admin.openapi.yaml',
+    // The mid-directory form: it survives a rule that kept `^` and `$` but inserted `.*`
+    // after `api/`, which is the widening none of the edge forms above can see.
+    'apps/server/api/sub/admin.openapi.yaml',
+    'apps/server/api/xadmin.openapi.yaml']) {
+    assert.equal(classify([file]).mcp, false, `${file} is not the admin spec, so it must not reach mcp`);
   }
 });
 
@@ -129,4 +167,69 @@ test('Desktop CI compares main pushes with its own green commits, the gate with 
     'ci-security.yml'
   ]);
   assert.deepEqual(baseline(undefined), ['ci-server.yml', 'ci-frontend.yml', 'ci-security.yml']);
+});
+
+// A list of near-miss paths is still a list: it holds the forms its author thought of. The
+// regex is what decides, so it is checked against the whole space of paths it could wrongly
+// accept, generated rather than chosen. A rule widens in three directions, and this test covers
+// the two a path can reach: an insertion before the file name (`.*`, `[^/]*`, `\w*` all do it)
+// and a dropped `^` that accepts any leading path. The third - a generalised name - cannot be
+// reached by any path, so it has its own test below.
+test('the spec rules reject an insertion before the name and a leading path', () => {
+  const fillers = ['x', '1', '.', '_', '-', '/', 'A'];
+  const prefixes = ['sub/', 'vendor/', 'x/', 'foo/bar/', 'apps/', './'];
+  for (const [spec, area] of [['public', 'frontend'], ['admin', 'frontend'], ['admin', 'mcp']]) {
+    const rejected = [];
+    for (const first of ['', ...fillers]) {
+      for (const second of ['', ...fillers]) {
+        if (!first && !second) continue;
+        rejected.push(`apps/server/api/${first}${second}${spec}.openapi.yaml`);
+      }
+    }
+    for (const prefix of prefixes) rejected.push(`${prefix}apps/server/api/${spec}.openapi.yaml`);
+    for (const prefix of prefixes) rejected.push(`${prefix}apps/server/api/${spec}.openapi.yaml.bak`);
+    const accepted = rejected.filter(path => classify([path])[area]);
+    assert.deepEqual(accepted, [], `the ${area} rule widened and accepts these`);
+  }
+  assert.equal(classify(['apps/server/api/public.openapi.yaml']).frontend, true);
+  assert.equal(classify(['apps/server/api/admin.openapi.yaml']).frontend, true);
+  assert.equal(classify(['apps/server/api/admin.openapi.yaml']).mcp, true);
+});
+
+// The third direction, which no constructed path reaches: the rule can stop insisting on the
+// exact file name - `.yaml` -> `ya?ml`, a `/i` flag, another spec folded into the alternation,
+// or the suffix relaxed to `.*`. A path shaped like a near-miss cannot expose that, because the
+// widened rule would accept a name that is not a near-miss at all (`.yml`, `.YAML`, a sibling).
+// So this asks the rule what it accepts instead: the real name must match, every generalised
+// spelling must not.
+test('the spec rules accept the exact name and no generalised spelling of it', () => {
+  const real = {
+    frontend: ['apps/server/api/public.openapi.yaml', 'apps/server/api/admin.openapi.yaml'],
+    mcp: ['apps/server/api/admin.openapi.yaml']
+  };
+  // If a rule gained /i, `ya?ml`, or another alternative, one of these would start matching.
+  const generalised = {
+    frontend: [
+      'apps/server/api/public.openapi.yml',
+      'apps/server/api/admin.openapi.yml',
+      'apps/server/api/public.openapi.YAML',
+      'apps/server/api/admin.openapi.YAML',
+      'apps/server/api/public-external.openapi.yaml',
+      'apps/server/api/admin-external.openapi.yaml'
+    ],
+    mcp: [
+      'apps/server/api/admin.openapi.yml',
+      'apps/server/api/admin.openapi.YAML',
+      'apps/server/api/public-external.openapi.yaml',
+      'apps/server/api/public.openapi.yaml'
+    ]
+  };
+  for (const [area, paths] of Object.entries(real)) {
+    for (const path of paths) {
+      assert.equal(classify([path])[area], true, `the ${area} rule matches ${path}`);
+    }
+    for (const path of generalised[area]) {
+      assert.equal(classify([path])[area], false, `the ${area} rule generalised and matches ${path}`);
+    }
+  }
 });
