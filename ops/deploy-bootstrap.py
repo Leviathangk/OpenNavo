@@ -126,8 +126,42 @@ def check(receiver):
             fail('the receiver %s step timed out, so the current receiver was left in place' % name)
 
 
+def deploy_directory(root):
+    """Return <root>/deploy, created private if missing.
+
+    mkdir(exist_ok=True) leaves an existing mode alone, so the chmod repairs a legacy
+    host. The receiver has its own copy: this file cannot import it.
+    """
+    directory = Path(root, 'deploy')
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(directory, 0o700)
+    return directory
+
+
+def open_lock(path):
+    """Open the lock without following a symlink, and leave it private.
+
+    open('w') follows a planted symlink and truncates its target; 0o600 covers a first
+    creation under any umask, and the fchmod repairs a lock left 0644.
+    """
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    os.fchmod(descriptor, 0o600)
+    return os.fdopen(descriptor, 'w')
+
+
+def adopt(directory, current):
+    """Copy a pre-layout regular-file receiver into receiver/; returns its name."""
+    data = current.read_bytes()
+    target = directory / ('adopted-' + hashlib.sha256(data).hexdigest()[:12])
+    target.mkdir(mode=0o700, parents=True, exist_ok=True)
+    (target / 'github-deploy.py').write_bytes(data)
+    return target.name
+
+
 def point(path, target):
     """Replace one symlink atomically, so no reader ever sees it missing."""
+    if not path.is_symlink() and path.is_dir():  # os.replace cannot replace a directory
+        fail('receiver/%s is a real directory, not a symlink; move it aside' % path.name)
     temporary = path.with_name('.%s.%d' % (path.name, os.getpid()))
     try:
         temporary.unlink()
@@ -143,13 +177,24 @@ def switch(directory, revision):
         replaced = os.readlink(current)
         if replaced != revision:
             point(previous, replaced)
+    elif current.is_file():
+        # A pre-layout receiver is a regular file, and os.replace would delete it
+        # with no copy left; adopt it first so a rollback has somewhere to point.
+        point(previous, adopt(directory, current))
     point(current, revision)
 
 
 def rollback(directory):
-    """Point current back at previous; used when the receiver just installed cannot start."""
+    """Point current back at previous; used when the receiver just installed cannot start.
+
+    Returns False when there is nothing to restore, and then removes the pointer: a first
+    deployment whose receiver failed must not stay current, because a desktop publish
+    carries no receiver of its own and would keep running it.
+    """
     current, previous = directory / 'current', directory / 'previous'
     if not previous.is_symlink():
+        if current.is_symlink():
+            current.unlink()
         return False
     point(current, os.readlink(previous))
     return True
@@ -177,13 +222,10 @@ def prune(directory):
 def run(receiver, payload, timeout=None, arguments=()):
     """Start the receiver with the original payload on its standard input.
 
-    A pipe, not a temporary file: the payload carries the registry token. The
-    receiver may exit before reading it (a busy lock does that), which closes the
-    pipe early; that is its exit status to report, not a bootstrap failure.
+    A pipe, not a temporary file: the payload carries the registry token. The receiver
+    may exit early (a busy lock does that), which is its status to report, not a failure.
 
-    Returns the exit status, or TIMED_OUT when the receiver did not finish. The
-    caller decides what a timeout means; a deployment that is merely slow is not
-    a receiver that cannot start.
+    Returns the exit status, or TIMED_OUT when the receiver did not finish.
     """
     if not receiver.is_file():
         return EXEC_FAILED
@@ -205,15 +247,13 @@ def run(receiver, payload, timeout=None, arguments=()):
 def probe(receiver, timeout):
     """Decide whether the receiver can start, before it becomes current.
 
-    The receiver answers this on its own, with --probe: it imports itself, reads the
-    host configuration and takes its lock, and does nothing else. Running main() with
-    an empty payload instead would be a worse question and a real edit — main() sweeps
-    stale temporary files before it reads standard input.
+    The receiver answers this itself with --probe: it imports, reads the host configuration
+    and takes its lock, nothing else. Running main() with an empty payload would be a worse
+    question and a real edit — main() sweeps stale files before reading standard input.
 
-    Returns STARTED, PROBE_BUSY, or -1 for anything else. `busy` has to be its own
-    answer: the receiver's main() exits 1 both for a lock it cannot take and for every
-    other failure, so a success/failure pair cannot tell a running deployment from a
-    broken receiver.
+    Returns STARTED, PROBE_BUSY, or -1. `busy` must be its own answer: main() exits 1 for a
+    lock it cannot take and for every other failure, so a pair cannot tell a running
+    deployment from a broken receiver.
     """
     status = run(receiver, b'', timeout, ['--probe'])
     return status if status in (STARTED, PROBE_BUSY) else EXEC_FAILED
@@ -232,6 +272,9 @@ def install(config, payload):
     directory.mkdir(parents=True, exist_ok=True)
     staged = stage(directory, revision, data)
     check(staged)
+    # The probe takes the lock, so its directory has to exist first; this also
+    # repairs a legacy host whose deploy/ was created by hand at 0755.
+    deploy_directory(config['root'])
     status = probe(staged, START_TIMEOUT)
     if status == PROBE_BUSY:
         # Another deployment is running. It is not this revision's problem, and the
@@ -244,7 +287,7 @@ def install(config, payload):
     # Only the switch and the prune run under the lock: a concurrent deployment
     # must not see current between two revisions, and the receiver takes the
     # lock itself once it starts.
-    with (Path(config['root']) / 'deploy/github-deploy.lock').open('w') as guard:
+    with open_lock(deploy_directory(config['root']) / 'github-deploy.lock') as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
         switch(directory, revision)
         prune(directory)
@@ -264,10 +307,16 @@ def main():
     message = json.loads(payload)
     if 'receiver' not in message:
         # Nothing to install: a desktop publish, or a sender older than this file.
-        receiver = Path(config['root']) / 'receiver/current/github-deploy.py'
-        if not receiver.exists():
-            fail('no receiver is installed and this payload installs none')
-        sys.exit(run(receiver, payload))
+        current = Path(config['root']) / 'receiver/current'
+        if not current.is_symlink():
+            fail('receiver/current is a real directory, not a symlink to a revision, so it '
+                 'cannot be run' if current.is_dir() else
+                 'receiver/current is a regular file, not a symlink to a revision, so it '
+                 'cannot be run' if current.exists() else
+                 'no receiver is installed and this payload installs none')
+        if not (current / 'github-deploy.py').is_file():
+            fail('receiver/current points at %s, which holds no github-deploy.py' % os.readlink(current))
+        sys.exit(run(current / 'github-deploy.py', payload))
     receiver = install(config, message)
     status = run(receiver, payload, RUN_TIMEOUT)
     if status != STARTED:
@@ -292,7 +341,8 @@ def main():
                       '(see the log above), not the receiver' % status)
         outcome = ('the previous receiver %s was restored, so a desktop publish does not '
                    'keep running this one' % restored if restored else
-                   'there was no previous receiver to restore')
+                   'there was no previous receiver to restore, so no receiver is current and '
+                   'a desktop publish will refuse until one is installed')
         fail('the receiver for this deployment %s; %s; the deployment did not take effect'
              % (reason, outcome))
     sys.exit(status)

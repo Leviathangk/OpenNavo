@@ -2377,6 +2377,36 @@ def self_check():
     print('self-check: receiver loaded and host configuration is valid', flush=True)
 
 
+def deploy_directory(root):
+    """Return <root>/deploy, created private if missing.
+
+    Nothing in either program created this directory: it was a precondition the
+    operator satisfied by hand, so its mode was whatever the creating shell's umask
+    left (commonly 0755). mkdir(exist_ok=True) does not change the mode of a
+    directory that already exists -- measured, 0755 stays 0755 -- so the chmod is
+    what repairs a legacy host, and it has to run every time.
+    """
+    directory = Path(root) / 'deploy'
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(directory, 0o700)
+    return directory
+
+
+def open_lock(path, flags):
+    """Open the deployment lock without following a symlink and without leaving it readable.
+
+    O_NOFOLLOW: open() otherwise follows a symlink planted at the lock path, and
+    main() truncates whatever it points at. O_CREAT with an explicit 0o600 keeps the
+    first creation private whatever umask this entry point inherited -- probe() does
+    not run main(), so it does not inherit main()'s os.umask(0o077). The fchmod then
+    repairs a lock an earlier version left 0644; it acts on the descriptor, so it
+    cannot be redirected the way the path could.
+    """
+    descriptor = os.open(path, flags | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    os.fchmod(descriptor, 0o600)
+    return os.fdopen(descriptor, 'r' if flags == os.O_RDONLY else 'w')
+
+
 def probe():
     """Report whether this receiver can start, without doing anything to the host.
 
@@ -2396,9 +2426,12 @@ def probe():
     missing = [key for key in required if key not in config]
     if missing:
         raise ValueError('host configuration is missing: ' + ', '.join(missing))
-    lock_path = Path(config['root']) / 'deploy/github-deploy.lock'
     # Same file and mode main() uses, so this proves the path main() will open works.
-    with lock_path.open('a') as lock:
+    # The parent directory is not created here: `--probe` answers a question and must
+    # not repair the host. main() and the bootstrap create <root>/deploy before this
+    # runs, so a missing one means the host is not laid out for this receiver at all.
+    lock_path = Path(config['root']) / 'deploy/github-deploy.lock'
+    with open_lock(lock_path, os.O_RDONLY) as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
@@ -2412,7 +2445,7 @@ def probe():
 def main():
     os.umask(0o077)
     config = json.loads(Path('/etc/opennavo/github-deploy.json').read_text())
-    with (Path(config['root']) / 'deploy/github-deploy.lock').open('w') as lock:
+    with open_lock(deploy_directory(config['root']) / 'github-deploy.lock', os.O_WRONLY) as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         swept = sweep_stale_temp_files(config['root'], config.get('caddy_file'))
         if swept:

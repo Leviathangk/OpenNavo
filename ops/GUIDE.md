@@ -574,7 +574,13 @@ pipe and never through a file, because the payload carries the registry token.
 
 Before switching, it asks the staged receiver `--probe`. That entry point imports
 the receiver, reads the host configuration and takes its lock, then stops — it
-sweeps nothing, reads no payload and changes nothing. It answers **0** when it can
+sweeps nothing, reads no payload and changes nothing except that it may create the
+lock file itself, as taking a lock does. `<root>/deploy` must already exist for
+this: the bootstrap creates it (mode `0700`) before asking, and the receiver's
+`main()` does the same on every deployment, so a deployment on a host that predates
+this needs no manual step. Running `--probe` by hand is the exception: it repairs
+nothing, by design, so create `<root>/deploy` (mode `0700`) first or it exits 1 with
+`No such file or directory` on the lock path. It answers **0** when it can
 start, **2** when another deployment holds the lock, and anything else for a real
 failure. Busy gets its own code because `main()` exits 1 both for a lock it cannot
 take and for every other failure; a success/failure pair would report a running

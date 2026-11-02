@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 import importlib.util
 import io
+import errno
 import json
 import os
 from pathlib import Path
@@ -133,6 +134,56 @@ class BootstrapTestCase(unittest.TestCase):
                 bootstrap.main()
         return raised.exception.code
 
+    def test_a_real_directory_called_current_is_named_not_overwritten(self):
+        current = self.receiver / 'current'
+        current.unlink()
+        current.mkdir()
+        with patch('sys.stderr', new_callable=io.StringIO) as stderr:
+            with self.assertRaises(SystemExit) as raised:
+                bootstrap.switch(self.receiver, REVISION)
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn('real directory', stderr.getvalue())
+        self.assertTrue(current.is_dir(), 'the directory must be left exactly as it was')
+        self.assertEqual(sorted(p.name for p in current.iterdir()), [])
+
+    def test_a_publish_refuses_a_current_directory_with_an_old_receiver_inside(self):
+        # A publish carries no receiver, so main() runs whatever current points at.
+        # exists() answered yes for a real directory holding an old copy: the stale
+        # file ran, exited 0, and the publish above read that as a deployment.
+        current = self.receiver / 'current'
+        current.unlink()
+        current.mkdir()
+        stale = current / 'github-deploy.py'
+        stale.write_text(RECEIVER)
+        stale.chmod(0o755)
+        publish = json.dumps({'sha': REVISION, 'images': {'server': 'x'},
+                              'registry_token': SENTINEL}).encode()
+        with patch('sys.stderr', new_callable=io.StringIO) as stderr:
+            self.assertEqual(self.run_main(publish), 1)
+        self.assertIn('real directory', stderr.getvalue(),
+                      'the publish must say what current is, not run it')
+        self.assertEqual(stale.read_text(), RECEIVER, 'the stale copy must not run')
+
+    def test_a_publish_still_runs_a_pointer_to_an_installed_receiver(self):
+        # The positive side: a real pointer must not be caught by the refusal above.
+        self.point_previous_at(REVISION)
+        (self.receiver / 'current').unlink()
+        (self.receiver / 'current').symlink_to(REVISION)
+        publish = json.dumps({'sha': REVISION, 'images': {'server': 'x'},
+                              'registry_token': SENTINEL}).encode()
+        self.assertEqual(self.run_main(publish), 0)
+
+    def test_a_pointer_to_a_revision_without_the_receiver_is_named(self):
+        target = self.receiver / OTHER
+        target.mkdir()
+        (self.receiver / 'current').unlink()
+        (self.receiver / 'current').symlink_to(OTHER)
+        publish = json.dumps({'sha': REVISION, 'images': {'server': 'x'},
+                              'registry_token': SENTINEL}).encode()
+        with patch('sys.stderr', new_callable=io.StringIO) as stderr:
+            self.assertEqual(self.run_main(publish), 1)
+        self.assertIn('holds no github-deploy.py', stderr.getvalue())
+
     def serve(self, revision, data=RECEIVER.encode()):
         """Lay out what the download step would fetch for one revision."""
         directory = Path(self.directory.name) / revision
@@ -241,6 +292,70 @@ class VerificationOrderTests(BootstrapTestCase):
         written = ''.join(call[0][0] for call in stderr.write.call_args_list)
         self.assertIn('compile step', written)
 
+    def test_a_regular_file_current_is_adopted_not_overwritten(self):
+        # A host can have current as a regular file: that is how the receiver was
+        # installed before receiver/ existed, and nothing migrates it. point() ends in
+        # os.replace, which would delete it with no copy kept, and the next deployment
+        # would then have no previous to roll back to. Adopt it into receiver/ first.
+        old = b'#!/usr/bin/env python3\n# the receiver that was working\n'
+        (self.receiver / 'current').unlink()
+        (self.receiver / 'current').write_bytes(old)
+        bootstrap.switch(self.receiver, REVISION)
+        self.assertTrue((self.receiver / 'current').is_symlink())
+        self.assertEqual(os.readlink(self.receiver / 'current'), REVISION)
+        self.assertTrue((self.receiver / 'previous').is_symlink())
+        adopted = self.receiver / os.readlink(self.receiver / 'previous')
+        self.assertEqual((adopted / 'github-deploy.py').read_bytes(), old,
+                         'the pre-layout receiver was replaced without keeping a copy')
+        self.assertEqual(bootstrap.rollback(self.receiver), True,
+                         'a failed first deploy has nowhere to roll back to')
+
+    def test_adopting_the_same_receiver_twice_keeps_one_copy(self):
+        (self.receiver / 'current').unlink()
+        (self.receiver / 'current').write_bytes(RECEIVER.encode())
+        bootstrap.switch(self.receiver, REVISION)
+        first = os.readlink(self.receiver / 'previous')
+        bootstrap.switch(self.receiver, REVISION)
+        self.assertEqual(os.readlink(self.receiver / 'previous'), first)
+        adopted = [entry for entry in self.receiver.iterdir() if entry.name.startswith('adopted-')]
+        self.assertEqual(len(adopted), 1, 'a retried deployment left a second copy behind')
+
+    def test_install_creates_and_tightens_deploy_before_probing(self):
+        # The receiver's --probe takes the lock, so <root>/deploy must exist before the
+        # probe runs or a first deploy dies on FileNotFoundError. It also has to be
+        # tightened here: on a legacy host it exists at whatever mode the operator's
+        # shell umask left, and the receiver's own main() never runs during an install.
+        deploy = self.root / 'deploy'
+        os.chmod(deploy, 0o755)
+        self.serve(REVISION)
+        self.assertEqual(self.run_main(payload()), 0)
+        self.assertEqual(deploy.stat().st_mode & 0o777, 0o700,
+                         'install() left the deployment directory at its inherited mode')
+
+    def test_deploy_exists_before_the_probe_runs_not_just_after(self):
+        # Ordering, not existence: the receiver's --probe opens the lock, so a deploy/
+        # created after probe() is a deploy/ created too late. This records the state
+        # at the moment probe() is entered, which is the only place the order shows.
+        (self.root / 'deploy').rmdir()
+        seen = []
+        real = bootstrap.probe
+
+        def recording(receiver, timeout):
+            seen.append((self.root / 'deploy').is_dir())
+            return real(receiver, timeout)
+
+        self.serve(REVISION)
+        with patch.object(bootstrap, 'probe', side_effect=recording):
+            self.assertEqual(self.run_main(payload()), 0)
+        self.assertEqual(seen, [True], 'the probe ran before <root>/deploy existed')
+
+    def test_install_creates_deploy_when_the_host_has_none(self):
+        (self.root / 'deploy').rmdir()
+        self.serve(REVISION)
+        self.assertEqual(self.run_main(payload()), 0)
+        self.assertTrue((self.root / 'deploy').is_dir(),
+                        'install() did not create the directory the probe needs')
+
     def test_the_previous_pointer_is_written_before_current_moves(self):
         self.install_revision(OTHER)
         (self.receiver / 'current').unlink()
@@ -248,6 +363,74 @@ class VerificationOrderTests(BootstrapTestCase):
         bootstrap.switch(self.receiver, REVISION)
         self.assertEqual(os.readlink(self.receiver / 'current'), REVISION)
         self.assertEqual(os.readlink(self.receiver / 'previous'), OTHER)
+
+
+class DeployDirectoryTests(BootstrapTestCase):
+    def test_a_pre_existing_directory_is_tightened(self):
+        # Nothing in either program created deploy/; it was a precondition the operator
+        # satisfied by hand, so its mode is whatever the creating shell's umask left.
+        # mkdir(exist_ok=True) does not change the mode of a directory that already
+        # exists (measured: 0755 stays 0755), so without the chmod a legacy host keeps
+        # a group-traversable deploy/ forever and the fix silently does nothing.
+        deploy = self.root / 'deploy'
+        os.chmod(deploy, 0o775)
+        self.assertEqual(deploy.stat().st_mode & 0o777, 0o775)
+        returned = bootstrap.deploy_directory(self.root)
+        self.assertEqual(returned, deploy)
+        self.assertEqual(deploy.stat().st_mode & 0o777, 0o700,
+                         'a deploy/ that already existed was left group-writable')
+
+    def test_a_missing_directory_is_created_private(self):
+        deploy = self.root / 'deploy'
+        deploy.rmdir()
+        old = os.umask(0o022)
+        try:
+            bootstrap.deploy_directory(self.root)
+        finally:
+            os.umask(old)
+        self.assertTrue(deploy.is_dir())
+        self.assertEqual(deploy.stat().st_mode & 0o777, 0o700,
+                         'the umask decided the mode of a directory nothing created before')
+
+
+class LockFileTests(BootstrapTestCase):
+    def test_a_planted_symlink_is_refused_instead_of_truncated(self):
+        victim = Path(self.directory.name) / 'victim.conf'
+        victim.write_bytes(b'PRECIOUS CONFIG\n')
+        lock = self.root / 'deploy/github-deploy.lock'
+        lock.symlink_to(victim)
+        with self.assertRaises(OSError) as raised:
+            with bootstrap.open_lock(lock):
+                pass
+        self.assertEqual(raised.exception.errno, errno.ELOOP,
+                         'the lock path was followed instead of refused')
+        self.assertEqual(victim.read_bytes(), b'PRECIOUS CONFIG\n',
+                         'following the lock symlink truncated the file it points at')
+        self.assertTrue(lock.is_symlink())
+
+    def test_a_lock_left_readable_by_an_earlier_version_is_repaired(self):
+        # probe() does not run main(), so it never inherited os.umask(0o077) and could
+        # create this file 0644. An existing inode keeps that mode through every later
+        # open(), so only an explicit chmod closes it, and it has to run every time.
+        lock = self.root / 'deploy/github-deploy.lock'
+        lock.write_bytes(b'')
+        os.chmod(lock, 0o644)
+        with bootstrap.open_lock(lock):
+            pass
+        self.assertEqual(lock.stat().st_mode & 0o777, 0o600,
+                         'a world-readable lock stayed readable')
+
+    def test_the_lock_is_created_private_whatever_umask_is_inherited(self):
+        lock = self.root / 'deploy/github-deploy.lock'
+        lock.unlink(missing_ok=True)
+        old = os.umask(0o000)
+        try:
+            with bootstrap.open_lock(lock):
+                pass
+        finally:
+            os.umask(old)
+        self.assertEqual(lock.stat().st_mode & 0o777, 0o600,
+                         'the umask decided the mode of a freshly created lock')
 
 
 class RetentionTests(BootstrapTestCase):
@@ -444,6 +627,49 @@ class FailureTests(BootstrapTestCase):
     def test_rollback_reports_when_there_is_nothing_to_restore(self):
         (self.receiver / 'current').unlink()
         self.assertFalse(bootstrap.rollback(self.receiver))
+
+    def test_a_first_deployment_that_fails_leaves_no_receiver_current(self):
+        # The host has never deployed before: `previous` does not exist, so there is nothing
+        # to roll back to. Returning quietly would leave `current` on the receiver that just
+        # failed, and a desktop publish carries no receiver of its own: it runs
+        # receiver/current/github-deploy.py, so every later publish would keep running the
+        # broken one. The only safe state is "no receiver current", which the publish path
+        # already refuses with a clear message.
+        # setUp leaves a dangling `current`, which switch() would faithfully preserve as
+        # `previous`. A host that has never deployed has no pointer at all.
+        (self.receiver / 'current').unlink()
+        self.assertFalse((self.receiver / 'previous').is_symlink())
+        self.serve(REVISION)
+        self.assertEqual(self.run_main(payload(), receiver_status=1), 1)
+        self.assertFalse((self.receiver / 'current').is_symlink(),
+                         'a failed first deployment left its own receiver current')
+        self.assertFalse((self.receiver / 'previous').is_symlink(),
+                         'a rollback invented a previous receiver that never existed')
+
+    def test_a_failed_first_deployment_says_no_receiver_is_installed(self):
+        # The operator reads this line to know what the host is now running. "Restored the
+        # previous receiver" would be a lie here, and "there was no previous receiver" alone
+        # leaves the consequence unsaid.
+        (self.receiver / 'current').unlink()
+        self.serve(REVISION)
+        with patch('sys.stderr') as stderr:
+            self.assertEqual(self.run_main(payload(), receiver_status=1), 1)
+        text = ''.join(call.args[0] for call in stderr.write.call_args_list if call.args)
+        self.assertIn('no receiver is current', text,
+                      'the message does not say what the host is left running')
+
+    def test_a_desktop_publish_after_a_failed_first_deployment_refuses_clearly(self):
+        # The state rollback() now leaves behind: no `current` at all. A desktop publish
+        # carries no receiver, so it has nothing to run and must say so, not crash on a
+        # missing path or silently "succeed".
+        (self.receiver / 'current').unlink()
+        self.serve(REVISION)
+        self.assertEqual(self.run_main(payload(), receiver_status=1), 1)
+        with patch('sys.stderr') as stderr:
+            self.assertEqual(self.run_main(json.dumps({'deployment': 'x'}).encode()), 1)
+        text = ''.join(call.args[0] for call in stderr.write.call_args_list if call.args)
+        self.assertIn('no receiver is installed', text,
+                      'the publish path does not explain why it refused')
 
     def test_a_missing_configuration_stops_before_reading_the_payload(self):
         self.config.unlink()
@@ -651,12 +877,33 @@ class LintTests(unittest.TestCase):
         self.assertIn("['--probe']", probe_body, 'the probe runs main() and edits the host')
         receiver = (Path(__file__).parent.parent / 'ops/github-deploy.py').read_text()
         self.assertIn("'--probe' in sys.argv[1:]", receiver, 'the receiver has no --probe entry point')
-        # Opening the lock path for append proves it is usable without truncating it:
-        # 'w' would empty a file the real deployment relies on.
+        # The probe must open the lock without truncating it and without following a
+        # symlink planted at that path: open('w') empties the victim and open('a')
+        # still creates a file wherever the link points. open_lock() is the one place
+        # that carries O_NOFOLLOW, so the probe has to go through it.
         entry = receiver[receiver.index('def probe():'):receiver.index('def main():')]
-        self.assertIn(".open('a')", entry, 'the probe opens the lock path for writing')
+        self.assertIn('open_lock(lock_path, os.O_RDONLY)', entry,
+                      'the probe opens the lock path without O_NOFOLLOW')
+        self.assertNotIn(".open('a')", entry, 'the probe opens the lock path directly')
         self.assertNotIn(".open('w')", entry, 'the probe truncates the lock file')
         self.assertNotIn('sweep_stale_temp_files', entry, 'the probe edits the host')
+        helpers = receiver[receiver.index('def open_lock('):receiver.index('def probe():')]
+        self.assertIn('os.O_NOFOLLOW', helpers, 'open_lock does not refuse a symlinked lock')
+        self.assertIn('0o600', helpers, 'open_lock leaves the lock readable by the umask')
+        self.assertIn('os.fchmod', helpers, 'open_lock does not repair a lock an earlier version left 0644')
+
+    def test_the_receivers_busy_code_matches_the_bootstrap(self):
+        # PROBE_BUSY is defined in both files and only the bootstrap's copy was pinned
+        # by a test, so changing the receiver's copy alone raised no failure. A drifted
+        # code folds "another deployment is running" into "the receiver cannot start",
+        # and an ordinary concurrent deployment is then reported as a broken receiver.
+        # Compare the two live values instead of the source text.
+        spec = importlib.util.spec_from_file_location(
+            'receiver_under_test', Path(__file__).parent.parent / 'ops/github-deploy.py')
+        receiver = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(receiver)
+        self.assertEqual(receiver.PROBE_BUSY, bootstrap.PROBE_BUSY,
+                         'the receiver answers --probe with a different busy code than the bootstrap reads')
 
     def test_busy_is_its_own_probe_answer(self):
         # The receiver's main() exits 1 for a lock it cannot take and for every other
@@ -666,6 +913,10 @@ class LintTests(unittest.TestCase):
         receiver = (Path(__file__).parent.parent / 'ops/github-deploy.py').read_text()
         entry = receiver[receiver.index('def probe():'):receiver.index('def main():')]
         self.assertIn('PROBE_BUSY', entry, 'the receiver does not give busy its own exit code')
+        busy = re.search(r'^PROBE_BUSY = (\d+)$', receiver, re.MULTILINE)
+        self.assertIsNotNone(busy, 'the receiver does not define PROBE_BUSY as a literal')
+        self.assertEqual(bootstrap.PROBE_BUSY, int(busy.group(1)),
+                         'deploy-bootstrap.py and github-deploy.py disagree on PROBE_BUSY')
         self.assertEqual(bootstrap.PROBE_BUSY, 2)
         source = Path(__file__).with_name('deploy-bootstrap.py').read_text()
         body = source[source.index('def install('):source.index('def main()')]
