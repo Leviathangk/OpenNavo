@@ -329,6 +329,21 @@ describe('Keyboard allow chord (#104 A-2)', () => {
     });
   }
 
+  it('Command-Return mid-composition denies, not allows', async () => {
+    // A Chinese or Japanese input method reports Enter while the user is only picking a candidate. Without this guard
+    // the chord would approve a Local MCP write the moment someone chose a word with Command held.
+    const { answer, allow } = await armed();
+    allow.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'isComposing', { value: true });
+    allow.dispatchEvent(event);
+    await flushPromises();
+    // The handler ran (one answer went out) and refused: `every` alone would also pass on an empty call list, so a
+    // handler that stopped reacting to Enter altogether would look identical to a correct guard.
+    expect(answer).toHaveBeenCalledTimes(1);
+    expect(answer).toHaveBeenCalledWith('confirm-1', false);
+  });
+
   it('Space with the Command modifier still denies', async () => {
     const { answer, allow } = await armed();
     allow.focus();
