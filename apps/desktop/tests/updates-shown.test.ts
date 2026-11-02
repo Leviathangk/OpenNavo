@@ -8,8 +8,10 @@ import { setup } from './helpers';
 // `brew outdated` (formula, link) stay out of the list and out of its count.
 //
 // This is the page's half of a rule Rust implements verbatim in `scheduler::visible()`; that side is pinned by
-// `visible_is_the_pages_rule_not_the_schedulers`. Until this file neither half of the page's rule was held by a
-// test, so replacing the filter with `list` would have shown Homebrew formulas with nothing turning red.
+// `visible_is_the_pages_rule_not_the_schedulers`. The page's side was already held by `state.test.ts`, whose
+// `Cask-only local installed/update lists exclude Homebrew command-line tools` asserts it through
+// `useUpdatesStore().items`; what this file adds is a per-branch truth table over `shown()`, so a failure names
+// the branch that broke instead of only the list.
 //
 // `shown()` is private to the module, so these cases go through the public path: a mocked `updates_list`, then
 // `load()`, then `items`. With no finished task and no pin in play, `accept()` applies exactly `shown(list)`.
