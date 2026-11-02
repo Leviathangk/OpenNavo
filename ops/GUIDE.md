@@ -225,41 +225,61 @@ else
     echo "no /etc/cron.d here; row 1 stays unknown"
 fi
 
-# Filesystem-level snapshots, if the host uses one of these. Each block asks two
-# questions in order, because they have different answers:
-#   is the tool installed?  -> if not, this method was never tested, and row 1
-#                              stays `unknown`; it does not become "not LVM"
-#   did it list anything?   -> if not, this is not how the host snapshots
-# Neither outcome is a statement about whether a backup exists.
+# Filesystem-level snapshots, if the host uses one of these. Each block asks three
+# questions in order, because they have three different answers:
+#   is the tool installed?   -> if not, this method was never tested, and row 1
+#                               stays `unknown`; it does not become "not LVM"
+#   did the tool succeed?    -> lvs exits 0 and writes to stderr when it cannot read
+#                               LVM metadata, so an empty stdout alone does not mean
+#                               "no volumes"; stderr is what separates the two
+#   did it list anything?    -> only now does an empty list mean this is not how the
+#                               host snapshots
+# No outcome here is a statement about whether a backup exists.
 
 if command -v lvs >/dev/null 2>&1; then
-    OUT=$(lvs --noheadings -o lv_name,lv_time 2>/dev/null)
-    if [ -n "$OUT" ]; then printf '%s\n' "$OUT"
-    else echo "lvs ran and listed no logical volumes: not LVM, or LVM with nothing on it"
+    OUT=$(lvs --noheadings -o lv_name,lv_time 2>/tmp/lvs.err)
+    if [ -s /tmp/lvs.err ]; then
+        echo "lvs could not read LVM metadata, so this check did not run:"
+        sed 's/^/  /' /tmp/lvs.err
+        echo "  -> row 1 stays unknown"
+    elif [ -n "$OUT" ]; then
+        printf '%s\n' "$OUT"
+    else
+        echo "lvs ran cleanly and listed no logical volumes: not LVM, or LVM with nothing on it"
     fi
+    rm -f /tmp/lvs.err
 else
     echo "lvs not installed (package lvm2); LVM not checked, row 1 stays unknown"
 fi
 
 if command -v zfs >/dev/null 2>&1; then
-    OUT=$(zfs list -t snapshot -o name,creation 2>/dev/null)
-    if [ -n "$OUT" ]; then printf '%s\n' "$OUT"
-    else echo "zfs ran and listed no snapshots: not ZFS, or ZFS with none"
+    OUT=$(zfs list -t snapshot -o name,creation 2>/tmp/zfs.err)
+    if [ -s /tmp/zfs.err ]; then
+        echo "zfs reported an error, so this check did not run:"
+        sed 's/^/  /' /tmp/zfs.err
+        echo "  -> row 1 stays unknown"
+    elif [ -n "$OUT" ]; then
+        printf '%s\n' "$OUT"
+    else
+        echo "zfs ran cleanly and listed no snapshots: not ZFS, or ZFS with none"
     fi
+    rm -f /tmp/zfs.err
 else
     echo "zfs not installed; ZFS not checked, row 1 stays unknown"
 fi
 
 if command -v btrfs >/dev/null 2>&1; then
-    if OUT=$(btrfs subvolume list / 2>/dev/null); then
-        if printf '%s\n' "$OUT" | grep -qi snapshot; then
-            printf '%s\n' "$OUT" | grep -i snapshot
-        else
-            echo "btrfs ran; / is btrfs but no subvolume name mentions snapshot"
-        fi
+    OUT=$(btrfs subvolume list / 2>/tmp/btrfs.err)
+    if [ -s /tmp/btrfs.err ]; then
+        echo "btrfs reported an error, so this check did not run:"
+        sed 's/^/  /' /tmp/btrfs.err
+        echo "  -> row 1 stays unknown"
+    elif printf '%s\n' "$OUT" | grep -qi snapshot; then
+        printf '%s\n' "$OUT" | grep -i snapshot
     else
-        echo "btrfs ran and could not read /: not btrfs, or not readable"
+        echo "btrfs ran cleanly; no subvolume name mentions snapshot"
     fi
+    rm -f /tmp/btrfs.err
 else
     echo "btrfs not installed (package btrfs-progs); btrfs not checked, row 1 stays unknown"
 fi
