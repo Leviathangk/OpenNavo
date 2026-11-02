@@ -101,7 +101,10 @@ async function rerunFlakes(api, run) {
   console.log(`${run.name}: reran the failed jobs after a known flake`);
 }
 
-async function deployMain(api, sha) {
+// The dispatch below is the one place that starts a production deploy, and it is
+// reached only through five checks that each return early. Exported for its test:
+// an untested path here either deploys a superseded commit or deploys twice.
+export async function deployMain(api, sha) {
   const { commit } = await api('/branches/main');
   if (commit.sha !== sha) {
     console.log(`${sha} is no longer the tip of main; the newer commit ships itself`);
@@ -155,14 +158,20 @@ async function pruneCaches(api) {
   }
 }
 
+// What a completed workflow run should do next. Separate from main() so the
+// decision can be tested: main() reads the event payload and builds the client.
+export function dispatch(api, run) {
+  if (run.conclusion === 'failure') return rerunFlakes(api, run);
+  if (run.conclusion === 'success' && run.event === 'push' && run.head_branch === 'main')
+    return deployMain(api, run.head_sha);
+}
+
 async function main() {
   const { workflow_run: run } = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
   const api = client(process.env.GITHUB_REPOSITORY, process.env.GITHUB_TOKEN);
   if (run.event === 'push' && run.head_branch === 'main')
     await pruneCaches(api).catch(error => console.log(`cache cleanup skipped: ${error.message}`));
-  if (run.conclusion === 'failure') return rerunFlakes(api, run);
-  if (run.conclusion === 'success' && run.event === 'push' && run.head_branch === 'main')
-    return deployMain(api, run.head_sha);
+  return dispatch(api, run);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
