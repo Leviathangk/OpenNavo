@@ -383,6 +383,25 @@ class RetryWhitelistCoverageTests(unittest.TestCase):
                        'test_the_other_spelling_of_the_same_race_converges')
     PERMANENT_CASES = ('test_a_permanent_failure_is_not_retried',)
 
+    # marker -> a message with the same wording but a permanent cause. Keyed by the marker itself
+    # rather than by position, so reordering TRANSIENT cannot silently pair the wrong two.
+    NEAR = {
+        'the database system is shutting down':
+            'psql: error: FATAL:  database system was interrupted while in recovery; manual recovery required',
+        'the database system is starting up':
+            'psql: error: FATAL:  database system startup failed: invalid checkpoint record',
+        'terminating connection due to administrator command':
+            'psql: error: FATAL:  terminating connection failed: role "opennavo" does not exist',
+        ('to server', 'connection refused'):
+            'dial unix /var/run/docker.sock: connect: connection refused',
+        'failed: no such file or directory':
+            'ERROR: relation "x" does not exist: No such file or directory candidate',
+        'pg_database_datname_index':
+            'ERROR:  duplicate key value violates unique constraint "users_email_key"',
+        f'database "{e2e.DB_NAME}" already exists':
+            'ERROR:  schema "public" already exists',
+    }
+
     def messages(self, names):
         """The case messages of the named methods, read from the syntax that feeds them in.
 
@@ -430,6 +449,37 @@ class RetryWhitelistCoverageTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 hits = [message[:40] for message in permanent if self.matches(marker, message)]
                 self.assertEqual(hits, [], f'{marker!r} also matches a permanent failure: {hits}')
+    def test_every_marker_rejects_its_own_near_miss(self):
+        # Both loops below run once per marker, so an empty TRANSIENT would run them zero times
+        # and report green: the suite would claim every marker was checked when none was. The
+        # bound makes the vacuous case fail here instead of passing quietly. The number is not
+        # the contract - the careful user-facing cases are - so it only needs to be a floor low
+        # enough not to argue with a genuine removal, which the older cases would catch anyway.
+        self.assertGreaterEqual(len(e2e.TRANSIENT), 1, 'the marker list was emptied, so this proves nothing')
+        missing = [marker for marker in e2e.TRANSIENT if marker not in self.NEAR]
+        self.assertEqual(missing, [], f'these markers have no near-miss: {missing}')
+        for marker in e2e.TRANSIENT:
+            with self.subTest(marker=marker):
+                self.assertFalse(self.matches(marker, self.NEAR[marker]),
+                                 f'{marker!r} matches its own near-miss, so it is too wide')
+
+    def test_no_near_miss_belongs_to_a_different_marker(self):
+        # One near-miss per marker, and it must be that marker's alone. A pair of markers sharing
+        # one near-miss would let a widening hide behind the other's entry.
+        for marker, near in self.NEAR.items():
+            with self.subTest(marker=marker):
+                others = [str(other) for other in e2e.TRANSIENT
+                          if other != marker and self.matches(other, near)]
+                self.assertEqual(others, [], f'{near!r} also matches {others}, not only {marker!r}')
+
+    def test_no_near_miss_outlives_its_marker(self):
+        # The other half of the bound above: removing a marker leaves its entry here, and every
+        # loop in this class iterates over TRANSIENT, so the leftover is never looked at. It reads
+        # as coverage of a marker that no longer exists. Dropping a marker is a real edit the
+        # older cases would catch on their own, so this only has to stop the table going stale.
+        orphaned = [marker for marker in self.NEAR if marker not in e2e.TRANSIENT]
+        self.assertEqual(orphaned, [], f'these near-misses outlive a removed marker: {orphaned}')
+
 
 if __name__ == '__main__':
     unittest.main()
