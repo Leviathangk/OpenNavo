@@ -192,7 +192,7 @@ make lint test
 
 ## Развёртывание
 
-Конфигурация для production находится в `ops/docker-compose.prod.yml`: по две реплики API и веб-версии, worker, Redis и Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) и ежедневные резервные копии (`backup`) включаются через дополнительные профили.
+Конфигурация для production находится в `ops/docker-compose.prod.yml`: по две реплики API и веб-версии, worker, Redis и Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) и ежедневные резервные копии (`backup`) включаются через дополнительные профили. **Развёртывание включает только `ops` и `automation`, поэтому служба `backup` в production никогда не запускается** — резервной копией служит снимок хоста. См. [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
 
 Команды сборки образов, внешние `COMPOSE_ENV_FILES`, инициализация базы и S3, резервное копирование и восстановление, профили и обновления описаны в [руководстве по развёртыванию](../../ops/GUIDE.md).
 

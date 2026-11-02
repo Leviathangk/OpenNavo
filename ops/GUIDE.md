@@ -165,6 +165,167 @@ evidence that production is backed up — check the host snapshot instead.
 
 The rest of this section applies only if you deliberately enable that optional path.
 
+### Backup fact sheet
+
+**Nothing in this repository can tell you whether production is backed up.** The snapshot
+above is taken by the host owner with tooling outside this repository: no code here creates
+it, no alert fires when it stops, and no metric reports when it last succeeded. That is a
+deliberate split of responsibilities, not an oversight — but it means the only way to know
+the backup is real is to check the host and write down the answer.
+
+Keep this table current. Every row is either a fact you verified with the command beside it,
+or `unknown`. **An unverified row is the finding.** Do not fill a row from memory or from
+another document, and do not delete the `unknown` marker before the command has been run.
+
+| # | Question | How to verify (on the host) | Record |
+|---|---|---|---|
+| 1 | Is a whole-server snapshot scheduled at all? | Whichever applies: `systemctl list-timers --all`, `crontab -l` and `/etc/cron.*`, or the provider's snapshot policy in its console | Mechanism and schedule, or `unknown` |
+| 2 | When did a snapshot last succeed? | The same source as row 1, plus the provider's snapshot list | Date and time of the newest **successful** snapshot, or `unknown` |
+| 3 | Does the snapshot include the PostgreSQL data directory? | Produce one **absolute host path** for the running server (see below), then check that path is inside the snapshot's scope | The absolute path and whether the snapshot covers it, or `unknown` |
+| 4 | Does the snapshot include what the database does not? | Check the same scope covers the `.env` and `current-release.env` files, the Caddy volumes, and the object storage the app writes to | Each item covered / not covered, or `unknown` |
+| 5 | When was a restore last actually performed, not just planned? | The restore drill below, run against a non-production copy | Date, and whether the restored data matched |
+| 6 | Who is responsible for rows 1–4? | An agreement, not a command. **`owner: user`** — the user names the owner. Record `unknown` until they do | Name or role, or `unknown` |
+| 7 | When was this table last reviewed? | An agreement, not a command. Read the date recorded beside this row against the quarterly cadence below | Date last reviewed and who reviewed it, or `unknown` |
+
+**Row 5 is the one that matters.** Rows 1–4 establish that a backup exists; only a restore
+establishes that it works. A snapshot nobody has ever restored is a hypothesis.
+
+**Row 6 is not ours to fill.** Who is accountable for the backup is a decision for the user
+and the organisation. Filling it in-house would mean assigning ourselves a responsibility and
+then grading our own work. Leave it `unknown` until the user names someone.
+
+**Review this table every quarter, and treat a row older than one quarter as `unknown`
+again, whatever it says.** Row 7 records when that last happened. A stale answer reads
+exactly like a current one, which is how a checklist becomes a decoration.
+
+Record each verification in the operations record with the date, the person, and the answers.
+When a row changes from `unknown` to a concrete answer, that change is the whole point of
+this table — it is the first moment anyone can say the backup is real.
+
+#### Checking the host snapshot
+
+These commands read only. Run them on the host, not through the deploy key: the forced
+command runs the deployment receiver, which accepts a deploy payload and nothing else.
+
+```sh
+# Scheduled jobs: systemd timers, then cron. One of these will show the snapshot job if
+# it is scheduled from inside the host. A provider-side policy will not appear in either.
+# The cron directories are listed explicitly rather than as /etc/cron.*: when that glob
+# matches nothing, zsh aborts the command line before grep runs.
+#
+# Every fallback below says only that this command found nothing. It is not an answer:
+# read it as "row 1 still `unknown`", never as "there is no backup".
+systemctl list-timers --all 2>/dev/null | grep -iE 'snapshot|backup' || echo "no match here; row 1 stays unknown"
+crontab -l 2>/dev/null | grep -iE 'snapshot|backup' || echo "no match here; row 1 stays unknown"
+if [ -d /etc/cron.d ]; then
+    grep -rniE 'snapshot|backup' /etc/cron.d /etc/cron.daily /etc/cron.hourly \
+        /etc/cron.weekly /etc/cron.monthly /etc/crontab 2>/dev/null \
+        || echo "no match here; row 1 stays unknown"
+else
+    echo "no /etc/cron.d here; row 1 stays unknown"
+fi
+
+# Filesystem-level snapshots, if the host uses one of these. The columns name the snapshot
+# and when it was taken; an empty list means this is not how the host snapshots, not that
+# there are no snapshots.
+lvs --noheadings -o lv_name,snap_time 2>/dev/null || echo "not LVM, or no LVM tools; row 1 stays unknown"
+zfs list -t snapshot -o name,creation 2>/dev/null || echo "not ZFS, or no ZFS tools; row 1 stays unknown"
+btrfs subvolume list / 2>/dev/null | grep -i snapshot || echo "not btrfs, or no btrfs tools; row 1 stays unknown"
+```
+
+**A command that fails answers nothing.** None of the commands above can report that a backup
+is *absent*: they can only fail to find one. If one exits non-zero or prints nothing, the row
+it feeds stays `unknown` — it does not become "no". That is why the fallback messages name the
+row rather than the conclusion: a message saying "no backups scheduled" would be a finding
+these commands cannot produce.
+
+#### Where the database actually keeps its data
+
+Row 3 asks whether the snapshot contains the database, so the answer has to be **one absolute
+path on the host**. A service name, a container id, or a path inside a container does not
+answer it. Work out that path with the commands below, then check that the path is inside the
+snapshot's scope.
+
+The compose file's `postgres` service is not how production necessarily runs the database. It
+sits behind the optional `local-db` profile, and the deploy never enables that profile — it
+passes `--profile ops --profile automation`. Production may run PostgreSQL on the host
+instead, in which case there is no `postgres` container and no `postgres-data` volume. Read
+the host; do not copy the compose file.
+
+**Do not reconstruct the project name either.** The compose file's header says `name:
+opennavo-prod`, but the deploy passes `-p <project>` from `/etc/opennavo/github-deploy.json`
+(`ops/github-deploy.py`, `compose()`), and `-p` wins over the header. The two agree only if
+that config happens to hold `opennavo-prod`. The commands below ask Docker for the project
+label the container actually carries, so no name has to be assumed.
+
+```sh
+# Read-only. None of these can prove a backup is missing: when one fails or prints
+# nothing, the row it feeds stays `unknown`. It never becomes a "no".
+
+# 1. Is there a PostgreSQL container at all? Asking Docker by label needs no env file
+#    and no project name, and unlike `docker compose ps -q` it also finds a stopped
+#    container — which is exactly the one whose data you still have to back up.
+docker ps -a --filter 'label=com.docker.compose.service=postgres' \
+  --format '{{.ID}}  {{.Label "com.docker.compose.project"}}  {{.State}}'
+
+# 2. If step 1 printed exactly one id, ask for its mounts. For a named volume the
+#    source is already the absolute host path. If it printed several, every one is a
+#    candidate data directory until you know which server is live.
+CONTAINER=$(docker ps -a --filter 'label=com.docker.compose.service=postgres' \
+  --format '{{.ID}}' | head -1)
+if [ -n "$CONTAINER" ]; then
+    docker inspect --format '{{range .Mounts}}{{.Type}} {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' "$CONTAINER"
+else
+    echo "no PostgreSQL container; go to step 3"
+fi
+
+# 3. A PostgreSQL installed on the host has no container. Its postmaster command line
+#    carries -D when the server was started that way, and that is the data directory.
+ps -eo pid,args 2>/dev/null | grep '[p]ostgres.*-D' \
+  || echo "no postmaster started with -D; try step 4"
+
+# 4. Otherwise ask the server. This needs a superuser or `pg_read_all_settings`: a
+#    plain application role gets "permission denied to examine data_directory", which
+#    is a privilege limit, not a missing directory.
+psql "postgresql:///postgres" -Atc 'show data_directory'
+```
+
+**Then answer row 3 from the path, not from a command's exit code.** Finding the path does
+not prove it is snapshotted, and failing to find it does not prove the database is
+unsnapshotted. Compare the path against what the snapshot actually covers — row 1's
+mechanism — and record the path, or `unknown`.
+
+**A container's data directory is usually below the mount, not at it.** The compose file
+mounts the volume at `/var/lib/postgresql`, and the server inside reports
+`/var/lib/postgresql/18/docker` as its `data_directory`. The snapshot only has to cover the
+mount point; the path to record is the host source from step 2, which is the parent of both.
+
+**If the answer is a container file path, you have stopped one step early.** `/var/lib/...`
+inside the container is not a host path unless it is bind-mounted, so translate it through
+step 2's mount table before writing anything down.
+
+#### Restore drill
+
+The drill restores a snapshot into a throwaway environment, never over production. Two
+properties make it safe to run:
+
+- it targets a copy, so a wrong command costs a discarded directory rather than the live data;
+- it measures whether the restored data matches, so a snapshot that restores to an empty
+  database fails the drill instead of passing it.
+
+A drill that only checks the restore command exited zero proves nothing: `pg_restore`
+succeeds on an empty dump. Compare row counts for a few tables before and after, and keep the
+comparison with the date in the operations record.
+
+If the snapshot is a whole-server image, the drill is: start a throwaway server from the
+snapshot, and query the database there. Do not test the snapshot by restoring it onto the
+production host.
+
+The optional single-database path below has its own drill, which requires a second database
+and the object storage credentials. It is not the drill for the host snapshot.
+
+### Optional single-database backup
+
 The ops image includes PostgreSQL tools. The helper reads `MIGRATION_DATABASE_URL` through Compose and uploads backups to private object storage:
 
 ```sh
