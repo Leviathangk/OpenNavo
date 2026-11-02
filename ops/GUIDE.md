@@ -225,13 +225,50 @@ else
     echo "no /etc/cron.d here; row 1 stays unknown"
 fi
 
-# Filesystem-level snapshots, if the host uses one of these. The columns name the snapshot
-# and when it was taken; an empty list means this is not how the host snapshots, not that
-# there are no snapshots.
-lvs --noheadings -o lv_name,snap_time 2>/dev/null || echo "not LVM, or no LVM tools; row 1 stays unknown"
-zfs list -t snapshot -o name,creation 2>/dev/null || echo "not ZFS, or no ZFS tools; row 1 stays unknown"
-btrfs subvolume list / 2>/dev/null | grep -i snapshot || echo "not btrfs, or no btrfs tools; row 1 stays unknown"
+# Filesystem-level snapshots, if the host uses one of these. Each block asks two
+# questions in order, because they have different answers:
+#   is the tool installed?  -> if not, this method was never tested, and row 1
+#                              stays `unknown`; it does not become "not LVM"
+#   did it list anything?   -> if not, this is not how the host snapshots
+# Neither outcome is a statement about whether a backup exists.
+
+if command -v lvs >/dev/null 2>&1; then
+    OUT=$(lvs --noheadings -o lv_name,lv_time 2>/dev/null)
+    if [ -n "$OUT" ]; then printf '%s\n' "$OUT"
+    else echo "lvs ran and listed no logical volumes: not LVM, or LVM with nothing on it"
+    fi
+else
+    echo "lvs not installed (package lvm2); LVM not checked, row 1 stays unknown"
+fi
+
+if command -v zfs >/dev/null 2>&1; then
+    OUT=$(zfs list -t snapshot -o name,creation 2>/dev/null)
+    if [ -n "$OUT" ]; then printf '%s\n' "$OUT"
+    else echo "zfs ran and listed no snapshots: not ZFS, or ZFS with none"
+    fi
+else
+    echo "zfs not installed; ZFS not checked, row 1 stays unknown"
+fi
+
+if command -v btrfs >/dev/null 2>&1; then
+    if OUT=$(btrfs subvolume list / 2>/dev/null); then
+        if printf '%s\n' "$OUT" | grep -qi snapshot; then
+            printf '%s\n' "$OUT" | grep -i snapshot
+        else
+            echo "btrfs ran; / is btrfs but no subvolume name mentions snapshot"
+        fi
+    else
+        echo "btrfs ran and could not read /: not btrfs, or not readable"
+    fi
+else
+    echo "btrfs not installed (package btrfs-progs); btrfs not checked, row 1 stays unknown"
+fi
 ```
+
+**The `lvs` field is `lv_time`, not `snap_time`.** `snap_time` does not exist in lvm2 — it
+prints the whole field list to stderr and exits 5, so the command could never have returned a
+snapshot time no matter what the host ran. If you copy this block somewhere else, keep the
+field name.
 
 **A command that fails answers nothing.** None of the commands above can report that a backup
 is *absent*: they can only fail to find one. If one exits non-zero or prints nothing, the row
@@ -281,8 +318,10 @@ fi
 
 # 3. A PostgreSQL installed on the host has no container. Its postmaster command line
 #    carries -D when the server was started that way, and that is the data directory.
+#    No match here means this way of asking did not find it, not that there is no server:
+#    a server started with its compiled-in default has no -D. Step 4 asks it directly.
 ps -eo pid,args 2>/dev/null | grep '[p]ostgres.*-D' \
-  || echo "no postmaster started with -D; try step 4"
+  || echo "no postmaster started with -D; row 3 stays unknown until step 4 answers"
 
 # 4. Otherwise ask the server. This needs a superuser or `pg_read_all_settings`: a
 #    plain application role gets "permission denied to examine data_directory", which
