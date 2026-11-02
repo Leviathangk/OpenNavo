@@ -853,6 +853,78 @@ fn json_error(error: serde_json::Error) -> ToolError {
     ToolError::internal(error.to_string())
 }
 
+/// One row `list_updatable_apps` offers, with everything the read tool prints
+/// and everything `queue_updates` needs to queue it.
+///
+/// Both tools build their answer from this one function, which is what makes
+/// the update tool's rule checkable: an id it accepts is by construction an id
+/// the read tool returned. `updates_list` only merges cached results and never
+/// calls `check_update_sources`, so neither tool can start a feed request.
+///
+/// Rows are whatever `updates_list` holds, exactly as this tool has always
+/// answered. That includes Homebrew formulae, which the updates page does not
+/// draw (`scheduler::visible`); making this list match the page is a change to
+/// this tool's existing answer, not part of adding `queue_updates`, so it is
+/// left as it is and reported as an open question instead.
+pub struct UpdatableApp {
+    pub id: String,
+    pub path: String,
+    pub name: String,
+    pub installed_version: String,
+    pub current_version: String,
+    pub kind: crate::model::Kind,
+    pub token: String,
+}
+
+pub fn updatable_rows(
+    core: &std::sync::Arc<crate::core::DesktopCore>,
+) -> Result<Vec<UpdatableApp>, crate::AppError> {
+    let updates = core.updates_list()?;
+    if updates.is_empty() {
+        return Ok(Vec::new());
+    }
+    // Paths come from caches too: the in-memory app inventory for native
+    // updates and the stored library snapshot for Homebrew entries.
+    let installed: Vec<crate::model::InstalledItem> = core
+        .database
+        .meta("installed_cache")?
+        .as_deref()
+        .and_then(|body| serde_json::from_str(body).ok())
+        .unwrap_or_default();
+    Ok(updates
+        .into_iter()
+        .map(|update| {
+            let id = update
+                .app_id
+                .clone()
+                .unwrap_or_else(|| update.token.clone());
+            let path = update
+                .app_id
+                .as_deref()
+                .and_then(|id| core.queue.uninstall_engine.app(id).ok())
+                .map(|cached| cached.app.path)
+                .or_else(|| {
+                    installed
+                        .iter()
+                        .find(|local| {
+                            local.kind == update.kind && local.matches_token(&update.token)
+                        })
+                        .and_then(|local| local.app_paths.first().cloned())
+                })
+                .unwrap_or_default();
+            UpdatableApp {
+                id,
+                path,
+                name: update.name,
+                installed_version: update.installed_version,
+                current_version: update.current_version,
+                kind: update.kind,
+                token: update.token,
+            }
+        })
+        .collect())
+}
+
 /// Run database or bundle work on the app's blocking pool. Broker connections
 /// are already non-tokio threads, but this keeps the same rule as Tauri
 /// commands: no filesystem or SQLite read runs on a tokio worker.
@@ -924,52 +996,16 @@ impl ToolHost for LiveTools {
     }
 
     fn list_updatable_apps(&self) -> Result<Value, ToolError> {
-        // `updates_list` only merges cached in-memory results and persisted
-        // candidates. It never calls `check_update_sources`, so this cannot
-        // start a feed request or a new update scan.
         let core = self.core.clone();
-        let updates = blocking_tool(move || core.updates_list())?;
-        if updates.is_empty() {
-            return Ok(json!({ "apps": [] }));
-        }
-
-        // Paths come from caches too: the in-memory app inventory for native
-        // updates and the stored library snapshot for Homebrew entries.
-        let database = self.core.database.clone();
-        let installed: Vec<crate::model::InstalledItem> = blocking_tool(move || {
-            Ok(database
-                .meta("installed_cache")?
-                .as_deref()
-                .and_then(|body| serde_json::from_str(body).ok())
-                .unwrap_or_default())
-        })?;
-        let rows: Vec<Value> = updates
+        let rows: Vec<Value> = blocking_tool(move || updatable_rows(&core))?
             .into_iter()
-            .map(|update| {
-                let id = update
-                    .app_id
-                    .clone()
-                    .unwrap_or_else(|| update.token.clone());
-                let path = update
-                    .app_id
-                    .as_deref()
-                    .and_then(|id| self.core.queue.uninstall_engine.app(id).ok())
-                    .map(|cached| cached.app.path)
-                    .or_else(|| {
-                        installed
-                            .iter()
-                            .find(|local| {
-                                local.kind == update.kind && local.matches_token(&update.token)
-                            })
-                            .and_then(|local| local.app_paths.first().cloned())
-                    })
-                    .unwrap_or_default();
+            .map(|row| {
                 json!({
-                    "id": id,
-                    "path": path,
-                    "name": update.name,
-                    "currentVersion": update.installed_version,
-                    "latestVersion": update.current_version,
+                    "id": row.id,
+                    "path": row.path,
+                    "name": row.name,
+                    "currentVersion": row.installed_version,
+                    "latestVersion": row.current_version,
                 })
             })
             .collect();
@@ -1500,10 +1536,12 @@ mod tests {
         assert!(!names.contains(&"install_app"));
         assert!(!names.contains(&"uninstall_app"));
         assert!(!names.contains(&"clean_cache"));
+        assert!(!names.contains(&"queue_updates"));
 
         for (name, code) in [
             ("install_app", "E_MCP_WRITE_DISABLED"),
             ("uninstall_app", "E_MCP_WRITE_DISABLED"),
+            ("queue_updates", "E_MCP_WRITE_DISABLED"),
             ("get_latest_scan_result", "E_TOOL_NOT_FOUND"),
         ] {
             let response = request(

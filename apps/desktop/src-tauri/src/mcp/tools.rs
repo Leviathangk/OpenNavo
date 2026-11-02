@@ -98,11 +98,16 @@ pub trait ToolHost: Send + Sync {
 }
 
 /// Write tools served only while the write switch is on.
-pub const WRITE_TOOLS: &[&str] = &["install_app", "uninstall_app", "clean_cache"];
+pub const WRITE_TOOLS: &[&str] = &[
+    "install_app",
+    "uninstall_app",
+    "clean_cache",
+    "queue_updates",
+];
 
 /// Returned for write tools while writes are off.
 pub const WRITE_DISABLED_MESSAGE: &str =
-    "Install, uninstall and cleanup are turned off in OpenNavo Settings → Local MCP.";
+    "Install, uninstall, cleanup and updates are turned off in OpenNavo Settings → Local MCP.";
 
 /// Returned while another confirmation is open. Writes are never queued.
 pub const BUSY_MESSAGE: &str =
@@ -121,6 +126,89 @@ pub enum WriteRequest {
         report_id: String,
         item_ids: Vec<String>,
     },
+    /// Queue an update for rows `list_updatable_apps` returned. The ids are
+    /// looked up again before anything is queued; see [`plan_update_selection`].
+    Update { app_ids: Vec<String> },
+}
+
+/// One row `list_updatable_apps` returns, as the tool's own sites build it.
+///
+/// The update tool refuses an id unless it is one of these, so the same pair of
+/// fields decides both what a client may name and what gets queued.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct UpdatableRow {
+    /// What `list_updatable_apps` prints as `id`: the bundle id when the row
+    /// has one, the Homebrew token otherwise.
+    pub id: String,
+    pub token: String,
+    pub name: String,
+    pub kind: crate::model::Kind,
+}
+
+/// What [`plan_update_selection`] resolved: the rows to queue, in the order the
+/// caller named them, and the targets the queue receives.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UpdateSelection {
+    pub rows: Vec<UpdatableRow>,
+    pub targets: Vec<crate::model::TaskTarget>,
+}
+
+/// This is the whole authorization of the tool, and it is a pure function so it
+/// can be tested without an `AppHandle`: a client may only name an `id` that
+/// `list_updatable_apps` returned in the same session. Anything else — a path, a
+/// display name, a token of a row the read tool never prints, an id from another
+/// machine — is refused, because accepting it would let a caller reach an
+/// update the client was never shown.
+///
+/// `available` is exactly the read tool's answer, so what that tool leaves out
+/// is out of reach here too. What it does hand back is queued as given: this
+/// function does not second-guess the read tool's list, it only decides whether
+/// a requested id is in it.
+pub fn plan_update_selection(
+    available: &[UpdatableRow],
+    requested: &[String],
+) -> Result<UpdateSelection, ToolError> {
+    if requested.is_empty() {
+        return Err(ToolError::invalid("appIds must not be empty"));
+    }
+    let mut seen = std::collections::HashSet::new();
+    let mut rows = Vec::with_capacity(requested.len());
+    for id in requested {
+        if !seen.insert(id.as_str()) {
+            return Err(ToolError::invalid(format!("app id {id} is named twice")));
+        }
+        let Some(row) = available.iter().find(|row| &row.id == id) else {
+            return Err(ToolError::new(
+                "E_NOT_FOUND",
+                format!(
+                    "{id} is not an updatable app: call list_updatable_apps and pass the ids it returns"
+                ),
+            ));
+        };
+        rows.push(row.clone());
+    }
+    let targets = rows
+        .iter()
+        .map(|row| crate::model::TaskTarget {
+            kind: row.kind.into(),
+            token: row.token.clone(),
+        })
+        .collect();
+    Ok(UpdateSelection { rows, targets })
+}
+
+/// Digest of the rows an update grant is bound to.
+///
+/// The dialog lists these rows and `execute` queues these same rows, so hashing
+/// the pair that decides both (id and the version it moves from) is what makes
+/// the grant say "these updates, from these versions" rather than "some
+/// updates". Order is part of it: the dialog promises that order, and a version
+/// that moved while the dialog was open is a different grant.
+pub fn update_plan_digest(rows: &[UpdatableRow], versions: &[String]) -> String {
+    use sha2::{Digest, Sha256};
+    let canonical =
+        serde_json::to_vec(&(rows, versions)).expect("update row fields are serializable");
+    format!("{:x}", Sha256::digest(canonical))
 }
 
 impl WriteRequest {
@@ -129,10 +217,12 @@ impl WriteRequest {
             Self::Install { .. } => "install_app",
             Self::Uninstall { .. } => "uninstall_app",
             Self::Clean { .. } => "clean_cache",
+            Self::Update { .. } => "queue_updates",
         }
     }
 
-    /// The object recorded in the audit log: `kind/token` or the app path.
+    /// The object recorded in the audit log: `kind/token`, the app path, the
+    /// cleaned item count, or the number of queued updates.
     pub fn object(&self) -> String {
         match self {
             Self::Install { kind, token } => format!("{kind}/{token}"),
@@ -142,6 +232,9 @@ impl WriteRequest {
                 item_ids,
             } => {
                 format!("cleanup/{report_id}:{} items", item_ids.len())
+            }
+            Self::Update { app_ids } => {
+                format!("updates:{} apps", app_ids.len())
             }
         }
     }
@@ -229,6 +322,25 @@ pub fn write_definitions() -> Vec<Value> {
             },
             "annotations": { "readOnlyHint": false, "destructiveHint": true }
         }),
+        json!({
+            "name": "queue_updates",
+            "description": "Ask OpenNavo to update some of the apps it reported as outdated. Call list_updatable_apps first, then pass the `id` values it returned; an id OpenNavo did not list is refused with E_NOT_FOUND, and a path, a display name or a Homebrew token is never accepted in its place. OpenNavo shows the user a confirmation dialog naming every app and the version it moves to; nothing is downloaded, installed or queued unless the user clicks Allow. On approval the updates are queued as normal update tasks and one task per app is returned (poll each with get_task). Returns E_BUSY while another confirmation is open: wait a moment and try again.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "appIds": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 200,
+                        "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+                        "description": "`id` values from a list_updatable_apps answer."
+                    }
+                },
+                "required": ["appIds"],
+                "additionalProperties": false
+            },
+            "annotations": { "readOnlyHint": false, "destructiveHint": false }
+        }),
     ]
 }
 
@@ -301,6 +413,20 @@ pub fn parse_write(name: &str, arguments: Value) -> Result<WriteRequest, ToolErr
                 report_id,
                 item_ids: ids,
             })
+        }
+        "queue_updates" => {
+            reject_unknown(object, &["appIds"])?;
+            let ids = required_string_list(object, "appIds", 200)?;
+            if ids.is_empty() {
+                return Err(ToolError::invalid("appIds must not be empty"));
+            }
+            for id in &ids {
+                validate_identifier(id, "appId")?;
+            }
+            // Whether each id names a row the read tool offered is decided by
+            // `plan_update_selection` against the live list, not here: parsing
+            // cannot know what this machine has.
+            Ok(WriteRequest::Update { app_ids: ids })
         }
         _ => Err(ToolError::not_found(format!("Unknown tool: {name}"))),
     }
@@ -810,8 +936,13 @@ mod tests {
         assert!(!off.iter().any(|name| is_write_tool(name)));
         let on = names(list_result_for(true));
         assert_eq!(
-            &on[on.len() - 3..],
-            ["install_app", "uninstall_app", "clean_cache"]
+            &on[on.len() - 4..],
+            [
+                "install_app",
+                "uninstall_app",
+                "clean_cache",
+                "queue_updates"
+            ]
         );
         assert!(!on.iter().any(|name| name == "get_latest_scan_result"));
         for tool in write_definitions() {
@@ -971,6 +1102,277 @@ mod tests {
             .expect_err("too many")
             .code,
             "E_INVALID_ARG"
+        );
+    }
+
+    fn updatable(id: &str, token: &str, name: &str, kind: crate::model::Kind) -> UpdatableRow {
+        UpdatableRow {
+            id: id.into(),
+            token: token.into(),
+            name: name.into(),
+            kind,
+        }
+    }
+
+    #[test]
+    fn queue_updates_is_a_write_tool_and_only_listed_while_writes_are_on() {
+        // The name has to be in WRITE_TOOLS, because that list is the only thing
+        // that makes a call reach the confirmation gate instead of falling
+        // through to "unknown tool".
+        assert!(is_write_tool("queue_updates"));
+        assert_eq!(
+            WRITE_TOOLS,
+            &[
+                "install_app",
+                "uninstall_app",
+                "clean_cache",
+                "queue_updates"
+            ]
+        );
+        let names = |value: Value| -> Vec<String> {
+            value["tools"]
+                .as_array()
+                .expect("tools")
+                .iter()
+                .filter_map(|tool| tool["name"].as_str().map(str::to_owned))
+                .collect()
+        };
+        assert!(
+            !names(list_result_for(false))
+                .iter()
+                .any(|name| name == "queue_updates"),
+            "a write tool must not be advertised while writes are off"
+        );
+        let enabled = names(list_result_for(true));
+        assert!(enabled.iter().any(|name| name == "queue_updates"));
+        // It is a write: a host that has not implemented writes refuses it with
+        // the switch message rather than running it.
+        let error = ToolHost::write(
+            &MockHost,
+            parse_write("queue_updates", json!({ "appIds": ["a"] })).expect("parse"),
+            WriteContext {
+                connection: 1,
+                peer: None,
+                client_name: None,
+                still_valid: std::sync::Arc::new(|| true),
+            },
+        )
+        .expect_err("refused");
+        assert_eq!(error.code, "E_MCP_WRITE_DISABLED");
+    }
+
+    #[test]
+    fn queue_updates_parses_ids_and_nothing_else() {
+        let request = parse_write(
+            "queue_updates",
+            json!({ "appIds": ["com.example.Editor", "ghostty"] }),
+        )
+        .expect("ok");
+        assert_eq!(
+            request,
+            WriteRequest::Update {
+                app_ids: vec!["com.example.Editor".into(), "ghostty".into()],
+            }
+        );
+        assert_eq!(request.tool(), "queue_updates");
+        assert_eq!(request.object(), "updates:2 apps");
+        for arguments in [
+            // Nothing to queue is not a confirmation.
+            json!({ "appIds": [] }),
+            json!({}),
+            // An extra field is not an id, and a path supplied beside the ids is
+            // refused outright rather than quietly ignored.
+            json!({ "appIds": ["a"], "path": "/Applications/Editor.app" }),
+            json!({ "appIds": "com.example.Editor" }),
+            json!({ "appIds": [7] }),
+            json!({ "appIds": [""] }),
+            json!({ "appIds": ["a\nb"] }),
+        ] {
+            let error = parse_write("queue_updates", arguments.clone()).expect_err("must reject");
+            assert_eq!(error.code, "E_INVALID_ARG", "{arguments}");
+        }
+        // A path-shaped id is syntactically an identifier, like in `clean_cache`:
+        // ids are only ever compared for equality against the list the read tool
+        // returned and are never turned into a path, so `/Applications/x.app`
+        // matches nothing and is refused as not found. See
+        // `queue_updates_refuses_an_id_the_read_tool_never_returned`.
+        assert!(
+            parse_write(
+                "queue_updates",
+                json!({ "appIds": ["/Applications/Editor.app"] })
+            )
+            .is_ok()
+        );
+        let too_many: Vec<String> = (0..201).map(|index| format!("id{index}")).collect();
+        assert_eq!(
+            parse_write("queue_updates", json!({ "appIds": too_many }))
+                .expect_err("too many")
+                .code,
+            "E_INVALID_ARG"
+        );
+    }
+
+    #[test]
+    fn queue_updates_refuses_an_id_the_read_tool_never_returned() {
+        // `available` is exactly what `list_updatable_apps` prints. Anything
+        // else — a path, a display name, a token the page hides, an id from
+        // another machine — must be refused before a dialog is opened, or the
+        // read tool's list would stop being the boundary it is meant to be.
+        let available = vec![
+            updatable(
+                "com.example.Editor",
+                "editor",
+                "Editor",
+                crate::model::Kind::Cask,
+            ),
+            updatable("ghostty", "ghostty", "Ghostty", crate::model::Kind::Cask),
+        ];
+        let selection =
+            plan_update_selection(&available, &["ghostty".into(), "com.example.Editor".into()])
+                .expect("both were listed");
+        assert_eq!(
+            selection
+                .rows
+                .iter()
+                .map(|row| row.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["ghostty", "com.example.Editor"],
+            "the dialog and the queue keep the order the client named"
+        );
+        assert_eq!(
+            selection.targets,
+            vec![
+                crate::model::TaskTarget {
+                    kind: crate::model::TaskKind::Cask,
+                    token: "ghostty".into()
+                },
+                crate::model::TaskTarget {
+                    kind: crate::model::TaskKind::Cask,
+                    token: "editor".into()
+                },
+            ],
+            "the queue receives the row's own token, never the client's string"
+        );
+
+        for requested in [
+            vec!["/Applications/Editor.app".to_string()],
+            vec!["Editor".to_string()],
+            vec!["homebrew".to_string()],
+            vec!["ghostty".to_string(), "com.example.Other".to_string()],
+            vec!["ghostty".to_string(), "ghostty".to_string()],
+        ] {
+            let error = plan_update_selection(&available, &requested)
+                .expect_err("must refuse: {requested:?}");
+            assert!(
+                matches!(error.code.as_str(), "E_NOT_FOUND" | "E_INVALID_ARG"),
+                "{requested:?} gave {}",
+                error.code
+            );
+        }
+        assert_eq!(
+            plan_update_selection(&available, &[String::new()])
+                .expect_err("empty id")
+                .code,
+            "E_NOT_FOUND"
+        );
+        assert_eq!(
+            plan_update_selection(&available, &[])
+                .expect_err("nothing named")
+                .code,
+            "E_INVALID_ARG"
+        );
+    }
+
+    #[test]
+    fn the_update_grant_is_bound_to_the_versions_it_was_shown_with() {
+        let rows = vec![updatable(
+            "ghostty",
+            "ghostty",
+            "Ghostty",
+            crate::model::Kind::Cask,
+        )];
+        let before = update_plan_digest(&rows, &["1.0.0".into()]);
+        assert_eq!(before, update_plan_digest(&rows, &["1.0.0".into()]));
+        assert_ne!(
+            before,
+            update_plan_digest(&rows, &["1.0.1".into()]),
+            "a version that moved while the dialog was open is a different grant"
+        );
+        assert_ne!(
+            before,
+            update_plan_digest(
+                &[
+                    updatable("ghostty", "ghostty", "Ghostty", crate::model::Kind::Cask),
+                    updatable("editor", "editor", "Editor", crate::model::Kind::Cask),
+                ],
+                &["1.0.0".into(), "2.0.0".into()]
+            ),
+            "an app the user did not see is a different grant"
+        );
+    }
+
+    /// A Homebrew formula the updates page does not draw is still queueable here.
+    ///
+    /// This pins a known and currently intended asymmetry rather than a feature.
+    /// `updatable_rows` answers from `updates_list`, which is built from both
+    /// `outdated.casks` and `outdated.formulae` (`updates.rs:67`) and whose
+    /// `merge` keeps formulae (`updater/service.rs` retains only on source
+    /// enablement and native-cask ownership, never on kind). The page hides them
+    /// instead: `scheduler::visible` and the web store's `shown()` both drop
+    /// non-cask Homebrew rows. So the set this tool can act on is a superset of
+    /// the set the user can see, and a client holding a formula id can queue it.
+    ///
+    /// Nothing downstream narrows it: `plan_update_selection` maps the row's
+    /// kind straight through to `TaskKind::Formula`, and `brew::args::write_args`
+    /// turns that into `brew upgrade --formula <token>` (its only refusals are
+    /// for `Kind::Link` and for options no update sets). `scheduler::eligible`
+    /// refusing formulas governs background upgrades, not this path.
+    ///
+    /// If `list_updatable_apps` ever starts filtering to what the page draws,
+    /// this test goes red. That is the point: it means card 101 landed, and this
+    /// expectation — and the doc comment on `UpdatableApp` — should be updated
+    /// with it.
+    ///
+    /// Card 101 cannot simply push a filter down into `updates_list`: that
+    /// function is also the return value of `check_update_sources_inner`
+    /// (`core.rs:599`), which the tray reads (`tray.rs:97`, `tray.rs:250`), so
+    /// narrowing it there would narrow what those callers see as well. The
+    /// split has to happen by adding a separate all-rows accessor, not by
+    /// tightening the one everybody already shares.
+    #[test]
+    fn queue_updates_accepts_a_homebrew_formula_the_page_does_not_draw() {
+        let available = vec![
+            updatable("ghostty", "ghostty", "Ghostty", crate::model::Kind::Cask),
+            updatable("jq", "jq", "jq", crate::model::Kind::Formula),
+        ];
+
+        let selection = plan_update_selection(&available, &["jq".into()])
+            .expect("the formula is in the read tool's own list, so it is accepted");
+
+        assert_eq!(
+            selection.targets,
+            vec![crate::model::TaskTarget {
+                kind: crate::model::TaskKind::Formula,
+                token: "jq".into()
+            }],
+            "the kind travels through unchanged: this becomes a real formula upgrade"
+        );
+
+        // And the queue accepts exactly that target: no rule here refuses a
+        // formula, only `Kind::Link` and options no update can carry.
+        assert_eq!(
+            crate::brew::args::write_args(
+                crate::model::TaskOp::Upgrade,
+                selection.targets.first(),
+                &crate::model::TaskOptions::default(),
+            )
+            .expect("an update target the read tool listed is a valid brew invocation"),
+            vec![
+                "upgrade".to_string(),
+                "--formula".to_string(),
+                "jq".to_string()
+            ],
+            "so the queued command really is a formula upgrade"
         );
     }
 }

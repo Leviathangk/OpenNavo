@@ -863,6 +863,7 @@ mod tests {
             "install_app",
             "uninstall_app",
             "clean_cache",
+            "queue_updates",
             "get_latest_scan_result",
         ] {
             assert!(
@@ -874,7 +875,12 @@ mod tests {
 
     #[test]
     fn write_tools_are_refused_while_writes_are_off() {
-        for name in ["install_app", "uninstall_app", "clean_cache"] {
+        for name in [
+            "install_app",
+            "uninstall_app",
+            "clean_cache",
+            "queue_updates",
+        ] {
             let input = with_initialize(&format!(
                 "{{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{{\"name\":\"{name}\",\"arguments\":{{}}}}}}\n"
             ));

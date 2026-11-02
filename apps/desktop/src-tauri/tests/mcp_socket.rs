@@ -435,6 +435,7 @@ fn read_tools_do_not_expose_write_names() {
         "install_app",
         "uninstall_app",
         "clean_cache",
+        "queue_updates",
         "get_latest_scan_result",
     ] {
         assert!(

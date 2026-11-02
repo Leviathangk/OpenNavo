@@ -29,7 +29,7 @@ use crate::{
     AppError,
     confirmation::{ConfirmationRequest, ConfirmationService, McpConfirmView, display_value},
     core::DesktopCore,
-    model::{TaskKind, TaskTarget, TaskTrigger},
+    model::{TaskKind, TaskOp, TaskOptions, TaskTarget, TaskTrigger},
     queue::ResolvedInstallPlan,
     security::{
         signature,
@@ -63,6 +63,11 @@ enum Plan {
         item_ids: Vec<String>,
         digest: String,
         view: Box<McpConfirmView>,
+    },
+    Update {
+        rows: Vec<super::tools::UpdatableRow>,
+        targets: Vec<TaskTarget>,
+        digest: String,
     },
 }
 
@@ -140,6 +145,7 @@ impl Writes {
                 Plan::Install { plan, .. } => Some(plan.digest()),
                 Plan::Uninstall { plan_id, .. } => Some(plan_id.clone()),
                 Plan::Clean { digest, .. } => Some(digest.clone()),
+                Plan::Update { digest, .. } => Some(digest.clone()),
             },
         };
         let service = match self.confirmation() {
@@ -235,7 +241,44 @@ impl Writes {
                 report_id,
                 item_ids,
             } => self.plan_clean(report_id, item_ids).await,
+            WriteRequest::Update { app_ids } => self.plan_update(app_ids).await,
         }
+    }
+
+    /// Plan an update of rows `list_updatable_apps` offers.
+    ///
+    /// The ids are resolved against that read tool's own list, built by the same
+    /// `updatable_rows` the read tool calls, so the dialog and the queue can only
+    /// ever name something the caller was already shown. An id that is not in
+    /// that list is refused before the user is asked anything.
+    async fn plan_update(&self, app_ids: &[String]) -> Result<Plan, ToolError> {
+        let core = self.core.clone();
+        let available = crate::blocking(move || super::broker::updatable_rows(&core))
+            .await
+            .map_err(tool_error)?;
+        let versions: Vec<String> = available
+            .iter()
+            .map(|row| row.current_version.clone())
+            .collect();
+        let available = available
+            .into_iter()
+            .map(|row| super::tools::UpdatableRow {
+                id: row.id,
+                token: row.token,
+                name: row.name,
+                kind: row.kind,
+            })
+            .collect::<Vec<_>>();
+        let selection = super::tools::plan_update_selection(&available, app_ids)?;
+        // Bind the grant to the ids and the versions they move from, so the
+        // dialog's list is what runs and a version that moved under the user
+        // is a different grant.
+        let digest = super::tools::update_plan_digest(&selection.rows, &versions);
+        Ok(Plan::Update {
+            rows: selection.rows,
+            targets: selection.targets,
+            digest,
+        })
     }
 
     /// Plan a cleanup. The engine builds the very view the user will see, and
@@ -478,6 +521,34 @@ impl Writes {
                     json!({ "status": "queued", "task": task }),
                 ))
             }
+            Plan::Update { targets, rows, .. } => {
+                // Resolving the selection and showing the dialog both take time;
+                // a switch may have gone off, so the gate runs again here as it
+                // does everywhere else, before the queue is touched.
+                let queue = self.core.queue.clone();
+                let check = context.still_valid.clone();
+                let tasks = crate::blocking(move || {
+                    queue_update(check.as_ref(), targets, |targets| {
+                        queue.enqueue_many(
+                            TaskOp::Upgrade,
+                            targets,
+                            TaskOptions::default(),
+                            TaskTrigger::Mcp,
+                        )
+                    })
+                })
+                .await
+                .map_err(tool_error)?;
+                let ids: Vec<String> = tasks.iter().map(|task| task.id.clone()).collect();
+                Ok((
+                    format!("queued:{}", ids.join(",")),
+                    json!({
+                        "status": "queued",
+                        "updated": rows.iter().map(|row| &row.name).collect::<Vec<_>>(),
+                        "tasks": tasks,
+                    }),
+                ))
+            }
         }
     }
 
@@ -575,6 +646,24 @@ fn invalidated() -> ToolError {
     )
 }
 
+/// Queue an approved update selection, but only while the grant is still valid.
+///
+/// Pulled out of `execute` so the gate can be tested without an `AppHandle`: the
+/// enqueue itself is the argument, so a test can prove the queue is never
+/// reached once the approval is void, and that it is reached unchanged when it
+/// is not.
+fn queue_update<T>(
+    still_valid: &(dyn Fn() -> bool + Send + Sync),
+    targets: Vec<TaskTarget>,
+    enqueue: impl FnOnce(Vec<TaskTarget>) -> Result<T, AppError>,
+) -> Result<T, AppError> {
+    if !still_valid() {
+        let error = invalidated();
+        return Err(AppError::new(&error.code, error.message));
+    }
+    enqueue(targets)
+}
+
 fn audit_unavailable() -> ToolError {
     ToolError::new(
         "E_AUDIT_UNAVAILABLE",
@@ -665,6 +754,39 @@ fn confirm_view(plan: &Plan, identity: &Identity) -> McpConfirmView {
             caller.may_come_from.as_deref(),
             caller.claimed_name.as_deref(),
         ),
+        // The window lists every app by name and the version it moves to, in
+        // the order queue_updates named them, so "4 updates" can never stand in
+        // for showing which four. The item rows are the same rows the queue
+        // receives: both come from `plan_update_selection`.
+        Plan::Update { rows, .. } => {
+            let mut view = McpConfirmView::new(
+                "updateInstall",
+                &format!("{} apps", rows.len()),
+                &rows
+                    .iter()
+                    .map(|row| row.id.clone())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                None,
+                signer,
+                caller.team_id.as_deref(),
+                caller.path.as_deref(),
+                caller.may_come_from.as_deref(),
+                caller.claimed_name.as_deref(),
+            );
+            view.origin = "mcp".into();
+            view.items = rows
+                .iter()
+                .map(|row| {
+                    crate::confirmation::ConfirmItemView::row(
+                        &row.name,
+                        &format!("{} → update", row.kind.as_str()),
+                    )
+                })
+                .collect();
+            view.install_count = rows.len() as u32;
+            view
+        }
     }
 }
 
@@ -883,6 +1005,96 @@ mod tests {
         );
         assert_eq!(view.team_id.as_deref(), Some("ABCDE12345"));
         assert_eq!(view.action, "cleanup");
+    }
+
+    fn update_row(id: &str, token: &str, name: &str) -> super::super::tools::UpdatableRow {
+        super::super::tools::UpdatableRow {
+            id: id.into(),
+            token: token.into(),
+            name: name.into(),
+            kind: crate::model::Kind::Cask,
+        }
+    }
+
+    #[test]
+    fn the_update_dialog_lists_every_app_and_never_only_a_count() {
+        // "4 updates" is not a confirmation: the user has to be able to read
+        // which four, in the order they will be queued.
+        let rows = vec![
+            update_row("ghostty", "ghostty", "Ghostty"),
+            update_row("com.example.Editor", "editor", "Editor"),
+        ];
+        let plan = Plan::Update {
+            rows: rows.clone(),
+            targets: Vec::new(),
+            digest: "d".into(),
+        };
+        let view = confirm_view(
+            &plan,
+            &Identity {
+                caller: caller(true),
+            },
+        );
+        assert_eq!(view.action, "updateInstall");
+        assert_eq!(view.origin, "mcp");
+        assert_eq!(view.name, "2 apps");
+        assert_eq!(
+            view.items
+                .iter()
+                .map(|item| item.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Ghostty", "Editor"],
+            "every app is listed by name, in the order it will be queued"
+        );
+        assert_eq!(
+            view.items[0].target, "cask → update",
+            "each row says what happens to it"
+        );
+        assert_eq!(view.install_count, 2);
+        // The caller is named as on every other MCP write.
+        assert!(
+            view.signer
+                .as_deref()
+                .is_some_and(|signer| signer.contains("Example Inc"))
+        );
+        assert_eq!(view.team_id.as_deref(), Some("ABCDE12345"));
+        // And the target names the ids, so the audit trail matches the list.
+        assert_eq!(view.target, "ghostty, com.example.Editor");
+    }
+
+    #[test]
+    fn an_update_whose_approval_was_withdrawn_never_reaches_the_queue() {
+        // The dialog takes time to answer and the switch can go off while it is
+        // open. `still_valid` is the last thing checked: once it says no, the
+        // enqueue closure must not run at all.
+        let targets = vec![TaskTarget {
+            kind: crate::model::TaskKind::Cask,
+            token: "ghostty".into(),
+        }];
+        let mut queued = false;
+        let error = queue_update(&|| false, targets.clone(), |_| {
+            queued = true;
+            Ok::<_, AppError>(())
+        })
+        .expect_err("withdrawn");
+        assert_eq!(error.code, "E_CONFIRMATION_INVALIDATED");
+        assert!(!queued, "the queue must not be touched after withdrawal");
+
+        // The same closure does run, with the same targets, while the grant holds.
+        let mut received = None;
+        queue_update(&|| true, targets, |targets| {
+            received = Some(targets);
+            Ok::<_, AppError>(())
+        })
+        .expect("valid");
+        assert_eq!(
+            received.expect("enqueue ran"),
+            vec![TaskTarget {
+                kind: crate::model::TaskKind::Cask,
+                token: "ghostty".into(),
+            }],
+            "the rows the dialog showed are the rows that are queued"
+        );
     }
 
     #[test]
