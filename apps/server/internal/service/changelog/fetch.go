@@ -42,6 +42,13 @@ func (s *Service) now() time.Time {
 	return time.Now().UTC()
 }
 
+func (s *Service) release(ctx context.Context, ids []int64) error {
+	if s.Release != nil {
+		return s.Release(ctx, ids)
+	}
+	return s.Store.ReleaseChangelogClaim(ctx, ids, s.now())
+}
+
 // Fetch reads one changelog source. Every outcome (success, failure, timeout, cancellation) reports which
 // source it was: source_id, package_token, source_url (scheme, host and path only: no query, no
 // credentials) and attempt, the 1-based consecutive attempt counted from changelog_sources.fail_count.
@@ -127,11 +134,12 @@ func (s *Service) fetch(ctx context.Context, id int64, observed map[string]any) 
 	}
 	result, err := s.Fetcher.Fetch(ctx, p, source)
 	if err != nil && errors.Is(err, context.Canceled) {
-		// A worker shutdown cancels the run and asynq requeues the in-flight task itself, so this source
-		// is not a failure and must not be made due either: moving next_fetch_at to now would let the next
-		// schedule tick enqueue a second copy as soon as the 20-minute uniqueness lock expires, while the
-		// requeued task may still be waiting. The lease from the claim stays until the requeued run
-		// finishes and sets the real next_fetch_at.
+		// A shutdown cancels the run and asynq archives the task instead of requeueing it (Retries: 0 makes
+		// `msg.Retried >= msg.Retry` select the archive branch); an archived task still holds the 20-minute
+		// uniqueness lock for its type. So this source is not scheduled again right away: it waits out the
+		// two-hour fetchLease. Keeping the lease is what stops the recovery delay from growing past 2h; the
+		// price is that a canceled source can sit unscheduled for up to 2h. A run timeout takes a different
+		// path below — it is recorded as an upstream failure and backs off, which is the existing design.
 		category, _ := pipeline.Failure(err)
 		return map[string]any{"status": "canceled", "source": state.Type, "errorCategory": category}, err
 	}
@@ -214,13 +222,20 @@ func (s *Service) Schedule(ctx context.Context) (map[string]any, error) {
 		}
 		queued++
 	}
+	var releaseErr error
 	if len(unqueued) > 0 {
-		if err := s.Store.ReleaseChangelogClaim(ctx, unqueued, s.now()); err != nil {
-			return nil, err
-		}
+		// A shutdown cancels the tick's context mid-batch, which is exactly when this release matters: the
+		// lease must go back or every source in the batch waits out fetchLease for a task that was never
+		// enqueued. Give it its own deadline, like the failure write above.
+		release, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		releaseErr = s.release(release, unqueued)
+		cancel()
 	}
-	if queueErr != nil {
-		return nil, queueErr
+	if queueErr != nil || releaseErr != nil {
+		// Join instead of replacing: the caller records a category from the returned error, and a bare
+		// release failure classifies as unknown — a queue outage would read as an unexplained error. The
+		// queue error keeps its own category (`net.OpError` → network_error) inside the chain.
+		return nil, errors.Join(releaseErr, queueErr)
 	}
 	return map[string]any{"sources": len(ids), "enqueued": queued}, nil
 }

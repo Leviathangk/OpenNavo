@@ -23,6 +23,9 @@ type Service struct {
 	Fetcher  *changelog.Fetcher
 	Queue    Enqueuer
 	Now      func() time.Time
+	// Release gives a claim back; nil means the store's own ReleaseChangelogClaim. Tests replace it to fail
+	// the release, which no database state can force on its own.
+	Release func(context.Context, []int64) error
 }
 
 func (s *Service) Resolve(ctx context.Context, id int64) (map[string]any, error) {
