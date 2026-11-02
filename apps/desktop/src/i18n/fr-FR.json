@@ -1016,6 +1016,7 @@
       "launchAtLogin": "Ouvrir à la connexion",
       "launchAtLoginHint": "Démarre avec uniquement l’icône dans la barre des menus",
       "keepInMenuBar": "Rester dans la barre des menus après fermeture de la fenêtre",
+      "keepInMenuBarHint": "Configurer séparément dans Moniteur système",
       "trayShowCount": "Afficher le nombre de mises à jour dans la barre des menus",
       "notifyUpdates": "M’avertir des mises à jour disponibles",
       "zapByDefault": "Nettoyer par défaut les fichiers associés à la désinstallation",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "Les ventilateurs démarrent en mode automatique ; les détails des capteurs permettent de rétablir la dernière vitesse manuelle",
       "privacy": "Tous les indicateurs sont calculés et affichés sur ce Mac uniquement : aucun accès réseau, envoi ou historique. L’IP publique et le nom du Wi-Fi ne sont pas affichés.",
       "alerts": "Alertes",
-      "alertsHint": "Notification en cas de problème, au maximum une fois par heure pour un même problème. Les vérifications continuent à faible fréquence en arrière-plan, même sans indicateur dans la barre des menus"
+      "alertsHint": "Notification en cas de problème, au maximum une fois par heure pour un même problème. Les vérifications continuent à faible fréquence en arrière-plan, même sans indicateur dans la barre des menus",
+      "resident": {
+        "noticeTitle": "OpenNavo Monitor est désormais dans la barre des menus",
+        "noticeBody": "Les éléments de la barre des menus restent affichés lorsque OpenNavo ne fonctionne pas — cliquez sur l’un d’eux pour voir ses relevés. Activé par défaut : désactivez-le dans Réglages → Moniteur système, ou dans Réglages Système → Général → {loginItemsPane}, où macOS l’affiche sous « {monitorName} ».",
+        "noticeAction": "Ouvrir les réglages du moniteur",
+        "label": "Continuer à surveiller après avoir quitté OpenNavo",
+        "hint": "Les éléments de la barre des menus restent affichés lorsque OpenNavo ne fonctionne pas",
+        "loginItemsPane": "Ouverture et extensions",
+        "loginItemsPaneOld": "Ouverture",
+        "status": {
+          "running": "En cours",
+          "stopped": "Arrêté ({reason})",
+          "stoppedPlain": "Arrêté",
+          "needsPermission": "Autorisation requise"
+        },
+        "allow": "Autoriser dans Réglages Système",
+        "devBuild": "Les versions de développement n’enregistrent pas la surveillance en arrière-plan",
+        "failedTitle": "La surveillance en arrière-plan n’a pas pu démarrer"
+      }
     }
   },
   "security": {

@@ -1039,6 +1039,7 @@ const messages: MessageSchema = {
       launchAtLogin: 'Launch at login',
       launchAtLoginHint: 'Starts with only the menu bar icon',
       keepInMenuBar: 'Keep in the menu bar after closing the window',
+      keepInMenuBarHint: 'Set up separately in System Monitor',
       trayShowCount: 'Show the number of updates in the menu bar',
       notifyUpdates: 'Notify me when updates are available',
       zapByDefault: 'Clean up related files when uninstalling',
@@ -2389,7 +2390,26 @@ const messages: MessageSchema = {
         'All metrics are computed and shown only on this Mac: nothing goes online, gets uploaded, or is kept as history. Public IP and Wi-Fi name aren’t shown.',
       alerts: 'Alerts',
       alertsHint:
-        'Get a notification when something needs attention, at most once an hour for the same issue. While on, checks keep running in the background at a low rate even with no menu bar items'
+        'Get a notification when something needs attention, at most once an hour for the same issue. While on, checks keep running in the background at a low rate even with no menu bar items',
+      resident: {
+        noticeTitle: 'OpenNavo Monitor is now in the menu bar',
+        noticeBody:
+          'Menu bar items stay up while OpenNavo isn’t running — click one to see its readings. On by default: turn it off in Settings → System Monitor, or in System Settings → General → {loginItemsPane}, where macOS lists it as “{monitorName}”.',
+        noticeAction: 'Open Monitor Settings',
+        label: 'Keep monitoring after quitting OpenNavo',
+        hint: 'Menu bar items stay up while OpenNavo isn’t running',
+        loginItemsPane: 'Login Items & Extensions',
+        loginItemsPaneOld: 'Login Items',
+        status: {
+          running: 'Running',
+          stopped: 'Stopped ({reason})',
+          stoppedPlain: 'Stopped',
+          needsPermission: 'Needs permission'
+        },
+        allow: 'Allow in System Settings',
+        devBuild: 'Development builds don’t register background monitoring',
+        failedTitle: 'Background monitoring couldn’t start'
+      }
     }
   },
   security: {

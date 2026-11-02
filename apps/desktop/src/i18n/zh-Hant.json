@@ -1016,6 +1016,7 @@
       "launchAtLogin": "登入時啟動",
       "launchAtLoginHint": "啟動後只顯示選單列圖示",
       "keepInMenuBar": "關閉視窗後留在選單列",
+      "keepInMenuBarHint": "可在「電腦監控」中單獨設定",
       "trayShowCount": "選單列顯示可更新數量",
       "notifyUpdates": "有可用更新時發通知",
       "zapByDefault": "解除安裝時預設清理相關檔案",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "風扇從自動開始；感測器詳情裡可以一鍵恢復上次的手動轉速",
       "privacy": "所有指標只在這台 Mac 上計算和顯示：不聯網、不上傳、不儲存歷史；不顯示公網 IP 和 Wi-Fi 名稱。",
       "alerts": "提醒",
-      "alertsHint": "出現需要注意的問題時發通知，同一問題 1 小時內只提醒一次。開啟後，即使選單列沒有監控項也會在背景低頻檢查"
+      "alertsHint": "出現需要注意的問題時發通知，同一問題 1 小時內只提醒一次。開啟後，即使選單列沒有監控項也會在背景低頻檢查",
+      "resident": {
+        "noticeTitle": "電腦監控已經常駐選單列",
+        "noticeBody": "選單列項目會在 OpenNavo 未執行時保持顯示，點一下即可檢視該指標。預設開啟：可在「設定 → 電腦監控」關閉，或在「系統設定 → 一般 → {loginItemsPane}」關閉，那裡顯示的名字是「{monitorName}」。",
+        "noticeAction": "開啟電腦監控設定",
+        "label": "結束 OpenNavo 後繼續監控",
+        "hint": "OpenNavo 未執行時，選單列項目保持顯示",
+        "loginItemsPane": "登入項目與延伸功能",
+        "loginItemsPaneOld": "登入項目",
+        "status": {
+          "running": "執行中",
+          "stopped": "已停止（{reason}）",
+          "stoppedPlain": "已停止",
+          "needsPermission": "需要允許"
+        },
+        "allow": "在系統設定中允許",
+        "devBuild": "開發構建不註冊背景監控",
+        "failedTitle": "背景監控未能啟動"
+      }
     }
   },
   "security": {

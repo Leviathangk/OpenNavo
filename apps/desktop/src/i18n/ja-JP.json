@@ -1016,6 +1016,7 @@
       "launchAtLogin": "ログイン時に起動",
       "launchAtLoginHint": "起動後はメニューバーアイコンのみ表示",
       "keepInMenuBar": "ウィンドウを閉じてもメニューバーに常駐",
+      "keepInMenuBarHint": "システムモニターで個別に設定",
       "trayShowCount": "更新可能数をメニューバーに表示",
       "notifyUpdates": "更新がある場合に通知",
       "zapByDefault": "アンインストール時に関連ファイルも整理する",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "ファンは自動から始まります。センサーの詳細から前回の手動回転数に戻せます",
       "privacy": "すべての指標はこのMac上でのみ計算・表示されます。ネットに接続せず、アップロードも履歴の保存もしません。パブリックIPとWi-Fi名は表示しません。",
       "alerts": "通知",
-      "alertsHint": "注意が必要な問題が起きたら通知します。同じ問題は1時間に1回までです。オンの間は、メニューバー項目がなくてもバックグラウンドで低頻度に確認します"
+      "alertsHint": "注意が必要な問題が起きたら通知します。同じ問題は1時間に1回までです。オンの間は、メニューバー項目がなくてもバックグラウンドで低頻度に確認します",
+      "resident": {
+        "noticeTitle": "OpenNavo Monitor がメニューバーに常駐しています",
+        "noticeBody": "OpenNavo が実行されていない間も、メニューバー項目は表示されたままです。項目をクリックすると、その測定値を確認できます。デフォルトでオン：「設定 → システムモニター」でオフにするか、「システム設定 → 一般 → {loginItemsPane}」でオフにできます。macOS では「{monitorName}」として表示されます。",
+        "noticeAction": "モニター設定を開く",
+        "label": "OpenNavo を終了した後もモニタリングを続ける",
+        "hint": "OpenNavo が実行されていない間も、メニューバー項目は表示されたままになります",
+        "loginItemsPane": "ログイン項目と機能拡張",
+        "loginItemsPaneOld": "ログイン項目",
+        "status": {
+          "running": "実行中",
+          "stopped": "停止（{reason}）",
+          "stoppedPlain": "停止",
+          "needsPermission": "許可が必要"
+        },
+        "allow": "システム設定で許可",
+        "devBuild": "開発ビルドではバックグラウンドモニタリングが登録されません",
+        "failedTitle": "バックグラウンドモニタリングを開始できませんでした"
+      }
     }
   },
   "security": {

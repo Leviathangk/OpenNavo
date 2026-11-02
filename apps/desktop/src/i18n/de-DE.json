@@ -1016,6 +1016,7 @@
       "launchAtLogin": "Bei Anmeldung starten",
       "launchAtLoginHint": "Startet nur mit dem Menüleistensymbol",
       "keepInMenuBar": "Nach Schließen des Fensters in der Menüleiste bleiben",
+      "keepInMenuBarHint": "Separat im Systemmonitor einrichten",
       "trayShowCount": "Anzahl verfügbarer Updates in der Menüleiste anzeigen",
       "notifyUpdates": "Über verfügbare Updates benachrichtigen",
       "zapByDefault": "Zugehörige Dateien beim Deinstallieren bereinigen",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "Lüfter starten automatisch; in den Sensordetails können Sie die letzte manuelle Drehzahl wiederherstellen",
       "privacy": "Alle Messwerte werden nur auf diesem Mac berechnet und angezeigt. Keine Netzwerkverbindung, Uploads oder gespeicherten Verläufe. Öffentliche IP und Wi-Fi-Name werden nicht angezeigt.",
       "alerts": "Hinweise",
-      "alertsHint": "Bei Problemen benachrichtigen, höchstens einmal pro Stunde für dasselbe Problem. Wenn aktiv, wird auch ohne Menüleisteneinträge in größeren Abständen im Hintergrund geprüft"
+      "alertsHint": "Bei Problemen benachrichtigen, höchstens einmal pro Stunde für dasselbe Problem. Wenn aktiv, wird auch ohne Menüleisteneinträge in größeren Abständen im Hintergrund geprüft",
+      "resident": {
+        "noticeTitle": "OpenNavo Monitor ist jetzt in der Menüleiste",
+        "noticeBody": "Menüleistenobjekte bleiben sichtbar, während OpenNavo nicht läuft – klicken Sie auf eines, um die Messwerte zu sehen. Standardmäßig aktiviert: Deaktivieren Sie dies in Einstellungen → Systemmonitor oder in Systemeinstellungen → Allgemein → {loginItemsPane}, wo macOS es als „{monitorName}“ aufführt.",
+        "noticeAction": "Monitoreinstellungen öffnen",
+        "label": "Nach dem Beenden von OpenNavo weiter überwachen",
+        "hint": "Menüleistenobjekte bleiben sichtbar, während OpenNavo nicht läuft",
+        "loginItemsPane": "Anmeldeobjekte & Erweiterungen",
+        "loginItemsPaneOld": "Anmeldeobjekte",
+        "status": {
+          "running": "Läuft",
+          "stopped": "Gestoppt ({reason})",
+          "stoppedPlain": "Gestoppt",
+          "needsPermission": "Berechtigung erforderlich"
+        },
+        "allow": "In den Systemeinstellungen erlauben",
+        "devBuild": "Entwicklungs-Builds registrieren keine Hintergrundüberwachung",
+        "failedTitle": "Die Hintergrundüberwachung konnte nicht gestartet werden"
+      }
     }
   },
   "security": {

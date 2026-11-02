@@ -1012,6 +1012,7 @@ export default {
       launchAtLogin: '登录时启动',
       launchAtLoginHint: '启动后只显示菜单栏图标',
       keepInMenuBar: '关闭窗口后留在菜单栏',
+      keepInMenuBarHint: '可在「电脑监控」中单独设置',
       trayShowCount: '菜单栏显示可更新数量',
       notifyUpdates: '有可用更新时发通知',
       zapByDefault: '卸载时默认清理相关文件',
@@ -2314,7 +2315,26 @@ export default {
       privacy: '所有指标只在这台 Mac 上计算和显示：不联网、不上传、不保存历史；不显示公网 IP 和 Wi-Fi 名称。',
       alerts: '提醒',
       alertsHint:
-        '出现需要注意的问题时发通知，同一问题 1 小时内只提醒一次。开启后，即使菜单栏没有监控项也会在后台低频检查'
+        '出现需要注意的问题时发通知，同一问题 1 小时内只提醒一次。开启后，即使菜单栏没有监控项也会在后台低频检查',
+      resident: {
+        noticeTitle: '电脑监控已经常驻菜单栏',
+        noticeBody:
+          '菜单栏项目会在 OpenNavo 未运行时保持显示，点一下即可查看该指标。默认开启：可在「设置 → 电脑监控」关闭，或在「系统设置 → 通用 → {loginItemsPane}」关闭，那里显示的名字是「{monitorName}」。',
+        noticeAction: '打开电脑监控设置',
+        label: '退出 OpenNavo 后继续监控',
+        hint: 'OpenNavo 未运行时，菜单栏项目保持显示',
+        loginItemsPane: '登录项与扩展',
+        loginItemsPaneOld: '登录项',
+        status: {
+          running: '运行中',
+          stopped: '已停止（{reason}）',
+          stoppedPlain: '已停止',
+          needsPermission: '需要允许'
+        },
+        allow: '在系统设置中允许',
+        devBuild: '开发构建不注册后台监控',
+        failedTitle: '后台监控未能启动'
+      }
     }
   },
   security: {

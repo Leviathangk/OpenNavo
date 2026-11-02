@@ -3,13 +3,23 @@
   "apps/desktop/src/i18n/zh-Hant.json": [
     {
       "key": [
-        "package",
-        "spec",
-        "token"
+        "appInfo",
+        "fields",
+        "bundleId"
       ],
-      "source": "软件包标识符",
-      "text": "套件識別碼",
-      "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
+      "source": "应用包标识符",
+      "text": "應用程式套件識別碼",
+      "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"
+    },
+    {
+      "key": [
+        "appStore",
+        "info",
+        "bundleId"
+      ],
+      "source": "应用包标识符",
+      "text": "應用程式套件識別碼",
+      "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"
     },
     {
       "key": [
@@ -35,6 +45,17 @@
     },
     {
       "key": [
+        "monitor",
+        "settings",
+        "resident",
+        "label"
+      ],
+      "source": "退出 OpenNavo 后继续监控",
+      "text": "結束 OpenNavo 後繼續監控",
+      "why": "Traditional macOS says 結束 for quitting an app; 退出 in this file means leaving a dialog or stopping a task"
+    },
+    {
+      "key": [
         "package",
         "release",
         "sourceInfo",
@@ -44,16 +65,6 @@
       "source": "项目在 GitHub 发布的版本说明与发布时间",
       "text": "專案在 GitHub 釋出的版本說明與釋出時間",
       "why": "项目 is the project here; the English source does not say so"
-    },
-    {
-      "key": [
-        "appStore",
-        "info",
-        "bundleId"
-      ],
-      "source": "应用包标识符",
-      "text": "應用程式套件識別碼",
-      "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"
     },
     {
       "key": [
@@ -67,13 +78,13 @@
     },
     {
       "key": [
-        "appInfo",
-        "fields",
-        "bundleId"
+        "package",
+        "spec",
+        "token"
       ],
-      "source": "应用包标识符",
-      "text": "應用程式套件識別碼",
-      "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"
+      "source": "软件包标识符",
+      "text": "套件識別碼",
+      "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
     }
   ],
   "apps/web/i18n/locales/zh-Hant.json": [
@@ -88,7 +99,11 @@
       "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
     },
     {
-      "key": ["package", "spec", "bundleId"],
+      "key": [
+        "package",
+        "spec",
+        "bundleId"
+      ],
       "source": "应用包标识符",
       "text": "應用程式套件識別碼",
       "why": "App bundle identifier, parallel to the Simplified 应用包标识符 and distinct from the token label 套件識別碼"

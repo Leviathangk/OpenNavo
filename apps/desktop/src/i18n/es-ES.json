@@ -1016,6 +1016,7 @@
       "launchAtLogin": "Abrir al iniciar sesión",
       "launchAtLoginHint": "Al iniciar, mostrar solo el icono de la barra de menús",
       "keepInMenuBar": "Mantener en la barra de menús al cerrar la ventana",
+      "keepInMenuBarHint": "Configurar por separado en Monitor del sistema",
       "trayShowCount": "Mostrar en la barra de menús el número de actualizaciones disponibles",
       "notifyUpdates": "Notificar cuando haya actualizaciones disponibles",
       "zapByDefault": "Limpiar archivos relacionados al desinstalar",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "Los ventiladores empiezan en automático; desde los detalles de Sensores puedes restaurar la última velocidad manual",
       "privacy": "Todas las métricas se calculan y muestran solo en este Mac: nada se conecta a internet, se sube ni se guarda como historial. No se muestran la IP pública ni el nombre de la red Wi-Fi.",
       "alerts": "Avisos",
-      "alertsHint": "Recibe un aviso cuando algo requiere atención, como mucho una vez por hora para el mismo problema. Mientras esté activado, se comprueba en segundo plano con poca frecuencia aunque no haya elementos en la barra de menús"
+      "alertsHint": "Recibe un aviso cuando algo requiere atención, como mucho una vez por hora para el mismo problema. Mientras esté activado, se comprueba en segundo plano con poca frecuencia aunque no haya elementos en la barra de menús",
+      "resident": {
+        "noticeTitle": "OpenNavo Monitor ya está en la barra de menús",
+        "noticeBody": "Los elementos de la barra de menús permanecen visibles mientras OpenNavo no está en ejecución: haz clic en uno para ver sus lecturas. Activado de forma predeterminada: desactívelo en Ajustes → Monitor del sistema, o en Ajustes del Sistema → General → {loginItemsPane}, donde macOS lo muestra como «{monitorName}».",
+        "noticeAction": "Abrir ajustes del monitor",
+        "label": "Seguir monitoreando después de salir de OpenNavo",
+        "hint": "Los elementos de la barra de menús permanecen visibles mientras OpenNavo no está en ejecución",
+        "loginItemsPane": "Ítems de inicio y extensiones",
+        "loginItemsPaneOld": "Ítems de inicio",
+        "status": {
+          "running": "En ejecución",
+          "stopped": "Detenido ({reason})",
+          "stoppedPlain": "Detenido",
+          "needsPermission": "Requiere permiso"
+        },
+        "allow": "Permitir en Ajustes del Sistema",
+        "devBuild": "Las compilaciones de desarrollo no registran el monitoreo en segundo plano",
+        "failedTitle": "No se pudo iniciar el monitoreo en segundo plano"
+      }
     }
   },
   "security": {

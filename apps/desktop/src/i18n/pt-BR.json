@@ -1016,6 +1016,7 @@
       "launchAtLogin": "Abrir ao iniciar sessão",
       "launchAtLoginHint": "Após a inicialização, mostrar apenas o ícone na barra de menus",
       "keepInMenuBar": "Manter na barra de menus ao fechar a janela",
+      "keepInMenuBarHint": "Configurar separadamente no Monitor do Sistema",
       "trayShowCount": "Mostrar atualizações disponíveis na barra de menus",
       "notifyUpdates": "Notificar quando houver atualizações disponíveis",
       "zapByDefault": "Limpar arquivos relacionados ao desinstalar",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "As ventoinhas começam no automático; nos detalhes de Sensores você pode restaurar a última velocidade manual",
       "privacy": "Todas as métricas são calculadas e exibidas só neste Mac: nada vai para a internet, é enviado ou guardado como histórico. O IP público e o nome da rede Wi-Fi não são exibidos.",
       "alerts": "Alertas",
-      "alertsHint": "Receba uma notificação quando algo precisar de atenção, no máximo uma vez por hora para o mesmo problema. Enquanto estiver ativado, a verificação continua em segundo plano com pouca frequência mesmo sem itens na barra de menus"
+      "alertsHint": "Receba uma notificação quando algo precisar de atenção, no máximo uma vez por hora para o mesmo problema. Enquanto estiver ativado, a verificação continua em segundo plano com pouca frequência mesmo sem itens na barra de menus",
+      "resident": {
+        "noticeTitle": "O OpenNavo Monitor agora está na barra de menus",
+        "noticeBody": "Os itens da barra de menus permanecem visíveis enquanto o OpenNavo não está em execução — clique em um para ver as leituras. Ativado por padrão: desative-o em Ajustes → Monitor do Sistema, ou em Ajustes do Sistema → Geral → {loginItemsPane}, onde o macOS o lista como “{monitorName}”.",
+        "noticeAction": "Abrir ajustes do monitor",
+        "label": "Continuar monitorando após encerrar o OpenNavo",
+        "hint": "Os itens da barra de menus permanecem visíveis enquanto o OpenNavo não está em execução",
+        "loginItemsPane": "Itens de Início e Extensões",
+        "loginItemsPaneOld": "Itens de Início",
+        "status": {
+          "running": "Em execução",
+          "stopped": "Interrompido ({reason})",
+          "stoppedPlain": "Interrompido",
+          "needsPermission": "Requer permissão"
+        },
+        "allow": "Permitir em Ajustes do Sistema",
+        "devBuild": "Compilações de desenvolvimento não registram o monitoramento em segundo plano",
+        "failedTitle": "Não foi possível iniciar o monitoramento em segundo plano"
+      }
     }
   },
   "security": {

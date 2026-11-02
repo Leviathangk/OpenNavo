@@ -1016,6 +1016,7 @@
       "launchAtLogin": "Avvia al login",
       "launchAtLoginHint": "All’avvio mostra solo l’icona nella barra dei menu",
       "keepInMenuBar": "Resta nella barra dei menu alla chiusura della finestra",
+      "keepInMenuBarHint": "Configura separatamente in Monitor di sistema",
       "trayShowCount": "Mostra il numero di aggiornamenti nella barra dei menu",
       "notifyUpdates": "Avvisami quando sono disponibili aggiornamenti",
       "zapByDefault": "Pulisci i file associati durante la disinstallazione",
@@ -2308,7 +2309,25 @@
       "relaunchHint": "Le ventole partono su automatico; nei dettagli dei sensori puoi ripristinare l’ultima velocità manuale con un clic",
       "privacy": "Tutte le metriche sono calcolate e mostrate solo su questo Mac: nessuna connessione, caricamento o cronologia salvata. IP pubblico e nome Wi-Fi non sono mostrati.",
       "alerts": "Avvisi",
-      "alertsHint": "Ricevi una notifica quando serve attenzione, al massimo una volta all’ora per lo stesso problema. Se attivo, i controlli continuano a bassa frequenza in background anche senza metriche nella barra dei menu"
+      "alertsHint": "Ricevi una notifica quando serve attenzione, al massimo una volta all’ora per lo stesso problema. Se attivo, i controlli continuano a bassa frequenza in background anche senza metriche nella barra dei menu",
+      "resident": {
+        "noticeTitle": "OpenNavo Monitor è ora nella barra dei menu",
+        "noticeBody": "Gli elementi della barra dei menu restano visibili mentre OpenNavo non è in esecuzione: fai clic su uno per vedere le letture. Attivo per impostazione predefinita: disattivalo in Impostazioni → Monitor di sistema, oppure in Impostazioni di Sistema → Generali → {loginItemsPane}, dove macOS lo mostra come “{monitorName}”.",
+        "noticeAction": "Apri impostazioni monitor",
+        "label": "Continua il monitoraggio dopo aver chiuso OpenNavo",
+        "hint": "Gli elementi della barra dei menu restano visibili mentre OpenNavo non è in esecuzione",
+        "loginItemsPane": "Elementi di login ed estensioni",
+        "loginItemsPaneOld": "Elementi di login",
+        "status": {
+          "running": "In esecuzione",
+          "stopped": "Interrotto ({reason})",
+          "stoppedPlain": "Interrotto",
+          "needsPermission": "Autorizzazione necessaria"
+        },
+        "allow": "Consenti in Impostazioni di Sistema",
+        "devBuild": "Le build di sviluppo non registrano il monitoraggio in background",
+        "failedTitle": "Impossibile avviare il monitoraggio in background"
+      }
     }
   },
   "security": {
