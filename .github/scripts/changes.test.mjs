@@ -38,20 +38,26 @@ function generatedSpecs() {
 
 test('every API spec a generator reads reaches the frontend jobs', () => {
   const specs = generatedSpecs();
-  assert.deepEqual(specs, ['apps/server/api/admin.openapi.yaml', 'apps/server/api/public.openapi.yaml']);
+  // The discovery must find the package that is known to generate types, not
+  // merely something: a broken pattern would otherwise assert nothing and pass.
+  assert.ok(specs.includes('apps/server/api/public.openapi.yaml'), 'the discovery finds the public generator');
   for (const spec of specs) {
     assert.equal(classify([spec]).frontend, true, `${spec} is generated into packages/api, so the frontend jobs must run`);
   }
 });
 
 test('spec files no generator reads do not reach the frontend jobs', () => {
-  // Only the two generated specs: these three produce nothing under packages/.
-  for (const file of [
-    'apps/server/api/public-external.openapi.yaml',
-    'apps/server/api/oapi-codegen.yaml',
-    'apps/server/api/redocly.yaml'
-  ]) {
-    assert.equal(classify([file]).frontend, false, file);
+  // Derived for the same reason as generatedSpecs(): when a generator starts
+  // reading one of these it moves to the list above by itself, rather than
+  // leaving a stale entry here that only looks like coverage.
+  const generated = new Set(generatedSpecs());
+  const unread = readdirSync(new URL('../../apps/server/api/', import.meta.url))
+    .filter(name => name.endsWith('.openapi.yaml') && !generated.has(`apps/server/api/${name}`))
+    .map(name => `apps/server/api/${name}`);
+  // Config files, not specs: no generator can read them, so they never move.
+  const files = [...unread, 'apps/server/api/oapi-codegen.yaml', 'apps/server/api/redocly.yaml'];
+  for (const file of files) {
+    assert.equal(classify([file]).frontend, false, `${file} is not generated into packages/, so the frontend jobs must not run`);
   }
 });
 
