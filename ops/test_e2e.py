@@ -364,5 +364,72 @@ class DatabaseRetryTests(unittest.TestCase):
         self.assertIn('psql: error', error.detail)
 
 
+class RetryWhitelistCoverageTests(unittest.TestCase):
+    """Every retry marker must be exercised by a transient case and contradicted by no permanent one.
+
+    The whitelist is an open set: a marker added without a case is invisible, because no existing
+    assertion ever names it. This reads the case lists out of this file instead of trusting whoever
+    adds the next marker, so an unexercised marker fails here.
+
+    It cannot tell whether a marker is *correct* - a permanent error written as a case of its own
+    would satisfy the coverage check. That is why the permanent cases stay: they are the only place
+    that says "this wording must never be retried". This test only closes the "forgot the case" gap.
+    """
+
+    # Named, not discovered. Three transient methods, not one: the two race spellings have tests of
+    # their own, and the markers that describe them appear only there.
+    TRANSIENT_CASES = ('test_a_transient_failure_is_retried_and_then_succeeds',
+                       'test_a_raced_create_converges_because_the_whole_sequence_re_runs',
+                       'test_the_other_spelling_of_the_same_race_converges')
+    PERMANENT_CASES = ('test_a_permanent_failure_is_not_retried',)
+
+    def messages(self, names):
+        """The case messages of the named methods, read from the syntax that feeds them in.
+
+        A message is either an element of a case list or the literal passed straight to
+        self.failure(). Taking those two shapes rather than every string in the body keeps assert
+        explanations out without a length heuristic, and a renamed variable or method-local
+        refactor does not matter.
+        """
+        import ast
+        tree = ast.parse(Path(__file__).read_text(encoding='utf-8'))
+        found, seen = [], set()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or node.name not in names:
+                continue
+            seen.add(node.name)
+            for sub in ast.walk(node):
+                if isinstance(sub, (ast.Tuple, ast.List)):
+                    found.extend(item.value for item in sub.elts
+                                 if isinstance(item, ast.Constant) and isinstance(item.value, str))
+                elif (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+                      and sub.func.attr == 'failure'):
+                    found.extend(arg.value for arg in sub.args
+                                 if isinstance(arg, ast.Constant) and isinstance(arg.value, str))
+        # A rename or a delete would empty a list and make both assertions below pass vacuously.
+        self.assertEqual(seen, set(names), 'a named case is missing; the extraction would narrow silently')
+        return found
+
+    @staticmethod
+    def matches(marker, text):
+        parts = marker if isinstance(marker, tuple) else (marker,)
+        return all(part in text.lower() for part in parts)
+
+    def test_every_marker_has_a_case_that_exercises_it(self):
+        transient = self.messages(self.TRANSIENT_CASES)
+        self.assertGreaterEqual(len(transient), 5, 'the transient case list was not found')
+        for marker in e2e.TRANSIENT:
+            with self.subTest(marker=marker):
+                self.assertTrue(any(self.matches(marker, message) for message in transient),
+                                f'{marker!r} is in TRANSIENT but no transient case exercises it')
+
+    def test_no_marker_matches_a_permanent_failure(self):
+        permanent = self.messages(self.PERMANENT_CASES)
+        self.assertGreaterEqual(len(permanent), 8, 'the permanent case list was not found')
+        for marker in e2e.TRANSIENT:
+            with self.subTest(marker=marker):
+                hits = [message[:40] for message in permanent if self.matches(marker, message)]
+                self.assertEqual(hits, [], f'{marker!r} also matches a permanent failure: {hits}')
+
 if __name__ == '__main__':
     unittest.main()
