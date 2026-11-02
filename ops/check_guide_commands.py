@@ -42,7 +42,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 GUIDE = ROOT / "ops" / "GUIDE.md"
 
-BLOCK = re.compile(r"^```(?:sh|bash)\n(.*?)^```$", re.S | re.M)
+# A fence may be indented (a block nested inside a list item), so the opening
+# marker allows leading spaces and the body is de-indented by the same amount.
+# Without this an indented block is skipped silently, which is worse than a
+# failure: the block count drops and the summary still says everything is fine.
+BLOCK = re.compile(r"^([ \t]*)```(?:sh|bash)\n(.*?)^\1```$", re.S | re.M)
 
 # A literal path under /tmp that two runs would both pick. mktemp output is fine;
 # what is not fine is a name written into the script. Matches any extension, not
@@ -76,7 +80,22 @@ REDIR_TO_PLACEHOLDER = re.compile(r"[0-9]?>>?\s*<[^<>\s]+>")
 
 
 def shell_blocks(text: str) -> list[tuple[int, str]]:
-    return [(m.start(), m.group(1)) for m in BLOCK.finditer(text)]
+    """Every ```sh / ```bash block, as (offset of the fence line, body).
+
+    The body is de-indented so a block nested in a list item is checked as the
+    shell would see it, not with the markdown's leading spaces.
+    """
+    blocks: list[tuple[int, str]] = []
+    for match in BLOCK.finditer(text):
+        indent = match.group(1)
+        body = match.group(2)
+        if indent:
+            body = "".join(
+                line[len(indent):] if line.startswith(indent) else line.lstrip()
+                for line in body.splitlines(keepends=True)
+            )
+        blocks.append((match.start(), body))
+    return blocks
 
 
 def line_of(text: str, offset: int) -> int:
@@ -104,8 +123,20 @@ def main() -> int:
         return 1
     text = GUIDE.read_text()
     blocks = shell_blocks(text)
+    # A fence this script cannot parse is a block nobody checks, and reporting
+    # "all fine" over it is worse than reporting nothing. Compare against the
+    # fences the file actually has, not against the ones the pattern found.
+    declared = len(re.findall(r"^[ \t]*```(?:sh|bash)\s*$", text, re.M))
     if not blocks:
         print("no shell blocks found in ops/GUIDE.md", file=sys.stderr)
+        return 1
+    if declared != len(blocks):
+        print(
+            f"ops/GUIDE.md: {declared} shell fence(s) but {len(blocks)} parsed - "
+            f"a block is being skipped, so its commands are unchecked. "
+            f"The opening and closing fence must be indented the same amount.",
+            file=sys.stderr,
+        )
         return 1
 
     failures: list[str] = []
