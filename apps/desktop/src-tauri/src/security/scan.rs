@@ -582,7 +582,14 @@ impl Service {
             unsafe extern "C" {
                 fn pthread_set_qos_class_self_np(class: u32, relative: i32) -> i32;
             }
-            let _ = pthread_set_qos_class_self_np(0x09, 0);
+            // Production reaches this on a thread it owns (`scan_start_with_options`
+            // spawns one, `scan_wait` joins one). The `#[cfg(test)]` runner above calls
+            // it on the caller instead, so an unconditional demotion here drops the
+            // test thread to background priority and it starves under load: the same
+            // scan took 110-149s demoted against 0.42s not. Skip it under test.
+            if cfg!(not(test)) {
+                let _ = pthread_set_qos_class_self_np(0x09, 0);
+            }
         }
         let done = (|| {
             let own_data = self.own_data()?;
@@ -887,6 +894,82 @@ impl Service {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A scan must never lower the priority of the thread that started it.
+    ///
+    /// `run_scan_options` demotes its thread to `QOS_CLASS_BACKGROUND`, which is
+    /// what a long scan should do to the thread it owns. Under test the runner
+    /// calls it synchronously, so an unconditional demotion hits the harness
+    /// thread instead: the same scan measured 110-149s demoted against 0.42s not,
+    /// because the thread was starved rather than slow. Nothing in the suite
+    /// noticed, since a demoted scan still returns the right answer.
+    ///
+    /// This asserts the caller's quality of service is unchanged, which is the
+    /// property the fix provides and the only one the demotion can break.
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn the_scan_runner_leaves_the_calling_thread_priority_alone() {
+        unsafe extern "C" {
+            fn pthread_get_qos_class_np(
+                thread: *mut std::ffi::c_void,
+                class: *mut u32,
+                relative: *mut i32,
+            ) -> i32;
+            fn pthread_self() -> *mut std::ffi::c_void;
+        }
+        // Reads the calling thread's quality of service. `pthread_get_qos_class_np`
+        // takes the pthread directly, so no `pthread_t` conversion is involved.
+        let class = || {
+            let mut value: u32 = 0;
+            let mut relative: i32 = 0;
+            let status =
+                unsafe { pthread_get_qos_class_np(pthread_self(), &mut value, &mut relative) };
+            assert_eq!(status, 0, "pthread_get_qos_class_np failed");
+            value
+        };
+
+        let (_temp, service, _) = super::super::tests::fixture();
+        super::super::tests::fake_engine(&service);
+        service.settings.write().unwrap().av_consent = true;
+        let path = service.home.join("priority-fixture");
+        fs::write(&path, b"clean fixture").unwrap();
+        let roots = roots_at(
+            AvScanKind::Custom,
+            &service.home,
+            Some(vec![path.to_string_lossy().into_owned()]),
+            &[],
+            &[],
+            &[],
+            None,
+        )
+        .unwrap();
+
+        let before = class();
+        service.run_scan(
+            AvScanResult {
+                scan_id: "priority-fixture".into(),
+                kind: AvScanKind::Custom,
+                state: AvScanState::Running,
+                error_code: None,
+                started_at: 0,
+                finished_at: None,
+                files_scanned: 0,
+                bytes_scanned: 0,
+                skipped: AvSkipped::default(),
+                metrics: AvScanMetrics::default(),
+                denied_roots: vec![],
+                findings: vec![],
+            },
+            roots,
+            Arc::new(AtomicBool::new(false)),
+        );
+        let after = class();
+        assert_eq!(
+            after, before,
+            "a scan must not demote the thread that started it: before {before}, after {after}"
+        );
+    }
+
     #[test]
     fn worker_failure_takes_precedence_over_producer_cancellation() {
         let mut failure = None;
