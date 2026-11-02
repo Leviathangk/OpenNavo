@@ -2,6 +2,7 @@
 import http.server
 import json
 from pathlib import Path
+import socketserver
 import ssl
 import sys
 import subprocess
@@ -42,7 +43,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-server = http.server.HTTPServer(('127.0.0.1', 0), Handler)
+class Server(http.server.HTTPServer):
+    """Bind without the reverse-DNS lookup HTTPServer.server_bind runs synchronously.
+
+    socket.getfqdn() asks the resolver, with no timeout of its own: a host whose reverse
+    zone is slow or unreachable blocks here, before this file prints its port, and the
+    Rust test that reads that line waits on a server that was already listening. Nothing
+    reads server_name or server_port, so the bound address is stored as-is.
+    """
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
+server = Server(('127.0.0.1', 0), Handler)
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 # Only the public certificate is exposed to the Rust client. The private key
 # stays in an automatically cleaned temporary directory for this process.

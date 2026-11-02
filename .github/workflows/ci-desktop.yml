@@ -69,6 +69,9 @@ jobs:
           cargo test --locked --manifest-path apps/desktop/native/firewall/core/Cargo.toml
           python3 -m unittest discover -s apps/desktop/scripts -p test_prepare_firewall.py
           python3 -m unittest discover -s apps/desktop/scripts -p test_staple_and_validate.py
+          # The updater TLS fixture starts up inside the budget the Rust tests wait on.
+          # This pins that it prints its port without asking the resolver first.
+          python3 -m unittest discover -s apps/desktop/src-tauri/tests/fixtures/updater -p test_https.py
           python3 apps/desktop/scripts/prepare-firewall.py --config-out "$RUNNER_TEMP/firewall-unbundled.json"
           python3 apps/desktop/scripts/prepare-firewall.py --compile-only "$RUNNER_TEMP/firewall-link-check" --target aarch64-apple-darwin
           cargo run --manifest-path apps/desktop/src-tauri/Cargo.toml --example firewall_probe
