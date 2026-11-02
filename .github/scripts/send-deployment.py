@@ -17,6 +17,9 @@ DEFAULT_WARM_PATHS = [
     '/apps/airbuild', '/apps/agentide'
 ]
 PUBLIC_WARM_PATH_RE = re.compile(r'/[A-Za-z0-9/_@+.,~:-]*\Z')
+# The receiver reads at most MAX_ARCHIVE * 2 bytes from its standard input, so a payload
+# above that is rejected on the host with no context. Checking it here names the size.
+MAX_PAYLOAD = 80 * 1024 * 1024
 PRIVATE_WARM_PREFIXES = ('/api', '/admin', '/agent-api', '/auth', '/oauth', '/login', '/reset', '/callback',
                         '/.', '/_', '/assets', '/icons', '/screenshots', '/sitemap', '/robots')
 
@@ -53,13 +56,22 @@ def main():
         for path in Path('deployment/images').glob('*.json'):
             images.update(json.loads(path.read_text()))
         archive = Path('deployment/admin-dist.tar.gz').read_bytes()
+        receiver = Path('ops/github-deploy.py').read_bytes()
         payload = {'sha': os.environ['RELEASE_SHA'], 'run_id': os.environ['GITHUB_RUN_ID'], 'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'],
                    'images': images, 'admin_sha256': hashlib.sha256(archive).hexdigest(),
                    'admin_archive': base64.b64encode(archive).decode(),
-                   'registry_token': os.environ['REGISTRY_TOKEN'], 'registry_username': os.environ['REGISTRY_USERNAME']}
+                   'registry_token': os.environ['REGISTRY_TOKEN'], 'registry_username': os.environ['REGISTRY_USERNAME'],
+                   # The bootstrap fetches these bytes from GitHub by revision and refuses to install
+                   # anything that does not hash to this value; the receiver never sees this field.
+                   'receiver': os.environ['RELEASE_SHA'], 'receiver_sha256': hashlib.sha256(receiver).hexdigest()}
     if not args.desktop_version:
         # `warm_paths` is optional: an older installed receiver ignores this unknown JSON key.
         payload['warm_paths'] = load_warm_paths()
+        # The host reads the whole payload with one bound; say so here with the size that
+        # exceeded it rather than letting the host fail without context.
+        size = len(json.dumps(payload).encode())
+        if size > MAX_PAYLOAD:
+            raise ValueError(f'deployment payload is {size} bytes, over the {MAX_PAYLOAD}-byte limit')
     with tempfile.TemporaryDirectory() as directory:
         key, known = Path(directory) / 'key', Path(directory) / 'known_hosts'
         key.write_text(os.environ['DEPLOY_SSH_KEY'] + '\n')

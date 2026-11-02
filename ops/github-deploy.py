@@ -54,6 +54,8 @@ for(let i=0;i<30;i++) {
 process.exit(1);"""
 
 MAX_ARCHIVE = 40 * 1024 * 1024
+# --probe's exit code for "another deployment holds the lock": busy, not broken.
+PROBE_BUSY = 2
 RELEASE_NAME = re.compile(r'gh-[0-9a-f]{12}-[0-9]{1,20}-[0-9]{1,4}')
 # Each release snapshot holds that deployment's pre-migration database dump.
 RELEASE_RETENTION = 5
@@ -2263,8 +2265,8 @@ class Deployment:
             self.ensure_live_manifest()
             self.verify()
             self.update_monitoring(self.services)
-            self.cleanup(self.state.get('previous', {}))
-            self.prune(self.state.get('previous', {}))
+            with phase('Cleanup'):
+                self.clean_up_quietly(self.state.get('previous', {}))
             print('This source revision is already deployed.'); return
         # This read-only gate runs before image pulls, release directories, migrations or Caddy
         # changes. A second web replica therefore fails cleanly when the host cannot overlap it.
@@ -2337,10 +2339,74 @@ class Deployment:
         previous = {key: value for key, value in self.state.items() if key != 'previous'}
         write_private(self.state_path, {'sha': self.payload['sha'], 'release': self.release, 'services': self.services, 'previous': previous})
         print('Production deployed and verified: ' + self.payload['sha'], flush=True)
-        # Cleanup failure must not roll back a verified release; a retry resumes cleanup.
+        # Cleanup failure must not roll back a verified release, and must not turn a
+        # verified release into a failed exit status either: the deploy bootstrap
+        # restores the previous receiver on any nonzero status, and this deployment
+        # succeeded. A retry resumes cleanup.
         with phase('Cleanup'):
+            self.clean_up_quietly(previous)
+
+    def clean_up_quietly(self, previous):
+        """Retire old containers without failing a release that is already serving."""
+        try:
             self.cleanup(previous)
-            self.prune(previous)
+        except Exception as error:
+            print('Cleanup incomplete; the next deployment retries it: ' + str(error), flush=True)
+        self.prune(previous)
+
+
+def self_check():
+    """Load this receiver and validate the host configuration without touching the host.
+
+    The deploy bootstrap runs this before it points `current` at a new receiver, so a
+    version that cannot even start never replaces one that works. It reads no payload,
+    takes no lock and changes nothing; it distinguishes a configuration problem from a
+    broken receiver, because a new version may require keys the host does not have yet.
+    """
+    config = json.loads(Path('/etc/opennavo/github-deploy.json').read_text())
+    if not isinstance(config, dict):
+        raise ValueError('host configuration is not an object')
+    required = ('root', 'project', 'registry', 'compose_file', 'caddy_file', 'caddy_container',
+                'postgres_container', 'postgres_user', 'postgres_database', 'local_origin', 'checks')
+    missing = [key for key in required if key not in config]
+    if missing:
+        raise ValueError('host configuration is missing: ' + ', '.join(missing))
+    if not isinstance(config['checks'], list) or any(
+            not isinstance(check, dict) or 'host' not in check or 'path' not in check for check in config['checks']):
+        raise ValueError('host configuration checks must be a list of {host,path} entries')
+    print('self-check: receiver loaded and host configuration is valid', flush=True)
+
+
+def probe():
+    """Report whether this receiver can start, without doing anything to the host.
+
+    The deploy bootstrap runs this on a staged receiver before `current` moves, and
+    reads three exit codes rather than one: 0 when the receiver loaded, read the host
+    configuration and could take its lock; 2 when the lock is held by another
+    deployment, which is busy and not broken; anything else for a real failure. A
+    single success/failure code cannot separate those last two, and a deployment that
+    is merely running would look like a broken receiver.
+
+    It reaches everything main() does before it reads a payload and nothing after:
+    main() sweeps stale temporary files before reading stdin, so running main() with
+    an empty payload would edit the host just to answer "can you start".
+    """
+    config = json.loads(Path('/etc/opennavo/github-deploy.json').read_text())
+    required = ('root', 'project', 'registry', 'compose_file', 'caddy_file')
+    missing = [key for key in required if key not in config]
+    if missing:
+        raise ValueError('host configuration is missing: ' + ', '.join(missing))
+    lock_path = Path(config['root']) / 'deploy/github-deploy.lock'
+    # Same file and mode main() uses, so this proves the path main() will open works.
+    with lock_path.open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            print('probe: another deployment holds the receiver lock', flush=True)
+            sys.exit(PROBE_BUSY)
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+    print('probe: receiver loaded, host configuration is valid and the lock is free', flush=True)
 
 
 def main():
@@ -2369,7 +2435,13 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        # The deploy bootstrap probes a staged receiver with these before switching to it.
+        if '--self-check' in sys.argv[1:]:
+            self_check()
+        elif '--probe' in sys.argv[1:]:
+            probe()
+        else:
+            main()
     except Exception as error:
         # Never echo input payloads, environment or captured subprocess diagnostics.
         print('Deployment failed: ' + str(error), file=sys.stderr)

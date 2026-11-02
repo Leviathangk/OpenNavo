@@ -2093,6 +2093,44 @@ globalThis.fetch = async () => ({ ok: true, text: async () => '# HELP opennavo_w
         obj.apply(archive())
         self.assertEqual(events, ['validate live Caddy', 'verify', 'monitoring', 'cleanup', 'prune'])
 
+    def test_cleanup_failure_does_not_fail_a_verified_deployment(self):
+        # The bootstrap restores the previous receiver on any nonzero status. Cleanup
+        # runs after "Production deployed and verified", so letting its error escape
+        # would turn a release that is already serving into a failed deployment, and
+        # the receiver that deployed it would be rolled back for no reason.
+        obj = object.__new__(deploy.Deployment)
+        obj.root = Path('/fixture')
+        obj.payload = payload()
+        obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live', 'web': 'web_live'}}
+        obj.validate_live_caddy = lambda: None
+        obj.verify = lambda: None
+        obj.update_monitoring = lambda services: None
+        obj.cleanup = unittest.mock.Mock(side_effect=RuntimeError('command failed: docker (exit 1)'))
+        pruned = []
+        obj.prune = lambda previous: pruned.append(True)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            obj.apply(archive())  # must not raise
+        self.assertIn('Cleanup incomplete', out.getvalue())
+        self.assertEqual(pruned, [True], 'prune still runs after a failed cleanup')
+
+    def test_cleanup_failure_on_the_already_deployed_path_does_not_fail_either(self):
+        # The same rule on the short circuit: the release is already live, so a docker
+        # error while retiring old containers must not become a failed deployment.
+        obj = object.__new__(deploy.Deployment)
+        obj.root = Path('/fixture')
+        obj.payload = payload()
+        obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live', 'web': 'web_live'}}
+        obj.validate_live_caddy = lambda: None
+        obj.ensure_live_manifest = lambda: None
+        obj.verify = lambda: None
+        obj.update_monitoring = lambda services: None
+        obj.cleanup = unittest.mock.Mock(side_effect=RuntimeError('command failed: docker (exit 1)'))
+        obj.prune = lambda previous: None
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            obj.apply(archive())
+        self.assertIn('Cleanup incomplete', out.getvalue())
+        self.assertIn('already deployed', out.getvalue())
+
     def test_drain_timeout_warns_and_reports_failure(self):
         obj = object.__new__(deploy.Deployment)
         obj.config = {'project': 'example-prod'}

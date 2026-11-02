@@ -49,6 +49,11 @@ test('only changes that reach production deploy', () => {
     assert.equal(ships([file]), false, `${file} only serves the dev or E2E stack`);
   }
   assert.equal(ships(['ops/github-deploy.py', 'ops/GUIDE.md']), false, 'operators install the receiver by hand');
+  // The bootstrap installs the receiver, so it is never part of what a deployment
+  // installs: counting it as shipped would dispatch a deploy that changes nothing on
+  // the host but the payload. Its own test file is excluded by the test_ rule anyway.
+  assert.equal(ships(['ops/deploy-bootstrap.py']), false, 'operators install the bootstrap by hand');
+  assert.equal(ships(['ops/test_deploy_bootstrap.py']), false, 'bootstrap tests never reach a host');
   assert.equal(ships(['ops/docker-compose.prod.yml']), true);
   assert.equal(ships(['ops/caddy/Caddyfile']), true);
   assert.equal(ships(['apps/server/internal/http/server_test.go']), false, 'Go tests never reach a binary');

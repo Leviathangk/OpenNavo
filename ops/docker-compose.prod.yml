@@ -314,6 +314,11 @@ services:
     restart: 'no'
     entrypoint: ['/storage-init']
   backup:
+    # NOT ENABLED IN PRODUCTION. The deploy passes --profile ops --profile automation
+    # and never --profile backup, so this never starts by itself. This project is backed
+    # up by a whole-host snapshot (the PostgreSQL data directory is inside it); this
+    # service is an optional single-database tool, not a running backup. See GUIDE.md,
+    # "Backups and restore drills".
     image: ${OPS_IMAGE:?Build or pull the PostgreSQL backup helper image}
     profiles: [backup]
     restart: unless-stopped
