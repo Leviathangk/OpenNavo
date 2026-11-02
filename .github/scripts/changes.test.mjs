@@ -46,16 +46,22 @@ test('every API spec a generator reads reaches the frontend jobs', () => {
   }
 });
 
-test('spec files no generator reads do not reach the frontend jobs', () => {
-  // Derived for the same reason as generatedSpecs(): when a generator starts
-  // reading one of these it moves to the list above by itself, rather than
-  // leaving a stale entry here that only looks like coverage.
+test('every config file in the API directory stays out of the frontend jobs', () => {
+  // Derived from the directory, not listed: oapi-public.yaml and oapi-admin.yaml are
+  // real oapi-codegen configs and look like specs, so they are the first thing someone
+  // widening the pattern adds. A fixed list left them uncovered, and a mutation that
+  // pulled them into `frontend` passed the suite. Every yaml here that no generator
+  // reads is asserted, so a new one is covered the moment it lands.
   const generated = new Set(generatedSpecs());
-  const unread = readdirSync(new URL('../../apps/server/api/', import.meta.url))
-    .filter(name => name.endsWith('.openapi.yaml') && !generated.has(`apps/server/api/${name}`))
+  const directory = new URL('../../apps/server/api/', import.meta.url);
+  const files = readdirSync(directory)
+    .filter(name => /\.ya?ml$/.test(name) && !generated.has(`apps/server/api/${name}`))
     .map(name => `apps/server/api/${name}`);
-  // Config files, not specs: no generator can read them, so they never move.
-  const files = [...unread, 'apps/server/api/oapi-codegen.yaml', 'apps/server/api/redocly.yaml'];
+  // Guards a vacuous pass: the directory must yield the configs known to be there.
+  for (const known of ['apps/server/api/oapi-public.yaml', 'apps/server/api/oapi-admin.yaml',
+    'apps/server/api/redocly.yaml', 'apps/server/api/public-external.openapi.yaml']) {
+    assert.ok(files.includes(known), `the discovery finds ${known}`);
+  }
   for (const file of files) {
     assert.equal(classify([file]).frontend, false, `${file} is not generated into packages/, so the frontend jobs must not run`);
   }
