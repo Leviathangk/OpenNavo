@@ -280,7 +280,17 @@ class DatabaseRetryTests(unittest.TestCase):
                         'could not connect to server: perm denied',
                         'dial unix /var/run/docker.sock: connect: connection refused',
                         'ERROR: relation "x" does not exist: No such file or directory candidate',
-                        'ERROR:  duplicate key value violates unique constraint "users_email_key"'):
+                        'ERROR:  duplicate key value violates unique constraint "users_email_key"',
+                        # These four are the NEAR counter-examples for markers that key on a
+                        # ready-state phrase. `test_every_near_miss_is_itself_a_permanent_case`
+                        # requires them here, but they earn the place on their own: each is the
+                        # same opening words as a retryable failure followed by a permanent cause,
+                        # which is exactly the shape a marker widened by one word would swallow.
+                        'psql: error: FATAL:  database system was interrupted while in recovery; '
+                        'manual recovery required',
+                        'psql: error: FATAL:  database system startup failed: invalid checkpoint record',
+                        'psql: error: FATAL:  terminating connection failed: role "opennavo" does not exist',
+                        'ERROR:  schema "public" already exists'):
             with self.subTest(message=message):
                 with self.assertRaises(e2e.StepError) as caught:
                     self.run_database([self.failure(message)])
@@ -471,6 +481,16 @@ class RetryWhitelistCoverageTests(unittest.TestCase):
                 others = [str(other) for other in e2e.TRANSIENT
                           if other != marker and self.matches(other, near)]
                 self.assertEqual(others, [], f'{near!r} also matches {others}, not only {marker!r}')
+
+    def test_every_near_miss_is_itself_a_permanent_case(self):
+        # NEAR says "this wording looks like the marker but is a permanent cause". If the same
+        # message is not in the permanent corpus, nothing ever runs the classifier over it, so the
+        # claim in NEAR is asserted by hand rather than measured. Four of the seven were in that
+        # state: the list only ever grew where a marker needed a counter-example.
+        permanent = self.messages(self.PERMANENT_CASES)
+        absent = [marker for marker, near in self.NEAR.items()
+                  if not any(near.strip() == message.strip() for message in permanent)]
+        self.assertEqual(absent, [], f'these near-misses are not permanent cases: {absent}')
 
     def test_no_near_miss_outlives_its_marker(self):
         # The other half of the bound above: removing a marker leaves its entry here, and every
