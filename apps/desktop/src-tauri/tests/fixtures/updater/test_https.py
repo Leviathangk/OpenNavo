@@ -61,9 +61,10 @@ class FixtureTests(unittest.TestCase):
             process.wait()
             process.stdout.close()
         self.assertRegex(line.strip(), r'^\d+$',
-                         'the fixture printed no port within five seconds while the '
-                         'resolver was hung, so it blocks on a lookup before the line '
-                         'the Rust tests wait for')
+                         'the fixture printed no port within five seconds: either it '
+                         'blocked on a lookup before the line the Rust tests wait for, '
+                         'or it exited before reaching it. Running the fixture directly '
+                         'tells the two apart')
 
 
 if __name__ == '__main__':

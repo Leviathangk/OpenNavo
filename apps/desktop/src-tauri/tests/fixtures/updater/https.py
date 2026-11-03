@@ -48,8 +48,9 @@ class Server(http.server.HTTPServer):
 
     socket.getfqdn() asks the resolver, with no timeout of its own: a host whose reverse
     zone is slow or unreachable blocks here, before this file prints its port, and the
-    Rust test that reads that line waits on a server that was already listening. Nothing
-    reads server_name or server_port, so the bound address is stored as-is.
+    Rust test that reads that line waits on a server that was already listening. The
+    assignment below is required, not cosmetic: socketserver.TCPServer.server_bind
+    sets only server_address, while the port this file prints comes from server_port.
     """
 
     def server_bind(self):
