@@ -72,3 +72,26 @@ describe('own site links', () => {
     );
   });
 });
+
+describe('vendor release HTML links', () => {
+  it('treats our own pages as internal, including protocol-relative links', () => {
+    const root = parse(
+      sanitizeReleaseHtml(
+        '<a href="https://opennavo.com/apps">one</a> <a href="//opennavo.com/apps">two</a>' +
+          ' <a href="//evil.example/x">three</a>'
+      )
+    );
+    const [first, second, third] = Array.from(root.querySelectorAll('a'));
+    expect(second?.getAttribute('href')).toBe('https://opennavo.com/apps');
+    expect(first?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(second?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(third?.getAttribute('href')).toBe('https://evil.example/x');
+    expect(third?.getAttribute('rel')).toBe('noopener noreferrer nofollow ugc');
+  });
+
+  it('keeps the bot rule for protocol-relative links too', () => {
+    const root = parse(sanitizeReleaseHtml('<a href="//github.com/github-actions%5Bbot%5D">bot</a>'));
+    expect(root.querySelector('a')).toBeNull();
+    expect(root.textContent).toBe('bot');
+  });
+});

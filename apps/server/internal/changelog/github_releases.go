@@ -2,6 +2,8 @@ package changelog
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -18,9 +20,10 @@ import (
 // capped at 200 KB, matching releases.body_markdown) and rendered by @opennavo/ui's markdown-it (html:false)
 // + DOMPurify pipeline, exactly like the other upstream release sources.
 const (
-	releasesPerPage     = 100
-	releasesMaxBody     = 8 << 20 // One page of 100 releases with long notes and asset lists.
-	releaseTitleMaxRune = 300
+	releasesPerPage       = 100
+	releasesBackfillPages = 5       // A first fetch reads up to 500 releases so history is not page one only.
+	releasesMaxBody       = 8 << 20 // One page of 100 releases with long notes and asset lists.
+	releaseTitleMaxRune   = 300
 	// GitHubQuotaReserve pauses github_releases fetches once the remaining primary quota falls to this
 	// fraction of the limit, leaving the rest for Homebrew commit history and source facts (#64 keeps
 	// the same last-tenth reserve).
@@ -119,43 +122,87 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 	if reset, paused := f.quota.paused(f.now()); paused {
 		return out, &RateLimitError{Reset: reset}
 	}
-	headers := http.Header{}
-	if s.ETag != "" {
-		// A 304 costs no primary quota. The list embeds asset download counters, so busy repositories
-		// still change ETag often; unchanged notes are then deduplicated by body hash in the store.
-		headers.Set("If-None-Match", s.ETag)
+	// The first fetch walks older pages so history is not limited to the newest 100 releases. Later
+	// fetches read page one only: the list is newest-first, so everything older is already stored and
+	// re-reading it every few hours would multiply the quota cost for unchanged notes.
+	pages := 1
+	if s.Backfill {
+		pages = releasesBackfillPages
 	}
-	target := "https://api.github.com/repos/" + repo + "/releases?" + url.Values{"per_page": {strconv.Itoa(releasesPerPage)}}.Encode()
-	body, status, responseHeaders, err := f.HTTP.readRequest(ctx, target, releasesMaxBody, headers)
-	if responseHeaders != nil {
-		f.quota.observe(responseHeaders)
-	}
-	if err != nil {
-		return out, err
-	}
-	if err := checkStatus(status, responseHeaders); err != nil {
-		return out, err
-	}
-	out.ETag = responseHeaders.Get("ETag")
-	if status == http.StatusNotModified {
-		out.NotModified = true
-		if out.ETag == "" {
-			out.ETag = s.ETag
+	batch := []githubRelease{}
+	digest := sha256.New()
+	for page := 1; page <= pages; page++ {
+		headers := http.Header{}
+		if page == 1 && s.ETag != "" {
+			// A 304 costs no primary quota. The list embeds asset download counters, so busy repositories
+			// still change ETag often; unchanged notes are then deduplicated by body hash in the store.
+			headers.Set("If-None-Match", s.ETag)
 		}
+		target := "https://api.github.com/repos/" + repo + "/releases?" + url.Values{
+			"per_page": {strconv.Itoa(releasesPerPage)},
+			"page":     {strconv.Itoa(page)},
+		}.Encode()
+		body, status, responseHeaders, err := f.HTTP.readRequest(ctx, target, releasesMaxBody, headers)
+		if responseHeaders != nil {
+			f.quota.observe(responseHeaders)
+		}
+		if err != nil {
+			return out, err
+		}
+		if err := checkStatus(status, responseHeaders); err != nil {
+			return out, err
+		}
+		if page == 1 {
+			out.ETag = responseHeaders.Get("ETag")
+			if status == http.StatusNotModified {
+				out.NotModified = true
+				if out.ETag == "" {
+					out.ETag = s.ETag
+				}
+				return out, nil
+			}
+		}
+		var items []githubRelease
+		if err := json.Unmarshal(body, &items); err != nil || items == nil {
+			return out, &Error{Kind: "invalid_json"}
+		}
+		if page == 1 {
+			// The steady-state fetch reads page one only, so the hash is over page one: hashing the
+			// backfill pages too would make every first fetch's hash differ from the next fetch's.
+			digest.Write(body)
+		}
+		batch = append(batch, items...)
+		if len(items) < releasesPerPage {
+			break
+		}
+	}
+	out.ContentHash = hex.EncodeToString(digest.Sum(nil))
+	if s.ContentHash != "" && s.ContentHash == out.ContentHash {
+		// The same list as last time, so nothing would be written and the visibility request that
+		// gates writes has nothing to decide. This is the common case for a busy repository whose
+		// ETag changes with asset download counters.
+		out.NotModified = true
+		out.Releases = nil
 		return out, nil
 	}
-	var batch []githubRelease
-	if err := json.Unmarshal(body, &batch); err != nil || batch == nil {
-		return out, &Error{Kind: "invalid_json"}
+	if reset, paused := f.quota.paused(f.now()); paused {
+		// The list itself can report a quota that has just dropped into the reserve. Storing it would
+		// require the visibility request below, and that request would spend the reserve the guard is
+		// protecting; fail closed and let the run after the reset fetch the list again. An unchanged
+		// list never reaches this point, because the hash short-circuit above returns first.
+		return FetchResult{Versions: []BrewVersion{}, Releases: []Release{}}, &RateLimitError{Reset: reset}
 	}
 	// The token can read private repositories, and the source facts job only notices a repository that turned
 	// private on its next run. Changed notes (a 200, not a 304) are written only after the repository itself
 	// still reports public; a private one answers like a missing one (404) and nothing is stored.
-	if private, err := f.repoPrivate(ctx, repo); err != nil {
-		return out, err
-	} else if private {
+	meta, err := f.repoMeta(ctx, repo)
+	if err != nil {
+		return FetchResult{Versions: []BrewVersion{}, Releases: []Release{}}, err
+	}
+	if meta.private {
 		return FetchResult{Versions: []BrewVersion{}, Releases: []Release{}}, &StatusError{Status: http.StatusNotFound}
 	}
+	out.Archived = &meta.archived
 	seen, versions := map[string]bool{}, map[string]bool{}
 	for _, item := range batch {
 		// Drafts are unpublished; prereleases are kept and flagged (releases.is_prerelease), which the
@@ -207,19 +254,37 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 const prereleaseWord = `(?:alpha|beta|rc|preview|prerelease|pre|dev)`
 
 var (
-	releaseTagPattern     = regexp.MustCompile(`^((?:[a-z][a-z0-9]*[-_/])*)v?(\d+(?:\.\d+)*)(.*)$`)
+	// A prefix is a run of words separated from the core by "-", "_", "/" or (monorepo tags) "@";
+	// a single word may also sit directly against the digits (go1.22.0, r1.2).
+	releaseTagPattern     = regexp.MustCompile(`^((?:[a-z][a-z0-9]*[-_/])*)([a-z][a-z0-9]*)?v?(\d+(?:\.\d+)*)(.*)$`)
 	prereleaseSuffix      = regexp.MustCompile(`^(?:[-._]?` + prereleaseWord + `(?:[.-]?\d+)*|[ab]\d+(?:\.\d+)*)$`)
-	otherSuffix           = regexp.MustCompile(`^(?:[-._][a-z][a-z0-9]*(?:[.-][a-z0-9]+)*|[a-z])$`)
+	otherSuffix           = regexp.MustCompile(`^(?:[-._][a-z][a-z0-9]*(?:[.-][a-z0-9]+)*|[-._]\d+|[a-z])$`)
 	prereleasePrefixWords = regexp.MustCompile(`(?:^|[-_/])` + prereleaseWord + `\d*[-_/]`)
+	// curl-8_5_0 and OpenSSL_1_1_1w spell the numeric core with underscores. Only a digit on
+	// both sides is rewritten, so a separator in front of a word (feature_branch) stays intact.
+	digitUnderscore = regexp.MustCompile(`(\d)_(\d)`)
+	// A prerelease word with no version attached (beta2) is a label, not a version.
+	barePrerelease = regexp.MustCompile(`^` + prereleaseWord + `\d*$`)
 )
 
 // parseVersion splits a lowercased tag into prefix, numeric core and suffix ("+build" dropped).
 func parseVersion(tag string) (prefix, core, suffix string, ok bool) {
+	// Monorepo tags name the package before the version: pkg@1.2.3, @scope/pkg@1.2.3. Everything
+	// before the last "@" is a prefix the version does not need.
+	if i := strings.LastIndexByte(tag, '@'); i >= 0 {
+		tag = tag[i+1:]
+	}
+	for digitUnderscore.MatchString(tag) {
+		tag = digitUnderscore.ReplaceAllString(tag, "$1.$2")
+	}
 	m := releaseTagPattern.FindStringSubmatch(tag)
 	if m == nil {
 		return "", "", "", false
 	}
-	prefix, core, suffix = m[1], m[2], m[3]
+	prefix, core, suffix = m[1]+m[2], m[3], m[4]
+	if barePrerelease.MatchString(m[2]) {
+		return "", "", "", false
+	}
 	if i := strings.IndexByte(suffix, '+'); i >= 0 {
 		suffix = suffix[:i]
 	}
@@ -286,27 +351,35 @@ func VersionKey(version string) string {
 	return core
 }
 
-// repoPrivate reads the repository's visibility with the same request path and quota guard as the release list.
-func (f *Fetcher) repoPrivate(ctx context.Context, repo string) (bool, error) {
+// repoMeta reads the repository's visibility and archived flag with the same request path and
+// quota guard as the release list. Visibility decides whether notes may be stored at all; archived
+// only decides how often the source is fetched.
+func (f *Fetcher) repoMeta(ctx context.Context, repo string) (repoMetadata, error) {
 	body, status, headers, err := f.HTTP.readRequest(ctx, "https://api.github.com/repos/"+repo, 1<<20, http.Header{})
 	if headers != nil {
 		f.quota.observe(headers)
 	}
 	if err != nil {
-		return false, err
+		return repoMetadata{}, err
 	}
 	if err := checkStatus(status, headers); err != nil {
-		return false, err
+		return repoMetadata{}, err
 	}
 	var meta struct {
 		Private    *bool  `json:"private"`
 		Visibility string `json:"visibility"`
+		Archived   bool   `json:"archived"`
 	}
 	if err := json.Unmarshal(body, &meta); err != nil || meta.Private == nil {
-		return false, &Error{Kind: "invalid_json"}
+		return repoMetadata{}, &Error{Kind: "invalid_json"}
 	}
-	return *meta.Private || (meta.Visibility != "" && meta.Visibility != "public"), nil
+	return repoMetadata{
+		private:  *meta.Private || (meta.Visibility != "" && meta.Visibility != "public"),
+		archived: meta.Archived,
+	}, nil
 }
+
+type repoMetadata struct{ private, archived bool }
 
 func releaseURL(repo string, item githubRelease) string {
 	prefix := "https://github.com/" + repo + "/releases/"

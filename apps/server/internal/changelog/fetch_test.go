@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,25 @@ func TestGitHubConditionalRequestIgnoresChangingETag(t *testing.T) {
 	_, _, _, err = f.get(context.Background(), "https://api.github.com/repos/example/app/releases/latest", 1024,
 		FetchSource{ETag: "legacy-tag"})
 	require.NoError(t, err)
+}
+
+func TestRateLimitRetryAfterBeatsAStaleReset(t *testing.T) {
+	now := time.Now()
+	headers := http.Header{}
+	headers.Set("Retry-After", "30")
+	// The reset epoch is in the past: the header is present but cannot bound this wait, so the
+	// short Retry-After must win instead of the one-hour fallback.
+	headers.Set("X-Ratelimit-Reset", strconv.FormatInt(now.Add(-time.Minute).Unix(), 10))
+	err := checkStatus(http.StatusTooManyRequests, headers)
+	var rate *RateLimitError
+	require.True(t, errors.As(err, &rate))
+	require.WithinDuration(t, now.Add(30*time.Second), rate.Reset, 5*time.Second)
+
+	future := now.Add(10 * time.Minute)
+	headers.Set("X-Ratelimit-Reset", strconv.FormatInt(future.Unix(), 10))
+	err = checkStatus(http.StatusTooManyRequests, headers)
+	require.True(t, errors.As(err, &rate))
+	require.WithinDuration(t, future, rate.Reset, 2*time.Second, "a future reset still wins")
 }
 
 func TestHomebrewCommitHistoryAndBottleExclusion(t *testing.T) {

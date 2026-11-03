@@ -148,3 +148,51 @@ func TestCommitTitlesWithAnnotationsDateVersionsAndFullReread(t *testing.T) {
 	require.Empty(t, last.URL.Query().Get("since"))
 	require.Empty(t, last.Header.Get("If-None-Match"))
 }
+
+func TestGitHubReleaseFetchSlowsDownForAnArchivedRepository(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"archived","version":"1.0.0"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	var pid, sid int64
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE token='archived'").Scan(&pid).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data)
+ VALUES(?,'github','homepage','owner/archived','found','{"repo":"owner/archived"}')`, pid).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by)
+ VALUES(?,'github_releases','{"repo":"owner/archived"}',20,'auto') RETURNING id`, pid).Scan(&sid).Error)
+
+	body := `[{"tag_name":"v1.0.0","body":"notes"}]`
+	meta := 0
+	fetcher := pipeline.NewFetcher("test")
+	fetcher.HTTP.Client = &http.Client{Transport: responseTransport(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/releases") {
+			require.Equal(t, "1", r.URL.Query().Get("page"))
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
+		}
+		meta++
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"private":false,"archived":true}`))}, nil
+	})}
+	now := time.Now().UTC()
+	svc := &changelog.Service{Store: st, Fetcher: fetcher, Now: func() time.Time { return now }}
+	_, err = svc.Fetch(ctx, sid)
+	require.NoError(t, err)
+	var state struct {
+		Archived    bool
+		ContentHash *string
+		NextFetchAt time.Time
+	}
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT archived,content_hash,next_fetch_at FROM changelog_sources WHERE id=?", sid).Scan(&state).Error)
+	require.True(t, state.Archived)
+	require.NotNil(t, state.ContentHash)
+	require.WithinDuration(t, now.Add(7*24*time.Hour), state.NextFetchAt, time.Second, "archived repositories are fetched weekly")
+
+	// The next fetch sees the same list: it must keep the weekly cadence and skip the visibility
+	// request, not fall back to the 48-hour popularity interval.
+	now = now.Add(7 * 24 * time.Hour)
+	_, err = svc.Fetch(ctx, sid)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT next_fetch_at FROM changelog_sources WHERE id=?", sid).Scan(&state).Error)
+	require.WithinDuration(t, now.Add(7*24*time.Hour), state.NextFetchAt, time.Second)
+	require.Equal(t, 1, meta, "an unchanged list is recognised without another repository request")
+}

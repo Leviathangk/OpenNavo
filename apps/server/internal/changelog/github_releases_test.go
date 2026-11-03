@@ -3,6 +3,7 @@ package changelog
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -118,17 +119,21 @@ func TestGitHubReleasesPauseOnLowQuota(t *testing.T) {
 	f, calls := fixtureFetcher(t, "stats.json", http.Header{"X-Ratelimit-Remaining": {"400"}, "X-Ratelimit-Limit": {"5000"}, "X-Ratelimit-Reset": {strconv.FormatInt(reset.Unix(), 10)}})
 	f.Now = func() time.Time { return now }
 	source := FetchSource{Type: "github_releases", Config: map[string]any{"repo": "exelban/stats"}}
+	// The list response itself reports a quota inside the reserve. Storing it would need the
+	// visibility request, which would spend that reserve, so the fetch fails closed instead.
 	result, err := f.Fetch(context.Background(), Candidate{}, source)
-	require.NoError(t, err, "the response already paid for is still used")
-	require.Len(t, result.Releases, 5)
-	_, err = f.Fetch(context.Background(), Candidate{}, source)
 	var rate *RateLimitError
 	require.True(t, errors.As(err, &rate))
+	require.Empty(t, result.Releases, "nothing is stored without the visibility check")
 	require.Equal(t, reset.Unix(), rate.Reset.Unix())
+	require.Equal(t, 1, *calls, "the denied visibility request is not made")
+	_, err = f.Fetch(context.Background(), Candidate{}, source)
+	require.True(t, errors.As(err, &rate))
 	require.Equal(t, 1, *calls, "paused fetch must not spend a request")
 	f.Now = func() time.Time { return reset.Add(time.Second) }
-	_, err = f.Fetch(context.Background(), Candidate{}, source)
+	result, err = f.Fetch(context.Background(), Candidate{}, source)
 	require.NoError(t, err)
+	require.Len(t, result.Releases, 5)
 	require.Equal(t, 2, *calls)
 }
 
@@ -250,11 +255,28 @@ func TestReleaseVersionWhitelist(t *testing.T) {
 	require.Equal(t, "", VersionKey(""))
 }
 
+func TestReleaseVersionAcceptsCommonUpstreamTagFormats(t *testing.T) {
+	for _, testCase := range []struct{ name, tag, want string }{
+		{"scoped package", "pkg@1.2.3", "1.2.3"},
+		{"scoped npm package", "@scope/pkg@1.2.3", "1.2.3"},
+		{"numeric revision", "v1.2.3-1", "1.2.3-1"},
+		{"underscored core", "curl-8_5_0", "8.5.0"},
+		{"underscored openssl", "OpenSSL_1_1_1w", "1.1.1w"},
+		{"word prefix", "go1.22.0", "1.22.0"},
+		{"short prefix", "r1.2", "1.2"},
+		{"underscored revision", "v8.5.0_1", "8.5.0.1"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			require.Equal(t, testCase.want, ReleaseVersion(testCase.tag, "owner/repo"))
+		})
+	}
+}
+
 func TestGitHubReleasesKeepSuffixedReleasesApart(t *testing.T) {
 	f := NewFetcher("test")
 	f.HTTP.Client.Transport = publicRepo(func(*http.Request) (*http.Response, error) {
 		return reply(200, `[{"tag_name":"v1.2.3-hotfix","body":"hotfix"},{"tag_name":"v1.2.3","body":"real"},
-{"tag_name":"OpenSSL_1_1_1w","body":"underscored"},{"tag_name":"1.1.1w","body":"w"},{"tag_name":"1.1.1v","body":"v"},
+{"tag_name":"1.2.3_x!","body":"invalid"},{"tag_name":"1.1.1w","body":"w"},{"tag_name":"1.1.1v","body":"v"},
 {"tag_name":"3a4f9c1","body":"hash"},{"tag_name":"Beta-2","body":"beta"}]`), nil
 	})
 	result, err := f.Fetch(context.Background(), Candidate{}, FetchSource{Type: "github_releases", Config: map[string]any{"repo": "owner/openssl"}})
@@ -279,4 +301,98 @@ func TestGitHubReleasesSkipPrivateRepository(t *testing.T) {
 	require.True(t, errors.As(err, &status))
 	require.Equal(t, http.StatusNotFound, status.Status)
 	require.Empty(t, result.Releases)
+}
+
+func TestGitHubReleasesVisibilityFailureStoresNothing(t *testing.T) {
+	// The visibility read is the gate that keeps a token with private access from publishing private
+	// notes. A non-200 answer must fail the fetch, not fall through to "assume public"; before this
+	// test, swallowing the error and storing the releases left every case green.
+	for _, testCase := range []struct {
+		name        string
+		status      int
+		rateLimit   bool
+		extraHeader map[string]string
+	}{
+		{name: "rate limited", status: http.StatusForbidden, rateLimit: true, extraHeader: map[string]string{"X-Ratelimit-Remaining": "0"}},
+		{name: "server error", status: http.StatusInternalServerError},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := NewFetcher("test")
+			f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+				if strings.HasSuffix(r.URL.Path, "/releases") {
+					return reply(200, `[{"tag_name":"v1.0.0","body":"private notes"}]`), nil
+				}
+				response := reply(testCase.status, "no visibility")
+				for key, value := range testCase.extraHeader {
+					response.Header.Set(key, value)
+				}
+				return response, nil
+			})
+			result, err := f.Fetch(context.Background(), Candidate{}, FetchSource{
+				Type: "github_releases", Config: map[string]any{"repo": "owner/app"},
+			})
+			require.Error(t, err)
+			var rate *RateLimitError
+			require.Equal(t, testCase.rateLimit, errors.As(err, &rate))
+			require.Empty(t, result.Releases, "nothing may be stored from an ungated visibility read")
+		})
+	}
+}
+
+func TestGitHubReleasesBackfillsOnceThenSkipsTheVisibilityRequestForAnUnchangedList(t *testing.T) {
+	page := func() string {
+		items := make([]string, releasesPerPage)
+		for i := range items {
+			items[i] = fmt.Sprintf(`{"tag_name":"v1.%d.0","body":"notes"}`, i)
+		}
+		return "[" + strings.Join(items, ",") + "]"
+	}
+	f := NewFetcher("test")
+	listCalls, metaCalls := 0, 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		if !strings.HasSuffix(r.URL.Path, "/releases") {
+			metaCalls++
+			return reply(200, `{"private":false,"archived":true}`), nil
+		}
+		listCalls++
+		if r.URL.Query().Get("page") == "2" {
+			return reply(200, `[{"tag_name":"v0.9.0","body":"old"}]`), nil
+		}
+		return reply(200, page()), nil
+	})
+	source := FetchSource{Type: "github_releases", Config: map[string]any{"repo": "owner/app"}, Backfill: true}
+	result, err := f.Fetch(context.Background(), Candidate{}, source)
+	require.NoError(t, err)
+	require.Len(t, result.Releases, releasesPerPage+1, "the first fetch reads older pages too")
+	require.Equal(t, 2, listCalls)
+	require.Equal(t, 1, metaCalls)
+	require.NotNil(t, result.Archived)
+	require.True(t, *result.Archived, "an archived repository is reported so the schedule can slow down")
+	require.NotEmpty(t, result.ContentHash)
+
+	// A later fetch reads page one only, recognises the same list by hash and returns before the
+	// repository visibility request that only gates writes.
+	source.Backfill, source.ContentHash = false, result.ContentHash
+	result, err = f.Fetch(context.Background(), Candidate{}, source)
+	require.NoError(t, err)
+	require.True(t, result.NotModified)
+	require.Empty(t, result.Releases)
+	require.Equal(t, 3, listCalls)
+	require.Equal(t, 1, metaCalls, "an unchanged list must not spend a second request")
+
+	// A changed list still verifies visibility before anything may be stored.
+	source.ContentHash = "stale"
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/releases") {
+			return reply(200, `[{"tag_name":"v2.0.0","body":"new"}]`), nil
+		}
+		metaCalls++
+		return reply(200, `{"private":false,"archived":false}`), nil
+	})
+	result, err = f.Fetch(context.Background(), Candidate{}, source)
+	require.NoError(t, err)
+	require.Len(t, result.Releases, 1)
+	require.Equal(t, 2, metaCalls)
+	require.NotNil(t, result.Archived)
+	require.False(t, *result.Archived)
 }

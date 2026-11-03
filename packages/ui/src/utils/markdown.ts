@@ -177,13 +177,20 @@ export function sanitizeReleaseHtml(source: string, options: RenderMarkdownOptio
     image.replaceWith(link);
   }
   for (const link of fragment.querySelectorAll('a')) {
-    if (isGitHubBotAccount(link.getAttribute('href'))) {
+    const raw = link.getAttribute('href') ?? '';
+    // Vendor HTML may write its own site protocol-relative (//opennavo.com/apps). Resolve it
+    // before the https test so an internal link is not stripped, and before the bot check so
+    // a protocol-relative bot account is still matched.
+    const href = raw.startsWith('//') ? `https:${raw}` : raw;
+    if (isGitHubBotAccount(href)) {
       link.replaceWith(...link.childNodes);
       continue;
     }
-    if (!/^https?:/i.test(link.getAttribute('href') ?? '')) link.removeAttribute('href');
+    if (!/^https?:/i.test(href)) link.removeAttribute('href');
+    else link.setAttribute('href', href);
     link.setAttribute('target', '_blank');
-    link.setAttribute('rel', EXTERNAL_REL);
+    // Our own pages keep opener isolation but are not user-generated third-party content.
+    link.setAttribute('rel', linkRel(href));
   }
   // Same ordered mapping as Markdown: the n-th distinct heading level found becomes headingLevel + n.
   const headings = [...fragment.querySelectorAll('h1, h2, h3, h4, h5, h6')];

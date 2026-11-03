@@ -100,6 +100,10 @@ func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, e
 		switch op {
 		case "UpdateRelease":
 			fields := mapped(in.Body, map[string]string{"hidden": "hidden", "title": "title"})
+			if _, present := in.Body["title"]; present {
+				// Mark the title as an editor's, so a later upstream rename does not overwrite it.
+				fields["title_edited"] = true
+			}
 			fields["updated_at"] = s.now()
 			if err := st.DB.WithContext(ctx).Table("releases").Where("id=?", in.ID).Updates(fields).Error; err != nil {
 				return nil, err

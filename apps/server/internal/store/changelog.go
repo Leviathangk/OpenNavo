@@ -45,8 +45,21 @@ func (s *Store) SaveChangelogSources(ctx context.Context, id int64, sources []ch
 			if err != nil {
 				return err
 			}
-			if err := tx.Exec(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,?,?::jsonb,?,'auto') ON CONFLICT(package_id,type) DO UPDATE SET config=EXCLUDED.config,priority=EXCLUDED.priority,etag=NULL,last_modified=NULL,fail_count=0,last_error=NULL,next_fetch_at=now(),updated_at=now() WHERE changelog_sources.resolved_by='auto' AND (changelog_sources.config<>EXCLUDED.config OR changelog_sources.priority<>EXCLUDED.priority)`, id, source.Type, string(data), source.Priority).Error; err != nil {
+			if err := tx.Exec(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,?,?::jsonb,?,'auto') ON CONFLICT(package_id,type) DO UPDATE SET config=EXCLUDED.config,priority=EXCLUDED.priority,etag=NULL,last_modified=NULL,content_hash=CASE WHEN changelog_sources.config<>EXCLUDED.config THEN NULL ELSE changelog_sources.content_hash END,fail_count=0,last_error=NULL,next_fetch_at=now(),updated_at=now() WHERE changelog_sources.resolved_by='auto' AND (changelog_sources.config<>EXCLUDED.config OR changelog_sources.priority<>EXCLUDED.priority)`, id, source.Type, string(data), source.Priority).Error; err != nil {
 				return err
+			}
+			// A repository change leaves the notes of the old repository behind: their tags rarely
+			// collide, so the upsert never touches them. Drop the auto source's rows that do not
+			// belong to the repository it now records; a manual source is left alone by the guard.
+			if source.Type == "github_releases" {
+				repo, _ := source.Config["repo"].(string)
+				if repo != "" {
+					if err := tx.Exec(`DELETE FROM releases r USING changelog_sources s
+ WHERE r.package_id=? AND r.source='github_release' AND s.package_id=r.package_id AND s.type='github_releases' AND s.resolved_by='auto'
+ AND NOT starts_with(COALESCE(r.source_url,''), ?)`, id, "https://github.com/"+repo+"/releases/").Error; err != nil {
+						return err
+					}
+				}
 			}
 		}
 		return nil
@@ -65,6 +78,8 @@ type ChangelogState struct {
 	LastStatus                string
 	FailCount                 int
 	Rank30d                   *int `gorm:"column:rank_30d"`
+	Archived                  bool
+	ContentHash               *string `gorm:"column:content_hash"`
 	Homepage                  *string
 	CurrentVersion            string
 	CurrentVersionCommittedAt *time.Time
@@ -72,7 +87,7 @@ type ChangelogState struct {
 
 func (s *Store) ChangelogState(ctx context.Context, id int64) (ChangelogState, error) {
 	var row ChangelogState
-	r := s.DB.WithContext(ctx).Raw("SELECT s.id,s.package_id,s.enabled,COALESCE(m.changelog_excluded,false) excluded,s.type,s.config,s.etag,s.last_modified,s.last_fetched_at,s.last_status,s.fail_count,p.rank_30d,p.homepage,p.version current_version,v.brew_committed_at current_version_committed_at FROM changelog_sources s JOIN packages p ON p.id=s.package_id LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN package_versions v ON v.package_id=p.id AND v.version=p.version WHERE s.id=? AND "+changelogSourceScope+" AND p.removed_at IS NULL", id).Scan(&row)
+	r := s.DB.WithContext(ctx).Raw("SELECT s.id,s.package_id,s.enabled,COALESCE(m.changelog_excluded,false) excluded,s.type,s.config,s.etag,s.last_modified,s.last_fetched_at,s.last_status,s.fail_count,s.archived,s.content_hash,p.rank_30d,p.homepage,p.version current_version,v.brew_committed_at current_version_committed_at FROM changelog_sources s JOIN packages p ON p.id=s.package_id LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN package_versions v ON v.package_id=p.id AND v.version=p.version WHERE s.id=? AND "+changelogSourceScope+" AND p.removed_at IS NULL", id).Scan(&row)
 	if r.Error != nil {
 		return row, r.Error
 	}
@@ -155,6 +170,13 @@ func (s *Store) SaveFetchedChangelogWithLifecycle(ctx context.Context, source Ch
 		if result.LastModified != "" {
 			fields["last_modified"] = result.LastModified
 		}
+		if result.ContentHash != "" {
+			fields["content_hash"] = result.ContentHash
+		}
+		// A fetch that did not read the repository (304, or an unchanged list) leaves the flag alone.
+		if result.Archived != nil {
+			fields["archived"] = *result.Archived
+		}
 		if err := tx.WithContext(ctx).Table("changelog_sources").Where("id=?", source.ID).Updates(fields).Error; err != nil {
 			return err
 		}
@@ -184,7 +206,7 @@ func (s *Store) UnresolvedHomebrewSources(ctx context.Context) ([]changelog.Cand
 	var rows []changelog.Candidate
 	err := s.DB.WithContext(ctx).Raw(candidateSQL + ` WHERE NOT COALESCE(m.changelog_excluded,false) AND p.removed_at IS NULL AND NOT p.disabled AND (
  (p.kind='cask' AND p.ruby_source_path IS NOT NULL AND ` + OfficialTapSQL + ` AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='homebrew_commits'))
- OR (gf.subject IS NOT NULL AND NOT p.is_font AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='github_releases' AND (s.resolved_by='manual' OR s.config->>'repo'=gf.subject)))
+ OR (gf.subject ~ '^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$' AND NOT p.is_font AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='github_releases' AND (s.resolved_by='manual' OR s.config->>'repo'=gf.subject)))
 ) ORDER BY p.popularity DESC,p.id`).Scan(&rows).Error
 	return rows, err
 }
@@ -226,8 +248,8 @@ func saveGitHubReleases(ctx context.Context, tx *gorm.DB, packageID int64, relea
 		}
 		r := tx.WithContext(ctx).Exec(`INSERT INTO releases(package_id,source,source_key,version,title,published_at,source_url,body_markdown,body_hash,is_prerelease,fetched_at,updated_at,source_locale)
  VALUES(?,'github_release',?,?,?,?,?,?,?,?,?,?,'en-US')
- ON CONFLICT(package_id,source,source_key) DO UPDATE SET version=EXCLUDED.version,title=COALESCE(releases.title,EXCLUDED.title),published_at=EXCLUDED.published_at,source_url=EXCLUDED.source_url,body_markdown=EXCLUDED.body_markdown,body_hash=EXCLUDED.body_hash,is_prerelease=EXCLUDED.is_prerelease,fetched_at=EXCLUDED.fetched_at,updated_at=EXCLUDED.fetched_at
- WHERE releases.version IS DISTINCT FROM EXCLUDED.version OR (releases.title IS NULL AND EXCLUDED.title IS NOT NULL) OR releases.published_at IS DISTINCT FROM EXCLUDED.published_at OR releases.source_url IS DISTINCT FROM EXCLUDED.source_url OR releases.body_hash IS DISTINCT FROM EXCLUDED.body_hash OR releases.is_prerelease IS DISTINCT FROM EXCLUDED.is_prerelease`,
+ ON CONFLICT(package_id,source,source_key) DO UPDATE SET version=EXCLUDED.version,title=CASE WHEN releases.title_edited THEN releases.title ELSE EXCLUDED.title END,published_at=EXCLUDED.published_at,source_url=EXCLUDED.source_url,body_markdown=EXCLUDED.body_markdown,body_hash=EXCLUDED.body_hash,is_prerelease=EXCLUDED.is_prerelease,fetched_at=EXCLUDED.fetched_at,updated_at=EXCLUDED.fetched_at
+ WHERE releases.version IS DISTINCT FROM EXCLUDED.version OR (NOT releases.title_edited AND releases.title IS DISTINCT FROM EXCLUDED.title) OR releases.published_at IS DISTINCT FROM EXCLUDED.published_at OR releases.source_url IS DISTINCT FROM EXCLUDED.source_url OR releases.body_hash IS DISTINCT FROM EXCLUDED.body_hash OR releases.is_prerelease IS DISTINCT FROM EXCLUDED.is_prerelease`,
 			packageID, release.Tag, version, title, release.PublishedAt, release.SourceURL, body, hash, release.Prerelease, fetched, fetched)
 		if r.Error != nil {
 			return false, r.Error

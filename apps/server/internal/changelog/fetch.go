@@ -21,6 +21,10 @@ type FetchSource struct {
 	Config             map[string]any
 	ETag, LastModified string
 	Since              *time.Time
+	// ContentHash is the release list stored by the previous fetch, and Backfill says no fetch has
+	// stored a list yet: the first one reads older pages so history is not limited to page one.
+	ContentHash string
+	Backfill    bool
 }
 type BrewVersion struct {
 	Version, SHA string
@@ -30,6 +34,8 @@ type FetchResult struct {
 	Versions           []BrewVersion
 	Releases           []Release
 	NotModified        bool
+	Archived           *bool
+	ContentHash        string
 	ETag, LastModified string
 }
 type Fetcher struct {
@@ -75,13 +81,20 @@ func checkStatus(status int, headers http.Header) error {
 	// GitHub sends X-RateLimit-Reset on every response, so a 403 is a rate limit only when the quota is
 	// spent or GitHub asks to retry later; other 403s (blocked or DMCA'd repositories) back off normally.
 	if status == 429 || (status == 403 && (headers.Get("X-Ratelimit-Remaining") == "0" || headers.Get("Retry-After") != "")) {
-		reset := time.Now().Add(time.Hour)
-		if epoch, err := strconv.ParseInt(headers.Get("X-Ratelimit-Reset"), 10, 64); err == nil && time.Unix(epoch, 0).After(time.Now()) {
-			reset = time.Unix(epoch, 0)
+		now := time.Now()
+		reset := now.Add(time.Hour)
+		// A reset time that has already passed says nothing about the next window: a stale
+		// X-Ratelimit-Reset used to win the "later of the two" comparison against a short
+		// Retry-After and turn a 30 s wait into an hour. Only a future reset is a bound.
+		hasReset := false
+		if epoch, err := strconv.ParseInt(headers.Get("X-Ratelimit-Reset"), 10, 64); err == nil && epoch > 0 {
+			if at := time.Unix(epoch, 0); at.After(now) {
+				reset, hasReset = at, true
+			}
 		}
-		// With both headers, wait for the later of the two.
+		// With both headers, wait for the later of the two; without a usable reset, Retry-After is it.
 		if seconds, err := strconv.Atoi(headers.Get("Retry-After")); err == nil && seconds > 0 {
-			if retry := time.Now().Add(time.Duration(seconds) * time.Second); headers.Get("X-Ratelimit-Reset") == "" || retry.After(reset) {
+			if retry := now.Add(time.Duration(seconds) * time.Second); !hasReset || retry.After(reset) {
 				reset = retry
 			}
 		}

@@ -26,6 +26,10 @@ type Enqueuer interface {
 	Enqueue(context.Context, string, jobs.Payload, jobs.Metadata) (string, error)
 }
 
+// archivedInterval is the schedule of a repository GitHub reports archived: its releases exist but
+// new ones are rare, so the popularity cadence would spend quota for nothing.
+const archivedInterval = 7 * 24 * time.Hour
+
 func interval(rank *int) time.Duration {
 	if rank != nil && *rank <= 200 {
 		return 3 * time.Hour
@@ -120,6 +124,13 @@ func (s *Service) fetch(ctx context.Context, id int64, observed map[string]any) 
 	if state.ETag != nil {
 		source.ETag = *state.ETag
 	}
+	if state.ContentHash != nil {
+		source.ContentHash = *state.ContentHash
+	}
+	// No stored release list means this is the first successful look: read older pages too, so the
+	// history is not limited to the newest 100 releases. A repository change clears the hash and
+	// therefore backfills again.
+	source.Backfill = state.Type == "github_releases" && state.ContentHash == nil
 	if state.LastModified != nil {
 		source.LastModified = *state.LastModified
 	}
@@ -164,7 +175,17 @@ func (s *Service) fetch(ctx context.Context, id int64, observed map[string]any) 
 		category, httpStatus := pipeline.Failure(err)
 		return map[string]any{"status": status, "source": state.Type, "errorCategory": category, "httpStatus": httpStatus}, err
 	}
-	changed, lifecycle, err := s.Store.SaveFetchedChangelogWithLifecycle(ctx, state, result, s.now().Add(interval(state.Rank30d)), s.now())
+	next := interval(state.Rank30d)
+	archived := state.Archived
+	if result.Archived != nil {
+		archived = *result.Archived
+	}
+	if archived {
+		// An archived repository still has notes worth showing but publishes almost never changes, so
+		// a weekly look is enough; the regular cadence exists to catch new releases quickly.
+		next = archivedInterval
+	}
+	changed, lifecycle, err := s.Store.SaveFetchedChangelogWithLifecycle(ctx, state, result, s.now().Add(next), s.now())
 	if err != nil {
 		return nil, err
 	}

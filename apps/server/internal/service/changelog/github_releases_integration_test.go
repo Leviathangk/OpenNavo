@@ -151,3 +151,47 @@ func TestGitHubReleasesResolveFetchAndConditionalRefresh(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, due, sid, "manual sources are not gated")
 }
+
+func TestGitHubReleaseFetchStoresNothingWhenVisibilityFails(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"gated","version":"1.0.0"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	var pid, sid int64
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE token='gated'").Scan(&pid).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data)
+ VALUES(?,'github','homepage','owner/gated','found','{"repo":"owner/gated"}')`, pid).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by)
+ VALUES(?,'github_releases','{"repo":"owner/gated"}',20,'auto') RETURNING id`, pid).Scan(&sid).Error)
+
+	for _, testCase := range []struct {
+		name    string
+		status  int
+		headers map[string]string
+	}{
+		{name: "rate limited", status: http.StatusForbidden, headers: map[string]string{"X-Ratelimit-Remaining": "0"}},
+		{name: "missing", status: http.StatusNotFound},
+		{name: "server error", status: http.StatusInternalServerError},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fetcher := pipeline.NewFetcher("test")
+			fetcher.HTTP.Client = &http.Client{Transport: responseTransport(func(r *http.Request) (*http.Response, error) {
+				if strings.HasSuffix(r.URL.Path, "/releases") {
+					return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`[{"tag_name":"v1.0.0","body":"private notes"}]`))}, nil
+				}
+				headers := http.Header{}
+				for key, value := range testCase.headers {
+					headers.Set(key, value)
+				}
+				return &http.Response{StatusCode: testCase.status, Header: headers, Body: io.NopCloser(strings.NewReader("no visibility"))}, nil
+			})}
+			svc := &changelog.Service{Store: st, Fetcher: fetcher}
+			_, err := svc.Fetch(ctx, sid)
+			require.Error(t, err)
+			var count int64
+			require.NoError(t, st.DB.WithContext(ctx).Table("releases").Where("package_id=?", pid).Count(&count).Error)
+			require.Zero(t, count, "an ungated visibility read must not store a release")
+		})
+	}
+}
