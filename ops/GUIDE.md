@@ -155,13 +155,14 @@ where not:
 
 ## Backups and restore drills
 
-**This project does not run the backup service, and the host snapshot is the backup.**
-The owner takes a whole-server snapshot daily, and the PostgreSQL data directory is
-inside it. Nothing below runs in production: the deploy passes `--profile ops
---profile automation` and never `--profile backup`, so the `backup` service in
-`ops/docker-compose.prod.yml` starts only if someone starts it by hand. Treat that
-service and `ops/backup.sh` as optional tools for a single-database restore, not as
-evidence that production is backed up — check the host snapshot instead.
+**This project does not run the backup service.** The host owner reports taking a
+whole-server snapshot daily, with the PostgreSQL data directory inside it; that is stated
+here on the owner's word and nothing in this repository verifies it. Nothing below runs in
+production: the deploy passes `--profile ops --profile automation` and never
+`--profile backup`, so the `backup` service in `ops/docker-compose.prod.yml` starts only if
+someone starts it by hand. Treat that service and `ops/backup.sh` as optional tools for a
+single-database restore, not as evidence that production is backed up — check the host
+snapshot instead.
 
 The rest of this section applies only if you deliberately enable that optional path.
 

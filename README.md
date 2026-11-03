@@ -192,7 +192,7 @@ Includes OpenAPI validation, static checks and unit tests for Go / TypeScript / 
 
 ## Deployment
 
-Production deployment starts with `ops/docker-compose.prod.yml`: two API replicas, two web replicas, a worker, Redis, and Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`), and daily backups (`backup`) are enabled through optional profiles. **The deploy enables `ops` and `automation` only, so the `backup` service never starts in production** — the host snapshot is the backup. See [Backups and restore drills](ops/GUIDE.md#backups-and-restore-drills).
+Production deployment starts with `ops/docker-compose.prod.yml`: two API replicas, two web replicas, a worker, Redis, and Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`), and daily backups (`backup`) are enabled through optional profiles. **The deploy enables `ops` and `automation` only, so the `backup` service never starts in production** — the host owner reports that the backup comes from the host snapshot; see the backup fact sheet in ops/GUIDE.md, which nothing in this repository verifies, before relying on it. See [Backups and restore drills](ops/GUIDE.md#backups-and-restore-drills).
 
 Follow the [deployment guide](ops/GUIDE.md) for copyable image builds, external `COMPOSE_ENV_FILES`, database and S3 initialization, backup/restore, profiles, and upgrades.
 

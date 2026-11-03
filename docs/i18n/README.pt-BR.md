@@ -192,7 +192,7 @@ Inclui validação de OpenAPI, análise estática e testes unitários de Go / Ty
 
 ## Deploy
 
-O deploy em produção começa por `ops/docker-compose.prod.yml`: duas réplicas da API, duas da web, um worker, Redis e Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) e backups diários (`backup`) são ativados por perfis opcionais. **O deploy ativa apenas `ops` e `automation`, então o serviço `backup` nunca inicia em produção** — o backup é o snapshot do host. Veja [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
+O deploy em produção começa por `ops/docker-compose.prod.yml`: duas réplicas da API, duas da web, um worker, Redis e Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) e backups diários (`backup`) são ativados por perfis opcionais. **O deploy ativa apenas `ops` e `automation`, então o serviço `backup` nunca inicia em produção** — segundo o proprietário do host, o backup vem do snapshot do host; antes de contar com ele, consulte a ficha informativa sobre backups em ops/GUIDE.md, que nada neste repositório verifica. Veja [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
 
 Consulte o [guia de implantação](../../ops/GUIDE.md) para comandos de build das imagens, `COMPOSE_ENV_FILES` externos, inicialização do banco e do S3, backup e restauração, perfis e atualizações.
 

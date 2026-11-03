@@ -192,7 +192,7 @@ OpenAPI の検証、Go / TypeScript / Rust / Python の静的検査と単体テ�
 
 ## デプロイ
 
-本番環境の構成は `ops/docker-compose.prod.yml` です。API と Web 版をそれぞれ 2 レプリカで実行し、ワーカー・Redis・Caddy を含みます。PostgreSQL（`local-db`）、Prometheus / Grafana / asynqmon（`monitoring`）、毎日のバックアップ（`backup`）は必要な profile で有効にします。**デプロイが有効にするのは `ops` と `automation` のみのため、本番環境で `backup` サービスが起動することはありません** — ホストのスナップショットがバックアップです。詳しくは [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills) を参照してください。
+本番環境の構成は `ops/docker-compose.prod.yml` です。API と Web 版をそれぞれ 2 レプリカで実行し、ワーカー・Redis・Caddy を含みます。PostgreSQL（`local-db`）、Prometheus / Grafana / asynqmon（`monitoring`）、毎日のバックアップ（`backup`）は必要な profile で有効にします。**デプロイが有効にするのは `ops` と `automation` のみのため、本番環境で `backup` サービスが起動することはありません** — ホストの所有者の説明によれば、バックアップはホストのスナップショットに由来します。当てにする前に、ops/GUIDE.md のバックアップに関するファクトシート（このリポジトリでは何も検証していません）を確認してください。詳しくは [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills) を参照してください。
 
 コピーして使えるイメージのビルド、外部 `COMPOSE_ENV_FILES`、データベースと S3 の初期化、バックアップと復元、profile、更新手順は[デプロイガイド](../../ops/GUIDE.md)をご覧ください。
 

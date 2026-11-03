@@ -192,7 +192,7 @@ Inclut la validation OpenAPI, les contrôles statiques et les tests unitaires Go
 
 ## Déploiement
 
-Le déploiement de production part de `ops/docker-compose.prod.yml` : deux réplicas d’API, deux du site, un worker, Redis et Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) et les sauvegardes quotidiennes (`backup`) s’activent par profils facultatifs. **Le déploiement n’active que `ops` et `automation`, donc le service `backup` ne démarre jamais en production** — l’instantané de l’hôte est la sauvegarde. Voir [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
+Le déploiement de production part de `ops/docker-compose.prod.yml` : deux réplicas d’API, deux du site, un worker, Redis et Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) et les sauvegardes quotidiennes (`backup`) s’activent par profils facultatifs. **Le déploiement n’active que `ops` et `automation`, donc le service `backup` ne démarre jamais en production** — selon le propriétaire de l’hôte, la sauvegarde provient de l’instantané de l’hôte ; avant de vous y fier, consultez la fiche sur les sauvegardes dans ops/GUIDE.md, que rien dans ce dépôt ne vérifie. Voir [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
 
 Consultez le [guide de déploiement](../../ops/GUIDE.md) pour les commandes de construction d’images, les `COMPOSE_ENV_FILES` externes, l’initialisation de la base et de S3, les sauvegardes et restaurations, les profils et les mises à niveau.
 

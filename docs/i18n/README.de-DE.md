@@ -192,7 +192,7 @@ Umfasst OpenAPI-Validierung, statische Prüfungen und Unit-Tests für Go / TypeS
 
 ## Bereitstellung
 
-Die Produktionsbereitstellung beginnt mit `ops/docker-compose.prod.yml`: zwei API-Replikate, zwei Web-Replikate, ein Worker, Redis und Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) und tägliche Backups (`backup`) werden über optionale Profile aktiviert. **Das Deployment aktiviert nur `ops` und `automation`, daher startet der `backup`-Dienst in Produktion nie** — der Host-Snapshot ist die Sicherung. Siehe [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
+Die Produktionsbereitstellung beginnt mit `ops/docker-compose.prod.yml`: zwei API-Replikate, zwei Web-Replikate, ein Worker, Redis und Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) und tägliche Backups (`backup`) werden über optionale Profile aktiviert. **Das Deployment aktiviert nur `ops` und `automation`, daher startet der `backup`-Dienst in Produktion nie** — laut dem Host-Eigentümer stammt die Sicherung aus dem Host-Snapshot; bevor Sie sich darauf verlassen, lesen Sie das Backup-Fact-Sheet in ops/GUIDE.md, das nichts in diesem Repository überprüft. Siehe [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
 
 Die [Bereitstellungsanleitung](../../ops/GUIDE.md) enthält direkt verwendbare Image-Builds, externe `COMPOSE_ENV_FILES`, Datenbank- und S3-Initialisierung, Sicherung und Wiederherstellung, Profile und Upgrades.
 

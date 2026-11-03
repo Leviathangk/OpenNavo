@@ -192,7 +192,7 @@ make lint test
 
 ## 部署
 
-生產部署的入口是 `ops/docker-compose.prod.yml`：API 與網頁端各兩個副本、任務程序、Redis 與 Caddy；PostgreSQL（`local-db`）、Prometheus / Grafana / asynqmon（`monitoring`）與每日備份（`backup`）以 profile 形式按需啟用。**部署只啟用 `ops` 與 `automation`，所以 `backup` 服務在生產中從不啟動** —— 備份由整機快照承擔。見 [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills)。
+生產部署的入口是 `ops/docker-compose.prod.yml`：API 與網頁端各兩個副本、任務程序、Redis 與 Caddy；PostgreSQL（`local-db`）、Prometheus / Grafana / asynqmon（`monitoring`）與每日備份（`backup`）以 profile 形式按需啟用。**部署只啟用 `ops` 與 `automation`，所以 `backup` 服務在生產中從不啟動** —— 據主機所有者說明，備份來自整機快照；依賴它之前，先看 ops/GUIDE.md 裡的備份事實清單（本倉庫無法驗證）。見 [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills)。
 
 映像檔建置命令、外部 `COMPOSE_ENV_FILES`、資料庫和 S3 初始化、備份恢復、profile 和升級步驟見[部署指南](../../ops/GUIDE.md)。
 

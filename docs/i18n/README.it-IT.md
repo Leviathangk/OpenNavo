@@ -192,7 +192,7 @@ Include convalida OpenAPI, controlli statici e test unitari per Go / TypeScript 
 
 ## Distribuzione
 
-La distribuzione in produzione parte da `ops/docker-compose.prod.yml`: due repliche API, due del sito, un worker, Redis e Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) e backup giornalieri (`backup`) si attivano tramite profili facoltativi. **Il deploy abilita solo `ops` e `automation`, quindi il servizio `backup` non parte mai in produzione** — il backup è lo snapshot dell’host. Vedi [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
+La distribuzione in produzione parte da `ops/docker-compose.prod.yml`: due repliche API, due del sito, un worker, Redis e Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) e backup giornalieri (`backup`) si attivano tramite profili facoltativi. **Il deploy abilita solo `ops` e `automation`, quindi il servizio `backup` non parte mai in produzione** — secondo il proprietario dell’host, il backup proviene dallo snapshot dell’host; prima di farci affidamento, consultate la scheda informativa sui backup in ops/GUIDE.md, che nulla in questo repository verifica. Vedi [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
 
 Segui la [guida alla distribuzione](../../ops/GUIDE.md) per i comandi di build delle immagini, i `COMPOSE_ENV_FILES` esterni, l’inizializzazione di database e S3, backup e ripristino, profili e aggiornamenti.
 

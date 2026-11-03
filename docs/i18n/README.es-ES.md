@@ -192,7 +192,7 @@ Incluye validación de OpenAPI, análisis estático y pruebas unitarias de Go / 
 
 ## Despliegue
 
-El despliegue de producción parte de `ops/docker-compose.prod.yml`: dos réplicas de la API y dos de la web, un worker, Redis y Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) y las copias de seguridad diarias (`backup`) se activan mediante perfiles opcionales. **El despliegue activa solo `ops` y `automation`, así que el servicio `backup` nunca arranca en producción** — la instantánea del host es la copia de seguridad. Véase [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
+El despliegue de producción parte de `ops/docker-compose.prod.yml`: dos réplicas de la API y dos de la web, un worker, Redis y Caddy. PostgreSQL (`local-db`), Prometheus / Grafana / asynqmon (`monitoring`) y las copias de seguridad diarias (`backup`) se activan mediante perfiles opcionales. **El despliegue activa solo `ops` y `automation`, así que el servicio `backup` nunca arranca en producción** — según el propietario del host, la copia de seguridad procede de la instantánea del host; antes de confiar en ella, consulte la hoja informativa sobre copias de seguridad en ops/GUIDE.md, que nada en este repositorio verifica. Véase [Backups and restore drills](../../ops/GUIDE.md#backups-and-restore-drills).
 
 Consulta la [guía de despliegue](../../ops/GUIDE.md) para los comandos de construcción de imágenes, los `COMPOSE_ENV_FILES` externos, la inicialización de la base de datos y S3, las copias y restauraciones, los perfiles y las actualizaciones.
 
