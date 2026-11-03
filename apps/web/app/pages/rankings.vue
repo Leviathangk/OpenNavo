@@ -90,7 +90,7 @@ useItemListSchema(
   () => data.value?.total
 );
 
-usePageSeo({ title: () => t('rankings.metaTitle'), page, description: () => t('rankings.description') });
+usePageSeo({ title: () => t('rankings.metaTitle'), page, description: () => t('rankings.metaDescription') });
 // Share image (WP13): the ranking beside its first apps.
 defineOgImage('OgListSatori', {
   locale: formattingLocale.value,

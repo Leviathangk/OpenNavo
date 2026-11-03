@@ -138,6 +138,7 @@
     "title": "Clasificación",
     "metaTitle": "Clasificación del software para Mac más popular de Homebrew · OpenNavo",
     "description": "Clasificación según las estadísticas oficiales de instalaciones de Homebrew, actualizada a diario; variación respecto a hace 7 días.",
+    "metaDescription": "Clasificación según las estadísticas oficiales de instalaciones de Homebrew, actualizada a diario; variación respecto a hace 7 días.",
     "periodLabel": "Periodo de estadísticas",
     "period": {
       "30d": "Últimos 30 días",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "Actualizaciones recientes",
     "metaTitle": "Apps para Mac actualizadas recientemente · OpenNavo",
-    "description": "Apps para Mac de Homebrew con nuevas versiones, de la más reciente a la más antigua, con descripciones y notas de versión."
+    "description": "Apps para Mac de Homebrew con nuevas versiones, de la más reciente a la más antigua, con descripciones y notas de versión.",
+    "metaDescription": "Apps para Mac de Homebrew con nuevas versiones, de la más reciente a la más antigua, con descripciones y notas de versión."
   },
   "search": {
     "title": "Buscar",
@@ -390,7 +392,7 @@
       "aliases": "Tokens anteriores"
     },
     "versionsMetaTitle": "Historial de versiones y novedades de {name} · OpenNavo",
-    "versionsMetaDescription": "Última versión de {name}: {version} ({date}). Consulta los cambios de cada versión.",
+    "versionsMetaDescription": "{name} {version} ({date}): cambios de cada versión, fechas de publicación y requisitos de macOS. Compara instalación y alternativas en OpenNavo.",
     "metaTitleCask": "{name}: {summary} — Instalación con Homebrew · OpenNavo",
     "metaDescription": "{summary}. Instalar: {command}. Última versión {version}, {installs} instalación en los últimos 30 días. | {summary}. Instalar: {command}. Última versión {version}, {installs} instalaciones en los últimos 30 días.",
     "seo": {

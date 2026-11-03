@@ -138,6 +138,7 @@
     "title": "Ranking",
     "metaTitle": "Ranking dos apps para Mac mais populares no Homebrew · OpenNavo",
     "description": "Classificado pelas estatísticas oficiais de instalação do Homebrew, atualizadas diariamente; variação em relação a 7 dias atrás.",
+    "metaDescription": "Classificado pelas estatísticas oficiais de instalação do Homebrew, atualizadas diariamente; variação em relação a 7 dias atrás.",
     "periodLabel": "Período",
     "period": {
       "30d": "Últimos 30 dias",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "Atualizados recentemente",
     "metaTitle": "Apps para Mac atualizados recentemente · OpenNavo",
-    "description": "Apps para Mac no Homebrew com novas versões, dos mais recentes para os mais antigos, com descrições e notas de versão."
+    "description": "Apps para Mac no Homebrew com novas versões, dos mais recentes para os mais antigos, com descrições e notas de versão.",
+    "metaDescription": "Apps para Mac no Homebrew com novas versões, dos mais recentes para os mais antigos, com descrições e notas de versão."
   },
   "search": {
     "title": "Buscar",

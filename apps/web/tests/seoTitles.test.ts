@@ -167,7 +167,7 @@ describe('WP1 titles and descriptions', () => {
     };
     expect(currentReleaseDate(pkg)).toBe('2025-03-18T10:00:00Z');
     expect(versionsDescription(pkg, t, format)).toBe(
-      'The Unarchiver latest version 4.3.9 (2025-03-18). See what changed in every release.'
+      'The Unarchiver latest version 4.3.9 (2025-03-18): see what changed in every release, with dates, supported macOS versions and download links on OpenNavo.'
     );
     const stale = {
       ...pkg,
@@ -1007,5 +1007,56 @@ describe('Overview search overrides', () => {
     };
     expect(overrideTitle(paused)).toBe('Arc for Mac – Free Download · OpenNavo');
     expect(overrideDescription(paused)).toBe('Download Arc for free on your Mac.');
+  });
+});
+
+describe('Meta descriptions for static and version pages (#208)', () => {
+  const message = (code: string, path: string): string => {
+    const data = JSON.parse(readFileSync(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    const value = path
+      .split('.')
+      .reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], data);
+    if (typeof value !== 'string') throw new Error(`missing ${code} ${path}`);
+    return value;
+  };
+
+  it('keeps the eight targeted pages between 150 and 160 characters', () => {
+    const pages = [
+      { label: '/zh', code: 'zh-CN', key: 'site.description', values: { count: '5,160' } },
+      { label: '/zh/rankings', code: 'zh-CN', key: 'rankings.metaDescription', values: {} },
+      { label: '/zh/discover', code: 'zh-CN', key: 'home.introBody', values: { count: '5,160' } },
+      { label: '/ja', code: 'ja-JP', key: 'site.description', values: { count: '5,160' } },
+      { label: '/recent', code: 'en-US', key: 'recent.metaDescription', values: {} },
+      {
+        label: '/zh/apps/dotnet-sdk/versions',
+        code: 'zh-CN',
+        key: 'package.versionsMetaDescription',
+        values: { name: '.NET SDK', version: '10.0.403', date: '2026年10月25日' }
+      },
+      {
+        label: '/apps/dotnet-sdk/versions',
+        code: 'en-US',
+        key: 'package.versionsMetaDescription',
+        values: { name: '.NET SDK', version: '10.0.403', date: 'Oct 25, 2026' }
+      },
+      {
+        label: '/es/apps/amneziavpn/versions',
+        code: 'es-ES',
+        key: 'package.versionsMetaDescription',
+        values: { name: 'Amnezia VPN', version: '5.0.3.0', date: '7 oct 2026' }
+      }
+    ];
+    for (const page of pages) {
+      const rendered = message(page.code, page.key).replace(/\{(\w+)\}/g, (_, name: string) => {
+        if (!(name in page.values)) throw new Error(`unfilled {${name}} in ${page.label}`);
+        return page.values[name as keyof typeof page.values];
+      });
+      expect(rendered, page.label).not.toMatch(/[{}]/);
+      expect(Array.from(rendered).length, `${page.label}: ${rendered}`).toBeGreaterThanOrEqual(150);
+      expect(Array.from(rendered).length, `${page.label}: ${rendered}`).toBeLessThanOrEqual(160);
+    }
   });
 });

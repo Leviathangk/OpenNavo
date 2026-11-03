@@ -2,7 +2,7 @@
   "site": {
     "name": "OpenNavo",
     "title": "OpenNavo — Mac 上的 Homebrew 应用商店，病毒扫描与应用防火墙",
-    "description": "Mac 上的 Homebrew 应用商店：一键安装和更新 {count} 个 App，装之前先扫描病毒；还能检查启动项、清理磁盘和监控硬件。免费开源。"
+    "description": "OpenNavo 是 Mac 上的 Homebrew 应用商店：浏览 {count} 个 App，一键安装和更新，装前用 ClamAV 本地扫描病毒，还能管理启动项、清理磁盘、监控硬件。免费开源，支持 macOS 13 及以上与 Apple 芯片/Intel Mac，提供中文界面、版本记录、应用防火墙与卸载步骤。"
   },
   "nav": {
     "label": "主导航",
@@ -43,7 +43,7 @@
   },
   "home": {
     "introTitle": "OpenNavo：Mac 上的 Homebrew 应用商店",
-    "introBody": "收录 {count} 个 App，提供介绍和版本记录；用 macOS 客户端一键安装和更新，装之前先扫描病毒。",
+    "introBody": "在 OpenNavo 发现 Mac App：收录 {count} 个应用，提供中文介绍、截图、版本记录和系统要求；用 macOS 客户端一键安装和更新，装前先做病毒扫描，并可管理启动项、清理磁盘和监控硬件。可按类别、场景和热度筛选，查看价格、许可与卸载方法。页面还列出应用来源、权限和系统兼容性，方便下载前核对。",
     "introDismiss": "关闭简介",
     "featured": "本周精选",
     "popularApps": "热门 App",
@@ -138,6 +138,7 @@
     "title": "排行榜",
     "metaTitle": "Homebrew 最受欢迎的 Mac 软件排行 · OpenNavo",
     "description": "按 Homebrew 官方安装统计排名，每天更新；变化相对 7 天前。",
+    "metaDescription": "OpenNavo 的 Mac 软件排行榜按 Homebrew 官方安装统计排序，每天更新，并显示相对 7 天前的排名变化。可按类别浏览热门应用，查看版本、系统要求、价格与许可，再用 macOS 客户端一键安装或更新。排行只反映安装热度，不代表质量评测，选软件时请结合功能、隐私和兼容性，适合发现常用工具。",
     "periodLabel": "统计周期",
     "period": {
       "30d": "近 30 天",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "最近更新",
     "metaTitle": "最近更新的 Mac App · OpenNavo",
-    "description": "Homebrew 中刚发布新版本的 Mac App，最新的排在最前面，附介绍与版本记录。"
+    "description": "Homebrew 中刚发布新版本的 Mac App，最新的排在最前面，附介绍与版本记录。",
+    "metaDescription": "Homebrew 中刚发布新版本的 Mac App，最新的排在最前面，附介绍与版本记录。"
   },
   "search": {
     "title": "搜索",
@@ -390,7 +392,7 @@
       "aliases": "曾用 token"
     },
     "versionsMetaTitle": "{name} 版本记录与更新内容 · OpenNavo",
-    "versionsMetaDescription": "{name} 最新版本 {version}（{date}）。查看每个版本更新了什么。",
+    "versionsMetaDescription": "{name} 最新版本 {version}（{date}）。查看每个版本的更新内容、发布日期、支持的 macOS 版本与下载方式；了解版本支持状态、安装与卸载步骤，并在 OpenNavo 对比替代应用和迁移注意事项。页面还列出旧版本下载、系统兼容性、安装包大小和常见问题的完整说明与步骤。",
     "metaTitleCask": "{name}：{summary} — Homebrew 安装 · OpenNavo",
     "metaDescription": "{summary}。安装命令：{command}。最新版本 {version}，近 30 天安装 {installs} 次。",
     "seo": {

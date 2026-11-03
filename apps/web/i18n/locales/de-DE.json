@@ -138,6 +138,7 @@
     "title": "Ranglisten",
     "metaTitle": "Beliebteste Mac-Software bei Homebrew · OpenNavo",
     "description": "Sortiert nach den offiziellen Installationsstatistiken von Homebrew, täglich aktualisiert. Veränderungen beziehen sich auf den Stand vor 7 Tagen.",
+    "metaDescription": "Sortiert nach den offiziellen Installationsstatistiken von Homebrew, täglich aktualisiert. Veränderungen beziehen sich auf den Stand vor 7 Tagen.",
     "periodLabel": "Zeitraum",
     "period": {
       "30d": "30 Tage",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "Kürzlich aktualisiert",
     "metaTitle": "Kürzlich aktualisierte Mac-Apps · OpenNavo",
-    "description": "Mac-Apps aus Homebrew mit neuen Versionen, die neuesten zuerst – mit Beschreibungen und Versionshinweisen."
+    "description": "Mac-Apps aus Homebrew mit neuen Versionen, die neuesten zuerst – mit Beschreibungen und Versionshinweisen.",
+    "metaDescription": "Mac-Apps aus Homebrew mit neuen Versionen, die neuesten zuerst – mit Beschreibungen und Versionshinweisen."
   },
   "search": {
     "title": "Suche",

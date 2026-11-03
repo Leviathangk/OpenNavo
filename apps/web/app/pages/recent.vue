@@ -43,7 +43,7 @@ useItemListSchema(
   () => data.value?.total
 );
 
-usePageSeo({ title: () => t('recent.metaTitle'), page, description: () => t('recent.description') });
+usePageSeo({ title: () => t('recent.metaTitle'), page, description: () => t('recent.metaDescription') });
 // Share image (WP13): the list beside the latest updated apps.
 defineOgImage('OgListSatori', {
   locale: toAppLocale(locale.value),

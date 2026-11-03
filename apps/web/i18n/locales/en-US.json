@@ -138,6 +138,7 @@
     "title": "Rankings",
     "metaTitle": "Most Popular Mac Software on Homebrew · OpenNavo",
     "description": "Ranked by official Homebrew install statistics, updated daily. Changes are compared with 7 days ago.",
+    "metaDescription": "Ranked by official Homebrew install statistics, updated daily. Changes are compared with 7 days ago.",
     "periodLabel": "Period",
     "period": {
       "30d": "30 days",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "Recently Updated",
     "metaTitle": "Recently Updated Mac Apps · OpenNavo",
-    "description": "Mac apps in Homebrew with new releases, newest first, with descriptions and release notes."
+    "description": "Mac apps in Homebrew with new releases, newest first, with descriptions and release notes.",
+    "metaDescription": "Browse Mac apps recently updated in Homebrew, newest first. See descriptions, versions, release notes, requirements, pricing and install steps on OpenNavo."
   },
   "search": {
     "title": "Search",
@@ -390,7 +392,7 @@
       "aliases": "Former tokens"
     },
     "versionsMetaTitle": "{name} Release Notes · OpenNavo",
-    "versionsMetaDescription": "{name} latest version {version} ({date}). See what changed in every release.",
+    "versionsMetaDescription": "{name} latest version {version} ({date}): see what changed in every release, with dates, supported macOS versions and download links on OpenNavo.",
     "metaTitleCask": "{name}: {summary} — Install with Homebrew · OpenNavo",
     "metaDescription": "{summary}. Install: {command}. Latest version {version}, {installs} install in the last 30 days. | {summary}. Install: {command}. Latest version {version}, {installs} installs in the last 30 days.",
     "seo": {

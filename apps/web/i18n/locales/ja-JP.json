@@ -2,7 +2,7 @@
   "site": {
     "name": "OpenNavo",
     "title": "OpenNavo — Homebrewアプリストア、ウイルススキャンとファイアウォール",
-    "description": "Mac向けのHomebrewアプリストア。{count}個のアプリをワンクリックでインストール・更新し、事前にウイルスをチェック。無料・オープンソース。"
+    "description": "OpenNavo は Mac 向けの Homebrew アプリストアです。{count} 個のアプリをワンクリックでインストール・更新。導入前に ClamAV でウイルススキャンし、起動項目、ディスク整理、ハードウェア監視も管理できます。macOS 13 以降、Apple シリコン/Intel Mac に対応。"
   },
   "nav": {
     "label": "メインナビゲーション",
@@ -138,6 +138,7 @@
     "title": "ランキング",
     "metaTitle": "Homebrew 人気 Mac ソフトウェアランキング · OpenNavo",
     "description": "Homebrew 公式のインストール統計に基づくランキングです。毎日更新され、7 日前との変動を表示します。",
+    "metaDescription": "Homebrew 公式のインストール統計に基づくランキングです。毎日更新され、7 日前との変動を表示します。",
     "periodLabel": "集計期間",
     "period": {
       "30d": "過去 30 日",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "最近更新",
     "metaTitle": "最近更新された Mac App · OpenNavo",
-    "description": "Homebrew で新バージョンが公開された Mac アプリを新しい順に紹介します。説明とリリースノート付きです。"
+    "description": "Homebrew で新バージョンが公開された Mac アプリを新しい順に紹介します。説明とリリースノート付きです。",
+    "metaDescription": "Homebrew で新バージョンが公開された Mac アプリを新しい順に紹介します。説明とリリースノート付きです。"
   },
   "search": {
     "title": "検索",

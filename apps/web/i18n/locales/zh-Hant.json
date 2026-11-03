@@ -2,7 +2,7 @@
   "site": {
     "name": "OpenNavo",
     "title": "OpenNavo — Mac 上的 Homebrew 應用商店，病毒掃描與應用防火牆",
-    "description": "Mac 上的 Homebrew 應用商店：一鍵安裝和更新 {count} 個 App，裝之前先掃描病毒；還能檢查啟動項、清理磁碟和監控硬體。免費開源。"
+    "description": "OpenNavo 是 Mac 上的 Homebrew 應用商店：瀏覽 {count} 個 App，一鍵安裝和更新，裝前用 ClamAV 本地掃描病毒，還能管理啟動項、清理磁碟、監控硬體。免費開源，支援 macOS 13 及以上與 Apple 晶片/Intel Mac，提供中文介面、版本記錄、應用防火牆與解除安裝步驟。"
   },
   "nav": {
     "label": "主導航",
@@ -43,7 +43,7 @@
   },
   "home": {
     "introTitle": "OpenNavo：Mac 上的 Homebrew 應用商店",
-    "introBody": "收錄 {count} 個 App，提供介紹和版本記錄；用 macOS 客戶端一鍵安裝和更新，裝之前先掃描病毒。",
+    "introBody": "在 OpenNavo 發現 Mac App：收錄 {count} 個應用，提供中文介紹、截圖、版本記錄和系統要求；用 macOS 客戶端一鍵安裝和更新，裝前先做病毒掃描，並可管理啟動項、清理磁碟和監控硬體。可按類別、場景和熱度篩選，檢視價格、許可與解除安裝方法。頁面還列出應用來源、權限和系統相容性，方便下載前核對。",
     "introDismiss": "關閉簡介",
     "featured": "本週精選",
     "popularApps": "熱門 App",
@@ -138,6 +138,7 @@
     "title": "排行榜",
     "metaTitle": "Homebrew 最受歡迎的 Mac 軟體排行 · OpenNavo",
     "description": "按 Homebrew 官方安裝統計排名，每天更新；變化相對 7 天前。",
+    "metaDescription": "OpenNavo 的 Mac 軟體排行榜按 Homebrew 官方安裝統計排序，每天更新，並顯示相對 7 天前的排名變化。可按類別瀏覽熱門應用，檢視版本、系統要求、價格與許可，再用 macOS 客戶端一鍵安裝或更新。排行只反映安裝熱度，不代表質量評測，選軟體時請結合功能、隱私和相容性，適合發現常用工具。",
     "periodLabel": "統計週期",
     "period": {
       "30d": "近 30 天",
@@ -150,7 +151,8 @@
   "recent": {
     "title": "最近更新",
     "metaTitle": "最近更新的 Mac App · OpenNavo",
-    "description": "Homebrew 中剛釋出新版本的 Mac App，最新的排在最前面，附介紹與版本記錄。"
+    "description": "Homebrew 中剛釋出新版本的 Mac App，最新的排在最前面，附介紹與版本記錄。",
+    "metaDescription": "Homebrew 中剛釋出新版本的 Mac App，最新的排在最前面，附介紹與版本記錄。"
   },
   "search": {
     "title": "搜尋",
@@ -390,7 +392,7 @@
       "aliases": "曾用 token"
     },
     "versionsMetaTitle": "{name} 版本記錄與更新內容 · OpenNavo",
-    "versionsMetaDescription": "{name} 最新版本 {version}（{date}）。檢視每個版本更新了什麼。",
+    "versionsMetaDescription": "{name} 最新版本 {version}（{date}）。檢視每個版本的更新內容、釋出日期、支援的 macOS 版本與下載方式；瞭解版本支援狀態、安裝與解除安裝步驟，並在 OpenNavo 對比替代應用和遷移注意事項。頁面還列出舊版本下載、系統相容性、安裝包大小和常見問題的完整說明與步驟。",
     "metaTitleCask": "{name}：{summary} — Homebrew 安裝 · OpenNavo",
     "metaDescription": "{summary}。安裝命令：{command}。最新版本 {version}，近 30 天安裝 {installs} 次。",
     "seo": {
