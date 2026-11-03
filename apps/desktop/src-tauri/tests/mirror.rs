@@ -293,6 +293,10 @@ async fn login_state_rolls_back_when_settings_save_fails() {
         track.store(enabled, Ordering::SeqCst);
         Ok(())
     });
+    // Isolate the launch-at-login rollback from the default-on resident monitor.
+    let mut baseline = core.current_settings().unwrap();
+    baseline.monitor_resident = false;
+    core.replace_settings(baseline).await.unwrap();
     let mut settings = core.current_settings().unwrap();
     settings.launch_at_login = true;
     core.install_settings_save(Arc::new(|_| {

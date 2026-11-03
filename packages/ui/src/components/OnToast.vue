@@ -11,6 +11,8 @@ export interface OnToastProps {
   description?: string;
   /** Action button, e.g. View for failures. */
   actionLabel?: string;
+  /** Neutral acknowledgement beside the action, e.g. Got it. */
+  dismissLabel?: string;
   /** Upper-right time, e.g. now or two minutes ago. */
   time?: string;
 }
@@ -47,9 +49,14 @@ const TONE: Record<OnToastTone, string> = {
     <div class="min-w-0 flex-1">
       <p class="m-0 text-12.5px font-600 leading-[1.4] text-ink-primary">{{ title }}</p>
       <p v-if="description" class="m-0 mt-2px text-11.5px leading-[1.45] text-ink-secondary">{{ description }}</p>
-      <OnButton v-if="actionLabel" class="mt-8px" variant="secondary" size="xs" @click="emit('action')">
-        {{ actionLabel }}
-      </OnButton>
+      <div v-if="actionLabel || dismissLabel" class="mt-8px flex flex-wrap items-center gap-6px">
+        <OnButton v-if="actionLabel" variant="secondary" size="xs" @click="emit('action')">
+          {{ actionLabel }}
+        </OnButton>
+        <OnButton v-if="dismissLabel" variant="ghost" size="xs" @click="emit('close')">
+          {{ dismissLabel }}
+        </OnButton>
+      </div>
     </div>
     <span v-if="time" class="mt-1px whitespace-nowrap text-10.5px text-ink-tertiary">{{ time }}</span>
     <button

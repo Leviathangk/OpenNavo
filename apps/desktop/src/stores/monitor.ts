@@ -8,6 +8,7 @@ import type {
   MenuBarItemSetting,
   MonitorMenuBar,
   MonitorModule,
+  MonitorResidentStatus,
   MonitorSample,
   MonitorSampleEvent,
   MonitorTrendPoint,
@@ -77,6 +78,7 @@ export const useMonitorStore = defineStore('monitor', () => {
   const history = ref<MonitorSample[]>([]);
   const views = ref<Partial<Record<MonitorView, MonitorModule[]>>>({});
   const helper = ref<FanHelperStatus | null>(null);
+  const residentStatus = ref<MonitorResidentStatus | null>(null);
   /** Latest fan change pushed by Rust, including automatic hand-backs to the system and why. */
   const fanChange = ref<FanChange | null>(null);
   /** Fan states from a command or fan:changed, newer than the last sample until the next one arrives. */
@@ -195,9 +197,33 @@ export const useMonitorStore = defineStore('monitor', () => {
     return true;
   }
 
-  async function setMonitorSetting<K extends 'monitorIntervalMs' | 'monitorAlerts'>(key: K, entry: AppSettings[K]) {
-    if (entry !== false && !(await usePermissionGateStore().require({ feature: 'monitor' }))) return;
+  async function setMonitorSetting<K extends 'monitorIntervalMs' | 'monitorAlerts' | 'monitorResident'>(
+    key: K,
+    entry: AppSettings[K]
+  ) {
+    if (
+      key !== 'monitorResident' &&
+      entry !== false &&
+      !(await usePermissionGateStore().require({ feature: 'monitor' }))
+    )
+      return;
     await settings.update(key, entry);
+    if (key === 'monitorResident') await loadResidentStatus();
+  }
+
+  async function loadResidentStatus() {
+    residentStatus.value = await unwrap(commands.monitorResidentStatus());
+    return residentStatus.value;
+  }
+
+  async function registerResident() {
+    residentStatus.value = await unwrap(commands.monitorResidentRegister());
+    return residentStatus.value;
+  }
+
+  async function dismissResidentIntro() {
+    await settings.update('monitorResidentIntro', true);
+    if (residentStatus.value) residentStatus.value = { ...residentStatus.value, noticePending: false };
   }
 
   function offerKeepInMenuBar() {
@@ -295,6 +321,7 @@ export const useMonitorStore = defineStore('monitor', () => {
     trend,
     views,
     helper,
+    residentStatus,
     fanChange,
     sample,
     modules,
@@ -312,6 +339,9 @@ export const useMonitorStore = defineStore('monitor', () => {
     trendSeries,
     setMenuBar,
     setMonitorSetting,
+    loadResidentStatus,
+    registerResident,
+    dismissResidentIntro,
     dismissIntro,
     menuBarStatus,
     quitApp,

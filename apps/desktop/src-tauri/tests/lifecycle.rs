@@ -230,6 +230,8 @@ async fn idle_exit_atomically_rejects_new_work_and_login_changes_persist() {
         Ok(())
     });
     let mut settings = core.current_settings().unwrap();
+    // Isolate the launch-at-login switch from the default-on resident monitor, which also owns the login item.
+    settings.monitor_resident = false;
     settings.launch_at_login = true;
     core.replace_settings_with(settings.clone(), Some(change.clone()))
         .await

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnCard, OnChip, OnIcon, OnSegmented, OnToggle } from '@opennavo/ui';
 import type { MenuBarStyle } from '@/ipc/bindings';
@@ -34,12 +34,31 @@ const helper = computed(() => store.helper);
 const fanLocked = computed(
   () => helper.value != null && !helper.value.manualAllowed && helper.value.status !== 'enabled'
 );
+const resident = computed(() => store.residentStatus);
+const residentRunning = computed(
+  () =>
+    resident.value?.enabled === true && resident.value.canRegister && resident.value.registered && resident.value.active
+);
+const residentStatus = computed(() => {
+  if (!resident.value) return t('common.loading');
+  if (!resident.value.enabled) return t('monitor.settings.resident.status.stoppedPlain');
+  if (!resident.value.canRegister) return t('monitor.settings.resident.devBuild');
+  if (!resident.value.active) return t('monitor.settings.resident.status.stoppedPlain');
+  if (!resident.value.registered) return t('monitor.settings.resident.status.needsPermission');
+  return t('monitor.settings.resident.status.running');
+});
 useHelperApproval();
+
+const refreshResident = () => void store.loadResidentStatus().catch(() => undefined);
 
 onMounted(() => {
   void store.loadAvailable().catch(() => undefined);
   void store.loadHelper().catch(() => undefined);
+  refreshResident();
+  // Login Items can be switched off in System Settings while this pane is open; re-read on return.
+  window.addEventListener('focus', refreshResident);
 });
+onBeforeUnmount(() => window.removeEventListener('focus', refreshResident));
 
 async function attempt(operation: () => Promise<unknown>) {
   busy.value = true;
@@ -58,6 +77,42 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
 <template>
   <div v-if="settings.value" class="flex flex-col">
     <h2 class="m-0 mb-10px text-14px font-600 text-ink-primary">
+      {{ t('monitor.settings.resident.section') }}
+    </h2>
+    <OnCard padding="none">
+      <SettingRow
+        :label="t('monitor.settings.resident.label')"
+        :hint="t('monitor.settings.resident.hint')"
+        label-id="monitor-setting-resident"
+      >
+        <OnToggle
+          :model-value="settings.value.monitorResident"
+          data-permission-free
+          aria-labelledby="monitor-setting-resident"
+          @update:model-value="value => attempt(() => store.setMonitorSetting('monitorResident', value))"
+        />
+      </SettingRow>
+      <SettingRow :label="t('monitor.settings.resident.status.label')">
+        <template #default>
+          <div class="flex flex-wrap items-center gap-8px">
+            <OnChip size="sm" :tone="residentRunning ? 'success' : resident?.enabled ? 'warning' : 'neutral'">
+              {{ residentStatus }}
+            </OnChip>
+            <OnButton
+              v-if="resident?.enabled && !resident.registered && resident.canRegister"
+              data-permission-free
+              variant="secondary"
+              size="sm"
+              :loading="busy"
+              @click="attempt(() => store.registerResident())"
+              >{{ t('monitor.settings.resident.register') }}</OnButton
+            >
+          </div>
+        </template>
+      </SettingRow>
+    </OnCard>
+
+    <h2 class="m-0 mb-10px mt-24px text-14px font-600 text-ink-primary">
       {{ t('monitor.settings.menuBar') }}
     </h2>
     <OnCard padding="none">

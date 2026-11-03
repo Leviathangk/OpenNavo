@@ -2318,20 +2318,24 @@ export default {
       alertsHint:
         '出现需要注意的问题时发通知，同一问题 1 小时内只提醒一次。开启后，即使菜单栏没有监控项也会在后台低频检查',
       resident: {
-        noticeTitle: '电脑监控已经常驻菜单栏',
+        noticeTitle: '{monitorName} 已常驻菜单栏',
         noticeBody:
-          '菜单栏项目会在 OpenNavo 未运行时保持显示，点一下即可查看该指标。默认开启：可在「设置 → 电脑监控」关闭，或在「系统设置 → 通用 → {loginItemsPane}」关闭，那里显示的名字是「{monitorName}」。',
+          '退出 OpenNavo 后它仍会运行，菜单栏读数保持实时。点任意一项即可查看，无需打开 App。默认开启——可在「设置 → {systemMonitor}」关闭，或在「系统设置 → 通用 → {loginItemsPane}」关闭。',
         noticeAction: '打开电脑监控设置',
+        noticeDismiss: '知道了',
+        section: '后台',
         label: '退出 OpenNavo 后继续监控',
         hint: 'OpenNavo 未运行时，菜单栏项目保持显示',
         loginItemsPane: '登录项与扩展',
         loginItemsPaneOld: '登录项',
         status: {
+          label: '状态',
           running: '运行中',
           stopped: '已停止（{reason}）',
           stoppedPlain: '已停止',
           needsPermission: '需要允许'
         },
+        register: '登录时启动',
         allow: '在系统设置中允许',
         devBuild: '开发构建不注册后台监控',
         failedTitle: '后台监控未能启动'

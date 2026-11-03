@@ -2312,19 +2312,23 @@
       "alerts": "通知",
       "alertsHint": "注意が必要な問題が起きたら通知します。同じ問題は1時間に1回までです。オンの間は、メニューバー項目がなくてもバックグラウンドで低頻度に確認します",
       "resident": {
-        "noticeTitle": "OpenNavo Monitor がメニューバーに常駐しています",
-        "noticeBody": "OpenNavo が実行されていない間も、メニューバー項目は表示されたままです。項目をクリックすると、その測定値を確認できます。デフォルトでオン：「設定 → システムモニター」でオフにするか、「システム設定 → 一般 → {loginItemsPane}」でオフにできます。macOS では「{monitorName}」として表示されます。",
+        "noticeTitle": "{monitorName} がメニューバーに常駐しました",
+        "noticeBody": "OpenNavo を終了しても動作を続け、メニューバーの測定値を最新に保ちます。項目をクリックすると、アプリを開かずに表示できます。デフォルトでオン — 「設定 → {systemMonitor}」または「システム設定 → 一般 → {loginItemsPane}」でオフにできます。",
         "noticeAction": "モニター設定を開く",
+        "noticeDismiss": "了解",
+        "section": "バックグラウンド",
         "label": "OpenNavo を終了した後もモニタリングを続ける",
         "hint": "OpenNavo が実行されていない間も、メニューバー項目は表示されたままになります",
         "loginItemsPane": "ログイン項目と機能拡張",
         "loginItemsPaneOld": "ログイン項目",
         "status": {
+          "label": "ステータス",
           "running": "実行中",
           "stopped": "停止（{reason}）",
           "stoppedPlain": "停止",
           "needsPermission": "許可が必要"
         },
+        "register": "ログイン時に起動",
         "allow": "システム設定で許可",
         "devBuild": "開発ビルドではバックグラウンドモニタリングが登録されません",
         "failedTitle": "バックグラウンドモニタリングを開始できませんでした"

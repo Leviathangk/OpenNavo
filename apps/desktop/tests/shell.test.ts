@@ -83,6 +83,8 @@ describe('AppShell', () => {
     // DOM checks alone cannot detect native requests denied by ACLs.
     expect(mainCapability.windows).toEqual(['main']);
     expect(mainCapability.permissions).toContain('core:window:allow-start-dragging');
+    // The hidden resident defers its one-time notices until the main window is actually visible.
+    expect(mainCapability.permissions).toContain('core:window:allow-is-visible');
     wrapper.unmount();
   });
 

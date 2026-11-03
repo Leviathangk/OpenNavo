@@ -1015,6 +1015,80 @@ describe('Menu bar', () => {
     expect(toasts()).toHaveLength(0);
   });
 
+  it('Announces successful resident registration once and opens its settings', async () => {
+    const ctx = await context();
+    const settings = useSettingsStore();
+    await settings.update('onboardingCompleted', true);
+    await settings.update('monitorResidentIntro', false);
+    const wrapper = mountWith(MonitorNotifier, ctx);
+    await vi.waitFor(() => expect(toastTitles()).toEqual(['OpenNavo Monitor 已常驻菜单栏']));
+    expect(toasts()[0]?.description).toContain('登录项与扩展');
+    expect(toasts()[0]?.description).toContain('OpenNavo');
+    expect(toasts()[0]?.actionLabel).toBe('打开电脑监控设置');
+    expect(toasts()[0]?.dismissLabel).toBeUndefined();
+    await vi.waitFor(() => expect(settings.value?.monitorResidentIntro).toBe(true));
+    useToasts().runAction(toasts()[0]!.id);
+    await vi.waitFor(() => expect(ctx.router.currentRoute.value.path).toBe('/settings/monitor'));
+
+    wrapper.unmount();
+    useToasts().clear();
+    mountWith(MonitorNotifier, ctx);
+    await flushPromises();
+    expect(toasts()).toHaveLength(0);
+  });
+
+  it('Leaves the resident notice unread until the main window is visible', async () => {
+    const ctx = await context();
+    const settings = useSettingsStore();
+    await settings.update('onboardingCompleted', true);
+    await settings.update('monitorResidentIntro', false);
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    mountWith(MonitorNotifier, ctx);
+    await flushPromises();
+    expect(toasts()).toHaveLength(0);
+    expect(settings.value?.monitorResidentIntro).toBe(false);
+    visibility.mockReturnValue('visible');
+    window.dispatchEvent(new Event('focus'));
+    await vi.waitFor(() => expect(toastTitles()).toEqual(['OpenNavo Monitor 已常驻菜单栏']));
+    expect(settings.value?.monitorResidentIntro).toBe(true);
+  });
+
+  it('Shows the resident switch state and stops it from System Monitor settings', async () => {
+    const ctx = await context('/settings/monitor');
+    const wrapper = mountWith(MonitorSettings, ctx);
+    const settings = useSettingsStore();
+    await vi.waitFor(() => expect(wrapper.text()).toContain('运行中'));
+    const toggle = wrapper.find('[aria-labelledby="monitor-setting-resident"]');
+    expect(toggle.attributes('aria-checked')).toBe('true');
+    await toggle.trigger('click');
+    await vi.waitFor(() => expect(settings.value?.monitorResident).toBe(false));
+    await vi.waitFor(() => expect(wrapper.text()).toContain('已停止'));
+    expect(toggle.attributes('aria-checked')).toBe('false');
+  });
+
+  it('Shows a disabled login item as needing permission and retries registration', async () => {
+    const ctx = await context('/settings/monitor');
+    const status = {
+      enabled: true,
+      registered: false,
+      active: true,
+      noticePending: false,
+      monitorName: 'OpenNavo Monitor',
+      loginItemsPaneNew: true,
+      canRegister: true
+    };
+    vi.spyOn(commands, 'monitorResidentStatus').mockResolvedValue({ status: 'ok', data: status });
+    const register = vi.spyOn(commands, 'monitorResidentRegister').mockResolvedValue({
+      status: 'ok',
+      data: { ...status, registered: true }
+    });
+    const wrapper = mountWith(MonitorSettings, ctx);
+    await vi.waitFor(() => expect(wrapper.text()).toContain('需要允许'));
+    await click(find(wrapper.element, 'button', '登录时启动'));
+    expect(register).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(wrapper.text()).toContain('运行中'));
+  });
+
   it('The shared popover shows the clicked item and samples only while visible', async () => {
     const ctx = await context('/discover');
     ctx.router.addRoute({
@@ -1056,19 +1130,25 @@ describe('Menu bar', () => {
     const popover = wrapper.find('[data-testid="monitor-popover"]');
     expect(popover.text()).toContain('传感器');
     expect(popover.findAll('[data-testid="monitor-fan"]')).toHaveLength(2);
-    expect(popover.find('[data-testid="fan-control"]').exists()).toBe(true);
-
-    // The helper installs right from the menu bar too. The popover has no toast region, so results show in place.
-    await vi.waitFor(() => expect(store.helper?.status).toBe('not_installed'));
-    await click(find(fanControl()!, 'button', '安装辅助程序'));
-    expect(fanControl()?.textContent).toContain('还差一步');
-    await click(find(fanControl()!, 'button', '我已允许'));
-    await vi.waitFor(() =>
-      expect(fanControl()?.querySelector('[data-testid="fan-notice"]')?.textContent?.trim()).toBe('风扇辅助程序已就绪')
+    // The standalone panel is read-only: names, RPM, range and mode, but no helper install or sliders (#130 AC-6/10).
+    expect(popover.find('[data-testid="fan-control"]').exists()).toBe(false);
+    expect(popover.text()).toContain('转速范围');
+    expect(popover.findAll('[data-testid="monitor-fan"]').every(fan => fan.element.textContent?.includes('自动'))).toBe(
+      true
     );
-    await click(find(fanControl()!, '[role="radio"]', '手动'));
-    await vi.waitFor(() => expect(store.fans?.every(fan => fan.mode === 'manual')).toBe(true));
-    expect(fanControl()?.querySelector('[data-testid="fan-notice"]')?.textContent?.trim()).toBe('风扇已切到手动');
+    // AC-10a: a manual fan is visible in the read-only panel without opening the app. Hold the getter so the mock
+    // sampler's next tick cannot race the assertion back to automatic mode.
+    const manual: FanState[] = store.fans!.map(fan => ({ ...fan, mode: 'manual', targetRpm: fan.rpm }));
+    const fans = vi.spyOn(store, 'fans', 'get').mockReturnValue(manual);
+    store.applyFanChange({ fans: manual, reason: 'user' });
+    await flushPromises();
+    expect(popover.text()).toContain('手动');
+    fans.mockRestore();
+    const adjust = popover.find('[data-testid="monitor-adjust-fans"]');
+    expect(adjust.text()).toBe('调整风扇');
+    await click(adjust.element as HTMLElement);
+    expect(open).toHaveBeenLastCalledWith('detail', 'sensors');
+    expect(store.helper).toBeNull();
     expect(toasts()).toHaveLength(0);
   });
 

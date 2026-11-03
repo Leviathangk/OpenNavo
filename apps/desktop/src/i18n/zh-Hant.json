@@ -2312,19 +2312,23 @@
       "alerts": "提醒",
       "alertsHint": "出現需要注意的問題時發通知，同一問題 1 小時內只提醒一次。開啟後，即使選單列沒有監控項也會在背景低頻檢查",
       "resident": {
-        "noticeTitle": "電腦監控已經常駐選單列",
-        "noticeBody": "選單列項目會在 OpenNavo 未執行時保持顯示，點一下即可檢視該指標。預設開啟：可在「設定 → 電腦監控」關閉，或在「系統設定 → 一般 → {loginItemsPane}」關閉，那裡顯示的名字是「{monitorName}」。",
+        "noticeTitle": "{monitorName} 已常駐選單列",
+        "noticeBody": "退出 OpenNavo 後它仍會執行，選單列讀數保持即時。點任意一項即可檢視，無需開啟 App。預設開啟——可在「設定 → {systemMonitor}」關閉，或在「系統設定 → 一般 → {loginItemsPane}」關閉。",
         "noticeAction": "開啟電腦監控設定",
+        "noticeDismiss": "知道了",
+        "section": "背景",
         "label": "結束 OpenNavo 後繼續監控",
         "hint": "OpenNavo 未執行時，選單列項目保持顯示",
         "loginItemsPane": "登入項目與延伸功能",
         "loginItemsPaneOld": "登入項目",
         "status": {
+          "label": "狀態",
           "running": "執行中",
           "stopped": "已停止（{reason}）",
           "stoppedPlain": "已停止",
           "needsPermission": "需要允許"
         },
+        "register": "登入時啟動",
         "allow": "在系統設定中允許",
         "devBuild": "開發構建不註冊背景監控",
         "failedTitle": "背景監控未能啟動"

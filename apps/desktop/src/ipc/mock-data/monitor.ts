@@ -540,6 +540,24 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
           visible: null
         })
       ),
+    monitor_resident_status: () => ({
+      enabled: settings().monitorResident,
+      registered: true,
+      active: true,
+      noticePending: settings().monitorResident && !settings().monitorResidentIntro,
+      monitorName: 'OpenNavo Monitor',
+      loginItemsPaneNew: true,
+      canRegister: true
+    }),
+    monitor_resident_register: () => ({
+      enabled: settings().monitorResident,
+      registered: true,
+      active: true,
+      noticePending: false,
+      monitorName: 'OpenNavo Monitor',
+      loginItemsPaneNew: true,
+      canRegister: true
+    }),
     fan_helper_status: () => {
       // The user approved in System Settings while OpenNavo waited (simulated on the next check).
       if (helper.status === 'requires_approval') helper = { ...helper, status: 'enabled' };

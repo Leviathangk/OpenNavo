@@ -33,13 +33,7 @@ pub async fn settings_set(
 }
 
 fn set_autostart(app: &tauri::AppHandle, enabled: bool) -> Result<(), AppError> {
-    use tauri_plugin_autostart::ManagerExt;
-    let result = if enabled {
-        app.autolaunch().enable()
-    } else {
-        app.autolaunch().disable()
-    };
-    result.map_err(|e| AppError::new("E_UNKNOWN", "autostart").with_detail(e.to_string()))
+    crate::resident::set_autostart(app, enabled)
 }
 
 #[tauri::command]

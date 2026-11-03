@@ -2312,19 +2312,23 @@
       "alerts": "Avvisi",
       "alertsHint": "Ricevi una notifica quando serve attenzione, al massimo una volta all’ora per lo stesso problema. Se attivo, i controlli continuano a bassa frequenza in background anche senza metriche nella barra dei menu",
       "resident": {
-        "noticeTitle": "OpenNavo Monitor è ora nella barra dei menu",
-        "noticeBody": "Gli elementi della barra dei menu restano visibili mentre OpenNavo non è in esecuzione: fai clic su uno per vedere le letture. Attivo per impostazione predefinita: disattivalo in Impostazioni → Monitor di sistema, oppure in Impostazioni di Sistema → Generali → {loginItemsPane}, dove macOS lo mostra come “{monitorName}”.",
+        "noticeTitle": "{monitorName} è ora nella barra dei menu",
+        "noticeBody": "Continua a funzionare dopo l’uscita da OpenNavo, così i valori nella barra dei menu restano aggiornati. Fai clic su un elemento per vederlo senza aprire l’app. Attivo per impostazione predefinita: disattivalo in Impostazioni → {systemMonitor} oppure in Impostazioni di Sistema → Generale → {loginItemsPane}.",
         "noticeAction": "Apri impostazioni monitor",
+        "noticeDismiss": "Ho capito",
+        "section": "In background",
         "label": "Continua il monitoraggio dopo aver chiuso OpenNavo",
         "hint": "Gli elementi della barra dei menu restano visibili mentre OpenNavo non è in esecuzione",
         "loginItemsPane": "Elementi di login ed estensioni",
         "loginItemsPaneOld": "Elementi di login",
         "status": {
+          "label": "Stato",
           "running": "In esecuzione",
           "stopped": "Interrotto ({reason})",
           "stoppedPlain": "Interrotto",
           "needsPermission": "Autorizzazione necessaria"
         },
+        "register": "Attiva all’accesso",
         "allow": "Consenti in Impostazioni di Sistema",
         "devBuild": "Le build di sviluppo non registrano il monitoraggio in background",
         "failedTitle": "Impossibile avviare il monitoraggio in background"

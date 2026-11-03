@@ -245,6 +245,9 @@ function defaultSettings(): AppSettings {
     },
     monitorIntervalMs: 2000,
     monitorAlerts: false,
+    monitorResident: true,
+    monitorResidentConfigured: true,
+    monitorResidentIntro: true,
     monitorMenuBarIntro: false,
     fanLastManual: null
   };

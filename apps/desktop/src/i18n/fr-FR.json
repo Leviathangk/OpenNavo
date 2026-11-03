@@ -2312,19 +2312,23 @@
       "alerts": "Alertes",
       "alertsHint": "Notification en cas de problème, au maximum une fois par heure pour un même problème. Les vérifications continuent à faible fréquence en arrière-plan, même sans indicateur dans la barre des menus",
       "resident": {
-        "noticeTitle": "OpenNavo Monitor est désormais dans la barre des menus",
-        "noticeBody": "Les éléments de la barre des menus restent affichés lorsque OpenNavo ne fonctionne pas — cliquez sur l’un d’eux pour voir ses relevés. Activé par défaut : désactivez-le dans Réglages → Moniteur système, ou dans Réglages Système → Général → {loginItemsPane}, où macOS l’affiche sous « {monitorName} ».",
+        "noticeTitle": "{monitorName} est maintenant dans la barre des menus",
+        "noticeBody": "Il continue de fonctionner après avoir quitté OpenNavo, pour que les relevés de la barre des menus restent à jour. Cliquez sur un élément pour le voir sans ouvrir l’app. Activé par défaut — désactivez-le dans Réglages → {systemMonitor}, ou dans Réglages Système → Général → {loginItemsPane}.",
         "noticeAction": "Ouvrir les réglages du moniteur",
+        "noticeDismiss": "Compris",
+        "section": "Arrière-plan",
         "label": "Continuer à surveiller après avoir quitté OpenNavo",
         "hint": "Les éléments de la barre des menus restent affichés lorsque OpenNavo ne fonctionne pas",
         "loginItemsPane": "Ouverture et extensions",
         "loginItemsPaneOld": "Ouverture",
         "status": {
+          "label": "État",
           "running": "En cours",
           "stopped": "Arrêté ({reason})",
           "stoppedPlain": "Arrêté",
           "needsPermission": "Autorisation requise"
         },
+        "register": "Activer à l’ouverture de session",
         "allow": "Autoriser dans Réglages Système",
         "devBuild": "Les versions de développement n’enregistrent pas la surveillance en arrière-plan",
         "failedTitle": "La surveillance en arrière-plan n’a pas pu démarrer"

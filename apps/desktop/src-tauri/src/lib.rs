@@ -31,6 +31,7 @@ pub mod notifications;
 pub mod permissions;
 pub mod queue;
 pub mod relaunch;
+pub mod resident;
 pub mod running_apps;
 pub mod scheduler;
 pub mod security;
@@ -117,6 +118,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::monitor::monitor_menu_bar_status,
             commands::monitor::monitor_open_menu_bar_settings,
             commands::monitor::monitor_open_in_main,
+            commands::monitor::monitor_resident_status,
+            commands::monitor::monitor_resident_register,
             commands::monitor::fan_helper_status,
             commands::monitor::fan_helper_open_approval,
             commands::monitor::fan_helper_install,
@@ -355,10 +358,13 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         // Login startup uses --hidden, creating only the tray without showing the main window (06 §4.3).
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec![lifecycle::LOGIN_ARG]),
-        ))
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .macos_launcher(tauri_plugin_autostart::MacosLauncher::LaunchAgent)
+                .args([lifecycle::LOGIN_ARG])
+                .app_name(resident::LOGIN_ITEM_NAME)
+                .build(),
+        )
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -470,6 +476,8 @@ pub fn run() {
             }))?;
             core.install_settings_save(save)?;
             app.manage(core.clone());
+            resident::install(app.handle());
+            resident::set_activation(app.handle(), hidden);
             mcp::broker::install(app.handle().clone());
             app.manage(std::sync::Arc::new(guide::Guide::default()));
             // Tauri builds the config-defined main window before this closure runs. Apply the saved appearance before
@@ -495,8 +503,12 @@ pub fn run() {
             settings::install_locale_observer(app.handle());
             native_menu::install(app.handle(), core.current_settings()?.locale)?;
             tray::install(app.handle())?;
-            if let Err(error) = monitor::install(app.handle()) {
-                log::warn!("Monitor unavailable: {}", error.code);
+            match monitor::install(app.handle()) {
+                Ok(()) => resident::mark_active(app.handle()),
+                Err(error) => log::warn!("Monitor unavailable: {}", error.code),
+            }
+            if let Err(error) = resident::ensure_configured(app.handle(), &core) {
+                log::warn!("Resident monitor registration failed: {}", error.code);
             }
             core.queue.start();
             core.start_catalog_sync();

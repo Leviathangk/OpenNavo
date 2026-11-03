@@ -278,7 +278,8 @@ describe('OnToastRegion', () => {
       tone: 'danger' as const,
       title: '更新失败',
       description: 'Docker Desktop 需要管理员权限。',
-      actionLabel: '查看'
+      actionLabel: '查看',
+      dismissLabel: '知道了'
     },
     { id: 'c', title: '已复制', duration: 0 },
     { id: 'd', title: '已加入 Brewfile 清单' }
@@ -293,6 +294,7 @@ describe('OnToastRegion', () => {
       expect.stringContaining('已加入 Brewfile 清单')
     ]);
     expect(wrapper.get('[role="alert"]').text()).toContain('需要管理员权限');
+    expect(wrapper.get('[role="alert"]').text()).toContain('知道了');
   });
 
   it('Dismisses after four seconds by default, pauses on hover, resumes the remaining time, and persists with duration zero', async () => {
@@ -317,6 +319,12 @@ describe('OnToastRegion', () => {
     expect(wrapper.emitted('dismiss')).toEqual([['b']]);
     await wrapper.get('button[aria-label="关闭通知"]').trigger('click');
     expect(wrapper.emitted('dismiss')).toHaveLength(2);
+    await wrapper
+      .get('[role="alert"]')
+      .findAll('button')
+      .find(button => button.text() === '知道了')
+      ?.trigger('click');
+    expect(wrapper.emitted('dismiss')).toHaveLength(3);
   });
 
   it('Replaces notifications with the same ID in createToastQueue', () => {

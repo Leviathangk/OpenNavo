@@ -2312,19 +2312,23 @@
       "alerts": "Avisos",
       "alertsHint": "Recibe un aviso cuando algo requiere atención, como mucho una vez por hora para el mismo problema. Mientras esté activado, se comprueba en segundo plano con poca frecuencia aunque no haya elementos en la barra de menús",
       "resident": {
-        "noticeTitle": "OpenNavo Monitor ya está en la barra de menús",
-        "noticeBody": "Los elementos de la barra de menús permanecen visibles mientras OpenNavo no está en ejecución: haz clic en uno para ver sus lecturas. Activado de forma predeterminada: desactívelo en Ajustes → Monitor del sistema, o en Ajustes del Sistema → General → {loginItemsPane}, donde macOS lo muestra como «{monitorName}».",
+        "noticeTitle": "{monitorName} ya está en la barra de menús",
+        "noticeBody": "Sigue ejecutándose después de salir de OpenNavo, para que las lecturas de la barra de menús sigan activas. Haz clic en un elemento para verlo sin abrir la app. Activado por defecto: desactívalo en Ajustes → {systemMonitor} o en Ajustes del Sistema → General → {loginItemsPane}.",
         "noticeAction": "Abrir ajustes del monitor",
+        "noticeDismiss": "Entendido",
+        "section": "Segundo plano",
         "label": "Seguir monitoreando después de salir de OpenNavo",
         "hint": "Los elementos de la barra de menús permanecen visibles mientras OpenNavo no está en ejecución",
         "loginItemsPane": "Ítems de inicio y extensiones",
         "loginItemsPaneOld": "Ítems de inicio",
         "status": {
+          "label": "Estado",
           "running": "En ejecución",
           "stopped": "Detenido ({reason})",
           "stoppedPlain": "Detenido",
           "needsPermission": "Requiere permiso"
         },
+        "register": "Activar al iniciar sesión",
         "allow": "Permitir en Ajustes del Sistema",
         "devBuild": "Las compilaciones de desarrollo no registran el monitoreo en segundo plano",
         "failedTitle": "No se pudo iniciar el monitoreo en segundo plano"

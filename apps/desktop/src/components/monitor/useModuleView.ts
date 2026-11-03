@@ -54,9 +54,9 @@ export function useModuleView(
   const fans = computed(() => store.fans ?? []);
   const fanName = (fan: FanState) => names.fan(fan, fans.value.length);
   const maxRpm = computed(() => Math.max(1, ...fans.value.map(fan => fan.maxRpm)));
-  /** The detail's speed ranges: fans of one Mac usually share one, then it is listed once rather than per fan. */
+  /** Speed ranges, shown in the detail and the standalone panel: fans usually share one, then list it once. */
   const fanRanges = computed(() => {
-    if (!detail.value || !fans.value.length) return [];
+    if (variant() === 'card' || !fans.value.length) return [];
     const first = fans.value[0]!;
     const shared = fans.value.every(fan => fan.minRpm === first.minRpm && fan.maxRpm === first.maxRpm);
     return (shared ? [first] : fans.value).map(fan => ({

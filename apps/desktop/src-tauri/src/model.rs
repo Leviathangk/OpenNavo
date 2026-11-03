@@ -638,6 +638,9 @@ pub struct Settings {
     pub monitor_menu_bar: MonitorMenuBar,
     pub monitor_interval_ms: MonitorIntervalMs,
     pub monitor_alerts: bool,
+    pub monitor_resident: bool,
+    pub monitor_resident_configured: bool,
+    pub monitor_resident_intro: bool,
     pub monitor_menu_bar_intro: bool,
     pub fan_last_manual: Option<std::collections::BTreeMap<u32, u32>>,
 }
@@ -693,6 +696,9 @@ struct SettingsInput {
     pub monitor_menu_bar: MonitorMenuBar,
     pub monitor_interval_ms: MonitorIntervalMs,
     pub monitor_alerts: bool,
+    pub monitor_resident: bool,
+    pub monitor_resident_configured: bool,
+    pub monitor_resident_intro: bool,
     pub monitor_menu_bar_intro: bool,
     pub fan_last_manual: Option<std::collections::BTreeMap<u32, u32>>,
 }
@@ -746,6 +752,9 @@ impl Default for SettingsInput {
             monitor_menu_bar: value.monitor_menu_bar,
             monitor_interval_ms: value.monitor_interval_ms,
             monitor_alerts: value.monitor_alerts,
+            monitor_resident: value.monitor_resident,
+            monitor_resident_configured: value.monitor_resident_configured,
+            monitor_resident_intro: value.monitor_resident_intro,
             monitor_menu_bar_intro: value.monitor_menu_bar_intro,
             fan_last_manual: value.fan_last_manual,
         }
@@ -808,6 +817,9 @@ impl From<SettingsInput> for Settings {
             monitor_menu_bar: value.monitor_menu_bar,
             monitor_interval_ms: value.monitor_interval_ms,
             monitor_alerts: value.monitor_alerts,
+            monitor_resident: value.monitor_resident,
+            monitor_resident_configured: value.monitor_resident_configured,
+            monitor_resident_intro: value.monitor_resident_intro,
             monitor_menu_bar_intro: value.monitor_menu_bar_intro,
             fan_last_manual: value.fan_last_manual,
         }
@@ -1068,6 +1080,9 @@ impl Default for Settings {
             monitor_menu_bar: MonitorMenuBar::default(),
             monitor_interval_ms: MonitorIntervalMs::default(),
             monitor_alerts: false,
+            monitor_resident: true,
+            monitor_resident_configured: false,
+            monitor_resident_intro: false,
             monitor_menu_bar_intro: false,
             fan_last_manual: None,
             cleanup_project_roots: ["~/Projects", "~/Developer", "~/code", "~/GitHub", "~/dev"]
@@ -1174,5 +1189,33 @@ impl TaskKind {
             Self::Mas => Err(AppError::new("E_INVALID_ARG", "mas_target")),
             Self::Link => Err(AppError::new("E_NOT_INSTALLABLE", "link_target")),
         }
+    }
+}
+
+#[cfg(test)]
+mod resident_defaults {
+    use super::*;
+
+    #[test]
+    fn settings_written_before_resident_mode_default_it_on() {
+        // An upgrade has no resident keys in its existing settings file.
+        let settings: Settings = serde_json::from_value(serde_json::json!({})).unwrap();
+        let input: SettingsInput = serde_json::from_value(serde_json::json!({})).unwrap();
+        let defaults = Settings::default();
+        let input_defaults = SettingsInput::default();
+
+        assert!(settings.monitor_resident);
+        assert!(!settings.monitor_resident_configured);
+        assert!(!settings.monitor_resident_intro);
+        assert!(input.monitor_resident);
+        assert_eq!(input_defaults.monitor_resident, defaults.monitor_resident);
+        assert_eq!(
+            input_defaults.monitor_resident_configured,
+            defaults.monitor_resident_configured
+        );
+        assert_eq!(
+            input_defaults.monitor_resident_intro,
+            defaults.monitor_resident_intro
+        );
     }
 }

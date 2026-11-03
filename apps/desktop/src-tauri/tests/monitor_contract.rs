@@ -139,6 +139,9 @@ fn legacy_settings_migrate_and_roundtrip_without_losing_existing_values() {
     assert_eq!(settings.monitor_menu_bar, MonitorMenuBar::default());
     assert_eq!(u32::from(settings.monitor_interval_ms), 2000);
     assert!(!settings.monitor_alerts);
+    assert!(settings.monitor_resident);
+    assert!(!settings.monitor_resident_configured);
+    assert!(!settings.monitor_resident_intro);
     assert!(!settings.monitor_menu_bar_intro);
     assert!(settings.fan_last_manual.is_none());
     assert_eq!(settings::load(&path).unwrap(), settings);
@@ -176,6 +179,11 @@ fn partial_monitor_settings_preserve_explicit_choices_and_strict_intervals() {
     assert!(!settings.monitor_menu_bar.item(MonitorModule::Fans).enabled);
     assert_eq!(u32::from(settings.monitor_interval_ms), 5000);
     assert!(settings.monitor_alerts && settings.monitor_menu_bar_intro);
+    assert!(
+        settings.monitor_resident
+            && !settings.monitor_resident_configured
+            && !settings.monitor_resident_intro
+    );
     assert_eq!(settings.fan_last_manual.as_ref().unwrap()[&1], 2500);
     let json = serde_json::to_value(&settings).unwrap();
     assert!(json["monitorMenuBar"].get("fans").is_none());
@@ -234,6 +242,8 @@ fn popover_permissions_are_minimal_and_main_has_every_monitor_command() {
         "monitor_open_activity_monitor",
         "monitor_menu_bar_status",
         "monitor_open_menu_bar_settings",
+        "monitor_resident_status",
+        "monitor_resident_register",
     ] {
         assert!(main.contains(&format!("\"{command}\"")));
         assert!(!popover.contains(&format!("\"{command}\"")));

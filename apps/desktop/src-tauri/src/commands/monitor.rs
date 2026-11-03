@@ -65,6 +65,23 @@ pub async fn monitor_open_menu_bar_settings() -> Result<(), AppError> {
 }
 #[tauri::command]
 #[specta::specta]
+pub fn monitor_resident_status(
+    app: tauri::AppHandle,
+) -> Result<crate::resident::MonitorResidentStatus, AppError> {
+    crate::resident::status(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn monitor_resident_register(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<crate::core::DesktopCore>>,
+) -> Result<crate::resident::MonitorResidentStatus, AppError> {
+    crate::resident::register(&app, state.inner())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn monitor_open_in_main(
     app: tauri::AppHandle,
     target: MonitorMainTarget,

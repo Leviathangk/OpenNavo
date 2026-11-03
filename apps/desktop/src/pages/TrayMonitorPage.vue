@@ -80,7 +80,7 @@ const openInMain = (target: 'detail' | 'settings') =>
           store.system.modelName
         }}</span>
       </header>
-      <MonitorModuleBody :module="module" variant="popover" />
+      <MonitorModuleBody :module="module" variant="popover" @open-fans="openInMain('detail')" />
       <MonitorProcesses v-if="module === 'cpu'" sort="cpu" :limit="3" compact />
       <MonitorProcesses v-else-if="module === 'memory'" sort="memory" :limit="3" compact />
       <footer class="flex gap-8px border-t border-t-solid border-line-subtle pt-10px">

@@ -639,6 +639,8 @@ fn fit_main_to_work_area<R: tauri::Runtime>(
 }
 
 pub fn show_main<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    // A hidden resident has no Dock icon; bringing the main window back restores the regular app first.
+    crate::resident::set_activation(app, false);
     // Explicit navigation/Dock requests supersede transient menu-bar panels.
     // They no longer close through Focused(false) on macOS.
     crate::tray::hide(app);

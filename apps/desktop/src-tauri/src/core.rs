@@ -230,6 +230,17 @@ impl DesktopCore {
         *self.settings_save.write().map_err(poisoned)? = save;
         Ok(())
     }
+    /// Record that the first-run login-item attempt happened, without changing any user-visible preference.
+    pub fn mark_monitor_resident_configured(&self) -> Result<(), AppError> {
+        let mut settings = self.settings.write().map_err(poisoned)?;
+        if settings.monitor_resident_configured {
+            return Ok(());
+        }
+        settings.monitor_resident_configured = true;
+        let saved = settings.clone();
+        let writer = self.settings_save.read().map_err(poisoned)?.clone();
+        writer(&saved)
+    }
     /// Merge while holding the existing settings transaction lock; unrelated concurrent settings survive.
     pub async fn save_fan_manual(
         self: &Arc<Self>,
@@ -269,9 +280,10 @@ impl DesktopCore {
             crate::settings::system_locale(),
         );
         let old = self.current_settings()?;
-        let login_changed = old.launch_at_login != settings.launch_at_login;
+        let login_changed = old.launch_at_login != settings.launch_at_login
+            || old.monitor_resident != settings.monitor_resident;
         if login_changed && let Some(change) = autostart.clone() {
-            let enabled = settings.launch_at_login;
+            let enabled = settings.launch_at_login || settings.monitor_resident;
             crate::blocking(move || change(enabled)).await?;
         }
         let saved = settings.clone();
@@ -289,7 +301,7 @@ impl DesktopCore {
         .await;
         if let Err(error) = persisted {
             if login_changed && let Some(change) = autostart {
-                let previous = old.launch_at_login;
+                let previous = old.launch_at_login || old.monitor_resident;
                 let _ = crate::blocking(move || change(previous)).await;
             }
             return Err(error);

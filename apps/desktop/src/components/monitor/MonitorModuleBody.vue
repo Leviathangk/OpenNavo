@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { OnSegmented } from '@opennavo/ui';
+import { OnButton, OnSegmented } from '@opennavo/ui';
 import type { DisplayModule } from '@/stores/monitor';
 import FanControl from './FanControl.vue';
 import MonitorDiskDevices from './MonitorDiskDevices.vue';
@@ -14,7 +14,7 @@ import type { ModuleVariant, MonitorRange } from './useModuleView';
 const props = withDefaults(defineProps<{ module: DisplayModule; variant: ModuleVariant; range?: MonitorRange }>(), {
   range: 'minute'
 });
-const emit = defineEmits<{ cleanup: []; 'update:range': [range: MonitorRange] }>();
+const emit = defineEmits<{ cleanup: []; 'update:range': [range: MonitorRange]; openFans: [] }>();
 
 const { t } = useI18n();
 const { f, s, sys, detail, hour, chartHeight, view, cores, fans, fanName, fanRanges, primaryVolume, cleanupHint } =
@@ -137,7 +137,12 @@ const ranges = computed(() => [
       <h3 v-if="variant !== 'card'" class="m-0 text-13px font-600 text-ink-primary">{{ t('monitor.modules.fans') }}</h3>
       <div class="grid grid-cols-[minmax(0,max-content)_1fr_auto] items-center gap-x-10px gap-y-7px text-12px">
         <div v-for="fan in fans" :key="fan.id" class="contents" data-testid="monitor-fan">
-          <span class="max-w-160px truncate text-ink-tertiary">{{ fanName(fan) }}</span>
+          <span class="max-w-160px truncate text-ink-tertiary">
+            {{ fanName(fan) }}
+            <em v-if="variant !== 'card'" class="mt-1px block text-10.5px not-italic text-ink-quaternary">{{
+              t(`monitor.fans.${fan.mode === 'manual' ? 'manual' : 'auto'}`)
+            }}</em>
+          </span>
           <span class="h-6px overflow-hidden rounded-[3px] bg-line-subtle">
             <i
               class="block h-full rounded-[3px]"
@@ -156,7 +161,15 @@ const ranges = computed(() => [
           <dd class="m-0 text-right tabular-nums text-ink-primary">{{ fanRange.value }}</dd>
         </template>
       </dl>
-      <FanControl v-if="variant !== 'card'" :compact="variant === 'popover'" />
+      <FanControl v-if="variant === 'detail'" />
+      <OnButton
+        v-else-if="variant === 'popover'"
+        data-testid="monitor-adjust-fans"
+        variant="secondary"
+        size="sm"
+        @click="emit('openFans')"
+        >{{ t('monitor.rail.adjustFans') }}</OnButton
+      >
     </section>
 
     <div v-if="view.rows.length" class="flex flex-col gap-8px">

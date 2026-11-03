@@ -86,6 +86,8 @@ export const commands = {
 	monitorMenuBarStatus: () => typedError<MenuBarItemStatus[], AppError>(__TAURI_INVOKE("monitor_menu_bar_status")),
 	monitorOpenMenuBarSettings: () => typedError<null, AppError>(__TAURI_INVOKE("monitor_open_menu_bar_settings")),
 	monitorOpenInMain: (target: MonitorMainTarget, module: "cpu" | "gpu" | "memory" | "disk" | "network" | "battery" | "sensors" | "fans" | null) => typedError<null, AppError>(__TAURI_INVOKE("monitor_open_in_main", { target, module })),
+	monitorResidentStatus: () => typedError<MonitorResidentStatus, AppError>(__TAURI_INVOKE("monitor_resident_status")),
+	monitorResidentRegister: () => typedError<MonitorResidentStatus, AppError>(__TAURI_INVOKE("monitor_resident_register")),
 	fanHelperStatus: () => typedError<FanHelperStatus, AppError>(__TAURI_INVOKE("fan_helper_status")),
 	fanHelperOpenApproval: () => typedError<null, AppError>(__TAURI_INVOKE("fan_helper_open_approval")),
 	fanHelperInstall: () => typedError<FanHelperStatus, AppError>(__TAURI_INVOKE("fan_helper_install")),
@@ -1671,6 +1673,23 @@ export type MonitorModule = "cpu" | "gpu" | "memory" | "disk" | "network" | "bat
 
 export type MonitorPopover = MonitorModule;
 
+export type MonitorResidentStatus = {
+	/**  The user's switch. False means a Quit ends the monitor too. */
+	enabled: boolean,
+	/**  Whether macOS currently has the login item switched on. */
+	registered: boolean,
+	/**  This process currently has a working sampler and menu bar items. */
+	active: boolean,
+	/**  The one-time notice has not been acknowledged and registration succeeded. */
+	noticePending: boolean,
+	/**  The name macOS lists for the login item, so the notice can match it exactly. */
+	monitorName: string,
+	/**  macOS 15 renamed the Login Items pane; the frontend picks the matching localized name. */
+	loginItemsPaneNew: boolean,
+	/**  Debug builds do not touch the user's login items. */
+	canRegister: boolean,
+};
+
 export type MonitorSample = {
 	at: number,
 	cpu: CpuSample,
@@ -2148,6 +2167,9 @@ export type Settings = {
 	monitorMenuBar: MonitorMenuBar,
 	monitorIntervalMs: 1000 | 2000 | 5000,
 	monitorAlerts: boolean,
+	monitorResident: boolean,
+	monitorResidentConfigured: boolean,
+	monitorResidentIntro: boolean,
 	monitorMenuBarIntro: boolean,
 	fanLastManual: { [key in number]: number } | null,
 };

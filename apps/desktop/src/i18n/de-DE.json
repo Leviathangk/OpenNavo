@@ -2312,19 +2312,23 @@
       "alerts": "Hinweise",
       "alertsHint": "Bei Problemen benachrichtigen, höchstens einmal pro Stunde für dasselbe Problem. Wenn aktiv, wird auch ohne Menüleisteneinträge in größeren Abständen im Hintergrund geprüft",
       "resident": {
-        "noticeTitle": "OpenNavo Monitor ist jetzt in der Menüleiste",
-        "noticeBody": "Menüleistenobjekte bleiben sichtbar, während OpenNavo nicht läuft – klicken Sie auf eines, um die Messwerte zu sehen. Standardmäßig aktiviert: Deaktivieren Sie dies in Einstellungen → Systemmonitor oder in Systemeinstellungen → Allgemein → {loginItemsPane}, wo macOS es als „{monitorName}“ aufführt.",
+        "noticeTitle": "{monitorName} ist jetzt in der Menüleiste",
+        "noticeBody": "Es läuft nach dem Beenden von OpenNavo weiter, damit Ihre Menüleistenwerte aktuell bleiben. Klicken Sie auf ein Element, um es ohne Öffnen der App zu sehen. Standardmäßig aktiviert – deaktivieren Sie es in Einstellungen → {systemMonitor} oder in Systemeinstellungen → Allgemein → {loginItemsPane}.",
         "noticeAction": "Monitoreinstellungen öffnen",
+        "noticeDismiss": "Verstanden",
+        "section": "Hintergrund",
         "label": "Nach dem Beenden von OpenNavo weiter überwachen",
         "hint": "Menüleistenobjekte bleiben sichtbar, während OpenNavo nicht läuft",
         "loginItemsPane": "Anmeldeobjekte & Erweiterungen",
         "loginItemsPaneOld": "Anmeldeobjekte",
         "status": {
+          "label": "Status",
           "running": "Läuft",
           "stopped": "Gestoppt ({reason})",
           "stoppedPlain": "Gestoppt",
           "needsPermission": "Berechtigung erforderlich"
         },
+        "register": "Beim Anmelden starten",
         "allow": "In den Systemeinstellungen erlauben",
         "devBuild": "Entwicklungs-Builds registrieren keine Hintergrundüberwachung",
         "failedTitle": "Die Hintergrundüberwachung konnte nicht gestartet werden"

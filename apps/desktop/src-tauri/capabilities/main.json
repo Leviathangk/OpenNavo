@@ -12,6 +12,7 @@
     "core:window:allow-set-min-size",
     "core:window:allow-unmaximize",
     "core:window:allow-center",
+    "core:window:allow-is-visible",
     "deep-link:default",
     "updater:default",
     "notification:default",

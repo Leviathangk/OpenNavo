@@ -283,6 +283,11 @@ async fn finish_quit<R: tauri::Runtime>(
         log::warn!("Quit cleanup timed out");
         lifecycle.ready();
     }
+    // A normal Quit leaves a hidden successor behind. On system logout the reply path also starts it; the session
+    // teardown kills it, while a user Quit keeps it. Restarts and error exits never hand over.
+    if code == 0 {
+        let _ = crate::resident::spawn_successor(&app);
+    }
     if let Some(reply) = lifecycle.take_system_reply() {
         reply(true);
         return;

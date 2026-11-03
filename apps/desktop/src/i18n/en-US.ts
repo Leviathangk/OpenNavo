@@ -2393,20 +2393,24 @@ const messages: MessageSchema = {
       alertsHint:
         'Get a notification when something needs attention, at most once an hour for the same issue. While on, checks keep running in the background at a low rate even with no menu bar items',
       resident: {
-        noticeTitle: 'OpenNavo Monitor is now in the menu bar',
+        noticeTitle: '{monitorName} is now in the menu bar',
         noticeBody:
-          'Menu bar items stay up while OpenNavo isn’t running — click one to see its readings. On by default: turn it off in Settings → System Monitor, or in System Settings → General → {loginItemsPane}, where macOS lists it as “{monitorName}”.',
+          'It keeps running after you quit OpenNavo, so your menu bar readings stay live. Click an item to see it without opening the app. On by default — turn it off in Settings → {systemMonitor}, or in System Settings → General → {loginItemsPane}.',
         noticeAction: 'Open Monitor Settings',
+        noticeDismiss: 'Got it',
+        section: 'Background',
         label: 'Keep monitoring after quitting OpenNavo',
         hint: 'Menu bar items stay up while OpenNavo isn’t running',
         loginItemsPane: 'Login Items & Extensions',
         loginItemsPaneOld: 'Login Items',
         status: {
+          label: 'Status',
           running: 'Running',
           stopped: 'Stopped ({reason})',
           stoppedPlain: 'Stopped',
           needsPermission: 'Needs permission'
         },
+        register: 'Turn on at login',
         allow: 'Allow in System Settings',
         devBuild: 'Development builds don’t register background monitoring',
         failedTitle: 'Background monitoring couldn’t start'

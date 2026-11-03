@@ -10,6 +10,7 @@ export interface OnToastItem {
   title: string;
   description?: string;
   actionLabel?: string;
+  dismissLabel?: string;
   time?: string;
   /** Auto-dismiss milliseconds, default 4000; zero disables auto-dismiss. */
   duration?: number;
@@ -125,6 +126,7 @@ function act(id: string) {
           :title="item.title"
           :description="item.description"
           :action-label="item.actionLabel"
+          :dismiss-label="item.dismissLabel"
           :time="item.time"
           @action="act(item.id)"
           @close="emit('dismiss', item.id)"
