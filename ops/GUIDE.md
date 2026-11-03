@@ -1094,19 +1094,29 @@ before manifests were introduced are supported. Covers are excluded.
 
 Use a worker image containing this command after the normal release checks have
 passed. The existing `/opennavo` binary supports it directly; no extra executable,
-shell, worker restart, schema migration or credential arguments are needed. Replace
-`<worker-container>` below with the existing worker container name.
+shell, worker restart, schema migration or credential arguments are needed.
+
+Set `WORKER` to the existing worker container name first. It has to be a variable
+and not an angle-bracket placeholder written into the commands: the shell reads a
+bare `<name>` in a command position as an input redirect, so `docker exec -it
+<worker-container> /opennavo ...` runs `docker exec -it` with no container and no
+subcommand, then fails on a missing file. `sh -n` accepts it, so nothing catches
+this before it runs.
 
 ```sh
+# The compose project prefixes the service name; `docker ps` shows the exact value.
+WORKER=$(docker ps --filter label=com.docker.compose.service=worker --format '{{.Names}}')
+[ -n "$WORKER" ] || { echo "no worker container found; start the stack first"; exit 1; }
+
 # Default: read-only manifest preview. Reports total pending, attempts at most 50.
-docker exec -it <worker-container> /opennavo assets-backfill --dry-run --limit 50
+docker exec -it "$WORKER" /opennavo assets-backfill --dry-run --limit 50
 
 # Small first batch while other backfills are active.
-docker exec -it <worker-container> /opennavo assets-backfill --apply --kind icon --limit 50 --rate 0.5 --concurrency 1
+docker exec -it "$WORKER" /opennavo assets-backfill --apply --kind icon --limit 50 --rate 0.5 --concurrency 1
 
 # Continue icons, then screenshots; monitor the existing worker and host load.
-docker exec -it <worker-container> /opennavo assets-backfill --apply --kind icon --rate 0.5 --concurrency 1
-docker exec -it <worker-container> /opennavo assets-backfill --apply --kind screenshot --rate 0.5 --concurrency 1
+docker exec -it "$WORKER" /opennavo assets-backfill --apply --kind icon --rate 0.5 --concurrency 1
+docker exec -it "$WORKER" /opennavo assets-backfill --apply --kind screenshot --rate 0.5 --concurrency 1
 ```
 
 Omit `--kind` to process both kinds in ID order. `--limit 0` (default) attempts all
