@@ -247,4 +247,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      # A conflict resolved by hand can cut a TestCase in two without either half
+      # losing its name, so `grep '^class'` sees nothing and only an ast walk does.
+      # It runs over the whole `ops/` tree rather than the changed files: the file
+      # split is as likely as the one that was being edited.
+      - run: python3 -I tooling/scripts/test_check_split_classes.py
+      - run: python3 -I tooling/scripts/check-split-classes.py ops tooling
       - run: node tooling/scripts/tasks/server.mjs deploy-lint
