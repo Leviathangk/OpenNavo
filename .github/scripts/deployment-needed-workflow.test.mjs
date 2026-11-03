@@ -25,8 +25,17 @@ function job(name) {
 
 test('the deploy job cannot run when the revision needs no deployment', () => {
   // images and admin skip on needed=false, and deploy inherits that only through GitHub's skip
-  // propagation across `needs`. That is invisible in this file: an `if: always()` or a narrowed
-  // `needs` would run the deploy against a revision that needs none, and nothing else would say so.
+  // propagation across `needs`. That is invisible in this file: an `if: always()` would run the
+  // deploy against a revision that needs none, and nothing else would say so.
+  //
+  // A narrowed `needs` is NOT caught here, and this file must not pretend otherwise. Dropping
+  // `images`/`admin` from the list removes the wait on their uploads; `download-artifact` then
+  // warns instead of failing on the missing files. What still stops the run is downstream:
+  // `send-deployment.py` reads `deployment/admin-dist.tar.gz`, so a dropped `admin` fails there,
+  // and the receiver rejects anything but all three image digests (`ops/github-deploy.py`), so a
+  // dropped `images` fails at the host. Both are refusals, not silent successes, but both happen
+  // after the job has started doing work. Assert `needs: [source, images, admin]` here if that
+  // ordering ever needs a guard.
   const deploy = job('deploy');
   assert.ok(deploy, 'the deploy job was found');
   assert.match(deploy, /if:\s*needs\.source\.outputs\.needed\s*==\s*'true'/,
