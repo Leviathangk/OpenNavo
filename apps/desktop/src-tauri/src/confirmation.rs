@@ -19,6 +19,14 @@ use tokio::sync::oneshot;
 const DIALOG_TIMEOUT: Duration = Duration::from_secs(60);
 const GRANT_TTL: Duration = Duration::from_secs(30);
 
+/// Caller recorded for `opennavo://` installs. Local MCP and OpenNavo's own actions use other callers.
+pub const DEEP_LINK_CALLER: &str = "deep link";
+
+/// After a deep-link confirmation is denied or times out, its source cannot take the single slot
+/// again for this long. Three seconds breaks a page's re-open loop while still allowing a real
+/// retry, and the cooldown is keyed by source so one page never blocks another (or Local MCP).
+pub const DEEP_LINK_COOLDOWN: Duration = Duration::from_secs(3);
+
 // Every confirmation is shown in OpenNavo's own window (see `confirm_window`). A timeout revokes that
 // confirmation's grants; the window is then closed and the slot released, and a late click never produces a grant.
 
@@ -63,6 +71,10 @@ impl ConfirmationRequest {
     }
 }
 
+fn is_deep_link(request: &ConfirmationRequest) -> bool {
+    request.caller == DEEP_LINK_CALLER
+}
+
 /// A grant is intentionally opaque to callers. It can only be consumed through this service, and consumption
 /// removes it before checking the supplied digest so a mismatched attempt cannot be retried or used as an oracle.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,6 +103,9 @@ struct State {
     active: Option<ActiveConfirmation>,
     grants: HashMap<String, ConfirmationGrant>,
     prompt: Option<WindowPrompt>,
+    /// Deep-link source -> when its last confirmation was denied or timed out. A source in cooldown
+    /// is refused before a window opens, so a page cannot keep the shared slot from Local MCP.
+    deep_link_cooldowns: HashMap<String, Instant>,
 }
 
 /// The confirmation shown in the OpenNavo window, answerable once through its one-time id.
@@ -488,6 +503,15 @@ impl ConfirmationService {
         if state.active.is_some() {
             return Err(AppError::new("E_BUSY", "confirmation_busy"));
         }
+        state
+            .deep_link_cooldowns
+            .retain(|_, denied_at| denied_at.elapsed() < DEEP_LINK_COOLDOWN);
+        if is_deep_link(&request) && state.deep_link_cooldowns.contains_key(&request.source) {
+            return Err(AppError::new(
+                "E_CONFIRMATION_COOLDOWN",
+                "confirmation_cooldown",
+            ));
+        }
         state.next_id = state.next_id.wrapping_add(1);
         let digest = request.digest();
         let (cancel, cancelled) = oneshot::channel();
@@ -549,6 +573,12 @@ impl ConfirmationService {
             state.grants.insert(grant.token.clone(), grant.clone());
             Ok(grant)
         };
+        // A timeout was recorded when it happened; a direct or focus-loss deny is recorded here.
+        if !allowed && !active.timed_out && is_deep_link(&active.request) {
+            state
+                .deep_link_cooldowns
+                .insert(active.request.source.clone(), Instant::now());
+        }
         drop(state);
         // Keep _cancel alive through delivery. Even if the waiting future is polled between these
         // statements, cancellation cannot win against an allow that has not been sent yet.
@@ -728,10 +758,17 @@ impl ConfirmationService {
     /// released (or a late answer arrives), but its already-issued grants must not stay usable.
     fn timeout(&self, id: u64) {
         if let Ok(mut state) = self.state.lock() {
+            let mut cooldown = None;
             if let Some(active) = state.active.as_mut()
                 && active.id == id
             {
                 active.timed_out = true;
+                if is_deep_link(&active.request) {
+                    cooldown = Some(active.request.source.clone());
+                }
+            }
+            if let Some(source) = cooldown {
+                state.deep_link_cooldowns.insert(source, Instant::now());
             }
             state.grants.retain(|_, grant| grant.confirmation_id != id);
         }
@@ -795,6 +832,16 @@ impl ConfirmationService {
             && let Some(prompt) = state.prompt.as_mut()
         {
             prompt.shown_at = Some(Instant::now() - ALLOW_ARM_DELAY);
+        }
+    }
+
+    /// Tests only: age a recorded deep-link cooldown past [`DEEP_LINK_COOLDOWN`].
+    #[cfg(test)]
+    fn test_age_deep_link_cooldown(&self, source: &str) {
+        if let Ok(mut state) = self.state.lock()
+            && let Some(denied_at) = state.deep_link_cooldowns.get_mut(source)
+        {
+            *denied_at -= DEEP_LINK_COOLDOWN;
         }
     }
 
@@ -934,9 +981,10 @@ mod confirm_window {
         .map_err(|_| AppError::new("E_UNKNOWN", "confirmation_window"))
     }
 
-    /// Closing the window is a refusal, and so is leaving it once it had focus: the user turned to
-    /// something else without allowing. Losing focus before it was ever focused (the window opened
-    /// behind another app) is not an answer.
+    /// Product decision for the shared window: closing it is a refusal, and so is leaving it once it
+    /// had focus: the user turned to something else without allowing. This applies to deep-link
+    /// installs and Local MCP writes alike (they use this same window). Losing focus before it was
+    /// ever focused (the window opened behind another app) is not an answer.
     pub(super) fn denies(
         event: &tauri::WindowEvent,
         focused_once: &std::sync::atomic::AtomicBool,
@@ -999,6 +1047,62 @@ mod tests {
         );
         service.test_expire(first.id);
         assert!(service.test_begin(request("cask/zed")).is_ok());
+    }
+
+    #[test]
+    fn a_denied_deep_link_source_cools_down_without_blocking_other_sources() {
+        let service = ConfirmationService::default();
+        let denied = request("cask/ghostty");
+        let pending = service.test_begin(denied.clone()).unwrap();
+        assert_eq!(
+            service.test_finish(pending.id, false).unwrap_err().code,
+            "E_CONFIRMATION_DENIED"
+        );
+        assert_eq!(
+            service.test_begin(denied.clone()).unwrap_err().code,
+            "E_CONFIRMATION_COOLDOWN",
+            "the same page cannot immediately take the slot again"
+        );
+
+        // A different source, and Local MCP, are not blocked by this page's cooldown.
+        let mut other = denied.clone();
+        other.source = "opennavo://package/cask/zed?action=install".into();
+        other.target = "cask/zed".into();
+        let other_pending = service
+            .test_begin(other)
+            .expect("another source is not blocked");
+        service.test_expire(other_pending.id);
+        let mcp = service
+            .test_begin(mcp_request())
+            .expect("MCP writes keep the slot during a deep-link cooldown");
+        service.test_expire(mcp.id);
+
+        service.test_age_deep_link_cooldown(&denied.source);
+        assert!(
+            service.test_begin(denied).is_ok(),
+            "the source may retry after the cooldown"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_timed_out_deep_link_source_cools_down() {
+        let service = std::sync::Arc::new(ConfirmationService::default());
+        let timed_out = request("cask/ghostty");
+        let pending = service.test_begin(timed_out.clone()).unwrap();
+        let id = pending.id;
+        assert_eq!(
+            wait_until_timeout(&service, pending, Duration::from_millis(50))
+                .await
+                .unwrap_err()
+                .code,
+            "E_CONFIRMATION_TIMEOUT"
+        );
+        // A timed-out prompt keeps the slot until its window is closed, as before.
+        service.release_prompt(id);
+        assert_eq!(
+            service.test_begin(timed_out).unwrap_err().code,
+            "E_CONFIRMATION_COOLDOWN"
+        );
     }
 
     #[test]
@@ -1191,7 +1295,14 @@ mod tests {
             service.test_finish(id, true).unwrap_err().code,
             "E_CONFIRMATION_TIMEOUT"
         );
-        assert!(service.test_begin(request("cask/zed")).is_ok());
+        assert_eq!(
+            service.test_begin(request("cask/zed")).unwrap_err().code,
+            "E_CONFIRMATION_COOLDOWN"
+        );
+        assert!(
+            service.test_begin(mcp_request()).is_ok(),
+            "the slot itself is released"
+        );
     }
 
     #[tokio::test]
@@ -1211,7 +1322,11 @@ mod tests {
         assert_eq!(late.code, "E_CONFIRMATION_TIMEOUT");
         assert_eq!(late.message, "confirmation_timeout");
         assert!(service.state.lock().unwrap().grants.is_empty());
-        assert!(service.test_begin(request("cask/zed")).is_ok());
+        assert_eq!(
+            service.test_begin(request("cask/zed")).unwrap_err().code,
+            "E_CONFIRMATION_COOLDOWN"
+        );
+        assert!(service.test_begin(mcp_request()).is_ok());
     }
 
     #[test]
@@ -1235,7 +1350,7 @@ mod tests {
             service.test_finish(denied.id, false).unwrap_err().code,
             "E_CONFIRMATION_DENIED"
         );
-        let timed_out = service.test_begin(request("cask/zed")).unwrap();
+        let timed_out = service.test_begin(mcp_request()).unwrap();
         service.test_timeout(timed_out.id);
         assert_eq!(
             service.test_finish(timed_out.id, true).unwrap_err().code,
@@ -1380,7 +1495,15 @@ mod tests {
             "E_CONFIRMATION_TIMEOUT",
             "the timed-out id cannot be answered after the window is gone"
         );
-        assert!(service.test_begin(request("cask/zed")).is_ok());
+        assert_eq!(
+            service.test_begin(request("cask/zed")).unwrap_err().code,
+            "E_CONFIRMATION_COOLDOWN",
+            "the timed-out source stays out of the slot"
+        );
+        assert!(
+            service.test_begin(mcp_request()).is_ok(),
+            "the slot itself is free"
+        );
 
         // The webview can report its destruction more than once.
         service.cancel_active();

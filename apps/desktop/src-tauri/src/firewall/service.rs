@@ -97,11 +97,44 @@ const PENDING_KEY: &str = "firewall_pending_configuration";
 const REMOVAL_KEY: &str = "firewall_removal_requested";
 const WIPE_KEY: &str = "firewall_wipe_on_setup";
 const STATS_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Matches `ANSWER_DELAY_MS` in `apps/desktop/src/components/firewall/meta.ts`. The frontend waits this
+/// long before enabling its answer buttons; Rust checks the same delay so a reply that bypasses the
+/// page is refused instead of becoming a rule before the user could have seen the question.
+pub const ALERT_ANSWER_DELAY: Duration = Duration::from_millis(1000);
+
+/// The question the window is showing (the queue head) and when Rust first saw it there.
+#[derive(Debug)]
+struct ArmedAlert {
+    id: String,
+    at: Instant,
+}
+
+/// A reply is accepted only for the alert at the queue head, and only after Rust has observed that
+/// alert at the head for [`ALERT_ANSWER_DELAY`]. `now` is a parameter so tests need not sleep.
+fn reply_allowed(
+    armed: Option<&ArmedAlert>,
+    head: Option<&str>,
+    alert_id: &str,
+    now: Instant,
+) -> bool {
+    let Some(head) = head else {
+        return false;
+    };
+    if head != alert_id {
+        return false;
+    }
+    armed.is_some_and(|armed| {
+        armed.id == head && now.saturating_duration_since(armed.at) >= ALERT_ANSWER_DELAY
+    })
+}
 struct Cache {
     status: FirewallStatus,
     /// The last snapshot that loaded; revisions and activity are compared against it across disconnects.
     snapshot: Option<Snapshot>,
     alerts: Vec<FirewallAlert>,
+    /// The queue head (the alert the window shows) and when Rust first saw it there.
+    armed: Option<ArmedAlert>,
     pending_options: Option<Configuration>,
     removal_requested: bool,
     cleanup_error: Option<FirewallFailure>,
@@ -118,6 +151,7 @@ impl Default for Cache {
             status: FirewallStatus::not_bundled(),
             snapshot: None,
             alerts: Vec::new(),
+            armed: None,
             pending_options: None,
             removal_requested: false,
             cleanup_error: None,
@@ -126,6 +160,17 @@ impl Default for Cache {
             stats_sent: Instant::now(),
             activity: HashMap::new(),
             last_activity: Instant::now(),
+        }
+    }
+}
+impl Cache {
+    /// Start the answer delay when the queue head changes; the same head keeps its original arm time.
+    fn arm(&mut self, head: Option<&str>, now: Instant) {
+        if self.armed.as_ref().map(|armed| armed.id.as_str()) != head {
+            self.armed = head.map(|id| ArmedAlert {
+                id: id.to_owned(),
+                at: now,
+            });
         }
     }
 }
@@ -402,10 +447,12 @@ impl Service {
                 .as_ref()
                 .map(|s| s.alerts.clone())
                 .unwrap_or_default();
+            let head = alerts.first().map(|alert| alert.id.clone());
             if force_alerts || cache.alerts != alerts {
                 cache.alerts = alerts.clone();
                 updates.push(Update::Alerts(alerts));
             }
+            cache.arm(head.as_deref(), Instant::now());
             if let Some(current) = &snapshot {
                 for (changed, revision, previous) in [
                     (
@@ -588,11 +635,47 @@ impl Service {
         }
         Ok(events)
     }
+    /// Reject a reply unless it names the alert currently at the queue head and that alert has been
+    /// armed for at least [`ALERT_ANSWER_DELAY`]. The native engine answers any question it still has,
+    /// so this check is what keeps a scripted or click-through reply from answering the wrong card.
+    fn check_alert_reply(&self, reply: &FirewallReply) -> Result<(), AppError> {
+        let cache = self
+            .cache
+            .lock()
+            .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
+        if reply_allowed(
+            cache.armed.as_ref(),
+            cache.alerts.first().map(|alert| alert.id.as_str()),
+            &reply.alert_id,
+            Instant::now(),
+        ) {
+            Ok(())
+        } else {
+            Err(failure(FirewallErrorCode::UnknownAlert))
+        }
+    }
+    /// Answer the question shown in the alert window. The Rust side enforces the arm delay and the
+    /// queue-head check even if the window's frontend is bypassed.
+    pub fn reply(&self, reply: FirewallReply) -> Result<(), AppError> {
+        self.available()?;
+        self.check_alert_reply(&reply)?;
+        let result = self.call::<Value>(json!({"op":"alert_reply","reply":reply}));
+        // Replay the queue even after an expired/stale alert, so the window cannot keep a dead card.
+        let refreshed = self.refresh(true);
+        match result {
+            Ok(_) => {
+                refreshed?;
+                Ok(())
+            }
+            Err(error) => Err(error),
+        }
+    }
     pub fn mutate<T: DeserializeOwned>(&self, request: Value) -> Result<T, AppError> {
         self.available()?;
+        // The IPC command uses `reply`, which also enforces the arm delay and queue head. Direct
+        // mutate callers keep the replay-after-a-stale-reply behavior.
         let reply = request["op"] == "alert_reply";
         let result = self.call(request);
-        // Always replay after a reply, including an expired/stale alert, so the UI cannot keep a dead card.
         let refreshed = self.refresh(reply);
         match result {
             Ok(value) => {
@@ -739,6 +822,194 @@ mod activity_tests {
                 "activity-diff round={round} events=1000 before_ms={before:.6} after_ms={after:.6}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod reply_tests {
+    use super::*;
+
+    fn alert(id: &str) -> FirewallAlert {
+        serde_json::from_value(json!({
+            "id": id,
+            "app": {
+                "key": "path:/fixture/tool", "name": "tool", "path": "/fixture/tool",
+                "bundlePath": null, "bundleId": null, "signingId": null, "teamId": null,
+                "teamName": null, "signer": "unsigned", "iconPath": null
+            },
+            "pid": 42, "args": [], "ancestors": [],
+            "remoteAddress": "192.0.2.1", "remoteHost": null, "port": 443,
+            "protocol": "tcp", "at": 1000, "waiting": 1, "released": false, "deadline": null
+        }))
+        .expect("fixture alert")
+    }
+
+    fn reply(alert_id: &str) -> FirewallReply {
+        FirewallReply {
+            alert_id: alert_id.into(),
+            action: FirewallAction::Block,
+            scope: FirewallReplyScope::App,
+            until: FirewallRuleUntil::Always,
+        }
+    }
+
+    /// A bridge that records every request and answers only status and alert_reply.
+    struct TestBridge {
+        requests: Mutex<Vec<Value>>,
+    }
+
+    impl Bridge for TestBridge {
+        fn request(&self, request: Value) -> Result<Value, AppError> {
+            self.requests.lock().unwrap().push(request.clone());
+            match request["op"].as_str() {
+                Some("status") => {
+                    let mut status = FirewallStatus::not_bundled();
+                    status.availability = FirewallAvailability::Available;
+                    Ok(serde_json::to_value(status).unwrap())
+                }
+                Some("alert_reply") => Ok(Value::Null),
+                _ => Err(failure(FirewallErrorCode::Disconnected)),
+            }
+        }
+    }
+
+    fn requested(bridge: &TestBridge, op: &str) -> bool {
+        bridge
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|request| request["op"].as_str() == Some(op))
+    }
+
+    fn service() -> (Arc<TestBridge>, Arc<Service>) {
+        let bridge = Arc::new(TestBridge {
+            requests: Mutex::new(Vec::new()),
+        });
+        let service = Arc::new(Service::new(bridge.clone(), Arc::new(|_| {}), None));
+        (bridge, service)
+    }
+
+    #[test]
+    fn reply_must_name_the_alert_at_the_queue_head() {
+        let (bridge, service) = service();
+        {
+            let mut cache = service.cache.lock().unwrap();
+            cache.alerts = vec![alert("head"), alert("next")];
+            cache.armed = Some(ArmedAlert {
+                id: "head".into(),
+                at: Instant::now() - ALERT_ANSWER_DELAY,
+            });
+        }
+        assert_eq!(
+            service.reply(reply("next")).unwrap_err().code,
+            "E_FW_UNKNOWN_ALERT"
+        );
+        assert!(
+            !requested(&bridge, "alert_reply"),
+            "a non-head alert never reaches the engine"
+        );
+        service.reply(reply("head")).expect("head alert accepted");
+        assert!(requested(&bridge, "alert_reply"));
+    }
+
+    #[test]
+    fn reply_is_refused_before_the_head_alert_has_been_armed() {
+        let (bridge, service) = service();
+        {
+            let mut cache = service.cache.lock().unwrap();
+            cache.alerts = vec![alert("head")];
+            cache.armed = Some(ArmedAlert {
+                id: "head".into(),
+                at: Instant::now(),
+            });
+        }
+        assert_eq!(
+            service.reply(reply("head")).unwrap_err().code,
+            "E_FW_UNKNOWN_ALERT"
+        );
+        assert!(
+            !requested(&bridge, "alert_reply"),
+            "an early reply never reaches the engine"
+        );
+    }
+
+    #[test]
+    fn a_new_queue_head_restarts_the_answer_delay() {
+        let start = Instant::now();
+        let later = start + Duration::from_secs(5);
+        let mut cache = Cache::default();
+        cache.arm(Some("one"), start);
+        let armed = cache.armed.as_ref().expect("armed");
+        assert_eq!((armed.id.as_str(), armed.at), ("one", start));
+
+        // The same head keeps its original arm time, so a refresh cannot keep pushing the answer out.
+        cache.arm(Some("one"), later);
+        assert_eq!(cache.armed.as_ref().unwrap().at, start);
+
+        cache.arm(Some("two"), later);
+        let armed = cache.armed.as_ref().expect("re-armed");
+        assert_eq!((armed.id.as_str(), armed.at), ("two", later));
+
+        cache.arm(None, later);
+        assert!(cache.armed.is_none());
+    }
+
+    #[test]
+    fn answer_delay_matches_the_frontend_constant() {
+        assert_eq!(ALERT_ANSWER_DELAY, Duration::from_millis(1000));
+        let meta = include_str!("../../../src/components/firewall/meta.ts");
+        assert!(
+            meta.contains("export const ANSWER_DELAY_MS = 1000;"),
+            "Rust and the firewall window must use the same delay"
+        );
+    }
+
+    #[test]
+    fn reply_allowed_names_the_head_and_enforces_the_delay() {
+        let start = Instant::now();
+        let armed = ArmedAlert {
+            id: "one".into(),
+            at: start,
+        };
+        assert!(!reply_allowed(Some(&armed), Some("one"), "one", start));
+        assert!(!reply_allowed(
+            Some(&armed),
+            Some("one"),
+            "one",
+            start + Duration::from_millis(999)
+        ));
+        assert!(reply_allowed(
+            Some(&armed),
+            Some("one"),
+            "one",
+            start + ALERT_ANSWER_DELAY
+        ));
+        // A different head is refused even when its own id is old enough.
+        assert!(!reply_allowed(
+            Some(&armed),
+            Some("two"),
+            "one",
+            start + ALERT_ANSWER_DELAY
+        ));
+        assert!(!reply_allowed(
+            Some(&armed),
+            Some("two"),
+            "two",
+            start + ALERT_ANSWER_DELAY
+        ));
+        assert!(!reply_allowed(
+            Some(&armed),
+            None,
+            "one",
+            start + ALERT_ANSWER_DELAY
+        ));
+        assert!(!reply_allowed(
+            None,
+            Some("one"),
+            "one",
+            start + ALERT_ANSWER_DELAY
+        ));
     }
 }
 

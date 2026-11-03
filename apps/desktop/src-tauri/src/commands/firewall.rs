@@ -97,9 +97,19 @@ pub async fn firewall_alert_reply(
     state: State<'_, Arc<Service>>,
     reply: FirewallReply,
 ) -> Result<(), AppError> {
+    answer_alert(window, state, reply).await
+}
+
+/// The command body, runtime-generic so the command-level test can drive it through Tauri's mock
+/// runtime. The command itself fixes the runtime to the app's real one (`Wry`).
+async fn answer_alert<R: tauri::Runtime>(
+    window: tauri::WebviewWindow<R>,
+    state: State<'_, Arc<Service>>,
+    reply: FirewallReply,
+) -> Result<(), AppError> {
     require_alert_window(window.label())?;
     let service = state.inner().clone();
-    crate::blocking(move || service.mutate(json!({"op":"alert_reply","reply":reply}))).await
+    crate::blocking(move || service.reply(reply)).await
 }
 
 #[tauri::command]
@@ -220,6 +230,68 @@ mod alert_window_tests {
                 "{label}"
             );
         }
+    }
+
+    /// The real command fixes the runtime to `Wry`, which Tauri's mock runtime cannot construct.
+    /// This wrapper has the same IPC name and calls the real command body, so dispatch and the
+    /// window guard are exercised end to end. The extra module keeps the generated command macros
+    /// from colliding with the real command's.
+    mod mock {
+        #[tauri::command(rename = "firewall_alert_reply")]
+        pub async fn reply(
+            window: tauri::WebviewWindow<tauri::test::MockRuntime>,
+            state: tauri::State<'_, std::sync::Arc<crate::firewall::Service>>,
+            reply: crate::firewall::FirewallReply,
+        ) -> Result<(), crate::AppError> {
+            super::super::answer_alert(window, state, reply).await
+        }
+    }
+
+    #[test]
+    fn main_window_gets_e_forbidden_from_the_alert_reply_command() {
+        use std::time::Duration;
+
+        let app = tauri::test::mock_builder()
+            .manage(std::sync::Arc::new(crate::firewall::Service::new(
+                std::sync::Arc::new(crate::firewall::bridge::Native),
+                std::sync::Arc::new(|_| {}),
+                None,
+            )))
+            .invoke_handler(tauri::generate_handler![mock::reply])
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        window.as_ref().clone().on_message(
+            tauri::webview::InvokeRequest {
+                cmd: "firewall_alert_reply".into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "tauri://localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(serde_json::json!({
+                    "reply": {
+                        "alertId": "alert",
+                        "action": "block",
+                        "scope": "app",
+                        "until": "always"
+                    }
+                })),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.into(),
+            },
+            Box::new(move |_, _, result, _, _| {
+                sender.send(result).unwrap();
+            }),
+        );
+        let response = receiver
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the command replies");
+        let tauri::ipc::InvokeResponse::Err(error) = response else {
+            panic!("the main window must not answer a firewall question");
+        };
+        assert_eq!(error.0["code"], "E_FORBIDDEN");
     }
 
     #[test]

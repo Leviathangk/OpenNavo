@@ -1,6 +1,8 @@
 use crate::{
     AppError,
-    confirmation::{ConfirmationListItem, ConfirmationRequest, ConfirmationService},
+    confirmation::{
+        ConfirmationListItem, ConfirmationRequest, ConfirmationService, DEEP_LINK_CALLER,
+    },
     core::DesktopCore,
     deeplink::{CollectionInstallItem, CollectionInstallPlan, InstallStep, InstallTarget, Router},
     model::{InstalledItem, PermissionState, Permissions, Task, TaskKind, TaskTarget, TaskTrigger},
@@ -110,6 +112,13 @@ pub async fn deeplink_install_confirm(
     match &result {
         Ok(_) => reservation.disarm(),
         Err(error) if error.code == "E_BUSY" => reservation.release(),
+        Err(error) if error.code == "E_CONFIRMATION_COOLDOWN" => {
+            // Drop the retry silently: this source just had a denial or timeout, and telling the page
+            // about the cooldown would only invite another immediate attempt. `settle_refused` has
+            // already cancelled the pending link.
+            reservation.disarm();
+            return Ok(DeepLinkInstallResult { tasks: vec![] });
+        }
         Err(_) => {}
     }
     result
@@ -229,7 +238,7 @@ fn single_install_request(source: String, plan: &ResolvedInstallPlan) -> Confirm
     let target = plan.command_target();
     let identity = format!("{}/{}", target.kind.as_str(), target.token);
     ConfirmationRequest {
-        caller: "deep link".into(),
+        caller: DEEP_LINK_CALLER.into(),
         source,
         action: "install".into(),
         target: plan
@@ -247,7 +256,7 @@ async fn confirm_collection(
 ) -> Result<DeepLinkInstallResult, AppError> {
     ensure_install_environment(context.state).await?;
     let request = ConfirmationRequest {
-        caller: "deep link".into(),
+        caller: DEEP_LINK_CALLER.into(),
         source,
         action: "install collection".into(),
         target: format!("collection/{slug}"),
@@ -565,7 +574,7 @@ mod tests {
             InstallStep::ResolveCollection { .. }
         ));
         let request = ConfirmationRequest {
-            caller: "deep link".into(),
+            caller: DEEP_LINK_CALLER.into(),
             source: "opennavo://collection/dev-setup?action=install".into(),
             action: "install collection".into(),
             target: "collection/dev-setup".into(),
