@@ -17,7 +17,10 @@ import { useMajorConfirmStore } from './majorConfirm';
 import { useTasksStore } from './tasks';
 
 // Cask-only catalog (ADR-018): neither show nor count command-line tools from brew outdated.
-const shown = (list: OutdatedItem[]) => list.filter(item => item.source !== 'homebrew' || item.kind === 'cask');
+// Exported so the shared table in `packages/shared/tests/fixtures/updateVisibility.json` drives it
+// alongside Rust's `scheduler::visible()`: the rule is written twice, and a table both read is what
+// makes a divergence between the two turn something red.
+export const shown = (list: OutdatedItem[]) => list.filter(item => item.source !== 'homebrew' || item.kind === 'cask');
 // Operations after which a target no longer has the update brew outdated listed before them.
 const SETTLING: readonly TaskOp[] = ['upgrade', 'reinstall', 'uninstall'];
 

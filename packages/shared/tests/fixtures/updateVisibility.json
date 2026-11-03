@@ -1,0 +1,23 @@
+[
+  { "source": "homebrew", "kind": "cask", "expectedVisible": true },
+  { "source": "homebrew", "kind": "formula", "expectedVisible": false },
+  { "source": "homebrew", "kind": "link", "expectedVisible": false },
+  { "source": "mas", "kind": "cask", "expectedVisible": true },
+  { "source": "mas", "kind": "formula", "expectedVisible": true },
+  { "source": "mas", "kind": "link", "expectedVisible": true },
+  { "source": "sparkle", "kind": "cask", "expectedVisible": true },
+  { "source": "sparkle", "kind": "formula", "expectedVisible": true },
+  { "source": "sparkle", "kind": "link", "expectedVisible": true },
+  { "source": "electron", "kind": "cask", "expectedVisible": true },
+  { "source": "electron", "kind": "formula", "expectedVisible": true },
+  { "source": "electron", "kind": "link", "expectedVisible": true },
+  { "source": "github", "kind": "cask", "expectedVisible": true },
+  { "source": "github", "kind": "formula", "expectedVisible": true },
+  { "source": "github", "kind": "link", "expectedVisible": true },
+  { "source": "vendor", "kind": "cask", "expectedVisible": true },
+  { "source": "vendor", "kind": "formula", "expectedVisible": true },
+  { "source": "vendor", "kind": "link", "expectedVisible": true },
+  { "source": "msupdate", "kind": "cask", "expectedVisible": true },
+  { "source": "msupdate", "kind": "formula", "expectedVisible": true },
+  { "source": "msupdate", "kind": "link", "expectedVisible": true }
+]

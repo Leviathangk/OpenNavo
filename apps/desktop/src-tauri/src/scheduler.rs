@@ -246,6 +246,81 @@ mod tests {
         }
     }
 
+    /// One row of the shared visibility table that this file and the page's store both read.
+    #[derive(serde::Deserialize)]
+    struct VisibilityCase {
+        source: UpdateSource,
+        kind: Kind,
+        #[serde(rename = "expectedVisible")]
+        expected_visible: bool,
+    }
+
+    /// `UpdateSource` carries its own `ALL`; `Kind` does not, so this list is hand-kept. The match in
+    /// `kinds_covers_every_variant` is what keeps it honest.
+    const KINDS: [Kind; 3] = [Kind::Cask, Kind::Formula, Kind::Link];
+
+    /// A new `Kind` variant must not slip past the table above. The match is exhaustive with no
+    /// wildcard, so adding one fails the build here until it is added to `KINDS` as well; the table
+    /// cannot quietly keep counting three kinds while the enum has four.
+    #[test]
+    fn kinds_covers_every_variant() {
+        fn every(kind: Kind) -> bool {
+            match kind {
+                Kind::Cask | Kind::Formula | Kind::Link => true,
+            }
+        }
+        assert!(KINDS.iter().copied().all(every));
+        assert_eq!(KINDS.len(), 3, "one entry per Kind variant");
+    }
+
+    /// The page's half of the rule is `apps/desktop/src/stores/updates.ts`, and until now each side
+    /// was held by its own hand-written cases: neither could notice a change that moved only the
+    /// other. Both now read `packages/shared/tests/fixtures/updateVisibility.json`, one row per
+    /// `source × kind`, so a divergence turns one table red on both sides.
+    ///
+    /// The whole table, not a sample of it: 7 sources × 3 kinds is every row the rule can be asked
+    /// about, so a case missing from the fixture is the same defect as a wrong answer in one.
+    #[test]
+    fn visible_answers_every_row_of_the_shared_table() {
+        let cases: Vec<VisibilityCase> = serde_json::from_str(include_str!(
+            "../../../../packages/shared/tests/fixtures/updateVisibility.json"
+        ))
+        .expect("the shared visibility table parses");
+        // A loop over an empty or short table says nothing, and says it quietly: `for case in cases`
+        // passes when `cases` is empty, exactly like an `every()` over no calls. Count and coverage
+        // are asserted first, so a dropped row cannot hide behind the loop below.
+        assert_eq!(
+            cases.len(),
+            UpdateSource::ALL.len() * KINDS.len(),
+            "the table carries one row per source and kind"
+        );
+        let listed: HashSet<_> = cases.iter().map(|c| (c.source, c.kind)).collect();
+        assert_eq!(
+            listed.len(),
+            cases.len(),
+            "no source and kind appears twice"
+        );
+        for source in UpdateSource::ALL {
+            for kind in KINDS {
+                assert!(
+                    listed.contains(&(source, kind)),
+                    "the table has no row for {} / {}",
+                    source.as_str(),
+                    kind.as_str()
+                );
+            }
+        }
+        for case in &cases {
+            assert_eq!(
+                visible(&item(case.source, case.kind, "row")),
+                case.expected_visible,
+                "{} / {}",
+                case.source.as_str(),
+                case.kind.as_str()
+            );
+        }
+    }
+
     /// The rows the page lists. Formula and link are never listed (cask-only catalog), every other
     /// state the page still shows, which is what separates this from `eligible()`.
     #[test]

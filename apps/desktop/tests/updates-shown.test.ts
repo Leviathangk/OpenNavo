@@ -13,8 +13,10 @@ import { setup } from './helpers';
 // `useUpdatesStore().items`; what this file adds is a per-branch truth table over `shown()`, so a failure names
 // the branch that broke instead of only the list.
 //
-// `shown()` is private to the module, so these cases go through the public path: a mocked `updates_list`, then
-// `load()`, then `items`. With no finished task and no pin in play, `accept()` applies exactly `shown(list)`.
+// `shown()` is now exported, but these cases keep going through the public path: a mocked `updates_list`, then
+// `load()`, then `items`. With no finished task and no pin in play, `accept()` applies exactly `shown(list)`, so
+// they check the store's wiring as well as the rule. `updates-shared-table.test.ts` drives the exported function
+// directly from the same fixture Rust reads.
 
 const status: UpdatesStatus = { checking: false, checkedAt: null, nextCheckAt: null, failedSources: [], failures: [] };
 const ok = <T>(data: T) => ({ status: 'ok' as const, data });
