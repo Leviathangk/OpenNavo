@@ -219,6 +219,26 @@ func TestScheduleReleasesTheLeaseWhenTheTickIsCanceledMidBatch(t *testing.T) {
 	}
 }
 
+// The release can fail when the queue did not. The archived-task duplicate is rejected without being a queue
+// failure, and it is the only path that fills `unqueued` while leaving `queueErr` nil: if the condition that
+// returns the error names only the queue, the tick reports success while the rejected source keeps a lease
+// nothing will ever run. Both cases look alike here and only this one is silent, so it is asserted apart.
+func TestScheduleReportsAReleaseFailureThatWasTheTicksOnlyFailure(t *testing.T) {
+	st, svc, ids, now := scheduleFixture(t, 3)
+	releaseErr := &net.OpError{Op: "write", Net: "tcp", Err: errors.New("database is shutting down")}
+	// One duplicate-lock rejection, so the queue succeeds for the rest and never sets a queue error.
+	svc.Queue = &failingQueue{fail: 1, reason: &domain.AppError{Code: domain.CodeInvalidState, HTTPStatus: 409}}
+	svc.Release = func(context.Context, []int64) error { return releaseErr }
+	stats, err := svc.Schedule(context.Background())
+	require.ErrorIs(t, err, releaseErr, "a release-only failure does not read as a clean tick")
+	require.Nil(t, stats, "no stats are reported alongside the failure")
+	// The release is what would have given the lease back, so the rejected source keeps it — the same
+	// consequence the queue-and-release case asserts, reached without a queue error.
+	for _, id := range ids {
+		require.WithinDuration(t, now.Add(2*time.Hour), sourceState(t, st, id), time.Second, "source %d keeps the lease", id)
+	}
+}
+
 // When the queue itself fails and the release fails too, both must reach the caller: replacing one with the
 // other would turn a queue outage (network_error) into an unexplained unknown-category failure.
 func TestScheduleReportsAQueueFailureWhoseReleaseAlsoFailed(t *testing.T) {
