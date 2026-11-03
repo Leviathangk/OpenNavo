@@ -878,6 +878,10 @@ pub struct UpdatableApp {
     pub installed_version: String,
     pub current_version: String,
     pub kind: crate::model::Kind,
+    /// Which feed the row came from. Carried so the update tool can tell a
+    /// Homebrew formula from a `mas` one: both are `Kind::Formula`, but only
+    /// the Homebrew one is a token masquerading as an id.
+    pub source: crate::model::UpdateSource,
     pub token: String,
 }
 
@@ -885,6 +889,22 @@ pub fn updatable_rows(
     core: &std::sync::Arc<crate::core::DesktopCore>,
 ) -> Result<Vec<UpdatableApp>, crate::AppError> {
     let updates = core.updates_list()?;
+    if updates.is_empty() {
+        return Ok(Vec::new());
+    }
+    // Only the rows the updates page draws. `updates_list` is shared with the
+    // tray (`tray.rs:97`, `tray.rs:250`) and the page, so it cannot be narrowed
+    // itself; this is the MCP boundary, and here the list has to match what the
+    // user can see or the tool offers to upgrade something the page never
+    // showed. `scheduler::visible` is the same rule the page's `shown()` mirrors:
+    // the catalog is cask-only (ADR-018), so a Homebrew formula or link is not
+    // listed. This is deliberately not `scheduler::eligible`, which also drops
+    // pinned, ignored, skipped and non-auto-upgraded rows: those are still on
+    // the page and upgrading one on request is allowed.
+    let updates: Vec<_> = updates
+        .into_iter()
+        .filter(crate::scheduler::visible)
+        .collect();
     if updates.is_empty() {
         return Ok(Vec::new());
     }
@@ -924,6 +944,7 @@ pub fn updatable_rows(
                 installed_version: update.installed_version,
                 current_version: update.current_version,
                 kind: update.kind,
+                source: update.source,
                 token: update.token,
             }
         })
@@ -1957,5 +1978,86 @@ mod tests {
         assert_eq!(queued[0].op, crate::model::TaskOp::Clean);
         assert_eq!(queued[0].trigger, crate::model::TaskTrigger::Manual);
         broker.shutdown();
+    }
+
+    /// The MCP read list is the page's list, not the internal one.
+    ///
+    /// `updates_list` keeps Homebrew formulae (`updater/service.rs` retains on
+    /// source enablement and native-cask ownership only, never on kind) and the
+    /// page drops them (`scheduler::visible`, mirrored by the web store's
+    /// `shown()`). Both MCP tools go through `updatable_rows`, so this is the one
+    /// place that narrowing has to happen — and it must be by `visible`, not by
+    /// `eligible`, which would also drop pinned, ignored and skipped rows the
+    /// page still draws.
+    #[test]
+    fn updatable_rows_drops_the_formula_the_page_never_draws() {
+        let dir = tempdir();
+        let core = crate::core::DesktopCore::open(
+            dir.path().join("data"),
+            dir.path().join("cache"),
+            dir.path().join("askpass"),
+            Arc::new(|_| {}),
+        )
+        .expect("core");
+        let row = |kind: crate::model::Kind, token: &str| crate::model::OutdatedItem {
+            source: crate::model::UpdateSource::Homebrew,
+            app_id: None,
+            bundle_id: None,
+            channel: None,
+            major: false,
+            notes: None,
+            integrity: None,
+            requires_admin: false,
+            running: false,
+            relaunch_pending: false,
+            skipped_version: None,
+            critical_update: false,
+            informational_url: None,
+            download_host: None,
+            expected_team_match: None,
+            unsigned_update: None,
+            kind,
+            token: token.into(),
+            name: token.into(),
+            installed_version: "1.0.0".into(),
+            current_version: "1.1.0".into(),
+            auto_updates: false,
+            pinned: false,
+            ignored: false,
+            dependents: 0,
+            download_size: None,
+        };
+        *core.updates.write().unwrap() = vec![
+            row(crate::model::Kind::Cask, "ghostty"),
+            row(crate::model::Kind::Formula, "jq"),
+        ];
+
+        let rows = updatable_rows(&core).expect("rows");
+        let tokens: Vec<&str> = rows.iter().map(|row| row.token.as_str()).collect();
+        assert_eq!(
+            tokens,
+            vec!["ghostty"],
+            "a formula the page never draws must not be offered by the read tool"
+        );
+
+        // And the write tool resolves ids against this same list, so a formula
+        // id the read tool no longer prints is refused rather than queued.
+        let offered: Vec<super::super::tools::UpdatableRow> = rows
+            .into_iter()
+            .map(|row| super::super::tools::UpdatableRow {
+                id: row.id,
+                token: row.token,
+                name: row.name,
+                kind: row.kind,
+                source: row.source,
+                current_version: row.current_version,
+            })
+            .collect();
+        assert_eq!(
+            super::super::tools::plan_update_selection(&offered, &["jq".into()])
+                .expect_err("the formula id is not in the list any more")
+                .code,
+            "E_NOT_FOUND"
+        );
     }
 }

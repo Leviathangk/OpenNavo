@@ -72,7 +72,6 @@ enum Plan {
     },
     Update {
         rows: Vec<super::tools::UpdatableRow>,
-        targets: Vec<TaskTarget>,
         digest: String,
     },
 }
@@ -262,10 +261,6 @@ impl<R: tauri::Runtime> Writes<R> {
         let available = crate::blocking(move || super::broker::updatable_rows(&core))
             .await
             .map_err(tool_error)?;
-        let versions: Vec<String> = available
-            .iter()
-            .map(|row| row.current_version.clone())
-            .collect();
         let available = available
             .into_iter()
             .map(|row| super::tools::UpdatableRow {
@@ -273,16 +268,21 @@ impl<R: tauri::Runtime> Writes<R> {
                 token: row.token,
                 name: row.name,
                 kind: row.kind,
+                source: row.source,
+                current_version: row.current_version,
             })
             .collect::<Vec<_>>();
         let selection = super::tools::plan_update_selection(&available, app_ids)?;
         // Bind the grant to the ids and the versions they move from, so the
         // dialog's list is what runs and a version that moved under the user
-        // is a different grant.
-        let digest = super::tools::update_plan_digest(&selection.rows, &versions);
+        // is a different grant. Both come from `selection.rows`, never from the
+        // full list: a row the client did not name is not part of this grant,
+        // so it moving must not change the digest.
+        let digest = super::tools::update_plan_digest(&selection.rows);
+        // No targets field: `execute` rebuilds them from the recheck, so the
+        // plan carries only what the dialog drew and the digest that binds it.
         Ok(Plan::Update {
             rows: selection.rows,
-            targets: selection.targets,
             digest,
         })
     }
@@ -527,14 +527,36 @@ impl<R: tauri::Runtime> Writes<R> {
                     json!({ "status": "queued", "task": task }),
                 ))
             }
-            Plan::Update { targets, rows, .. } => {
+            // `targets` is not taken here: the recheck below rebuilds them from
+            // the fresh list and queues that verified selection, so reading the
+            // planned copy would only add a second source that could drift.
+            Plan::Update { rows, digest, .. } => {
                 // Resolving the selection and showing the dialog both take time;
                 // a switch may have gone off, so the gate runs again here as it
-                // does everywhere else, before the queue is touched.
+                // does everywhere else, before the queue is touched. So does the
+                // selection itself: the digest the user approved is recomputed
+                // against a fresh list, and a row that appeared, vanished or
+                // moved its version since the dialog opened is a different grant.
                 let queue = self.core.queue.clone();
+                let core = self.core.clone();
                 let check = context.still_valid.clone();
+                let names: Vec<String> = rows.iter().map(|row| row.name.clone()).collect();
                 let tasks = crate::blocking(move || {
-                    queue_update(check.as_ref(), targets, |targets| {
+                    let recheck = || {
+                        let fresh = super::broker::updatable_rows(&core)?;
+                        Ok(fresh
+                            .into_iter()
+                            .map(|row| super::tools::UpdatableRow {
+                                id: row.id,
+                                token: row.token,
+                                name: row.name,
+                                kind: row.kind,
+                                source: row.source,
+                                current_version: row.current_version,
+                            })
+                            .collect::<Vec<_>>())
+                    };
+                    queue_verified_update(check.as_ref(), &rows, &digest, recheck, |targets| {
                         queue.enqueue_many(
                             TaskOp::Upgrade,
                             targets,
@@ -550,7 +572,7 @@ impl<R: tauri::Runtime> Writes<R> {
                     format!("queued:{}", ids.join(",")),
                     json!({
                         "status": "queued",
-                        "updated": rows.iter().map(|row| &row.name).collect::<Vec<_>>(),
+                        "updated": names,
                         "tasks": tasks,
                     }),
                 ))
@@ -652,22 +674,47 @@ fn invalidated() -> ToolError {
     )
 }
 
-/// Queue an approved update selection, but only while the grant is still valid.
+/// Queue an approved update selection, but only while the grant still describes
+/// what is on disk.
 ///
-/// Pulled out of `execute` so the gate can be tested without an `AppHandle`: the
-/// enqueue itself is the argument, so a test can prove the queue is never
-/// reached once the approval is void, and that it is reached unchanged when it
-/// is not.
-fn queue_update<T>(
+/// The confirmation's digest is recomputed here against a fresh read, and the
+/// queue is not touched unless it is still the digest the user approved.
+/// Without this the digest would only name a plan: `Plan::Update` carries the
+/// rows the dialog drew, and `enqueue_many` would happily upgrade them after
+/// they had all moved on. The recomputation is the difference between "the user
+/// approved these updates from these versions" and "the user approved an update
+/// of an app that has since changed".
+///
+/// `recheck` is a parameter rather than a call to the real list so this can be
+/// tested without a `DesktopCore`, exactly like the rest of the gate.
+fn queue_verified_update<T>(
     still_valid: &(dyn Fn() -> bool + Send + Sync),
-    targets: Vec<TaskTarget>,
+    rows: &[super::tools::UpdatableRow],
+    approved: &str,
+    recheck: impl FnOnce() -> Result<Vec<super::tools::UpdatableRow>, AppError>,
     enqueue: impl FnOnce(Vec<TaskTarget>) -> Result<T, AppError>,
 ) -> Result<T, AppError> {
     if !still_valid() {
         let error = invalidated();
         return Err(AppError::new(&error.code, error.message));
     }
-    enqueue(targets)
+    let fresh = recheck()?;
+    // The selection is the rows the client named, re-resolved against the fresh
+    // list: an id that is gone is refused by `plan_update_selection` exactly as
+    // it would be on the original call.
+    let named: Vec<String> = rows.iter().map(|row| row.id.clone()).collect();
+    let selection = super::tools::plan_update_selection(&fresh, &named)
+        .map_err(|error| AppError::new("E_CONFIRMATION_MISMATCH", error.message))?;
+    if super::tools::update_plan_digest(&selection.rows) != approved {
+        return Err(AppError::new(
+            "E_CONFIRMATION_MISMATCH",
+            "The updates changed while the confirmation was open, so the approved plan no longer applies.",
+        ));
+    }
+    // Queue the targets this check just approved, not the ones passed in: equal
+    // digests make them the same list anyway, and taking them from the verified
+    // selection means there is no second copy that could ever drift from it.
+    enqueue(selection.targets)
 }
 
 fn audit_unavailable() -> ToolError {
@@ -760,10 +807,12 @@ fn confirm_view(plan: &Plan, identity: &Identity) -> McpConfirmView {
             caller.may_come_from.as_deref(),
             caller.claimed_name.as_deref(),
         ),
-        // The window lists every app by name and the version it moves to, in
-        // the order queue_updates named them, so "4 updates" can never stand in
-        // for showing which four. The item rows are the same rows the queue
-        // receives: both come from `plan_update_selection`.
+        // The window lists every app by name, in the order queue_updates named
+        // them, so "4 updates" can never stand in for showing which four. The
+        // rows are the same rows the queue receives (both come from
+        // `plan_update_selection`), and they carry each app's current version
+        // because that is what the grant's digest binds: `execute` recomputes
+        // the digest against a fresh list before it queues anything.
         Plan::Update { rows, .. } => {
             let mut view = McpConfirmView::new(
                 "updateInstall",
@@ -1019,6 +1068,8 @@ mod tests {
             token: token.into(),
             name: name.into(),
             kind: crate::model::Kind::Cask,
+            source: crate::model::UpdateSource::Homebrew,
+            current_version: "1.0.0".into(),
         }
     }
 
@@ -1032,7 +1083,6 @@ mod tests {
         ];
         let plan = Plan::Update {
             rows: rows.clone(),
-            targets: Vec::new(),
             digest: "d".into(),
         };
         let view = confirm_view(
@@ -1069,36 +1119,121 @@ mod tests {
     }
 
     #[test]
+    fn an_update_whose_version_moved_under_the_dialog_is_not_queued() {
+        // The grant is the digest of the rows and the versions the user saw. If
+        // a version moves while the dialog is open, the approved plan no longer
+        // describes what would run, so the queue must not be touched.
+        let approved_rows = vec![update_row("ghostty", "ghostty", "Ghostty")];
+        let digest = super::super::tools::update_plan_digest(&approved_rows);
+        let targets = vec![TaskTarget {
+            kind: crate::model::TaskKind::Cask,
+            token: "ghostty".into(),
+        }];
+
+        let mut moved = update_row("ghostty", "ghostty", "Ghostty");
+        moved.current_version = "1.0.1".into();
+        let mut queued = false;
+        let error = queue_verified_update(
+            &|| true,
+            &approved_rows,
+            &digest,
+            || Ok(vec![moved.clone()]),
+            |_| {
+                queued = true;
+                Ok::<_, AppError>(())
+            },
+        )
+        .expect_err("a version that moved is a different grant");
+        assert_eq!(error.code, "E_CONFIRMATION_MISMATCH");
+        assert!(!queued, "the queue must not be touched for a moved version");
+
+        // A row that vanished is refused the same way, through the same
+        // selection rule the first call used.
+        let error = queue_verified_update(
+            &|| true,
+            &approved_rows,
+            &digest,
+            || Ok(Vec::new()),
+            |_| {
+                queued = true;
+                Ok::<_, AppError>(())
+            },
+        )
+        .expect_err("an id that is no longer updatable is not approved");
+        assert_eq!(error.code, "E_CONFIRMATION_MISMATCH");
+        assert!(!queued);
+
+        // And unchanged rows still queue, with the same targets.
+        let mut received = None;
+        queue_verified_update(
+            &|| true,
+            &approved_rows,
+            &digest,
+            || Ok(vec![update_row("ghostty", "ghostty", "Ghostty")]),
+            |targets| {
+                received = Some(targets);
+                Ok::<_, AppError>(())
+            },
+        )
+        .expect("unchanged approval");
+        assert_eq!(received.expect("enqueue ran"), targets);
+
+        // Withdrawal still wins over everything: it is checked before the
+        // re-read, so a revoked approval never even looks at the list again.
+        let error = queue_verified_update(
+            &|| false,
+            &approved_rows,
+            &digest,
+            || panic!("a withdrawn approval must not re-read the list"),
+            |_| Ok::<_, AppError>(()),
+        )
+        .expect_err("withdrawn");
+        assert_eq!(error.code, "E_CONFIRMATION_INVALIDATED");
+    }
+
+    #[test]
     fn an_update_whose_approval_was_withdrawn_never_reaches_the_queue() {
         // The dialog takes time to answer and the switch can go off while it is
         // open. `still_valid` is the last thing checked: once it says no, the
         // enqueue closure must not run at all.
+        let rows = vec![update_row("ghostty", "ghostty", "Ghostty")];
+        let digest = super::super::tools::update_plan_digest(&rows);
         let targets = vec![TaskTarget {
             kind: crate::model::TaskKind::Cask,
             token: "ghostty".into(),
         }];
         let mut queued = false;
-        let error = queue_update(&|| false, targets.clone(), |_| {
-            queued = true;
-            Ok::<_, AppError>(())
-        })
+        let error = queue_verified_update(
+            &|| false,
+            &rows,
+            &digest,
+            || panic!("a withdrawn approval must not re-read the list"),
+            |_| {
+                queued = true;
+                Ok::<_, AppError>(())
+            },
+        )
         .expect_err("withdrawn");
         assert_eq!(error.code, "E_CONFIRMATION_INVALIDATED");
         assert!(!queued, "the queue must not be touched after withdrawal");
 
-        // The same closure does run, with the same targets, while the grant holds.
+        // The same rows do reach the queue, with the same targets, while the
+        // grant holds.
         let mut received = None;
-        queue_update(&|| true, targets, |targets| {
-            received = Some(targets);
-            Ok::<_, AppError>(())
-        })
+        queue_verified_update(
+            &|| true,
+            &rows,
+            &digest,
+            || Ok(rows.clone()),
+            |targets| {
+                received = Some(targets);
+                Ok::<_, AppError>(())
+            },
+        )
         .expect("valid");
         assert_eq!(
             received.expect("enqueue ran"),
-            vec![TaskTarget {
-                kind: crate::model::TaskKind::Cask,
-                token: "ghostty".into(),
-            }],
+            targets,
             "the rows the dialog showed are the rows that are queued"
         );
     }

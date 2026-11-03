@@ -133,7 +133,7 @@ pub enum WriteRequest {
 
 /// One row `list_updatable_apps` returns, as the tool's own sites build it.
 ///
-/// The update tool refuses an id unless it is one of these, so the same pair of
+/// The update tool refuses an id unless it is one of these, so the same set of
 /// fields decides both what a client may name and what gets queued.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct UpdatableRow {
@@ -143,6 +143,19 @@ pub struct UpdatableRow {
     pub token: String,
     pub name: String,
     pub kind: crate::model::Kind,
+    /// Which feed the row came from. Two rows can share an `id` shape without
+    /// being equally updatable: a Homebrew formula's id *is* its token, so
+    /// accepting it would accept a Homebrew token under the name of an id.
+    /// `mas` formulae are real page rows and keep working, which is why the
+    /// refusal in [`plan_update_selection`] tests source and kind together.
+    pub source: crate::model::UpdateSource,
+    /// The version this row currently is, which is the version the grant binds
+    /// it at. It lives here rather than in a list beside the rows because the
+    /// rows a grant covers are a *subset* of the rows that were available: a
+    /// separate list keyed by position silently pairs the selected rows with
+    /// the first N available versions, so an unselected app moving its version
+    /// changes the digest of a grant that does not include it.
+    pub current_version: String,
 }
 
 /// What [`plan_update_selection`] resolved: the rows to queue, in the order the
@@ -185,6 +198,26 @@ pub fn plan_update_selection(
                 ),
             ));
         };
+        // A Homebrew formula is listed with its token standing in for an id
+        // (`updates.rs` is the only place that builds a Homebrew row, and it
+        // sets `app_id: None`). Matching it here would accept a Homebrew token
+        // under the name of an id, which is exactly what the tool's description
+        // promises never happens.
+        //
+        // Both halves are needed. `kind == Formula` alone would also refuse a
+        // `mas` formula, and those are ordinary page rows: the page's rule
+        // (`scheduler::visible`, mirrored by the web store's `shown()`) only
+        // drops *Homebrew* non-casks.
+        if row.source == crate::model::UpdateSource::Homebrew
+            && row.kind == crate::model::Kind::Formula
+        {
+            return Err(ToolError::new(
+                "E_NOT_FOUND",
+                format!(
+                    "{id} is not an app the updates page shows; Homebrew formulae are not updatable here"
+                ),
+            ));
+        }
         rows.push(row.clone());
     }
     let targets = rows
@@ -200,14 +233,15 @@ pub fn plan_update_selection(
 /// Digest of the rows an update grant is bound to.
 ///
 /// The dialog lists these rows and `execute` queues these same rows, so hashing
-/// the pair that decides both (id and the version it moves from) is what makes
-/// the grant say "these updates, from these versions" rather than "some
-/// updates". Order is part of it: the dialog promises that order, and a version
+/// them is what makes the grant say "these updates, from these versions" rather
+/// than "some updates". Everything that matters is already a field of the row
+/// (`id`, and [`UpdatableRow::current_version`] for the version it moves from),
+/// so there is no second list that could be a different length than the
+/// selection. Order is part of it: the dialog promises that order, and a version
 /// that moved while the dialog was open is a different grant.
-pub fn update_plan_digest(rows: &[UpdatableRow], versions: &[String]) -> String {
+pub fn update_plan_digest(rows: &[UpdatableRow]) -> String {
     use sha2::{Digest, Sha256};
-    let canonical =
-        serde_json::to_vec(&(rows, versions)).expect("update row fields are serializable");
+    let canonical = serde_json::to_vec(rows).expect("update row fields are serializable");
     format!("{:x}", Sha256::digest(canonical))
 }
 
@@ -1111,6 +1145,20 @@ mod tests {
             token: token.into(),
             name: name.into(),
             kind,
+            source: crate::model::UpdateSource::Homebrew,
+            current_version: "1.0.0".into(),
+        }
+    }
+
+    /// A row with an explicit version, for tests about what the digest covers.
+    fn updatable_at(id: &str, token: &str, version: &str) -> UpdatableRow {
+        UpdatableRow {
+            id: id.into(),
+            token: token.into(),
+            name: id.into(),
+            kind: crate::model::Kind::Cask,
+            source: crate::model::UpdateSource::Homebrew,
+            current_version: version.into(),
         }
     }
 
@@ -1285,94 +1333,212 @@ mod tests {
 
     #[test]
     fn the_update_grant_is_bound_to_the_versions_it_was_shown_with() {
-        let rows = vec![updatable(
-            "ghostty",
-            "ghostty",
-            "Ghostty",
-            crate::model::Kind::Cask,
-        )];
-        let before = update_plan_digest(&rows, &["1.0.0".into()]);
-        assert_eq!(before, update_plan_digest(&rows, &["1.0.0".into()]));
+        let rows = vec![updatable_at("ghostty", "ghostty", "1.0.0")];
+        let before = update_plan_digest(&rows);
+        assert_eq!(before, update_plan_digest(&rows));
         assert_ne!(
             before,
-            update_plan_digest(&rows, &["1.0.1".into()]),
+            update_plan_digest(&[updatable_at("ghostty", "ghostty", "1.0.1")]),
             "a version that moved while the dialog was open is a different grant"
         );
         assert_ne!(
             before,
-            update_plan_digest(
-                &[
-                    updatable("ghostty", "ghostty", "Ghostty", crate::model::Kind::Cask),
-                    updatable("editor", "editor", "Editor", crate::model::Kind::Cask),
-                ],
-                &["1.0.0".into(), "2.0.0".into()]
-            ),
+            update_plan_digest(&[
+                updatable_at("ghostty", "ghostty", "1.0.0"),
+                updatable_at("editor", "editor", "2.0.0"),
+            ]),
             "an app the user did not see is a different grant"
         );
     }
 
-    /// A Homebrew formula the updates page does not draw is still queueable here.
+    /// A row the client did not name is not part of the grant.
     ///
-    /// This pins a known and currently intended asymmetry rather than a feature.
-    /// `updatable_rows` answers from `updates_list`, which is built from both
-    /// `outdated.casks` and `outdated.formulae` (`updates.rs:67`) and whose
-    /// `merge` keeps formulae (`updater/service.rs` retains only on source
-    /// enablement and native-cask ownership, never on kind). The page hides them
-    /// instead: `scheduler::visible` and the web store's `shown()` both drop
-    /// non-cask Homebrew rows. So the set this tool can act on is a superset of
-    /// the set the user can see, and a client holding a formula id can queue it.
-    ///
-    /// Nothing downstream narrows it: `plan_update_selection` maps the row's
-    /// kind straight through to `TaskKind::Formula`, and `brew::args::write_args`
-    /// turns that into `brew upgrade --formula <token>` (its only refusals are
-    /// for `Kind::Link` and for options no update sets). `scheduler::eligible`
-    /// refusing formulas governs background upgrades, not this path.
-    ///
-    /// If `list_updatable_apps` ever starts filtering to what the page draws,
-    /// this test goes red. That is the point: it means card 101 landed, and this
-    /// expectation — and the doc comment on `UpdatableApp` — should be updated
-    /// with it.
-    ///
-    /// Card 101 cannot simply push a filter down into `updates_list`: that
-    /// function is also the return value of `check_update_sources_inner`
-    /// (`core.rs:599`), which the tray reads (`tray.rs:97`, `tray.rs:250`), so
-    /// narrowing it there would narrow what those callers see as well. The
-    /// split has to happen by adding a separate all-rows accessor, not by
-    /// tightening the one everybody already shares.
+    /// The first version of this binding hashed the selected rows next to a
+    /// version list built from the *whole* available list, so the two were
+    /// different lengths whenever a client named fewer than every row, and an
+    /// unselected app moving its version changed the digest of a grant that did
+    /// not include it. The version now travels inside the row, so a grant is a
+    /// function of exactly the rows it covers.
     #[test]
-    fn queue_updates_accepts_a_homebrew_formula_the_page_does_not_draw() {
+    fn an_unnamed_rows_version_change_does_not_change_the_grant() {
+        let available = || {
+            vec![
+                updatable_at("ghostty", "ghostty", "1.0.0"),
+                updatable_at("editor", "editor", "2.0.0"),
+                updatable_at("browser", "browser", "3.0.0"),
+            ]
+        };
+        let only_ghostty = |available: Vec<UpdatableRow>| {
+            update_plan_digest(
+                &plan_update_selection(&available, &["ghostty".into()])
+                    .expect("ghostty is in the list")
+                    .rows,
+            )
+        };
+
+        let before = only_ghostty(available());
+        assert_eq!(
+            before,
+            only_ghostty(available()),
+            "the same selection twice is the same grant"
+        );
+
+        let mut moved = available();
+        moved[1].current_version = "2.0.1".into();
+        moved[2].current_version = "3.1.0".into();
+        assert_eq!(
+            before,
+            only_ghostty(moved),
+            "an app the client did not name moving is not this grant's business"
+        );
+
+        let mut named_moved = available();
+        named_moved[0].current_version = "1.0.1".into();
+        assert_ne!(
+            before,
+            only_ghostty(named_moved),
+            "the app it did name moving still invalidates the grant"
+        );
+    }
+
+    /// A Homebrew formula the updates page does not draw is not offerable here either.
+    ///
+    /// `updates_list` is built from both `outdated.casks` and `outdated.formulae`
+    /// (`updates.rs:67`) and `merge` keeps formulae (`updater/service.rs` retains
+    /// only on source enablement and native-cask ownership, never on kind). The
+    /// page hides them: `scheduler::visible` and the web store's `shown()` both
+    /// drop non-cask Homebrew rows. So the MCP boundary has to drop them too,
+    /// inside `updatable_rows`, or `list_updatable_apps` offers — and
+    /// `queue_updates` queues — an upgrade the user was never shown.
+    ///
+    /// The filter cannot live in `updates_list` itself: that is also the return
+    /// value of `check_update_sources_inner` (`core.rs:599`) and the tray reads
+    /// it (`tray.rs:97`, `tray.rs:250`), so narrowing it there would narrow what
+    /// those callers see as well.
+    ///
+    /// What it must NOT be is `scheduler::eligible`: that also drops pinned,
+    /// ignored, skipped and non-auto-upgraded rows, which are all still on the
+    /// page, and upgrading one because the user asked is the point of this tool.
+    #[test]
+    fn only_rows_the_page_draws_are_updatable_over_mcp() {
+        let page_row = |kind: crate::model::Kind, token: &str| crate::model::OutdatedItem {
+            source: crate::model::UpdateSource::Homebrew,
+            app_id: None,
+            bundle_id: None,
+            channel: None,
+            major: false,
+            notes: None,
+            integrity: None,
+            requires_admin: false,
+            running: false,
+            relaunch_pending: false,
+            skipped_version: None,
+            critical_update: false,
+            informational_url: None,
+            download_host: None,
+            expected_team_match: None,
+            unsigned_update: None,
+            kind,
+            token: token.into(),
+            name: token.into(),
+            installed_version: "1.0.0".into(),
+            current_version: "1.1.0".into(),
+            auto_updates: false,
+            pinned: false,
+            ignored: false,
+            dependents: 0,
+            download_size: None,
+        };
+
+        assert!(
+            crate::scheduler::visible(&page_row(crate::model::Kind::Cask, "ghostty")),
+            "a cask is on the page"
+        );
+        assert!(
+            !crate::scheduler::visible(&page_row(crate::model::Kind::Formula, "jq")),
+            "a formula is not, and `updatable_rows` now uses this same rule"
+        );
+        assert!(
+            !crate::scheduler::visible(&page_row(crate::model::Kind::Link, "jq")),
+            "nor is a link"
+        );
+    }
+
+    /// A Homebrew formula's id *is* its token, so accepting it would accept a
+    /// token under the name of an id — the one thing the tool's description
+    /// promises never happens.
+    ///
+    /// `updates.rs` is the only place that builds a Homebrew row and it sets
+    /// `app_id: None`, so `updatable_rows` falls back to `update.token` for the
+    /// id. Convincing `plan_update_selection` that such a row is out of reach is
+    /// therefore a separate check from "the read tool never listed it": it *is*
+    /// listed, and the existing refusal test (`ghostty`, an id never offered)
+    /// does not cover it.
+    #[test]
+    fn a_homebrew_formula_is_refused_even_though_list_updatable_apps_lists_it() {
         let available = vec![
             updatable("ghostty", "ghostty", "Ghostty", crate::model::Kind::Cask),
-            updatable("jq", "jq", "jq", crate::model::Kind::Formula),
+            // Exactly what `updatable_rows` produces for `brew outdated`'s
+            // formula list: the token in both the `id` and the `token` slot.
+            updatable("node", "node", "node", crate::model::Kind::Formula),
         ];
 
-        let selection = plan_update_selection(&available, &["jq".into()])
-            .expect("the formula is in the read tool's own list, so it is accepted");
+        let error = plan_update_selection(&available, &["node".into()])
+            .expect_err("a Homebrew formula is not something this tool may queue");
+        assert_eq!(
+            error.code, "E_NOT_FOUND",
+            "the same code a wholly unknown id gets: from the caller's side the row \
+             is not offered, so it is not found"
+        );
 
+        // And naming it next to a real app does not sneak it through: the whole
+        // call is refused, rather than queueing the cask and dropping the formula.
+        assert_eq!(
+            plan_update_selection(&available, &["ghostty".into(), "node".into()])
+                .expect_err("one bad id refuses the call")
+                .code,
+            "E_NOT_FOUND"
+        );
+
+        // The cask is still reachable, so the refusal is about this row, not a
+        // blanket failure.
+        assert_eq!(
+            plan_update_selection(&available, &["ghostty".into()])
+                .expect("a cask is fine")
+                .targets,
+            vec![crate::model::TaskTarget {
+                kind: crate::model::TaskKind::Cask,
+                token: "ghostty".into()
+            }]
+        );
+    }
+
+    /// The `mas` half of the pair above.
+    ///
+    /// App Store rows are `Kind::Formula` too, and they are ordinary page rows:
+    /// the page's rule (`scheduler::visible`, mirrored by `shown()` in
+    /// `apps/desktop/src/stores/updates.ts`) only drops *Homebrew* non-casks.
+    /// A refusal keyed on `kind == Formula` alone would take these out with it.
+    #[test]
+    fn a_mas_formula_is_still_accepted() {
+        let available = vec![UpdatableRow {
+            id: "com.example.Store".into(),
+            token: "com.example.Store".into(),
+            name: "Store App".into(),
+            kind: crate::model::Kind::Formula,
+            source: crate::model::UpdateSource::Mas,
+            current_version: "2.0.0".into(),
+        }];
+
+        let selection = plan_update_selection(&available, &["com.example.Store".into()])
+            .expect("a mas formula is on the page, so it stays updatable");
         assert_eq!(
             selection.targets,
             vec![crate::model::TaskTarget {
                 kind: crate::model::TaskKind::Formula,
-                token: "jq".into()
+                token: "com.example.Store".into()
             }],
-            "the kind travels through unchanged: this becomes a real formula upgrade"
-        );
-
-        // And the queue accepts exactly that target: no rule here refuses a
-        // formula, only `Kind::Link` and options no update can carry.
-        assert_eq!(
-            crate::brew::args::write_args(
-                crate::model::TaskOp::Upgrade,
-                selection.targets.first(),
-                &crate::model::TaskOptions::default(),
-            )
-            .expect("an update target the read tool listed is a valid brew invocation"),
-            vec![
-                "upgrade".to_string(),
-                "--formula".to_string(),
-                "jq".to_string()
-            ],
-            "so the queued command really is a formula upgrade"
+            "the kind still travels through unchanged"
         );
     }
 }
