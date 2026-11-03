@@ -69,6 +69,14 @@ fn regenerable_reason(reason: CleanupReason) -> bool {
 /// The delete mode is read from the item, which the scanner filled from
 /// `settings.cleanup_delete_mode`; this module never chooses a mode itself.
 pub fn removable(category: &CategoryReport, item: &CleanupItem) -> bool {
+    // Commands are not paths: they run a tool (`brew cleanup`, docker prune) and
+    // the confirmation would show a command line where the user expects a file
+    // list. `candidates` applies this too, but the rule has to hold on its own:
+    // the write path re-checks a selection against the report and must refuse a
+    // command even if some other caller ever offers one.
+    if !kind_allowed(item.kind) {
+        return false;
+    }
     // A size the scan could not finish is a lower bound, and the app already
     // refuses to act on one.
     if !item.size_complete {
@@ -327,6 +335,33 @@ mod tests {
         assert!(!kind_allowed(CleanupItemKind::Command));
         assert!(kind_allowed(CleanupItemKind::File));
         assert!(kind_allowed(CleanupItemKind::Dir));
+    }
+
+    #[test]
+    fn a_command_is_refused_even_where_every_other_rule_would_allow_it() {
+        // Homebrew's own cache is a regenerable category, and `BrewCleanup` is a
+        // regenerable reason, so both of the other rules say yes. A command is
+        // still not something a tool may select: it runs `brew cleanup`, which
+        // reaches packages the dialog never names. Only the kind rule stops it,
+        // which is why the rule has to live in `removable` and not in the
+        // scan-tool filter alone.
+        let command = || {
+            let mut one = item("brew", CleanupReason::BrewCleanup, true, DeleteMode::Trash);
+            one.kind = CleanupItemKind::Command;
+            one.command = Some("brew cleanup --prune=all".into());
+            one
+        };
+        let homebrew = category(CleanupCategory::Homebrew, vec![command()]);
+        assert_eq!(homebrew.groups[0].items[0].kind, CleanupItemKind::Command);
+        assert!(
+            !removable(&homebrew, &homebrew.groups[0].items[0]),
+            "a command is never removable, whatever its reason and category"
+        );
+        let report = report(vec![category(CleanupCategory::Homebrew, vec![command()])]);
+        assert_eq!(
+            check_selection(&report, &["brew".into()]).unwrap_err(),
+            SelectionError::NotRemovable("brew".into())
+        );
     }
 
     #[test]

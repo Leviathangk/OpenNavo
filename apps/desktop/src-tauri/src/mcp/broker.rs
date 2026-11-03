@@ -825,15 +825,20 @@ fn read_line<R: BufRead>(reader: &mut R, max: usize) -> io::Result<Option<Vec<u8
 /// work to the app's blocking pool. The updatable-apps path reads only existing
 /// cached update results; it never calls the update checker, starts a scan or
 /// performs a network request.
-struct LiveTools {
+///
+/// Generic over the runtime for the same reason [`super::writes::Writes`] is:
+/// the dispatch from `Broker` into a write is only reachable from a test if the
+/// host it dispatches to can be built with a mock `AppHandle`. Nothing else in
+/// here touches `app`.
+struct LiveTools<R: tauri::Runtime = tauri::Wry> {
     core: Arc<crate::core::DesktopCore>,
-    writes: super::writes::Writes,
+    writes: super::writes::Writes<R>,
 }
 
-impl LiveTools {
+impl<R: tauri::Runtime> LiveTools<R> {
     fn new(
         core: Arc<crate::core::DesktopCore>,
-        app: tauri::AppHandle,
+        app: tauri::AppHandle<R>,
         data_dir: &std::path::Path,
     ) -> Self {
         let writes = super::writes::Writes {
@@ -946,7 +951,7 @@ fn parse_kind(kind: &str) -> Result<crate::model::Kind, ToolError> {
     }
 }
 
-impl ToolHost for LiveTools {
+impl<R: tauri::Runtime> ToolHost for LiveTools<R> {
     fn search_catalog(
         &self,
         query: &str,
@@ -1794,6 +1799,163 @@ mod tests {
         // Read tools stay available to any same-user peer.
         let list = request(&path, json!({"v":1,"id":"l","method":"tools/list"}));
         assert_eq!(list["ok"], true);
+        broker.shutdown();
+    }
+
+    /// A cleanup report on disk, exactly the shape the scan leaves behind.
+    fn report_for(engine: &crate::cleanup::Engine, id: &str, item: &str) {
+        use crate::cleanup::types::{
+            CategoryReport, CleanupCategory, CleanupGroup, CleanupItem, CleanupItemKind,
+            CleanupReason, CleanupReport, CleanupRisk, CleanupVolume,
+        };
+        let one = CleanupItem {
+            id: item.into(),
+            path: format!("/Users/me/Library/Caches/{item}"),
+            kind: CleanupItemKind::Dir,
+            command: None,
+            size_bytes: Some(2048),
+            size_complete: true,
+            kept_open_files: 0,
+            modified_at: None,
+            reason: CleanupReason::CacheDir,
+            selected: true,
+            delete_mode: crate::model::DeleteMode::Trash,
+            needs_admin: false,
+            note: None,
+        };
+        let report = CleanupReport {
+            report_id: id.into(),
+            scanned_at: crate::uninstall::now(),
+            expires_at: crate::uninstall::now() + 600_000,
+            volume: CleanupVolume {
+                name: "synthetic".into(),
+                total_bytes: 0,
+                free_bytes: 0,
+            },
+            categories: vec![CategoryReport {
+                key: CleanupCategory::AppCaches,
+                risk: CleanupRisk::Rebuildable,
+                bytes: 2048,
+                complete: true,
+                groups: vec![CleanupGroup {
+                    id: "g".into(),
+                    title: "g".into(),
+                    subtitle: None,
+                    app_id: None,
+                    bundle_id: None,
+                    items: vec![one.clone()],
+                }],
+                skipped: vec![],
+            }],
+            incomplete: vec![],
+        };
+        engine.reports.lock().expect("reports").insert(
+            id.into(),
+            crate::cleanup::Entry {
+                category_millis: std::collections::BTreeMap::new(),
+                report,
+                items: std::collections::BTreeMap::from([(
+                    item.into(),
+                    crate::cleanup::EntryItem {
+                        item: one,
+                        owner: crate::cleanup::owner::Owner::default(),
+                        title: "cache".into(),
+                        tree: None,
+                        action: crate::uninstall::ItemAction::Path {
+                            empty_only: false,
+                            bootout: None,
+                        },
+                        docker_endpoint: None,
+                    },
+                )]),
+            },
+        );
+    }
+
+    /// The whole production write path, one test deep.
+    ///
+    /// `Broker` dispatches a write to its `ToolHost`; in the app that host is
+    /// `LiveTools`, whose `write` is a one-line call into `Writes::run`. Every
+    /// other write test in this file uses a `MockHost`, so replacing that line
+    /// with a refusal left the suite green: nothing entered it. This test goes
+    /// through a real socket, the real `LiveTools`, and the real `Writes::run`,
+    /// and asserts a cleanup is queued.
+    ///
+    /// `LiveTools` (and so `Writes`) is generic over the runtime for this: an
+    /// `AppHandle<Wry>` cannot be built in a test.
+    #[test]
+    fn a_write_over_the_socket_reaches_writes_run_and_queues_a_cleanup() {
+        use tauri::Manager;
+
+        let dir = tempdir();
+        let core = crate::core::DesktopCore::open(
+            dir.path().join("data"),
+            dir.path().join("cache"),
+            dir.path().join("askpass"),
+            Arc::new(|_| {}),
+        )
+        .expect("core");
+        report_for(&core.queue.cleanup_engine, "report", "cache");
+        let app = tauri::test::mock_app();
+        let service = Arc::new(crate::confirmation::ConfirmationService::default());
+        app.manage(service.clone());
+        let host: Arc<dyn ToolHost> = Arc::new(LiveTools::new(
+            core.clone(),
+            app.handle().clone(),
+            dir.path(),
+        ));
+        let broker = Arc::new(
+            Broker::with_host(dir.path().to_path_buf(), Some(host))
+                // The socket is created by this process, so its pid's executable
+                // is the test binary. Name that, and the peer check passes for
+                // the same reason it does in the app.
+                .with_trusted_client(std::env::current_exe().ok()),
+        );
+        broker.set_enabled(true).expect("enable");
+        broker.set_write_enabled(true).expect("write");
+        wait_running(&broker);
+
+        // Answer the window the way the webview would.
+        let answerer = {
+            let service = service.clone();
+            std::thread::spawn(move || {
+                let deadline = std::time::Instant::now() + Duration::from_secs(20);
+                while std::time::Instant::now() < deadline {
+                    if let Some(view) = service.window_view() {
+                        service.test_arm();
+                        service.answer_window(&view.id, true).expect("answer");
+                        return true;
+                    }
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                false
+            })
+        };
+
+        let response = request(
+            &socket::path(dir.path()).path,
+            json!({
+                "v": 1,
+                "id": "1",
+                "method": "tools/call",
+                "params": {
+                    "name": "clean_cache",
+                    "arguments": { "reportId": "report", "itemIds": ["cache"] },
+                    "client": { "name": "Claude\u{7}" }
+                }
+            }),
+        );
+
+        assert_eq!(response["ok"], true, "{response}");
+        assert!(
+            answerer.join().expect("answer thread"),
+            "the dialog must have been shown, so the request reached Writes::run"
+        );
+        assert_eq!(response["result"]["status"], "queued", "{response}");
+        let queued = core.queue.active().expect("active");
+        assert_eq!(queued.len(), 1, "{queued:?}");
+        assert_eq!(queued[0].op, crate::model::TaskOp::Clean);
+        assert_eq!(queued[0].trigger, crate::model::TaskTrigger::Manual);
         broker.shutdown();
     }
 }

@@ -39,8 +39,14 @@ use crate::{
 };
 
 /// Everything a write needs from the running app.
-pub struct Writes {
-    pub app: tauri::AppHandle,
+///
+/// Generic over the runtime only so the tests can drive the real [`Writes::run`]:
+/// an `AppHandle<Wry>` can only be produced by a running app, and a write path
+/// that cannot be entered from a test is a write path nothing checks. The two
+/// uses of `app` (`confirmation` state and the confirmation window) already take
+/// any runtime, so nothing downstream has to be generic.
+pub struct Writes<R: tauri::Runtime = tauri::Wry> {
+    pub app: tauri::AppHandle<R>,
     pub core: Arc<DesktopCore>,
     pub audit: Audit,
 }
@@ -114,7 +120,7 @@ fn block_on<T>(future: impl std::future::Future<Output = T>) -> T {
     tauri::async_runtime::block_on(future)
 }
 
-impl Writes {
+impl<R: tauri::Runtime> Writes<R> {
     pub fn run(&self, request: WriteRequest, context: WriteContext) -> Result<Value, ToolError> {
         self.audit.check().map_err(|_| audit_unavailable())?;
         let identity = self.identify(&context);
@@ -1248,6 +1254,253 @@ mod tests {
         assert_eq!(
             plan_clean_selection(&report, &[]).unwrap_err().code,
             "E_INVALID_ARG"
+        );
+    }
+
+    // ---- tests that drive the real `Writes::run` -------------------------
+    //
+    // Everything above checks one pure function. These enter the write path the
+    // app actually uses, so a gate that is dropped from `run` or `execute` has
+    // something to fail.
+
+    /// A removable cache item, matching the `cache` row `cleanup_report` builds.
+    fn cache_cleanup_item(id: &str) -> crate::cleanup::types::CleanupItem {
+        crate::cleanup::types::CleanupItem {
+            id: id.into(),
+            path: format!("/Users/me/Library/Caches/{id}"),
+            kind: crate::cleanup::types::CleanupItemKind::Dir,
+            command: None,
+            size_bytes: Some(1024),
+            size_complete: true,
+            kept_open_files: 0,
+            modified_at: None,
+            reason: crate::cleanup::types::CleanupReason::CacheDir,
+            selected: false,
+            delete_mode: DeleteMode::Trash,
+            needs_admin: false,
+            note: None,
+        }
+    }
+
+    /// A `Trash` item: the user's own deleted files. It is never a cache, so the
+    /// cleanup rule refuses it however the selection reached the tool.
+    fn trash_cleanup_item(id: &str) -> crate::cleanup::types::CleanupItem {
+        crate::cleanup::types::CleanupItem {
+            reason: crate::cleanup::types::CleanupReason::Trash,
+            path: format!("/Users/me/.Trash/{id}"),
+            ..cache_cleanup_item(id)
+        }
+    }
+
+    fn cleanup_entry(items: Vec<crate::cleanup::types::CleanupItem>) -> crate::cleanup::Entry {
+        let mut stored = std::collections::BTreeMap::new();
+        for item in items {
+            let id = item.id.clone();
+            stored.insert(
+                id,
+                crate::cleanup::EntryItem {
+                    item,
+                    owner: crate::cleanup::owner::Owner::default(),
+                    title: "cache".into(),
+                    tree: None,
+                    action: crate::uninstall::ItemAction::Path {
+                        empty_only: false,
+                        bootout: None,
+                    },
+                    docker_endpoint: None,
+                },
+            );
+        }
+        crate::cleanup::Entry {
+            category_millis: std::collections::BTreeMap::new(),
+            report: cleanup_report(),
+            items: stored,
+        }
+    }
+
+    /// A [`Writes`] on a mock runtime with one cleanup report already scanned,
+    /// plus the confirmation service a test answers in the user's place.
+    ///
+    /// The mock runtime is why [`Writes`] is generic: an `AppHandle<Wry>` can only
+    /// be made by a running app, and a write path no test can enter is a write
+    /// path nothing checks.
+    struct WritePath {
+        _app: tauri::App<tauri::test::MockRuntime>,
+        core: Arc<DesktopCore>,
+        service: Arc<ConfirmationService>,
+        writes: Writes<tauri::test::MockRuntime>,
+    }
+
+    fn write_path(
+        dir: &tempfile::TempDir,
+        report_id: &str,
+        items: Vec<crate::cleanup::types::CleanupItem>,
+    ) -> WritePath {
+        let core = DesktopCore::open(
+            dir.path().join("data"),
+            dir.path().join("cache"),
+            dir.path().join("askpass"),
+            Arc::new(|_| {}),
+        )
+        .expect("core");
+        let mut entry = cleanup_entry(items);
+        entry.report.report_id = report_id.into();
+        core.queue
+            .cleanup_engine
+            .reports
+            .lock()
+            .expect("cleanup reports")
+            .insert(report_id.into(), entry);
+        let app = tauri::test::mock_app();
+        let service = Arc::new(ConfirmationService::default());
+        {
+            use tauri::Manager;
+            app.manage(service.clone());
+        }
+        let writes = Writes {
+            app: app.handle().clone(),
+            core: core.clone(),
+            audit: Audit::new(dir.path()),
+        };
+        WritePath {
+            _app: app,
+            core,
+            service,
+            writes,
+        }
+    }
+
+    /// Answer the next confirmation in the user's place, from another thread:
+    /// `run` blocks the caller until the prompt is answered. Returns whether a
+    /// prompt was answered at all, so a test that expects none does not panic.
+    fn answer_next(
+        service: Arc<ConfirmationService>,
+        allow: bool,
+    ) -> std::thread::JoinHandle<bool> {
+        std::thread::spawn(move || {
+            // Well under the dialog's own 60s timeout, generous enough for a
+            // loaded machine to schedule this thread and the prompt.
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+            while std::time::Instant::now() < deadline {
+                if let Some(view) = service.window_view() {
+                    service.test_arm();
+                    service.answer_window(&view.id, allow).expect("answer");
+                    return true;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            false
+        })
+    }
+
+    #[test]
+    fn a_cleanup_is_not_queued_when_the_switch_goes_off_before_it_runs() {
+        // The gate inside `execute(Plan::Clean)` runs after the user has already
+        // said yes. Turning the switch off between the grant and the enqueue must
+        // still stop the deletion. The error code is not the point; the queue is.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = write_path(&dir, "report", vec![cache_cleanup_item("cache")]);
+        // The first two gates (before the dialog, after the grant is consumed) see
+        // a live request; the third is the one inside `execute`.
+        let checks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let still_valid = {
+            let checks = checks.clone();
+            Arc::new(move || checks.fetch_add(1, std::sync::atomic::Ordering::SeqCst) < 2)
+        };
+        let context = WriteContext {
+            connection: 1,
+            peer: None,
+            client_name: Some("test client".into()),
+            still_valid,
+        };
+        let answered = answer_next(path.service.clone(), true);
+        let error = path
+            .writes
+            .run(
+                WriteRequest::Clean {
+                    report_id: "report".into(),
+                    item_ids: vec!["cache".into()],
+                },
+                context,
+            )
+            .expect_err("the cleanup must be refused");
+        assert_eq!(error.code, "E_CONFIRMATION_INVALIDATED");
+        assert!(
+            answered.join().expect("answer thread"),
+            "the dialog must have been shown, or this test never reached execute"
+        );
+        assert_eq!(
+            checks.load(std::sync::atomic::Ordering::SeqCst),
+            3,
+            "the gate inside execute must run"
+        );
+        assert!(
+            path.core.queue.active().expect("active").is_empty(),
+            "no deletion may be queued once the switch went off"
+        );
+        assert!(
+            path.core.database.tasks().expect("tasks").is_empty(),
+            "no deletion may be persisted once the switch went off"
+        );
+    }
+
+    #[test]
+    fn a_selection_the_recheck_refuses_never_opens_the_dialog() {
+        // `plan_clean` re-runs the cleanup rule against the stored report before
+        // the dialog. A client can hold ids from an older report, or from a scan
+        // it never fully read, so this is the gate that decides whether the user
+        // is even asked. It is reached through `run`, the entry the broker uses.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = write_path(&dir, "report", vec![trash_cleanup_item("trash")]);
+        let context = WriteContext {
+            connection: 1,
+            peer: None,
+            client_name: Some("test client".into()),
+            still_valid: Arc::new(|| true),
+        };
+        // If the recheck is gone, the dialog opens and this answers it, so the
+        // failure is "a Trash item was queued" rather than a 60s dialog timeout.
+        // `done` lets the watcher stop as soon as `run` returns, so the passing
+        // path does not wait out the whole window.
+        let done = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let answerer = std::thread::spawn({
+            let service = path.service.clone();
+            let done = done.clone();
+            move || {
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                let mut asked = false;
+                while std::time::Instant::now() < deadline {
+                    if let Some(view) = service.window_view() {
+                        asked = true;
+                        service.test_arm();
+                        let _ = service.answer_window(&view.id, true);
+                    }
+                    if done.load(std::sync::atomic::Ordering::SeqCst) {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                asked
+            }
+        });
+        let result = path.writes.run(
+            WriteRequest::Clean {
+                report_id: "report".into(),
+                item_ids: vec!["trash".into()],
+            },
+            context,
+        );
+        done.store(true, std::sync::atomic::Ordering::SeqCst);
+        assert!(
+            !answerer.join().expect("answer thread"),
+            "the user must not be asked to confirm something the rule already refused"
+        );
+        let error = result.expect_err("a Trash item is not a regenerable cache");
+        assert_eq!(error.code, "E_NOT_REMOVABLE", "{error:?}");
+        assert!(path.core.queue.active().expect("active").is_empty());
+        assert!(
+            path.core.database.tasks().expect("tasks").is_empty(),
+            "nothing may be persisted for a refused selection"
         );
     }
 }
