@@ -4,7 +4,7 @@ import { createEvent, getResponseHeader, setHeader } from 'h3';
 import { LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import markdownMiddleware from '../server/middleware/markdown-alternate';
-import { edgeCacheHeader, LONG_EDGE_CACHE_VALUE, SHORT_EDGE_CACHE_VALUE } from '../server/utils/edgeCache';
+import { edgeCacheHeader, APP_EDGE_CACHE_VALUE, SHORT_EDGE_CACHE_VALUE } from '../server/utils/edgeCache';
 import { GEO_SAMPLES } from './geoFixtures';
 import { DEFAULT_SITE_SETTINGS } from '../server/utils/siteSettings';
 
@@ -77,7 +77,7 @@ describe('Accept-negotiated Markdown', () => {
           expect(getResponseHeader(event, 'cache-control')).toBe('s-maxage=21600, stale-while-revalidate');
           expect(getResponseHeader(event, 'cdn-cache-control')).toBeUndefined();
           expect(getResponseHeader(event, 'vary')).toBeUndefined();
-          expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(LONG_EDGE_CACHE_VALUE);
+          expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(APP_EDGE_CACHE_VALUE);
         } else {
           expect(getResponseHeader(event, 'cache-control')).toBe('private, no-store');
           expect(getResponseHeader(event, 'cdn-cache-control')).toBe('no-store');
@@ -143,7 +143,7 @@ describe('Accept-negotiated Markdown', () => {
         await markdownMiddleware(event);
         expect(getResponseHeader(event, 'cache-control')).toBe('s-maxage=21600, stale-while-revalidate');
         expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(
-          enabled ? LONG_EDGE_CACHE_VALUE : 'no-store'
+          enabled ? APP_EDGE_CACHE_VALUE : 'no-store'
         );
       } finally {
         socket.destroy();
@@ -244,6 +244,6 @@ describe('Accept-negotiated Markdown', () => {
         setCookie: false,
         authorization: false
       })
-    ).toBe(LONG_EDGE_CACHE_VALUE);
+    ).toBe(APP_EDGE_CACHE_VALUE);
   });
 });

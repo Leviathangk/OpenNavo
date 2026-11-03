@@ -4,6 +4,7 @@ import {
   edgeCacheHeader,
   edgeRouteType,
   LONG_EDGE_CACHE_VALUE,
+  APP_EDGE_CACHE_VALUE,
   RECENT_EDGE_CACHE_VALUE,
   SHORT_EDGE_CACHE_VALUE,
   type EdgeCacheInput
@@ -24,23 +25,19 @@ const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
 describe('HTML edge cache switch', () => {
   it('keeps negotiable HTML on the same edge policy as every other HTML page', () => {
     expect(edgeCacheHeader(page({ path: '/' }))).toBe(SHORT_EDGE_CACHE_VALUE);
-    expect(edgeCacheHeader(page({ path: '/apps/iterm2' }))).toBe(LONG_EDGE_CACHE_VALUE);
+    expect(edgeCacheHeader(page({ path: '/apps/iterm2' }))).toBe(APP_EDGE_CACHE_VALUE);
   });
 
-  it('Keeps purged pages for two days and lists for ten minutes, serving either while the origin errs', () => {
+  it('Keeps version history for two days, app tabs for six hours and lists for ten minutes', () => {
     expect(LONG_EDGE_CACHE_VALUE).toBe('max-age=172800, stale-while-revalidate=604800, stale-if-error=604800');
+    expect(APP_EDGE_CACHE_VALUE).toBe('max-age=21600, stale-while-revalidate=86400, stale-if-error=86400');
     expect(SHORT_EDGE_CACHE_VALUE).toBe('max-age=600, stale-while-revalidate=86400, stale-if-error=86400');
   });
 
-  it('Caches purged app and article pages for hours, home and lists for minutes', () => {
-    for (const path of [
-      '/zh/apps/visual-studio-code',
-      '/apps/x/versions',
-      '/apps/x/details',
-      '/ja/apps/x/dependencies',
-      '/zh/articles/choose-a-screenshot-app',
-      '/authors/lin-wei'
-    ])
+  it('Caches app tabs for six hours, version history and articles for two days, lists for minutes', () => {
+    for (const path of ['/zh/apps/visual-studio-code', '/apps/x/details', '/ja/apps/x/dependencies'])
+      expect(edgeCacheHeader(page({ path })), path).toBe(APP_EDGE_CACHE_VALUE);
+    for (const path of ['/apps/x/versions', '/zh/articles/choose-a-screenshot-app', '/authors/lin-wei'])
       expect(edgeCacheHeader(page({ path })), path).toBe(LONG_EDGE_CACHE_VALUE);
     for (const path of [
       '/',
@@ -55,7 +52,7 @@ describe('HTML edge cache switch', () => {
       '/about'
     ])
       expect(edgeCacheHeader(page({ path })), path).toBe(SHORT_EDGE_CACHE_VALUE);
-    expect(edgeCacheHeader(page({ method: 'HEAD' }))).toBe(LONG_EDGE_CACHE_VALUE);
+    expect(edgeCacheHeader(page({ method: 'HEAD' }))).toBe(APP_EDGE_CACHE_VALUE);
   });
 
   it('Caches Recently Updated like the other lists without changing its analytics label', () => {

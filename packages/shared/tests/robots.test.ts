@@ -5,6 +5,7 @@ import {
   ROBOTS_LIMITED_PATHS,
   ROBOTS_PRIVATE_PATHS,
   ROBOTS_CONTENT_SIGNAL,
+  RETRIEVAL_CRAWLERS,
   buildRobotsTxt,
   closedLocalePaths,
   type CrawlerPolicy
@@ -37,6 +38,7 @@ const privateRules = [
   '/zh-hant/brewfile'
 ].map(path => `Disallow: ${path}`);
 const defaultRules = [ROBOTS_CONTENT_SIGNAL, ...privateRules];
+const retrievalGroup = [...RETRIEVAL_CRAWLERS.map(bot => `User-agent: ${bot}`), 'Allow: /', ...privateRules].join('\n');
 
 describe('robots.txt generation', () => {
   it('signals search, AI input and AI training in the default group', () => {
@@ -97,7 +99,8 @@ describe('robots.txt generation', () => {
       'Amzn-User',
       'MistralAI-Index',
       'MistralAI-User',
-      'Yeti'
+      'Yeti',
+      'Google-Agent'
     ];
     expect([...LOCKED_CRAWLERS].sort()).toEqual([...expected].sort());
     for (const category of ['training', 'seoTools'] as const) {
@@ -106,7 +109,7 @@ describe('robots.txt generation', () => {
         const policy: CrawlerPolicy = { training: rule, seoTools: rule };
         policy[category] = { mode, delaySeconds: 10, bots: expected.map(bot => bot.toUpperCase()) };
         expect(buildRobotsTxt({ crawlers: policy, indexable: true, ...open })).toBe(
-          ['User-agent: *', ...defaultRules, ''].join('\n')
+          ['User-agent: *', ...defaultRules, '', retrievalGroup, ''].join('\n')
         );
       }
     }
@@ -179,6 +182,8 @@ describe('robots.txt generation', () => {
         'Disallow: /it/',
         'Disallow: /zh-hant/',
         '',
+        retrievalGroup,
+        '',
         'Sitemap: https://opennavo.example/sitemap_index.xml',
         ''
       ].join('\n')
@@ -196,16 +201,20 @@ describe('robots.txt generation', () => {
       training: { mode: 'limit', delaySeconds: 10, bots: ['GPTBot', 'Googlebot', 'Amazonbot'] },
       seoTools: { mode: 'block', delaySeconds: 10, bots: ['MJ12bot'] }
     };
-    const [everyone, blocked, limited] = buildRobotsTxt({ crawlers: policy, indexable: true, openLocales }).split(
-      '\n\n'
-    );
+    const [everyone, blocked, limited = '', retrieval = ''] = buildRobotsTxt({
+      crawlers: policy,
+      indexable: true,
+      openLocales
+    }).split('\n\n');
     const extra = ['/_og/', '/*/feed.xml', '/*?', '/pt/', '/de/', '/fr/', '/it/', '/zh-hant/'].map(
       path => `Disallow: ${path}`
     );
-    for (const rule of extra) expect(limited, rule).toContain(`${rule}\n`);
-    for (const prefix of ['/zh/', '/ja/', '/es/', '/ru/']) expect(limited).not.toContain(`Disallow: ${prefix}\n`);
+    const limitedLines = limited.split('\n');
+    for (const rule of extra) expect(limitedLines, rule).toContain(rule);
+    for (const prefix of ['/zh/', '/ja/', '/es/', '/ru/']) expect(limitedLines).not.toContain(`Disallow: ${prefix}`);
     // The default group (search engines, link previews such as Twitterbot) and blocked crawlers stay as they were.
     expect(everyone).toBe(['User-agent: *', ...defaultRules].join('\n'));
+    expect(retrieval.trimEnd()).toBe(retrievalGroup);
     expect(blocked).toBe('User-agent: MJ12bot\nDisallow: /');
     // A locked crawler named in the limited group still follows the default group.
     expect(limited).toMatch(/^User-agent: GPTBot\nUser-agent: Amazonbot\nCrawl-delay: 10\n/);
@@ -250,6 +259,16 @@ describe('robots.txt generation', () => {
     expect(defaults).toBe(['User-agent: *', ...defaultRules].join('\n'));
   });
 
+  it('Names every answer-engine crawler in an allow group that keeps private paths closed', () => {
+    const text = buildRobotsTxt({ crawlers: DEFAULT_CRAWLER_POLICY, indexable: true, ...open });
+    expect(text).toContain(retrievalGroup);
+    for (const bot of RETRIEVAL_CRAWLERS) expect(text).toContain(`User-agent: ${bot}\n`);
+    expect(retrievalGroup).toContain('Allow: /\n');
+    expect(retrievalGroup).toContain('Disallow: /search\n');
+    expect(retrievalGroup).not.toContain('Crawl-delay');
+    expect(text.match(/Content-Signal: /g)).toHaveLength(1);
+  });
+
   it('Non-production sites disallow everything', () => {
     expect(
       buildRobotsTxt({
@@ -267,7 +286,7 @@ describe('robots.txt generation', () => {
       seoTools: { mode: 'allow', delaySeconds: 5, bots: ['MJ12bot'] }
     };
     expect(buildRobotsTxt({ crawlers: policy, indexable: true, ...open })).toBe(
-      ['User-agent: *', ...defaultRules, ''].join('\n')
+      ['User-agent: *', ...defaultRules, '', retrievalGroup, ''].join('\n')
     );
     const empty: CrawlerPolicy = { ...policy, training: { mode: 'limit', delaySeconds: 5, bots: [] } };
     expect(buildRobotsTxt({ crawlers: empty, indexable: true, ...open })).not.toContain('Crawl-delay');
@@ -282,7 +301,9 @@ describe('robots.txt generation', () => {
     expect(text).toContain('User-agent: GPTBot\nUser-agent: CCBot\nDisallow: /\n');
     expect(text).toContain('User-agent: AhrefsBot\nCrawl-delay: 30\n');
     expect(text.indexOf('AhrefsBot')).toBeLessThan(text.indexOf('GPTBot'));
-    for (const bot of LOCKED_CRAWLERS) expect(text).not.toContain(`User-agent: ${bot}\n`);
+    for (const bot of LOCKED_CRAWLERS.filter(name => !RETRIEVAL_CRAWLERS.includes(name as never)))
+      expect(text).not.toContain(`User-agent: ${bot}\n`);
+    expect(text).toContain(retrievalGroup);
     expect(text).not.toContain('Sitemap:');
   });
 });

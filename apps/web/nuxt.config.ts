@@ -218,7 +218,7 @@ export default defineNuxtConfig({
   // holds the app routes (home, lists, about, download); server/plugins/sitemap-sources.ts fills the
   // other groups from the API with per-language lastmod. Large groups shard at 10,000 URLs.
   sitemap: {
-    exclude: ['/llms.txt'],
+    exclude: ['/llms.txt', '/llms-full.txt'],
     sitemaps: {
       static: { includeAppSources: true, exclude: [...privatePagePaths, ...articleListPaths] },
       ...packageSitemaps,
@@ -242,6 +242,7 @@ export default defineNuxtConfig({
   // Generate the About page canonical URL at runtime too, so a generic image cannot embed the build host URL in HTML.
   routeRules: {
     '/llms.txt': { cache: false, headers: { 'cache-control': 'no-store' } },
+    '/llms-full.txt': { cache: false },
     ...localizedRules({
       '/search': { cache: false, headers: { 'cache-control': 'no-store' } },
       '/brewfile': { ssr: false }

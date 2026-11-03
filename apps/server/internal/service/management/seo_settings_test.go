@@ -130,7 +130,7 @@ func TestSEOSettingsCrawlerLocksAndDefaults(t *testing.T) {
 		"Google-InspectionTool", "AdsBot-Google", "Bingbot", "BingPreview", "msnbot",
 		"OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "Amzn-SearchBot", "Amzn-User", "PerplexityBot",
 		"Perplexity-User", "DuckDuckBot", "DuckAssistBot", "Applebot", "YandexBot", "Baiduspider",
-		"Meta-WebIndexer", "Meta-ExternalFetcher", "MistralAI-Index", "MistralAI-User", "Yeti", "*",
+		"Meta-WebIndexer", "Meta-ExternalFetcher", "MistralAI-Index", "MistralAI-User", "Yeti", "Google-Agent", "*",
 	}
 	for _, bot := range locked {
 		for _, category := range []string{"training", "seoTools"} {

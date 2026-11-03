@@ -66,7 +66,8 @@ export function statusLabel(status: number): string {
 
 // Route types are shared with the GA4 page_type parameter.
 export function routeLabel(path: string): string {
-  return path.split('?', 1)[0] === '/llms.txt' ? 'llms' : webRouteType(path);
+  const route = path.split('?', 1)[0];
+  return route === '/llms.txt' || route === '/llms-full.txt' ? 'llms' : webRouteType(route ?? '/');
 }
 
 export interface CrawlerIdentity {

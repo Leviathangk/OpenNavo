@@ -116,7 +116,7 @@ export function loadShedPath(url: string): boolean {
     path.startsWith('/api/') ||
     path.startsWith('/__sitemap__/') ||
     path.startsWith('/_sitemap/') ||
-    /^\/(?:sitemap[^/]*\.xml(?:\.gz)?|robots\.txt|llms\.txt|healthz?|readyz?|livez|metrics)\/?$/.test(path)
+    /^\/(?:sitemap[^/]*\.xml(?:\.gz)?|robots\.txt|llms(?:-full)?\.txt|healthz?|readyz?|livez|metrics)\/?$/.test(path)
   )
     return false;
   if (

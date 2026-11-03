@@ -2865,18 +2865,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.match(metrics, new RegExp(`^opennavo_web_${name}_bytes \\d+$`, 'm'));
   });
   await t.test('only public cached pages may be cached at the edge', async () => {
-    // Purged pages keep two days and lists ten minutes; both answer from the edge while the origin sheds load.
+    // Version history keeps two days, app tabs six hours and lists ten minutes; all answer from the edge
+    // while the origin sheds load.
     const LONG_EDGE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
+    const APP_EDGE = 'max-age=21600, stale-while-revalidate=86400, stale-if-error=86400';
     const SHORT_EDGE = 'max-age=600, stale-while-revalidate=86400, stale-if-error=86400';
     const edge = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       await response.text();
       return [response.status, response.headers.get('cloudflare-cdn-cache-control')];
     };
-    // App pages with their tabs, and article pages, are purged on change and after each release, so
-    // they stay for hours.
-    assert.deepEqual(await edge('/apps/ordinary-app'), [200, LONG_EDGE]);
-    assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, LONG_EDGE]);
+    // App overview tabs match the origin's six-hour rule; version history and articles keep the long life.
+    assert.deepEqual(await edge('/apps/ordinary-app'), [200, APP_EDGE]);
+    assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, APP_EDGE]);
     // X5: collections now use the same short edge cache as other public lists; search stays private.
     assert.equal((await edge('/search?q=editor'))[1], 'no-store');
     assert.deepEqual(await edge('/collections'), [200, SHORT_EDGE]);
@@ -3540,7 +3541,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(text.includes('\n\nUser-agent: AhrefsBot\nCrawl-delay: 20\nDisallow: /search\n'), text);
     assert.ok(text.includes('\n\nUser-agent: GPTBot\nUser-agent: ClaudeBot\nDisallow: /\n'), text);
     assert.ok(text.endsWith('\nSitemap: https://example.test/sitemap_index.xml\n'), text);
-    assert.ok(!/googlebot|bingbot|oai-searchbot/i.test(text));
+    assert.ok(!/googlebot|bingbot/i.test(text));
+    assert.ok(
+      text.includes(
+        'User-agent: OAI-SearchBot\nUser-agent: Claude-SearchBot\nUser-agent: PerplexityBot\nUser-agent: ChatGPT-User\nUser-agent: Claude-User\nUser-agent: Perplexity-User\nUser-agent: Google-Agent\nAllow: /\nDisallow: /search\n'
+      ),
+      text
+    );
     // The rate-limited group also skips share images, feeds, query variants and the closed languages
     // (here the settings name none, so the six app languages are open); the default group does not.
     const limited = text.split('\n\n').find(group => group.startsWith('User-agent: AhrefsBot')) ?? '';
@@ -3609,6 +3616,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       metrics,
       /agent="self_test",route="llms",status="200",verification="ua_only",verification_basis="none"} [1-9]/
     );
+  });
+  await t.test('G6 llms-full answers with the full catalog document and no cache', async () => {
+    const response = await fetch(`${origin}/llms-full.txt?locale=de&token=private`, {
+      headers: { 'user-agent': 'OpenNavo-Test/1.0' }
+    });
+    const body = await response.text();
+    assert.equal(response.status, 200, logs);
+    assert.match(response.headers.get('content-type') ?? '', /^text\/plain; charset=utf-8/);
+    assert.equal(response.headers.get('cache-control'), 'public, max-age=300, s-maxage=3600');
+    assert.match(response.headers.get('etag') ?? '', /^W\/"[A-Za-z0-9_-]+"$/);
+    assert.equal(response.headers.get('x-robots-tag'), 'noindex, follow');
+    assert.match(body, /^# OpenNavo\n/);
+    for (const heading of ['## Key pages', '## Catalog at a glance', '## Developer interfaces']) {
+      assert.ok(body.includes(heading), heading);
+    }
+    assert.ok(!/tracking=|token=private|\/admin/.test(body));
+    const sitemap = await (await fetch(`${origin}/__sitemap__/static.xml`)).text();
+    assert.ok(!sitemap.includes('/llms-full.txt'));
   });
   await t.test('IndexNow key file answers only the configured key', async () => {
     const configured = await fetch(`${origin}/fixture-indexnow-key-0001.txt`);

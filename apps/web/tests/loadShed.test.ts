@@ -133,6 +133,7 @@ describe('priority load shedding', () => {
       '/_nuxt/test/_payload.json',
       '/robots.txt',
       '/llms.txt',
+      '/llms-full.txt',
       '/sitemap.xml',
       '/sitemap_index.xml',
       '/sitemap-apps.xml.gz',

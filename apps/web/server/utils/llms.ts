@@ -33,6 +33,7 @@ export function renderLlms(siteUrl: string, apiBase?: string): string {
     `- MCP: <${origin}/mcp>`,
     `- Public API: <${publicApiSpecUrl(apiBase)}>`,
     `- Developer documentation: <${origin}/developers>`,
+    `- Full catalog document: <${origin}/llms-full.txt>`,
     ''
   ].join('\n');
 }

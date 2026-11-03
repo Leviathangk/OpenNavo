@@ -25,7 +25,7 @@ var lockedCrawlers = []string{
 	"googlebot", "googlebot-image", "googlebot-news", "googlebot-video", "storebot-google", "google-inspectiontool", "adsbot-google",
 	"bingbot", "bingpreview", "msnbot", "oai-searchbot", "chatgpt-user", "claude-searchbot", "claude-user", "amzn-searchbot", "amzn-user",
 	"perplexitybot", "perplexity-user", "duckduckbot", "duckassistbot", "applebot", "yandexbot", "baiduspider",
-	"meta-webindexer", "meta-externalfetcher", "mistralai-index", "mistralai-user", "yeti", "*",
+	"meta-webindexer", "meta-externalfetcher", "mistralai-index", "mistralai-user", "yeti", "google-agent", "*",
 }
 
 var (

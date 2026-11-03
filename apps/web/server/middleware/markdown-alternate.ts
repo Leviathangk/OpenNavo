@@ -9,7 +9,7 @@ import {
 } from '../../shared/utils/markdownAlternate';
 import { brandDownloadPath } from '../../app/utils/packageView';
 import { agentLabel } from '../utils/crawlerMetrics';
-import { LONG_EDGE_CACHE_VALUE } from '../utils/edgeCache';
+import { APP_EDGE_CACHE_VALUE } from '../utils/edgeCache';
 import { renderHomeMarkdown } from '../utils/homeMarkdown';
 import { packageMarkdown } from '../utils/packageMarkdown';
 import { appendHeaderValue } from '../utils/responseHeaders';
@@ -79,7 +79,7 @@ export default defineEventHandler(async event => {
     // Nitro route cache, so carry the same six-hour origin policy explicitly. The edge switch also
     // controls the Cloudflare header, matching HTML responses when edge caching is disabled.
     setHeader(event, 'Cache-Control', APP_PAGE_CACHE_CONTROL);
-    setHeader(event, 'Cloudflare-CDN-Cache-Control', settings.edgeCache.enabled ? LONG_EDGE_CACHE_VALUE : 'no-store');
+    setHeader(event, 'Cloudflare-CDN-Cache-Control', settings.edgeCache.enabled ? APP_EDGE_CACHE_VALUE : 'no-store');
   }
   return body;
 });

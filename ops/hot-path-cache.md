@@ -9,7 +9,8 @@ a separate operation.
 | --- | --- | --- | --- |
 | `/_og/` | Existing image pool, six-hour storage ceiling | Explicit 30-day `max-age` and `s-maxage`, `immutable` | Signed URL includes localized image inputs, app version and Nuxt build ID; content changes purge the containing HTML |
 | Every locale's `/recent` | 60 seconds fresh, 300 seconds SWR | Browser revalidates; Cloudflare 60 seconds fresh, 300 seconds SWR and stale-if-error | Catalog changes purge localized page prefixes, including pagination and payloads, at the origin and edge |
-| `/apps/*/versions` in every locale | Six hours fresh, up to 18 hours stale | Existing two-day Cloudflare TTL, seven-day SWR and stale-if-error | Existing app-prefix purge covers versions, filters, pagination and payloads |
+| Every locale's `/apps/<token>` overview, `/details` and `/dependencies` | Six hours fresh | Six hours fresh, one-day SWR and stale-if-error, matching the origin `s-maxage=21600` | Existing app-prefix purge covers the page, its tabs, query variants and payloads |
+| `/apps/*/versions` in every locale | Six hours fresh, up to 18 hours stale | Two-day Cloudflare TTL, seven-day SWR and stale-if-error | Existing app-prefix purge covers versions, filters, pagination and payloads |
 
 The origin image retention remains shorter than the CDN TTL deliberately: the
 separate Redis/LRU image pool can evict images without forcing a new render at

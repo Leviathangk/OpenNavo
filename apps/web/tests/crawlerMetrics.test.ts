@@ -62,6 +62,8 @@ describe('crawler request counters', () => {
 
   it('Uses the shared page types for routes', () => {
     expect(routeLabel('/zh/apps/visual-studio-code/versions')).toBe('app_versions');
+    expect(routeLabel('/llms.txt?locale=de')).toBe('llms');
+    expect(routeLabel('/llms-full.txt?locale=de')).toBe('llms');
   });
 
   it('Buckets unusual statuses and renders Prometheus text', () => {

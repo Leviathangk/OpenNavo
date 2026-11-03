@@ -37,21 +37,17 @@ export const EDGE_CACHE_ROUTES = new Set([
   'about'
 ]);
 /**
- * Pages the Go URL change feed purges by prefix when their app or article changes, and again after
- * every web release (the /apps, /articles and /authors prefixes in urlnotify), so crawlers' long
- * tail can be answered at the edge for hours. Keep both lists in step.
+ * Pages that keep the two-day edge lifetime: version history (which changes rarely), articles and
+ * authors. App overview tabs use APP_EDGE_CACHE_VALUE below so a correction never outlives the
+ * origin's six-hour rule. The Go change feed purges these prefixes on content changes and releases.
  */
-export const LONG_EDGE_CACHE_ROUTES = new Set([
-  'app',
-  'app_versions',
-  'app_details',
-  'app_dependencies',
-  'article',
-  'author'
-]);
+export const LONG_EDGE_CACHE_ROUTES = new Set(['app_versions', 'article', 'author']);
+/** App overview tabs match the origin's six-hour s-maxage; only version history keeps the longer edge life. */
+export const APP_EDGE_CACHE_ROUTES = new Set(['app', 'app_details', 'app_dependencies']);
 // stale-if-error lets Cloudflare answer from its copy while the origin sheds load: the shed 503 itself is
 // no-store (loadShed.ts), so it never replaces the cached page.
 export const LONG_EDGE_CACHE_VALUE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
+export const APP_EDGE_CACHE_VALUE = 'max-age=21600, stale-while-revalidate=86400, stale-if-error=86400';
 /** Home and other lists expire quickly. Recently Updated also participates in content purges. */
 export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=86400, stale-if-error=86400';
 export const RECENT_EDGE_CACHE_VALUE = 'max-age=60, stale-while-revalidate=300, stale-if-error=300';
@@ -96,6 +92,9 @@ export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
     (feed ? type === 'feed' : EDGE_CACHE_ROUTES.has(type));
   if (!shareable) return 'no-store';
   if (!feed && RECENT_PATHS.has(input.path.split('?', 1)[0] ?? '')) return RECENT_EDGE_CACHE_VALUE;
-  const long = feed ? APP_FEED_PATH.test(input.path.split('?', 1)[0] ?? '') : LONG_EDGE_CACHE_ROUTES.has(type);
-  return long ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
+  if (feed)
+    return APP_FEED_PATH.test(input.path.split('?', 1)[0] ?? '') ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
+  if (LONG_EDGE_CACHE_ROUTES.has(type)) return LONG_EDGE_CACHE_VALUE;
+  if (APP_EDGE_CACHE_ROUTES.has(type)) return APP_EDGE_CACHE_VALUE;
+  return SHORT_EDGE_CACHE_VALUE;
 }

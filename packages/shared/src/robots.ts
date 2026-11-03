@@ -47,7 +47,8 @@ export const LOCKED_CRAWLERS = [
   'Amzn-User', // User-triggered retrieval.
   'MistralAI-Index',
   'MistralAI-User',
-  'Yeti'
+  'Yeti',
+  'Google-Agent'
 ] as const;
 
 // Site search and Brewfile lists stay disallowed for every crawler: both open an unbounded URL
@@ -55,6 +56,18 @@ export const LOCKED_CRAWLERS = [
 export const ROBOTS_PRIVATE_PATHS = SITE_LOCALES.flatMap(locale =>
   ['/search', '/brewfile'].map(path => `${LOCALE_METADATA[locale].prefix}${path}`)
 );
+
+// Answer-engine retrieval crawlers are explicitly allowed. They are locked above, so settings cannot
+// narrow this policy; the group repeats the private paths because a named group replaces the default one.
+export const RETRIEVAL_CRAWLERS = [
+  'OAI-SearchBot',
+  'Claude-SearchBot',
+  'PerplexityBot',
+  'ChatGPT-User',
+  'Claude-User',
+  'Perplexity-User',
+  'Google-Agent'
+] as const;
 
 // Heavy, low-value responses that rate-limited crawlers also skip: payloads, two app tabs, share images,
 // RSS feeds (/*/feed.xml matches the app, collection and article feeds in every language) and query
@@ -144,6 +157,8 @@ export function buildRobotsTxt({
       rule.mode === 'block' ? ['Disallow: /'] : [`Crawl-delay: ${rule.delaySeconds}`, ...privateRules, ...limitedRules];
     groups.push(group(bots, rules));
   }
+  // Retrieval and user-triggered agents: explicit allow, with the default group's private paths repeated.
+  groups.push(group([...RETRIEVAL_CRAWLERS], ['Allow: /', ...privateRules]));
   if (sitemap) groups.push(`Sitemap: ${sitemap}`);
   return `${groups.join('\n\n')}\n`;
 }
