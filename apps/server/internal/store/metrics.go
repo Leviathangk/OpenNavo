@@ -25,7 +25,7 @@ type MetricState struct {
 	GitHubRemaining int64
 	// SnapshotRevocationGap is revocation_generation - snapshot_revocation.
 	SnapshotRevocationGap int64
-	// OldestPurgeDebtSeconds is the age of the oldest queued CDN purge, 0 when the queue is empty.
+	// OldestPurgeDebtSeconds is the age of the oldest queued snapshot CDN purge, 0 when none is queued.
 	OldestPurgeDebtSeconds float64
 	// SnapshotUnavailableSeconds is how long Latest() has returned 503, 0 when it is healthy.
 	SnapshotUnavailableSeconds float64
@@ -45,8 +45,8 @@ func (s *Store) MetricState(ctx context.Context, now time.Time) (MetricState, er
 	if err := s.DB.WithContext(ctx).Raw("SELECT revocation_generation-snapshot_revocation FROM catalog_visibility WHERE id=true").Scan(&out.SnapshotRevocationGap).Error; err != nil {
 		return out, err
 	}
-	if err := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM (?-pending_purges_since)),0)
-FROM url_notify_state WHERE id=true AND jsonb_array_length(pending_purges)>0`, now).Scan(&out.OldestPurgeDebtSeconds).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM (?-pending_snapshot_purges_since)),0)
+FROM url_notify_state WHERE id=true AND pending_snapshot_purges_since IS NOT NULL`, now).Scan(&out.OldestPurgeDebtSeconds).Error; err != nil {
 		return out, err
 	}
 	if s.Redis != nil {

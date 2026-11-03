@@ -81,6 +81,7 @@ describe('Installed packages absent from the public catalog', () => {
     await flushPromises();
     expect(wrapper.find('[data-testid="package-unavailable"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('本地目录里没有这个包');
+    expect(wrapper.find('[data-testid="package-unavailable"] a[href="/discover"]').exists()).toBe(true);
     expect(wrapper.findComponent(OnSkeleton).exists()).toBe(false);
     expect(wrapper.findComponent(RequestError).exists()).toBe(false);
   });

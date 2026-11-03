@@ -132,18 +132,7 @@ func (s *Store) IndexRowsByID(ctx context.Context, ids []int64) ([]IndexRow, err
 // each prefix once and in order. A queue longer than limit becomes fallback, the long-cached sections, which one
 // purge clears instead of that many pages.
 func (s *Store) QueueURLPurges(ctx context.Context, prefixes []string, limit int, fallback []string) error {
-	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var row struct {
-			Pending string
-			Since   *time.Time
-		}
-		if err := tx.Raw("SELECT pending_purges::text AS pending,pending_purges_since AS since FROM url_notify_state WHERE id=true FOR UPDATE").Scan(&row).Error; err != nil {
-			return err
-		}
-		var queue []string
-		if err := json.Unmarshal([]byte(row.Pending), &queue); err != nil {
-			return err
-		}
+	return s.updatePurgeQueue(ctx, func(queue []string) []string {
 		seen := map[string]bool{}
 		for _, prefix := range queue {
 			seen[prefix] = true
@@ -157,38 +146,85 @@ func (s *Store) QueueURLPurges(ctx context.Context, prefixes []string, limit int
 		if len(queue) > limit {
 			queue = CollapseURLPurges(queue, fallback)
 		}
+		return queue
+	})
+}
+
+// DequeueURLPurges removes exactly the prefixes a successful purge cleared, so the next drain does
+// not purge them again and the debt clock stops as soon as the queue empties.
+func (s *Store) DequeueURLPurges(ctx context.Context, prefixes []string) error {
+	if len(prefixes) == 0 {
+		return nil
+	}
+	done := make(map[string]bool, len(prefixes))
+	for _, prefix := range prefixes {
+		done[prefix] = true
+	}
+	return s.updatePurgeQueue(ctx, func(queue []string) []string {
+		kept := queue[:0]
+		for _, prefix := range queue {
+			if !done[prefix] {
+				kept = append(kept, prefix)
+			}
+		}
+		return kept
+	})
+}
+
+// updatePurgeQueue serializes every queue mutation on the single state row. It also derives the
+// snapshot debt clock from the queue itself, so page backlog never feeds the snapshot metric.
+func (s *Store) updatePurgeQueue(ctx context.Context, mutate func([]string) []string) error {
+	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var row struct {
+			Pending       string
+			Since         *time.Time
+			SnapshotSince *time.Time
+		}
+		if err := tx.Raw(`SELECT pending_purges::text AS pending,pending_purges_since AS since,
+ pending_snapshot_purges_since AS snapshot_since FROM url_notify_state WHERE id=true FOR UPDATE`).Scan(&row).Error; err != nil {
+			return err
+		}
+		var queue []string
+		if err := json.Unmarshal([]byte(row.Pending), &queue); err != nil {
+			return err
+		}
+		queue = mutate(queue)
 		next, err := json.Marshal(queue)
 		if err != nil {
 			return err
 		}
 		since := row.Since
-		if len(queue) > 0 && since == nil {
+		if len(queue) == 0 {
+			since = nil
+		} else if since == nil {
 			now := time.Now().UTC()
 			since = &now
 		}
-		if len(queue) == 0 {
-			since = nil
+		snapshotSince := row.SnapshotSince
+		hasSnapshot := false
+		for _, prefix := range queue {
+			if strings.Contains(prefix, "/snapshots/") {
+				hasSnapshot = true
+				break
+			}
 		}
-		return tx.Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,pending_purges_since=? WHERE id=true", string(next), since).Error
+		if !hasSnapshot {
+			snapshotSince = nil
+		} else if snapshotSince == nil {
+			now := time.Now().UTC()
+			snapshotSince = &now
+		}
+		return tx.Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,pending_purges_since=?,pending_snapshot_purges_since=? WHERE id=true",
+			string(next), since, snapshotSince).Error
 	})
 }
 
+// SaveURLNotifyState persists feed progress. The purge queue is deliberately absent: QueueURLPurges
+// and DequeueURLPurges mutate it transactionally, so a worker saving stale state cannot drop purge
+// debt queued concurrently (a racing snapshot revocation, for example).
 func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) error {
-	pending, err := json.Marshal(state.PendingPurgePrefixes)
-	if err != nil {
-		return err
-	}
-	var since *time.Time
-	if len(state.PendingPurgePrefixes) > 0 {
-		if state.PendingPurgesSince != nil {
-			since = state.PendingPurgesSince
-		} else {
-			now := time.Now().UTC()
-			since = &now
-		}
-	}
-	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,pending_purges_since=?,cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=?,index_backfill=? WHERE id=true",
-		string(pending), since, state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError, state.IndexBackfill).Error
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=?,index_backfill=? WHERE id=true",
+		state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError, state.IndexBackfill).Error
 }
 
 // ContentURLChange is a batch of changed pages outside the catalog (articles, authors).

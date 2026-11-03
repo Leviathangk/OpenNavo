@@ -307,7 +307,7 @@ func TestSnapshotRevocationMetricsReflectBlockedState(t *testing.T) {
 	require.Error(t, buildOnce(svc))
 	_, err := svc.Latest(ctx)
 	require.Error(t, err, "the failed revocation makes Latest unavailable and records its start")
-	require.NoError(t, st.QueueURLPurges(ctx, []string{"cdn.example.test/pages/a"}, 1000, nil))
+	require.NoError(t, st.QueueURLPurges(ctx, []string{"cdn.example.test/snapshots/catalog.json.gz"}, 1000, nil))
 	state, err := st.MetricState(ctx, time.Now().UTC().Add(90*time.Second))
 	require.NoError(t, err)
 	require.Greater(t, state.SnapshotRevocationGap, int64(0))
@@ -355,7 +355,7 @@ func TestRevocationSupersededByAVisibilityChangeDuringTheBuild(t *testing.T) {
 		return nil
 	}
 	err := buildOnce(svc)
-	require.ErrorIs(t, err, errRevocationSuperseded)
+	require.ErrorIs(t, err, ErrRevocationSuperseded)
 	state, err := st.SnapshotVisibility(ctx)
 	require.NoError(t, err)
 	require.Greater(t, state.RevocationGeneration, state.SnapshotRevocation, "the superseded build acknowledges nothing")
@@ -414,7 +414,7 @@ func TestRevokePrivateStopsAfterAStreamOfVisibilityChanges(t *testing.T) {
 		return "", false
 	}
 	_, err := svc.RevokePrivate(ctx)
-	require.ErrorIs(t, err, errRevocationSuperseded)
+	require.ErrorIs(t, err, ErrRevocationSuperseded)
 	require.Equal(t, maxRevocationAttempts, attempts)
 	state, err := st.SnapshotVisibility(ctx)
 	require.NoError(t, err)

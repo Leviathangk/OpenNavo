@@ -470,6 +470,20 @@ func (s *Service) invalidateShareImages(ctx context.Context, packageID int64) (w
 	return warning
 }
 
+// revocationResult maps a snapshot revocation onto the admin-facing write outcome. The visibility
+// write is already committed, so a bounded loop that lost every rebuild to newer changes is an
+// outbox obligation, not a failed write: report it as a warning rather than an internal error the
+// admin may retry.
+func revocationResult(warning string, err error) (string, error) {
+	if errors.Is(err, snapshot.ErrRevocationSuperseded) {
+		if warning == "" {
+			warning = snapshot.ConvergingWarning
+		}
+		return warning, nil
+	}
+	return warning, err
+}
+
 func (s *Service) Execute(ctx context.Context, op string, in Input) (result any, err error) {
 	ctx = operationContext(ctx, op, in)
 	defer func() {
@@ -483,9 +497,11 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (result any,
 			// bump makes old entries unreachable without a synchronous SCAN of the keyspace.
 			var warning string
 			if s.Snapshots != nil {
-				snapshotWarning, snapshotErr := s.Snapshots.RevokePrivate(ctx)
+				snapshotWarning, snapshotErr := revocationResult(s.Snapshots.RevokePrivate(ctx))
+				if snapshotWarning != "" {
+					warning = snapshotWarning
+				}
 				err = errors.Join(err, snapshotErr)
-				warning = snapshotWarning
 			}
 			// Queue, never await, the share-image purge: a CDN or web outage must not
 			// turn a committed visibility change into a failed admin write.

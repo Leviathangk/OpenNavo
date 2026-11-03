@@ -1,11 +1,13 @@
 package management
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"testing"
 
 	"github.com/opennavo/opennavo/server/gen/adminapi"
+	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -64,4 +66,19 @@ func TestDownloadSizeRetainsInt64Precision(t *testing.T) {
 		_, err := Decode(adminapi.UpdatePackageMetaRequestObject{Id: 1}, []byte(body), store.AuditActor{}, false)
 		require.Error(t, err)
 	}
+}
+
+func TestRevocationResultTreatsSupersededAsWarning(t *testing.T) {
+	warning, err := revocationResult("", snapshot.ErrRevocationSuperseded)
+	require.NoError(t, err)
+	require.Equal(t, snapshot.ConvergingWarning, warning)
+
+	warning, err = revocationResult(snapshot.PurgePendingWarning, snapshot.ErrRevocationSuperseded)
+	require.NoError(t, err)
+	require.Equal(t, snapshot.PurgePendingWarning, warning)
+
+	boom := errors.New("snapshot storage unavailable")
+	warning, err = revocationResult("", boom)
+	require.ErrorIs(t, err, boom)
+	require.Empty(t, warning)
 }

@@ -176,3 +176,26 @@ func TestSnapshotRevocationWaitsForInflightPublisher(t *testing.T) {
 		require.NotContains(t, string(raw), "inflight-private", "an older publisher must not revive a revoked object")
 	}
 }
+
+// A process without a purger must still queue the obligation: the notifier's drain owns it from
+// there, and the admin warning stays honest.
+func TestPrivateSnapshotRevocationWithoutPurgerQueuesDurableDebt(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"snapshot-nopurger","version":"1","desc":"Snapshot summary"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	svc := &Service{Store: st, Objects: memoryObjects{}}
+	_, err = svc.Build(ctx)
+	require.NoError(t, err)
+	makePrivate(t, st, "snapshot-nopurger")
+	warning, err := svc.RevokePrivate(ctx)
+	require.NoError(t, err)
+	require.Equal(t, PurgePendingWarning, warning)
+	state, err := st.URLNotifyState(ctx)
+	require.NoError(t, err)
+	require.Contains(t, state.PendingPurgePrefixes, "cdn.example.test/snapshots/")
+	metrics, err := st.MetricState(ctx, time.Now().UTC().Add(time.Minute))
+	require.NoError(t, err)
+	require.Greater(t, metrics.OldestPurgeDebtSeconds, float64(0))
+}

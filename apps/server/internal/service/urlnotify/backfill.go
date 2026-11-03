@@ -86,17 +86,20 @@ func (n *Notifier) backfill(ctx context.Context, state *store.URLNotifyState) er
 	}
 	purging := purgeEnabled(settings)
 	if purging && state.IndexBackfill != indexBackfill+":purging" {
-		pending := Plan{PurgePrefixes: state.PendingPurgePrefixes}.Merge(Plan{PurgePrefixes: plan.PurgePrefixes})
-		state.PendingPurgePrefixes = pending.PurgePrefixes
-		if len(state.PendingPurgePrefixes) > maxPurgePrefixes {
-			state.PendingPurgePrefixes = store.CollapseURLPurges(state.PendingPurgePrefixes, sectionPrefixes(n.Config.WebBaseURL))
+		// Queue before persisting the phase: a crash in between dedupes on retry, while the reverse
+		// order could mark the phase purging without ever queueing its prefixes.
+		if err := n.Store.QueueURLPurges(ctx, plan.PurgePrefixes, maxPurgePrefixes, sectionPrefixes(n.Config.WebBaseURL)); err != nil {
+			return err
 		}
-		// Persist the phase with the queue so retries never re-add completed prefixes.
 		state.IndexBackfill = indexBackfill + ":purging"
-		// Persist the purge before any external request, as the feed does.
 		if err := n.Store.SaveURLNotifyState(ctx, *state); err != nil {
 			return err
 		}
+		refreshed, err := n.Store.URLNotifyState(ctx)
+		if err != nil {
+			return err
+		}
+		*state = refreshed
 	}
 	if purging {
 		state.LastPurgeStatus, _ = n.drainPurges(ctx, state)

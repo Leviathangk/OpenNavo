@@ -400,3 +400,25 @@ func TestGitHubRenameCandidateSurvivesAFailedFirstCandidate(t *testing.T) {
 	require.Equal(t, "new/name", fact.Subject)
 	require.Equal(t, []string{"old/name", "new/name"}, calls)
 }
+
+// A transient /license failure still publishes the repository signals, but must not wait for the
+// next 30-day full check to try the OSI decision again.
+func TestGitHubLicenseLookupFailureRetriesWithinADay(t *testing.T) {
+	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	homepage := "https://github.com/acme/app"
+	pkg := store.SourceFactPackage{ID: 1, Homepage: &homepage}
+	svc := &Service{
+		GitHub: GitHubSourceFunc(func(context.Context, string, string) (sources.RepoResult, error) {
+			result := repoResultForTest("acme/app", "NOASSERTION", 5, now.Add(-time.Hour))
+			result.LicenseUnavailable = true
+			return result, nil
+		}),
+		Now: func() time.Time { return now },
+	}
+	fact, low, err := svc.checkGitHub(context.Background(), pending{pkg: pkg, items: []string{"acme/app"}}, &Stats{GitHubRemaining: -1})
+	require.NoError(t, err)
+	require.False(t, low)
+	require.Equal(t, "none", fact.Status)
+	require.Equal(t, "acme/app", fact.Subject)
+	require.WithinDuration(t, now.Add(6*time.Hour+15*time.Minute), fact.NextCheckAt, time.Second)
+}

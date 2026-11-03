@@ -25,6 +25,15 @@ import (
 // purge is queued. Edge copies can persist until the queue resumes.
 const PurgePendingWarning = "Snapshot revocation committed; CDN purge is pending; edge copies may persist until the purge is resumed."
 
+// maxQueuedSnapshotPurges bounds the shared queue exactly like the notifier's page limit; snapshot
+// revocations queue one prefix, so this only matters if many revocations defer at once.
+const maxQueuedSnapshotPurges = 1000
+
+// ConvergingWarning is returned to the admin when the visibility write committed but a burst of
+// concurrent changes exhausted the bounded rebuild loop. The outbox finishes the revocation, so a
+// retry is not needed and the write must not be reported as failed.
+const ConvergingWarning = "Visibility change committed; snapshot revocation is still converging after concurrent changes and will finish from the outbox."
+
 type Objects interface {
 	Put(context.Context, string, []byte, string) error
 	URL(string) string
@@ -269,20 +278,24 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 				slog.Default().Error("snapshot self-check found a private package", "token", token)
 				return fmt.Errorf("snapshot self-check still contains private package %q", token)
 			}
+			prefix, parseErr := url.Parse(s.Objects.URL("snapshots/"))
+			if parseErr != nil || prefix.Host == "" {
+				return errors.New("invalid snapshot CDN URL")
+			}
+			target := prefix.Host + prefix.EscapedPath()
 			if s.Purge == nil {
+				// A missing purger must not drop the obligation: queue the same durable debt the
+				// notifier drains, and keep the admin warning.
+				if queueErr := s.Store.QueueURLPurges(ctx, []string{target}, maxQueuedSnapshotPurges, nil); queueErr != nil {
+					return fmt.Errorf("queue revoked snapshot purge: %w", queueErr)
+				}
 				purgeWarning = PurgePendingWarning
-			} else {
-				prefix, parseErr := url.Parse(s.Objects.URL("snapshots/"))
-				if parseErr != nil || prefix.Host == "" {
-					return errors.New("invalid snapshot CDN URL")
+			} else if purgeErr := s.Purge(ctx, []string{target}); purgeErr != nil {
+				if !errors.Is(purgeErr, urlnotify.ErrPurgeDeferred) {
+					return fmt.Errorf("queue revoked snapshot purge: %w", purgeErr)
 				}
-				if purgeErr := s.Purge(ctx, []string{prefix.Host + prefix.EscapedPath()}); purgeErr != nil {
-					if !errors.Is(purgeErr, urlnotify.ErrPurgeDeferred) {
-						return fmt.Errorf("queue revoked snapshot purge: %w", purgeErr)
-					}
-					purgeWarning = PurgePendingWarning
-					slog.Default().Error("snapshot CDN purge deferred", "status", "paused: Cloudflare purge unavailable", "error", purgeErr)
-				}
+				purgeWarning = PurgePendingWarning
+				slog.Default().Error("snapshot CDN purge deferred", "status", "paused: Cloudflare purge unavailable", "error", purgeErr)
 			}
 			if err = s.revocationCurrent(ctx, visibility); err != nil {
 				return err
@@ -302,10 +315,10 @@ type revocableObjects interface {
 	Delete(context.Context, string) error
 }
 
-// errRevocationSuperseded reports a revocation whose generation moved to a newer build before it
+// ErrRevocationSuperseded reports a revocation whose generation moved to a newer build before it
 // could be acknowledged. The bundle on screen may still hold the package that turned private, so
 // the build publishes nothing it has not already written and the caller runs again.
-var errRevocationSuperseded = errors.New("snapshot revocation superseded by a newer visibility change")
+var ErrRevocationSuperseded = errors.New("snapshot revocation superseded by a newer visibility change")
 
 // revocationCurrent fails when a visibility change has advanced the revocation generation since
 // the build read it, so no acknowledgement can cover a package the build never filtered.
@@ -316,13 +329,13 @@ func (s *Service) revocationCurrent(ctx context.Context, seen store.SnapshotVisi
 	}
 	if current.RevocationGeneration > seen.RevocationGeneration {
 		slog.Default().Warn("snapshot revocation superseded", "generation", seen.RevocationGeneration, "current", current.RevocationGeneration)
-		return errRevocationSuperseded
+		return ErrRevocationSuperseded
 	}
 	return nil
 }
 
 // RevokePrivate completes durable revocation before a visibility write is acknowledged. A build
-// that another change superseded returns errRevocationSuperseded; the loop then reads the newer
+// that another change superseded returns ErrRevocationSuperseded; the loop then reads the newer
 // generation and builds again, up to a bound that keeps a burst of admin writes from looping here.
 // Build also retries the same work from the outbox.
 func (s *Service) RevokePrivate(ctx context.Context) (string, error) {
@@ -333,7 +346,7 @@ func (s *Service) RevokePrivate(ctx context.Context) (string, error) {
 			return warning, err
 		}
 		stats, err := s.Build(ctx)
-		if errors.Is(err, errRevocationSuperseded) {
+		if errors.Is(err, ErrRevocationSuperseded) {
 			continue
 		}
 		if err != nil {
@@ -345,7 +358,7 @@ func (s *Service) RevokePrivate(ctx context.Context) (string, error) {
 	}
 	// Every attempt lost to a newer visibility change; the write is not acknowledged and the
 	// outbox rebuilds against the final generation.
-	return warning, errRevocationSuperseded
+	return warning, ErrRevocationSuperseded
 }
 
 // maxRevocationAttempts bounds the rebuilds one admin write triggers when other changes keep

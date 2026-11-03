@@ -3,7 +3,7 @@ import { lifecycleReasonOf, packageInstallState, recentReturnPath, withRecentRet
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { OnBreadcrumb, OnEmpty, OnPackageNotice, OnSkeleton, OnTabs } from '@opennavo/ui';
+import { OnBreadcrumb, OnButton, OnEmpty, OnPackageNotice, OnSkeleton, OnTabs } from '@opennavo/ui';
 import RequestError from '@/components/common/RequestError.vue';
 import DetailHeader from '@/components/package/DetailHeader.vue';
 import DetailStats from '@/components/package/DetailStats.vue';
@@ -147,7 +147,13 @@ const unavailable = computed(() => !loading.value && !detail.value && !local.val
       data-testid="package-unavailable"
       :title="t('package.notFound')"
       icon="lucide:package"
-    />
+    >
+      <template #actions>
+        <OnButton href="/discover" :link-as="RouterLink" variant="secondary" size="sm" icon="lucide:compass">
+          {{ t('nav.discover') }}
+        </OnButton>
+      </template>
+    </OnEmpty>
     <div v-else class="flex flex-col gap-14px" aria-hidden="true">
       <OnSkeleton height="146px" radius="huge" />
       <OnSkeleton height="86px" radius="big" />

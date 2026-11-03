@@ -23,7 +23,10 @@ const (
 	GitHub   = "github"
 	AppStore = "app_store"
 
-	recheck                       = 30 * 24 * time.Hour
+	recheck = 30 * 24 * time.Hour
+	// licenseRetry is the backoff after a transient license-file read failure: the repository
+	// signals are still saved, but the OSI decision must not wait for the next 30-day full check.
+	licenseRetry                  = 6 * time.Hour
 	signalRecheck                 = 24 * time.Hour
 	priceRecheck                  = 24 * time.Hour
 	maxBackoff                    = 7 * 24 * time.Hour
@@ -247,6 +250,7 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	haveFirst := false
 	sawUnavailable := false
 	sawSignalFailure := false
+	licenseUnavailable := false
 	results := make(map[string]sources.RepoResult)
 	// A stored subject is the canonical name a previous rename published, so it stays a candidate
 	// even when the app's definition no longer lists it: otherwise a rename followed by an edit to
@@ -301,6 +305,9 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 			}
 			if err != nil {
 				return fact, low, err
+			}
+			if result.LicenseUnavailable {
+				licenseUnavailable = true
 			}
 			results[strings.ToLower(repo)] = result
 		}
@@ -413,6 +420,9 @@ func (s *Service) checkGitHub(ctx context.Context, item pending, stats *Stats) (
 	}
 	if haveFirst {
 		fact.Status, fact.Subject = "none", first.Repo
+		if licenseUnavailable {
+			fact.NextCheckAt = next(now, licenseRetry, item.pkg.ID)
+		}
 		data, err := json.Marshal(first)
 		if err != nil {
 			return fact, low, err

@@ -30,5 +30,10 @@ func (n *Notifier) PurgeSnapshots(ctx context.Context, prefixes []string) error 
 	if _, err := n.purgeNow(ctx, settings, prefixes); err != nil {
 		return fmt.Errorf("%w: %w", ErrPurgeDeferred, err)
 	}
+	// The purge succeeded, so clear the debt now instead of leaving it for the next drain to purge
+	// again. If clearing fails the prefixes stay queued and a retry is harmless.
+	if err := n.Store.DequeueURLPurges(ctx, prefixes); err != nil {
+		return fmt.Errorf("%w: clear purge queue: %w", ErrPurgeDeferred, err)
+	}
 	return nil
 }

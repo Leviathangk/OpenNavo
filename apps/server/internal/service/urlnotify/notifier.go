@@ -413,6 +413,11 @@ func (n *Notifier) drainPurges(ctx context.Context, state *store.URLNotifyState)
 		return "error: Cloudflare token unavailable", 0
 	}
 	purged, status, err := n.purgePrefixes(ctx, settings, token, prefixes)
+	if purged > 0 {
+		if deqErr := n.Store.DequeueURLPurges(ctx, prefixes[:purged]); deqErr != nil {
+			return "error: dequeue purged prefixes: " + deqErr.Error(), purged
+		}
+	}
 	state.PendingPurgePrefixes = prefixes[purged:]
 	if wait := (*purgeWait)(nil); errors.As(err, &wait) {
 		return "pending: waiting for purge capacity", purged

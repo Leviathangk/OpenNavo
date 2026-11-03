@@ -176,10 +176,13 @@ type GitHub struct {
 }
 
 type RepoResult struct {
-	Repository  Repository
-	ETag        string
-	NotModified bool
-	NotFound    bool
+	// LicenseUnavailable reports a transient /license read failure: Repository may still be
+	// published, but the OSI decision must retry sooner than its 30-day schedule.
+	LicenseUnavailable bool
+	Repository         Repository
+	ETag               string
+	NotModified        bool
+	NotFound           bool
 	// Requests is the number of HTTP requests made, including a permitted rename redirect.
 	Requests int
 	// Remaining and Limit describe the primary quota after the request, or -1 when GitHub did not say.
@@ -229,7 +232,10 @@ func (g *GitHub) Repo(ctx context.Context, repo, etag string) (RepoResult, error
 					return result, ErrRateLimited
 				}
 				// A license file that cannot be read leaves the fact unset rather than failing the
-				// repository signals; the next 30-day check retries it.
+				// repository signals; the service schedules a short retry instead of the 30-day one.
+				if licenseErr != nil {
+					result.LicenseUnavailable = true
+				}
 				if licenseErr == nil && spdx != "" && result.Repository.License != nil {
 					result.Repository.License.SPDXID = spdx
 				}
