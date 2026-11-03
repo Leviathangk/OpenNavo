@@ -652,24 +652,33 @@ fn call_write(
     let trusted = broker.trusted_client.as_deref().is_some_and(|expected| {
         super::caller::peer_runs(&super::caller::SystemProcesses, peer, expected)
     });
-    if !trusted {
-        return Err(rpc_error(
-            "E_MCP_UNTRUSTED_CLIENT",
-            "Install and uninstall are only accepted through OpenNavo's own mcp command. If OpenNavo was just moved, restart OpenNavo.",
-        ));
-    }
     let name = params.get("name").and_then(Value::as_str).unwrap_or("");
     let arguments = params.get("arguments").cloned().unwrap_or(Value::Null);
-    let request = super::tools::parse_write(name, arguments)
-        .map_err(|error: ToolError| (error.code, error.message))?;
     let client_name = params
         .get("client")
         .and_then(|client| client.get("name"))
         .and_then(Value::as_str)
         .map(super::protocol::sanitize_client_name)
         .filter(|name| !name.is_empty());
+    // Trust is decided before parsing so a malformed request cannot probe the parser, but the
+    // audit still names the object when the arguments happen to be well formed.
+    let object = super::tools::parse_write(name, arguments.clone())
+        .map(|request| request.object())
+        .unwrap_or_else(|_| "unknown".to_owned());
+    let refuse = |error: ToolError| {
+        host.reject_write(name, &object, peer, client_name.clone(), error)
+            .map_err(|error| (error.code, error.message))
+    };
+    if !trusted {
+        return refuse(ToolError::new(
+            "E_MCP_UNTRUSTED_CLIENT",
+            "Install and uninstall are only accepted through OpenNavo's own mcp command. If OpenNavo was just moved, restart OpenNavo.",
+        ));
+    }
+    let request = super::tools::parse_write(name, arguments)
+        .map_err(|error: ToolError| (error.code, error.message))?;
     let Some(_slot) = WriteSlot::acquire(&broker) else {
-        return Err(rpc_error("E_BUSY", super::tools::BUSY_MESSAGE));
+        return refuse(ToolError::new("E_BUSY", super::tools::BUSY_MESSAGE));
     };
     let generation = broker.write_generation.load(Ordering::Acquire);
     let check = weak.clone();
@@ -1114,6 +1123,18 @@ impl<R: tauri::Runtime> ToolHost for LiveTools<R> {
         context: super::tools::WriteContext,
     ) -> Result<Value, ToolError> {
         self.writes.run(request, context)
+    }
+
+    fn reject_write(
+        &self,
+        tool: &str,
+        object: &str,
+        peer: Option<super::caller::PidStamp>,
+        client_name: Option<String>,
+        error: ToolError,
+    ) -> Result<Value, ToolError> {
+        self.writes
+            .reject_write(tool, object, peer, client_name, error)
     }
 }
 
@@ -1588,10 +1609,13 @@ mod tests {
     /// Write host that blocks until released, standing in for the native dialog.
     use super::super::tools::{WriteContext, WriteRequest};
 
+    type RefusalLog = Arc<Mutex<Vec<(String, String, String)>>>;
+
     struct WriteHost {
         entered: std::sync::mpsc::SyncSender<WriteContext>,
         release: Mutex<std::sync::mpsc::Receiver<()>>,
         cancel: std::sync::mpsc::Sender<()>,
+        refusals: RefusalLog,
     }
 
     impl ToolHost for WriteHost {
@@ -1612,6 +1636,21 @@ mod tests {
         }
         fn cancel_writes(&self) {
             let _ = self.cancel.send(());
+        }
+        fn reject_write(
+            &self,
+            tool: &str,
+            object: &str,
+            _peer: Option<super::super::caller::PidStamp>,
+            _client_name: Option<String>,
+            error: ToolError,
+        ) -> Result<Value, ToolError> {
+            self.refusals.lock().expect("refusals").push((
+                error.code.clone(),
+                tool.to_owned(),
+                object.to_owned(),
+            ));
+            Err(error)
         }
         fn write(&self, request: WriteRequest, context: WriteContext) -> Result<Value, ToolError> {
             assert_eq!(request.tool(), "install_app");
@@ -1644,25 +1683,28 @@ mod tests {
         Arc<Broker>,
         std::sync::mpsc::Receiver<WriteContext>,
         std::sync::mpsc::Sender<()>,
+        RefusalLog,
     ) {
         let (entered, entered_rx) = std::sync::mpsc::sync_channel(4);
         let (release_tx, release) = std::sync::mpsc::channel();
+        let refusals: RefusalLog = Default::default();
         let host: Arc<dyn ToolHost> = Arc::new(WriteHost {
             entered,
             release: Mutex::new(release),
             cancel: release_tx.clone(),
+            refusals: refusals.clone(),
         });
         let broker = Arc::new(Broker::with_host(dir.path().to_path_buf(), Some(host)));
         broker.set_enabled(true).expect("enable");
         broker.set_write_enabled(true).expect("write");
         wait_running(&broker);
-        (broker, entered_rx, release_tx)
+        (broker, entered_rx, release_tx, refusals)
     }
 
     #[test]
     fn a_second_write_while_one_is_open_gets_busy_not_queued() {
         let dir = tempdir();
-        let (broker, entered, release) = write_broker(&dir);
+        let (broker, entered, release, refusals) = write_broker(&dir);
         let path = socket::path(dir.path()).path;
         let first_path = path.clone();
         let first = std::thread::spawn(move || request(&first_path, install_call("1")));
@@ -1683,6 +1725,15 @@ mod tests {
             entered.try_recv().is_err(),
             "busy call must not reach the host"
         );
+        assert_eq!(
+            refusals.lock().expect("refusals").as_slice(),
+            [(
+                "E_BUSY".to_owned(),
+                "install_app".to_owned(),
+                "cask/iina".to_owned()
+            )],
+            "a busy refusal is audited"
+        );
 
         release.send(()).expect("release");
         let first = first.join().expect("join");
@@ -1702,7 +1753,7 @@ mod tests {
     #[test]
     fn turning_writes_off_invalidates_an_open_approval() {
         let dir = tempdir();
-        let (broker, entered, release) = write_broker(&dir);
+        let (broker, entered, release, _refusals) = write_broker(&dir);
         let path = socket::path(dir.path()).path;
         let call = std::thread::spawn(move || request(&path, install_call("1")));
         let context = entered.recv_timeout(Duration::from_secs(5)).expect("write");
@@ -1720,7 +1771,7 @@ mod tests {
     #[test]
     fn a_closed_connection_invalidates_its_approval() {
         let dir = tempdir();
-        let (broker, entered, release) = write_broker(&dir);
+        let (broker, entered, release, _refusals) = write_broker(&dir);
         let path = socket::path(dir.path()).path;
         let mut stream = UnixStream::connect(&path).expect("connect");
         serde_json::to_writer(&mut stream, &install_call("1")).expect("write");
@@ -1745,7 +1796,7 @@ mod tests {
     #[test]
     fn every_write_reaches_the_confirming_host_and_ignores_confirmed_flags() {
         let dir = tempdir();
-        let (broker, entered, release) = write_broker(&dir);
+        let (broker, entered, release, _refusals) = write_broker(&dir);
         let path = socket::path(dir.path()).path;
         for id in ["1", "2", "3"] {
             let mut call = install_call(id);
@@ -1772,7 +1823,7 @@ mod tests {
     fn switching_off_drains_an_open_write_and_cancels_its_dialog() {
         for master in [false, true] {
             let dir = tempdir();
-            let (broker, entered, release) = write_broker(&dir);
+            let (broker, entered, release, _refusals) = write_broker(&dir);
             let path = socket::path(dir.path()).path;
             let call = std::thread::spawn(move || {
                 let _ = std::panic::catch_unwind(|| request(&path, install_call("1")));
@@ -1798,10 +1849,12 @@ mod tests {
         let dir = tempdir();
         let (entered, entered_rx) = std::sync::mpsc::sync_channel(4);
         let (release_tx, release) = std::sync::mpsc::channel();
+        let refusals: RefusalLog = Default::default();
         let host: Arc<dyn ToolHost> = Arc::new(WriteHost {
             entered,
             release: Mutex::new(release),
             cancel: release_tx,
+            refusals: refusals.clone(),
         });
         let broker = Arc::new(
             Broker::with_host(dir.path().to_path_buf(), Some(host))
@@ -1813,6 +1866,15 @@ mod tests {
         let path = socket::path(dir.path()).path;
         let response = request(&path, install_call("1"));
         assert_eq!(response["error"]["code"], "E_MCP_UNTRUSTED_CLIENT");
+        assert_eq!(
+            refusals.lock().expect("refusals").as_slice(),
+            [(
+                "E_MCP_UNTRUSTED_CLIENT".to_owned(),
+                "install_app".to_owned(),
+                "cask/iina".to_owned()
+            )],
+            "an untrusted refusal is audited"
+        );
         assert!(
             entered_rx.try_recv().is_err(),
             "no dialog for an untrusted peer"

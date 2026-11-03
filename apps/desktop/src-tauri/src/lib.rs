@@ -326,7 +326,7 @@ pub fn run() {
         eprintln!("Failed to export IPC bindings: {error}");
     }
 
-    let result = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         // Register single-instance first: a second instance forwards arguments including deep links to the running instance and exits (06 §4.3).
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if let Some(router) = app.try_state::<std::sync::Arc<deeplink::Router>>() {
@@ -367,7 +367,21 @@ pub fn run() {
         // Replace command handlers before window creation; preserve official plugin permissions/JS APIs and check tasks before restart.
         .plugin(lifecycle::guarded_process())
         .plugin(tauri_plugin_os::init())
-        .invoke_handler(specta.invoke_handler())
+        .invoke_handler(specta.invoke_handler());
+    // A crashed web content process cannot answer its dialog; deny at once instead of waiting for
+    // the 60 s dialog timeout. The hook is macOS-only in Tauri.
+    #[cfg(target_os = "macos")]
+    let builder = builder.on_web_content_process_terminate(|webview| {
+        if webview.label() != confirmation::MCP_CONFIRM_LABEL {
+            return;
+        }
+        if let Some(service) =
+            webview.try_state::<std::sync::Arc<confirmation::ConfirmationService>>()
+        {
+            service.deny_crashed();
+        }
+    });
+    let builder = builder
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 cancel_webview_confirmations(window.app_handle());
@@ -497,7 +511,7 @@ pub fn run() {
         .build(tauri::generate_context!());
 
     // Runtime initialization fails only during startup (configuration/system resources); continuing is impossible, so exit.
-    match result {
+    match builder {
         Ok(app) => app.run(|app, event| {
             if matches!(&event, tauri::RunEvent::Exit) {
                 mcp::broker::shutdown(app);

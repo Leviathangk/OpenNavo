@@ -628,6 +628,30 @@ impl ConfirmationService {
         Ok(())
     }
 
+    /// Restart the arm delay after the window regains focus: an answer that arrives while the
+    /// user is still re-orienting must not count, even if the prompt originally armed long ago.
+    fn rearm(&self, dialog_id: u64) {
+        if let Ok(mut state) = self.state.lock()
+            && let Some(prompt) = state.prompt.as_mut()
+            && prompt.dialog_id == dialog_id
+        {
+            prompt.shown_at = Some(Instant::now());
+        }
+    }
+
+    /// A terminated web content process can never answer: refuse the shown prompt now instead of
+    /// waiting out [`DIALOG_TIMEOUT`]. The caller destroys the dead window.
+    pub fn deny_crashed(&self) {
+        let dialog_id = self
+            .state
+            .lock()
+            .ok()
+            .and_then(|state| state.prompt.as_ref().map(|prompt| prompt.dialog_id));
+        if let Some(dialog_id) = dialog_id {
+            self.deny_window(dialog_id);
+        }
+    }
+
     /// The window was closed (or failed): that is a refusal.
     /// Deny the window prompt `dialog_id`; events from an older window never touch a newer request.
     pub fn deny_window(&self, dialog_id: u64) {
@@ -842,13 +866,19 @@ mod confirm_window {
     use std::sync::Arc;
     use tauri::{Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 
-    /// Only the bundled app page may load; no remote content, no outside links.
+    /// Only the bundled app page may load; no remote content, no outside links, and no extra
+    /// ports or credentials on the bundled origin. The Vite dev server keeps its port because it
+    /// only exists in debug builds.
     pub(super) fn allowed_navigation(url: &tauri::Url) -> bool {
         match url.scheme() {
             "tauri" => url.host_str() == Some("localhost"),
             "http" | "https" => {
-                url.host_str() == Some("tauri.localhost")
-                    || (cfg!(debug_assertions) && url.host_str() == Some("localhost"))
+                let clean = url.username().is_empty() && url.password().is_none();
+                match url.host_str() {
+                    Some("tauri.localhost") => clean && url.port().is_none(),
+                    Some("localhost") => cfg!(debug_assertions) && clean,
+                    _ => false,
+                }
             }
             _ => false,
         }
@@ -889,6 +919,8 @@ mod confirm_window {
                     window.on_window_event(move |event| {
                         if denies(event, &focused_once) {
                             events.deny_window(dialog_id);
+                        } else if matches!(event, tauri::WindowEvent::Focused(true)) {
+                            events.rearm(dialog_id);
                         }
                     });
                     let _ = window.set_focus();
@@ -1583,6 +1615,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn refocusing_restarts_the_arm_delay() {
+        let service = std::sync::Arc::new(ConfirmationService::default());
+        let pending = service.begin(mcp_request()).expect("begin");
+        let _receiver = service.open_prompt(pending.id, view()).expect("prompt");
+        let shown = service.window_view().expect("view");
+        service.test_arm();
+        service.rearm(pending.id);
+        assert_eq!(
+            service.answer_window(&shown.id, true).unwrap_err().code,
+            "E_CONFIRMATION_TOO_EARLY",
+            "an answer right after refocus is not accepted"
+        );
+        service.deny_window(pending.id);
+    }
+
+    #[tokio::test]
+    async fn a_crashed_webview_denies_without_waiting_for_the_timeout() {
+        let service = std::sync::Arc::new(ConfirmationService::default());
+        let pending = service.begin(mcp_request()).expect("begin");
+        let receiver = service.open_prompt(pending.id, view()).expect("prompt");
+        service.test_arm();
+        service.deny_crashed();
+        let reply = receiver.await.expect("reply");
+        assert!(reply.is_err(), "a crash is a refusal, not an answer");
+        assert!(
+            service.begin(mcp_request()).is_ok(),
+            "the slot is free again"
+        );
+    }
+
+    #[tokio::test]
     async fn events_from_an_older_window_never_deny_a_newer_request() {
         let service = std::sync::Arc::new(ConfirmationService::default());
         let old = service.begin(mcp_request()).expect("begin").id;
@@ -1652,6 +1715,16 @@ mod tests {
         let ok = |url: &str| allowed_navigation(&tauri::Url::parse(url).unwrap());
         assert!(ok("tauri://localhost/index.html#/mcp-confirm"));
         assert!(ok("http://tauri.localhost/index.html"));
+        assert!(ok("https://tauri.localhost:443/index.html"));
+        assert!(
+            !ok("http://tauri.localhost:1234/index.html"),
+            "an extra port is not the bundled origin"
+        );
+        assert!(!ok("https://tauri.localhost:8443/index.html"));
+        assert!(
+            !ok("http://user:secret@tauri.localhost/index.html"),
+            "credentials are never needed"
+        );
         assert!(!ok("https://example.com/"));
         assert!(!ok("file:///etc/passwd"));
         assert!(!ok("https://localhost.evil.com/"));

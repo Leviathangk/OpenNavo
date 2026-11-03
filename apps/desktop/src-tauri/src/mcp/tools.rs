@@ -95,6 +95,19 @@ pub trait ToolHost: Send + Sync {
             WRITE_DISABLED_MESSAGE,
         ))
     }
+    /// Record a refusal the broker decided before [`Self::write`] could run (an untrusted
+    /// client or a busy write slot), so those refusals leave the same audit trail as the rest.
+    fn reject_write(
+        &self,
+        tool: &str,
+        object: &str,
+        peer: Option<super::caller::PidStamp>,
+        client_name: Option<String>,
+        error: ToolError,
+    ) -> Result<Value, ToolError> {
+        let _ = (tool, object, peer, client_name);
+        Err(error)
+    }
 }
 
 /// Write tools served only while the write switch is on.

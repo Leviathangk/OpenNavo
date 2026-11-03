@@ -580,13 +580,50 @@ impl<R: tauri::Runtime> Writes<R> {
         }
     }
 
+    /// Record a refusal the broker made before [`Self::run`] could build its entry: an untrusted
+    /// client or a busy write slot. The write is refused either way; the record is best-effort
+    /// for the same reason [`refuse`] is.
+    pub fn reject_write(
+        &self,
+        tool: &str,
+        object: &str,
+        peer: Option<caller::PidStamp>,
+        client_name: Option<String>,
+        error: ToolError,
+    ) -> Result<Value, ToolError> {
+        let identity = self.identify_parts(peer, client_name);
+        let mut entry = AuditEntry {
+            id: uuid::Uuid::now_v7().to_string(),
+            at: audit::now_ms(),
+            tool: tool.to_owned(),
+            object: object.to_owned(),
+            caller: identity.caller,
+            decision: AuditDecision::Rejected,
+            result: None,
+        };
+        Err(refuse(
+            &self.audit,
+            &mut entry,
+            AuditDecision::Rejected,
+            error,
+        ))
+    }
+
     fn identify(&self, context: &WriteContext) -> Identity {
-        let process = caller::resolve(&SystemProcesses, context.peer);
+        self.identify_parts(context.peer, context.client_name.clone())
+    }
+
+    fn identify_parts(
+        &self,
+        peer: Option<caller::PidStamp>,
+        client_name: Option<String>,
+    ) -> Identity {
+        let process = caller::resolve(&SystemProcesses, peer);
         let signature = process
             .parent_path
             .as_deref()
             .and_then(|path| signature::inspect(path).ok());
-        identity(process, signature, context.client_name.clone())
+        identity(process, signature, client_name)
     }
 }
 
@@ -1637,5 +1674,40 @@ mod tests {
             path.core.database.tasks().expect("tasks").is_empty(),
             "nothing may be persisted for a refused selection"
         );
+        let listed = path
+            .writes
+            .audit
+            .list(super::audit::now_ms())
+            .expect("audit");
+        assert_eq!(listed.len(), 1, "the failed plan is audited");
+        assert_eq!(listed[0].decision, AuditDecision::Rejected);
+        assert_eq!(listed[0].result.as_deref(), Some("E_NOT_REMOVABLE"));
+    }
+
+    #[test]
+    fn a_refusal_before_planning_is_audited() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = write_path(&dir, "report", vec![cache_cleanup_item("cache")]);
+        let error = path
+            .writes
+            .reject_write(
+                "install_app",
+                "cask/iina",
+                None,
+                Some("test client".into()),
+                ToolError::new("E_BUSY", BUSY_MESSAGE),
+            )
+            .expect_err("the write is refused");
+        assert_eq!(error.code, "E_BUSY");
+        let listed = path
+            .writes
+            .audit
+            .list(super::audit::now_ms())
+            .expect("audit");
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].tool, "install_app");
+        assert_eq!(listed[0].object, "cask/iina");
+        assert_eq!(listed[0].decision, AuditDecision::Rejected);
+        assert_eq!(listed[0].result.as_deref(), Some("E_BUSY"));
     }
 }

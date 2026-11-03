@@ -93,6 +93,18 @@ impl Line {
             Self::Result { at, .. } => *at,
         }
     }
+
+    /// A refusal that never reached a dialog: cheap to regenerate, so rotation drops these before
+    /// it drops the decisions a user actually made.
+    fn rejected(&self) -> bool {
+        matches!(
+            self,
+            Self::Entry(AuditEntry {
+                decision: AuditDecision::Rejected,
+                ..
+            })
+        )
+    }
 }
 
 /// Append-only audit log under the MCP directory.
@@ -230,15 +242,29 @@ impl Audit {
         if !expired && size <= MAX_BYTES {
             return Ok(());
         }
-        let mut kept: Vec<Vec<u8>> = lines
+        let size_of =
+            |line: &Line| serde_json::to_vec(line).map_or(0, |body| body.len() as u64 + 1);
+        let mut kept: Vec<&Line> = lines
             .iter()
             .filter(|line| now - line.at() < RETENTION_MS)
+            .collect();
+        let mut total: u64 = kept.iter().map(|line| size_of(line)).sum();
+        // A client that keeps retrying is refused before a dialog and can append unlimited
+        // Rejected entries. Drop the oldest of those first so they cannot push out Allowed or
+        // Denied decisions, which are the evidence the log exists for.
+        while total > MAX_BYTES / 2 {
+            let Some(index) = kept.iter().position(|line| line.rejected()) else {
+                break;
+            };
+            total = total.saturating_sub(size_of(kept.remove(index)));
+        }
+        while total > MAX_BYTES / 2 && !kept.is_empty() {
+            total = total.saturating_sub(size_of(kept.remove(0)));
+        }
+        let kept: Vec<Vec<u8>> = kept
+            .iter()
             .filter_map(|line| serde_json::to_vec(line).ok())
             .collect();
-        let mut total: u64 = kept.iter().map(|line| line.len() as u64 + 1).sum();
-        while total > MAX_BYTES / 2 && !kept.is_empty() {
-            total -= kept.remove(0).len() as u64 + 1;
-        }
         let temporary = self.dir.join(format!(".audit-{}.tmp", std::process::id()));
         let result = (|| {
             let mut options = fs::OpenOptions::new();
@@ -323,6 +349,38 @@ mod tests {
         assert_eq!(mode & 0o777, 0o600);
         let body = fs::read_to_string(audit.path()).expect("read");
         assert!(!body.contains("arguments"), "never stores raw arguments");
+    }
+
+    #[test]
+    fn rejected_refusals_do_not_evict_user_decisions() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let audit = Audit::new(dir.path());
+        let now = 1_000_000_000_000i64;
+        for index in 0..5 {
+            let mut allowed = entry(&format!("allowed-{index}"), now - 100 + index);
+            allowed.decision = AuditDecision::Allowed;
+            audit.record(&allowed, now).expect("allowed");
+        }
+        // A blocked client can retry without a dialog: each refusal is Rejected and large enough to
+        // reach the size cap quickly, but none may evict the decisions above.
+        let mut rejected = entry("rejected", now - 50);
+        rejected.decision = AuditDecision::Rejected;
+        rejected.caller.claimed_name = Some("x".repeat(11_000));
+        for _ in 0..400 {
+            audit.record(&rejected, now).expect("rejected");
+        }
+        let listed = audit.list(now).expect("list");
+        let allowed = listed
+            .iter()
+            .filter(|entry| entry.decision == AuditDecision::Allowed)
+            .count();
+        assert_eq!(allowed, 5, "rotation protects user decisions");
+        assert!(
+            listed
+                .iter()
+                .any(|entry| entry.decision == AuditDecision::Rejected),
+            "recent refusals stay visible"
+        );
     }
 
     #[test]
