@@ -281,6 +281,17 @@ class DatabaseRetryTests(unittest.TestCase):
                         'dial unix /var/run/docker.sock: connect: connection refused',
                         'ERROR: relation "x" does not exist: No such file or directory candidate',
                         'ERROR:  duplicate key value violates unique constraint "users_email_key"',
+                        # Refusals the server answered with. Each carries the socket path and the
+                        # "connection to server ... failed:" lead-in a retryable refusal carries,
+                        # and only the words after "refused" say the server was up and said no.
+                        # The three spellings are the ones libpq produces for authentication
+                        # failures that are permanent: no client can retry its way past them.
+                        'psql: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: server refused GSSAPI authentication',
+                        'psql: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: server refused SSL renegotiation',
+                        'psql: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" '
+                        'failed: server refused our client certificate',
                         # These four are the NEAR counter-examples for markers that key on a
                         # ready-state phrase. `test_every_near_miss_is_itself_a_permanent_case`
                         # requires them here, but they earn the place on their own: each is the
@@ -296,6 +307,38 @@ class DatabaseRetryTests(unittest.TestCase):
                     self.run_database([self.failure(message)])
                 self.assertEqual(caught.exception.stage, 'database: query opennavo_e2e')
                 self.assertEqual(caught.exception.returncode, 1)
+
+    def test_the_refused_marker_does_not_swallow_permanent_refusals(self):
+        # The tuple form makes ('to server', 'refused') a widening of ('to server',
+        # 'connection refused'), not a narrowing: 'refused' is a suffix of the longer phrase, so
+        # every message the old marker matched the new one still matches, plus any server-side
+        # refusal that happens to share the lead-in. The permanent list above now carries three of
+        # them, but a list is only as good as the assertion that reads it: this names the
+        # consequence (a permanent refusal is retryable) rather than the table's shape, so editing
+        # the marker and its NEAR entry together no longer hides it.
+        for message in (
+            # libpq spells the same refusal two ways: over a Unix socket, and over TCP with
+            # the host and port named. Only the socket form is in the permanent list, so a
+            # widened marker that matched one spelling but not the other would still look
+            # covered by the case list alone.
+            'psql: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: '
+            'server refused GSSAPI authentication',
+            'psql: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: '
+            'server refused SSL renegotiation',
+            'psql: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: '
+            'server refused our client certificate',
+            'psql: error: connection to server at "localhost" (::1), port 5432 failed: '
+            'server refused GSSAPI authentication',
+            'psql: error: connection to server at "localhost" (::1), port 5432 failed: '
+            'SSL renegotiation refused',
+            'psql: error: connection to server at "localhost" (::1), port 5432 failed: '
+            'client certificate refused by pg_hba.conf',
+        ):
+            with self.subTest(message=message[-40:]):
+                # retried() lowercases before classifying, so the assertion must too, or a marker
+                # that only matches in lowercase would look safe here and be live in production.
+                self.assertFalse(e2e.transient(message.lower()),
+                                 'a permanent refusal is not retryable')
 
     def test_five_transient_failures_stop_at_five_attempts(self):
         with patch.object(e2e, 'compose') as compose, patch.object(e2e.time, 'sleep') as sleep:
