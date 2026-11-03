@@ -5,7 +5,7 @@
     "apps/server/go.mod": "c709a8153cea115e70132c1887dbc10e7d3bf1f61d465f50d107b1627bca72ae",
     "apps/server/go.sum": "f435b6582a31c4569095a98bfc084855b2aad610255acc66caa9eeb71066a1ee",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
-    "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
+    "apps/desktop/src-tauri/Cargo.lock": "dd02be2f3a88a03950357d62431a50b46506213fb5ae14f4596e0ec6815bc2c8",
     "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
     "docs/legal/native/manifest.json": "d9619fd270ab33851ceabd487e00888046bfd386e9ce5568943772bf2d4a923a",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
