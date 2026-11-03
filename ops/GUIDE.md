@@ -284,15 +284,15 @@ if command -v btrfs >/dev/null 2>&1; then
         echo "no writable temporary directory, so this check did not run:"
         echo "  -> row 1 stays unknown"
     else
-        OUT=$(btrfs subvolume list / 2>"$ERR")
+        OUT=$(btrfs subvolume list -s / 2>"$ERR")
         if [ -s "$ERR" ]; then
             echo "btrfs reported an error, so this check did not run:"
             sed 's/^/  /' "$ERR"
             echo "  -> row 1 stays unknown"
-        elif printf '%s\n' "$OUT" | grep -qi snapshot; then
-            printf '%s\n' "$OUT" | grep -i snapshot
+        elif [ -n "$OUT" ]; then
+            printf '%s\n' "$OUT"
         else
-            echo "btrfs ran cleanly; no subvolume name mentions snapshot"
+            echo "btrfs ran cleanly and listed no snapshots: not btrfs, or btrfs with none"
         fi
         rm -f "$ERR"
     fi
@@ -344,6 +344,60 @@ way. A container cannot load the ZFS kernel module, so the real `zfs list` could
 here — if you have a ZFS host, confirm it there before trusting row 1 on one.
 
 Keep the `-H` if you copy this block.
+
+**`btrfs` needs `-s`, and unlike the other two it is not about headers.** `btrfs subvolume
+list` lists every subvolume, snapshots among them, with nothing but the name to tell them
+apart. Matching the output against the word `snapshot` is not a filter, in either direction.
+Measured on a real btrfs filesystem in a container:
+
+```
+subvolume named snapshot-archive, no snapshot taken
+  btrfs subvolume list /     -> '... path snapshot-archive'   -> the name match reports one
+  btrfs subvolume list -s /  -> ''                            -> correctly reports none
+
+snapshot taken, named backup1
+  btrfs subvolume list /     -> '... path backup1'            -> the name match sees nothing
+  btrfs subvolume list -s /  -> '... path backup1'            -> correctly lists it
+```
+
+`-s` is the tool's own type filter: `btrfs subvolume list --help` prints it under
+`Type filtering:` as `-s   list only snapshots`. It reads what the filesystem recorded when
+the snapshot was made, not what somebody named it afterwards.
+
+Do not add `-o` here. `btrfs subvolume list --help` prints it under `Path filtering:` as
+`-o   print only subvolumes below specified path`, and "below" means *directly* below: it is
+not a recursive filter. Measured on a real filesystem:
+
+```
+snapshots as direct children of the mount
+  list -s /mnt/r        -> '... path snapB'
+  list -s -o /mnt/r     -> '... path snapB'        -> listed, no harm here
+
+snapshots two levels down, under one/two
+  list -s /mnt/top      -> '... path one/snapA'
+                           '... path one/two/s1'
+  list -s -o /mnt/top   -> ''                      -> both dropped
+  list -s -o /mnt/top/one -> '... path one/snapA'  -> only the direct child
+
+the layout that matters: / is the @ subvolume, snapshots sit in @snapshots beside it
+  list -s /mnt/root     -> '... path @snapshots/daily-1'
+                           '... path @snapshots/daily-2'
+  list -s -o /mnt/root  -> ''   exit 0             -> both silently dropped
+```
+
+So the counter-example is not the first layout — that is where `-o` still works. It is the
+last one, where `/` is a subvolume and every snapshot sits at least one level below it. Every
+empty result above exits 0 and prints nothing, which is exactly the shape this section calls
+"answers nothing": the block would record "no snapshots" on a host that has two. That last
+layout is also the common one on Ubuntu and openSUSE, where `/` is the `@` subvolume and
+snapshots live under `@snapshots` beside it, so it is the case most likely to be met.
+
+`-o` also takes the path itself; it does not add to the one already on the command line.
+`btrfs subvolume list -s -o /mnt/top /mnt/top` prints `exactly 1 argument expected, 2 given`
+and exits 1, so the "keep the path, add `-o`" reading is not a form that runs.
+
+Keep the `-s` if you copy this block. A host where this prints nothing is covered by the
+paragraph below: none of these commands can report a backup as absent.
 
 **A command that fails answers nothing.** None of the commands above can report that a backup
 is *absent*: they can only fail to find one. If one exits non-zero or prints nothing, the row
