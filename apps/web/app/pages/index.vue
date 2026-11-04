@@ -94,6 +94,7 @@ defineOgImage('OgDefaultSatori', {
       :count="count"
       :updated="updatedToday"
     />
+    <LandingPackageLinks />
     <!-- G4: what OpenNavo is and how it differs from the Homebrew command line and the Mac App Store. -->
     <LandingAbout />
     <!-- Below the fold: server-rendered in full, hydrated only when scrolled into view. -->

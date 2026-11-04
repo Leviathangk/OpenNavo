@@ -8,7 +8,12 @@ import { warmSitemaps } from '../server/utils/sitemapWarmup';
 import { labelPath } from '../shared/utils/backgroundLabels';
 import { LOCALES, LOCALE_METADATA } from '@opennavo/shared';
 import { boundedCache, MAX_CACHE_ENTRY_BYTES } from '../server/utils/boundedCache';
-import { packageSitemapName, packageSitemaps } from '../shared/utils/sitemapBuckets';
+import {
+  packageSitemapName,
+  packageSitemaps,
+  VERSIONS_SITEMAP_PILOT_BUCKET,
+  VERSIONS_SITEMAP_PILOT_TOKEN
+} from '../shared/utils/sitemapBuckets';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -148,6 +153,32 @@ describe('sitemap source snapshot cache', () => {
       await expect(bucket(fontName)).rejects.toMatchObject({ statusCode: 410 });
       expect(fetch.mock.calls.some(([, options]) => options?.query?.group === 'fonts')).toBe(false);
     }
+  });
+
+  it('lists only the source-language versions pilot while versionsSitemap is off', async () => {
+    const pilot = {
+      kind: 'cask',
+      token: VERSIONS_SITEMAP_PILOT_TOKEN,
+      notesCount: 1,
+      locales: [
+        { locale: 'en-US', pages: { versions: { inSitemap: false } } },
+        { locale: 'ja-JP', pages: { versions: { inSitemap: false } } }
+      ]
+    };
+    const other = { kind: 'cask', token: 'other-app', notesCount: 5, locales: [{ locale: 'en-US' }] };
+    const { index, bucket, settings } = await setup([pilot, other]);
+
+    settings.pages.versionsSitemap = false;
+    settings.revision += 1;
+
+    const entries = await index();
+    expect(entries.filter(({ _sitemapName: name }) => name.startsWith('versions-'))).toEqual([
+      { _sitemapName: VERSIONS_SITEMAP_PILOT_BUCKET }
+    ]);
+    const [pilotEntry] = await bucket(VERSIONS_SITEMAP_PILOT_BUCKET);
+    expect(pilotEntry).toMatchObject({ loc: `/apps/${pilot.token}/versions`, _sitemap: VERSIONS_SITEMAP_PILOT_BUCKET });
+    expect(pilotEntry).not.toHaveProperty('alternatives');
+    await expect(bucket(packageSitemapName('versions', other.token))).rejects.toMatchObject({ statusCode: 410 });
   });
 
   it('checks source switches even with a warm populated index and restores enabled buckets', async () => {

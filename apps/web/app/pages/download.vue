@@ -264,6 +264,8 @@ useSchemaOrg(
         </li>
       </ul>
 
+      <LandingPackageLinks />
+
       <div
         v-if="release && dmg"
         class="grid grid-cols-1 items-start gap-12px lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]"

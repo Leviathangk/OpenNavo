@@ -2,6 +2,7 @@ import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEvent, getResponseHeader } from 'h3';
+import { VERSIONS_SITEMAP_PILOT_BUCKET } from '../shared/utils/sitemapBuckets';
 
 type SettingsState = {
   fonts: boolean;
@@ -49,6 +50,12 @@ describe('disabled sitemap buckets', () => {
         expect(getResponseHeader(event, header), header).toBe('no-store');
     }
   );
+
+  it('keeps the approved versions-sitemap pilot available while versions are disabled', async () => {
+    const { default: middleware } = await import('../server/middleware/sitemap-fonts');
+    await expect(middleware(request(`/__sitemap__/${VERSIONS_SITEMAP_PILOT_BUCKET}.xml`))).resolves.toBeUndefined();
+    await expect(middleware(request('/__sitemap__/versions-bucket-1.xml'))).rejects.toMatchObject({ statusCode: 410 });
+  });
 
   it('follows runtime switches without retaining a disabled response', async () => {
     const { default: middleware } = await import('../server/middleware/sitemap-fonts');

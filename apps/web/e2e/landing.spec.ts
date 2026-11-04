@@ -20,6 +20,26 @@ test('Homepage is introduction with download/browse; Discover navigation points 
   expect(await page.locator('script[type="application/ld+json"]').first().textContent()).not.toContain('SearchAction');
 });
 
+test('Landing and download pages server-render direct package links in every language', async ({ request }) => {
+  for (const [path, href] of [
+    ['/', '/apps/dotnet-sdk'],
+    ['/download', '/apps/dotnet-sdk'],
+    ['/zh', '/zh/apps/dotnet-sdk'],
+    ['/zh-hant', '/zh-hant/apps/dotnet-sdk'],
+    ['/ja', '/ja/apps/dotnet-sdk'],
+    ['/es', '/es/apps/dotnet-sdk'],
+    ['/pt', '/pt/apps/dotnet-sdk'],
+    ['/ru', '/ru/apps/dotnet-sdk'],
+    ['/de', '/de/apps/dotnet-sdk'],
+    ['/fr', '/fr/apps/dotnet-sdk'],
+    ['/it', '/it/apps/dotnet-sdk']
+  ] as const) {
+    const response = await request.get(path);
+    expect(response.ok(), path).toBe(true);
+    expect(await response.text(), path).toContain(`href="${href}"`);
+  }
+});
+
 test('Security page explains the antivirus and marks its navigation item', async ({ page }) => {
   await gotoReady(page, '/zh/security');
   await expect(page).toHaveTitle('免费 Mac 杀毒软件：ClamAV 病毒扫描与启动项检查 · OpenNavo');

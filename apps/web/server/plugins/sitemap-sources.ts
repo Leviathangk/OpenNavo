@@ -3,7 +3,13 @@ import { labelPath } from '../../shared/utils/backgroundLabels';
 import { randomUUID } from 'node:crypto';
 import type { PublicComponents } from '@opennavo/api';
 import { BRAND, LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
-import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '../../shared/utils/sitemapBuckets';
+import {
+  packageSitemapName,
+  packageSitemaps,
+  VERSIONS_SITEMAP_PILOT_BUCKET,
+  VERSIONS_SITEMAP_PILOT_TOKEN,
+  type PackageSitemapGroup
+} from '../../shared/utils/sitemapBuckets';
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
 import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
@@ -71,7 +77,12 @@ export default defineNitroPlugin(nitroApp => {
         if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) {
           // A cached catalog may still contain a bucket whose source was just switched off.
           if (sitemapName.startsWith('fonts-') && !settings.pages.fontsSitemap) return false;
-          if (sitemapName.startsWith('versions-') && !settings.pages.versionsSitemap) return false;
+          if (
+            sitemapName.startsWith('versions-') &&
+            !settings.pages.versionsSitemap &&
+            sitemapName !== VERSIONS_SITEMAP_PILOT_BUCKET
+          )
+            return false;
           return populated.has(sitemapName);
         }
         if (sitemapName === 'articles') return articles.length > 0;
@@ -103,11 +114,13 @@ export default defineNitroPlugin(nitroApp => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
       const settings = await getSiteSettings();
+      const pilotOnly =
+        group === 'versions' && !settings.pages.versionsSitemap && ctx.sitemapName === VERSIONS_SITEMAP_PILOT_BUCKET;
       if (group === 'fonts' && !settings.pages.fontsSitemap)
         throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
-      if (group === 'versions' && !settings.pages.versionsSitemap)
+      if (group === 'versions' && !settings.pages.versionsSitemap && !pilotOnly)
         throw createError({ statusCode: 410, statusMessage: 'Sitemap gone' });
-      const records =
+      const records = (
         group === 'versions'
           ? (
               await Promise.all([
@@ -117,13 +130,16 @@ export default defineNitroPlugin(nitroApp => {
                   : Promise.resolve([] as SitemapRecord[])
               ])
             ).flat()
-          : await cachedPackages(group, settings.revision);
+          : await cachedPackages(group, settings.revision)
+      ).filter(record => !pilotOnly || record.token === VERSIONS_SITEMAP_PILOT_TOKEN);
       const page = group === 'versions' ? 'versions' : 'overview';
       const urls = records
         .filter(record => packageSitemapName(group, record.token) === ctx.sitemapName)
         .flatMap(record =>
           page === 'versions'
-            ? packageEntries(record, `/apps/${record.token}/versions`, ctx.sitemapName, page)
+            ? pilotOnly
+              ? pilotVersionEntries(record, ctx.sitemapName)
+              : packageEntries(record, `/apps/${record.token}/versions`, ctx.sitemapName, page)
             : [
                 ...packageEntries(record, `/apps/${record.token}`, ctx.sitemapName, page),
                 // X2 intent pages sit beside their app, only in languages whose decision lists them.
@@ -206,6 +222,9 @@ async function populatedPackageSitemaps(): Promise<Set<string>> {
         for (const record of fonts) add('fonts', record, 'overview');
         if (settings.pages.versionsSitemap)
           for (const record of [...apps, ...fonts]) add('versions', record, 'versions');
+        // The approved one-page pilot is listed even while the global versions sitemap is off.
+        else if (apps.some(record => record.token === VERSIONS_SITEMAP_PILOT_TOKEN))
+          buckets.add(VERSIONS_SITEMAP_PILOT_BUCKET);
         return buckets;
       },
       {
@@ -494,6 +513,20 @@ function packageEntries(
     ])
   );
   return localizedEntries(path, sitemap, locales, locale => lastmods.get(locale));
+}
+
+/**
+ * The one-page versions pilot stays source-language only with no alternates, because the localized
+ * versions pages remain noindex. Its approval overrides the older per-page sitemap decision.
+ */
+function pilotVersionEntries(record: SitemapRecord, sitemap: string) {
+  if (record.token !== VERSIONS_SITEMAP_PILOT_TOKEN) return [];
+  const lastmod = record.locales?.find(entry => entry.locale === 'en-US')?.pageLastmod?.versions;
+  const [entry] = localizedEntries(`/apps/${record.token}/versions`, sitemap, ['en-US'], () => lastmod);
+  if (!entry) return [];
+  // No alternates: localized versions pages stay noindex.
+  const { alternatives: _alternatives, ...plain } = entry;
+  return [plain];
 }
 
 type ArticleSitemap = PublicComponents['schemas']['ArticleSitemap'];
