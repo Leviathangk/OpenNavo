@@ -1,4 +1,12 @@
-import { CONSENT_STORAGE_KEY, analyticsPlan, loadGtag, stopGtag, trackPageView } from '~/utils/analytics';
+import {
+  CONSENT_STORAGE_KEY,
+  analyticsPlan,
+  captureAiReferral,
+  loadGtag,
+  stopGtag,
+  trackAiReferral,
+  trackPageView
+} from '~/utils/analytics';
 import type { ConsentChoice } from '~/utils/analytics';
 
 // GA4 uses the banner, footer settings and stored choice.
@@ -34,6 +42,7 @@ export function useAnalyticsConsent() {
     if (!enabled.value) return;
     if (measurementId.value) loadGtag(measurementId.value);
     active.value = true;
+    trackAiReferral(captureAiReferral());
     trackPageView();
   }
 
