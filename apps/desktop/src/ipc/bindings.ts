@@ -755,7 +755,9 @@ export type CategoryReport = {
 	skipped: SkippedGroup[],
 };
 
-export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" |
+export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" |
+/**  Caches, logs and abandoned staging of AI coding tools (Claude Code, Codex, Cursor, Gemini CLI). */
+"ai_caches" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" |
 /**  Docker's own reclaimable space, removed only by Docker's prune commands. */
 "docker" | "large_files";
 
@@ -789,6 +791,12 @@ export type CleanupItem = {
 	keptOpenFiles: number,
 	modifiedAt: number | null,
 	reason: CleanupReason,
+	/**
+	 *  How the item comes back after removal: rebuilt automatically, rebuilt at a cost, or not at all.
+	 *  Shown next to the item and used by the Local MCP allowlist; selection defaults still come from
+	 *  `rules::default_selected`.
+	 */
+	restore: CleanupRestore,
 	selected: boolean,
 	deleteMode: DeleteMode,
 	needsAdmin: boolean,
@@ -815,7 +823,14 @@ export type CleanupProgress = {
 
 export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_cache" |
 /**  Rebuildable, but the next build downloads it again (Gradle, Maven, Go modules, browsers for tests). */
-"tool_download_cache" | "device_support" | "device_support_latest" | "tool_command" | "brew_cleanup" | "temp_file" | "orphan" | "orphan_service" | "installer" | "installer_installed" | "build_artifact" | "trash" | "device_backup" |
+"tool_download_cache" | "device_support" | "device_support_latest" | "tool_command" | "brew_cleanup" | "temp_file" | "orphan" | "orphan_service" | "installer" | "installer_installed" | "build_artifact" |
+/**
+ *  A generated leaf inside an active project (Rust incremental state, bundler caches): safe to remove without a
+ *  full rebuild, unlike the whole artifact directory above.
+ */
+"build_leaf" |
+/**  A cache, log or abandoned staging folder owned by an AI coding tool. */
+"ai_cache" | "trash" | "device_backup" |
 /**  An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs. */
 "xcode_archive" |
 /**  Images no container uses; pulled or built again when needed. */
@@ -833,6 +848,17 @@ export type CleanupReport = {
 	categories: CategoryReport[],
 	incomplete: SkippedLocation[],
 };
+
+export type CleanupRestore =
+/**  Rebuilt on the next build or launch, at negligible cost. */
+"auto" |
+/**
+ *  Rebuilt, but the next build recompiles everything or re-downloads it: shown with that cost. Selection
+ *  defaults come from `rules::default_selected`, or from the collector for commands that free space now.
+ */
+"costly" |
+/**  Gone for good once removed: user data and files nothing regenerates. */
+"irreversible";
 
 export type CleanupRisk = "rebuildable" | "review" | "personal";
 

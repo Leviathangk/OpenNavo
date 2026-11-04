@@ -469,6 +469,7 @@ mod expiry_tests {
                 kept_open_files: 0,
                 modified_at: None,
                 reason: CleanupReason::LogFile,
+                restore: CleanupRestore::Auto,
                 selected: true,
                 delete_mode: DeleteMode::Trash,
                 needs_admin: false,

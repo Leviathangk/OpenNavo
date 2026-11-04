@@ -55,6 +55,20 @@ const chip = computed(() => {
         text: t('cleanup.reasons.tool_download_cache'),
         hint: t('cleanup.reasons.tool_download_cacheHint')
       };
+    // A generated leaf inside an active project: removing it never forces a full rebuild.
+    case 'build_leaf':
+      return {
+        tone: 'neutral' as const,
+        text: t('cleanup.reasons.build_leaf'),
+        hint: t('cleanup.reasons.build_leafHint')
+      };
+    // Whole project output: correct to offer, but the next build starts from scratch.
+    case 'build_artifact':
+      return {
+        tone: 'neutral' as const,
+        text: t('cleanup.reasons.build_artifact_cost'),
+        hint: t('cleanup.reasons.build_artifact_costHint')
+      };
     // The newest device support version per device is kept by default; Xcode would rebuild it on the next connection.
     case 'device_support_latest':
       return {

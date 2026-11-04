@@ -1793,6 +1793,7 @@
       "logs": "Registri e rapporti diagnostici",
       "browser_caches": "Cache dei browser",
       "dev_caches": "Cache per sviluppatori",
+      "ai_caches": "Cache degli strumenti IA",
       "homebrew": "Download e vecchie versioni Homebrew",
       "temp": "File temporanei",
       "leftovers": "Residui di app eliminate",
@@ -1808,6 +1809,7 @@
       "logs": "Registri e rapporti di arresto anomalo delle app più vecchi di 7 giorni",
       "browser_caches": "Solo cache; cronologia, cookie, password ed estensioni restano",
       "dev_caches": "Rigenerati o riscaricati alla prossima compilazione o installazione",
+      "ai_caches": "Cache, log e download abbandonati degli strumenti IA; sessioni, memoria e credenziali restano",
       "homebrew": "Equivale a brew cleanup: vecchie versioni e cache dei download",
       "temp": "File temporanei non modificati da 3 giorni e non aperti",
       "leftovers": "L’app non è più su questo Mac, ma questi file sono rimasti",
@@ -1862,6 +1864,10 @@
       "volumes": "I volumi potrebbero contenere database o altri dati; sono solo mostrati, mai puliti"
     },
     "reasons": {
+      "build_leaf": "Compilazione incrementale",
+      "build_leafHint": "Rimuoverla rallenta solo la compilazione successiva; le dipendenze compilate restano.",
+      "build_artifact_cost": "Ricompilazione completa",
+      "build_artifact_costHint": "La compilazione successiva ricompila tutto; può richiedere tempo.",
       "orphan_service": "Servizio in background",
       "installer_installed": "Installato",
       "device_support_latest": "Ultima versione",

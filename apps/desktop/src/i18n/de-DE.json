@@ -1793,6 +1793,7 @@
       "logs": "Protokolle & Diagnoseberichte",
       "browser_caches": "Browser-Caches",
       "dev_caches": "Entwickler-Caches",
+      "ai_caches": "Caches von KI-Werkzeugen",
       "homebrew": "Homebrew-Downloads & alte Versionen",
       "temp": "Temporäre Dateien",
       "leftovers": "Reste gelöschter Apps",
@@ -1808,6 +1809,7 @@
       "logs": "App-Protokolle und Absturzberichte, die älter als 7 Tage sind",
       "browser_caches": "Nur Caches; Verlauf, Cookies, Passwörter und Erweiterungen bleiben erhalten",
       "dev_caches": "Werden beim nächsten Build oder Installieren erneut erstellt oder geladen",
+      "ai_caches": "Caches, Protokolle und abgebrochene Downloads von KI-Werkzeugen; Sitzungen, Erinnerungen und Anmeldedaten bleiben",
       "homebrew": "Entspricht brew cleanup: alte Versionen und Download-Caches",
       "temp": "Seit 3 Tagen unveränderte, nicht geöffnete temporäre Dateien",
       "leftovers": "Die App ist nicht mehr auf diesem Mac, diese Dateien sind geblieben",
@@ -1862,6 +1864,10 @@
       "volumes": "Volumes können Datenbanken und andere Daten enthalten; nur angezeigt, nie bereinigt"
     },
     "reasons": {
+      "build_leaf": "Inkrementeller Build",
+      "build_leafHint": "Das Löschen verlangsamt nur den nächsten Build; kompilierte Abhängigkeiten bleiben.",
+      "build_artifact_cost": "Vollständiger Neubau",
+      "build_artifact_costHint": "Der nächste Build kompiliert alles neu; das kann dauern.",
       "orphan_service": "Hintergrunddienst",
       "installer_installed": "Installiert",
       "device_support_latest": "Neueste Version",

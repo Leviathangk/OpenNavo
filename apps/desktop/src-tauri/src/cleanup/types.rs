@@ -10,6 +10,8 @@ pub enum CleanupCategory {
     Logs,
     BrowserCaches,
     DevCaches,
+    /// Caches, logs and abandoned staging of AI coding tools (Claude Code, Codex, Cursor, Gemini CLI).
+    AiCaches,
     Homebrew,
     Temp,
     Leftovers,
@@ -79,6 +81,10 @@ pub struct CleanupItem {
     pub kept_open_files: u64,
     pub modified_at: Option<i64>,
     pub reason: CleanupReason,
+    /// How the item comes back after removal: rebuilt automatically, rebuilt at a cost, or not at all.
+    /// Shown next to the item and used by the Local MCP allowlist; selection defaults still come from
+    /// `rules::default_selected`.
+    pub restore: CleanupRestore,
     pub selected: bool,
     pub delete_mode: DeleteMode,
     pub needs_admin: bool,
@@ -90,6 +96,48 @@ pub enum CleanupItemKind {
     File,
     Dir,
     Command,
+}
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupRestore {
+    /// Rebuilt on the next build or launch, at negligible cost.
+    Auto,
+    /// Rebuilt, but the next build recompiles everything or re-downloads it: shown with that cost. Selection
+    /// defaults come from `rules::default_selected`, or from the collector for commands that free space now.
+    Costly,
+    /// Gone for good once removed: user data and files nothing regenerates.
+    Irreversible,
+}
+impl CleanupRestore {
+    /// Restore cost follows what removing the item destroys, not the folder's name.
+    pub fn for_reason(reason: CleanupReason) -> Self {
+        match reason {
+            CleanupReason::CacheDir
+            | CleanupReason::LogFile
+            | CleanupReason::BrowserCache
+            | CleanupReason::ToolCache
+            | CleanupReason::TempFile
+            | CleanupReason::AiCache
+            | CleanupReason::BuildLeaf => Self::Auto,
+            CleanupReason::ToolDownloadCache
+            | CleanupReason::DeviceSupport
+            | CleanupReason::DeviceSupportLatest
+            | CleanupReason::BuildArtifact
+            | CleanupReason::BrewCleanup
+            | CleanupReason::ToolCommand => Self::Costly,
+            CleanupReason::Orphan
+            | CleanupReason::OrphanService
+            | CleanupReason::Installer
+            | CleanupReason::InstallerInstalled
+            | CleanupReason::Trash
+            | CleanupReason::DeviceBackup
+            | CleanupReason::XcodeArchive
+            | CleanupReason::DockerImages
+            | CleanupReason::DockerBuildCache
+            | CleanupReason::DockerContainers
+            | CleanupReason::LargeFile => Self::Irreversible,
+        }
+    }
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -110,6 +158,11 @@ pub enum CleanupReason {
     Installer,
     InstallerInstalled,
     BuildArtifact,
+    /// A generated leaf inside an active project (Rust incremental state, bundler caches): safe to remove without a
+    /// full rebuild, unlike the whole artifact directory above.
+    BuildLeaf,
+    /// A cache, log or abandoned staging folder owned by an AI coding tool.
+    AiCache,
     Trash,
     DeviceBackup,
     /// An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs.

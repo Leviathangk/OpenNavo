@@ -495,19 +495,11 @@ impl Collector<'_> {
                 },
             ),
             reason,
+            restore: CleanupRestore::for_reason(reason),
             // Unchecked by default: the newest device support version, anything downloaded again, installers whose
             // app is not installed, the Trash (emptying it cannot be undone) and personal backups and archives.
             // A lower-bound size is never offered: the whole tree would be removed while far less was shown.
-            selected: captured.incomplete.is_none()
-                && !matches!(
-                    reason,
-                    CleanupReason::DeviceSupportLatest
-                        | CleanupReason::ToolDownloadCache
-                        | CleanupReason::Installer
-                        | CleanupReason::Trash
-                        | CleanupReason::DeviceBackup
-                        | CleanupReason::XcodeArchive
-                ),
+            selected: captured.incomplete.is_none() && rules::default_selected(reason),
             // Installers, backups and archives go to the Trash so a wrong pick can be put back.
             delete_mode: if matches!(
                 reason,
@@ -913,6 +905,50 @@ impl Collector<'_> {
         }
         Ok(())
     }
+    /// Caches, logs and abandoned staging of AI coding tools. Session transcripts, memories and credentials are not
+    /// in `rules::AI_CACHES`; the name rules are disabled below these roots (the tool names would block them), so each
+    /// rule carries its own protected children instead.
+    fn ai_caches(&mut self) -> Result<(), AppError> {
+        let home = self.engine.uninstall.roots.home.clone();
+        for rule in rules::AI_CACHES {
+            let root = home.join(rule.path);
+            if rules::ai_path_protected(&home, &root, rule.leaves.is_none()) {
+                continue;
+            }
+            let mut owner = Owner::tool(rule.processes);
+            owner.tool_key = Some(rule.title.into());
+            match rule.leaves {
+                None => self.add(
+                    root,
+                    owner,
+                    rule.title.into(),
+                    CleanupReason::AiCache,
+                    Some(rule.age_days),
+                )?,
+                Some(leaves) => {
+                    for leaf in leaves {
+                        if rule.protected.contains(leaf) {
+                            continue;
+                        }
+                        let leaf = root.join(leaf);
+                        if rules::ai_path_protected(&home, &leaf, true) {
+                            continue;
+                        }
+                        let mut owner = owner.clone();
+                        owner.group_key = Some(rule.title.into());
+                        self.add(
+                            leaf,
+                            owner,
+                            rule.title.into(),
+                            CleanupReason::AiCache,
+                            Some(rule.age_days),
+                        )?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
     fn device_support(&mut self) -> Result<(), AppError> {
         for platform in rules::DEVICE_PLATFORMS {
             let root = self
@@ -1062,7 +1098,14 @@ impl Collector<'_> {
             .filter(|(marker, _)| names.contains(*marker))
             .flat_map(|(_, dirs)| dirs.iter().copied())
             .collect();
-        if !artifacts.is_empty() {
+        // Generated leaves; `marker` decides the process guard. A recent project keeps its whole artifact folders
+        // but may still drop the leaves that never force a full rebuild (#cleanup-ai-leaves).
+        let leaves: Vec<(&str, &str)> = rules::PROJECT_LEAVES
+            .iter()
+            .filter(|(marker, _)| names.contains(*marker))
+            .flat_map(|(marker, paths)| paths.iter().map(move |path| (*marker, *path)))
+            .collect();
+        if !artifacts.is_empty() || !leaves.is_empty() {
             let home = self.engine.uninstall.roots.home.clone();
             let recent = project_touched(dir, &children, &artifacts)
                 > uninstall::now() - rules::PROJECT_RECENT_DAYS * 86_400_000;
@@ -1071,6 +1114,25 @@ impl Collector<'_> {
                 .unwrap_or_default()
                 .to_string_lossy()
                 .into_owned();
+            for (marker, name) in &leaves {
+                let covered = rules::leaf_covered(name, &artifacts);
+                // Covered by a whole folder that is about to be offered: listing both would count the same bytes
+                // twice and could free less than the sum shows.
+                if covered && !recent {
+                    continue;
+                }
+                let path = dir.join(name);
+                if !fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
+                    continue;
+                }
+                let mut owner = Owner::tool(leaf_processes(marker));
+                owner.group_key = Some(format!("project:{}", dir.display()));
+                owner.group_subtitle = Some(match dir.strip_prefix(&home) {
+                    Ok(relative) => format!("~/{}", relative.display()),
+                    Err(_) => dir.display().to_string(),
+                });
+                self.add(path, owner, title.clone(), CleanupReason::BuildLeaf, None)?;
+            }
             for name in &artifacts {
                 let path = dir.join(name);
                 if !fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
@@ -1230,6 +1292,15 @@ fn project_roots(home: &Path, configured: &[String]) -> Vec<PathBuf> {
             .any(|other| other != root && root.starts_with(other))
     });
     roots
+}
+/// Process guard for a generated leaf: a build that owns the folder must not see it vanish.
+fn leaf_processes(marker: &str) -> &'static [&'static str] {
+    match marker {
+        "Cargo.toml" => &["cargo", "rustc"],
+        "package.json" => &["node", "vite", "next"],
+        "pubspec.yaml" => &["flutter", "dart"],
+        _ => &[],
+    }
 }
 /// When a project was last worked on: its top-level files and folders (not generated output) and Git's index and
 /// HEAD log, in milliseconds since the epoch.
@@ -1430,6 +1501,7 @@ impl Engine {
                                 CleanupCategory::Logs => collector.logs(),
                                 CleanupCategory::BrowserCaches => collector.browser_caches(),
                                 CleanupCategory::DevCaches => collector.dev_caches(),
+                                CleanupCategory::AiCaches => collector.ai_caches(),
                                 CleanupCategory::Temp => collector.temp(),
                                 CleanupCategory::Installers => collector.installers(),
                                 CleanupCategory::ProjectArtifacts => collector.project_artifacts(),
@@ -1618,6 +1690,7 @@ impl Engine {
                 kept_open_files: 0,
                 modified_at: None,
                 reason: *reason,
+                restore: CleanupRestore::for_reason(*reason),
                 selected: false,
                 delete_mode: DeleteMode::Delete,
                 needs_admin: false,
@@ -1744,6 +1817,7 @@ impl Engine {
                     kept_open_files: 0,
                     modified_at: None,
                     reason: CleanupReason::BrewCleanup,
+                    restore: CleanupRestore::Costly,
                     selected: true,
                     delete_mode: DeleteMode::Delete,
                     needs_admin: false,
@@ -1965,6 +2039,11 @@ impl Engine {
                     } else {
                         CleanupReason::Orphan
                     },
+                    restore: if active {
+                        CleanupRestore::Irreversible
+                    } else {
+                        CleanupRestore::Auto
+                    },
                     selected: captured.incomplete.is_none()
                         && (active
                             || (old.confidence == PlanItemConfidence::High
@@ -2096,4 +2175,166 @@ fn volume_name(home: &Path) -> String {
 #[cfg(not(target_os = "macos"))]
 fn volume_name(home: &Path) -> String {
     home.to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod leaf_scan_tests {
+    use super::*;
+    use crate::{
+        cleanup::owner::{CommandProcess, ProcessProbe},
+        model::{PermissionState, Permissions},
+        running_apps::NativeApps,
+        uninstall::{Engine as UninstallEngine, EngineConfig, identity::NativeProbe, rules::Roots},
+    };
+    use std::time::{Duration, SystemTime};
+
+    /// No process is running: the guard is exercised by `owner` tests, not by whatever this machine runs.
+    struct NoProcesses;
+    impl ProcessProbe for NoProcesses {
+        fn list(&self) -> Result<Vec<CommandProcess>, AppError> {
+            Ok(vec![])
+        }
+    }
+
+    fn engine(home: &Path) -> Arc<Engine> {
+        let base = home.parent().unwrap();
+        fs::create_dir_all(base.join("Applications")).unwrap();
+        let uninstall = UninstallEngine::new(EngineConfig {
+            database: crate::db::Database::open(&base.join("db.sqlite")).unwrap(),
+            settings: Arc::new(std::sync::RwLock::new(crate::model::Settings::default())),
+            sink: Arc::new(|_| {}),
+            roots: Roots {
+                home: home.to_path_buf(),
+                applications: vec![base.join("Applications")],
+                system_library: base.join("Library"),
+                bins: vec![],
+                receipts: base.join("Receipts"),
+                temporary: vec![],
+                caskrooms: vec![],
+            },
+            control: Arc::new(NativeApps),
+            probe: Arc::new(NativeProbe),
+            icon_cache: base.join("icons"),
+            askpass: base.join("askpass"),
+        });
+        Engine::with_processes(uninstall, Arc::new(NoProcesses), Duration::from_secs(30))
+    }
+
+    fn granted() -> Permissions {
+        Permissions {
+            app_management: PermissionState::Granted,
+            app_management_switch: PermissionState::Granted,
+            full_disk_access: PermissionState::Granted,
+            relaunch_required: false,
+            relaunch_ineffective: false,
+            app_management_pending: false,
+            full_disk_access_pending: false,
+        }
+    }
+
+    /// Moves a tree's mtimes into the past so age-gated rules admit it without sleeping.
+    fn age(path: &Path, days: u64) {
+        let time = SystemTime::now() - Duration::from_secs(days * 86_400);
+        fs::File::open(path).unwrap().set_modified(time).unwrap();
+        if path.is_dir() {
+            for child in fs::read_dir(path).unwrap() {
+                age(&child.unwrap().path(), days);
+            }
+        }
+    }
+
+    fn write(path: &Path, bytes: usize) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, vec![0u8; bytes]).unwrap();
+    }
+
+    /// A recent Cargo project keeps its whole `target`, but its incremental leaf is still offered; an AI tool's
+    /// cache is offered while its session store stays out of the report.
+    #[tokio::test]
+    async fn generated_leaves_and_ai_caches_reach_the_report_without_double_counting() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let project = home.join("Documents/code/demo");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"demo\"\n").unwrap();
+        write(&project.join("target/debug/incremental/x.o"), 9_000);
+        write(&project.join("target/debug/deps/libx.rlib"), 7_000);
+        age(&project.join("target/debug/incremental"), 60);
+
+        let cache = home.join(".codex/cache/remote_plugin_catalog");
+        write(&cache.join("catalog.json"), 5_000);
+        age(&cache, 2);
+        let sessions = home.join(".codex/sessions/2026/rollout.jsonl");
+        write(&sessions, 1_000);
+        age(sessions.parent().unwrap(), 2);
+
+        let report = engine(&home)
+            .scan(
+                "leaf-test".into(),
+                Some(vec![
+                    CleanupCategory::AiCaches,
+                    CleanupCategory::ProjectArtifacts,
+                ]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+
+        let ai = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::AiCaches)
+            .unwrap();
+        assert_eq!(ai.risk, CleanupRisk::Rebuildable);
+        let ai_items: Vec<&CleanupItem> = ai.groups.iter().flat_map(|g| &g.items).collect();
+        assert!(
+            ai_items
+                .iter()
+                .any(|i| i.path.ends_with(".codex/cache/remote_plugin_catalog")),
+            "the cache rule must be collected: {ai_items:#?} skipped={:?} bytes={}",
+            ai.skipped,
+            ai.bytes
+        );
+        assert!(
+            !ai_items.iter().any(|i| i.path.contains("sessions")),
+            "a session store must never be offered"
+        );
+        assert!(ai_items.iter().all(|i| i.restore == CleanupRestore::Auto));
+
+        let projects = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::ProjectArtifacts)
+            .unwrap_or_else(|| {
+                panic!(
+                    "categories: {:?}",
+                    report.categories.iter().map(|c| c.key).collect::<Vec<_>>()
+                )
+            });
+        let leaves: Vec<&CleanupItem> = projects
+            .groups
+            .iter()
+            .flat_map(|g| &g.items)
+            .filter(|i| i.reason == CleanupReason::BuildLeaf)
+            .collect();
+        assert!(
+            leaves
+                .iter()
+                .any(|i| i.path.ends_with("target/debug/incremental")),
+            "the leaf of a recent project must be collected: {leaves:#?}"
+        );
+        // Whole `target` is skipped as recent, so only the leaf's bytes count.
+        let leaf_bytes: u64 = leaves.iter().filter_map(|i| i.size_bytes).sum();
+        assert_eq!(leaves.len(), 1, "{leaves:#?}");
+        assert_eq!(projects.bytes, leaf_bytes);
+        assert!(leaf_bytes > 0);
+        assert!(
+            projects
+                .skipped
+                .iter()
+                .any(|g| g.reason == SkippedGroupReason::Recent),
+            "the whole artifact folder must stay listed as recent"
+        );
+    }
 }

@@ -18,6 +18,7 @@ import type {
   CleanupItem,
   CleanupReason,
   CleanupReport,
+  CleanupRestore,
   CleanupRisk,
   CleanupSummary,
   CleanupVolume,
@@ -457,6 +458,66 @@ const CATEGORIES: CategorySpec[] = [
     ]
   },
   {
+    key: 'ai_caches',
+    risk: 'rebuildable',
+    groups: [
+      {
+        id: 'ai-codex',
+        title: 'Codex',
+        items: [
+          {
+            path: '~/.codex/cache/remote_plugin_catalog',
+            size: 190 * MB,
+            daysAgo: 2,
+            reason: 'ai_cache'
+          },
+          {
+            path: '~/.codex/shell_snapshots',
+            size: 24 * MB,
+            daysAgo: 9,
+            reason: 'ai_cache'
+          }
+        ]
+      },
+      {
+        id: 'ai-claude',
+        title: 'Claude Code',
+        items: [
+          {
+            path: '~/.claude/cache',
+            size: 1.1 * MB,
+            daysAgo: 1,
+            reason: 'ai_cache'
+          },
+          {
+            path: '~/Library/Caches/claude-cli-nodejs',
+            size: 12 * MB,
+            daysAgo: 3,
+            reason: 'ai_cache'
+          }
+        ]
+      },
+      {
+        id: 'ai-cursor',
+        title: 'Cursor',
+        items: [
+          {
+            path: '~/Library/Application Support/Cursor/Cache',
+            size: 8.8 * MB,
+            daysAgo: 1,
+            reason: 'ai_cache'
+          },
+          {
+            path: '~/Library/Application Support/Cursor/CachedData',
+            size: 102 * MB,
+            daysAgo: 1,
+            reason: 'ai_cache'
+          }
+        ]
+      }
+    ]
+  },
+  {
     key: 'homebrew',
     risk: 'rebuildable',
     groups: [
@@ -664,6 +725,21 @@ const CATEGORIES: CategorySpec[] = [
         ]
       },
       {
+        id: 'active-rust',
+        title: 'active-rust',
+        subtitle: '~/Documents/code/active-rust',
+        items: [
+          {
+            path: '~/Documents/code/active-rust/target/debug/incremental',
+            size: 12.4 * GB,
+            daysAgo: 0,
+            reason: 'build_leaf',
+            selected: true,
+            deleteMode: 'delete'
+          }
+        ]
+      },
+      {
         id: 'website',
         title: 'website',
         skip: 'recent',
@@ -803,6 +879,29 @@ const SCAN_STEPS: { category: CleanupCategory; location: string }[] = CATEGORIES
 
 const tokenOf = (owner: string) => owner.replace(/^cask-/, '');
 
+/** Mirrors CleanupRestore::for_reason: how the item comes back after removal. */
+const restoreFor = (reason: CleanupReason): CleanupRestore => {
+  switch (reason) {
+    case 'cache_dir':
+    case 'log_file':
+    case 'browser_cache':
+    case 'tool_cache':
+    case 'temp_file':
+    case 'ai_cache':
+    case 'build_leaf':
+      return 'auto';
+    case 'tool_download_cache':
+    case 'device_support':
+    case 'device_support_latest':
+    case 'build_artifact':
+    case 'brew_cleanup':
+    case 'tool_command':
+      return 'costly';
+    default:
+      return 'irreversible';
+  }
+};
+
 export interface CleanupMockOptions {
   state: MockState;
   tickMs: number;
@@ -930,6 +1029,7 @@ export function createCleanupMock({
             sizeComplete: !partial(item),
             modifiedAt: now - item.daysAgo * DAY,
             reason: item.reason,
+            restore: restoreFor(item.reason),
             selected: !partial(item) && (item.selected ?? spec.risk === 'rebuildable'),
             deleteMode: item.deleteMode ?? (spec.risk === 'rebuildable' || item.command ? 'delete' : deleteMode()),
             needsAdmin: Boolean(item.admin),

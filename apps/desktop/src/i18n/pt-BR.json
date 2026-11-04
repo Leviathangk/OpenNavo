@@ -1793,6 +1793,7 @@
       "logs": "Logs e relatórios de diagnóstico",
       "browser_caches": "Caches do navegador",
       "dev_caches": "Caches de desenvolvimento",
+      "ai_caches": "Caches de ferramentas de IA",
       "homebrew": "Downloads e versões antigas do Homebrew",
       "temp": "Arquivos temporários",
       "leftovers": "Restos de apps apagados",
@@ -1808,6 +1809,7 @@
       "logs": "Logs de apps e relatórios de falhas com mais de 7 dias",
       "browser_caches": "Só o cache; histórico, cookies, senhas e extensões ficam como estão",
       "dev_caches": "Gerados ou baixados de novo no próximo build ou instalação",
+      "ai_caches": "Caches, registros e downloads abandonados de ferramentas de IA; sessões, memórias e credenciais permanecem",
       "homebrew": "Igual a brew cleanup: versões antigas e caches de download",
       "temp": "Arquivos temporários sem alterações há 3 dias e que não estão abertos",
       "leftovers": "O app não está mais neste Mac, mas estes arquivos continuam aqui",
@@ -1862,6 +1864,10 @@
       "volumes": "Os volumes podem guardar bancos de dados e outros dados; só são mostrados, nunca limpos"
     },
     "reasons": {
+      "build_leaf": "Build incremental",
+      "build_leafHint": "Remover só deixa o próximo build mais lento; as dependências compiladas permanecem.",
+      "build_artifact_cost": "Recompilação completa",
+      "build_artifact_costHint": "O próximo build recompila tudo; pode demorar.",
       "orphan_service": "Item em segundo plano",
       "installer_installed": "App instalado",
       "device_support_latest": "Mais recente",

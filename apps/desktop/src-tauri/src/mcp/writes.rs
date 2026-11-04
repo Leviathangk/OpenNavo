@@ -1359,6 +1359,7 @@ mod tests {
             kept_open_files: 0,
             modified_at: None,
             reason,
+            restore: crate::cleanup::types::CleanupRestore::for_reason(reason),
             selected: false,
             delete_mode: mode,
             needs_admin: false,
@@ -1447,6 +1448,7 @@ mod tests {
             kept_open_files: 0,
             modified_at: None,
             reason: crate::cleanup::types::CleanupReason::CacheDir,
+            restore: crate::cleanup::types::CleanupRestore::Auto,
             selected: false,
             delete_mode: DeleteMode::Trash,
             needs_admin: false,
@@ -1459,6 +1461,7 @@ mod tests {
     fn trash_cleanup_item(id: &str) -> crate::cleanup::types::CleanupItem {
         crate::cleanup::types::CleanupItem {
             reason: crate::cleanup::types::CleanupReason::Trash,
+            restore: crate::cleanup::types::CleanupRestore::Irreversible,
             path: format!("/Users/me/.Trash/{id}"),
             ..cache_cleanup_item(id)
         }

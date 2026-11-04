@@ -669,3 +669,40 @@ it.each([0, 1])(
     wrapper.unmount();
   }
 );
+
+describe('AI caches and generated leaves (P0)', () => {
+  it('Lists AI tool caches as rebuildable and checked, grouped by tool', async () => {
+    const { pinia } = await context();
+    const store = await scanned();
+    const category = unfold('ai_caches');
+    expect(category.risk).toBe('rebuildable');
+    expect(category.groups.map(group => group.title)).toEqual(['Codex', 'Claude Code', 'Cursor']);
+    const item = entry('.codex/cache/remote_plugin_catalog')!;
+    expect(item.item.reason).toBe('ai_cache');
+    expect(item.item.restore).toBe('auto');
+    expect(store.isChecked(item.item)).toBe(true);
+
+    const wrapper = mount(CleanupCategoryCard, { props: { category }, global: { plugins: [pinia, i18n] } });
+    expect(wrapper.text()).toContain('AI 工具缓存');
+    expect(wrapper.text()).toContain('remote_plugin_catalog');
+    wrapper.unmount();
+  });
+
+  it('Tells a project leaf apart from a full rebuild', async () => {
+    const { pinia } = await context();
+    const store = await scanned();
+    const category = unfold('project_artifacts');
+    const leaf = entry('active-rust/target/debug/incremental')!;
+    expect(leaf.item.reason).toBe('build_leaf');
+    expect(leaf.item.restore).toBe('auto');
+    // A leaf stays offerable even when the project was touched today.
+    expect(store.isChecked(leaf.item)).toBe(true);
+
+    const wrapper = mount(CleanupCategoryCard, { props: { category }, global: { plugins: [pinia, i18n] } });
+    const leafChip = wrapper.findAll('[title]').find(node => node.text() === '增量编译');
+    expect(leafChip?.attributes('title')).toContain('已编译的依赖会保留');
+    const wholeChip = wrapper.findAll('[title]').find(node => node.text() === '全量重编译');
+    expect(wholeChip?.attributes('title')).toContain('重新编译全部内容');
+    wrapper.unmount();
+  });
+});

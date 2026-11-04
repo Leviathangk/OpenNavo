@@ -492,8 +492,8 @@ async fn scan_progress_is_global_cumulative_monotonic_and_finishes() {
         assert!(
             progress
                 .iter()
-                // Six P0 categories, five P1 categories and Docker.
-                .all(|p| p.total == 12 && p.checked <= p.total)
+                // Seven P0 categories, five P1 categories and Docker.
+                .all(|p| p.total == 13 && p.checked <= p.total)
         );
         assert_eq!(progress.first().unwrap().checked, 0);
         assert!(
@@ -536,9 +536,9 @@ async fn scan_progress_is_global_cumulative_monotonic_and_finishes() {
         progress
             .iter()
             // Every available category except developer caches, which this Mac has no tools for.
-            .all(|p| p.total == 11 && p.category != CleanupCategory::DevCaches)
+            .all(|p| p.total == 12 && p.category != CleanupCategory::DevCaches)
     );
-    assert_eq!(progress.last().unwrap().checked, 11);
+    assert_eq!(progress.last().unwrap().checked, 12);
 }
 
 #[tokio::test]

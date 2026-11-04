@@ -20,6 +20,7 @@ const TILES: { key: CleanupCategory; risk: CleanupRisk }[] = [
   { key: 'logs', risk: 'rebuildable' },
   { key: 'browser_caches', risk: 'rebuildable' },
   { key: 'dev_caches', risk: 'rebuildable' },
+  { key: 'ai_caches', risk: 'rebuildable' },
   { key: 'homebrew', risk: 'rebuildable' },
   { key: 'leftovers', risk: 'review' }
 ];

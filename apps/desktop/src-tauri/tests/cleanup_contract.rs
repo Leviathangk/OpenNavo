@@ -134,10 +134,14 @@ fn c21_kept_open_files_is_a_required_numeric_output_field() {
         kept_open_files: 2,
         modified_at: None,
         reason: CleanupReason::ToolCache,
+        restore: CleanupRestore::Auto,
         selected: true,
         delete_mode: DeleteMode::Delete,
         needs_admin: false,
         note: None,
     };
-    assert_eq!(serde_json::to_value(item).unwrap()["keptOpenFiles"], 2);
+    let json = serde_json::to_value(item).unwrap();
+    assert_eq!(json["keptOpenFiles"], 2);
+    // The restore cost is part of the contract too: a tool cache comes back for free.
+    assert_eq!(json["restore"], "auto");
 }

@@ -1,12 +1,16 @@
 //! Independently authored, compiled allowlists. Sources are recorded in cleanup-backend-progress.md.
 use super::types::*;
-use std::path::{Component, Path};
+use std::{
+    collections::BTreeSet,
+    path::{Component, Path},
+};
 
 pub const P0: &[CleanupCategory] = &[
     CleanupCategory::AppCaches,
     CleanupCategory::Logs,
     CleanupCategory::BrowserCaches,
     CleanupCategory::DevCaches,
+    CleanupCategory::AiCaches,
     CleanupCategory::Homebrew,
     CleanupCategory::Leftovers,
 ];
@@ -23,6 +27,7 @@ pub const AVAILABLE: &[CleanupCategory] = &[
     CleanupCategory::Logs,
     CleanupCategory::BrowserCaches,
     CleanupCategory::DevCaches,
+    CleanupCategory::AiCaches,
     CleanupCategory::Homebrew,
     CleanupCategory::Temp,
     CleanupCategory::Leftovers,
@@ -58,6 +63,34 @@ pub const PROJECT_ARTIFACTS: &[(&str, &[&str])] = &[
     ("pubspec.yaml", &[".dart_tool", "build"]),
     ("pom.xml", &["target"]),
 ];
+/// Generated leaves inside an active project. Removing one never forces a full rebuild, unlike the whole artifact
+/// directory next to it, so these stay selectable even when the project was touched today. Cargo's
+/// `target/debug/.fingerprint` is deliberately absent: without it Cargo rebuilds every dependency, not just the
+/// crate, so it belongs to the whole-`target` decision rather than a cheap leaf.
+pub const PROJECT_LEAVES: &[(&str, &[&str])] = &[
+    ("Cargo.toml", &["target/debug/incremental", "target/tmp"]),
+    (
+        "package.json",
+        &[
+            "node_modules/.cache",
+            ".next/cache",
+            ".turbo",
+            ".parcel-cache",
+        ],
+    ),
+    (
+        "pyproject.toml",
+        &["__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"],
+    ),
+    ("pubspec.yaml", &[".dart_tool"]),
+];
+/// Whether a generated leaf sits inside a whole artifact folder already listed for the same project. Listing both
+/// would count the same bytes twice and could free less than the sum shows.
+pub fn leaf_covered(name: &str, artifacts: &BTreeSet<&str>) -> bool {
+    artifacts
+        .iter()
+        .any(|artifact| name == *artifact || name.starts_with(&format!("{artifact}/")))
+}
 /// Where developers usually keep projects; scanned besides the configured roots when they exist.
 pub const PROJECT_ROOTS: &[&str] = &[
     "Projects",
@@ -79,6 +112,20 @@ pub const PROJECT_ROOTS: &[&str] = &[
 /// A project touched within this many days keeps its build output: it is listed with its size, not offered.
 pub const PROJECT_RECENT_DAYS: i64 = 30;
 pub const PROJECT_MAX_DEPTH: usize = 5;
+/// Whether an item starts checked. Only the newest device support, anything downloaded again, installers,
+/// the Trash, personal backups and Xcode archives start unchecked; everything else is offered.
+pub fn default_selected(reason: CleanupReason) -> bool {
+    !matches!(
+        reason,
+        CleanupReason::DeviceSupportLatest
+            | CleanupReason::ToolDownloadCache
+            | CleanupReason::Installer
+            | CleanupReason::Trash
+            | CleanupReason::DeviceBackup
+            | CleanupReason::XcodeArchive
+            | CleanupReason::LargeFile
+    )
+}
 /// Whether the never-touch name rules apply below a candidate's root. Generated trees (build products, system
 /// symbols, packages in node_modules, an app inside an archive) are full of names like Cursor, VPN or Docker that say
 /// nothing about user secrets; there only the user's own protection rules apply. The root itself is always checked.
@@ -90,6 +137,8 @@ pub fn names_apply(reason: CleanupReason) -> bool {
             | CleanupReason::DeviceSupport
             | CleanupReason::DeviceSupportLatest
             | CleanupReason::BuildArtifact
+            | CleanupReason::BuildLeaf
+            | CleanupReason::AiCache
             | CleanupReason::DeviceBackup
             | CleanupReason::XcodeArchive
             | CleanupReason::Installer
@@ -341,6 +390,205 @@ pub const DOWNLOAD_TOOLS: &[ToolRule] = &[
         arguments: None,
     },
 ];
+/// One AI coding tool's cache location. `path` is relative to home; `leaves` narrows it to named children when the
+/// folder also holds state (a plugin catalog sits next to session databases). `protected` names are never offered
+/// inside the root, and exists so the guarantee is testable rather than implied by the path list.
+pub struct AiRule {
+    pub path: &'static str,
+    pub title: &'static str,
+    pub age_days: i64,
+    pub leaves: Option<&'static [&'static str]>,
+    pub processes: &'static [&'static str],
+    pub protected: &'static [&'static str],
+}
+
+/// Caches, logs and abandoned staging owned by AI coding tools. Every entry is rebuilt by the tool itself; session
+/// transcripts, memories, credentials, settings and `~/.gemini/tmp` (which holds checkpoints) are deliberately absent.
+pub const AI_CACHES: &[AiRule] = &[
+    AiRule {
+        path: ".codex/cache",
+        title: "Codex",
+        age_days: 1,
+        leaves: Some(&[
+            "remote_plugin_catalog",
+            "codex_apps_tools",
+            "codex_apps_server_info",
+            "bundled_plugin_exclusions",
+        ]),
+        processes: &["codex", "Codex"],
+        protected: &["auth.json", "config.toml", "sessions", "archived_sessions"],
+    },
+    AiRule {
+        path: ".codex/.tmp",
+        title: "Codex",
+        age_days: 7,
+        leaves: None,
+        processes: &["codex", "Codex"],
+        protected: &[],
+    },
+    AiRule {
+        path: ".codex/shell_snapshots",
+        title: "Codex",
+        age_days: 7,
+        leaves: None,
+        processes: &["codex", "Codex"],
+        protected: &[],
+    },
+    AiRule {
+        path: ".claude/cache",
+        title: "Claude Code",
+        age_days: 1,
+        leaves: None,
+        processes: &["claude"],
+        protected: &[],
+    },
+    AiRule {
+        path: ".claude/debug",
+        title: "Claude Code",
+        age_days: 1,
+        leaves: None,
+        processes: &["claude"],
+        protected: &[],
+    },
+    AiRule {
+        path: ".claude/shell-snapshots",
+        title: "Claude Code",
+        age_days: 7,
+        leaves: None,
+        processes: &["claude"],
+        protected: &[],
+    },
+    AiRule {
+        path: ".claude/plugins/.trash",
+        title: "Claude Code",
+        age_days: 1,
+        leaves: None,
+        processes: &["claude"],
+        protected: &[],
+    },
+    AiRule {
+        path: "Library/Caches/claude-cli-nodejs",
+        title: "Claude Code",
+        age_days: 1,
+        leaves: None,
+        processes: &[],
+        protected: &[],
+    },
+    AiRule {
+        path: "Library/Application Support/Codex",
+        title: "Codex",
+        age_days: 1,
+        leaves: Some(&[
+            "GPUCache",
+            "GrShaderCache",
+            "ShaderCache",
+            "GraphiteDawnCache",
+            "GPUPersistentCache",
+        ]),
+        processes: &["codex", "Codex"],
+        protected: &["Default", "Local Storage", "IndexedDB", "Cookies"],
+    },
+    AiRule {
+        path: "Library/Application Support/Codex/Default",
+        title: "Codex",
+        age_days: 1,
+        leaves: Some(&["GPUCache", "DawnGraphiteCache", "DawnWebGPUCache"]),
+        processes: &["codex", "Codex"],
+        protected: &["Local Storage", "IndexedDB", "Cookies", "Session Storage"],
+    },
+    AiRule {
+        path: "Library/Application Support/Cursor",
+        title: "Cursor",
+        age_days: 1,
+        leaves: Some(&[
+            "Cache",
+            "Code Cache",
+            "GPUCache",
+            "CachedData",
+            "CachedExtensionVSIXs",
+            "CachedProfilesData",
+            "DawnGraphiteCache",
+            "DawnWebGPUCache",
+        ]),
+        processes: &["Cursor"],
+        protected: &["User", "logs"],
+    },
+    AiRule {
+        path: "Library/Caches/com.todesktop.230313mzl4w4u92",
+        title: "Cursor",
+        age_days: 1,
+        leaves: None,
+        processes: &[],
+        protected: &[],
+    },
+    AiRule {
+        path: ".gemini/antigravity-browser-profile/Default",
+        title: "Antigravity",
+        age_days: 1,
+        leaves: Some(&["Cache", "Code Cache", "GPUCache", "Service Worker"]),
+        processes: &["Antigravity", "Gemini"],
+        protected: &["Local Storage", "IndexedDB"],
+    },
+    AiRule {
+        path: ".continue",
+        title: "Continue",
+        age_days: 7,
+        leaves: Some(&["index", "logs", "dev_data"]),
+        processes: &[],
+        protected: &["config.json", "config.ts", "sessions"],
+    },
+    AiRule {
+        path: ".cache/opencode",
+        title: "opencode",
+        age_days: 7,
+        leaves: None,
+        processes: &["opencode"],
+        protected: &[],
+    },
+    AiRule {
+        path: ".local/share/opencode/log",
+        title: "opencode",
+        age_days: 7,
+        leaves: None,
+        processes: &["opencode"],
+        protected: &[],
+    },
+];
+/// Folders that hold user data or credentials. No AI rule may point at, inside or above one of them; the collector
+/// enforces this at runtime, so a future rule cannot widen the scan by accident.
+pub const AI_PROTECTED: &[&str] = &[
+    ".claude/projects",
+    ".claude/file-history",
+    ".claude/plans",
+    ".claude/todos",
+    ".claude/statsig",
+    ".claude/settings.json",
+    ".claude/.credentials.json",
+    ".claude.json",
+    ".codex/sessions",
+    ".codex/archived_sessions",
+    ".codex/thread_history_1.sqlite",
+    ".codex/auth.json",
+    ".codex/config.toml",
+    ".codex/generated_images",
+    ".codex/history.jsonl",
+    ".codex/log",
+    ".codex/logs_2.sqlite",
+    ".continue/sessions",
+    ".gemini/tmp",
+    ".cursor",
+    ".ollama",
+    ".lmstudio",
+];
+/// Whether a path touches one of the protected AI folders. `whole` also rejects a path that merely *contains* one:
+/// a rule that removes its root must not sit above a session store, while a rule that lists leaves may.
+pub fn ai_path_protected(home: &Path, path: &Path, whole: bool) -> bool {
+    AI_PROTECTED.iter().any(|guarded| {
+        let guarded = home.join(guarded);
+        path.starts_with(&guarded) || (whole && guarded.starts_with(path))
+    })
+}
+
 /// Caches where a file held open by a running process can simply stay while the rest is removed (a `go run` binary
 /// in go-build, the module cache lock). Browser builds for tests are excluded: removing part of a running browser
 /// would crash it, so any open file holds the whole folder.
@@ -424,6 +672,8 @@ pub fn root_names_apply(reason: CleanupReason) -> bool {
         CleanupReason::Installer
             | CleanupReason::InstallerInstalled
             | CleanupReason::BuildArtifact
+            | CleanupReason::BuildLeaf
+            | CleanupReason::AiCache
             | CleanupReason::XcodeArchive
             | CleanupReason::Trash
             | CleanupReason::DeviceBackup
@@ -436,6 +686,11 @@ pub fn root_blocked(
     external: Option<&Path>,
     reason: CleanupReason,
 ) -> bool {
+    // The AI rules bypass the name rules, so the explicit protected list is enforced here as well: at scan time and
+    // again right before removal, whatever a caller hands in.
+    if reason == CleanupReason::AiCache && ai_path_protected(home, path, true) {
+        return true;
+    }
     if root_names_apply(reason) {
         never_touch_scoped(home, path, external)
     } else {
@@ -619,5 +874,121 @@ mod tests {
             &cache.join("clang/ModuleCache"),
             None
         ));
+    }
+
+    /// The AI rules name cache folders under tools whose names are on the never-touch list. The exception must be
+    /// scoped: a candidate the rule would remove passes, while the same folder stays blocked for a generic scan.
+    #[test]
+    fn ai_roots_bypass_the_name_rules_only_through_their_own_reason() {
+        let home = Path::new("/synthetic/home");
+        let mut name_blocked = 0;
+        for rule in AI_CACHES {
+            let root = home.join(rule.path);
+            assert!(!unsafe_location(home, &root), "{} escapes home", rule.path);
+            // A rule that lists leaves never removes its root; only the leaves are candidates.
+            let candidates: Vec<std::path::PathBuf> = match rule.leaves {
+                None => vec![root.clone()],
+                Some(leaves) => leaves.iter().map(|leaf| root.join(leaf)).collect(),
+            };
+            for candidate in candidates {
+                if ai_path_protected(home, &candidate, true) {
+                    continue;
+                }
+                assert!(
+                    !root_blocked(home, &candidate, None, CleanupReason::AiCache),
+                    "{} must be reachable by its own rule",
+                    candidate.display()
+                );
+                if never_touch(home, &candidate) {
+                    name_blocked += 1;
+                    assert!(
+                        root_blocked(home, &candidate, None, CleanupReason::CacheDir),
+                        "{} must stay blocked for a generic scan",
+                        candidate.display()
+                    );
+                }
+            }
+            for guarded in [
+                ".claude/settings.json",
+                ".claude/.credentials.json",
+                ".codex/auth.json",
+                ".codex/sessions",
+                ".gemini/tmp",
+            ] {
+                assert!(
+                    root_blocked(home, &home.join(guarded), None, CleanupReason::AiCache),
+                    "{guarded} must stay blocked even for an AI cache rule"
+                );
+            }
+        }
+        assert!(
+            name_blocked > 0,
+            "the exception is pointless unless a candidate is name-blocked"
+        );
+    }
+
+    /// No AI rule may point at, inside or above data that cannot be regenerated.
+    #[test]
+    fn ai_rules_never_touch_session_memory_or_credentials() {
+        let home = Path::new("/synthetic/home");
+        for rule in AI_CACHES {
+            let root = home.join(rule.path);
+            assert!(
+                !ai_path_protected(home, &root, rule.leaves.is_none()),
+                "{} overlaps a protected AI folder",
+                rule.path
+            );
+            for leaf in rule.leaves.unwrap_or(&[]) {
+                assert!(
+                    !rule.protected.contains(leaf),
+                    "{} lists protected leaf {leaf}",
+                    rule.path
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn generated_leaves_are_auto_and_preselected() {
+        for reason in [
+            CleanupReason::BuildLeaf,
+            CleanupReason::AiCache,
+            CleanupReason::CacheDir,
+        ] {
+            assert_eq!(
+                CleanupRestore::for_reason(reason),
+                CleanupRestore::Auto,
+                "{reason:?}"
+            );
+            assert!(default_selected(reason), "{reason:?}");
+        }
+        assert_eq!(
+            CleanupRestore::for_reason(CleanupReason::BuildArtifact),
+            CleanupRestore::Costly
+        );
+        assert!(!default_selected(CleanupReason::ToolDownloadCache));
+    }
+
+    /// Cargo's fingerprint files decide which units are fresh. Removing them recompiles every dependency, so they are
+    /// not a cheap leaf and must not be offered as one.
+    #[test]
+    fn cargo_fingerprints_are_not_a_cheap_leaf() {
+        let cargo = PROJECT_LEAVES
+            .iter()
+            .find(|(marker, _)| *marker == "Cargo.toml")
+            .unwrap()
+            .1;
+        assert!(!cargo.iter().any(|leaf| leaf.contains(".fingerprint")));
+        assert!(cargo.contains(&"target/debug/incremental"));
+        assert!(cargo.contains(&"target/tmp"));
+    }
+
+    #[test]
+    fn a_leaf_inside_a_whole_artifact_is_not_listed_twice() {
+        let artifacts: BTreeSet<&str> = ["target", "node_modules"].into_iter().collect();
+        assert!(leaf_covered("target/debug/incremental", &artifacts));
+        assert!(leaf_covered("node_modules/.cache", &artifacts));
+        assert!(!leaf_covered(".pytest_cache", &artifacts));
+        assert!(!leaf_covered("target2/debug", &artifacts));
     }
 }

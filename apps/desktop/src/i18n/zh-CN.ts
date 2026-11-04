@@ -1792,6 +1792,7 @@ export default {
       logs: '日志与诊断报告',
       browser_caches: '浏览器缓存',
       dev_caches: '开发工具缓存',
+      ai_caches: 'AI 工具缓存',
       homebrew: 'Homebrew 下载缓存与旧版本',
       temp: '临时文件',
       leftovers: '已删除 App 的残留',
@@ -1807,6 +1808,7 @@ export default {
       logs: '7 天前的 App 日志和崩溃报告',
       browser_caches: '只清缓存，不碰历史记录、Cookie、密码和扩展',
       dev_caches: '下次构建或安装时会重新生成、重新下载',
+      ai_caches: 'AI 开发工具的缓存、日志和废弃下载；会话、记忆和凭据保留',
       homebrew: '等同 brew cleanup：旧版本和下载缓存',
       temp: '3 天没动、没被打开的临时文件',
       leftovers: 'App 已经不在这台 Mac 上，这些文件还留着',
@@ -1861,6 +1863,10 @@ export default {
       volumes: '数据卷可能存着数据库等数据，只显示、不清理'
     },
     reasons: {
+      build_leaf: '增量编译',
+      build_leafHint: '删除只会让下次构建慢一些，已编译的依赖会保留。',
+      build_artifact_cost: '全量重编译',
+      build_artifact_costHint: '下次构建会重新编译全部内容，可能耗时较久。',
       orphan_service: '后台服务',
       installer_installed: '已安装',
       device_support_latest: '最新版本',

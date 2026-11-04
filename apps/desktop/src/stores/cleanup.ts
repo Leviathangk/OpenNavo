@@ -31,6 +31,7 @@ export const CATEGORIES: readonly CleanupCategory[] = [
   'logs',
   'browser_caches',
   'dev_caches',
+  'ai_caches',
   'homebrew',
   'temp',
   'leftovers',

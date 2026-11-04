@@ -21,7 +21,7 @@
 
 use crate::cleanup::types::{
     CategoryReport, CleanupCategory, CleanupItem, CleanupItemKind, CleanupReason, CleanupReport,
-    CleanupRisk,
+    CleanupRestore, CleanupRisk,
 };
 
 /// Categories whose items are regenerated on demand, so a tool may select them.
@@ -30,6 +30,7 @@ const REGENERABLE: &[CleanupCategory] = &[
     CleanupCategory::Logs,
     CleanupCategory::BrowserCaches,
     CleanupCategory::DevCaches,
+    CleanupCategory::AiCaches,
     CleanupCategory::Homebrew,
     CleanupCategory::Temp,
 ];
@@ -49,7 +50,9 @@ fn regenerable_reason(reason: CleanupReason) -> bool {
         | CleanupReason::ToolCommand
         | CleanupReason::BrewCleanup
         | CleanupReason::TempFile
-        | CleanupReason::Orphan => true,
+        | CleanupReason::Orphan
+        | CleanupReason::BuildLeaf
+        | CleanupReason::AiCache => true,
         CleanupReason::OrphanService
         | CleanupReason::Installer
         | CleanupReason::InstallerInstalled
@@ -80,6 +83,11 @@ pub fn removable(category: &CategoryReport, item: &CleanupItem) -> bool {
     // A size the scan could not finish is a lower bound, and the app already
     // refuses to act on one.
     if !item.size_complete {
+        return false;
+    }
+    // Only what the tool rebuilds for free. `Costly` items (a full Rust rebuild, a
+    // re-downloaded toolchain) are choices for a person, not for a tool call.
+    if item.restore != CleanupRestore::Auto {
         return false;
     }
     // "Clean" removes for good; only caches are safe to remove for good. The
@@ -166,6 +174,7 @@ mod tests {
             kept_open_files: 0,
             modified_at: None,
             reason,
+            restore: CleanupRestore::for_reason(reason),
             selected: true,
             delete_mode: mode,
             needs_admin: false,
@@ -225,6 +234,7 @@ mod tests {
             CleanupCategory::Logs,
             CleanupCategory::BrowserCaches,
             CleanupCategory::DevCaches,
+            CleanupCategory::AiCaches,
             CleanupCategory::Homebrew,
             CleanupCategory::Temp,
         ] {
@@ -234,6 +244,25 @@ mod tests {
                 "{key:?} should be removable"
             );
         }
+    }
+
+    #[test]
+    fn a_costly_item_is_refused_even_in_a_regenerable_category() {
+        // A full rebuild is a person's decision; the allowlist must not turn an
+        // AI cache rule into permission to delete one.
+        let mut costly = item("a", CleanupReason::AiCache, true, DeleteMode::Trash);
+        costly.restore = CleanupRestore::Costly;
+        let costly_category = category(CleanupCategory::AiCaches, vec![costly]);
+        assert!(!removable(
+            &costly_category,
+            &costly_category.groups[0].items[0]
+        ));
+
+        let free_category = category(
+            CleanupCategory::AiCaches,
+            vec![item("b", CleanupReason::AiCache, true, DeleteMode::Trash)],
+        );
+        assert!(removable(&free_category, &free_category.groups[0].items[0]));
     }
 
     #[test]

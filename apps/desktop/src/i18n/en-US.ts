@@ -1847,6 +1847,7 @@ const messages: MessageSchema = {
       logs: 'Logs and Diagnostic Reports',
       browser_caches: 'Browser Caches',
       dev_caches: 'Developer Caches',
+      ai_caches: 'AI Tool Caches',
       homebrew: 'Homebrew Downloads and Old Versions',
       temp: 'Temporary Files',
       leftovers: 'Leftovers of Deleted Apps',
@@ -1862,6 +1863,7 @@ const messages: MessageSchema = {
       logs: 'App logs and crash reports older than 7 days',
       browser_caches: 'Caches only; history, cookies, passwords, and extensions stay',
       dev_caches: 'Generated or downloaded again on the next build or install',
+      ai_caches: 'Caches, logs and abandoned downloads of AI coding tools; sessions, memories and credentials stay',
       homebrew: 'Same as brew cleanup: old versions and download caches',
       temp: 'Temporary files untouched for 3 days and not open',
       leftovers: 'The app is gone from this Mac, but these files remain',
@@ -1920,6 +1922,10 @@ const messages: MessageSchema = {
       volumes: 'Volumes may hold databases and other data; shown only, never cleaned'
     },
     reasons: {
+      build_leaf: 'Incremental build',
+      build_leafHint: 'Removing it only slows the next build; compiled dependencies stay.',
+      build_artifact_cost: 'Full rebuild',
+      build_artifact_costHint: 'The next build recompiles everything; this can take a while.',
       orphan_service: 'Background item',
       installer_installed: 'Installed',
       device_support_latest: 'Latest',
