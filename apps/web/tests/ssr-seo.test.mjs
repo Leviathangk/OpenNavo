@@ -3478,6 +3478,28 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const statics = await (await fetch(`${origin}/__sitemap__/zh-Hans-static.xml`)).text();
     assert.ok(statics.includes('<loc>https://example.test/zh/security</loc>'), statics);
   });
+  await t.test('the ClamAV page shows the five pre-install scan steps', async () => {
+    const html = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      assert.equal(response.status, 200, path);
+      return response.text();
+    };
+    for (const path of ['/security/firewall', '/security/clamav', '/security/xprotect']) await html(path);
+    for (const [prefix, code] of [
+      ['', 'en-US'],
+      ['/zh', 'zh-CN']
+    ]) {
+      const page = await html(`${prefix}/security/clamav`);
+      const section = /<section\b[^>]*aria-labelledby="topic-how"[\s\S]*?<\/section>/.exec(page)?.[0] ?? '';
+      const list = /<ol\b[\s\S]*?<\/ol>/.exec(section)?.[0] ?? '';
+      assert.equal((list.match(/<li\b/g) ?? []).length, 5, `${prefix || '/'} ClamAV steps`);
+      const { securityTopics } = JSON.parse(
+        await readFile(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8')
+      );
+      for (const text of Object.values(securityTopics.clamav.sections.how.steps))
+        assert.ok(list.includes(text), `${code} ${text}`);
+    }
+  });
   await t.test('security-category apps point to the security page', async () => {
     const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
     const guard = await html('/zh/apps/guard-app');

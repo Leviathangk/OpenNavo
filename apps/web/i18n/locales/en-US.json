@@ -1600,6 +1600,13 @@
               "title": "Memory only while scanning",
               "body": "The engine uses about 1.1 GB of memory while scanning and quits after 5 idle minutes."
             }
+          },
+          "steps": {
+            "download": "Homebrew downloads the app and its dependencies into a private cache first. Nothing is installed at this point.",
+            "scan": "ClamAV scans those downloaded files against the official virus database. The scan runs on your Mac; the files are not uploaded.",
+            "result": "If the scan finds nothing, OpenNavo lets the install continue. If it finds a known threat, the install stops before the app is installed.",
+            "installOrAbort": "A clean download goes on to install as usual. If a threat is found, the install does not go ahead.",
+            "logOrQuarantine": "The stopped install appears in Recent activity with the threat signature, so you can review what was found."
           }
         },
         "limits": {

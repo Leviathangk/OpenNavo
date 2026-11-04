@@ -1600,6 +1600,13 @@
               "title": "Usa memória só durante a verificação",
               "body": "Durante a verificação, o mecanismo usa cerca de 1.1 GB de memória e fecha sozinho após 5 minutos sem uso."
             }
+          },
+          "steps": {
+            "download": "O Homebrew baixa primeiro o app e as dependências para um cache privado. Nada é instalado nesse momento.",
+            "scan": "O ClamAV verifica esses arquivos com o banco de dados oficial de vírus. A verificação roda no seu Mac; os arquivos não são enviados.",
+            "result": "Se a verificação não encontrar nada, o OpenNavo deixa a instalação continuar. Se encontrar uma ameaça conhecida, a instalação para antes de o app ser instalado.",
+            "installOrAbort": "Os arquivos limpos são instalados normalmente. Se houver uma ameaça, a instalação não continua.",
+            "logOrQuarantine": "A instalação interrompida aparece em Atividade recente com a assinatura da ameaça, para você ver o que foi encontrado."
           }
         },
         "limits": {

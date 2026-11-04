@@ -52,6 +52,11 @@ describe('Security topic pages (F8)', () => {
     }
   });
 
+  it('keeps the five ClamAV pre-install scan steps in order', () => {
+    const how = TOPICS.clamav.sections.find(section => section.key === 'how');
+    expect(how?.steps).toEqual(['download', 'scan', 'result', 'installOrAbort', 'logOrQuarantine']);
+  });
+
   it('links related apps by their catalog tokens only', () => {
     for (const topic of SECURITY_TOPICS)
       for (const app of TOPICS[topic].apps) expect(app.token).toMatch(/^[a-z0-9][a-z0-9@._+-]{0,127}$/);

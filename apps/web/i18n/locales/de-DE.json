@@ -1600,6 +1600,13 @@
               "title": "Arbeitsspeicher nur beim Scannen belegt",
               "body": "Beim Scannen belegt die Engine etwa 1.1 GB Arbeitsspeicher und beendet sich nach 5 Minuten Leerlauf."
             }
+          },
+          "steps": {
+            "download": "Homebrew lädt die App und ihre Abhängigkeiten zuerst in einen privaten Cache. Installiert wird zu diesem Zeitpunkt noch nichts.",
+            "scan": "ClamAV prüft die heruntergeladenen Dateien mit der offiziellen Virendatenbank. Der Scan läuft auf Ihrem Mac; die Dateien werden nicht hochgeladen.",
+            "result": "Findet der Scan nichts, lässt OpenNavo die Installation weiterlaufen. Wird eine bekannte Bedrohung gefunden, stoppt die Installation, bevor die App installiert wird.",
+            "installOrAbort": "Saubere Dateien werden wie gewohnt installiert. Bei einer Bedrohung wird die Installation nicht fortgesetzt.",
+            "logOrQuarantine": "Die gestoppte Installation wird mit der Bedrohungssignatur unter „Letzte Aktivitäten“ aufgeführt, damit Sie nachsehen können, was gefunden wurde."
           }
         },
         "limits": {

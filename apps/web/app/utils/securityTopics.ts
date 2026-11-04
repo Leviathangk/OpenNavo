@@ -48,7 +48,11 @@ export const TOPICS: Record<SecurityTopic, TopicConfig> = {
     icon: 'scan-search',
     sections: [
       { key: 'what', body: true },
-      { key: 'how', cards: ['database', 'scans', 'install', 'quarantine', 'resources'] },
+      {
+        key: 'how',
+        cards: ['database', 'scans', 'install', 'quarantine', 'resources'],
+        steps: ['download', 'scan', 'result', 'installOrAbort', 'logOrQuarantine']
+      },
       { key: 'limits', items: ['coverage', 'signatures', 'realtime', 'large'] },
       { key: 'extras', body: true, cards: ['signatures', 'startup', 'posture', 'virusTotal'] }
     ],

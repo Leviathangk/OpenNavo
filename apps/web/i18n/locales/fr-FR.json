@@ -1600,6 +1600,13 @@
               "title": "De la mémoire utilisée uniquement pendant l’analyse",
               "body": "Pendant l’analyse, le moteur utilise environ 1.1 GB de mémoire et se ferme automatiquement après 5 minutes d’inactivité."
             }
+          },
+          "steps": {
+            "download": "Homebrew télécharge d’abord l’app et ses dépendances dans un cache privé. Rien n’est encore installé à ce stade.",
+            "scan": "ClamAV analyse ces fichiers avec la base officielle de signatures. L’analyse se fait sur votre Mac ; les fichiers ne sont pas envoyés.",
+            "result": "Si l’analyse ne trouve rien, OpenNavo laisse l’installation continuer. Si une menace connue est détectée, l’installation s’arrête avant que l’app soit installée.",
+            "installOrAbort": "Les fichiers propres sont installés normalement. En cas de menace, l’installation ne continue pas.",
+            "logOrQuarantine": "L’installation interrompue apparaît dans Activité récente avec la signature de la menace, pour que vous puissiez voir ce qui a été trouvé."
           }
         },
         "limits": {
