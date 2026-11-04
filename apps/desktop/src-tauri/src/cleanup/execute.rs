@@ -655,6 +655,10 @@ impl Engine {
         if !item.item.size_complete {
             return Err(size_unknown(item.item.path.clone()));
         }
+        // Read-only rows (AI history) are information, not candidates: refuse them even if a client selected one.
+        if item.item.restore == super::types::CleanupRestore::Never {
+            return Ok(Act::Skipped(SkippedItemReason::Protected));
+        }
         if item.owner.protected
             || protect::is_protected(&self.protected_list()?, path, item.owner.bundle.as_deref())
             || rules::root_blocked(

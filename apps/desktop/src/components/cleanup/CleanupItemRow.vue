@@ -28,6 +28,8 @@ const label = computed(() =>
 );
 /** Only partly measured: the size is a lower bound and the item can't be selected (#116). */
 const partial = computed(() => !props.item.sizeComplete);
+/** AI history is information: shown with its size, never offered for removal here. */
+const readonly = computed(() => props.item.restore === 'never');
 const size = computed(() => {
   if (props.item.sizeBytes === null) return '—';
   const text = formatBytes(props.item.sizeBytes, { locale: appLocale.value });
@@ -62,6 +64,13 @@ const chip = computed(() => {
         text: t('cleanup.reasons.build_leaf'),
         hint: t('cleanup.reasons.build_leafHint')
       };
+    // Session transcripts and project history: visible so the space is accounted for, deleted only in the tool.
+    case 'ai_history':
+      return {
+        tone: 'neutral' as const,
+        text: t('cleanup.reasons.ai_history'),
+        hint: t('cleanup.reasons.ai_historyHint')
+      };
     // Whole project output: correct to offer, but the next build starts from scratch.
     case 'build_artifact':
       return {
@@ -87,10 +96,10 @@ const chip = computed(() => {
     class="group flex min-h-36px items-center gap-10px border-t border-t-solid border-line-subtle py-6px pl-76px pr-12px hover:bg-component-item-active"
   >
     <OnCheckbox
-      :model-value="checked && !partial"
-      :disabled="partial"
+      :model-value="checked && !partial && !readonly"
+      :disabled="partial || readonly"
       :aria-label="label"
-      :title="partial ? t('cleanup.item.partial') : undefined"
+      :title="readonly ? t('cleanup.reasons.ai_historyHint') : partial ? t('cleanup.item.partial') : undefined"
       @update:model-value="value => emit('toggle', value)"
     />
     <div class="min-w-0 flex-1">

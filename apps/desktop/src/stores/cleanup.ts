@@ -32,6 +32,7 @@ export const CATEGORIES: readonly CleanupCategory[] = [
   'browser_caches',
   'dev_caches',
   'ai_caches',
+  'ai_history',
   'homebrew',
   'temp',
   'leftovers',
@@ -111,15 +112,20 @@ export const useCleanupStore = defineStore('cleanup', () => {
       category.groups.flatMap(group => group.items.map(item => ({ category, group, item })))
     )
   );
-  /** A size that is only a lower bound is never selectable (#116). */
-  const isChecked = (item: CleanupItem) => item.sizeComplete && Boolean(selected.value[item.id]);
+  /** A size that is only a lower bound is never selectable (#116); read-only rows (AI history) never are either. */
+  const selectable = (item: CleanupItem) => item.sizeComplete && item.restore !== 'never';
+  const isChecked = (item: CleanupItem) => selectable(item) && Boolean(selected.value[item.id]);
   const chosen = computed(() => entries.value.filter(entry => isChecked(entry.item)));
   const totals = computed(() => {
     const items = chosen.value.map(entry => entry.item);
     const bytes = sizeOf(items);
     const nowBytes = sizeOf(items.filter(freesNow));
     return {
-      reclaimable: sizeOf(entries.value.filter(entry => entry.category.risk !== 'personal').map(entry => entry.item)),
+      reclaimable: sizeOf(
+        entries.value
+          .filter(entry => entry.category.risk !== 'personal' && selectable(entry.item))
+          .map(entry => entry.item)
+      ),
       count: items.length,
       bytes,
       nowBytes,
@@ -144,9 +150,9 @@ export const useCleanupStore = defineStore('cleanup', () => {
 
   const itemsOf = (category: CategoryReport) => category.groups.flatMap(group => group.items);
   function stateOf(items: readonly CleanupItem[]): 'on' | 'ind' | 'off' {
-    const selectable = items.filter(item => item.sizeComplete);
-    const count = selectable.filter(isChecked).length;
-    return count === 0 ? 'off' : count === selectable.length ? 'on' : 'ind';
+    const offered = items.filter(selectable);
+    const count = offered.filter(isChecked).length;
+    return count === 0 ? 'off' : count === offered.length ? 'on' : 'ind';
   }
   const categoryState = (category: CategoryReport) => stateOf(itemsOf(category));
   const groupState = (group: CleanupGroup) => stateOf(group.items);
@@ -157,7 +163,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
   };
   function setItems(items: readonly CleanupItem[], value: boolean) {
     const next = { ...selected.value };
-    for (const item of items) next[item.id] = value && item.sizeComplete;
+    for (const item of items) next[item.id] = value && selectable(item);
     selected.value = next;
   }
   const setCategory = (category: CategoryReport, value: boolean) => setItems(itemsOf(category), value);
@@ -167,7 +173,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
   }
   function onlyRebuildable() {
     selected.value = Object.fromEntries(
-      entries.value.map(entry => [entry.item.id, entry.item.sizeComplete && entry.category.risk === 'rebuildable'])
+      entries.value.map(entry => [entry.item.id, selectable(entry.item) && entry.category.risk === 'rebuildable'])
     );
   }
   function toggleExpanded(key: string) {

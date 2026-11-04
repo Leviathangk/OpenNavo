@@ -518,6 +518,30 @@ const CATEGORIES: CategorySpec[] = [
     ]
   },
   {
+    key: 'ai_history',
+    risk: 'review',
+    groups: [
+      {
+        id: 'ai-history-codex',
+        title: 'Codex',
+        items: [
+          { path: '~/.codex/sessions', size: 5.2 * GB, daysAgo: 0, reason: 'ai_history' },
+          { path: '~/.codex/archived_sessions', size: 4.4 * GB, daysAgo: 31, reason: 'ai_history' }
+        ]
+      },
+      {
+        id: 'ai-history-claude',
+        title: 'Claude Code',
+        items: [{ path: '~/.claude/projects', size: 4.6 * GB, daysAgo: 0, reason: 'ai_history' }]
+      },
+      {
+        id: 'ai-history-gemini',
+        title: 'Gemini CLI',
+        items: [{ path: '~/.gemini/tmp', size: 1.2 * GB, daysAgo: 14, reason: 'ai_history' }]
+      }
+    ]
+  },
+  {
     key: 'homebrew',
     risk: 'rebuildable',
     groups: [
@@ -890,6 +914,8 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'ai_cache':
     case 'build_leaf':
       return 'auto';
+    case 'ai_history':
+      return 'never';
     case 'tool_download_cache':
     case 'device_support':
     case 'device_support_latest':
@@ -1072,7 +1098,9 @@ export function createCleanupMock({
     return {
       scannedAt: report.scannedAt,
       volume: volume(),
-      reclaimableBytes: bytes(items.filter(entry => entry.category.risk !== 'personal')),
+      reclaimableBytes: bytes(
+        items.filter(entry => entry.category.risk !== 'personal' && entry.item.restore !== 'never')
+      ),
       suggestedBytes: bytes(items.filter(entry => entry.item.selected)),
       activeBackgroundItems: items.filter(entry => entry.item.reason === 'orphan_service').length,
       categories: report.categories.map(category => ({

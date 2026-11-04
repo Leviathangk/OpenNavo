@@ -63,7 +63,8 @@ fn regenerable_reason(reason: CleanupReason) -> bool {
         | CleanupReason::DockerImages
         | CleanupReason::DockerBuildCache
         | CleanupReason::DockerContainers
-        | CleanupReason::LargeFile => false,
+        | CleanupReason::LargeFile
+        | CleanupReason::AiHistory => false,
     }
 }
 

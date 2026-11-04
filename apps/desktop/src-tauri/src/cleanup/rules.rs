@@ -28,6 +28,7 @@ pub const AVAILABLE: &[CleanupCategory] = &[
     CleanupCategory::BrowserCaches,
     CleanupCategory::DevCaches,
     CleanupCategory::AiCaches,
+    CleanupCategory::AiHistory,
     CleanupCategory::Homebrew,
     CleanupCategory::Temp,
     CleanupCategory::Leftovers,
@@ -124,6 +125,8 @@ pub fn default_selected(reason: CleanupReason) -> bool {
             | CleanupReason::DeviceBackup
             | CleanupReason::XcodeArchive
             | CleanupReason::LargeFile
+            | CleanupReason::AiHistory
+            | CleanupReason::BuildArtifact
     )
 }
 /// Whether the never-touch name rules apply below a candidate's root. Generated trees (build products, system
@@ -554,8 +557,44 @@ pub const AI_CACHES: &[AiRule] = &[
         protected: &[],
     },
 ];
-/// Folders that hold user data or credentials. No AI rule may point at, inside or above one of them; the collector
-/// enforces this at runtime, so a future rule cannot widen the scan by accident.
+/// Session transcripts and project history of AI coding tools. Read-only by design: the scan lists their size so
+/// people can see where the space went, and `CleanupRestore::Never` keeps every layer (UI, MCP, executor) from
+/// removing them. The owning tool is the only place to delete them.
+pub struct HistoryRule {
+    pub path: &'static str,
+    pub title: &'static str,
+    pub processes: &'static [&'static str],
+}
+pub const AI_HISTORY: &[HistoryRule] = &[
+    HistoryRule {
+        path: ".codex/sessions",
+        title: "Codex",
+        processes: &["codex"],
+    },
+    HistoryRule {
+        path: ".codex/archived_sessions",
+        title: "Codex",
+        processes: &["codex"],
+    },
+    HistoryRule {
+        path: ".claude/projects",
+        title: "Claude Code",
+        processes: &["claude"],
+    },
+    HistoryRule {
+        path: ".claude/file-history",
+        title: "Claude Code",
+        processes: &["claude"],
+    },
+    HistoryRule {
+        path: ".gemini/tmp",
+        title: "Gemini CLI",
+        processes: &["gemini"],
+    },
+];
+/// Folders that hold user data or credentials. No cache rule may point at, inside or above one of them; the
+/// collector enforces this at runtime, so a future rule cannot widen the scan by accident. `AI_HISTORY` is the one
+/// deliberate exception, and it lists them read-only.
 pub const AI_PROTECTED: &[&str] = &[
     ".claude/projects",
     ".claude/file-history",
@@ -967,6 +1006,26 @@ mod tests {
             CleanupRestore::Costly
         );
         assert!(!default_selected(CleanupReason::ToolDownloadCache));
+        // Whole project artifacts are opt-in; the collector preselects only a confidently stale `target`.
+        assert!(!default_selected(CleanupReason::BuildArtifact));
+    }
+
+    /// History is the one thing this app shows but never removes. Every path sits in the protected list on purpose.
+    #[test]
+    fn ai_history_is_read_only() {
+        assert!(!default_selected(CleanupReason::AiHistory));
+        assert_eq!(
+            CleanupRestore::for_reason(CleanupReason::AiHistory),
+            CleanupRestore::Never
+        );
+        assert!(!AI_HISTORY.is_empty());
+        for rule in AI_HISTORY {
+            assert!(
+                AI_PROTECTED.contains(&rule.path),
+                "{} must stay protected",
+                rule.path
+            );
+        }
     }
 
     /// Cargo's fingerprint files decide which units are fresh. Removing them recompiles every dependency, so they are

@@ -492,8 +492,8 @@ async fn scan_progress_is_global_cumulative_monotonic_and_finishes() {
         assert!(
             progress
                 .iter()
-                // Seven P0 categories, five P1 categories and Docker.
-                .all(|p| p.total == 13 && p.checked <= p.total)
+                // Eight P0 categories, five P1 categories and Docker.
+                .all(|p| p.total == 14 && p.checked <= p.total)
         );
         assert_eq!(progress.first().unwrap().checked, 0);
         assert!(
@@ -536,9 +536,9 @@ async fn scan_progress_is_global_cumulative_monotonic_and_finishes() {
         progress
             .iter()
             // Every available category except developer caches, which this Mac has no tools for.
-            .all(|p| p.total == 12 && p.category != CleanupCategory::DevCaches)
+            .all(|p| p.total == 13 && p.category != CleanupCategory::DevCaches)
     );
-    assert_eq!(progress.last().unwrap().checked, 12);
+    assert_eq!(progress.last().unwrap().checked, 13);
 }
 
 #[tokio::test]
@@ -2518,7 +2518,8 @@ async fn project_output_of_old_projects_is_offered_and_recent_projects_keep_thei
     let offered: Vec<_> = items(&report);
     assert_eq!(offered.len(), 1, "{offered:?}");
     assert!(offered[0].path.ends_with("code/old-app/node_modules"));
-    assert!(offered[0].selected);
+    // Whole artifacts are opt-in; only a confidently stale `target` is preselected.
+    assert!(!offered[0].selected);
     assert_eq!(offered[0].delete_mode, DeleteMode::Delete);
     assert_eq!(
         category.groups[0].subtitle.as_deref(),

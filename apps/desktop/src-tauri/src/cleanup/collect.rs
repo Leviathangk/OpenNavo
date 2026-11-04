@@ -46,6 +46,7 @@ impl Collected {
                     | CleanupCategory::Installers
                     | CleanupCategory::ProjectArtifacts
                     | CleanupCategory::Docker
+                    | CleanupCategory::AiHistory
                     | CleanupCategory::Trash => CleanupRisk::Review,
                     CleanupCategory::DeviceBackups => CleanupRisk::Personal,
                     _ => CleanupRisk::Rebuildable,
@@ -119,6 +120,8 @@ struct Candidate {
     age_days: Option<i64>,
     /// Listed with its measured size but never offered (a project touched recently).
     skip: Option<SkippedGroupReason>,
+    /// Overrides `rules::default_selected` for this candidate (a stale project's whole `target` starts checked).
+    preselect: Option<bool>,
 }
 struct Collector<'a> {
     engine: &'a Engine,
@@ -209,7 +212,24 @@ impl Collector<'_> {
             reason,
             age_days,
             skip: None,
+            preselect: None,
         });
+        Ok(())
+    }
+    /// A candidate whose default selection differs from its reason's rule (a stale project's whole `target`).
+    fn add_preselected(
+        &mut self,
+        path: PathBuf,
+        owner: Owner,
+        title: String,
+        reason: CleanupReason,
+        age_days: Option<i64>,
+        selected: bool,
+    ) -> Result<(), AppError> {
+        self.add(path, owner, title, reason, age_days)?;
+        if let Some(last) = self.pending.last_mut() {
+            last.preselect = Some(selected);
+        }
         Ok(())
     }
     /// A candidate that is measured and shown as skipped, never offered.
@@ -229,6 +249,7 @@ impl Collector<'_> {
             reason,
             age_days: None,
             skip: Some(skip),
+            preselect: None,
         });
         Ok(())
     }
@@ -282,14 +303,7 @@ impl Collector<'_> {
                             pending: vec![],
                             project_roots: vec![],
                         };
-                        let result = worker.add_measured(
-                            candidate.path,
-                            candidate.owner,
-                            candidate.title,
-                            candidate.reason,
-                            candidate.age_days,
-                            candidate.skip,
-                        );
+                        let result = worker.add_measured(candidate);
                         if acquired {
                             *collector.engine.scan_slots.lock().unwrap() += 1;
                             collector.engine.scan_ready.notify_one();
@@ -332,15 +346,16 @@ impl Collector<'_> {
         }
         Ok(())
     }
-    fn add_measured(
-        &mut self,
-        path: PathBuf,
-        owner: Owner,
-        title: String,
-        reason: CleanupReason,
-        age_days: Option<i64>,
-        skip: Option<SkippedGroupReason>,
-    ) -> Result<(), AppError> {
+    fn add_measured(&mut self, candidate: Candidate) -> Result<(), AppError> {
+        let Candidate {
+            path,
+            owner,
+            title,
+            reason,
+            age_days,
+            skip,
+            preselect,
+        } = candidate;
         self.check()?;
         if fs::symlink_metadata(&path).is_err() {
             return Ok(());
@@ -497,9 +512,11 @@ impl Collector<'_> {
             reason,
             restore: CleanupRestore::for_reason(reason),
             // Unchecked by default: the newest device support version, anything downloaded again, installers whose
-            // app is not installed, the Trash (emptying it cannot be undone) and personal backups and archives.
+            // app is not installed, the Trash (emptying it cannot be undone), personal backups and archives, and
+            // whole project artifacts (the collector preselects only a confidently stale `target`).
             // A lower-bound size is never offered: the whole tree would be removed while far less was shown.
-            selected: captured.incomplete.is_none() && rules::default_selected(reason),
+            selected: captured.incomplete.is_none()
+                && preselect.unwrap_or_else(|| rules::default_selected(reason)),
             // Installers, backups and archives go to the Trash so a wrong pick can be put back.
             delete_mode: if matches!(
                 reason,
@@ -949,6 +966,64 @@ impl Collector<'_> {
         }
         Ok(())
     }
+    /// Read-only view of AI session history. These roots are exactly what the cache rules must never touch, so the
+    /// collector does not run the protection guards: it only measures and lists. `CleanupRestore::Never` keeps the
+    /// item unselectable in the UI, out of the MCP allowlist and refused by the executor.
+    fn ai_history(&mut self) -> Result<(), AppError> {
+        let home = self.engine.uninstall.roots.home.clone();
+        for rule in rules::AI_HISTORY {
+            let path = home.join(rule.path);
+            if fs::symlink_metadata(&path).is_err() {
+                continue;
+            }
+            self.progress(Some(&path));
+            let (bytes, incomplete) =
+                tree::measure_filtered(&path, self.flag, self.deadline, |_| false)?;
+            if bytes == 0 && incomplete.is_none() {
+                continue;
+            }
+            if let Some(reason) = incomplete {
+                self.result.incomplete(&path, reason);
+            }
+            let modified_at = fs::symlink_metadata(&path)
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis().min(i64::MAX as u128) as i64);
+            let mut owner = Owner::tool(rule.processes);
+            owner.tool_key = Some(rule.title.into());
+            owner.group_key = Some(format!("ai-history:{}", rule.title));
+            owner.group_subtitle = Some(rule.path.into());
+            let item = CleanupItem {
+                id: uuid::Uuid::now_v7().to_string(),
+                path: path.to_string_lossy().into_owned(),
+                kind: CleanupItemKind::Dir,
+                command: None,
+                size_bytes: Some(bytes),
+                size_complete: incomplete.is_none(),
+                kept_open_files: 0,
+                modified_at,
+                reason: CleanupReason::AiHistory,
+                restore: CleanupRestore::Never,
+                selected: false,
+                delete_mode: DeleteMode::Trash,
+                needs_admin: false,
+                note: None,
+            };
+            self.insert(
+                item,
+                owner,
+                rule.title.into(),
+                None,
+                ItemAction::Path {
+                    empty_only: false,
+                    bootout: None,
+                },
+            );
+            self.check()?;
+        }
+        Ok(())
+    }
     fn device_support(&mut self) -> Result<(), AppError> {
         for platform in rules::DEVICE_PLATFORMS {
             let root = self
@@ -1107,8 +1182,7 @@ impl Collector<'_> {
             .collect();
         if !artifacts.is_empty() || !leaves.is_empty() {
             let home = self.engine.uninstall.roots.home.clone();
-            let recent = project_touched(dir, &children, &artifacts)
-                > uninstall::now() - rules::PROJECT_RECENT_DAYS * 86_400_000;
+            let recent = project_recent(dir, &children, &artifacts, self.deadline);
             let title = dir
                 .file_name()
                 .unwrap_or_default()
@@ -1151,6 +1225,18 @@ impl Collector<'_> {
                         title.clone(),
                         CleanupReason::BuildArtifact,
                         SkippedGroupReason::Recent,
+                    )?;
+                } else if *name == "target" {
+                    // Only a whole `target` of a project the activity walk was sure is stale starts checked: the
+                    // rebuild cost is known and the folder is pure build output. `node_modules`, `Pods`, `.build`
+                    // and friends stay unchecked; they can hold the only copy of something.
+                    self.add_preselected(
+                        path,
+                        owner,
+                        title.clone(),
+                        CleanupReason::BuildArtifact,
+                        None,
+                        true,
                     )?;
                 } else {
                     self.add(
@@ -1302,30 +1388,114 @@ fn leaf_processes(marker: &str) -> &'static [&'static str] {
         _ => &[],
     }
 }
-/// When a project was last worked on: its top-level files and folders (not generated output) and Git's index and
-/// HEAD log, in milliseconds since the epoch.
-fn project_touched(dir: &Path, children: &[PathBuf], artifacts: &BTreeSet<&str>) -> i64 {
-    let millis = |path: &Path| {
-        fs::symlink_metadata(path)
-            .and_then(|m| m.modified())
-            .ok()
-            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map_or(0, |d| d.as_millis().min(i64::MAX as u128) as i64)
-    };
-    children
-        .iter()
-        .filter(|p| {
-            !p.file_name()
-                .is_some_and(|n| artifacts.contains(n.to_string_lossy().as_ref()))
-        })
-        .map(|p| millis(p))
-        .chain(
-            [".git/index", ".git/logs/HEAD", ".git/FETCH_HEAD"]
-                .iter()
-                .map(|f| millis(&dir.join(f))),
-        )
-        .max()
-        .unwrap_or(0)
+/// Bounded source walk for project activity. Editing `src/main.rs` does not touch `src/`, so the cheap top-level
+/// check alone can call a project abandoned while it is being worked on. Beyond the cap (or on any unreadable entry)
+/// the answer is `None` and the project counts as active: a wrong "abandoned" verdict would default-check a full
+/// rebuild.
+const PROJECT_ACTIVITY_MAX_ENTRIES: usize = 20_000;
+
+/// Generated folders that never count as source activity. Other hidden folders (`.github`, `.config`, …) are walked:
+/// a fresh workflow or config edit is still a person working in the project.
+const PROJECT_GENERATED_DIRS: &[&str] = &[
+    ".build",
+    ".cache",
+    ".dart_tool",
+    ".git",
+    ".gradle",
+    ".next",
+    ".parcel-cache",
+    ".pytest_cache",
+    ".turbo",
+    ".venv",
+    "__pycache__",
+];
+
+fn millis_of(path: &Path) -> Option<i64> {
+    fs::symlink_metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis().min(i64::MAX as u128) as i64)
+}
+fn metadata_millis(meta: &fs::Metadata) -> Option<i64> {
+    meta.modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis().min(i64::MAX as u128) as i64)
+}
+
+/// Cheap first pass: top-level entries plus Git's index and reflog. A recent value is enough to call the project
+/// active; an old value still has to survive `project_activity`.
+fn project_touched(dir: &Path, children: &[PathBuf], artifacts: &BTreeSet<&str>) -> Option<i64> {
+    let mut newest = 0;
+    for child in children {
+        if child
+            .file_name()
+            .is_some_and(|n| artifacts.contains(n.to_string_lossy().as_ref()))
+        {
+            continue;
+        }
+        newest = newest.max(millis_of(child)?);
+    }
+    for file in [".git/index", ".git/logs/HEAD", ".git/FETCH_HEAD"] {
+        newest = newest.max(millis_of(&dir.join(file)).unwrap_or(0));
+    }
+    Some(newest)
+}
+
+/// Newest mtime of a real file under the project, ignoring generated output (whole artifacts, `node_modules`,
+/// `.git`, `.next`, `.venv`, …) and symlinks. `None` means "could not finish": treat the project as
+/// active rather than guessing it is abandoned.
+fn project_activity(dir: &Path, artifacts: &BTreeSet<&str>, deadline: Instant) -> Option<i64> {
+    let mut newest = 0;
+    let mut pending = vec![dir.to_path_buf()];
+    let mut seen = 0usize;
+    while let Some(next) = pending.pop() {
+        if Instant::now() >= deadline {
+            return None;
+        }
+        let entries = fs::read_dir(&next).ok()?;
+        for entry in entries {
+            let entry = entry.ok()?;
+            if seen >= PROJECT_ACTIVITY_MAX_ENTRIES {
+                return None;
+            }
+            seen += 1;
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if PROJECT_GENERATED_DIRS.contains(&name.as_ref())
+                || name == "node_modules"
+                || artifacts.contains(name.as_ref())
+            {
+                continue;
+            }
+            let path = entry.path();
+            let meta = fs::symlink_metadata(&path).ok()?;
+            if meta.is_dir() {
+                pending.push(path);
+            } else if meta.is_file() {
+                newest = newest.max(metadata_millis(&meta)?);
+            }
+        }
+    }
+    Some(newest)
+}
+
+fn project_recent(
+    dir: &Path,
+    children: &[PathBuf],
+    artifacts: &BTreeSet<&str>,
+    deadline: Instant,
+) -> bool {
+    let cutoff = uninstall::now() - rules::PROJECT_RECENT_DAYS * 86_400_000;
+    match project_touched(dir, children, artifacts) {
+        Some(newest) if newest > cutoff => true,
+        Some(_) => match project_activity(dir, artifacts, deadline) {
+            Some(newest) => newest > cutoff,
+            None => true,
+        },
+        None => true,
+    }
 }
 fn plist_dictionary(path: &Path) -> plist::Dictionary {
     plist::Value::from_file(path)
@@ -1502,6 +1672,7 @@ impl Engine {
                                 CleanupCategory::BrowserCaches => collector.browser_caches(),
                                 CleanupCategory::DevCaches => collector.dev_caches(),
                                 CleanupCategory::AiCaches => collector.ai_caches(),
+                                CleanupCategory::AiHistory => collector.ai_history(),
                                 CleanupCategory::Temp => collector.temp(),
                                 CleanupCategory::Installers => collector.installers(),
                                 CleanupCategory::ProjectArtifacts => collector.project_artifacts(),
@@ -2246,6 +2417,170 @@ mod leaf_scan_tests {
     fn write(path: &Path, bytes: usize) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, vec![0u8; bytes]).unwrap();
+    }
+
+    /// History is listed with its measured size so the space is accounted for, but every layer refuses to remove it.
+    #[tokio::test]
+    async fn ai_history_is_listed_read_only() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let sessions = home.join(".codex/sessions/2026/rollout.jsonl");
+        write(&sessions, 4_000);
+        let projects = home.join(".claude/projects/demo/transcript.jsonl");
+        write(&projects, 6_000);
+
+        let report = engine(&home)
+            .scan(
+                "history-test".into(),
+                Some(vec![CleanupCategory::AiHistory]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+
+        let history = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::AiHistory)
+            .expect("the history category must be reported");
+        assert_eq!(history.risk, CleanupRisk::Review);
+        let items: Vec<&CleanupItem> = history.groups.iter().flat_map(|g| &g.items).collect();
+        assert_eq!(items.len(), 2, "{items:#?}");
+        for item in &items {
+            assert_eq!(item.reason, CleanupReason::AiHistory);
+            assert_eq!(item.restore, CleanupRestore::Never);
+            assert!(!item.selected);
+            assert!(item.size_bytes.is_some_and(|bytes| bytes > 0));
+        }
+        assert!(
+            items
+                .iter()
+                .all(|i| i.path.contains(".codex/sessions") || i.path.contains(".claude/projects"))
+        );
+    }
+
+    /// A project nobody touched for a month offers its whole output checked, and the leaf is not listed next to it.
+    #[tokio::test]
+    async fn a_stale_project_offers_its_whole_target_checked() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let project = home.join("Documents/code/old");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"old\"\n").unwrap();
+        write(&project.join("target/debug/incremental/x.o"), 9_000);
+        write(&project.join("target/debug/deps/libx.rlib"), 7_000);
+        age(&project, 60);
+
+        let report = engine(&home)
+            .scan(
+                "stale-test".into(),
+                Some(vec![CleanupCategory::ProjectArtifacts]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let projects = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::ProjectArtifacts)
+            .unwrap();
+        let items: Vec<&CleanupItem> = projects.groups.iter().flat_map(|g| &g.items).collect();
+        assert_eq!(items.len(), 1, "{items:#?}");
+        let whole = items[0];
+        assert!(whole.path.ends_with("target"));
+        assert_eq!(whole.reason, CleanupReason::BuildArtifact);
+        assert_eq!(whole.restore, CleanupRestore::Costly);
+        assert!(
+            whole.selected,
+            "an abandoned project's output starts checked"
+        );
+        assert!(projects.skipped.is_empty());
+        assert_eq!(projects.bytes, whole.size_bytes.unwrap());
+    }
+
+    /// Editing `src/main.rs` does not touch `src/`; the deep activity walk must still see the fresh file and keep the
+    /// whole `target` unchecked.
+    #[tokio::test]
+    async fn editing_a_source_file_keeps_an_old_project_active() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let project = home.join("Documents/code/old-but-active");
+        fs::create_dir_all(project.join("src")).unwrap();
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"active\"\n").unwrap();
+        let source = project.join("src/main.rs");
+        fs::write(&source, "fn main() {}\n").unwrap();
+        write(&project.join("target/debug/incremental/x.o"), 9_000);
+        age(&project, 60);
+        // The edit that the shallow check misses: the file is fresh, its folder is not.
+        fs::File::open(&source)
+            .unwrap()
+            .set_modified(SystemTime::now())
+            .unwrap();
+
+        let report = engine(&home)
+            .scan(
+                "old-active-test".into(),
+                Some(vec![CleanupCategory::ProjectArtifacts]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let projects = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::ProjectArtifacts)
+            .unwrap();
+        let items: Vec<&CleanupItem> = projects.groups.iter().flat_map(|g| &g.items).collect();
+        assert!(
+            items.iter().all(|i| i.reason == CleanupReason::BuildLeaf),
+            "the whole target must not be offered for an edited project: {items:#?}"
+        );
+        assert!(
+            projects
+                .skipped
+                .iter()
+                .any(|g| g.reason == SkippedGroupReason::Recent),
+            "the whole target stays recent"
+        );
+        assert!(items.iter().any(|i| i.selected));
+    }
+
+    /// A stale Node project offers `node_modules`, but only `target` may start checked.
+    #[tokio::test]
+    async fn node_modules_is_never_preselected() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let project = home.join("Documents/code/old-node");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("package.json"), "{\"name\":\"old\"}").unwrap();
+        write(&project.join("node_modules/lib/index.js"), 5_000);
+        age(&project, 60);
+
+        let report = engine(&home)
+            .scan(
+                "stale-node-test".into(),
+                Some(vec![CleanupCategory::ProjectArtifacts]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let projects = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::ProjectArtifacts)
+            .unwrap();
+        let item = projects
+            .groups
+            .iter()
+            .flat_map(|g| &g.items)
+            .find(|i| i.path.ends_with("node_modules"))
+            .expect("node_modules is offered");
+        assert_eq!(item.reason, CleanupReason::BuildArtifact);
+        assert!(!item.selected, "only a stale target may start checked");
     }
 
     /// A recent Cargo project keeps its whole `target`, but its incremental leaf is still offered; an AI tool's

@@ -330,11 +330,15 @@ fn summary(report: &CleanupReport) -> CleanupSummary {
     CleanupSummary {
         scanned_at: Some(report.scanned_at),
         volume: None,
+        // Read-only rows (AI history) are shown in their category but are not space this app can reclaim.
         reclaimable_bytes: report
             .categories
             .iter()
             .filter(|c| c.risk != CleanupRisk::Personal)
-            .map(|c| c.bytes)
+            .flat_map(|c| &c.groups)
+            .flat_map(|g| &g.items)
+            .filter(|i| i.restore != CleanupRestore::Never)
+            .filter_map(|i| i.size_bytes)
             .sum(),
         suggested_bytes: report
             .categories

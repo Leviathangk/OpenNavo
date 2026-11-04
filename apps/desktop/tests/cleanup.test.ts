@@ -3,6 +3,7 @@ import { formatBytes } from '@opennavo/shared';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import CleanupResult from '@/components/cleanup/CleanupResult.vue';
 import CleanupCategoryCard from '@/components/cleanup/CleanupCategoryCard.vue';
+import CleanupItemRow from '@/components/cleanup/CleanupItemRow.vue';
 import CleanupSettings from '@/components/settings/CleanupSettings.vue';
 import LibraryRail from '@/components/rails/LibraryRail.vue';
 import RunningTask from '@/components/updates/RunningTask.vue';
@@ -162,7 +163,7 @@ describe('Skips and permissions', () => {
     // Personal files (backups, archives) are listed but never counted as reclaimable.
     expect(store.totals.reclaimable).toBe(
       store.entries
-        .filter(item => item.category.risk !== 'personal')
+        .filter(item => item.category.risk !== 'personal' && item.item.restore !== 'never')
         .reduce((sum, item) => sum + (item.item.sizeBytes ?? 0), 0)
     );
 
@@ -176,6 +177,42 @@ describe('Skips and permissions', () => {
     expect(wrapper.get('[data-category="browser_caches"]').text()).toContain(`${size(chrome.bytes!)} 正在使用`);
     expect(text()).not.toContain('相关缓存先跳过了');
     wrapper.unmount();
+  });
+
+  it('AI history is listed read-only and can never enter a cleanup selection', async () => {
+    const { pinia, router } = await context();
+    const store = await scanned();
+    const history = store.categories.find(category => category.key === 'ai_history')!;
+    expect(history.risk).toBe('review');
+    const items = history.groups.flatMap(group => group.items);
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect(item.restore).toBe('never');
+      expect(item.selected).toBe(false);
+      expect(store.isChecked(item)).toBe(false);
+    }
+    const before = store.totals.bytes;
+    store.setCategory(history, true);
+    expect(store.totals.bytes).toBe(before);
+    expect(store.chosen.some(chosen => chosen.category.key === 'ai_history')).toBe(false);
+
+    const first = items[0];
+    if (!first) throw new Error('the AI history category has no items');
+    const row = mount(CleanupItemRow, {
+      props: { item: first, checked: false },
+      global: { plugins: [i18n] }
+    });
+    expect(row.get('input').attributes('disabled')).toBeDefined();
+    expect(row.text()).toContain('只读');
+    row.unmount();
+
+    const page = mount(CleanupPage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
+    await flushPromises();
+    expect(page.get('[data-category="ai_history"]').text()).toContain('AI 历史记录');
+    page.unmount();
   });
 
   it('A locked scan does not start until the user explicitly continues', async () => {

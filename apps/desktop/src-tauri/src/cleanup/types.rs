@@ -12,6 +12,9 @@ pub enum CleanupCategory {
     DevCaches,
     /// Caches, logs and abandoned staging of AI coding tools (Claude Code, Codex, Cursor, Gemini CLI).
     AiCaches,
+    /// Session transcripts, memories and project history of AI coding tools: shown for information, never removed
+    /// here. People delete these in the tool that owns them.
+    AiHistory,
     Homebrew,
     Temp,
     Leftovers,
@@ -107,6 +110,8 @@ pub enum CleanupRestore {
     Costly,
     /// Gone for good once removed: user data and files nothing regenerates.
     Irreversible,
+    /// Shown for information only. Nothing in this app removes it, and the executor refuses it even if a client asks.
+    Never,
 }
 impl CleanupRestore {
     /// Restore cost follows what removing the item destroys, not the folder's name.
@@ -136,6 +141,7 @@ impl CleanupRestore {
             | CleanupReason::DockerBuildCache
             | CleanupReason::DockerContainers
             | CleanupReason::LargeFile => Self::Irreversible,
+            CleanupReason::AiHistory => Self::Never,
         }
     }
 }
@@ -163,6 +169,8 @@ pub enum CleanupReason {
     BuildLeaf,
     /// A cache, log or abandoned staging folder owned by an AI coding tool.
     AiCache,
+    /// Session transcripts and project history of an AI coding tool, listed read-only.
+    AiHistory,
     Trash,
     DeviceBackup,
     /// An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs.

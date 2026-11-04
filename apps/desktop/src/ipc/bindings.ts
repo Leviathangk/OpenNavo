@@ -757,7 +757,12 @@ export type CategoryReport = {
 
 export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" |
 /**  Caches, logs and abandoned staging of AI coding tools (Claude Code, Codex, Cursor, Gemini CLI). */
-"ai_caches" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" |
+"ai_caches" |
+/**
+ *  Session transcripts, memories and project history of AI coding tools: shown for information, never removed
+ *  here. People delete these in the tool that owns them.
+ */
+"ai_history" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" |
 /**  Docker's own reclaimable space, removed only by Docker's prune commands. */
 "docker" | "large_files";
 
@@ -830,7 +835,9 @@ export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_c
  */
 "build_leaf" |
 /**  A cache, log or abandoned staging folder owned by an AI coding tool. */
-"ai_cache" | "trash" | "device_backup" |
+"ai_cache" |
+/**  Session transcripts and project history of an AI coding tool, listed read-only. */
+"ai_history" | "trash" | "device_backup" |
 /**  An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs. */
 "xcode_archive" |
 /**  Images no container uses; pulled or built again when needed. */
@@ -858,7 +865,9 @@ export type CleanupRestore =
  */
 "costly" |
 /**  Gone for good once removed: user data and files nothing regenerates. */
-"irreversible";
+"irreversible" |
+/**  Shown for information only. Nothing in this app removes it, and the executor refuses it even if a client asks. */
+"never";
 
 export type CleanupRisk = "rebuildable" | "review" | "personal";
 
