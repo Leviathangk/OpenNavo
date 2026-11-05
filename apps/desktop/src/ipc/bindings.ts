@@ -849,7 +849,9 @@ export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_c
 /**  A linked git worktree, listed read-only. */
 "worktree" |
 /**  A clone whose remote is shared with another checkout, listed read-only. */
-"duplicate_checkout";
+"duplicate_checkout" |
+/**  A worktree whose `.git` file points at a common dir that no longer exists; listed read-only. */
+"orphan_worktree";
 
 export type CleanupReminder = "off" | "weekly" | "monthly";
 

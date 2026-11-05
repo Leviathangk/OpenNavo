@@ -2934,6 +2934,42 @@ mod leaf_scan_tests {
         code
     }
     #[tokio::test]
+    async fn a_worktree_with_a_missing_common_dir_is_listed_as_an_orphan() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let orphan = home.join("code/app-wt");
+        fs::create_dir_all(&orphan).unwrap();
+        fs::write(
+            orphan.join(".git"),
+            "gitdir: /nonexistent/repo/.git/worktrees/app-wt\n",
+        )
+        .unwrap();
+        fs::write(orphan.join("README.md"), "orphan\n").unwrap();
+        let report = engine(&home)
+            .scan(
+                "checkouts-orphan".into(),
+                Some(vec![CleanupCategory::ProjectCheckouts]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let category = report
+            .categories
+            .iter()
+            .find(|category| category.key == CleanupCategory::ProjectCheckouts)
+            .unwrap();
+        let item = category
+            .groups
+            .iter()
+            .flat_map(|group| &group.items)
+            .find(|item| item.path.ends_with("app-wt"))
+            .expect("the orphan is listed");
+        assert_eq!(item.reason, CleanupReason::OrphanWorktree);
+        assert_eq!(item.restore, CleanupRestore::Never);
+        assert!(!item.selected);
+    }
+    #[tokio::test]
     async fn duplicate_clones_are_listed_only_when_clean_and_idle() {
         let temp = tempfile::tempdir().unwrap();
         let home = temp.path().canonicalize().unwrap().join("User");

@@ -1890,7 +1890,9 @@
       "worktree": "Worktree vinculado",
       "worktreeHint": "Remover este worktree apaga a pasta de trabalho; a branch e o repositório principal permanecem. O Git recusa se houver alterações não commitadas.",
       "duplicate_checkout": "Clone duplicado",
-      "duplicate_checkoutHint": "Um clone limpo e sem nada por enviar. Remover move a pasta para a Lixeira."
+      "duplicate_checkoutHint": "Um clone limpo e sem nada por enviar. Remover move a pasta para a Lixeira.",
+      "orphan_worktree": "Worktree órfão",
+      "orphanWorktreeHint": "Worktree quebrado: os metadados do Git sumiram, então só mostramos o espaço ocupado."
     },
     "item": {
       "command": "Comando",

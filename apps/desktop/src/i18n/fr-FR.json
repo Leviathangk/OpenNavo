@@ -1890,7 +1890,9 @@
       "worktree": "Worktree lié",
       "worktreeHint": "Supprimer ce worktree efface son dossier de travail ; la branche et le dépôt principal restent. Git refuse s’il y a des modifications non validées.",
       "duplicate_checkout": "Clone en double",
-      "duplicate_checkoutHint": "Un clone propre, sans rien à pousser. Le supprimer déplace le dossier vers la Corbeille."
+      "duplicate_checkoutHint": "Un clone propre, sans rien à pousser. Le supprimer déplace le dossier vers la Corbeille.",
+      "orphan_worktree": "Worktree orphelin",
+      "orphanWorktreeHint": "Worktree cassé : ses métadonnées Git ont disparu, seul l’espace occupé est affiché."
     },
     "item": {
       "command": "Commande",

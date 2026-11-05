@@ -30,7 +30,11 @@ const label = computed(() =>
 const partial = computed(() => !props.item.sizeComplete);
 /** Read-only rows (AI history, checkouts) are shown with their size, never offered for removal here. */
 const readonly = computed(() => props.item.restore === 'never');
-const readonlyHint = computed(() => t('cleanup.reasons.ai_historyHint'));
+const readonlyHint = computed(() =>
+  props.item.reason === 'orphan_worktree'
+    ? t('cleanup.reasons.orphanWorktreeHint')
+    : t('cleanup.reasons.ai_historyHint')
+);
 const size = computed(() => {
   if (props.item.sizeBytes === null) return '—';
   const text = formatBytes(props.item.sizeBytes, { locale: appLocale.value });
@@ -77,6 +81,12 @@ const chip = computed(() => {
         tone: 'neutral' as const,
         text: t('cleanup.reasons.duplicate_checkout'),
         hint: t('cleanup.reasons.duplicate_checkoutHint')
+      };
+    case 'orphan_worktree':
+      return {
+        tone: 'warning' as const,
+        text: t('cleanup.reasons.orphan_worktree'),
+        hint: t('cleanup.reasons.orphanWorktreeHint')
       };
     // Session transcripts and project history: visible so the space is accounted for, deleted only in the tool.
     case 'ai_history':

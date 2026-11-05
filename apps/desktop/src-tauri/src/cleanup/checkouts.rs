@@ -60,6 +60,7 @@ impl Collector<'_> {
         // A linked worktree and its main checkout share one common dir: keep a single repo, preferring the main
         // checkout so `worktree list` reports the linked ones instead of skipping itself.
         let mut found: BTreeMap<PathBuf, Vec<(PathBuf, Option<String>)>> = BTreeMap::new();
+        let mut orphans = vec![];
         for dir in candidates {
             self.check()?;
             if self.checkout_expired() {
@@ -67,6 +68,9 @@ impl Collector<'_> {
             }
             let top = git_until(&dir, &["rev-parse", "--show-toplevel"], self.deadline);
             let Some(top) = self.checkout_result(&dir, top) else {
+                if is_orphan_worktree(&dir) {
+                    orphans.push(dir);
+                }
                 continue;
             };
             let root = PathBuf::from(top.trim());
@@ -106,10 +110,35 @@ impl Collector<'_> {
             }
             self.worktrees(repo, &mut listed)?;
         }
+        for path in orphans {
+            if self.checkout_expired() {
+                break;
+            }
+            if !listed.insert(path.clone()) {
+                continue;
+            }
+            let title = path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.display().to_string());
+            self.add_checkout_item(
+                &path,
+                orphan_owner(&path),
+                title,
+                path.parent()
+                    .and_then(|dir| dir.file_name())
+                    .map(|name| name.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                CleanupReason::OrphanWorktree,
+            )?;
+        }
         let mut by_remote: BTreeMap<String, Vec<&Repo>> = BTreeMap::new();
         for repo in &repos {
             if let Some(remote) = &repo.remote {
-                by_remote.entry(remote.clone()).or_default().push(repo);
+                by_remote
+                    .entry(remote_identity(remote))
+                    .or_default()
+                    .push(repo);
             }
         }
         for group in by_remote.values().filter(|group| group.len() > 1) {
@@ -131,7 +160,10 @@ impl Collector<'_> {
                     omitted += 1;
                     continue;
                 }
-                let owner = duplicate_owner(repo);
+                let owner = duplicate_owner(
+                    repo,
+                    &remote_identity(repo.remote.as_deref().unwrap_or_default()),
+                );
                 let title = repo
                     .root
                     .file_name()
@@ -363,13 +395,34 @@ fn checkout_owner(repo: &Repo) -> Owner {
         ..Owner::default()
     }
 }
-fn duplicate_owner(repo: &Repo) -> Owner {
+fn orphan_owner(path: &Path) -> Owner {
     Owner {
         tool_key: Some("git".into()),
-        group_key: Some(format!(
-            "checkout-remote:{}",
-            repo.remote.clone().unwrap_or_default()
-        )),
+        group_key: Some(format!("checkout-orphan:{}", path.display())),
+        group_subtitle: path.parent().map(|dir| dir.display().to_string()),
+        ..Owner::default()
+    }
+}
+/// A worktree whose `.git` file points at a common dir that has been deleted cannot be opened by Git.
+fn is_orphan_worktree(path: &Path) -> bool {
+    let Ok(text) = fs::read_to_string(path.join(".git")) else {
+        return false;
+    };
+    let Some(target) = text.trim().strip_prefix("gitdir: ") else {
+        return false;
+    };
+    let target = PathBuf::from(target);
+    let target = if target.is_absolute() {
+        target
+    } else {
+        path.join(target)
+    };
+    !target.exists()
+}
+fn duplicate_owner(repo: &Repo, identity: &str) -> Owner {
+    Owner {
+        tool_key: Some("git".into()),
+        group_key: Some(format!("checkout-remote:{identity}")),
         group_subtitle: repo.remote.clone(),
         ..Owner::default()
     }
@@ -500,6 +553,39 @@ fn normalize_remote(url: &str) -> String {
                 "{}{}{path}",
                 &authority[..host_start],
                 authority[host_start..].to_ascii_lowercase()
+            );
+        }
+    }
+    url.to_string()
+}
+/// Grouping key that ignores the transport (`https`, `ssh`, SCP) and the SSH user; the path stays case-sensitive.
+fn remote_identity(url: &str) -> String {
+    let url = redact_remote(url.trim());
+    let url = url.strip_suffix(".git").unwrap_or(&url);
+    if let Some((_, authority, path)) = remote_url_parts(url) {
+        let host = authority
+            .rsplit_once('@')
+            .map_or(authority, |(_, host)| host);
+        return format!("{}{path}", host.to_ascii_lowercase());
+    }
+    let host_start = url
+        .split(':')
+        .next()
+        .and_then(|authority| authority.rfind('@'))
+        .map_or(0, |at| at + 1);
+    let separator = if url[host_start..].starts_with('[') {
+        url.find("]:").map(|end| end + 1)
+    } else {
+        url.find(':')
+    };
+    if let Some(separator) = separator {
+        let (authority, path) = url.split_at(separator);
+        let windows_drive = authority.len() == 1 && path[1..].starts_with(['/', '\\']);
+        if !authority.contains(['/', '\\']) && !windows_drive && host_start <= authority.len() {
+            return format!(
+                "{}/{}",
+                authority[host_start..].to_ascii_lowercase(),
+                path.trim_start_matches(':')
             );
         }
     }
@@ -674,6 +760,18 @@ mod tests {
         assert_ne!(
             normalize_remote("Git@example.com:repos/App.git"),
             normalize_remote("git@example.com:repos/App.git")
+        );
+        assert_eq!(
+            remote_identity("https://github.com/OpenNavo/OpenNavo"),
+            remote_identity("git@github.com:OpenNavo/OpenNavo.git")
+        );
+        assert_eq!(
+            remote_identity("ssh://git@github.com/OpenNavo/OpenNavo.git"),
+            remote_identity("https://github.com/OpenNavo/OpenNavo.git")
+        );
+        assert_ne!(
+            remote_identity("https://github.com/OpenNavo/app"),
+            remote_identity("https://github.com/OpenNavo/App")
         );
     }
     #[test]

@@ -1890,7 +1890,9 @@
       "worktree": "Árbol de trabajo vinculado",
       "worktreeHint": "Eliminar este worktree borra su carpeta de trabajo; la rama y el repositorio principal se conservan. Git se niega si hay cambios sin confirmar.",
       "duplicate_checkout": "Clon duplicado",
-      "duplicate_checkoutHint": "Un clon limpio y sin nada pendiente de subir. Al eliminarlo, la carpeta va a la Papelera."
+      "duplicate_checkoutHint": "Un clon limpio y sin nada pendiente de subir. Al eliminarlo, la carpeta va a la Papelera.",
+      "orphan_worktree": "Worktree huérfano",
+      "orphanWorktreeHint": "Worktree roto: sus metadatos de Git ya no existen, así que solo se muestra el espacio que ocupa."
     },
     "item": {
       "command": "Comando",

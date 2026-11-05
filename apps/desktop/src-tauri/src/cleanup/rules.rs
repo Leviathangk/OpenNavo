@@ -129,6 +129,7 @@ pub fn default_selected(reason: CleanupReason) -> bool {
             | CleanupReason::AiHistory
             | CleanupReason::Worktree
             | CleanupReason::DuplicateCheckout
+            | CleanupReason::OrphanWorktree
             | CleanupReason::BuildArtifact
     )
 }

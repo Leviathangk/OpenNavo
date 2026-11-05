@@ -1879,6 +1879,8 @@
       "worktreeHint": "刪除 worktree 會移除它的工作目錄，但保留分支和主倉庫；有未提交改動時 Git 會拒絕。",
       "duplicate_checkout": "重複克隆",
       "duplicate_checkoutHint": "乾淨且沒有未推送提交的克隆；刪除會移到垃圾桶。",
+      "orphan_worktree": "孤兒 worktree",
+      "orphanWorktreeHint": "損壞的 worktree：Git 後設資料已不存在，只展示它佔用的空間。",
       "orphan_service": "背景服務",
       "installer_installed": "已安裝",
       "device_support_latest": "最新版本",

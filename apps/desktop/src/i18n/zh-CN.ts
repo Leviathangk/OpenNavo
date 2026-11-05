@@ -1878,6 +1878,8 @@ export default {
       worktreeHint: '删除 worktree 会移除它的工作目录，但保留分支和主仓库；有未提交改动时 Git 会拒绝。',
       duplicate_checkout: '重复克隆',
       duplicate_checkoutHint: '干净且没有未推送提交的克隆；删除会移到废纸篓。',
+      orphan_worktree: '孤儿 worktree',
+      orphanWorktreeHint: '损坏的 worktree：Git 元数据已不存在，只展示它占用的空间。',
       orphan_service: '后台服务',
       installer_installed: '已安装',
       device_support_latest: '最新版本',
