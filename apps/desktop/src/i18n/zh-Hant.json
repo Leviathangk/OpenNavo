@@ -1879,6 +1879,8 @@
       "worktreeHint": "刪除 worktree 會移除它的工作目錄，但保留分支和主倉庫；有未提交改動時 Git 會拒絕。",
       "duplicate_checkout": "重複克隆",
       "duplicate_checkoutHint": "乾淨且沒有未推送提交的克隆；刪除會移到垃圾桶。",
+      "orphan_worktree": "孤兒 worktree",
+      "orphanWorktreeHint": "損壞的 worktree：Git 後設資料已不存在，只展示它佔用的空間。",
       "orphan_service": "背景服務",
       "installer_installed": "已安裝",
       "device_support_latest": "最新版本",
@@ -1890,9 +1892,7 @@
       "docker_build_cache": "構建快取",
       "docker_build_cacheHint": "下次構建映象會慢一些，構建結果不受影響。",
       "docker_containers": "已停止的容器",
-      "docker_containersHint": "容器裡自己寫入的改動會一起刪除，資料卷不受影響。",
-      "orphan_worktree": "孤兒 worktree",
-      "orphanWorktreeHint": "損壞的 worktree：Git 中繼資料已不存在，只顯示它佔用的空間。"
+      "docker_containersHint": "容器裡自己寫入的改動會一起刪除，資料卷不受影響。"
     },
     "item": {
       "command": "命令",
