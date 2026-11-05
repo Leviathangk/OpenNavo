@@ -562,7 +562,7 @@ fn normalize_remote(url: &str) -> String {
 fn remote_identity(url: &str) -> String {
     let url = redact_remote(url.trim());
     let url = url.strip_suffix(".git").unwrap_or(&url);
-    if let Some((_, authority, path)) = remote_url_parts(&url) {
+    if let Some((_, authority, path)) = remote_url_parts(url) {
         let host = authority
             .rsplit_once('@')
             .map_or(authority, |(_, host)| host);
