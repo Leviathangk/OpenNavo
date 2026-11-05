@@ -27,7 +27,13 @@ func failureCategory(err error) string {
 		return "deadline_exceeded"
 	case errors.Is(err, context.Canceled):
 		return "canceled"
-	case errors.Is(err, gorm.ErrRecordNotFound):
+	}
+	// Changelog errors carry a more actionable fixed category even when their cause is
+	// gorm.ErrRecordNotFound (for example source_not_fetchable).
+	if category, _ := changelog.Failure(err); category != "unknown" {
+		return category
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return "record_not_found"
 	}
 	var networkError net.Error
@@ -67,7 +73,12 @@ func describeFailure(err error) string {
 			return "context deadline exceeded"
 		case errors.Is(err, errHandlerPanic):
 			return errHandlerPanic.Error()
-		case errors.Is(err, gorm.ErrRecordNotFound):
+		}
+		var failure *changelog.Error
+		if errors.As(err, &failure) {
+			return "changelog " + failure.Kind
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "record not found"
 		}
 		var status *changelog.StatusError
@@ -77,10 +88,6 @@ func describeFailure(err error) string {
 		var rate *changelog.RateLimitError
 		if errors.As(err, &rate) {
 			return "upstream rate limited"
-		}
-		var failure *changelog.Error
-		if errors.As(err, &failure) {
-			return "changelog " + failure.Kind
 		}
 		next := primaryCause(err)
 		if next == nil {
