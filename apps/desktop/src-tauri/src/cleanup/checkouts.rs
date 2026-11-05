@@ -160,7 +160,10 @@ impl Collector<'_> {
                     omitted += 1;
                     continue;
                 }
-                let owner = duplicate_owner(repo);
+                let owner = duplicate_owner(
+                    repo,
+                    &remote_identity(repo.remote.as_deref().unwrap_or_default()),
+                );
                 let title = repo
                     .root
                     .file_name()
@@ -416,13 +419,10 @@ fn is_orphan_worktree(path: &Path) -> bool {
     };
     !target.exists()
 }
-fn duplicate_owner(repo: &Repo) -> Owner {
+fn duplicate_owner(repo: &Repo, identity: &str) -> Owner {
     Owner {
         tool_key: Some("git".into()),
-        group_key: Some(format!(
-            "checkout-remote:{}",
-            repo.remote.clone().unwrap_or_default()
-        )),
+        group_key: Some(format!("checkout-remote:{identity}")),
         group_subtitle: repo.remote.clone(),
         ..Owner::default()
     }
