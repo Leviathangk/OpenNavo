@@ -987,7 +987,7 @@ impl Collector<'_> {
         let home = self.engine.uninstall.roots.home.clone();
         for rule in rules::LOCAL_MODELS {
             let root = home.join(rule.path);
-            if fs::symlink_metadata(&root).is_err() {
+            if !fs::symlink_metadata(&root).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
                 continue;
             }
             let mut owner = Owner::tool(rule.processes);
