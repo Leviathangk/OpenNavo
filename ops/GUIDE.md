@@ -134,12 +134,14 @@ Crawler controls in `robots.txt` (generated per request from the site settings' 
 The origin is a small host, so crawlers are answered from the Cloudflare edge where possible and held to a budget
 where not:
 
-- Edge lifetimes (`Cloudflare-CDN-Cache-Control`, set by `apps/web/server/utils/edgeCache.ts`): app pages with their
-  versions, details and dependencies tabs, articles and authors keep `max-age=172800, stale-while-revalidate=604800,
-  stale-if-error=604800` (two days; the URL change feed purges them when they change and after every web release);
-  the home page, lists and the other cached pages keep `max-age=600, stale-while-revalidate=3600,
-  stale-if-error=86400`. Agents read the two lifetimes from the site index settings (`edgeCache.longTtlSeconds`,
-  `shortTtlSeconds`).
+- Edge lifetimes (`Cloudflare-CDN-Cache-Control`, set by `apps/web/server/utils/edgeCache.ts`): version history,
+  articles and authors keep `max-age=172800, stale-while-revalidate=604800, stale-if-error=604800` (two days; the
+  URL change feed purges them when they change and after every web release). App overview, details and dependencies
+  pages keep `max-age=21600, stale-while-revalidate=300, stale-if-error=300`, matching the origin
+  `s-maxage=21600, stale-while-revalidate=300`, so a revalidation still in progress cannot keep serving a copy for
+  a day. The home page, lists and the other cached pages keep `max-age=600, stale-while-revalidate=86400,
+  stale-if-error=86400`. Agents read the long and short lifetimes from the site index settings
+  (`edgeCache.longTtlSeconds`, `shortTtlSeconds`).
 - AI training crawlers (GPTBot, ClaudeBot, Amazonbot, Bytespider, CCBot, Meta-ExternalAgent, MistralAI-Training) each
   have a token bucket at the web origin whatever the load: 6 requests a minute with a burst of 12, matching
   `Crawl-delay: 10`; beyond it the web answers `429` with a `Retry-After` of one to three minutes. Requests the edge

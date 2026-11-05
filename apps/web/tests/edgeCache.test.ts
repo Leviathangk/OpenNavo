@@ -30,7 +30,7 @@ describe('HTML edge cache switch', () => {
 
   it('Keeps version history for two days, app tabs for six hours and lists for ten minutes', () => {
     expect(LONG_EDGE_CACHE_VALUE).toBe('max-age=172800, stale-while-revalidate=604800, stale-if-error=604800');
-    expect(APP_EDGE_CACHE_VALUE).toBe('max-age=21600, stale-while-revalidate=86400, stale-if-error=86400');
+    expect(APP_EDGE_CACHE_VALUE).toBe('max-age=21600, stale-while-revalidate=300, stale-if-error=300');
     expect(SHORT_EDGE_CACHE_VALUE).toBe('max-age=600, stale-while-revalidate=86400, stale-if-error=86400');
   });
 

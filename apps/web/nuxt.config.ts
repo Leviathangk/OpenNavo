@@ -5,6 +5,7 @@ import { THEME_STORAGE_KEY } from './shared/utils/theme';
 import { themeBootScript } from '@opennavo/ui/theme';
 // The website serves every site locale (L1): the six app languages plus de, fr, it and zh-Hant.
 import { SITE_LOCALES as LOCALES, LOCALE_METADATA, DEFAULT_LOCALE } from '@opennavo/shared/locales';
+import { APP_PAGE_MAX_AGE_SECONDS, APP_PAGE_STALE_SECONDS } from './server/utils/edgeCache';
 
 // Expand each policy over the same prefixes used to generate localized page routes.
 function localizedRules<T>(rules: Record<string, T>): Record<string, T> {
@@ -280,7 +281,13 @@ export default defineNuxtConfig({
       // Also the per-app release feeds (F6) at /apps/{token}/feed.xml. An app's changes drop its pages
       // by prefix (internal-server /cache/invalidate), and every web build caches under its own Redis
       // namespace (cache-storage.ts), so six hours never serves the previous build's HTML.
-      '/apps/**': { cache: { swr: true, maxAge: 21600 } },
+      // staleMaxAge sets the Cache-Control delta; boundedCache enforces the origin deadline.
+      // Without it, `swr: true` advertises
+      // `stale-while-revalidate` with no seconds, and a shared cache can serve the page for a day
+      // while revalidation stays in progress (#237).
+      '/apps/**': {
+        cache: { swr: true, maxAge: APP_PAGE_MAX_AGE_SECONDS, staleMaxAge: APP_PAGE_STALE_SECONDS }
+      },
       '/apps/*/versions': { cache: { maxAge: 21600, swr: true, staleMaxAge: 64800 } },
       // X5: collections are cached like other lists; editing one purges its pages by prefix (S6 outbox,
       // BE-1), and error responses are never cached (route-cache-errors.ts, error-cache-control.ts).
