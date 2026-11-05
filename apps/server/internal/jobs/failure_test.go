@@ -90,3 +90,24 @@ func TestFailureDetailNamesKnownCausesWithoutCopyingMessages(t *testing.T) {
 func TestRecordNotFoundIsItsOwnCategory(t *testing.T) {
 	require.Equal(t, "record_not_found", failureCategory(fmt.Errorf("load settings: %w", gorm.ErrRecordNotFound)))
 }
+
+func TestChangelogCategoryPrecedesRecordNotFound(t *testing.T) {
+	// Use a category already supported on this branch; the same precedence applies
+	// to source_not_fetchable once the source classification PR is merged.
+	cause := &changelog.Error{Kind: "invalid_json", Cause: gorm.ErrRecordNotFound}
+	err := fmt.Errorf("private handler context: %w", errors.Join(cause, asynq.SkipRetry))
+	require.Equal(t, "invalid_json", failureCategory(err))
+	require.Equal(t, "changelog invalid_json", failureDetail(err))
+	ledger := &testLedger{}
+	result := WrapHandler(ledger, nil, func(context.Context, Payload) (map[string]any, error) {
+		return nil, err
+	})(context.Background(), asynq.NewTask("changelog:fetch", []byte(`{}`)))
+	require.ErrorIs(t, result, asynq.SkipRetry)
+	require.Contains(t, *ledger.message, "(invalid_json): changelog invalid_json")
+	require.NotContains(t, *ledger.message, "private handler context")
+}
+
+func TestFailureDetailRejectsUnrecognizedChangelogKind(t *testing.T) {
+	detail := failureDetail(&changelog.Error{Kind: "private-example-value", Cause: errors.New("private-example-value")})
+	require.NotContains(t, detail, "private-example-value")
+}

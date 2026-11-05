@@ -28,12 +28,11 @@ func failureCategory(err error) string {
 	case errors.Is(err, context.Canceled):
 		return "canceled"
 	}
-	// Changelog errors carry a more actionable fixed category even when their cause is
-	// gorm.ErrRecordNotFound (for example source_not_fetchable).
-	if category, _ := changelog.Failure(err); category != "unknown" {
-		return category
-	}
+	// Prefer the fixed changelog category over a generic missing-record cause.
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if category, _ := changelog.Failure(err); category != "unknown" {
+			return category
+		}
 		return "record_not_found"
 	}
 	var networkError net.Error
@@ -74,13 +73,6 @@ func describeFailure(err error) string {
 		case errors.Is(err, errHandlerPanic):
 			return errHandlerPanic.Error()
 		}
-		var failure *changelog.Error
-		if errors.As(err, &failure) {
-			return "changelog " + failure.Kind
-		}
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "record not found"
-		}
 		var status *changelog.StatusError
 		if errors.As(err, &status) {
 			return fmt.Sprintf("upstream HTTP %d", status.Status)
@@ -88,6 +80,15 @@ func describeFailure(err error) string {
 		var rate *changelog.RateLimitError
 		if errors.As(err, &rate) {
 			return "upstream rate limited"
+		}
+		var failure *changelog.Error
+		if errors.As(err, &failure) {
+			if category, _ := changelog.Failure(err); category != "unknown" {
+				return "changelog " + category
+			}
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "record not found"
 		}
 		next := primaryCause(err)
 		if next == nil {
