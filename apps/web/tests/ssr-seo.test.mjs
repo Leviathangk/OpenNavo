@@ -2868,7 +2868,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     // Version history keeps two days, app tabs six hours and lists ten minutes; all answer from the edge
     // while the origin sheds load.
     const LONG_EDGE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
-    const APP_EDGE = 'max-age=21600, stale-while-revalidate=86400, stale-if-error=86400';
+    const APP_EDGE = 'max-age=21600, stale-while-revalidate=300, stale-if-error=300';
     const SHORT_EDGE = 'max-age=600, stale-while-revalidate=86400, stale-if-error=86400';
     const edge = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });

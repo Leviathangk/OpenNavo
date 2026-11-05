@@ -4,7 +4,12 @@ import { createEvent, getResponseHeader, setHeader } from 'h3';
 import { LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import markdownMiddleware from '../server/middleware/markdown-alternate';
-import { edgeCacheHeader, APP_EDGE_CACHE_VALUE, SHORT_EDGE_CACHE_VALUE } from '../server/utils/edgeCache';
+import {
+  edgeCacheHeader,
+  APP_EDGE_CACHE_VALUE,
+  APP_PAGE_CACHE_CONTROL,
+  SHORT_EDGE_CACHE_VALUE
+} from '../server/utils/edgeCache';
 import { GEO_SAMPLES } from './geoFixtures';
 import { DEFAULT_SITE_SETTINGS } from '../server/utils/siteSettings';
 
@@ -74,7 +79,7 @@ describe('Accept-negotiated Markdown', () => {
           `<https://opennavo.example/apps/${detail.token}>; rel="canonical"`
         );
         if (path.endsWith('.md')) {
-          expect(getResponseHeader(event, 'cache-control')).toBe('s-maxage=21600, stale-while-revalidate');
+          expect(getResponseHeader(event, 'cache-control')).toBe(APP_PAGE_CACHE_CONTROL);
           expect(getResponseHeader(event, 'cdn-cache-control')).toBeUndefined();
           expect(getResponseHeader(event, 'vary')).toBeUndefined();
           expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(APP_EDGE_CACHE_VALUE);
@@ -141,7 +146,7 @@ describe('Accept-negotiated Markdown', () => {
       const { event, socket } = eventFor(`/apps/${detail.token}.md`, undefined, enabled);
       try {
         await markdownMiddleware(event);
-        expect(getResponseHeader(event, 'cache-control')).toBe('s-maxage=21600, stale-while-revalidate');
+        expect(getResponseHeader(event, 'cache-control')).toBe(APP_PAGE_CACHE_CONTROL);
         expect(getResponseHeader(event, 'cloudflare-cdn-cache-control')).toBe(
           enabled ? APP_EDGE_CACHE_VALUE : 'no-store'
         );
@@ -240,7 +245,7 @@ describe('Accept-negotiated Markdown', () => {
         path: '/apps/iterm2',
         status: 200,
         contentType: 'text/html; charset=utf-8',
-        cacheControl: 's-maxage=21600, stale-while-revalidate',
+        cacheControl: APP_PAGE_CACHE_CONTROL,
         setCookie: false,
         authorization: false
       })

@@ -9,15 +9,11 @@ import {
 } from '../../shared/utils/markdownAlternate';
 import { brandDownloadPath } from '../../app/utils/packageView';
 import { agentLabel } from '../utils/crawlerMetrics';
-import { APP_EDGE_CACHE_VALUE } from '../utils/edgeCache';
+import { APP_EDGE_CACHE_VALUE, APP_PAGE_CACHE_CONTROL } from '../utils/edgeCache';
 import { renderHomeMarkdown } from '../utils/homeMarkdown';
 import { packageMarkdown } from '../utils/packageMarkdown';
 import { appendHeaderValue } from '../utils/responseHeaders';
 import { getSiteSettings } from '../utils/siteSettings';
-
-// Keep the explicit .md projection on the same origin cache policy as the app overview route
-// (/apps/** in nuxt.config.ts). Negotiated Markdown is private and never cacheable.
-const APP_PAGE_CACHE_CONTROL = 's-maxage=21600, stale-while-revalidate';
 
 // X4: <prefix>/apps/{token}.md answers with the overview's facts as Markdown, and the home page can
 // negotiate the same representation through Accept. A suffix cannot be a Nitro route pattern, so this is
@@ -76,8 +72,8 @@ export default defineEventHandler(async event => {
     setHeader(event, 'Cloudflare-CDN-Cache-Control', 'no-store');
   } else {
     // The explicit .md URL is a public app projection. It is served by this middleware before the
-    // Nitro route cache, so carry the same six-hour origin policy explicitly. The edge switch also
-    // controls the Cloudflare header, matching HTML responses when edge caching is disabled.
+    // Nitro route cache, so carry the same bounded six-hour origin policy explicitly. The edge
+    // switch also controls the Cloudflare header, matching HTML responses when edge caching is off.
     setHeader(event, 'Cache-Control', APP_PAGE_CACHE_CONTROL);
     setHeader(event, 'Cloudflare-CDN-Cache-Control', settings.edgeCache.enabled ? APP_EDGE_CACHE_VALUE : 'no-store');
   }

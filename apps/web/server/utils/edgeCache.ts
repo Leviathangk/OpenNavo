@@ -44,10 +44,25 @@ export const EDGE_CACHE_ROUTES = new Set([
 export const LONG_EDGE_CACHE_ROUTES = new Set(['app_versions', 'article', 'author']);
 /** App overview tabs match the origin's six-hour s-maxage; only version history keeps the longer edge life. */
 export const APP_EDGE_CACHE_ROUTES = new Set(['app', 'app_details', 'app_dependencies']);
+/**
+ * Fresh lifetime of an app overview and its details and dependencies tabs, at the origin and the edge.
+ * The explicit Markdown URL uses the same numbers (middleware/markdown-alternate.ts).
+ */
+export const APP_PAGE_MAX_AGE_SECONDS = 21600;
+/**
+ * How long a shared cache may keep serving that copy after it expires, including while revalidation
+ * is still in progress. Five minutes covers one slow origin render. A bare `stale-while-revalidate`
+ * (no delta) and a one-day edge window left /apps/* in Cloudflare `UPDATING` with Age many times
+ * this fresh lifetime (#237).
+ */
+export const APP_PAGE_STALE_SECONDS = 300;
+/** Origin Cache-Control for those app pages. The delta is required; a bare directive is not a bound. */
+export const APP_PAGE_CACHE_CONTROL = `s-maxage=${APP_PAGE_MAX_AGE_SECONDS}, stale-while-revalidate=${APP_PAGE_STALE_SECONDS}`;
 // stale-if-error lets Cloudflare answer from its copy while the origin sheds load: the shed 503 itself is
-// no-store (loadShed.ts), so it never replaces the cached page.
+// no-store (loadShed.ts), so it never replaces the cached page. App pages keep that grace inside the
+// same five-minute window, so a stuck revalidation cannot serve yesterday's HTML.
 export const LONG_EDGE_CACHE_VALUE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
-export const APP_EDGE_CACHE_VALUE = 'max-age=21600, stale-while-revalidate=86400, stale-if-error=86400';
+export const APP_EDGE_CACHE_VALUE = `max-age=${APP_PAGE_MAX_AGE_SECONDS}, stale-while-revalidate=${APP_PAGE_STALE_SECONDS}, stale-if-error=${APP_PAGE_STALE_SECONDS}`;
 /** Home and other lists expire quickly. Recently Updated also participates in content purges. */
 export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=86400, stale-if-error=86400';
 export const RECENT_EDGE_CACHE_VALUE = 'max-age=60, stale-while-revalidate=300, stale-if-error=300';

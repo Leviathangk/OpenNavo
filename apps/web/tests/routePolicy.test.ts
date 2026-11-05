@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ROBOTS_PRIVATE_PATHS } from '@opennavo/shared';
+import { APP_PAGE_MAX_AGE_SECONDS, APP_PAGE_STALE_SECONDS } from '../server/utils/edgeCache';
 
 // Evaluate the actual Nuxt configuration without starting Nuxt or a browser.
 vi.stubGlobal('defineNuxtConfig', (config: unknown) => config);
@@ -15,7 +16,7 @@ const ttls: Record<string, number> = {
   '/feedback': 900,
   '/apps': 600,
   // App pages and their feeds are dropped on change and cached per build, so they keep six hours.
-  '/apps/**': 21600,
+  '/apps/**': APP_PAGE_MAX_AGE_SECONDS,
   '/categories': 900,
   '/categories/**': 900,
   '/rankings': 900,
@@ -64,7 +65,7 @@ describe('localized route policies', () => {
         path === '/'
           ? { cache: { swr: true, maxAge: swr } }
           : path === '/apps/**'
-            ? { cache: { swr: true, maxAge: swr } }
+            ? { cache: { swr: true, maxAge: swr, staleMaxAge: APP_PAGE_STALE_SECONDS } }
             : { swr };
       expect(config.$production?.routeRules?.[actualPath], actualPath).toEqual(expected);
       expect(config.routeRules?.[actualPath]?.swr).toBeUndefined();

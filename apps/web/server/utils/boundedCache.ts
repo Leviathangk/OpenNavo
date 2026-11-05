@@ -2,8 +2,10 @@ import { promisify } from 'node:util';
 import { gzip, gunzip } from 'node:zlib';
 import type { Driver } from 'unstorage';
 
-// Long enough for the six-hour app page rule to serve stale while it refreshes. Releases need no flush:
-// each build caches under its own namespace (cache-storage.ts), and allkeys-lru evicts the old one.
+// Storage ceiling for cached pages. Version history stays fresh for six hours and stale for eighteen
+// (21600 + 64800). App overview pages advertise only five minutes of stale (#237); this retention is
+// not that shared-cache window. Releases need no flush: each build caches under its own namespace
+// (cache-storage.ts), and allkeys-lru evicts the old one.
 export const PAGE_CACHE_TTL_SECONDS = 86400;
 export const IMAGE_CACHE_TTL_SECONDS = 6 * 3600;
 export const MAX_CACHE_ENTRY_BYTES = 512 * 1024;
