@@ -917,7 +917,8 @@
         "no": "Not native",
         "unknown": "Unknown"
       }
-    }
+    },
+    "metaDescription": "Hand-picked apps for each scenario, ready to export as a Brewfile. Open a collection, review the Mac apps inside it, and install that set with Homebrew."
   },
   "browse": {
     "title": "Mac Apps A–Z",
