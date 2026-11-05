@@ -3375,8 +3375,14 @@ async fn p1_117_preflight_excludes_open_files_from_the_item_size() {
 }
 
 #[tokio::test]
-async fn p3_old_history_transcripts_are_trashed_and_settings_are_never_listed() {
+async fn p3_old_history_transcripts_are_trashed_even_with_cli_running_and_settings_never_listed() {
     let f = Fixture::new();
+    // A running CLI must not block unrelated old sessions; only an open handle on the transcript should.
+    f.processes
+        .paths
+        .lock()
+        .unwrap()
+        .push(PathBuf::from("/codex"));
     let transcript = f.file(".codex/sessions/2026/01/rollout.jsonl");
     let settings = f.file(".claude/projects/demo/settings.json");
     let old = SystemTime::now() - Duration::from_secs(60 * 86_400);
