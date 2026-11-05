@@ -65,6 +65,7 @@ fn regenerable_reason(reason: CleanupReason) -> bool {
         | CleanupReason::DockerContainers
         | CleanupReason::LargeFile
         | CleanupReason::AiHistory
+        | CleanupReason::AiHistoryFile
         | CleanupReason::Worktree
         | CleanupReason::DuplicateCheckout
         | CleanupReason::OrphanWorktree => false,

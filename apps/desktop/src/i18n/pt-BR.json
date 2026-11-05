@@ -1812,7 +1812,7 @@
       "browser_caches": "Só o cache; histórico, cookies, senhas e extensões ficam como estão",
       "dev_caches": "Gerados ou baixados de novo no próximo build ou instalação",
       "ai_caches": "Caches, registros e downloads abandonados de ferramentas de IA; sessões, memórias e credenciais permanecem",
-      "ai_history": "Somente leitura: transcrições de sessão e histórico de projetos; exclua na ferramenta",
+      "ai_history": "Os diretórios completos continuam somente leitura; arquivos antigos podem ser movidos ao Lixo um a um",
       "homebrew": "Igual a brew cleanup: versões antigas e caches de download",
       "temp": "Arquivos temporários sem alterações há 3 dias e que não estão abertos",
       "leftovers": "O app não está mais neste Mac, mas estes arquivos continuam aqui",
@@ -1874,7 +1874,7 @@
       "build_artifact_cost": "Recompilação completa",
       "build_artifact_costHint": "O próximo build recompila tudo; pode demorar.",
       "ai_history": "Somente leitura",
-      "ai_historyHint": "Exibido para contabilizar o espaço; o OpenNavo nunca exclui sessões, memórias ou histórico. Use a ferramenta.",
+      "ai_historyHint": "O diretório completo continua somente leitura; arquivos antigos aparecem separados e podem ser movidos ao Lixo.",
       "orphan_service": "Item em segundo plano",
       "installer_installed": "App instalado",
       "device_support_latest": "Mais recente",
@@ -1892,7 +1892,9 @@
       "duplicate_checkout": "Clone duplicado",
       "duplicate_checkoutHint": "Um clone limpo e sem nada por enviar. Remover move a pasta para a Lixeira.",
       "orphan_worktree": "Worktree órfão",
-      "orphanWorktreeHint": "Worktree quebrado: os metadados do Git sumiram, então só mostramos o espaço ocupado."
+      "orphanWorktreeHint": "Worktree quebrado: os metadados do Git sumiram, então só mostramos o espaço ocupado.",
+      "ai_history_file": "Arquivo de sessão antigo",
+      "ai_history_fileHint": "Move esta transcrição para o Lixo; esvaziar o Lixo torna a recuperação impossível. Só são listados arquivos com mais de 30 dias."
     },
     "item": {
       "command": "Comando",

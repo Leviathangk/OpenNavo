@@ -945,6 +945,7 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'orphan_worktree':
       return 'never';
     case 'worktree':
+    case 'ai_history_file':
       return 'irreversible';
     case 'duplicate_checkout':
       return 'auto';

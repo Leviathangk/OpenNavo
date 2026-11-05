@@ -1812,7 +1812,7 @@
       "browser_caches": "Uniquement les caches ; historique, cookies, mots de passe et extensions conservés",
       "dev_caches": "Recréés ou téléchargés à la prochaine compilation ou installation",
       "ai_caches": "Caches, journaux et téléchargements abandonnés des outils d’IA ; les sessions, la mémoire et les identifiants sont conservés",
-      "ai_history": "Lecture seule : transcriptions de sessions et historique des projets ; à supprimer dans l’outil",
+      "ai_history": "Les dossiers restent en lecture seule ; les anciens fichiers peuvent être déplacés un par un dans la corbeille",
       "homebrew": "Équivaut à brew cleanup : anciennes versions et caches de téléchargement",
       "temp": "Fichiers temporaires inchangés depuis 3 jours et non ouverts",
       "leftovers": "L’app n’est plus sur ce Mac, mais ces fichiers subsistent",
@@ -1874,7 +1874,7 @@
       "build_artifact_cost": "Recompilation complète",
       "build_artifact_costHint": "La prochaine compilation recompile tout ; cela peut prendre du temps.",
       "ai_history": "Lecture seule",
-      "ai_historyHint": "Affiché pour comptabiliser l’espace ; OpenNavo ne supprime jamais sessions, mémoires ni historique. Utilisez l’outil.",
+      "ai_historyHint": "Le dossier reste en lecture seule ; les anciens fichiers sont listés séparément et peuvent aller dans la corbeille.",
       "orphan_service": "Service d’arrière-plan",
       "installer_installed": "Installé",
       "device_support_latest": "Dernière version",
@@ -1892,7 +1892,9 @@
       "duplicate_checkout": "Clone en double",
       "duplicate_checkoutHint": "Un clone propre, sans rien à pousser. Le supprimer déplace le dossier vers la Corbeille.",
       "orphan_worktree": "Worktree orphelin",
-      "orphanWorktreeHint": "Worktree cassé : ses métadonnées Git ont disparu, seul l’espace occupé est affiché."
+      "orphanWorktreeHint": "Worktree cassé : ses métadonnées Git ont disparu, seul l’espace occupé est affiché.",
+      "ai_history_file": "Ancien fichier de session",
+      "ai_history_fileHint": "Déplace cette transcription dans la corbeille ; la vider la rend irrécupérable. Seuls les fichiers de plus de 30 jours sont affichés."
     },
     "item": {
       "command": "Commande",

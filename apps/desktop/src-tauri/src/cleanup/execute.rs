@@ -700,6 +700,13 @@ impl Engine {
         {
             return Ok(Act::Skipped(SkippedItemReason::Protected));
         }
+        // History files are the one deliberate exception to the AI protection list. Re-check that this exact path is
+        // a regular transcript before the common path, identity and Trash guards run.
+        if item.item.reason == CleanupReason::AiHistoryFile
+            && !rules::ai_history_file_allowed(&self.uninstall.roots.home, path)
+        {
+            return Ok(Act::Skipped(SkippedItemReason::Protected));
+        }
         let reading = activities.get(self);
         let activity = &*reading;
         if let Some(reason) = item.owner.status_in(activity) {

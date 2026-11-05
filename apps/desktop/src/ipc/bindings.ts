@@ -759,8 +759,8 @@ export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_ca
 /**  Caches, logs and abandoned staging of AI coding tools (Claude Code, Codex, Cursor, Gemini CLI). */
 "ai_caches" |
 /**
- *  Session transcripts, memories and project history of AI coding tools: shown for information, never removed
- *  here. People delete these in the tool that owns them.
+ *  Session transcripts and project history of AI coding tools. Whole stores stay read-only; individual old
+ *  transcript files can be selected for a recoverable move to the Trash.
  */
 "ai_history" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" |
 /**  Git checkouts that duplicate another clone or are linked worktrees: shown read-only in P2 discovery. */
@@ -838,8 +838,10 @@ export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_c
 "build_leaf" |
 /**  A cache, log or abandoned staging folder owned by an AI coding tool. */
 "ai_cache" |
-/**  Session transcripts and project history of an AI coding tool, listed read-only. */
-"ai_history" | "trash" | "device_backup" |
+/**  A whole session store of an AI coding tool, listed read-only so its total stays visible. */
+"ai_history" |
+/**  One old transcript file inside an AI history store; selected file by file and moved to the Trash. */
+"ai_history_file" | "trash" | "device_backup" |
 /**  An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs. */
 "xcode_archive" |
 /**  Images no container uses; pulled or built again when needed. */

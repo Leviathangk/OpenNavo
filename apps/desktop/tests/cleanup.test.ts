@@ -206,6 +206,23 @@ describe('Skips and permissions', () => {
     expect(row.text()).toContain('只读');
     row.unmount();
 
+    const file = {
+      ...first,
+      id: 'history-file',
+      path: '~/.codex/sessions/2025/01/rollout.jsonl',
+      kind: 'file' as const,
+      sizeBytes: 1024,
+      reason: 'ai_history_file' as const,
+      restore: 'irreversible' as const
+    };
+    const fileRow = mount(CleanupItemRow, {
+      props: { item: file, checked: false },
+      global: { plugins: [i18n] }
+    });
+    expect(fileRow.get('input').attributes('disabled')).toBeUndefined();
+    expect(fileRow.text()).toContain('旧会话文件');
+    fileRow.unmount();
+
     const page = mount(CleanupPage, {
       global: { plugins: [pinia, router, i18n] },
       attachTo: document.body

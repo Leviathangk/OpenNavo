@@ -1812,7 +1812,7 @@
       "browser_caches": "Solo la caché; el historial, las cookies, las contraseñas y las extensiones se quedan",
       "dev_caches": "Se generan o se descargan de nuevo en la próxima compilación o instalación",
       "ai_caches": "Cachés, registros y descargas abandonadas de herramientas de IA; las sesiones, la memoria y las credenciales se conservan",
-      "ai_history": "Solo lectura: transcripciones de sesión e historial de proyectos; se borran en la herramienta",
+      "ai_history": "Los directorios completos siguen en solo lectura; los archivos antiguos se pueden mover a la Papelera uno a uno",
       "homebrew": "Igual que brew cleanup: versiones antiguas y cachés de descarga",
       "temp": "Archivos temporales sin cambios en 3 días y que no están abiertos",
       "leftovers": "La app ya no está en este Mac, pero estos archivos siguen aquí",
@@ -1874,7 +1874,7 @@
       "build_artifact_cost": "Recompilación completa",
       "build_artifact_costHint": "La próxima compilación lo recompila todo; puede tardar.",
       "ai_history": "Solo lectura",
-      "ai_historyHint": "Se muestra para contabilizar el espacio; OpenNavo nunca borra sesiones, memorias ni historial. Hazlo en la herramienta.",
+      "ai_historyHint": "El directorio completo sigue en solo lectura; los archivos antiguos se muestran aparte y se pueden mover a la Papelera.",
       "orphan_service": "Elemento en segundo plano",
       "installer_installed": "App instalada",
       "device_support_latest": "Más reciente",
@@ -1892,7 +1892,9 @@
       "duplicate_checkout": "Clon duplicado",
       "duplicate_checkoutHint": "Un clon limpio y sin nada pendiente de subir. Al eliminarlo, la carpeta va a la Papelera.",
       "orphan_worktree": "Worktree huérfano",
-      "orphanWorktreeHint": "Worktree roto: sus metadatos de Git ya no existen, así que solo se muestra el espacio que ocupa."
+      "orphanWorktreeHint": "Worktree roto: sus metadatos de Git ya no existen, así que solo se muestra el espacio que ocupa.",
+      "ai_history_file": "Archivo de sesión antiguo",
+      "ai_history_fileHint": "Mueve esta transcripción a la Papelera; vaciarla hace que no se pueda recuperar. Solo se muestran archivos de más de 30 días."
     },
     "item": {
       "command": "Comando",

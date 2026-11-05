@@ -1812,7 +1812,7 @@
       "browser_caches": "Solo cache; cronologia, cookie, password ed estensioni restano",
       "dev_caches": "Rigenerati o riscaricati alla prossima compilazione o installazione",
       "ai_caches": "Cache, log e download abbandonati degli strumenti IA; sessioni, memoria e credenziali restano",
-      "ai_history": "Solo lettura: trascrizioni delle sessioni e cronologia progetti; si eliminano nello strumento",
+      "ai_history": "Le cartelle restano in sola lettura; i vecchi file possono essere spostati uno alla volta nel Cestino",
       "homebrew": "Equivale a brew cleanup: vecchie versioni e cache dei download",
       "temp": "File temporanei non modificati da 3 giorni e non aperti",
       "leftovers": "L’app non è più su questo Mac, ma questi file sono rimasti",
@@ -1874,7 +1874,7 @@
       "build_artifact_cost": "Ricompilazione completa",
       "build_artifact_costHint": "La compilazione successiva ricompila tutto; può richiedere tempo.",
       "ai_history": "Solo lettura",
-      "ai_historyHint": "Mostrato per conteggiare lo spazio; OpenNavo non elimina sessioni, memorie o cronologia. Usa lo strumento.",
+      "ai_historyHint": "La cartella resta in sola lettura; i file più vecchi sono elencati a parte e possono essere spostati nel Cestino.",
       "orphan_service": "Servizio in background",
       "installer_installed": "Installato",
       "device_support_latest": "Ultima versione",
@@ -1892,7 +1892,9 @@
       "duplicate_checkout": "Clone duplicato",
       "duplicate_checkoutHint": "Un clone pulito e senza commit da inviare. Rimuovendolo, la cartella va nel Cestino.",
       "orphan_worktree": "Worktree orfano",
-      "orphanWorktreeHint": "Worktree danneggiato: i metadati Git non ci sono più, quindi mostriamo solo lo spazio occupato."
+      "orphanWorktreeHint": "Worktree danneggiato: i metadati Git non ci sono più, quindi mostriamo solo lo spazio occupato.",
+      "ai_history_file": "Vecchio file di sessione",
+      "ai_history_fileHint": "Sposta questa trascrizione nel Cestino; svuotarlo la rende irrecuperabile. Sono elencati solo i file più vecchi di 30 giorni."
     },
     "item": {
       "command": "Comando",

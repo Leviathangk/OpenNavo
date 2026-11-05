@@ -1812,7 +1812,7 @@
       "browser_caches": "Nur Caches; Verlauf, Cookies, Passwörter und Erweiterungen bleiben erhalten",
       "dev_caches": "Werden beim nächsten Build oder Installieren erneut erstellt oder geladen",
       "ai_caches": "Caches, Protokolle und abgebrochene Downloads von KI-Werkzeugen; Sitzungen, Erinnerungen und Anmeldedaten bleiben",
-      "ai_history": "Nur Lesen: Sitzungsprotokolle und Projektverlauf; Löschen nur im jeweiligen Tool",
+      "ai_history": "Die Ordner bleiben schreibgeschützt; alte Aufzeichnungen lassen sich einzeln in den Papierkorb verschieben",
       "homebrew": "Entspricht brew cleanup: alte Versionen und Download-Caches",
       "temp": "Seit 3 Tagen unveränderte, nicht geöffnete temporäre Dateien",
       "leftovers": "Die App ist nicht mehr auf diesem Mac, diese Dateien sind geblieben",
@@ -1874,7 +1874,7 @@
       "build_artifact_cost": "Vollständiger Neubau",
       "build_artifact_costHint": "Der nächste Build kompiliert alles neu; das kann dauern.",
       "ai_history": "Nur Lesen",
-      "ai_historyHint": "Wird zur Bilanzierung des Speichers angezeigt; OpenNavo löscht keine Sitzungen, Erinnerungen oder Projektverläufe. Dafür das Tool verwenden.",
+      "ai_historyHint": "Der Ordner bleibt schreibgeschützt; ältere Aufzeichnungen werden einzeln angezeigt und können in den Papierkorb verschoben werden.",
       "orphan_service": "Hintergrunddienst",
       "installer_installed": "Installiert",
       "device_support_latest": "Neueste Version",
@@ -1892,7 +1892,9 @@
       "duplicate_checkout": "Doppelter Klon",
       "duplicate_checkoutHint": "Ein sauberer Clone ohne nicht gepushte Commits. Beim Entfernen wandert der Ordner in den Papierkorb.",
       "orphan_worktree": "Verwaister Worktree",
-      "orphanWorktreeHint": "Defekter Worktree: Die Git-Metadaten fehlen, daher wird nur der belegte Speicher angezeigt."
+      "orphanWorktreeHint": "Defekter Worktree: Die Git-Metadaten fehlen, daher wird nur der belegte Speicher angezeigt.",
+      "ai_history_file": "Alte Sitzungsdatei",
+      "ai_history_fileHint": "Verschiebt diese Aufzeichnung in den Papierkorb; nach dem Leeren ist sie nicht wiederherstellbar. Es werden nur Dateien älter als 30 Tage angezeigt."
     },
     "item": {
       "command": "Befehl",
