@@ -125,6 +125,12 @@ async def test_public_tools_are_read_only_and_compact() -> None:
                 "installCommand": "brew install --cask demo",
                 "repoUrl": "https://github.com/example/demo",
                 "license": "MIT",
+                "supports": {
+                    "arm64": False,
+                    "x86_64": False,
+                    "status": "unknown",
+                    "requiresRosetta": False,
+                },
             }
         else:
             data = {"records": []}
@@ -157,6 +163,12 @@ async def test_public_tools_are_read_only_and_compact() -> None:
         data = cast(dict[str, Any], result.data)
         assert data["link"] == "https://opennavo.com/apps/demo"
         assert data["installCommand"] == "brew install --cask demo"
+        assert data["supports"] == {
+            "arm64": False,
+            "x86_64": False,
+            "status": "unknown",
+            "requiresRosetta": False,
+        }
         assert data["safety"] == {"deprecated": False, "disabled": False}
         assert "hidden" not in json.dumps(data)
         assert "must not pass" not in json.dumps(data)

@@ -47,22 +47,20 @@ func (s *Store) VersionRequirements(ctx context.Context, id int64, version strin
 	if err != nil {
 		return nil, err
 	}
-	if m := legacy.Macos; m != nil && m.AppVersion != nil && *m.AppVersion == version {
+	// A chip-unknown bound with no recorded app version applies to the requested version.
+	// A bound recorded for a different version stays off this version's list.
+	if m := legacy.Macos; m != nil && m.Shown() && ((m.AppVersion != nil && *m.AppVersion == version) || (facts.UnknownOnly(m.Ranges) && m.AppVersion == nil)) {
 		status := m.Status
 		if len(facts.Conflicts(m, legacy.Homebrew)) > 0 {
 			status = "needs_review"
 		}
 		proof := facts.NewProof(m.SourceURL, m.VerifiedAt, facts.StaleAfter, status, now)
+		shown := version
+		if m.AppVersion != nil {
+			shown = *m.AppVersion
+		}
 		for _, r := range m.Ranges {
-			native := "unknown"
-			if r.Arch == "arm64" {
-				if r.Support == "native" {
-					native = "yes"
-				} else {
-					native = "no"
-				}
-			}
-			out = append(out, facts.Requirement{Versions: []string{version}, Architectures: []string{r.Arch}, PlatformMacOS: []string{}, Minimum: r.Minimum, Maximum: r.Maximum, AppleSilicon: native, Evidence: proof})
+			out = append(out, r.Requirement(shown, proof))
 		}
 	}
 	return out, nil

@@ -107,8 +107,24 @@ func TestNormalizeMacosKeepsRanges(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, cleared)
 
+	unknown, err := NormalizeMacos(MacosInput{Ranges: []Range{{Arch: "unknown", Support: "unknown", Minimum: ptr("15")}}, EvidenceInput: proof()}, Actor{Name: "kaka"}, now)
+	require.NoError(t, err)
+	require.Equal(t, "unknown", unknown.Ranges[0].Arch)
+	require.Equal(t, "15", *unknown.Ranges[0].Minimum)
+	projected := unknown.Ranges[0].Requirement("1.2", Proof{})
+	require.Empty(t, projected.Architectures)
+	require.Equal(t, "unknown", projected.AppleSilicon)
+	require.Equal(t, []string{"1.2"}, projected.Versions)
+	named := Range{Arch: "arm64", Support: "native", Minimum: ptr("14")}.Requirement("2", Proof{})
+	require.Equal(t, []string{"arm64"}, named.Architectures)
+	require.Equal(t, "yes", named.AppleSilicon)
+
 	cases := map[string]MacosInput{
 		"evidence without ranges": {EvidenceInput: proof()},
+		"unknown with a chip":     {Ranges: []Range{{Arch: "unknown", Support: "unknown", Minimum: ptr("15")}, {Arch: "arm64", Support: "native"}}, EvidenceInput: proof()},
+		"unknown without a bound": {Ranges: []Range{{Arch: "unknown", Support: "unknown"}}, EvidenceInput: proof()},
+		"unknown support on arm":  {Ranges: []Range{{Arch: "arm64", Support: "unknown"}}, EvidenceInput: proof()},
+		"unknown native":          {Ranges: []Range{{Arch: "unknown", Support: "native", Minimum: ptr("15")}}, EvidenceInput: proof()},
 		"three":                   {Ranges: []Range{{Arch: "arm64", Support: "native"}, {Arch: "x86_64", Support: "native"}, {Arch: "arm64", Support: "native"}}, EvidenceInput: proof()},
 		"arch":                    {Ranges: []Range{{Arch: "ppc", Support: "native"}}, EvidenceInput: proof()},
 		"support":                 {Ranges: []Range{{Arch: "arm64", Support: "maybe"}}, EvidenceInput: proof()},
@@ -123,6 +139,51 @@ func TestNormalizeMacosKeepsRanges(t *testing.T) {
 		_, err := NormalizeMacos(in, Actor{}, now)
 		require.ErrorIs(t, err, ErrInvalid, name)
 	}
+}
+
+func TestProjectMacosUnknownBoundStaysOnCurrentVersion(t *testing.T) {
+	minimum := "15"
+	unknown := []Range{{Arch: ArchUnknown, Support: SupportUnknown, Minimum: &minimum}}
+	status, version := ProjectMacos(unknown, nil, "2.0", false)
+	require.Equal(t, "verified", status)
+	require.Equal(t, "2.0", version)
+	old := "1.0"
+	status, version = ProjectMacos(unknown, &old, "2.0", false)
+	require.Equal(t, "verified", status)
+	require.Equal(t, "2.0", version, "a chip-unknown bound is not scoped to the recorded app version")
+	status, version = ProjectMacos(unknown, nil, "2.0", true)
+	require.Equal(t, "needs_review", status)
+	require.Empty(t, version)
+
+	named := []Range{{Arch: "arm64", Support: "native", Minimum: &minimum}}
+	status, version = ProjectMacos(named, nil, "2.0", false)
+	require.Equal(t, "needs_review", status)
+	require.Empty(t, version)
+	current := "2.0"
+	status, version = ProjectMacos(named, &current, "2.0", false)
+	require.Equal(t, "verified", status)
+	require.Equal(t, "2.0", version)
+}
+
+func TestMergeRequirementPrefersVerifiedEvidence(t *testing.T) {
+	minimum := "15"
+	weak := Requirement{
+		Versions: []string{"2.0"}, Architectures: []string{}, PlatformMacOS: []string{},
+		Minimum: &minimum, AppleSilicon: "unknown",
+		Evidence: Proof{SourceURL: "https://vendor.example/os", Status: "needs_review"},
+	}
+	checked := now
+	strong := weak
+	strong.Evidence = Proof{SourceURL: weak.Evidence.SourceURL, Status: "verified", CheckedAt: &checked}
+	rows := MergeRequirement([]Requirement{weak}, strong)
+	require.Len(t, rows, 1)
+	require.Equal(t, "verified", rows[0].Evidence.Status)
+	rows = MergeRequirement(rows, weak)
+	require.Equal(t, "verified", rows[0].Evidence.Status, "a weaker row does not replace verified evidence")
+	other := weak
+	other.Evidence.SourceURL = "https://vendor.example/other"
+	rows = MergeRequirement(rows, other)
+	require.Len(t, rows, 2)
 }
 
 func TestNormalizeAlternatives(t *testing.T) {

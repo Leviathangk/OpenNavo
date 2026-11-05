@@ -744,6 +744,7 @@
       "download": "Descarga",
       "source": "Fuente",
       "allChips": "Todos los chips",
+      "unknownChip": "Chip desconocido",
       "notNative": "No es nativa en chips de Apple",
       "builtFor": "Versión para macOS {versions}"
     },

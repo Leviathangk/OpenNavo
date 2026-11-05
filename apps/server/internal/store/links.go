@@ -79,7 +79,7 @@ func (s *Store) WriteLinkApp(ctx context.Context, id int64, input domain.LinkInp
 	}
 	created := id == 0
 	if created {
-		if err := s.DB.WithContext(ctx).Raw(`INSERT INTO packages(kind,token,full_token,tap,name,names,homepage,download_url,version,version_base,raw,raw_hash,source_locale) VALUES('link',?,?,'',?,ARRAY[?]::text[],?,?,'','','{}'::jsonb,'',?) RETURNING id`, input.Token, input.Token, input.Name, input.Name, input.Homepage, input.DownloadURL, input.SourceLocale).Scan(&id).Error; err != nil {
+		if err := s.DB.WithContext(ctx).Raw(`INSERT INTO packages(kind,token,full_token,tap,name,names,homepage,download_url,version,version_base,raw,raw_hash,source_locale,supports_arm64,supports_x86_64) VALUES('link',?,?,'',?,ARRAY[?]::text[],?,?,'','','{}'::jsonb,'',?,false,false) RETURNING id`, input.Token, input.Token, input.Name, input.Name, input.Homepage, input.DownloadURL, input.SourceLocale).Scan(&id).Error; err != nil {
 			return 0, err
 		}
 	} else {

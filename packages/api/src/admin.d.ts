@@ -435,7 +435,7 @@ export interface paths {
         get?: never;
         /**
          * Set the manual macOS supplement
-         * @description Records vendor-sourced support per architecture (native, rosetta for arm64 only, or unsupported) with optional minimum and maximum macOS versions, plus the evidence. It never replaces Homebrew's requirements: where they disagree, pages show both as pending verification. Chip support alone never implies native code. Empty ranges clear the supplement and take no other field. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Records vendor-sourced support per architecture (native, rosetta for arm64 only, or unsupported) with optional minimum and maximum macOS versions, plus the evidence. One range with arch and support unknown records a macOS bound without naming a chip: it needs a minimum or maximum, cannot sit beside a named chip, and applies to every package kind. When appVersion is empty or is not the current version, that bound is still shown for the current version. It never replaces Homebrew's requirements: where they disagree, pages show both as pending verification. Chip support alone never implies native code. Empty ranges clear the supplement and take no other field. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         put: operations["setPackageMacosSupport"];
         post?: never;
@@ -18457,16 +18457,17 @@ export interface components {
          */
         MacosRange: {
             /**
+             * @description unknown is exclusive. It cannot be combined with arm64 or x86_64, its support must be unknown, and it requires a minimum or maximum. An empty ranges list still clears the supplement. Valid for every package kind.
              * @example arm64
              * @enum {string}
              */
-            arch: "arm64" | "x86_64";
+            arch: "arm64" | "x86_64" | "unknown";
             /**
-             * @description rosetta applies to arm64 only; unsupported takes no versions.
+             * @description rosetta applies to arm64 only; unsupported takes no versions. unknown is only valid with arch unknown and may carry a macOS version.
              * @example native
              * @enum {string}
              */
-            support: "native" | "rosetta" | "unsupported";
+            support: "native" | "rosetta" | "unsupported" | "unknown";
             /**
              * @description macOS release such as 13 or 10.15
              * @example 13
@@ -18547,7 +18548,7 @@ export interface components {
             note?: string | null;
         };
         /**
-         * @description Ranges other than an empty list require sourceUrl and method.
+         * @description Ranges other than an empty list require sourceUrl and method. An empty list clears the supplement. One range with arch and support unknown records a macOS version without naming a chip and needs a minimum or maximum.
          * @example {
          *       "ranges": [
          *         {

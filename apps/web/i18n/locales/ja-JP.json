@@ -744,6 +744,7 @@
       "download": "ダウンロード",
       "source": "出典",
       "allChips": "すべてのチップ",
+      "unknownChip": "チップ不明",
       "notNative": "Apple シリコンにネイティブ非対応",
       "builtFor": "macOS {versions} 向けのビルド"
     },

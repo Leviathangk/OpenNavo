@@ -116,8 +116,15 @@ export interface RangeForm {
   minimum: string;
   maximum: string;
 }
+/** A macOS bound with no chip. Support is fixed to unknown and is exclusive with named chips. */
+export interface UnknownChipForm {
+  include: boolean;
+  minimum: string;
+  maximum: string;
+}
 export interface MacosForm {
   ranges: Record<Arch, RangeForm>;
+  unknown: UnknownChipForm;
   evidence: EvidenceForm;
 }
 
@@ -131,7 +138,16 @@ export function macosForm(macos: Facts['macos']): MacosForm {
       maximum: found?.maximum ?? ''
     };
   };
-  return { ranges: { arm64: range('arm64'), x86_64: range('x86_64') }, evidence: evidenceForm(macos) };
+  const unknown = macos?.ranges.find(item => item.arch === 'unknown');
+  return {
+    ranges: { arm64: range('arm64'), x86_64: range('x86_64') },
+    unknown: {
+      include: Boolean(unknown),
+      minimum: unknown?.minimum ?? '',
+      maximum: unknown?.maximum ?? ''
+    },
+    evidence: evidenceForm(macos)
+  };
 }
 
 const MACOS_VERSION = /^(?:10\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\.[0-9]{1,2}){0,2}$/;
@@ -146,22 +162,44 @@ function compareVersions(left: string, right: string) {
   return 0;
 }
 
+function versionProblem(minimum: string, maximum: string, requireBound: boolean) {
+  const low = minimum.trim();
+  const high = maximum.trim();
+  if (requireBound && !low && !high) return true;
+  if ((low && !MACOS_VERSION.test(low)) || (high && !MACOS_VERSION.test(high))) return true;
+  return Boolean(low && high && compareVersions(low, high) > 0);
+}
+
 export function macosProblem(form: MacosForm): 'sourceRequired' | 'rangesRequired' | null {
   const included = ARCHS.filter(arch => form.ranges[arch].include);
+  if (form.unknown.include) {
+    if (included.length || versionProblem(form.unknown.minimum, form.unknown.maximum, true)) return 'rangesRequired';
+    return evidenceValid(form.evidence) ? null : 'sourceRequired';
+  }
   if (!included.length) return 'rangesRequired';
   for (const arch of included) {
     const { support, minimum, maximum } = form.ranges[arch];
     if (support === 'rosetta' && arch !== 'arm64') return 'rangesRequired';
     if (support === 'unsupported') continue;
-    const low = minimum.trim();
-    const high = maximum.trim();
-    if ((low && !MACOS_VERSION.test(low)) || (high && !MACOS_VERSION.test(high))) return 'rangesRequired';
-    if (low && high && compareVersions(low, high) > 0) return 'rangesRequired';
+    if (versionProblem(minimum, maximum, false)) return 'rangesRequired';
   }
   return evidenceValid(form.evidence) ? null : 'sourceRequired';
 }
 
 export function macosBody(form: MacosForm): BodyOf<'setPackageMacosSupport'> {
+  if (form.unknown.include) {
+    return {
+      ranges: [
+        {
+          arch: 'unknown',
+          support: 'unknown',
+          minimum: form.unknown.minimum.trim() || null,
+          maximum: form.unknown.maximum.trim() || null
+        }
+      ],
+      ...evidenceBody(form.evidence)
+    };
+  }
   const ranges = ARCHS.filter(arch => form.ranges[arch].include).map(arch => {
     const { support, minimum, maximum } = form.ranges[arch];
     const versions = support !== 'unsupported';

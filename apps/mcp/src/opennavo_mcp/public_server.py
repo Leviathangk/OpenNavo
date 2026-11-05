@@ -436,7 +436,9 @@ def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
                 _map(source["artifacts"]), "apps", "binaries", "pkgs", "uninstallNotes"
             )
         if source.get("supports") and isinstance(source["supports"], dict):
-            out["supports"] = _pick(_map(source["supports"]), "arm64", "x86_64")
+            out["supports"] = _pick(
+                _map(source["supports"]), "arm64", "x86_64", "status", "requiresRosetta"
+            )
         out["openSource"] = _pick(source, "repoUrl", "license")
         safety = _pick(source, "autoUpdates", "kegOnly", "minMacos")
         safety.update(_package_status(source))

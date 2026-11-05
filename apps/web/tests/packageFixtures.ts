@@ -89,11 +89,18 @@ export function requirementsFrom(detail: PackageDetail, proof: FactEvidence): Re
     for (const range of supplement.ranges)
       out.push({
         versions: supplement.appVersion ? [supplement.appVersion] : [],
-        architectures: [range.arch],
+        architectures: range.arch === 'arm64' || range.arch === 'x86_64' ? [range.arch] : [],
         platformMacOS: [],
         minimumMacOS: range.minimum,
         maximumMacOS: range.maximum,
-        appleSilicon: range.arch === 'arm64' ? (range.support === 'native' ? 'yes' : 'no') : 'unknown',
+        appleSilicon:
+          range.arch !== 'arm64'
+            ? 'unknown'
+            : range.support === 'native'
+              ? 'yes'
+              : range.support === 'unknown'
+                ? 'unknown'
+                : 'no',
         downloadUrl: null,
         sha256: null,
         evidence: vendor

@@ -108,24 +108,10 @@ func (s *Store) CollectionSetupPackages(ctx context.Context, slug string, now ti
 		// Match normalizedFacts: visible legacy supplements precede additional
 		// architecture-independent current-version declarations.
 		if m := legacy.Macos; m != nil && m.Shown() {
-			status := "verified"
-			if len(facts.Conflicts(m, legacy.Homebrew)) > 0 || m.AppVersion == nil || *m.AppVersion != row.Version {
-				status = "needs_review"
-			}
+			status, version := facts.ProjectMacos(m.Ranges, m.AppVersion, row.Version, len(facts.Conflicts(m, legacy.Homebrew)) > 0)
 			evidence := facts.NewProof(m.SourceURL, m.VerifiedAt, facts.StaleAfter, status, now)
 			for _, r := range m.Ranges {
-				native := "unknown"
-				if r.Arch == "arm64" {
-					native = "no"
-					if r.Support == "native" {
-						native = "yes"
-					}
-				}
-				versions := []string{}
-				if m.AppVersion != nil {
-					versions = append(versions, *m.AppVersion)
-				}
-				item.Requirements = append(item.Requirements, facts.Requirement{Versions: versions, Architectures: []string{r.Arch}, PlatformMacOS: []string{}, Minimum: r.Minimum, Maximum: r.Maximum, AppleSilicon: native, Evidence: evidence})
+				item.Requirements = append(item.Requirements, r.Requirement(version, evidence))
 			}
 		}
 		if len(row.Platforms) > 0 {
@@ -135,7 +121,7 @@ func (s *Store) CollectionSetupPackages(ctx context.Context, slug string, now ti
 			}
 			for _, r := range facts.Requirements(platforms, facts.NewProof(row.RequirementsSource, row.HomebrewCheckedAt, facts.StaleAfter, "verified", now)) {
 				if len(r.Architectures) == 0 {
-					item.Requirements = append(item.Requirements, r)
+					item.Requirements = facts.MergeRequirement(item.Requirements, r)
 				}
 			}
 		}
@@ -144,7 +130,7 @@ func (s *Store) CollectionSetupPackages(ctx context.Context, slug string, now ti
 			case "compatibility":
 				var v facts.Compatibility
 				if json.Unmarshal(r.Value, &v) == nil && v.Validate() == nil && v.AppVersion == row.Version {
-					item.Requirements = append(item.Requirements, v.Requirement(r.Evidence.At(now)))
+					item.Requirements = facts.MergeRequirement(item.Requirements, v.Requirement(r.Evidence.At(now)))
 				}
 			case "price":
 				var v facts.PriceObservation

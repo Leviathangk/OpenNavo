@@ -744,6 +744,7 @@
       "download": "下载",
       "source": "来源",
       "allChips": "所有芯片",
+      "unknownChip": "芯片未知",
       "notNative": "不是 Apple 芯片原生",
       "builtFor": "适用于 macOS {versions} 的版本"
     },

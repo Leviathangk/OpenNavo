@@ -70,11 +70,11 @@ export function packageSpec(pkg: PackagePage, t: Translate, locale: SiteLocale, 
   if (!pkg.isFont && range) rows.push({ key: 'macos', label: t('package.spec.system'), value: range });
 
   const chipValues = chipsOf(pkg);
-  const chips = chipValues.length
-    ? chipValues.map(arch => t(`package.arch.${arch}`)).join(' · ')
-    : architectures(pkg.supports)
-        .map(arch => t(`package.arch.${arch}`))
-        .join(' · ');
+  // Verified requirement rows name the chips. Boolean flags are a fallback only when
+  // support is known. Unknown support must not become "Apple silicon · Intel" because
+  // those columns default to true.
+  const fallback = pkg.supports.status === 'known' ? architectures(pkg.supports) : [];
+  const chips = (chipValues.length ? chipValues : fallback).map(arch => t(`package.arch.${arch}`)).join(' · ');
   if (!pkg.isFont && chips) rows.push({ key: 'chip', label: t('package.spec.chip'), value: chips });
 
   if (pkg.kind === 'cask')

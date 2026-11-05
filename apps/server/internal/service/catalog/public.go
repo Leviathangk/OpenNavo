@@ -251,12 +251,15 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		if kind == "formula" {
 			d.OnRequest = &publicapi.InstallStats{D30: p.OnRequest30d, D90: p.OnRequest90d, D365: p.OnRequest365d}
 		}
-		d.Supports.Arm64 = p.SupportsArm64
-		d.Supports.X8664 = p.SupportsX8664
 		metadata, platforms, err := platformData(p)
 		if err != nil {
 			return d, err
 		}
+		// Link rows omit the architecture columns, and those columns default to true.
+		// Unknown support must not be published as Apple silicon and Intel.
+		p.SupportsArm64, p.SupportsX8664 = publishedArchitectures(kind, metadata.SupportStatus, p.SupportsArm64, p.SupportsX8664)
+		d.Supports.Arm64 = p.SupportsArm64
+		d.Supports.X8664 = p.SupportsX8664
 		status := publicapi.PackageDetailSupportsStatus(metadata.SupportStatus)
 		d.Supports.Status = &status
 		d.Supports.RequiresRosetta = &metadata.RequiresRosetta
@@ -503,6 +506,15 @@ func dependencyData(p store.PublicPackage) (*publicapi.FormulaDependencies, *pub
 		c.Requirements = &complete
 	}
 	return nil, c
+}
+
+// publishedArchitectures hides the boolean default. A link package has no Homebrew
+// architecture declaration, and the columns default to true for both chips.
+func publishedArchitectures(kind, status string, arm, intel bool) (bool, bool) {
+	if kind == "link" && status != "known" {
+		return false, false
+	}
+	return arm, intel
 }
 
 func platformData(p store.PublicPackage) (homebrew.CaskPlatformMetadata, []publicapi.CaskPlatform, error) {

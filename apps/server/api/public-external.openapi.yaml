@@ -3258,16 +3258,19 @@ components:
       properties:
         arch:
           type: string
+          description: unknown names no chip. It is exclusive, its support is unknown, and it requires a minimum or maximum. Valid for every package kind.
           enum:
           - arm64
           - x86_64
+          - unknown
         support:
           type: string
-          description: native, rosetta (arm64 only) or unsupported, as the vendor states it
+          description: native, rosetta (arm64 only), unsupported, or unknown. unknown carries a macOS version without a chip.
           enum:
           - native
           - rosetta
           - unsupported
+          - unknown
         minimum:
           type: string
           nullable: true

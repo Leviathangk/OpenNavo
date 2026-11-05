@@ -103,7 +103,9 @@ function requirementLine(row: RequirementFact, locale: SiteLocale): string {
     ? row.architectures
         .map(arch => (arch === 'arm64' || arch === 'x86_64' ? t(`package.arch.${arch}`) : arch))
         .join(', ')
-    : t('package.requirements.allChips');
+    : row.appleSilicon === 'yes' || row.appleSilicon === 'no'
+      ? t('package.requirements.allChips')
+      : t('package.requirements.unknownChip');
   const parts = [
     range ||
       (row.platformMacOS.length ? t('package.requirements.builtFor', { versions: row.platformMacOS.join(', ') }) : ''),

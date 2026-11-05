@@ -744,6 +744,7 @@
       "download": "Загрузка",
       "source": "Источник",
       "allChips": "Все процессоры",
+      "unknownChip": "Чип неизвестен",
       "notNative": "Не нативно на чипах Apple",
       "builtFor": "Сборка для macOS {versions}"
     },

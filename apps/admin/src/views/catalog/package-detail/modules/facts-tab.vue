@@ -30,7 +30,7 @@ import {
   priceForm,
   priceProblem
 } from './facts';
-import type { AlternativeRow, Facts, MacosForm, PriceForm, PriceType } from './facts';
+import type { AlternativeRow, Arch, Facts, MacosForm, PriceForm, PriceType } from './facts';
 
 defineOptions({ name: 'FactsTab' });
 
@@ -106,6 +106,18 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+function setUnknown(include: boolean) {
+  macos.value.unknown.include = include;
+  if (include) {
+    for (const arch of ARCHS) macos.value.ranges[arch].include = false;
+  }
+}
+
+function setArch(arch: Arch, include: boolean) {
+  macos.value.ranges[arch].include = include;
+  if (include) macos.value.unknown.include = false;
 }
 
 async function save(section: 'price' | 'macos' | 'alternatives', clear = false) {
@@ -285,9 +297,40 @@ watch(() => props.packageId, load, { immediate: true });
           <NTag v-if="facts.macos.stale" size="small" type="warning" :bordered="false">{{ text('stale') }}</NTag>
         </div>
         <NForm label-placement="top" :disabled="!editable || saving === 'macos'">
+          <div class="mb-8px grid grid-cols-1 items-start gap-x-16px md:grid-cols-4">
+            <NFormItem :label="text('includeUnknown')">
+              <NCheckbox :checked="macos.unknown.include" @update:checked="setUnknown">
+                {{ text('include') }}
+              </NCheckbox>
+            </NFormItem>
+            <template v-if="macos.unknown.include">
+              <NFormItem :label="text('minimum')">
+                <NInput
+                  v-model:value="macos.unknown.minimum"
+                  :maxlength="8"
+                  :placeholder="text('versionPlaceholder')"
+                  :input-props="{ 'aria-label': `${text('includeUnknown')} ${text('minimum')}` }"
+                />
+              </NFormItem>
+              <NFormItem :label="text('maximum')">
+                <NInput
+                  v-model:value="macos.unknown.maximum"
+                  :maxlength="8"
+                  :placeholder="text('versionPlaceholder')"
+                  :input-props="{ 'aria-label': `${text('includeUnknown')} ${text('maximum')}` }"
+                />
+              </NFormItem>
+            </template>
+          </div>
           <div v-for="arch in ARCHS" :key="arch" class="mb-8px grid grid-cols-1 items-start gap-x-16px md:grid-cols-4">
             <NFormItem :label="text(`archs.${arch}`)">
-              <NCheckbox v-model:checked="macos.ranges[arch].include">{{ text('include') }}</NCheckbox>
+              <NCheckbox
+                :checked="macos.ranges[arch].include"
+                :disabled="macos.unknown.include"
+                @update:checked="value => setArch(arch, value)"
+              >
+                {{ text('include') }}
+              </NCheckbox>
             </NFormItem>
             <template v-if="macos.ranges[arch].include">
               <NFormItem :label="text('support')">

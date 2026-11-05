@@ -6320,16 +6320,17 @@ export interface components {
          */
         MacosRange: {
             /**
+             * @description unknown names no chip. It is exclusive, its support is unknown, and it requires a minimum or maximum. Valid for every package kind.
              * @example arm64
              * @enum {string}
              */
-            arch: "arm64" | "x86_64";
+            arch: "arm64" | "x86_64" | "unknown";
             /**
-             * @description native, rosetta (arm64 only) or unsupported, as the vendor states it
+             * @description native, rosetta (arm64 only), unsupported, or unknown. unknown carries a macOS version without a chip.
              * @example native
              * @enum {string}
              */
-            support: "native" | "rosetta" | "unsupported";
+            support: "native" | "rosetta" | "unsupported" | "unknown";
             /** @example 13 */
             minimum: string | null;
             /** @example null */
