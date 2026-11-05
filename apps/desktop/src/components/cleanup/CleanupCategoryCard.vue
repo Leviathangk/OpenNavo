@@ -6,7 +6,7 @@ import { OnAppIcon, OnCheckbox, OnIcon } from '@opennavo/ui';
 import type { CategoryReport, CleanupCategory, CleanupGroup, SkippedGroup } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
-import { groupKey, inUseBytes, useCleanupStore } from '@/stores/cleanup';
+import { groupKey, inUseBytes, outermostItems, useCleanupStore } from '@/stores/cleanup';
 import type { CleanupEntry } from '@/stores/cleanup';
 import { useLocalAppsStore } from '@/stores/localApps';
 import CleanupItemRow from './CleanupItemRow.vue';
@@ -98,7 +98,8 @@ const KEY_TITLES: readonly string[] = ['logs'];
 const keyTitle = (title: string) => (KEY_TITLES.includes(title) ? t(`cleanup.groups.${title}`) : title);
 const title = (group: CleanupGroup) =>
   FOLDER_GROUPS.includes(props.category.key) ? t(`cleanup.groups.${props.category.key}`) : keyTitle(group.title);
-const groupSize = (group: CleanupGroup) => format(group.items.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0));
+const groupSize = (group: CleanupGroup) =>
+  format(outermostItems(group.items).reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0));
 /** Leftovers show how long ago the app's files last changed and whether its background items still load. */
 function subtitle(group: CleanupGroup) {
   // Rust names device support groups by model and platform; the description comes from here.

@@ -326,28 +326,60 @@ impl Engine {
         self.requests.lock().map(|r| r.len()).unwrap_or(0)
     }
 }
+/// A middle-tier project lists a whole `target` and its leaves. Only one side can be selected, so totals must not
+/// add a child to its parent.
+fn disjoint<'a>(items: impl Iterator<Item = &'a CleanupItem>) -> Vec<&'a CleanupItem> {
+    let mut sorted: Vec<&CleanupItem> = items.collect();
+    sorted.sort_by_key(|item| item.path.len());
+    let mut kept: Vec<&CleanupItem> = vec![];
+    for item in sorted {
+        // Tool commands (`brew cleanup`, Docker prune) have no path; treating "" as a parent would swallow every
+        // other row.
+        if item.kind == CleanupItemKind::Command || item.path.is_empty() {
+            kept.push(item);
+            continue;
+        }
+        let path = std::path::Path::new(&item.path);
+        if kept.iter().any(|parent| {
+            parent.kind != CleanupItemKind::Command
+                && !parent.path.is_empty()
+                && path != std::path::Path::new(&parent.path)
+                && path.starts_with(&parent.path)
+        }) {
+            continue;
+        }
+        kept.push(item);
+    }
+    kept
+}
 fn summary(report: &CleanupReport) -> CleanupSummary {
     CleanupSummary {
         scanned_at: Some(report.scanned_at),
         volume: None,
         // Read-only rows (AI history) are shown in their category but are not space this app can reclaim.
-        reclaimable_bytes: report
-            .categories
-            .iter()
-            .filter(|c| c.risk != CleanupRisk::Personal)
-            .flat_map(|c| &c.groups)
-            .flat_map(|g| &g.items)
-            .filter(|i| i.restore != CleanupRestore::Never)
-            .filter_map(|i| i.size_bytes)
-            .sum(),
-        suggested_bytes: report
-            .categories
-            .iter()
-            .flat_map(|c| &c.groups)
-            .flat_map(|g| &g.items)
-            .filter(|i| i.selected)
-            .filter_map(|i| i.size_bytes)
-            .sum(),
+        reclaimable_bytes: disjoint(
+            report
+                .categories
+                .iter()
+                .filter(|c| c.risk != CleanupRisk::Personal)
+                .flat_map(|c| &c.groups)
+                .flat_map(|g| &g.items)
+                .filter(|i| i.restore != CleanupRestore::Never),
+        )
+        .iter()
+        .filter_map(|i| i.size_bytes)
+        .sum(),
+        suggested_bytes: disjoint(
+            report
+                .categories
+                .iter()
+                .flat_map(|c| &c.groups)
+                .flat_map(|g| &g.items)
+                .filter(|i| i.selected),
+        )
+        .iter()
+        .filter_map(|i| i.size_bytes)
+        .sum(),
         active_background_items: report
             .categories
             .iter()
@@ -390,10 +422,9 @@ pub(crate) fn reconcile(entry: &mut Entry) {
             group.items.retain(|i| entry.items.contains_key(&i.id));
         }
         category.groups.retain(|g| !g.items.is_empty());
-        category.bytes = category
-            .groups
+        // A middle-tier project lists both `target` and its leaves; only the outermost row may count.
+        category.bytes = disjoint(category.groups.iter().flat_map(|g| &g.items))
             .iter()
-            .flat_map(|g| &g.items)
             .filter_map(|i| i.size_bytes)
             .sum();
     }
@@ -589,6 +620,54 @@ mod expiry_tests {
                 .unwrap_err()
                 .code,
             "E_PLAN_CHANGED"
+        );
+    }
+}
+
+#[cfg(test)]
+mod disjoint_tests {
+    use super::*;
+    use std::collections::BTreeSet;
+    fn item(id: &str, path: &str, kind: CleanupItemKind, bytes: u64) -> CleanupItem {
+        CleanupItem {
+            id: id.into(),
+            path: path.into(),
+            kind,
+            command: None,
+            size_bytes: Some(bytes),
+            size_complete: true,
+            kept_open_files: 0,
+            modified_at: None,
+            reason: CleanupReason::CacheDir,
+            restore: CleanupRestore::Auto,
+            selected: true,
+            delete_mode: DeleteMode::Delete,
+            needs_admin: false,
+            note: None,
+        }
+    }
+    /// A command item has no path; "" must not be treated as a parent that covers every other row.
+    #[test]
+    fn command_rows_and_children_do_not_swallow_others() {
+        let items = [
+            item("brew", "", CleanupItemKind::Command, 10),
+            item("target", "/a/target", CleanupItemKind::Dir, 100),
+            item(
+                "leaf",
+                "/a/target/debug/incremental",
+                CleanupItemKind::Dir,
+                40,
+            ),
+            item("other", "/b/cache", CleanupItemKind::Dir, 20),
+        ];
+        let kept: BTreeSet<&str> = disjoint(items.iter())
+            .iter()
+            .map(|i| i.id.as_str())
+            .collect();
+        assert_eq!(
+            kept,
+            BTreeSet::from(["brew", "target", "other"]),
+            "keep the command row, drop only the child"
         );
     }
 }

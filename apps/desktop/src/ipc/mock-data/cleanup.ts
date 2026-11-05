@@ -735,7 +735,7 @@ const CATEGORIES: CategorySpec[] = [
             size: 612 * MB,
             daysAgo: 95,
             reason: 'build_artifact',
-            selected: true,
+            selected: false,
             deleteMode: 'delete'
           },
           {
@@ -743,7 +743,7 @@ const CATEGORIES: CategorySpec[] = [
             size: 148 * MB,
             daysAgo: 95,
             reason: 'build_artifact',
-            selected: true,
+            selected: false,
             deleteMode: 'delete'
           }
         ]

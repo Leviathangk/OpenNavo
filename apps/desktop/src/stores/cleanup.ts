@@ -78,6 +78,28 @@ function withoutItem(report: CleanupReport, itemId: string): CleanupReport {
   };
 }
 
+/** `path` is inside `parent` by path component, so `target2` is not inside `target`. */
+const inside = (path: string, parent: string) => path.startsWith(parent.endsWith('/') ? parent : `${parent}/`);
+/** A middle-tier project lists `target` and its leaves; only the outermost row may count its bytes. */
+const nestedIn = (item: CleanupItem, parent: CleanupItem) =>
+  item.kind !== 'command' &&
+  parent.kind !== 'command' &&
+  item.path.length > 0 &&
+  parent.path.length > 0 &&
+  inside(item.path, parent.path);
+/** Rows covered by another row in the same list: only the parent's bytes count. */
+export const outermostItems = (items: readonly CleanupItem[]) => {
+  const sorted = [...items].sort((a, b) => a.path.length - b.path.length);
+  const kept: CleanupItem[] = [];
+  for (const item of sorted) {
+    if (!kept.some(parent => nestedIn(item, parent))) kept.push(item);
+  }
+  return kept;
+};
+/** Select-all prefers the cheap leaves over the whole `target` they sit in. */
+const innermostItems = (items: readonly CleanupItem[]) =>
+  items.filter(item => !items.some(other => other.id !== item.id && nestedIn(other, item)));
+
 export const useCleanupStore = defineStore('cleanup', () => {
   const tasks = useTasksStore();
   const permissions = usePermissionsStore();
@@ -117,16 +139,18 @@ export const useCleanupStore = defineStore('cleanup', () => {
   const isChecked = (item: CleanupItem) => selectable(item) && Boolean(selected.value[item.id]);
   const chosen = computed(() => entries.value.filter(entry => isChecked(entry.item)));
   const totals = computed(() => {
-    const items = chosen.value.map(entry => entry.item);
+    const items = outermostItems(chosen.value.map(entry => entry.item));
     const bytes = sizeOf(items);
     const nowBytes = sizeOf(items.filter(freesNow));
     return {
       reclaimable: sizeOf(
-        entries.value
-          .filter(entry => entry.category.risk !== 'personal' && selectable(entry.item))
-          .map(entry => entry.item)
+        outermostItems(
+          entries.value
+            .filter(entry => entry.category.risk !== 'personal' && selectable(entry.item))
+            .map(entry => entry.item)
+        )
       ),
-      count: items.length,
+      count: chosen.value.length,
       bytes,
       nowBytes,
       trashBytes: bytes - nowBytes,
@@ -159,11 +183,26 @@ export const useCleanupStore = defineStore('cleanup', () => {
   /** Items only partly measured: shown with "at least", never removed. */
   const partial = computed(() => entries.value.filter(entry => !entry.item.sizeComplete));
   const setItem = (id: string, value: boolean) => {
-    selected.value = { ...selected.value, [id]: value };
+    const next = { ...selected.value, [id]: value };
+    if (value) {
+      // A `target` and its leaves free the same bytes: checking one clears the other.
+      const item = entries.value.find(entry => entry.item.id === id)?.item;
+      if (item) {
+        for (const other of entries.value) {
+          if (other.item.id !== id && (nestedIn(other.item, item) || nestedIn(item, other.item))) {
+            next[other.item.id] = false;
+          }
+        }
+      }
+    }
+    selected.value = next;
   };
   function setItems(items: readonly CleanupItem[], value: boolean) {
     const next = { ...selected.value };
-    for (const item of items) next[item.id] = value && selectable(item);
+    for (const item of items) next[item.id] = false;
+    if (value) {
+      for (const item of innermostItems(items.filter(selectable))) next[item.id] = true;
+    }
     selected.value = next;
   }
   const setCategory = (category: CategoryReport, value: boolean) => setItems(itemsOf(category), value);

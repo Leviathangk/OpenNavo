@@ -1182,7 +1182,13 @@ impl Collector<'_> {
             .collect();
         if !artifacts.is_empty() || !leaves.is_empty() {
             let home = self.engine.uninstall.roots.home.clone();
-            let recent = project_recent(dir, &children, &artifacts, self.deadline);
+            let age_days = project_age_days(dir, &children, &artifacts, self.deadline);
+            // < 7 days (or an activity walk that could not finish): the whole artifact stays read-only.
+            // 7–30 days: `target` is offered but unchecked. > 30 days: `target` starts checked.
+            let middle = age_days.is_some_and(|days| {
+                (PROJECT_FRESH_DAYS..=rules::PROJECT_RECENT_DAYS).contains(&days)
+            });
+            let stale = age_days.is_some_and(|days| days > rules::PROJECT_RECENT_DAYS);
             let title = dir
                 .file_name()
                 .unwrap_or_default()
@@ -1190,9 +1196,10 @@ impl Collector<'_> {
                 .into_owned();
             for (marker, name) in &leaves {
                 let covered = rules::leaf_covered(name, &artifacts);
-                // Covered by a whole folder that is about to be offered: listing both would count the same bytes
-                // twice and could free less than the sum shows.
-                if covered && !recent {
+                // Covered by a whole folder that is about to be offered checked: listing both would count the same
+                // bytes twice. In the middle tier both are offered, and `collapse_nested` removes the overlap from
+                // the category total.
+                if covered && stale {
                     continue;
                 }
                 let path = dir.join(name);
@@ -1218,33 +1225,46 @@ impl Collector<'_> {
                     Ok(relative) => format!("~/{}", relative.display()),
                     Err(_) => dir.display().to_string(),
                 });
-                if recent {
-                    self.add_skipped(
-                        path,
-                        owner,
-                        title.clone(),
-                        CleanupReason::BuildArtifact,
-                        SkippedGroupReason::Recent,
-                    )?;
-                } else if *name == "target" {
-                    // Only a whole `target` of a project the activity walk was sure is stale starts checked: the
-                    // rebuild cost is known and the folder is pure build output. `node_modules`, `Pods`, `.build`
-                    // and friends stay unchecked; they can hold the only copy of something.
-                    self.add_preselected(
-                        path,
-                        owner,
-                        title.clone(),
-                        CleanupReason::BuildArtifact,
-                        None,
-                        true,
-                    )?;
-                } else {
+                if middle && *name == "target" {
+                    // The middle tier: the whole folder is offered, but never checked. Its leaves stay listed, so
+                    // the cheap incremental option is not lost; the category total is de-duplicated below.
                     self.add(
                         path,
                         owner,
                         title.clone(),
                         CleanupReason::BuildArtifact,
                         None,
+                    )?;
+                } else if stale {
+                    if *name == "target" {
+                        // Only a whole `target` of a project the activity walk was sure is stale starts checked: the
+                        // rebuild cost is known and the folder is pure build output.
+                        self.add_preselected(
+                            path,
+                            owner,
+                            title.clone(),
+                            CleanupReason::BuildArtifact,
+                            None,
+                            true,
+                        )?;
+                    } else {
+                        // `node_modules`, `Pods`, `.build` and friends stay unchecked; they can hold the only copy
+                        // of something.
+                        self.add(
+                            path,
+                            owner,
+                            title.clone(),
+                            CleanupReason::BuildArtifact,
+                            None,
+                        )?;
+                    }
+                } else {
+                    self.add_skipped(
+                        path,
+                        owner,
+                        title.clone(),
+                        CleanupReason::BuildArtifact,
+                        SkippedGroupReason::Recent,
                     )?;
                 }
             }
@@ -1393,6 +1413,8 @@ fn leaf_processes(marker: &str) -> &'static [&'static str] {
 /// the answer is `None` and the project counts as active: a wrong "abandoned" verdict would default-check a full
 /// rebuild.
 const PROJECT_ACTIVITY_MAX_ENTRIES: usize = 20_000;
+/// Below this a project counts as active: its whole `target` stays read-only and only leaves are offered.
+const PROJECT_FRESH_DAYS: i64 = 7;
 
 /// Generated folders that never count as source activity. Other hidden folders (`.github`, `.config`, …) are walked:
 /// a fresh workflow or config edit is still a person working in the project.
@@ -1481,21 +1503,22 @@ fn project_activity(dir: &Path, artifacts: &BTreeSet<&str>, deadline: Instant) -
     Some(newest)
 }
 
-fn project_recent(
+/// Days since the newest real edit, or `None` when the cheap check and the bounded walk cannot agree on a number.
+/// Unknown is treated as "fresh": a project is never called stale on incomplete evidence.
+fn project_age_days(
     dir: &Path,
     children: &[PathBuf],
     artifacts: &BTreeSet<&str>,
     deadline: Instant,
-) -> bool {
-    let cutoff = uninstall::now() - rules::PROJECT_RECENT_DAYS * 86_400_000;
-    match project_touched(dir, children, artifacts) {
-        Some(newest) if newest > cutoff => true,
-        Some(_) => match project_activity(dir, artifacts, deadline) {
-            Some(newest) => newest > cutoff,
-            None => true,
-        },
-        None => true,
-    }
+) -> Option<i64> {
+    let now = uninstall::now();
+    let newest = match project_touched(dir, children, artifacts) {
+        // Younger than the first tier: no need to walk the tree.
+        Some(ms) if ms > now - PROJECT_FRESH_DAYS * 86_400_000 => ms,
+        Some(_) => project_activity(dir, artifacts, deadline)?,
+        None => return None,
+    };
+    Some((now.saturating_sub(newest)).max(0) / 86_400_000)
 }
 fn plist_dictionary(path: &Path) -> plist::Dictionary {
     plist::Value::from_file(path)
@@ -2498,6 +2521,59 @@ mod leaf_scan_tests {
         );
         assert!(projects.skipped.is_empty());
         assert_eq!(projects.bytes, whole.size_bytes.unwrap());
+    }
+
+    /// 7–30 days: the whole `target` is offered but unchecked, its leaf stays checked, and the category total counts
+    /// the parent's bytes once.
+    #[tokio::test]
+    async fn a_middle_aged_project_offers_the_whole_target_unchecked() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let project = home.join("Documents/code/middle");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"middle\"\n").unwrap();
+        write(&project.join("target/debug/incremental/x.o"), 9_000);
+        write(&project.join("target/debug/deps/libx.rlib"), 7_000);
+        age(&project, 10);
+
+        let report = engine(&home)
+            .scan(
+                "middle-test".into(),
+                Some(vec![CleanupCategory::ProjectArtifacts]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let projects = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::ProjectArtifacts)
+            .unwrap();
+        let items: Vec<&CleanupItem> = projects.groups.iter().flat_map(|g| &g.items).collect();
+        let whole = items
+            .iter()
+            .find(|i| i.path.ends_with("target"))
+            .expect("whole target offered");
+        assert_eq!(whole.reason, CleanupReason::BuildArtifact);
+        assert_eq!(whole.restore, CleanupRestore::Costly);
+        assert!(!whole.selected, "the middle tier is never preselected");
+        let whole_bytes = whole.size_bytes.unwrap();
+        assert!(whole_bytes > 0);
+        let leaf = items
+            .iter()
+            .find(|i| i.path.ends_with("target/debug/incremental"))
+            .expect("cheap leaf still offered");
+        assert_eq!(leaf.reason, CleanupReason::BuildLeaf);
+        assert!(leaf.selected);
+        assert_eq!(
+            projects.bytes, whole_bytes,
+            "the parent's bytes are counted once, not added to its leaf"
+        );
+        assert!(
+            projects.bytes < whole_bytes + leaf.size_bytes.unwrap(),
+            "the leaf must not be added on top of the parent"
+        );
     }
 
     /// Editing `src/main.rs` does not touch `src/`; the deep activity walk must still see the fresh file and keep the
