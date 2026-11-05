@@ -3374,4 +3374,41 @@ async fn p1_117_preflight_excludes_open_files_from_the_item_size() {
     );
 }
 
+#[tokio::test]
+async fn p3_old_history_transcripts_are_trashed_and_settings_are_never_listed() {
+    let f = Fixture::new();
+    let transcript = f.file(".codex/sessions/2026/01/rollout.jsonl");
+    let settings = f.file(".claude/projects/demo/settings.json");
+    let old = SystemTime::now() - Duration::from_secs(60 * 86_400);
+    for path in [&transcript, &settings] {
+        fs::File::open(path).unwrap().set_modified(old).unwrap();
+    }
+
+    let report = f.scan(&[CleanupCategory::AiHistory]).await;
+    let item = items(&report)
+        .into_iter()
+        .find(|item| item.path.ends_with("rollout.jsonl"))
+        .expect("the old transcript is listed")
+        .clone();
+    assert_eq!(item.reason, CleanupReason::AiHistoryFile);
+    assert_eq!(item.kind, CleanupItemKind::File);
+    assert_eq!(item.restore, CleanupRestore::Irreversible);
+    assert!(!item.selected);
+    assert!(
+        !items(&report)
+            .iter()
+            .any(|item| item.path.ends_with("settings.json")),
+        "settings are not transcript rows"
+    );
+
+    let done = f.execute(&report, vec![item.id.clone()]).await;
+    assert_eq!(done.state, TaskState::Succeeded, "{:?}", done.error);
+    assert!(
+        !transcript.exists(),
+        "the selected transcript moved to the Trash"
+    );
+    assert_eq!(f.files.trash_calls.load(Ordering::Acquire), 1);
+    assert!(settings.exists(), "settings stay in place");
+}
+
 // FIXED-ONLY END

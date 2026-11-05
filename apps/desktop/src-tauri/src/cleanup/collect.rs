@@ -33,6 +33,8 @@ impl Drop for RequestGuard {
         }
     }
 }
+type HistoryEntry = (PathBuf, i64, u64);
+type HistoryGroups = BTreeMap<(String, String), Vec<HistoryEntry>>;
 struct Collected {
     category: CategoryReport,
     incomplete: Vec<SkippedLocation>,
@@ -971,61 +973,212 @@ impl Collector<'_> {
         }
         Ok(())
     }
-    /// Read-only view of AI session history. These roots are exactly what the cache rules must never touch, so the
-    /// collector does not run the protection guards: it only measures and lists. `CleanupRestore::Never` keeps the
-    /// item unselectable in the UI, out of the MCP allowlist and refused by the executor.
+    /// AI session history. The whole stores remain visible as read-only rows; individual old transcript files are
+    /// listed separately and can be moved to the Trash one by one. Only regular `.jsonl` transcripts (and ordinary
+    /// files in the two snapshot stores) older than `AI_HISTORY_FILE_MIN_AGE_DAYS` are eligible.
     fn ai_history(&mut self) -> Result<(), AppError> {
         let home = self.engine.uninstall.roots.home.clone();
+        let cutoff = crate::uninstall::now() - rules::AI_HISTORY_FILE_MIN_AGE_DAYS * 86_400_000;
+        let mut total = 0usize;
         for rule in rules::AI_HISTORY {
-            let path = home.join(rule.path);
-            if fs::symlink_metadata(&path).is_err() {
+            let root = home.join(rule.path);
+            if fs::symlink_metadata(&root).is_err() {
                 continue;
             }
-            self.progress(Some(&path));
-            let (bytes, incomplete) =
-                tree::measure_filtered(&path, self.flag, self.deadline, |_| false)?;
-            if bytes == 0 && incomplete.is_none() {
-                continue;
+            self.progress(Some(&root));
+            let (store_bytes, store_incomplete) =
+                tree::measure_filtered(&root, self.flag, self.deadline, |_| false)?;
+            if let Some(reason) = store_incomplete {
+                self.result.incomplete(&root, reason);
             }
-            if let Some(reason) = incomplete {
-                self.result.incomplete(&path, reason);
+            let mut listed_bytes = 0u64;
+
+            let mut files = vec![];
+            self.history_files(&root, &mut files)?;
+            let mut groups: HistoryGroups = BTreeMap::new();
+            for file in files {
+                if !rules::ai_history_file_allowed(&home, &file) {
+                    continue;
+                }
+                let Ok(metadata) = fs::symlink_metadata(&file) else {
+                    continue;
+                };
+                let modified_at = metadata
+                    .modified()
+                    .ok()
+                    .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|time| time.as_millis().min(i64::MAX as u128) as i64);
+                let Some(modified_at) = modified_at else {
+                    continue;
+                };
+                if modified_at >= cutoff {
+                    continue;
+                }
+                let Some((tool, bucket)) = rules::ai_history_file_group(&home, &file) else {
+                    continue;
+                };
+                groups.entry((tool.into(), bucket)).or_default().push((
+                    file,
+                    modified_at,
+                    metadata.len(),
+                ));
             }
-            let modified_at = fs::symlink_metadata(&path)
-                .and_then(|m| m.modified())
-                .ok()
-                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                .map(|d| d.as_millis().min(i64::MAX as u128) as i64);
-            let mut owner = Owner::tool(rule.processes);
-            owner.tool_key = Some(rule.title.into());
-            owner.group_key = Some(format!("ai-history:{}", rule.title));
-            owner.group_subtitle = Some(rule.path.into());
-            let item = CleanupItem {
-                id: uuid::Uuid::now_v7().to_string(),
-                path: path.to_string_lossy().into_owned(),
-                kind: CleanupItemKind::Dir,
-                command: None,
-                size_bytes: Some(bytes),
-                size_complete: incomplete.is_none(),
-                kept_open_files: 0,
-                modified_at,
-                reason: CleanupReason::AiHistory,
-                restore: CleanupRestore::Never,
-                selected: false,
-                delete_mode: DeleteMode::Trash,
-                needs_admin: false,
-                note: None,
-            };
-            self.insert(
-                item,
-                owner,
-                rule.title.into(),
-                None,
-                ItemAction::Path {
-                    empty_only: false,
-                    bootout: None,
-                },
-            );
+            let mut omitted = 0u32;
+            for ((tool, bucket), mut entries) in groups {
+                entries.sort_by_key(|(_, modified_at, _)| *modified_at);
+                let room = rules::AI_HISTORY_FILE_TOTAL_LIMIT.saturating_sub(total);
+                let take = entries
+                    .len()
+                    .min(rules::AI_HISTORY_FILE_LIMIT_PER_GROUP)
+                    .min(room);
+                omitted += (entries.len() - take) as u32;
+                let group_title = format!("{tool} · {bucket}");
+                for (file, modified_at, bytes) in entries.into_iter().take(take) {
+                    let Ok(snapshot) = uninstall::rules::Snapshot::capture(&file) else {
+                        omitted += 1;
+                        continue;
+                    };
+                    let tree = tree::Tree {
+                        snapshots: BTreeMap::from([(file.clone(), snapshot)]),
+                        bytes,
+                        modified_at,
+                        incomplete: None,
+                        compact: false,
+                        kept_open_files: 0,
+                        entries: 1,
+                    };
+                    let mut owner = Owner::tool(rule.processes);
+                    owner.tool_key = Some(tool.clone());
+                    owner.group_key = Some(format!("ai-history-files:{}:{bucket}", rule.path));
+                    owner.group_subtitle = Some(rule.path.into());
+                    let item = CleanupItem {
+                        id: uuid::Uuid::now_v7().to_string(),
+                        path: file.to_string_lossy().into_owned(),
+                        kind: CleanupItemKind::File,
+                        command: None,
+                        size_bytes: Some(bytes),
+                        size_complete: true,
+                        kept_open_files: 0,
+                        modified_at: Some(modified_at),
+                        reason: CleanupReason::AiHistoryFile,
+                        restore: CleanupRestore::Irreversible,
+                        selected: false,
+                        delete_mode: DeleteMode::Trash,
+                        needs_admin: false,
+                        note: None,
+                    };
+                    self.insert(
+                        item,
+                        owner,
+                        group_title.clone(),
+                        Some(tree),
+                        ItemAction::Path {
+                            empty_only: false,
+                            bootout: None,
+                        },
+                    );
+                    total += 1;
+                    listed_bytes = listed_bytes.saturating_add(bytes);
+                    self.check()?;
+                }
+            }
+            // Keep the category total honest without counting the listed files twice: the read-only store row is
+            // only the part that is recent, unlisted or otherwise not offered.
+            let residual = store_bytes.saturating_sub(listed_bytes);
+            if residual > 0 {
+                self.history_store(rule, &root, residual, store_incomplete.is_none())?;
+            }
+            if omitted > 0 {
+                self.result.category.skipped.push(SkippedGroup {
+                    title: rule.title.into(),
+                    app_id: None,
+                    bytes: None,
+                    reason: SkippedGroupReason::TooMany,
+                    processes: vec![],
+                    count: omitted,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn history_store(
+        &mut self,
+        rule: &rules::HistoryRule,
+        root: &Path,
+        bytes: u64,
+        complete: bool,
+    ) -> Result<(), AppError> {
+        let modified_at = fs::symlink_metadata(root)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis().min(i64::MAX as u128) as i64);
+        let mut owner = Owner::tool(rule.processes);
+        owner.tool_key = Some(rule.title.into());
+        owner.group_key = Some(format!("ai-history-store:{}", rule.title));
+        owner.group_subtitle = Some(rule.path.into());
+        let item = CleanupItem {
+            id: uuid::Uuid::now_v7().to_string(),
+            path: root.to_string_lossy().into_owned(),
+            kind: CleanupItemKind::Dir,
+            command: None,
+            size_bytes: Some(bytes),
+            size_complete: complete,
+            kept_open_files: 0,
+            modified_at,
+            reason: CleanupReason::AiHistory,
+            restore: CleanupRestore::Never,
+            selected: false,
+            delete_mode: DeleteMode::Trash,
+            needs_admin: false,
+            note: None,
+        };
+        self.insert(
+            item,
+            owner,
+            rule.title.into(),
+            None,
+            ItemAction::Path {
+                empty_only: false,
+                bootout: None,
+            },
+        );
+        Ok(())
+    }
+
+    fn history_files(&mut self, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), AppError> {
+        self.check()?;
+        let entries = match fs::read_dir(dir) {
+            Ok(entries) => entries,
+            Err(_) => {
+                self.result
+                    .incomplete(dir, crate::model::SkippedLocationReason::Permission);
+                return Ok(());
+            }
+        };
+        for entry in entries {
             self.check()?;
+            let Ok(entry) = entry else {
+                continue;
+            };
+            let path = entry.path();
+            let Ok(metadata) = fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if metadata.file_type().is_symlink() {
+                continue;
+            }
+            if metadata.is_dir() {
+                let hidden = path
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case("memory"));
+                if !hidden {
+                    self.history_files(&path, out)?;
+                }
+            } else if metadata.is_file() {
+                out.push(path);
+            }
         }
         Ok(())
     }
@@ -2448,9 +2601,10 @@ mod leaf_scan_tests {
         fs::write(path, vec![0u8; bytes]).unwrap();
     }
 
-    /// History is listed with its measured size so the space is accounted for, but every layer refuses to remove it.
+    /// Whole history stores are listed with their measured size so the space is accounted for, but no layer removes
+    /// them; only the per-file rows covered below are selectable.
     #[tokio::test]
-    async fn ai_history_is_listed_read_only() {
+    async fn ai_history_stores_are_listed_read_only() {
         let temp = tempfile::tempdir().unwrap();
         let home = temp.path().canonicalize().unwrap().join("User");
         let sessions = home.join(".codex/sessions/2026/rollout.jsonl");
@@ -2487,6 +2641,53 @@ mod leaf_scan_tests {
                 .iter()
                 .all(|i| i.path.contains(".codex/sessions") || i.path.contains(".claude/projects"))
         );
+    }
+
+    #[tokio::test]
+    async fn old_history_transcripts_are_offered_and_recent_ones_are_not() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let old = home.join(".codex/sessions/2026/01/old.jsonl");
+        write(&old, 4_000);
+        age(&old, 60);
+        let recent = home.join(".codex/sessions/2026/01/recent.jsonl");
+        write(&recent, 1_000);
+        let memory = home.join(".claude/projects/demo/memory/old.jsonl");
+        write(&memory, 2_000);
+        age(&memory, 60);
+
+        let report = engine(&home)
+            .scan(
+                "history-files".into(),
+                Some(vec![CleanupCategory::AiHistory]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let history = report
+            .categories
+            .iter()
+            .find(|c| c.key == CleanupCategory::AiHistory)
+            .unwrap();
+        let files: Vec<&CleanupItem> = history
+            .groups
+            .iter()
+            .flat_map(|g| &g.items)
+            .filter(|item| item.reason == CleanupReason::AiHistoryFile)
+            .collect();
+        assert_eq!(files.len(), 1, "{files:#?}");
+        assert_eq!(files[0].kind, CleanupItemKind::File);
+        assert!(files[0].path.ends_with("old.jsonl"), "{files:#?}");
+        assert_eq!(files[0].restore, CleanupRestore::Irreversible);
+        assert!(!files[0].selected);
+        assert_eq!(files[0].size_bytes, Some(4_000));
+        assert!(
+            history.bytes >= 7_000,
+            "the store rows keep recent and protected files in the total: {}",
+            history.bytes
+        );
+        assert!(history.skipped.is_empty());
     }
 
     /// A project nobody touched for a month offers its whole output checked, and the leaf is not listed next to it.

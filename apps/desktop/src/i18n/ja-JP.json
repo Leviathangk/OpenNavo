@@ -1812,7 +1812,7 @@
       "browser_caches": "キャッシュだけを削除し、履歴、Cookie、パスワード、拡張機能には触れません",
       "dev_caches": "次のビルドやインストールのときに再生成・再ダウンロードされます",
       "ai_caches": "AIコーディングツールのキャッシュ、ログ、破棄されたダウンロード。セッション、メモリ、認証情報は残ります",
-      "ai_history": "読み取り専用：セッション記録とプロジェクト履歴。削除は各ツールで行います",
+      "ai_history": "全体は読み取り専用。30 日より前の記録は 1 件ずつゴミ箱へ移動できます",
       "homebrew": "brew cleanupと同じ：旧バージョンとダウンロードキャッシュ",
       "temp": "3日間変更がなく、開かれていない一時ファイル",
       "leftovers": "Appはこのマシンにもうありませんが、これらのファイルが残っています",
@@ -1874,7 +1874,7 @@
       "build_artifact_cost": "全体の再ビルド",
       "build_artifact_costHint": "次回のビルドですべてを再コンパイルするため、時間がかかる場合があります。",
       "ai_history": "読み取り専用",
-      "ai_historyHint": "容量の把握のための表示です。OpenNavoはセッションや記憶、プロジェクト履歴を削除しません。各ツールで操作してください。",
+      "ai_historyHint": "全体は読み取り専用です。古い記録は別に表示され、1 件ずつゴミ箱へ移動できます。",
       "orphan_service": "バックグラウンド項目",
       "installer_installed": "インストール済み",
       "device_support_latest": "最新バージョン",
@@ -1892,7 +1892,9 @@
       "duplicate_checkout": "重複クローン",
       "duplicate_checkoutHint": "未プッシュのコミットがなくクリーンなクローンです。削除するとゴミ箱に移動します。",
       "orphan_worktree": "孤立した worktree",
-      "orphanWorktreeHint": "壊れた worktree: Git メタデータがないため、使用容量だけを表示します。"
+      "orphanWorktreeHint": "壊れた worktree: Git メタデータがないため、使用容量だけを表示します。",
+      "ai_history_file": "古いセッションファイル",
+      "ai_history_fileHint": "この記録をゴミ箱に移動します。ゴミ箱を空にすると復元できません。30 日より前のファイルだけを表示します。"
     },
     "item": {
       "command": "コマンド",

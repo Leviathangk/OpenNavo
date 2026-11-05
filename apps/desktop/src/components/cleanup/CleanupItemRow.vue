@@ -95,6 +95,13 @@ const chip = computed(() => {
         text: t('cleanup.reasons.ai_history'),
         hint: t('cleanup.reasons.ai_historyHint')
       };
+    // A single old transcript: deleting it is a normal Trash move, but it is still user data.
+    case 'ai_history_file':
+      return {
+        tone: 'warning' as const,
+        text: t('cleanup.reasons.ai_history_file'),
+        hint: t('cleanup.reasons.ai_history_fileHint')
+      };
     // Whole project output: correct to offer, but the next build starts from scratch.
     case 'build_artifact':
       return {

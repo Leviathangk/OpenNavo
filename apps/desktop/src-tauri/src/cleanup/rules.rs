@@ -2,6 +2,7 @@
 use super::types::*;
 use std::{
     collections::BTreeSet,
+    fs,
     path::{Component, Path},
 };
 
@@ -127,6 +128,7 @@ pub fn default_selected(reason: CleanupReason) -> bool {
             | CleanupReason::XcodeArchive
             | CleanupReason::LargeFile
             | CleanupReason::AiHistory
+            | CleanupReason::AiHistoryFile
             | CleanupReason::Worktree
             | CleanupReason::DuplicateCheckout
             | CleanupReason::OrphanWorktree
@@ -146,6 +148,7 @@ pub fn names_apply(reason: CleanupReason) -> bool {
             | CleanupReason::BuildArtifact
             | CleanupReason::BuildLeaf
             | CleanupReason::AiCache
+            | CleanupReason::AiHistoryFile
             | CleanupReason::DeviceBackup
             | CleanupReason::XcodeArchive
             | CleanupReason::Installer
@@ -632,6 +635,95 @@ pub fn ai_path_protected(home: &Path, path: &Path, whole: bool) -> bool {
     })
 }
 
+/// Only transcripts older than this are offered; an active session can still be writing its newest file.
+pub const AI_HISTORY_FILE_MIN_AGE_DAYS: i64 = 30;
+/// At most this many files per project/month group are listed, oldest first.
+pub const AI_HISTORY_FILE_LIMIT_PER_GROUP: usize = 20;
+/// A cap across the category keeps a large history from producing thousands of rows.
+pub const AI_HISTORY_FILE_TOTAL_LIMIT: usize = 200;
+
+/// Whether `path` is a regular transcript file inside one of the history stores. The check is deliberately narrow:
+/// directories, symlinks, memories, settings and credentials are never eligible, and only `.jsonl` transcripts are
+/// accepted from the session stores.
+pub fn ai_history_file_allowed(home: &Path, path: &Path) -> bool {
+    let Ok(metadata) = fs::symlink_metadata(path) else {
+        return false;
+    };
+    if !metadata.file_type().is_file() {
+        return false;
+    }
+    let Some(rule) = AI_HISTORY
+        .iter()
+        .find(|rule| path.starts_with(home.join(rule.path)))
+    else {
+        return false;
+    };
+    let Ok(relative) = path.strip_prefix(home.join(rule.path)) else {
+        return false;
+    };
+    let parts: Vec<String> = relative
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy().to_lowercase())
+        .collect();
+    if parts.iter().any(|part| {
+        matches!(
+            part.as_str(),
+            "memory"
+                | "plans"
+                | "todos"
+                | "statsig"
+                | "settings.json"
+                | ".credentials.json"
+                | "auth.json"
+                | "config.toml"
+                | "generated_images"
+        )
+    }) {
+        return false;
+    }
+    let name = parts.last().map(String::as_str).unwrap_or_default();
+    if name.starts_with("thread_history") || name.starts_with("logs_") {
+        return false;
+    }
+    if rule.path.ends_with("file-history") || rule.path == ".gemini/tmp" {
+        return matches!(
+            Path::new(name)
+                .extension()
+                .and_then(|extension| extension.to_str()),
+            Some("json" | "jsonl" | "txt" | "md" | "diff" | "patch")
+        );
+    }
+    name.ends_with(".jsonl")
+}
+
+/// The display bucket for a transcript: the Claude project folder, the Codex year/month, or a fixed label.
+pub fn ai_history_file_group(home: &Path, path: &Path) -> Option<(&'static str, String)> {
+    let rule = AI_HISTORY
+        .iter()
+        .find(|rule| path.starts_with(home.join(rule.path)))?;
+    let relative = path.strip_prefix(home.join(rule.path)).ok()?;
+    let mut parts = relative
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy().into_owned());
+    let bucket = match rule.path {
+        ".claude/projects" => parts.next()?,
+        ".codex/sessions" | ".codex/archived_sessions" => {
+            let first = parts.next()?;
+            let second = parts.next();
+            match second {
+                Some(month) if first.chars().all(|c| c.is_ascii_digit()) => {
+                    format!("{first}-{month}")
+                }
+                _ => first,
+            }
+        }
+        ".claude/file-history" => "file history".into(),
+        ".gemini/tmp" => "tmp".into(),
+        _ => rule.title.into(),
+    };
+    Some((rule.title, bucket))
+}
+
 /// Caches where a file held open by a running process can simply stay while the rest is removed (a `go run` binary
 /// in go-build, the module cache lock). Browser builds for tests are excluded: removing part of a running browser
 /// would crash it, so any open file holds the whole folder.
@@ -717,6 +809,7 @@ pub fn root_names_apply(reason: CleanupReason) -> bool {
             | CleanupReason::BuildArtifact
             | CleanupReason::BuildLeaf
             | CleanupReason::AiCache
+            | CleanupReason::AiHistoryFile
             | CleanupReason::XcodeArchive
             | CleanupReason::Trash
             | CleanupReason::DeviceBackup
@@ -1022,6 +1115,11 @@ mod tests {
             CleanupRestore::for_reason(CleanupReason::AiHistory),
             CleanupRestore::Never
         );
+        assert_eq!(
+            CleanupRestore::for_reason(CleanupReason::AiHistoryFile),
+            CleanupRestore::Irreversible
+        );
+        assert!(!default_selected(CleanupReason::AiHistoryFile));
         assert!(!AI_HISTORY.is_empty());
         for rule in AI_HISTORY {
             assert!(
@@ -1030,6 +1128,41 @@ mod tests {
                 rule.path
             );
         }
+    }
+
+    #[test]
+    fn ai_history_files_are_narrow_and_protected_children_stay_out() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let write = |relative: &str| {
+            let path = home.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, b"x").unwrap();
+            path
+        };
+        let transcript = write(".codex/sessions/2026/01/rollout.jsonl");
+        let memory = write(".claude/projects/demo/memory/notes.jsonl");
+        let settings = write(".claude/projects/demo/settings.json");
+        let auth = write(".codex/auth.json");
+        let file_history = write(".claude/file-history/demo/snapshot.json");
+        let binary_snapshot = write(".claude/file-history/demo/blob.bin");
+        assert!(ai_history_file_allowed(&home, &transcript));
+        assert!(ai_history_file_allowed(&home, &file_history));
+        assert!(!ai_history_file_allowed(&home, &binary_snapshot));
+        assert!(!ai_history_file_allowed(&home, &memory));
+        assert!(!ai_history_file_allowed(&home, &settings));
+        assert!(!ai_history_file_allowed(&home, &auth));
+        assert!(!ai_history_file_allowed(
+            &home,
+            &home.join(".codex/sessions")
+        ));
+        let link = home.join(".codex/sessions/link.jsonl");
+        std::os::unix::fs::symlink(&transcript, &link).unwrap();
+        assert!(!ai_history_file_allowed(&home, &link));
+        assert_eq!(
+            ai_history_file_group(&home, &transcript).map(|(_, bucket)| bucket),
+            Some("2026-01".into())
+        );
     }
 
     /// Cargo's fingerprint files decide which units are fresh. Removing them recompiles every dependency, so they are

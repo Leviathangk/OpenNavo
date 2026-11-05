@@ -1866,7 +1866,7 @@ const messages: MessageSchema = {
       browser_caches: 'Caches only; history, cookies, passwords, and extensions stay',
       dev_caches: 'Generated or downloaded again on the next build or install',
       ai_caches: 'Caches, logs and abandoned downloads of AI coding tools; sessions, memories and credentials stay',
-      ai_history: 'Read-only: session transcripts and project history, deleted only in the tool that owns them',
+      ai_history: 'Whole stores stay read-only; old transcript files can be moved to the Trash one by one',
       homebrew: 'Same as brew cleanup: old versions and download caches',
       temp: 'Temporary files untouched for 3 days and not open',
       leftovers: 'The app is gone from this Mac, but these files remain',
@@ -1934,7 +1934,10 @@ const messages: MessageSchema = {
       build_artifact_costHint: 'The next build recompiles everything; this can take a while.',
       ai_history: 'Read-only',
       ai_historyHint:
-        'Shown so the space is accounted for; OpenNavo never deletes sessions, memories or project history. Use the tool itself.',
+        'The whole store stays read-only; older transcript files are listed separately and can be moved to the Trash.',
+      ai_history_file: 'Old session file',
+      ai_history_fileHint:
+        'Moves this transcript to the Trash; emptying the Trash makes it unrecoverable. Only files older than 30 days are listed.',
       worktree: 'Linked worktree',
       worktreeHint:
         'Removing this worktree deletes its working folder; the branch and main repository stay. Git refuses when it has uncommitted changes.',
