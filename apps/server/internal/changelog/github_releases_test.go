@@ -396,3 +396,38 @@ func TestGitHubReleasesBackfillsOnceThenSkipsTheVisibilityRequestForAnUnchangedL
 	require.NotNil(t, result.Archived)
 	require.False(t, *result.Archived)
 }
+
+func TestNormalizeGitHubRepo(t *testing.T) {
+	for raw, want := range map[string]string{
+		"overtake/TelegramSwift":                             "overtake/TelegramSwift",
+		"  overtake/TelegramSwift  ":                         "overtake/TelegramSwift",
+		"https://github.com/overtake/TelegramSwift":          "overtake/TelegramSwift",
+		"https://github.com/overtake/TelegramSwift/":         "overtake/TelegramSwift",
+		"https://github.com/overtake/TelegramSwift.git":      "overtake/TelegramSwift",
+		"http://www.github.com/overtake/TelegramSwift":       "overtake/TelegramSwift",
+		"github.com/overtake/TelegramSwift":                  "overtake/TelegramSwift",
+		"git@github.com:overtake/TelegramSwift.git":          "overtake/TelegramSwift",
+		"https://github.com/overtake/TelegramSwift/releases": "",
+		"https://gitlab.com/overtake/TelegramSwift":          "",
+		"../bad":      "",
+		"a/b?token=x": "",
+		"":            "",
+	} {
+		require.Equal(t, want, NormalizeGitHubRepo(raw), raw)
+	}
+}
+
+func TestGitHubReleasesAcceptsRepoURLAndEmptyReleaseList(t *testing.T) {
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		require.Equal(t, "/repos/overtake/TelegramSwift/releases", r.URL.Path)
+		return reply(http.StatusOK, `[]`), nil
+	})
+	result, err := f.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "https://github.com/overtake/TelegramSwift"},
+	})
+	// A repository with no published releases is a successful empty fetch, not a job failure.
+	require.NoError(t, err)
+	require.Empty(t, result.Releases)
+	require.NotNil(t, result.Archived)
+}

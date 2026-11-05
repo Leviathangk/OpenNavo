@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -96,11 +95,36 @@ func (q *quotaGuard) paused(now time.Time) (time.Time, bool) {
 
 var githubRepoName = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$`)
 
+// NormalizeGitHubRepo accepts the shapes a source config can arrive in and returns owner/name, or ""
+// when the value is not a GitHub repository. Manual sources are entered as URLs or clone strings often
+// enough that treating them as invalid made a correct repository look like an unknown failure (#228).
+func NormalizeGitHubRepo(raw string) string {
+	value := strings.TrimSpace(raw)
+	value = strings.TrimSuffix(value, "/")
+	value = strings.TrimSuffix(value, ".git")
+	value = strings.TrimPrefix(value, "git@github.com:")
+	for _, prefix := range []string{
+		"https://github.com/", "http://github.com/",
+		"https://www.github.com/", "http://www.github.com/",
+		"ssh://git@github.com/", "git://github.com/", "github.com/",
+	} {
+		if len(value) > len(prefix) && strings.EqualFold(value[:len(prefix)], prefix) {
+			value = value[len(prefix):]
+			break
+		}
+	}
+	value = strings.TrimSuffix(value, "/")
+	if !githubRepoName.MatchString(value) || strings.Contains(value, "..") {
+		return ""
+	}
+	return value
+}
+
 // GitHubReleasesSource builds the source for a package whose public GitHub repository was verified by
 // the source facts job (#64: homepage, cask URL or recorded repository, checked public via the API).
 func GitHubReleasesSource(p Candidate) (Source, bool) {
-	repo := strings.TrimSpace(p.GitHubRepo)
-	if !githubRepoName.MatchString(repo) || strings.Contains(repo, "..") {
+	repo := NormalizeGitHubRepo(p.GitHubRepo)
+	if repo == "" {
 		return Source{}, false
 	}
 	return Source{Type: "github_releases", Priority: 20, Config: map[string]any{"repo": repo}}, true
@@ -115,9 +139,9 @@ func (f *Fetcher) now() time.Time {
 
 func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, error) {
 	out := FetchResult{Versions: []BrewVersion{}, Releases: []Release{}}
-	repo := configText(s.Config, "repo")
-	if !githubRepoName.MatchString(repo) || strings.Contains(repo, "..") {
-		return out, errors.New("invalid GitHub repository")
+	repo := NormalizeGitHubRepo(configText(s.Config, "repo"))
+	if repo == "" {
+		return out, &Error{Kind: "invalid_source_config"}
 	}
 	if reset, paused := f.quota.paused(f.now()); paused {
 		return out, &RateLimitError{Reset: reset}
