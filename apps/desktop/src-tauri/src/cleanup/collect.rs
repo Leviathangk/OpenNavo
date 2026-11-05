@@ -17,7 +17,7 @@ use std::{
 };
 
 #[path = "checkouts.rs"]
-mod checkouts;
+pub(crate) mod checkouts;
 
 struct RequestGuard {
     engine: Arc<Engine>,
@@ -2755,7 +2755,7 @@ mod leaf_scan_tests {
         );
     }
     #[tokio::test]
-    async fn linked_worktrees_are_listed_read_only() {
+    async fn linked_worktrees_are_listed_as_opt_in_removals() {
         let temp = tempfile::tempdir().unwrap();
         let home = temp.path().canonicalize().unwrap().join("User");
         let repo = home.join("code/app");
@@ -2820,8 +2820,9 @@ mod leaf_scan_tests {
             .find(|item| item.path.ends_with("app-wt"))
             .unwrap();
         assert_eq!(item.reason, CleanupReason::Worktree);
-        assert_eq!(item.restore, CleanupRestore::Never);
+        assert_eq!(item.restore, CleanupRestore::Irreversible);
         assert!(!item.selected);
+        assert_eq!(item.delete_mode, DeleteMode::Delete);
         assert!(item.size_bytes.is_some_and(|bytes| bytes > 0));
     }
     #[tokio::test]
@@ -2971,7 +2972,7 @@ mod leaf_scan_tests {
                 .groups
                 .iter()
                 .flat_map(|g| &g.items)
-                .all(|item| { item.restore == CleanupRestore::Never && !item.selected })
+                .all(|item| { item.restore == CleanupRestore::Auto && !item.selected })
         );
 
         git(
@@ -3186,6 +3187,6 @@ mod leaf_scan_tests {
             .find(|item| item.path.ends_with("app-wt"))
             .unwrap();
         assert_eq!(item.reason, CleanupReason::Worktree);
-        assert_eq!(item.restore, CleanupRestore::Never);
+        assert_eq!(item.restore, CleanupRestore::Irreversible);
     }
 }

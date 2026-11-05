@@ -1888,9 +1888,9 @@
       "docker_containers": "Gestoppte Container",
       "docker_containersHint": "Änderungen innerhalb dieser Container werden ebenfalls gelöscht; Volumes bleiben erhalten.",
       "worktree": "Verknüpfter Worktree",
-      "worktreeHint": "Vorerst schreibgeschützt: OpenNavo entfernt noch keine Worktrees; hier wird nur der Speicherbedarf angezeigt.",
+      "worktreeHint": "Das Entfernen dieses Worktrees löscht seinen Arbeitsordner; Branch und Hauptrepository bleiben. Git verweigert es bei nicht committeten Änderungen.",
       "duplicate_checkout": "Doppelter Klon",
-      "duplicate_checkoutHint": "Vorerst schreibgeschützt: ein sauberer Klon ohne nicht gepushte Commits; das Entfernen folgt in einem späteren Update."
+      "duplicate_checkoutHint": "Ein sauberer Clone ohne nicht gepushte Commits. Beim Entfernen wandert der Ordner in den Papierkorb."
     },
     "item": {
       "command": "Befehl",

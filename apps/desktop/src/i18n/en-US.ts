@@ -1936,10 +1936,10 @@ const messages: MessageSchema = {
       ai_historyHint:
         'Shown so the space is accounted for; OpenNavo never deletes sessions, memories or project history. Use the tool itself.',
       worktree: 'Linked worktree',
-      worktreeHint: 'Read-only for now: OpenNavo does not remove worktrees yet; this only shows their footprint.',
+      worktreeHint:
+        'Removing this worktree deletes its working folder; the branch and main repository stay. Git refuses when it has uncommitted changes.',
       duplicate_checkout: 'Duplicate clone',
-      duplicate_checkoutHint:
-        'Read-only for now: a clean clone with nothing unpushed; removal will be offered in a later update.',
+      duplicate_checkoutHint: 'A clean clone with nothing unpushed. Removing it moves the folder to the Trash.',
       orphan_service: 'Background item',
       installer_installed: 'Installed',
       device_support_latest: 'Latest',

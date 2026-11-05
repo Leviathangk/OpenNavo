@@ -215,29 +215,31 @@ describe('Skips and permissions', () => {
     page.unmount();
   });
 
-  it('Git checkouts are listed read-only until removal is offered', async () => {
+  it('Git checkouts are opt-in and carry their own restore cost', async () => {
     const { pinia, router } = await context();
     const store = await scanned();
     const checkouts = store.categories.find(category => category.key === 'project_checkouts')!;
     expect(checkouts.risk).toBe('review');
     const items = checkouts.groups.flatMap(group => group.items);
     expect(items.map(item => item.reason).sort()).toEqual(['duplicate_checkout', 'worktree']);
+    expect(Object.fromEntries(items.map(item => [item.reason, item.restore]))).toEqual({
+      worktree: 'irreversible',
+      duplicate_checkout: 'auto'
+    });
     for (const item of items) {
-      expect(item.restore).toBe('never');
       expect(item.selected).toBe(false);
       expect(store.isChecked(item)).toBe(false);
     }
     const before = store.totals.bytes;
     store.setCategory(checkouts, true);
-    expect(store.totals.bytes).toBe(before);
-    expect(store.chosen.some(chosen => chosen.category.key === 'project_checkouts')).toBe(false);
+    expect(store.totals.bytes).toBeGreaterThan(before);
 
     const worktree = items.find(item => item.reason === 'worktree')!;
     const row = mount(CleanupItemRow, {
       props: { item: worktree, checked: false },
       global: { plugins: [i18n] }
     });
-    expect(row.get('input').attributes('disabled')).toBeDefined();
+    expect(row.get('input').attributes('disabled')).toBeUndefined();
     expect(row.text()).toContain('关联 worktree');
     row.unmount();
 

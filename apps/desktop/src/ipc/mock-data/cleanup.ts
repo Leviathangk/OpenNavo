@@ -942,9 +942,11 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'build_leaf':
       return 'auto';
     case 'ai_history':
-    case 'worktree':
-    case 'duplicate_checkout':
       return 'never';
+    case 'worktree':
+      return 'irreversible';
+    case 'duplicate_checkout':
+      return 'auto';
     case 'tool_download_cache':
     case 'device_support':
     case 'device_support_latest':

@@ -1888,9 +1888,9 @@
       "docker_containers": "Conteneurs arrêtés",
       "docker_containersHint": "Les modifications écrites dans ces conteneurs seront également supprimées ; les volumes sont conservés.",
       "worktree": "Worktree lié",
-      "worktreeHint": "Lecture seule pour l’instant : OpenNavo ne supprime pas encore les worktrees ; seul l’espace occupé est affiché.",
+      "worktreeHint": "Supprimer ce worktree efface son dossier de travail ; la branche et le dépôt principal restent. Git refuse s’il y a des modifications non validées.",
       "duplicate_checkout": "Clone en double",
-      "duplicate_checkoutHint": "Lecture seule pour l’instant : un clone propre sans commit non poussé ; la suppression sera proposée dans une prochaine mise à jour."
+      "duplicate_checkoutHint": "Un clone propre, sans rien à pousser. Le supprimer déplace le dossier vers la Corbeille."
     },
     "item": {
       "command": "Commande",

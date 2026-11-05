@@ -12,7 +12,7 @@ const DUPLICATE_IDLE_DAYS: i64 = 30;
 const CHECKOUT_GROUP_LIMIT: usize = 20;
 
 #[derive(Debug, PartialEq, Eq)]
-enum GitError {
+pub(crate) enum GitError {
     Failed,
     Timeout,
 }
@@ -272,6 +272,18 @@ impl Collector<'_> {
             .ok()
             .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|time| time.as_millis().min(i64::MAX as u128) as i64);
+        // The executor checks this root snapshot before an irreversible worktree removal.
+        let snapshot = uninstall::rules::Snapshot::capture(path)
+            .ok()
+            .map(|snapshot| tree::Tree {
+                snapshots: std::collections::BTreeMap::from([(path.to_path_buf(), snapshot)]),
+                bytes,
+                modified_at: modified_at.unwrap_or(0),
+                incomplete,
+                compact: false,
+                kept_open_files: 0,
+                entries: 1,
+            });
         self.ensure_checkout_group(&owner, &group_title);
         let item = CleanupItem {
             id: uuid::Uuid::now_v7().to_string(),
@@ -283,9 +295,19 @@ impl Collector<'_> {
             kept_open_files: 0,
             modified_at,
             reason,
-            restore: CleanupRestore::Never,
+            restore: match reason {
+                // Removing a worktree deletes its working directory; the branch and main repository stay.
+                CleanupReason::Worktree => CleanupRestore::Irreversible,
+                // A duplicate clone goes to the Trash and can be put back.
+                CleanupReason::DuplicateCheckout => CleanupRestore::Auto,
+                _ => CleanupRestore::Never,
+            },
             selected: false,
-            delete_mode: DeleteMode::Trash,
+            delete_mode: if reason == CleanupReason::Worktree {
+                DeleteMode::Delete
+            } else {
+                DeleteMode::Trash
+            },
             needs_admin: false,
             note: None,
         };
@@ -293,7 +315,7 @@ impl Collector<'_> {
             item,
             owner,
             title,
-            None,
+            snapshot,
             ItemAction::Path {
                 empty_only: false,
                 bootout: None,
@@ -354,7 +376,7 @@ fn duplicate_owner(repo: &Repo) -> Owner {
 }
 /// `git worktree list` can contain entries copied from another clone; only trust a `.git` file that points back at
 /// this repository's common dir.
-fn belongs_to(path: &Path, common: &Path) -> bool {
+pub(crate) fn belongs_to(path: &Path, common: &Path) -> bool {
     let Ok(text) = fs::read_to_string(path.join(".git")) else {
         return false;
     };
@@ -380,7 +402,7 @@ fn remote_name(remote: &str) -> String {
         .to_string()
 }
 /// A clean clone with nothing unpushed, no stash, and an idle index can be re-fetched if it is removed.
-fn duplicate_candidate(root: &Path, deadline: Instant) -> Result<bool, GitError> {
+pub(crate) fn duplicate_candidate(root: &Path, deadline: Instant) -> Result<bool, GitError> {
     // Check the index first: `git status` can refresh its mtime, which would hide an otherwise idle clone.
     if !index_older_than(root, DUPLICATE_IDLE_DAYS) {
         return Ok(false);
@@ -422,7 +444,7 @@ fn index_older_than(root: &Path, days: i64) -> bool {
         .and_then(|time| time.elapsed().ok())
         .is_some_and(|elapsed| elapsed.as_secs() >= days as u64 * 86_400)
 }
-fn common_dir(root: &Path, deadline: Instant) -> Result<PathBuf, GitError> {
+pub(crate) fn common_dir(root: &Path, deadline: Instant) -> Result<PathBuf, GitError> {
     let raw = git_until(
         root,
         &["rev-parse", "--path-format=absolute", "--git-common-dir"],
@@ -439,6 +461,14 @@ fn common_dir(root: &Path, deadline: Instant) -> Result<PathBuf, GitError> {
         root.join(path)
     };
     Ok(path.canonicalize().unwrap_or(path))
+}
+/// The main checkout (or the bare repository) registered for a common dir.
+pub(crate) fn main_checkout(common: &Path, deadline: Instant) -> Option<PathBuf> {
+    let output = git_until(common, &["worktree", "list", "--porcelain"], deadline).ok()?;
+    parse_worktrees(&output)
+        .into_iter()
+        .next()
+        .map(|worktree| worktree.path)
 }
 fn normalize_remote(url: &str) -> String {
     let url = redact_remote(url.trim()).trim_end_matches('/').to_string();
@@ -522,7 +552,7 @@ fn git_until(dir: &Path, args: &[&str], deadline: Instant) -> Result<String, Git
     }
     git(dir, args, timeout.min(GIT_TIMEOUT))
 }
-fn git(dir: &Path, args: &[&str], timeout: Duration) -> Result<String, GitError> {
+pub(crate) fn git(dir: &Path, args: &[&str], timeout: Duration) -> Result<String, GitError> {
     let mut child = Command::new("git")
         .current_dir(dir)
         .arg("--no-optional-locks")
