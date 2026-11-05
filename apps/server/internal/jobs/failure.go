@@ -3,11 +3,13 @@ package jobs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"syscall"
 
 	"github.com/opennavo/opennavo/server/internal/changelog"
+	"gorm.io/gorm"
 )
 
 // Extract fixed categories only from error types; third-party responses, URLs, paths and credentials must never enter job ledgers or logs.
@@ -26,6 +28,13 @@ func failureCategory(err error) string {
 	case errors.Is(err, context.Canceled):
 		return "canceled"
 	}
+	// Prefer the fixed changelog category over a generic missing-record cause.
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if category, _ := changelog.Failure(err); category != "unknown" {
+			return category
+		}
+		return "record_not_found"
+	}
 	var networkError net.Error
 	if errors.As(err, &networkError) && networkError.Timeout() {
 		return "network_timeout"
@@ -36,4 +45,73 @@ func failureCategory(err error) string {
 	}
 	category, _ := changelog.Failure(err)
 	return category
+}
+
+// failureDetail describes the underlying cause for the job-run ledger. Handler errors can embed
+// upstream response bodies, URLs with credentials, file paths, and user data, so this never copies an
+// arbitrary message: it names known sentinel errors and changelog failure types, and otherwise reports
+// only the Go type of the deepest cause. The result is bounded and safe to persist and display.
+func failureDetail(err error) string {
+	const limit = 120
+	detail := describeFailure(err)
+	if len(detail) > limit {
+		return detail[:limit-3] + "…"
+	}
+	return detail
+}
+
+func describeFailure(err error) string {
+	for range 16 {
+		if err == nil {
+			return ""
+		}
+		switch {
+		case errors.Is(err, context.Canceled):
+			return "context canceled"
+		case errors.Is(err, context.DeadlineExceeded):
+			return "context deadline exceeded"
+		case errors.Is(err, errHandlerPanic):
+			return errHandlerPanic.Error()
+		}
+		var status *changelog.StatusError
+		if errors.As(err, &status) {
+			return fmt.Sprintf("upstream HTTP %d", status.Status)
+		}
+		var rate *changelog.RateLimitError
+		if errors.As(err, &rate) {
+			return "upstream rate limited"
+		}
+		var failure *changelog.Error
+		if errors.As(err, &failure) {
+			if category, _ := changelog.Failure(err); category != "unknown" {
+				return "changelog " + category
+			}
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "record not found"
+		}
+		next := primaryCause(err)
+		if next == nil {
+			return fmt.Sprintf("%T", err)
+		}
+		err = next
+	}
+	return "cause chain too deep"
+}
+
+// primaryCause follows the first branch of a joined or wrapped error, which is the branch handlers put
+// the real failure in before adding control-flow sentinels such as asynq.SkipRetry.
+func primaryCause(err error) error {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, cause := range joined.Unwrap() {
+			if cause != nil {
+				return cause
+			}
+		}
+		return nil
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return wrapped.Unwrap()
+	}
+	return nil
 }
