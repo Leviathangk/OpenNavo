@@ -1824,7 +1824,7 @@
       "large_files": "Arquivos com mais de 1 GB não abertos há 90 dias",
       "docker": "Removidos pelos comandos de limpeza do próprio Docker e nunca pré-selecionados; os volumes só são mostrados",
       "project_checkouts": "Por enquanto somente leitura: worktrees vinculados e clones limpos que compartilham uma origem, para mostrar o espaço antes de oferecer a remoção",
-      "local_models": "Pesos de modelos locais de Ollama, LM Studio, Hugging Face, Jan e GPT4All; excluir exige baixar novamente"
+      "local_models": "Pesos de modelos locais de Ollama, LM Studio, Hugging Face, Jan e GPT4All; apenas os arquivos de modelo são listados, então conversas, conjuntos de dados e índices de documentos locais permanecem"
     },
     "scan": {
       "starting": "Preparando a verificação",
@@ -1899,7 +1899,7 @@
       "ai_history_file": "Arquivo de sessão antigo",
       "ai_history_fileHint": "Move esta transcrição para o Lixo; esvaziar o Lixo torna a recuperação impossível. Só são listados arquivos com mais de 30 dias.",
       "local_model": "Modelo local",
-      "local_modelHint": "Move este diretório de modelos para o Lixo; a ferramenta baixará os pesos novamente quando precisar."
+      "local_modelHint": "Move os dados de modelo selecionados para o Lixo; a ferramenta baixará os pesos novamente quando precisar. Conversas e índices de documentos locais permanecem."
     },
     "item": {
       "command": "Comando",

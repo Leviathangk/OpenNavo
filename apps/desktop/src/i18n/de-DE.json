@@ -1824,7 +1824,7 @@
       "large_files": "Dateien über 1 GB, seit 90 Tagen nicht geöffnet",
       "docker": "Mit Docker-Bereinigungsbefehlen gelöscht, nie vorausgewählt; Volumes werden nur angezeigt, nicht bereinigt",
       "project_checkouts": "Vorerst schreibgeschützt: verknüpfte Worktrees und saubere Klone mit gemeinsamer Origin, damit der Speicherbedarf vor dem späteren Entfernen sichtbar ist",
-      "local_models": "Lokale Modellgewichte von Ollama, LM Studio, Hugging Face, Jan und GPT4All; nach dem Löschen müssen sie erneut geladen werden"
+      "local_models": "Lokale Modellgewichte von Ollama, LM Studio, Hugging Face, Jan und GPT4All; es werden nur Modelldateien aufgelistet, Chats, Datensätze und Indizes lokaler Dokumente bleiben erhalten"
     },
     "scan": {
       "starting": "Scan wird vorbereitet",
@@ -1899,7 +1899,7 @@
       "ai_history_file": "Alte Sitzungsdatei",
       "ai_history_fileHint": "Verschiebt diese Aufzeichnung in den Papierkorb; nach dem Leeren ist sie nicht wiederherstellbar. Es werden nur Dateien älter als 30 Tage angezeigt.",
       "local_model": "Lokales Modell",
-      "local_modelHint": "Verschiebt diesen Modellspeicher in den Papierkorb; das Tool lädt die Gewichte bei Bedarf erneut herunter."
+      "local_modelHint": "Verschiebt die ausgewählten Modelldaten in den Papierkorb; das Tool lädt die Gewichte bei Bedarf erneut herunter. Chats und Indizes lokaler Dokumente bleiben erhalten."
     },
     "item": {
       "command": "Befehl",

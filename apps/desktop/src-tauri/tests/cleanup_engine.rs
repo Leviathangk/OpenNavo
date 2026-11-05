@@ -3483,3 +3483,55 @@ async fn p3_history_summary_counts_all_allowed_transcripts_by_age() {
     assert!(history.oldest.unwrap() <= now - 400 * 86_400_000);
     assert!(history.newest.unwrap() >= now - 11 * 86_400_000);
 }
+
+#[tokio::test]
+async fn p3_local_models_only_list_model_data_inside_shared_folders() {
+    let f = Fixture::new();
+    let gpt_model = f.file("Library/Application Support/nomic.ai/GPT4All/model.gguf");
+    let gpt_chat = f.file("Library/Application Support/nomic.ai/GPT4All/chat.chat");
+    let gpt_docs = f.file("Library/Application Support/nomic.ai/GPT4All/localdocs_v1.db");
+    f.file("Library/Application Support/Jan/data/llamacpp/models/llama.gguf");
+    f.file("Library/Application Support/Jan/data/mlx/models/mlx.safetensors");
+    f.file("Library/Application Support/Jan/data/threads/thread.json");
+    f.file(".cache/huggingface/hub/models--org--model/blobs/weights");
+    f.file(".cache/huggingface/hub/datasets--org--data/blobs/data");
+    f.file(".cache/huggingface/hub/spaces--org--space/blobs/app");
+
+    let report = f.scan(&[CleanupCategory::LocalModels]).await;
+    let listed: Vec<_> = items(&report)
+        .into_iter()
+        .map(|item| item.path.clone())
+        .collect();
+    assert!(
+        listed
+            .iter()
+            .any(|path| path.ends_with("GPT4All/model.gguf")),
+        "{listed:?}"
+    );
+    assert!(listed.iter().any(|path| path.ends_with("llamacpp/models")));
+    assert!(listed.iter().any(|path| path.ends_with("mlx/models")));
+    assert!(
+        listed
+            .iter()
+            .any(|path| path.contains("hub/models--org--model"))
+    );
+    for path in &listed {
+        assert!(!path.ends_with("chat.chat"), "{path}");
+        assert!(!path.ends_with("localdocs_v1.db"), "{path}");
+        assert!(!path.contains("/threads/"), "{path}");
+        assert!(!path.contains("datasets--"), "{path}");
+        assert!(!path.contains("spaces--"), "{path}");
+    }
+
+    let item = items(&report)
+        .into_iter()
+        .find(|item| item.path.ends_with("GPT4All/model.gguf"))
+        .unwrap()
+        .clone();
+    assert_eq!(item.kind, CleanupItemKind::File);
+    let done = f.execute(&report, vec![item.id.clone()]).await;
+    assert_eq!(done.state, TaskState::Succeeded, "{:?}", done.error);
+    assert!(!gpt_model.exists(), "the model file moved to the Trash");
+    assert!(gpt_chat.exists(), "GPT4All chats stay");
+    assert!(gpt_docs.exists(), "GPT4All LocalDocs stay");
+}

@@ -1824,7 +1824,7 @@
       "large_files": "1 GBを超え、90日間開いていないファイル",
       "docker": "Docker自身のクリーンアップコマンドで削除します。選択はしません。ボリュームは表示のみで削除しません",
       "project_checkouts": "今は読み取り専用：リンクされた worktree と、同じリモートを共有するクリーンなクローンを表示します。削除を提供する前に容量を確認できます",
-      "local_models": "Ollama、LM Studio、Hugging Face、Jan、GPT4All のローカルモデル。削除すると再ダウンロードが必要です"
+      "local_models": "Ollama、LM Studio、Hugging Face、Jan、GPT4All のローカルモデル。モデルファイルだけを表示し、チャット・データセット・ローカル文書の索引は残ります"
     },
     "scan": {
       "starting": "スキャンの準備中",
@@ -1899,7 +1899,7 @@
       "ai_history_file": "古いセッションファイル",
       "ai_history_fileHint": "この記録をゴミ箱に移動します。ゴミ箱を空にすると復元できません。30 日より前のファイルだけを表示します。",
       "local_model": "ローカルモデル",
-      "local_modelHint": "このモデル保存先をゴミ箱へ移動します。必要になるとツールが重みを再ダウンロードします。"
+      "local_modelHint": "選択したモデルデータをゴミ箱へ移動します。必要になるとツールが重みを再ダウンロードします。チャットとローカル文書の索引は残ります。"
     },
     "item": {
       "command": "コマンド",

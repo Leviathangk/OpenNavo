@@ -564,12 +564,26 @@ const CATEGORIES: CategorySpec[] = [
         title: 'Hugging Face',
         items: [
           {
-            path: '~/.cache/huggingface/hub',
+            path: '~/.cache/huggingface/hub/models--meta-llama--Llama-3.2-3B',
             size: 3.1 * GB,
             daysAgo: 0,
             reason: 'local_model',
             deleteMode: 'trash',
-            note: "Hugging Face's default cache."
+            note: 'Hugging Face hub cache; only models--* directories are listed, so datasets and spaces stay.'
+          }
+        ]
+      },
+      {
+        id: 'local-models-gpt4all',
+        title: 'GPT4All',
+        items: [
+          {
+            path: '~/Library/Application Support/nomic.ai/GPT4All/model.gguf',
+            size: 2.4 * GB,
+            daysAgo: 0,
+            reason: 'local_model',
+            deleteMode: 'trash',
+            note: 'GPT4All .gguf model files only; chats, LocalDocs and settings stay.'
           }
         ]
       }

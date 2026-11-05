@@ -33,6 +33,14 @@ impl Drop for RequestGuard {
         }
     }
 }
+fn local_model_owner(rule: &rules::LocalModelRule) -> Owner {
+    let mut owner = Owner::tool(rule.processes);
+    owner.tool_key = Some(rule.title.into());
+    owner.group_key = Some(format!("local-models:{}", rule.path));
+    owner.group_subtitle = Some(format!("~/{}", rule.path));
+    owner.evidence = Some(rule.evidence.into());
+    owner
+}
 type HistoryEntry = (PathBuf, i64, u64, &'static rules::HistoryRule);
 type HistoryGroups = BTreeMap<(String, String), Vec<HistoryEntry>>;
 struct Collected {
@@ -982,7 +990,8 @@ impl Collector<'_> {
         Ok(())
     }
     /// Locally downloaded model weights. Every store is a review item: removing it forces the tool to download the
-    /// weights again, so nothing is preselected and every removal still goes through the Trash.
+    /// weights again, so nothing is preselected and every removal still goes through the Trash. Rules that share a
+    /// folder with chats, datasets or indexes narrow the candidate to their model entries.
     fn local_models(&mut self) -> Result<(), AppError> {
         let home = self.engine.uninstall.roots.home.clone();
         for rule in rules::LOCAL_MODELS {
@@ -990,13 +999,106 @@ impl Collector<'_> {
             if !fs::symlink_metadata(&root).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
                 continue;
             }
-            let mut owner = Owner::tool(rule.processes);
-            owner.tool_key = Some(rule.title.into());
-            owner.group_key = Some(format!("local-models:{}", rule.path));
-            owner.evidence = Some(rule.evidence.into());
+            self.progress(Some(&root));
+            match rule.scope {
+                rules::LocalModelScope::Directory => self.add(
+                    root,
+                    local_model_owner(rule),
+                    rule.title.into(),
+                    CleanupReason::LocalModel,
+                    None,
+                )?,
+                rules::LocalModelScope::Children(prefix) => {
+                    let entries = match fs::read_dir(&root) {
+                        Ok(entries) => entries,
+                        Err(_) => {
+                            self.result
+                                .incomplete(&root, SkippedLocationReason::Permission);
+                            continue;
+                        }
+                    };
+                    let mut children: Vec<_> = entries
+                        .flatten()
+                        .map(|entry| entry.path())
+                        .filter(|path| {
+                            path.file_name()
+                                .and_then(|name| name.to_str())
+                                .is_some_and(|name| name.starts_with(prefix))
+                        })
+                        .collect();
+                    children.sort();
+                    let owner = local_model_owner(rule);
+                    for child in children {
+                        if !fs::symlink_metadata(&child)
+                            .is_ok_and(|m| m.is_dir() && !m.is_symlink())
+                        {
+                            continue;
+                        }
+                        self.add(
+                            child,
+                            owner.clone(),
+                            rule.title.into(),
+                            CleanupReason::LocalModel,
+                            None,
+                        )?;
+                    }
+                }
+                rules::LocalModelScope::Files(extensions) => {
+                    self.local_model_files(&root, rule, extensions)?;
+                }
+            }
+        }
+        Ok(())
+    }
+    /// Add only regular model files from a directory that also holds user data. Symlinks are never followed: the
+    /// candidate is each file, so a GPT4All chat or LocalDocs database in the same folder is untouched.
+    fn local_model_files(
+        &mut self,
+        root: &Path,
+        rule: &rules::LocalModelRule,
+        extensions: &[&str],
+    ) -> Result<(), AppError> {
+        let mut pending = vec![root.to_path_buf()];
+        let mut files = vec![];
+        while let Some(directory) = pending.pop() {
+            let entries = match fs::read_dir(&directory) {
+                Ok(entries) => entries,
+                Err(_) => {
+                    self.result
+                        .incomplete(&directory, SkippedLocationReason::Permission);
+                    continue;
+                }
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let Ok(metadata) = fs::symlink_metadata(&path) else {
+                    continue;
+                };
+                if metadata.file_type().is_symlink() {
+                    continue;
+                }
+                if metadata.is_dir() {
+                    pending.push(path);
+                } else if metadata.is_file()
+                    && path
+                        .extension()
+                        .and_then(|extension| extension.to_str())
+                        .is_some_and(|extension| {
+                            extensions
+                                .iter()
+                                .any(|allowed| extension.eq_ignore_ascii_case(allowed))
+                        })
+                {
+                    files.push(path);
+                }
+            }
+        }
+        files.sort();
+        let owner = local_model_owner(rule);
+        for file in files {
             self.add(
-                root,
-                owner,
+                file,
+                owner.clone(),
                 rule.title.into(),
                 CleanupReason::LocalModel,
                 None,

@@ -1869,7 +1869,7 @@ const messages: MessageSchema = {
       ai_caches: 'Caches, logs and abandoned downloads of AI coding tools; sessions, memories and credentials stay',
       ai_history: 'Whole stores stay read-only; old transcript files can be moved to the Trash one by one',
       local_models:
-        'Downloaded model weights for Ollama, LM Studio, Hugging Face, Jan and GPT4All; removing one means downloading it again',
+        'Downloaded model weights for Ollama, LM Studio, Hugging Face, Jan and GPT4All; only model files are listed, so chats, datasets and local document indexes stay',
       homebrew: 'Same as brew cleanup: old versions and download caches',
       temp: 'Temporary files untouched for 3 days and not open',
       leftovers: 'The app is gone from this Mac, but these files remain',
@@ -1944,7 +1944,8 @@ const messages: MessageSchema = {
       ai_history_fileHint:
         'Moves this transcript to the Trash; emptying the Trash makes it unrecoverable. Only files older than 30 days are listed.',
       local_model: 'Local model',
-      local_modelHint: 'Moves this model store to the Trash; the tool downloads the weights again when needed.',
+      local_modelHint:
+        'Moves the selected model data to the Trash; the tool downloads the weights again when needed. Chats and local document indexes stay.',
       worktree: 'Linked worktree',
       worktreeHint:
         'Removing this worktree deletes its working folder; the branch and main repository stay. Git refuses when it has uncommitted changes.',
