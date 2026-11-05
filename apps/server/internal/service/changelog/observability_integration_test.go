@@ -66,10 +66,10 @@ func TestFetchStatsIdentifySourceAndBackoffReenqueues(t *testing.T) {
 	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT fail_count,next_fetch_at FROM changelog_sources WHERE id=?", sid).Scan(&state).Error)
 	require.Equal(t, 2, state.FailCount)
 	require.WithinDuration(t, now.Add(4*time.Hour), state.NextFetchAt, time.Second)
-	due, err := st.ChangelogDue(ctx, now)
+	due, err := st.ChangelogDue(ctx, now, 1000)
 	require.NoError(t, err)
 	require.NotContains(t, due, sid, "backing off")
-	due, err = st.ChangelogDue(ctx, state.NextFetchAt)
+	due, err = st.ChangelogDue(ctx, state.NextFetchAt, 1000)
 	require.NoError(t, err)
 	require.Contains(t, due, sid, "due again once next_fetch_at passes")
 	queue := &queuedSources{}
@@ -219,7 +219,7 @@ func TestScheduleBacklogDoesNotDuplicateSources(t *testing.T) {
 	next, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"backlog","version":"1.1.0"}`))
 	require.NoError(t, err)
 	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: next, Previous: rows["backlog"]}}))
-	due, err := st.ChangelogDue(ctx, time.Now().Add(time.Hour))
+	due, err := st.ChangelogDue(ctx, time.Now().Add(time.Hour), 1000)
 	require.NoError(t, err)
 	require.NotContains(t, due, sid, "leased by the catalog outbox enqueue")
 

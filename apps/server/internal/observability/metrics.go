@@ -22,7 +22,7 @@ func NewBusinessMetrics(st *store.Store) *BusinessMetrics {
 	m := &BusinessMetrics{Store: st, desc: map[string]*prometheus.Desc{}}
 	for name, labels := range map[string][]string{
 		"content_translation_requests_total": {"entity", "status"}, "content_translation_tokens_total": {"entity", "status"},
-		"sync_runs_total": {"job", "status"}, "catalog_packages": {"kind"}, "changelog_fetch_total": {"source", "status"}, "github_ratelimit_remaining": {},
+		"sync_runs_total": {"job", "status"}, "catalog_packages": {"kind"}, "changelog_fetch_total": {"source", "status"}, "changelog_due_sources": {}, "github_ratelimit_remaining": {},
 		"catalog_last_success_timestamp_seconds": {}, "opennavo_metrics_collection_success": {},
 		"snapshot_revocation_generation_gap": {}, "snapshot_purge_debt_age_seconds": {}, "snapshot_latest_unavailable_seconds": {},
 	} {
@@ -90,6 +90,7 @@ func (m *BusinessMetrics) Collect(ch chan<- prometheus.Metric) {
 	for kind, value := range packages {
 		emit("catalog_packages", prometheus.GaugeValue, float64(value), kind)
 	}
+	emit("changelog_due_sources", prometheus.GaugeValue, float64(m.state.ChangelogDue))
 	emit("github_ratelimit_remaining", prometheus.GaugeValue, float64(m.state.GitHubRemaining))
 	emit("catalog_last_success_timestamp_seconds", prometheus.GaugeValue, lastSuccess)
 	emit("snapshot_revocation_generation_gap", prometheus.GaugeValue, float64(m.state.SnapshotRevocationGap))

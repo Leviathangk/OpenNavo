@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"math"
 	"time"
 
@@ -17,6 +18,14 @@ import (
 // itself then sets the real next_fetch_at (interval on success, backoff on failure). Only a task that is
 // lost without running waits out the lease.
 const fetchLease = 2 * time.Hour
+
+// scheduleClaimLimit bounds how many sources one schedule tick claims. The schedule runs every ten minutes
+// and the changelog queue drains with four workers, so a scheduler that returns after an outage must not
+// enqueue the whole backlog at once: thousands of queued jobs and GitHub calls would hit rate limits and
+// hide the real progress. A bounded batch drains the same backlog over several ticks, highest popularity
+// first, while the remaining count below shows it shrinking. Steady state stays far under the bound: even
+// 20k sources on the 48h cadence fall due at roughly 70 per tick.
+const scheduleClaimLimit = 200
 
 // identityLookupTimeout bounds the stats-only source lookup that runs after a failed fetch, when the run
 // context may already be over. It only fills in observability fields, so it must never hold the job open.
@@ -218,7 +227,7 @@ func (s *Service) Schedule(ctx context.Context) (map[string]any, error) {
 	}
 	// Claim due sources by moving next_fetch_at past the lease before enqueueing, so a backlog longer
 	// than the task's uniqueness lock cannot enqueue the same source on the next tick.
-	ids, err := s.Store.ClaimChangelogDue(ctx, s.now(), s.now().Add(fetchLease))
+	ids, err := s.Store.ClaimChangelogDue(ctx, s.now(), s.now().Add(fetchLease), scheduleClaimLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -258,5 +267,18 @@ func (s *Service) Schedule(ctx context.Context) (map[string]any, error) {
 		// queue error keeps its own category (`net.OpError` → network_error) inside the chain.
 		return nil, errors.Join(releaseErr, queueErr)
 	}
-	return map[string]any{"sources": len(ids), "enqueued": queued}, nil
+	// The claim moved this batch's next_fetch_at past the lease, so whatever is still due is exactly the
+	// backlog the next tick faces. Record it: a bounded recovery has to show that it drains, or an operator
+	// cannot tell a shrinking backlog from a schedule that stopped.
+	stats := map[string]any{"sources": len(ids), "enqueued": queued}
+	remaining, countErr := s.Store.ChangelogDueCount(ctx, s.now())
+	if countErr != nil {
+		// The batch is already enqueued. Failing the tick would make asynq retry it and claim another batch
+		// for work that did happen, so a count failure only costs the backlog number.
+		slog.Default().ErrorContext(ctx, "count changelog backlog", "error", countErr)
+	} else {
+		stats["remaining"] = remaining
+		s.Store.ObserveChangelogBacklog(ctx, remaining)
+	}
+	return stats, nil
 }

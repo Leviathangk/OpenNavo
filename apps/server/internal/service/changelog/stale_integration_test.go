@@ -69,7 +69,7 @@ func TestCurrentVersionDateBackfillStaleTransitionsAndFailures(t *testing.T) {
 	require.Zero(t, invalidDates)
 	// A stale app remains eligible for background commit fetching.
 	require.NoError(t, st.DB.Exec(`UPDATE changelog_sources SET next_fetch_at=? WHERE id=?`, now.Add(-time.Minute), sid).Error)
-	due, err := st.ChangelogDue(ctx, now)
+	due, err := st.ChangelogDue(ctx, now, 1000)
 	require.NoError(t, err)
 	require.Contains(t, due, sid)
 	wantFullHistory, status = false, http.StatusTooManyRequests
@@ -128,7 +128,7 @@ func TestCurrentVersionDateBackfillStaleTransitionsAndFailures(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, true, stats["skipped"])
 	require.Equal(t, before, requests)
-	due, err = st.ChangelogDue(ctx, now.Add(72*time.Hour))
+	due, err = st.ChangelogDue(ctx, now.Add(72*time.Hour), 1000)
 	require.NoError(t, err)
 	require.NotContains(t, due, sid)
 }

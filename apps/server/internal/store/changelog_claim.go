@@ -27,10 +27,11 @@ func (s *Store) ChangelogSourceIdentity(ctx context.Context, id int64) (Changelo
 	return row, nil
 }
 
-// ClaimChangelogDue returns the due sources (same selection as ChangelogDue) and moves their next_fetch_at to
-// leaseUntil in the same statement, so concurrent or later schedule ticks do not select them again.
-func (s *Store) ClaimChangelogDue(ctx context.Context, now, leaseUntil time.Time) ([]int64, error) {
-	ids, err := s.ChangelogDue(ctx, now)
+// ClaimChangelogDue returns up to limit due sources (same selection as ChangelogDue) and moves their
+// next_fetch_at to leaseUntil in the same statement, so concurrent or later schedule ticks do not select
+// them again. limit is the batch bound: a recovery backlog is drained over several ticks, not one burst.
+func (s *Store) ClaimChangelogDue(ctx context.Context, now, leaseUntil time.Time, limit int) ([]int64, error) {
+	ids, err := s.ChangelogDue(ctx, now, limit)
 	if err != nil || len(ids) == 0 {
 		return ids, err
 	}

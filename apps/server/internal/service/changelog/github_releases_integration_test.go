@@ -59,7 +59,7 @@ func TestGitHubReleasesResolveFetchAndConditionalRefresh(t *testing.T) {
 	var sid int64
 	require.NoError(t, st.DB.Raw("SELECT id FROM changelog_sources WHERE package_id=? AND type='github_releases' AND config->>'repo'='rxhanson/Rectangle' AND priority=20", pid).Scan(&sid).Error)
 	require.NotZero(t, sid)
-	due, err := st.ChangelogDue(ctx, time.Now().Add(time.Minute))
+	due, err := st.ChangelogDue(ctx, time.Now().Add(time.Minute), 1000)
 	require.NoError(t, err)
 	require.Contains(t, due, sid, "github_releases is no longer filtered out")
 
@@ -139,7 +139,7 @@ func TestGitHubReleasesResolveFetchAndConditionalRefresh(t *testing.T) {
 	// The repository turns private: the facts job clears the subject. The auto source is no longer due
 	// and cannot be fetched, so no request (with the token) is made; a manual source stays readable.
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE package_source_facts SET subject='',status='none' WHERE package_id=? AND source='github'", pid).Error)
-	due, err = st.ChangelogDue(ctx, time.Now().Add(30*24*time.Hour))
+	due, err = st.ChangelogDue(ctx, time.Now().Add(30*24*time.Hour), 1000)
 	require.NoError(t, err)
 	require.NotContains(t, due, sid)
 	before := requests
@@ -147,7 +147,7 @@ func TestGitHubReleasesResolveFetchAndConditionalRefresh(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, before, requests, "no request for a repository no longer verified public")
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE changelog_sources SET resolved_by='manual' WHERE id=?", sid).Error)
-	due, err = st.ChangelogDue(ctx, time.Now().Add(30*24*time.Hour))
+	due, err = st.ChangelogDue(ctx, time.Now().Add(30*24*time.Hour), 1000)
 	require.NoError(t, err)
 	require.Contains(t, due, sid, "manual sources are not gated")
 }
