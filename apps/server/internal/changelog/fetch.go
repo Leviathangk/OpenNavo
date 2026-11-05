@@ -162,7 +162,7 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 		s.LastModified = ""
 	}
 	entries, result, err := f.commitPages(ctx, repo, params, s)
-	if err != nil && s.Since == nil && serverError(err) {
+	if err != nil && s.Since == nil && (serverError(err) || errors.Is(err, context.DeadlineExceeded)) {
 		entries, result, err = f.windowedCommits(ctx, repo, params, s)
 	}
 	if err != nil {
