@@ -312,7 +312,11 @@ describe('quick-info field parity with main', () => {
             appleSilicon: 'unknown',
             downloadUrl: null,
             sha256: null,
-            evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z', sourceUrl: 'https://example.com/requirements' }
+            evidence: {
+              status: 'verified',
+              checkedAt: '2026-10-01T00:00:00Z',
+              sourceUrl: 'https://example.com/requirements'
+            }
           }
         ]
       }

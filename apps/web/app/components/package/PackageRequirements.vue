@@ -155,7 +155,10 @@ const conflicts = computed(() => props.pkg.facts.macosSupplement?.conflicts ?? [
       >
         <div class="flex items-start justify-between gap-10px">
           <div>
-            <h3 class="m-0 text-12.5px font-600 text-ink-primary" :aria-label="`${t('package.quick.chips')}: ${row.chips}`">
+            <h3
+              class="m-0 text-12.5px font-600 text-ink-primary"
+              :aria-label="`${t('package.quick.chips')}: ${row.chips}`"
+            >
               {{ row.chips }}
             </h3>
             <p class="m-0 mt-2px text-11.5px text-ink-tertiary">
