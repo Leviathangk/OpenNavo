@@ -157,3 +157,114 @@ func TestFetchErrorsAndMarkdownSanitizing(t *testing.T) {
 	require.LessOrEqual(t, len(large), 200*1024)
 	require.True(t, strings.HasSuffix(large, "(Source text truncated because it is too long)"))
 }
+
+func TestFetchBoundsSlowSource(t *testing.T) {
+	f := NewFetcher("test")
+	f.timeout = 80 * time.Millisecond
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		<-r.Context().Done()
+		return nil, r.Context().Err()
+	})
+	started := time.Now()
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.Error(t, err)
+	require.Less(t, time.Since(started), 2*time.Second)
+	category, _ := Failure(err)
+	require.Equal(t, "deadline_exceeded", category)
+}
+
+func TestFailedHomebrewHistoryReadsAreBounded(t *testing.T) {
+	f := NewFetcher("test")
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(*http.Request) (*http.Response, error) {
+		calls++
+		return reply(http.StatusInternalServerError, ""), nil
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.Error(t, err)
+	// Three page sizes and six shrinking windows: a failing source retries a bounded number of times
+	// instead of spending the whole worker budget on request after request (#227).
+	require.LessOrEqual(t, calls, 9)
+	category, _ := Failure(err)
+	require.Equal(t, "upstream_server_error", category)
+}
+
+func TestFetchClassifiesInvalidAndUnsupportedSources(t *testing.T) {
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = roundTrip(func(*http.Request) (*http.Response, error) {
+		t.Fatal("an unfetchable source must fail before any request")
+		return nil, nil
+	})
+	for _, tc := range []struct {
+		source   FetchSource
+		category string
+	}{
+		{FetchSource{Type: "webpage", Config: map[string]any{"url": "https://example.com/feed"}}, "unsupported_source_type"},
+		{FetchSource{Type: "sparkle", Config: map[string]any{"url": "https://example.com/feed"}}, "unsupported_source_type"},
+		{FetchSource{Type: "github_releases", Config: map[string]any{"repo": "https://gitlab.com/overtake/TelegramSwift"}}, "invalid_source_config"},
+		{FetchSource{Type: "github_releases", Config: map[string]any{}}, "invalid_source_config"},
+	} {
+		_, err := f.Fetch(context.Background(), Candidate{}, tc.source)
+		require.Error(t, err)
+		category, _ := Failure(err)
+		require.Equal(t, tc.category, category)
+	}
+}
+
+func TestHistoryDeadlineFallsBackWithinSourceBudget(t *testing.T) {
+	f := NewFetcher("test")
+	f.historyTimeout = 20 * time.Millisecond
+	f.timeout = 5 * time.Second
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Query().Get("since") == "" {
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}
+		require.NoError(t, r.Context().Err())
+		return reply(http.StatusOK, `[]`), nil
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, calls, "the timed-out history gets one successful window fallback")
+}
+
+func TestHistoryDoesNotFallbackAfterSourceDeadline(t *testing.T) {
+	f := NewFetcher("test")
+	f.timeout = 20 * time.Millisecond
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		<-r.Context().Done()
+		return nil, r.Context().Err()
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, calls)
+}
+
+func TestIncrementalHistoryDeadlineDoesNotBroadenWindow(t *testing.T) {
+	f := NewFetcher("test")
+	f.historyTimeout = 20 * time.Millisecond
+	since := time.Now().Add(-time.Hour)
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		<-r.Context().Done()
+		return nil, r.Context().Err()
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Since: &since, Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, calls)
+}

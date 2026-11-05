@@ -19,10 +19,16 @@ func (e *Error) Error() string {
 		return "GitHub credential unavailable"
 	case "connection_failed":
 		return "upstream connection failed"
+	case "invalid_source_config":
+		return "invalid changelog source configuration"
+	case "unsupported_source_type":
+		return "changelog source type is not supported"
+	case "source_not_fetchable":
+		return "changelog source is not fetchable"
 	case "response_too_large", "response_read_failed":
 		return "invalid upstream response"
 	default:
-		return "invalid Homebrew commits JSON"
+		return "invalid upstream changelog response"
 	}
 }
 func (e *Error) Unwrap() error { return e.Cause }
@@ -62,7 +68,8 @@ func Failure(err error) (string, int) {
 	var failure *Error
 	if errors.As(err, &failure) {
 		switch failure.Kind {
-		case "credential_unavailable", "response_too_large", "invalid_json", "response_read_failed", "connection_failed":
+		case "credential_unavailable", "response_too_large", "invalid_json", "response_read_failed", "connection_failed",
+			"invalid_source_config", "unsupported_source_type", "source_not_fetchable":
 			return failure.Kind, 0
 		}
 	}

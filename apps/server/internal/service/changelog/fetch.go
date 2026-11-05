@@ -11,6 +11,7 @@ import (
 	pipeline "github.com/opennavo/opennavo/server/internal/changelog"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/jobs"
+	"gorm.io/gorm"
 )
 
 // fetchLease is how long a source enqueued by the schedule stays claimed. Its next_fetch_at moves this far
@@ -112,6 +113,11 @@ func (s *Service) fetch(ctx context.Context, id int64, observed map[string]any) 
 	}
 	state, err := s.Store.ChangelogState(ctx, id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// The row exists but is outside the fetchable scope (or its package was removed). That is a
+			// configuration/scope problem, not an upstream failure, and used to be reported as "unknown".
+			return nil, &pipeline.Error{Kind: "source_not_fetchable", Cause: err}
+		}
 		return nil, err
 	}
 	observed["attempt"] = state.FailCount + 1
@@ -123,7 +129,8 @@ func (s *Service) fetch(ctx context.Context, id int64, observed map[string]any) 
 	observed["package_token"] = p.Token
 	var settings map[string]any
 	if err := json.Unmarshal(state.Config, &settings); err != nil {
-		return nil, err
+		// A stored config that is not an object can never be fetched; classify it instead of "unknown".
+		return nil, &pipeline.Error{Kind: "invalid_source_config", Cause: err}
 	}
 	observed["source_url"] = pipeline.SourceURL(state.Type, settings)
 	if state.Excluded || !state.Enabled {

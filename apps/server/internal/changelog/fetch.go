@@ -38,10 +38,32 @@ type FetchResult struct {
 	ContentHash        string
 	ETag, LastModified string
 }
+
+// One slow upstream must not hold a changelog worker for the job's whole 20-minute timeout. Fetch bounds
+// every source read with timeout; the Homebrew history passes inside it get their own smaller budgets so
+// a stuck page cannot consume the entire source budget before the fallback windows run.
+const (
+	defaultSourceTimeout = 60 * time.Second
+	commitHistoryTimeout = 30 * time.Second
+	windowHistoryTimeout = 20 * time.Second
+)
+
 type Fetcher struct {
-	HTTP  *Resolver
-	Now   func() time.Time
-	quota quotaGuard
+	HTTP *Resolver
+	Now  func() time.Time
+	// timeout overrides defaultSourceTimeout; zero means the default. Tests lower it so the bound is
+	// observable without spending a minute per case.
+	timeout time.Duration
+	// historyTimeout overrides the first history pass budget for bounded tests.
+	historyTimeout time.Duration
+	quota          quotaGuard
+}
+
+func (f *Fetcher) sourceTimeout() time.Duration {
+	if f.timeout > 0 {
+		return f.timeout
+	}
+	return defaultSourceTimeout
 }
 
 func NewFetcher(agent string) *Fetcher               { return &Fetcher{HTTP: NewResolver(agent)} }
@@ -63,6 +85,8 @@ func (f *Fetcher) get(ctx context.Context, target string, limit int64, source Fe
 	return f.HTTP.readRequest(ctx, target, limit, headers)
 }
 func (f *Fetcher) Fetch(ctx context.Context, p Candidate, source FetchSource) (FetchResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, f.sourceTimeout())
+	defer cancel()
 	switch source.Type {
 	case "homebrew_commits":
 		return f.commits(ctx, p, source)
@@ -70,8 +94,9 @@ func (f *Fetcher) Fetch(ctx context.Context, p Candidate, source FetchSource) (F
 		return f.releases(ctx, source)
 	default:
 		// sparkle and webpage remain schema values for manual sources, but no fetcher reads them yet:
-		// they stay unsupported until a dedicated PR implements and secures them.
-		return FetchResult{}, errors.New("unsupported changelog source")
+		// they stay unsupported until a dedicated PR implements and secures them. The typed error keeps
+		// the failure out of the "unknown" bucket so operators see why the source can never succeed.
+		return FetchResult{}, &Error{Kind: "unsupported_source_type"}
 	}
 }
 func checkStatus(status int, headers http.Header) error {
@@ -127,10 +152,10 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 	out := FetchResult{Versions: []BrewVersion{}}
 	repo, path := configText(s.Config, "repo"), configText(s.Config, "path")
 	if repo != "Homebrew/homebrew-cask" && repo != "Homebrew/homebrew-core" {
-		return out, errors.New("invalid Homebrew repository")
+		return out, &Error{Kind: "invalid_source_config"}
 	}
 	if !rubySafe.MatchString(path) || strings.Contains(path, "..") {
-		return out, errors.New("invalid Homebrew source path")
+		return out, &Error{Kind: "invalid_source_config"}
 	}
 	params := url.Values{"path": {path}, "per_page": {"100"}}
 	if s.Since != nil {
@@ -139,7 +164,9 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 		s.LastModified = ""
 	}
 	entries, result, err := f.commitPages(ctx, repo, params, s)
-	if err != nil && s.Since == nil && serverError(err) {
+	// A history-stage deadline leaves time for a smaller window, but a canceled
+	// or expired source context must not start another upstream request.
+	if err != nil && ctx.Err() == nil && s.Since == nil && (serverError(err) || errors.Is(err, context.DeadlineExceeded)) {
 		entries, result, err = f.windowedCommits(ctx, repo, params, s)
 	}
 	if err != nil {
@@ -203,7 +230,11 @@ type commitEntry struct {
 }
 
 func (f *Fetcher) commitPages(ctx context.Context, repo string, params url.Values, source FetchSource) ([]commitEntry, FetchResult, error) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	budget := commitHistoryTimeout
+	if f.historyTimeout > 0 {
+		budget = f.historyTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	var last error
 	for _, size := range []int{100, 10, 1} {
@@ -229,7 +260,7 @@ var historyWindows = []time.Duration{3 * 365 * 24 * time.Hour, 2 * 365 * 24 * ti
 	180 * 24 * time.Hour, 90 * 24 * time.Hour, 30 * 24 * time.Hour}
 
 func (f *Fetcher) windowedCommits(ctx context.Context, repo string, params url.Values, source FetchSource) ([]commitEntry, FetchResult, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, windowHistoryTimeout)
 	defer cancel()
 	source.ETag, source.LastModified = "", ""
 	var last error
