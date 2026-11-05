@@ -272,6 +272,18 @@ impl Collector<'_> {
             .ok()
             .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|time| time.as_millis().min(i64::MAX as u128) as i64);
+        // The executor checks this root snapshot before an irreversible worktree removal.
+        let snapshot = uninstall::rules::Snapshot::capture(path)
+            .ok()
+            .map(|snapshot| tree::Tree {
+                snapshots: std::collections::BTreeMap::from([(path.to_path_buf(), snapshot)]),
+                bytes,
+                modified_at: modified_at.unwrap_or(0),
+                incomplete,
+                compact: false,
+                kept_open_files: 0,
+                entries: 1,
+            });
         self.ensure_checkout_group(&owner, &group_title);
         let item = CleanupItem {
             id: uuid::Uuid::now_v7().to_string(),
@@ -303,7 +315,7 @@ impl Collector<'_> {
             item,
             owner,
             title,
-            None,
+            snapshot,
             ItemAction::Path {
                 empty_only: false,
                 bootout: None,
