@@ -206,7 +206,7 @@ func (s *Store) UnresolvedHomebrewSources(ctx context.Context) ([]changelog.Cand
 	var rows []changelog.Candidate
 	err := s.DB.WithContext(ctx).Raw(candidateSQL + ` WHERE NOT COALESCE(m.changelog_excluded,false) AND p.removed_at IS NULL AND NOT p.disabled AND (
  (p.kind='cask' AND p.ruby_source_path IS NOT NULL AND ` + OfficialTapSQL + ` AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='homebrew_commits'))
- OR (gf.subject ~ '^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$' AND NOT p.is_font AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='github_releases' AND (s.resolved_by='manual' OR s.config->>'repo'=gf.subject)))
+ OR (p.kind IN ('cask','link') AND gf.subject ~ '^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$' AND NOT p.is_font AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='github_releases' AND (s.resolved_by='manual' OR s.config->>'repo'=gf.subject)))
 ) ORDER BY p.popularity DESC,p.id`).Scan(&rows).Error
 	return rows, err
 }

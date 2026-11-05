@@ -11,9 +11,13 @@ type ChangelogSettings struct {
 	Excluded bool `json:"excluded"`
 }
 
+// PackageChangelogSettings reads the exclusion for every package kind that can own a changelog source.
+// Scheduled candidates include kind=link apps whose public GitHub repository was verified by the source
+// facts job, so restricting this lookup to casks made a link candidate fail every schedule tick with
+// gorm.ErrRecordNotFound.
 func (s *Store) PackageChangelogSettings(ctx context.Context, id int64) (ChangelogSettings, error) {
 	var settings ChangelogSettings
-	result := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(m.changelog_excluded,false) excluded FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id WHERE p.id=? AND p.kind='cask' AND p.removed_at IS NULL`, id).Scan(&settings)
+	result := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(m.changelog_excluded,false) excluded FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id WHERE p.id=? AND p.kind IN ('cask','link') AND p.removed_at IS NULL`, id).Scan(&settings)
 	if result.Error != nil {
 		return settings, result.Error
 	}
