@@ -1930,6 +1930,7 @@ mod tests {
                     items: vec![one.clone()],
                 }],
                 skipped: vec![],
+                history: None,
             }],
             incomplete: vec![],
         };

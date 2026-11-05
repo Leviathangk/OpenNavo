@@ -184,6 +184,8 @@ describe('Skips and permissions', () => {
     const store = await scanned();
     const history = store.categories.find(category => category.key === 'ai_history')!;
     expect(history.risk).toBe('review');
+    expect(history.history?.within30Days).toBe(12);
+    expect(history.history?.older).toBe(27);
     const items = history.groups.flatMap(group => group.items);
     expect(items.length).toBeGreaterThan(0);
     for (const item of items) {
@@ -229,6 +231,28 @@ describe('Skips and permissions', () => {
     });
     await flushPromises();
     expect(page.get('[data-category="ai_history"]').text()).toContain('AI 历史记录');
+    expect(page.get('[data-category="ai_history"]').text()).toContain('会话文件');
+    page.unmount();
+  });
+
+  it('local model stores are unchecked, costly and explained', async () => {
+    const { pinia, router } = await context();
+    const store = await scanned();
+    const models = store.categories.find(category => category.key === 'local_models')!;
+    expect(models.risk).toBe('review');
+    const items = models.groups.flatMap(group => group.items);
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect(item.restore).toBe('costly');
+      expect(item.selected).toBe(false);
+      expect(store.isChecked(item)).toBe(false);
+    }
+    const page = mount(CleanupPage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
+    await flushPromises();
+    expect(page.get('[data-category="local_models"]').text()).toContain('本地模型');
     page.unmount();
   });
 

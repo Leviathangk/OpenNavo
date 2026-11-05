@@ -542,6 +542,40 @@ const CATEGORIES: CategorySpec[] = [
     ]
   },
   {
+    key: 'local_models',
+    risk: 'review',
+    groups: [
+      {
+        id: 'local-models-ollama',
+        title: 'Ollama',
+        items: [
+          {
+            path: '~/.ollama/models',
+            size: 8.4 * GB,
+            daysAgo: 0,
+            reason: 'local_model',
+            deleteMode: 'trash',
+            note: "Ollama's model store documented at docs.ollama.com."
+          }
+        ]
+      },
+      {
+        id: 'local-models-huggingface',
+        title: 'Hugging Face',
+        items: [
+          {
+            path: '~/.cache/huggingface/hub',
+            size: 3.1 * GB,
+            daysAgo: 0,
+            reason: 'local_model',
+            deleteMode: 'trash',
+            note: "Hugging Face's default cache."
+          }
+        ]
+      }
+    ]
+  },
+  {
     key: 'homebrew',
     risk: 'rebuildable',
     groups: [
@@ -947,6 +981,8 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'worktree':
     case 'ai_history_file':
       return 'irreversible';
+    case 'local_model':
+      return 'costly';
     case 'duplicate_checkout':
       return 'auto';
     case 'tool_download_cache':
@@ -1125,7 +1161,19 @@ export function createCleanupMock({
         // Without Full Disk Access the sizes of gated categories are lower bounds.
         complete: fda || !spec.groups.some(group => group.items.some(item => item.fda)),
         groups,
-        skipped
+        skipped,
+        history:
+          spec.key === 'ai_history'
+            ? {
+                within30Days: 12,
+                within90Days: 31,
+                within180Days: 58,
+                within365Days: 94,
+                older: 27,
+                oldest: now - 640 * DAY,
+                newest: now - 2 * DAY
+              }
+            : null
       });
     }
     return {

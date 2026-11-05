@@ -85,6 +85,26 @@
       "source": "软件包标识符",
       "text": "套件識別碼",
       "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
+    },
+    {
+      "key": [
+        "cleanup",
+        "categories",
+        "local_models"
+      ],
+      "source": "本地模型",
+      "text": "本機模型",
+      "why": "Local model, matching the macOS Traditional Chinese wording for this Mac rather than 本地."
+    },
+    {
+      "key": [
+        "cleanup",
+        "reasons",
+        "local_model"
+      ],
+      "source": "本地模型",
+      "text": "本機模型",
+      "why": "Local model, matching the macOS Traditional Chinese wording for this Mac rather than 本地."
     }
   ],
   "apps/web/i18n/locales/zh-Hant.json": [

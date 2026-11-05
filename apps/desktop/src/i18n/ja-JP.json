@@ -1804,7 +1804,8 @@
       "device_backups": "デバイスのバックアップとXcodeアーカイブ",
       "large_files": "大きいファイルと古いダウンロード",
       "docker": "Dockerの再利用可能な領域",
-      "project_checkouts": "Git worktree と重複クローン"
+      "project_checkouts": "Git worktree と重複クローン",
+      "local_models": "ローカルモデル"
     },
     "categoryHints": {
       "app_caches": "Appが自分で作るキャッシュ。削除しても自動で作り直されます",
@@ -1822,7 +1823,8 @@
       "device_backups": "ゴミ箱を空にすると、バックアップからデバイスを復元できず、アーカイブでクラッシュログをシンボリケートできなくなります",
       "large_files": "1 GBを超え、90日間開いていないファイル",
       "docker": "Docker自身のクリーンアップコマンドで削除します。選択はしません。ボリュームは表示のみで削除しません",
-      "project_checkouts": "今は読み取り専用：リンクされた worktree と、同じリモートを共有するクリーンなクローンを表示します。削除を提供する前に容量を確認できます"
+      "project_checkouts": "今は読み取り専用：リンクされた worktree と、同じリモートを共有するクリーンなクローンを表示します。削除を提供する前に容量を確認できます",
+      "local_models": "Ollama、LM Studio、Hugging Face、Jan、GPT4All のローカルモデル。削除すると再ダウンロードが必要です"
     },
     "scan": {
       "starting": "スキャンの準備中",
@@ -1854,7 +1856,8 @@
       "skipped": "{count}項目をスキップしました（表示のみ、選択できません）",
       "lastModified": "最終変更：{time}",
       "servicesLoading": "バックグラウンド項目{count}件がまだログイン時に読み込まれています",
-      "inUse": "{size}が使用中"
+      "inUse": "{size}が使用中",
+      "historyAges": "セッションファイル: 30 日以内 {within30} · 90 日以内 {within90} · 180 日以内 {within180} · 1 年以内 {within365} · それ以前 {older} · 最古 {oldest} · 最新 {newest}"
     },
     "skipReasons": {
       "running": "実行中です。終了するとクリーンアップできます",
@@ -1894,7 +1897,9 @@
       "orphan_worktree": "孤立した worktree",
       "orphanWorktreeHint": "壊れた worktree: Git メタデータがないため、使用容量だけを表示します。",
       "ai_history_file": "古いセッションファイル",
-      "ai_history_fileHint": "この記録をゴミ箱に移動します。ゴミ箱を空にすると復元できません。30 日より前のファイルだけを表示します。"
+      "ai_history_fileHint": "この記録をゴミ箱に移動します。ゴミ箱を空にすると復元できません。30 日より前のファイルだけを表示します。",
+      "local_model": "ローカルモデル",
+      "local_modelHint": "このモデル保存先をゴミ箱へ移動します。必要になるとツールが重みを再ダウンロードします。"
     },
     "item": {
       "command": "コマンド",

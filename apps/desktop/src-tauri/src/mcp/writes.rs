@@ -1379,6 +1379,7 @@ mod tests {
                 items,
             }],
             skipped: vec![],
+            history: None,
         };
         crate::cleanup::types::CleanupReport {
             report_id: "r".into(),

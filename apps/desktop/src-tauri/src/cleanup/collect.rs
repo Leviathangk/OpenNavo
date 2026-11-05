@@ -53,6 +53,7 @@ impl Collected {
                     | CleanupCategory::ProjectCheckouts
                     | CleanupCategory::Docker
                     | CleanupCategory::AiHistory
+                    | CleanupCategory::LocalModels
                     | CleanupCategory::Trash => CleanupRisk::Review,
                     CleanupCategory::DeviceBackups => CleanupRisk::Personal,
                     _ => CleanupRisk::Rebuildable,
@@ -61,6 +62,7 @@ impl Collected {
                 complete: true,
                 groups: vec![],
                 skipped: vec![],
+                history: None,
             },
             incomplete: vec![],
             items: BTreeMap::new(),
@@ -531,6 +533,7 @@ impl Collector<'_> {
                     | CleanupReason::InstallerInstalled
                     | CleanupReason::DeviceBackup
                     | CleanupReason::XcodeArchive
+                    | CleanupReason::LocalModel
             ) {
                 DeleteMode::Trash
             } else {
@@ -559,6 +562,10 @@ impl Collector<'_> {
         tree: Option<tree::Tree>,
         action: ItemAction,
     ) {
+        let mut item = item;
+        if item.note.is_none() {
+            item.note = owner.evidence.clone();
+        }
         let key = owner
             .group_key
             .clone()
@@ -941,6 +948,7 @@ impl Collector<'_> {
             }
             let mut owner = Owner::tool(rule.processes);
             owner.tool_key = Some(rule.title.into());
+            owner.evidence = Some(rule.evidence.into());
             match rule.leaves {
                 None => self.add(
                     root,
@@ -973,12 +981,37 @@ impl Collector<'_> {
         }
         Ok(())
     }
+    /// Locally downloaded model weights. Every store is a review item: removing it forces the tool to download the
+    /// weights again, so nothing is preselected and every removal still goes through the Trash.
+    fn local_models(&mut self) -> Result<(), AppError> {
+        let home = self.engine.uninstall.roots.home.clone();
+        for rule in rules::LOCAL_MODELS {
+            let root = home.join(rule.path);
+            if fs::symlink_metadata(&root).is_err() {
+                continue;
+            }
+            let mut owner = Owner::tool(rule.processes);
+            owner.tool_key = Some(rule.title.into());
+            owner.group_key = Some(format!("local-models:{}", rule.path));
+            owner.evidence = Some(rule.evidence.into());
+            self.add(
+                root,
+                owner,
+                rule.title.into(),
+                CleanupReason::LocalModel,
+                None,
+            )?;
+        }
+        Ok(())
+    }
     /// AI session history. The whole stores remain visible as read-only rows; individual old transcript files are
     /// listed separately and can be moved to the Trash one by one. Only regular `.jsonl` transcripts (and ordinary
     /// files in the two snapshot stores) older than `AI_HISTORY_FILE_MIN_AGE_DAYS` are eligible.
     fn ai_history(&mut self) -> Result<(), AppError> {
         let home = self.engine.uninstall.roots.home.clone();
-        let cutoff = crate::uninstall::now() - rules::AI_HISTORY_FILE_MIN_AGE_DAYS * 86_400_000;
+        let now = crate::uninstall::now();
+        let cutoff = now - rules::AI_HISTORY_FILE_MIN_AGE_DAYS * 86_400_000;
+        let mut ages = HistoryAges::default();
         let mut groups: HistoryGroups = BTreeMap::new();
         for rule in rules::AI_HISTORY {
             let root = home.join(rule.path);
@@ -1009,6 +1042,7 @@ impl Collector<'_> {
                 let Some(modified_at) = modified_at else {
                     continue;
                 };
+                ages.record(modified_at, now);
                 if modified_at >= cutoff {
                     continue;
                 }
@@ -1109,6 +1143,9 @@ impl Collector<'_> {
                     count,
                 });
             }
+        }
+        if ages.count() > 0 {
+            self.result.category.history = Some(ages);
         }
         Ok(())
     }
@@ -1865,6 +1902,7 @@ impl Engine {
                                 CleanupCategory::DevCaches => collector.dev_caches(),
                                 CleanupCategory::AiCaches => collector.ai_caches(),
                                 CleanupCategory::AiHistory => collector.ai_history(),
+                                CleanupCategory::LocalModels => collector.local_models(),
                                 CleanupCategory::Temp => collector.temp(),
                                 CleanupCategory::Installers => collector.installers(),
                                 CleanupCategory::ProjectArtifacts => collector.project_artifacts(),
