@@ -1803,7 +1803,8 @@
       "trash": "Cestino",
       "device_backups": "Backup iPhone / iPad e archivi Xcode",
       "large_files": "File grandi e vecchi download",
-      "docker": "Spazio recuperabile Docker"
+      "docker": "Spazio recuperabile Docker",
+      "project_checkouts": "Worktree Git e cloni duplicati"
     },
     "categoryHints": {
       "app_caches": "Cache create dalle app e ricreate automaticamente dopo l’eliminazione",
@@ -1820,7 +1821,8 @@
       "trash": "Selezionandolo svuoti il Cestino; l’operazione è irreversibile",
       "device_backups": "Dopo aver svuotato il Cestino, i backup non potranno ripristinare i dispositivi e gli archivi non potranno simbolicare i rapporti di arresto anomalo",
       "large_files": "File oltre 1 GB non aperti da 90 giorni",
-      "docker": "Eliminati dai comandi di pulizia di Docker, mai preselezionati; i volumi sono solo mostrati, non puliti"
+      "docker": "Eliminati dai comandi di pulizia di Docker, mai preselezionati; i volumi sono solo mostrati, non puliti",
+      "project_checkouts": "Per ora solo lettura: worktree collegati e cloni puliti che condividono un’origine, per mostrare lo spazio prima di proporne la rimozione"
     },
     "scan": {
       "starting": "Preparazione della scansione",
@@ -1883,7 +1885,11 @@
       "docker_build_cache": "Cache di compilazione",
       "docker_build_cacheHint": "La prossima compilazione dell’immagine sarà più lenta, ma il risultato non cambierà.",
       "docker_containers": "Contenitori arrestati",
-      "docker_containersHint": "Verranno eliminate anche le modifiche scritte nei contenitori; i volumi restano invariati."
+      "docker_containersHint": "Verranno eliminate anche le modifiche scritte nei contenitori; i volumi restano invariati.",
+      "worktree": "Worktree collegato",
+      "worktreeHint": "Per ora solo lettura: OpenNavo non rimuove ancora i worktree; qui viene mostrato solo lo spazio occupato.",
+      "duplicate_checkout": "Clone duplicato",
+      "duplicate_checkoutHint": "Per ora solo lettura: un clone pulito senza commit non inviati; la rimozione sarà proposta in un aggiornamento futuro."
     },
     "item": {
       "command": "Comando",

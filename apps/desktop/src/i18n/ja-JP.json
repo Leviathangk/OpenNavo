@@ -1803,7 +1803,8 @@
       "trash": "ゴミ箱",
       "device_backups": "デバイスのバックアップとXcodeアーカイブ",
       "large_files": "大きいファイルと古いダウンロード",
-      "docker": "Dockerの再利用可能な領域"
+      "docker": "Dockerの再利用可能な領域",
+      "project_checkouts": "Git worktree と重複クローン"
     },
     "categoryHints": {
       "app_caches": "Appが自分で作るキャッシュ。削除しても自動で作り直されます",
@@ -1820,7 +1821,8 @@
       "trash": "選択するとゴミ箱を空にします。元に戻せません",
       "device_backups": "ゴミ箱を空にすると、バックアップからデバイスを復元できず、アーカイブでクラッシュログをシンボリケートできなくなります",
       "large_files": "1 GBを超え、90日間開いていないファイル",
-      "docker": "Docker自身のクリーンアップコマンドで削除します。選択はしません。ボリュームは表示のみで削除しません"
+      "docker": "Docker自身のクリーンアップコマンドで削除します。選択はしません。ボリュームは表示のみで削除しません",
+      "project_checkouts": "今は読み取り専用：リンクされた worktree と、同じリモートを共有するクリーンなクローンを表示します。削除を提供する前に容量を確認できます"
     },
     "scan": {
       "starting": "スキャンの準備中",
@@ -1883,7 +1885,11 @@
       "docker_build_cache": "ビルドキャッシュ",
       "docker_build_cacheHint": "次回のイメージのビルドに時間がかかりますが、結果は変わりません。",
       "docker_containers": "停止中のコンテナ",
-      "docker_containersHint": "コンテナ内で書き込まれた変更も削除されます。ボリュームはそのまま残ります。"
+      "docker_containersHint": "コンテナ内で書き込まれた変更も削除されます。ボリュームはそのまま残ります。",
+      "worktree": "リンクされた worktree",
+      "worktreeHint": "今は読み取り専用：OpenNavo はまだ worktree を削除しません。容量の表示のみです。",
+      "duplicate_checkout": "重複クローン",
+      "duplicate_checkoutHint": "今は読み取り専用：未プッシュの変更がないクリーンなクローンです。削除は今後の更新で提供予定です。"
     },
     "item": {
       "command": "コマンド",

@@ -34,6 +34,7 @@ pub const AVAILABLE: &[CleanupCategory] = &[
     CleanupCategory::Leftovers,
     CleanupCategory::Installers,
     CleanupCategory::ProjectArtifacts,
+    CleanupCategory::ProjectCheckouts,
     CleanupCategory::Docker,
     CleanupCategory::Trash,
     CleanupCategory::DeviceBackups,
@@ -126,6 +127,8 @@ pub fn default_selected(reason: CleanupReason) -> bool {
             | CleanupReason::XcodeArchive
             | CleanupReason::LargeFile
             | CleanupReason::AiHistory
+            | CleanupReason::Worktree
+            | CleanupReason::DuplicateCheckout
             | CleanupReason::BuildArtifact
     )
 }

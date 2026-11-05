@@ -762,7 +762,9 @@ export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_ca
  *  Session transcripts, memories and project history of AI coding tools: shown for information, never removed
  *  here. People delete these in the tool that owns them.
  */
-"ai_history" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" |
+"ai_history" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" |
+/**  Git checkouts that duplicate another clone or are linked worktrees: shown read-only in P2 discovery. */
+"project_checkouts" | "trash" | "device_backups" |
 /**  Docker's own reclaimable space, removed only by Docker's prune commands. */
 "docker" | "large_files";
 
@@ -843,7 +845,11 @@ export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_c
 /**  Images no container uses; pulled or built again when needed. */
 "docker_images" | "docker_build_cache" |
 /**  Stopped containers; their own changes are lost, volumes stay. */
-"docker_containers" | "large_file";
+"docker_containers" | "large_file" |
+/**  A linked git worktree, listed read-only. */
+"worktree" |
+/**  A clone whose remote is shared with another checkout, listed read-only. */
+"duplicate_checkout";
 
 export type CleanupReminder = "off" | "weekly" | "monthly";
 

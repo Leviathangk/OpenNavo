@@ -38,6 +38,7 @@ export const CATEGORIES: readonly CleanupCategory[] = [
   'leftovers',
   'installers',
   'project_artifacts',
+  'project_checkouts',
   'docker',
   'trash',
   'device_backups',

@@ -28,8 +28,15 @@ const label = computed(() =>
 );
 /** Only partly measured: the size is a lower bound and the item can't be selected (#116). */
 const partial = computed(() => !props.item.sizeComplete);
-/** AI history is information: shown with its size, never offered for removal here. */
+/** Read-only rows (AI history, checkouts) are shown with their size, never offered for removal here. */
 const readonly = computed(() => props.item.restore === 'never');
+const readonlyHint = computed(() =>
+  props.item.reason === 'worktree'
+    ? t('cleanup.reasons.worktreeHint')
+    : props.item.reason === 'duplicate_checkout'
+      ? t('cleanup.reasons.duplicate_checkoutHint')
+      : t('cleanup.reasons.ai_historyHint')
+);
 const size = computed(() => {
   if (props.item.sizeBytes === null) return '—';
   const text = formatBytes(props.item.sizeBytes, { locale: appLocale.value });
@@ -63,6 +70,19 @@ const chip = computed(() => {
         tone: 'neutral' as const,
         text: t('cleanup.reasons.build_leaf'),
         hint: t('cleanup.reasons.build_leafHint')
+      };
+    // Linked worktrees and duplicate clones: visible so the space is accounted for; removal is a later slice.
+    case 'worktree':
+      return {
+        tone: 'neutral' as const,
+        text: t('cleanup.reasons.worktree'),
+        hint: t('cleanup.reasons.worktreeHint')
+      };
+    case 'duplicate_checkout':
+      return {
+        tone: 'neutral' as const,
+        text: t('cleanup.reasons.duplicate_checkout'),
+        hint: t('cleanup.reasons.duplicate_checkoutHint')
       };
     // Session transcripts and project history: visible so the space is accounted for, deleted only in the tool.
     case 'ai_history':
@@ -99,7 +119,7 @@ const chip = computed(() => {
       :model-value="checked && !partial && !readonly"
       :disabled="partial || readonly"
       :aria-label="label"
-      :title="readonly ? t('cleanup.reasons.ai_historyHint') : partial ? t('cleanup.item.partial') : undefined"
+      :title="readonly ? readonlyHint : partial ? t('cleanup.item.partial') : undefined"
       @update:model-value="value => emit('toggle', value)"
     />
     <div class="min-w-0 flex-1">

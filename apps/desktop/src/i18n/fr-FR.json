@@ -1803,7 +1803,8 @@
       "trash": "Corbeille",
       "device_backups": "Sauvegardes iPhone / iPad et archives Xcode",
       "large_files": "Fichiers volumineux et anciens téléchargements",
-      "docker": "Espace récupérable Docker"
+      "docker": "Espace récupérable Docker",
+      "project_checkouts": "Worktrees Git et clones en double"
     },
     "categoryHints": {
       "app_caches": "Caches créés par les apps, recréés automatiquement après suppression",
@@ -1820,7 +1821,8 @@
       "trash": "Sélectionner vide la corbeille ; cette action est irréversible",
       "device_backups": "Une fois la corbeille vidée, les sauvegardes ne pourront plus restaurer les appareils ni les archives servir à interpréter les journaux de plantage",
       "large_files": "Fichiers de plus de 1 GB non ouverts depuis 90 jours",
-      "docker": "Suppression par les commandes de nettoyage Docker, sans présélection ; les volumes sont affichés mais non nettoyés"
+      "docker": "Suppression par les commandes de nettoyage Docker, sans présélection ; les volumes sont affichés mais non nettoyés",
+      "project_checkouts": "Lecture seule pour l’instant : worktrees liés et clones propres partageant une origine, pour voir l’espace occupé avant de proposer leur suppression"
     },
     "scan": {
       "starting": "Préparation de l’analyse",
@@ -1883,7 +1885,11 @@
       "docker_build_cache": "Cache de compilation",
       "docker_build_cacheHint": "La prochaine compilation d’image prendra plus de temps, sans modifier le résultat.",
       "docker_containers": "Conteneurs arrêtés",
-      "docker_containersHint": "Les modifications écrites dans ces conteneurs seront également supprimées ; les volumes sont conservés."
+      "docker_containersHint": "Les modifications écrites dans ces conteneurs seront également supprimées ; les volumes sont conservés.",
+      "worktree": "Worktree lié",
+      "worktreeHint": "Lecture seule pour l’instant : OpenNavo ne supprime pas encore les worktrees ; seul l’espace occupé est affiché.",
+      "duplicate_checkout": "Clone en double",
+      "duplicate_checkoutHint": "Lecture seule pour l’instant : un clone propre sans commit non poussé ; la suppression sera proposée dans une prochaine mise à jour."
     },
     "item": {
       "command": "Commande",

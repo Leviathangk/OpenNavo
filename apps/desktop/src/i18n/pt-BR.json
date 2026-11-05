@@ -1803,7 +1803,8 @@
       "trash": "Lixo",
       "device_backups": "Backups de dispositivos e arquivos do Xcode",
       "large_files": "Arquivos grandes e antigos",
-      "docker": "Espaço recuperável do Docker"
+      "docker": "Espaço recuperável do Docker",
+      "project_checkouts": "Worktrees do Git e clones duplicados"
     },
     "categoryHints": {
       "app_caches": "Caches que os próprios apps criam; são recriados automaticamente depois de apagados",
@@ -1820,7 +1821,8 @@
       "trash": "Selecionar esvazia o Lixo; não dá para desfazer",
       "device_backups": "Depois de esvaziar o Lixo, os backups não restauram mais dispositivos e os arquivos não simbolizam mais relatórios de falha",
       "large_files": "Arquivos com mais de 1 GB não abertos há 90 dias",
-      "docker": "Removidos pelos comandos de limpeza do próprio Docker e nunca pré-selecionados; os volumes só são mostrados"
+      "docker": "Removidos pelos comandos de limpeza do próprio Docker e nunca pré-selecionados; os volumes só são mostrados",
+      "project_checkouts": "Por enquanto somente leitura: worktrees vinculados e clones limpos que compartilham uma origem, para mostrar o espaço antes de oferecer a remoção"
     },
     "scan": {
       "starting": "Preparando a verificação",
@@ -1883,7 +1885,11 @@
       "docker_build_cache": "Cache de build",
       "docker_build_cacheHint": "O próximo build de imagem demora mais; o resultado é o mesmo.",
       "docker_containers": "Contêineres parados",
-      "docker_containersHint": "As alterações gravadas dentro desses contêineres também são removidas; os volumes ficam."
+      "docker_containersHint": "As alterações gravadas dentro desses contêineres também são removidas; os volumes ficam.",
+      "worktree": "Worktree vinculado",
+      "worktreeHint": "Por enquanto somente leitura: o OpenNavo ainda não remove worktrees; isto apenas mostra o espaço ocupado.",
+      "duplicate_checkout": "Clone duplicado",
+      "duplicate_checkoutHint": "Por enquanto somente leitura: um clone limpo sem alterações não enviadas; a remoção será oferecida em uma atualização futura."
     },
     "item": {
       "command": "Comando",

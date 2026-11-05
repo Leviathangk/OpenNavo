@@ -29,6 +29,7 @@ export const UI_ICONS = [
   'trash',
   'cloud',
   'folder',
+  'git-branch',
   'square-terminal',
   'shield-check',
   'chevron-right',

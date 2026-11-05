@@ -215,6 +215,41 @@ describe('Skips and permissions', () => {
     page.unmount();
   });
 
+  it('Git checkouts are listed read-only until removal is offered', async () => {
+    const { pinia, router } = await context();
+    const store = await scanned();
+    const checkouts = store.categories.find(category => category.key === 'project_checkouts')!;
+    expect(checkouts.risk).toBe('review');
+    const items = checkouts.groups.flatMap(group => group.items);
+    expect(items.map(item => item.reason).sort()).toEqual(['duplicate_checkout', 'worktree']);
+    for (const item of items) {
+      expect(item.restore).toBe('never');
+      expect(item.selected).toBe(false);
+      expect(store.isChecked(item)).toBe(false);
+    }
+    const before = store.totals.bytes;
+    store.setCategory(checkouts, true);
+    expect(store.totals.bytes).toBe(before);
+    expect(store.chosen.some(chosen => chosen.category.key === 'project_checkouts')).toBe(false);
+
+    const worktree = items.find(item => item.reason === 'worktree')!;
+    const row = mount(CleanupItemRow, {
+      props: { item: worktree, checked: false },
+      global: { plugins: [i18n] }
+    });
+    expect(row.get('input').attributes('disabled')).toBeDefined();
+    expect(row.text()).toContain('关联 worktree');
+    row.unmount();
+
+    const page = mount(CleanupPage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
+    await flushPromises();
+    expect(page.get('[data-category="project_checkouts"]').text()).toContain('Git worktree 与重复克隆');
+    page.unmount();
+  });
+
   it('A locked scan does not start until the user explicitly continues', async () => {
     const { pinia, router } = await context();
     const permissions = usePermissionsStore();

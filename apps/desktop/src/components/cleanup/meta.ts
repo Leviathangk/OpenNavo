@@ -14,6 +14,7 @@ export const CATEGORY_ICONS: Record<CleanupCategory, string> = {
   leftovers: 'scan-search',
   installers: 'download',
   project_artifacts: 'folder',
+  project_checkouts: 'git-branch',
   trash: 'trash',
   device_backups: 'hard-drive',
   docker: 'container',

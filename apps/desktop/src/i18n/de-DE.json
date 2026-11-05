@@ -1803,7 +1803,8 @@
       "trash": "Papierkorb",
       "device_backups": "iPhone- und iPad-Backups & Xcode-Archive",
       "large_files": "Große und alte Dateien",
-      "docker": "Freigebbarer Docker-Speicher"
+      "docker": "Freigebbarer Docker-Speicher",
+      "project_checkouts": "Git-Worktrees und doppelte Klone"
     },
     "categoryHints": {
       "app_caches": "Von Apps erstellte Caches; werden nach dem Löschen automatisch neu erstellt",
@@ -1820,7 +1821,8 @@
       "trash": "Auswählen leert den Papierkorb unwiderruflich",
       "device_backups": "Nach Leeren des Papierkorbs können Backups keine Geräte mehr wiederherstellen und Archive keine Absturzprotokolle mehr auflösen",
       "large_files": "Dateien über 1 GB, seit 90 Tagen nicht geöffnet",
-      "docker": "Mit Docker-Bereinigungsbefehlen gelöscht, nie vorausgewählt; Volumes werden nur angezeigt, nicht bereinigt"
+      "docker": "Mit Docker-Bereinigungsbefehlen gelöscht, nie vorausgewählt; Volumes werden nur angezeigt, nicht bereinigt",
+      "project_checkouts": "Vorerst schreibgeschützt: verknüpfte Worktrees und saubere Klone mit gemeinsamer Origin, damit der Speicherbedarf vor dem späteren Entfernen sichtbar ist"
     },
     "scan": {
       "starting": "Scan wird vorbereitet",
@@ -1883,7 +1885,11 @@
       "docker_build_cache": "Build-Cache",
       "docker_build_cacheHint": "Der nächste Image-Build dauert länger; das Ergebnis bleibt gleich.",
       "docker_containers": "Gestoppte Container",
-      "docker_containersHint": "Änderungen innerhalb dieser Container werden ebenfalls gelöscht; Volumes bleiben erhalten."
+      "docker_containersHint": "Änderungen innerhalb dieser Container werden ebenfalls gelöscht; Volumes bleiben erhalten.",
+      "worktree": "Verknüpfter Worktree",
+      "worktreeHint": "Vorerst schreibgeschützt: OpenNavo entfernt noch keine Worktrees; hier wird nur der Speicherbedarf angezeigt.",
+      "duplicate_checkout": "Doppelter Klon",
+      "duplicate_checkoutHint": "Vorerst schreibgeschützt: ein sauberer Klon ohne nicht gepushte Commits; das Entfernen folgt in einem späteren Update."
     },
     "item": {
       "command": "Befehl",

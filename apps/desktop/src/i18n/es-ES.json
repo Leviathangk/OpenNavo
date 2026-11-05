@@ -1803,7 +1803,8 @@
       "trash": "Papelera",
       "device_backups": "Copias de seguridad de dispositivos y archivos de Xcode",
       "large_files": "Archivos grandes y antiguos",
-      "docker": "Espacio recuperable de Docker"
+      "docker": "Espacio recuperable de Docker",
+      "project_checkouts": "Árboles de trabajo de Git y clones duplicados"
     },
     "categoryHints": {
       "app_caches": "Cachés que crean las propias apps; se regeneran solas tras eliminarlas",
@@ -1820,7 +1821,8 @@
       "trash": "Al seleccionarla se vacía la Papelera; no se puede deshacer",
       "device_backups": "Al vaciar la Papelera, las copias ya no restauran dispositivos y los archivos ya no simbolizan registros de fallos",
       "large_files": "Archivos de más de 1 GB sin abrir en 90 días",
-      "docker": "Se eliminan con los comandos de limpieza de Docker y nunca se preseleccionan; los volúmenes solo se muestran"
+      "docker": "Se eliminan con los comandos de limpieza de Docker y nunca se preseleccionan; los volúmenes solo se muestran",
+      "project_checkouts": "Por ahora solo lectura: árboles de trabajo vinculados y clones limpios que comparten un origen, para ver su espacio antes de ofrecer su eliminación"
     },
     "scan": {
       "starting": "Preparando el análisis",
@@ -1883,7 +1885,11 @@
       "docker_build_cache": "Caché de compilación",
       "docker_build_cacheHint": "La próxima compilación de imágenes tardará más; el resultado es el mismo.",
       "docker_containers": "Contenedores detenidos",
-      "docker_containersHint": "También se eliminan los cambios escritos dentro de estos contenedores; los volúmenes se conservan."
+      "docker_containersHint": "También se eliminan los cambios escritos dentro de estos contenedores; los volúmenes se conservan.",
+      "worktree": "Árbol de trabajo vinculado",
+      "worktreeHint": "Por ahora solo lectura: OpenNavo aún no elimina árboles de trabajo; solo muestra su tamaño.",
+      "duplicate_checkout": "Clon duplicado",
+      "duplicate_checkoutHint": "Por ahora solo lectura: un clon limpio sin cambios sin enviar; la eliminación se ofrecerá en una próxima actualización."
     },
     "item": {
       "command": "Comando",

@@ -1854,6 +1854,7 @@ const messages: MessageSchema = {
       leftovers: 'Leftovers of Deleted Apps',
       installers: 'Old Installers',
       project_artifacts: 'Project Build Files',
+      project_checkouts: 'Git Worktrees and Duplicate Clones',
       trash: 'Trash',
       device_backups: 'Device Backups and Xcode Archives',
       large_files: 'Large and Old Files',
@@ -1872,6 +1873,8 @@ const messages: MessageSchema = {
       installers: 'dmg and pkg files in Downloads and on the Desktop; ones for installed apps are preselected',
       project_artifacts:
         'node_modules, target, build, and more in projects untouched for 30 days; reinstall or rebuild to get them back',
+      project_checkouts:
+        'Read-only for now: linked worktrees and clean clones that share an origin, shown so their space is visible before removal is offered',
       trash: 'Selecting it empties the Trash; this can’t be undone',
       device_backups:
         'Once the Trash is emptied, backups can’t restore devices and archives can’t symbolicate crash logs',
@@ -1931,6 +1934,11 @@ const messages: MessageSchema = {
       ai_history: 'Read-only',
       ai_historyHint:
         'Shown so the space is accounted for; OpenNavo never deletes sessions, memories or project history. Use the tool itself.',
+      worktree: 'Linked worktree',
+      worktreeHint: 'Read-only for now: OpenNavo does not remove worktrees yet; this only shows their footprint.',
+      duplicate_checkout: 'Duplicate clone',
+      duplicate_checkoutHint:
+        'Read-only for now: a clean clone with nothing unpushed; removal will be offered in a later update.',
       orphan_service: 'Background item',
       installer_installed: 'Installed',
       device_support_latest: 'Latest',

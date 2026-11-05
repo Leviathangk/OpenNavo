@@ -772,6 +772,33 @@ const CATEGORIES: CategorySpec[] = [
     ]
   },
   {
+    key: 'project_checkouts',
+    risk: 'review',
+    groups: [
+      {
+        id: 'checkout:active-rust',
+        title: 'active-rust',
+        subtitle: '~/Documents/code',
+        items: [
+          {
+            path: '~/Documents/code/active-rust-feature',
+            size: 8.2 * GB,
+            daysAgo: 12,
+            reason: 'worktree',
+            selected: false
+          },
+          {
+            path: '~/code/old-shop-copy',
+            size: 1.9 * GB,
+            daysAgo: 44,
+            reason: 'duplicate_checkout',
+            selected: false
+          }
+        ]
+      }
+    ]
+  },
+  {
     key: 'docker',
     risk: 'review',
     groups: [
@@ -915,6 +942,8 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'build_leaf':
       return 'auto';
     case 'ai_history':
+    case 'worktree':
+    case 'duplicate_checkout':
       return 'never';
     case 'tool_download_cache':
     case 'device_support':

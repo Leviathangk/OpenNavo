@@ -20,6 +20,8 @@ pub enum CleanupCategory {
     Leftovers,
     Installers,
     ProjectArtifacts,
+    /// Git checkouts that duplicate another clone or are linked worktrees: shown read-only in P2 discovery.
+    ProjectCheckouts,
     Trash,
     DeviceBackups,
     /// Docker's own reclaimable space, removed only by Docker's prune commands.
@@ -141,7 +143,9 @@ impl CleanupRestore {
             | CleanupReason::DockerBuildCache
             | CleanupReason::DockerContainers
             | CleanupReason::LargeFile => Self::Irreversible,
-            CleanupReason::AiHistory => Self::Never,
+            CleanupReason::AiHistory
+            | CleanupReason::Worktree
+            | CleanupReason::DuplicateCheckout => Self::Never,
         }
     }
 }
@@ -181,6 +185,10 @@ pub enum CleanupReason {
     /// Stopped containers; their own changes are lost, volumes stay.
     DockerContainers,
     LargeFile,
+    /// A linked git worktree, listed read-only.
+    Worktree,
+    /// A clone whose remote is shared with another checkout, listed read-only.
+    DuplicateCheckout,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
