@@ -1888,9 +1888,9 @@
       "docker_containers": "Contenitori arrestati",
       "docker_containersHint": "Verranno eliminate anche le modifiche scritte nei contenitori; i volumi restano invariati.",
       "worktree": "Worktree collegato",
-      "worktreeHint": "Per ora solo lettura: OpenNavo non rimuove ancora i worktree; qui viene mostrato solo lo spazio occupato.",
+      "worktreeHint": "Rimuovere questo worktree cancella la cartella di lavoro; il branch e il repository principale restano. Git rifiuta se ci sono modifiche non commitate.",
       "duplicate_checkout": "Clone duplicato",
-      "duplicate_checkoutHint": "Per ora solo lettura: un clone pulito senza commit non inviati; la rimozione sarà proposta in un aggiornamento futuro."
+      "duplicate_checkoutHint": "Un clone pulito e senza commit da inviare. Rimuovendolo, la cartella va nel Cestino."
     },
     "item": {
       "command": "Comando",

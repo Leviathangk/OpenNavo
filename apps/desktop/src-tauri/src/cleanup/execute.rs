@@ -718,6 +718,40 @@ impl Engine {
             return Ok(Act::Skipped(SkippedItemReason::InUse));
         }
 
+        // Worktrees are removed by Git so its metadata is updated; a dirty worktree makes Git refuse without --force.
+        if item.item.reason == CleanupReason::Worktree {
+            let deadline = Instant::now() + Duration::from_secs(120);
+            let Ok(common) = super::collect::checkouts::common_dir(path, deadline) else {
+                return Ok(Act::Skipped(SkippedItemReason::Changed));
+            };
+            if !super::collect::checkouts::belongs_to(path, &common) {
+                return Ok(Act::Skipped(SkippedItemReason::Changed));
+            }
+            let Some(main) = super::collect::checkouts::main_checkout(&common, deadline) else {
+                return Ok(Act::Skipped(SkippedItemReason::Changed));
+            };
+            let path = item.item.path.clone();
+            let removed = super::collect::checkouts::git(
+                &main,
+                &["worktree", "remove", &path],
+                Duration::from_secs(120),
+            );
+            return if removed.is_ok() {
+                Ok(Act::Deleted(item.item.size_bytes.unwrap_or(0)))
+            } else {
+                Ok(Act::Skipped(SkippedItemReason::Changed))
+            };
+        }
+        // A duplicate clone must still be clean and fully pushed when the task runs, not only when it was scanned.
+        if item.item.reason == CleanupReason::DuplicateCheckout
+            && !super::collect::checkouts::duplicate_candidate(
+                path,
+                Instant::now() + Duration::from_secs(10),
+            )
+            .unwrap_or(false)
+        {
+            return Ok(Act::Skipped(SkippedItemReason::Changed));
+        }
         if !uninstall::rules::parents_safe(path) {
             return Ok(Act::Skipped(SkippedItemReason::Changed));
         }

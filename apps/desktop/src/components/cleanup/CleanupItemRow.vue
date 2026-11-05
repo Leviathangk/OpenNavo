@@ -30,13 +30,7 @@ const label = computed(() =>
 const partial = computed(() => !props.item.sizeComplete);
 /** Read-only rows (AI history, checkouts) are shown with their size, never offered for removal here. */
 const readonly = computed(() => props.item.restore === 'never');
-const readonlyHint = computed(() =>
-  props.item.reason === 'worktree'
-    ? t('cleanup.reasons.worktreeHint')
-    : props.item.reason === 'duplicate_checkout'
-      ? t('cleanup.reasons.duplicate_checkoutHint')
-      : t('cleanup.reasons.ai_historyHint')
-);
+const readonlyHint = computed(() => t('cleanup.reasons.ai_historyHint'));
 const size = computed(() => {
   if (props.item.sizeBytes === null) return '—';
   const text = formatBytes(props.item.sizeBytes, { locale: appLocale.value });
@@ -74,7 +68,7 @@ const chip = computed(() => {
     // Linked worktrees and duplicate clones: visible so the space is accounted for; removal is a later slice.
     case 'worktree':
       return {
-        tone: 'neutral' as const,
+        tone: 'warning' as const,
         text: t('cleanup.reasons.worktree'),
         hint: t('cleanup.reasons.worktreeHint')
       };

@@ -1888,9 +1888,9 @@
       "docker_containers": "Contenedores detenidos",
       "docker_containersHint": "También se eliminan los cambios escritos dentro de estos contenedores; los volúmenes se conservan.",
       "worktree": "Árbol de trabajo vinculado",
-      "worktreeHint": "Por ahora solo lectura: OpenNavo aún no elimina árboles de trabajo; solo muestra su tamaño.",
+      "worktreeHint": "Eliminar este worktree borra su carpeta de trabajo; la rama y el repositorio principal se conservan. Git se niega si hay cambios sin confirmar.",
       "duplicate_checkout": "Clon duplicado",
-      "duplicate_checkoutHint": "Por ahora solo lectura: un clon limpio sin cambios sin enviar; la eliminación se ofrecerá en una próxima actualización."
+      "duplicate_checkoutHint": "Un clon limpio y sin nada pendiente de subir. Al eliminarlo, la carpeta va a la Papelera."
     },
     "item": {
       "command": "Comando",

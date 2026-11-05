@@ -1888,9 +1888,9 @@
       "docker_containers": "停止中のコンテナ",
       "docker_containersHint": "コンテナ内で書き込まれた変更も削除されます。ボリュームはそのまま残ります。",
       "worktree": "リンクされた worktree",
-      "worktreeHint": "今は読み取り専用：OpenNavo はまだ worktree を削除しません。容量の表示のみです。",
+      "worktreeHint": "worktree を削除すると作業フォルダーが消えますが、ブランチとメインリポジトリは残ります。未コミットの変更があると Git が拒否します。",
       "duplicate_checkout": "重複クローン",
-      "duplicate_checkoutHint": "今は読み取り専用：未プッシュの変更がないクリーンなクローンです。削除は今後の更新で提供予定です。"
+      "duplicate_checkoutHint": "未プッシュのコミットがなくクリーンなクローンです。削除するとゴミ箱に移動します。"
     },
     "item": {
       "command": "コマンド",
