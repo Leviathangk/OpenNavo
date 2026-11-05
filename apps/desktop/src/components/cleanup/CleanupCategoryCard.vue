@@ -60,6 +60,7 @@ const skipped = computed(() => {
         ? {
             ...row,
             bytes: row.bytes === null && group.bytes === null ? null : (row.bytes ?? 0) + (group.bytes ?? 0),
+            count: row.count + group.count,
             processes: [...new Set([...row.processes, ...group.processes])]
           }
         : group
@@ -85,6 +86,8 @@ function icon(group: Pick<CleanupGroup, 'appId' | 'bundleId' | 'title'> & { id?:
 const names = (processes: string[]) =>
   new Intl.ListFormat(appLocale.value, { type: 'conjunction', style: 'narrow' }).format(processes);
 function skipReason(group: SkippedGroup) {
+  if (group.reason === 'too_many')
+    return t('cleanup.skipReasons.too_many', { count: group.count }, { plural: group.count });
   const withNames = group.reason === 'running' || group.reason === 'in_use' || group.reason === 'busy';
   return withNames && group.processes.length
     ? t(`cleanup.skipReasonsBy.${group.reason}`, { names: names(group.processes) })

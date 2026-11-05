@@ -8,6 +8,8 @@ use std::{
 const GIT_TIMEOUT: Duration = Duration::from_secs(5);
 /// A duplicate clone must have been idle this long before it is even listed.
 const DUPLICATE_IDLE_DAYS: i64 = 30;
+/// One repository or remote can have dozens of checkouts; list the first few and count the rest.
+const CHECKOUT_GROUP_LIMIT: usize = 20;
 
 #[derive(Debug, PartialEq, Eq)]
 enum GitError {
@@ -114,12 +116,19 @@ impl Collector<'_> {
             if self.checkout_expired() {
                 break;
             }
+            let group_title = remote_name(&group[0].remote.clone().unwrap_or_default());
+            let mut shown = 0;
+            let mut omitted = 0;
             for repo in group {
                 if self.checkout_expired() {
                     break;
                 }
                 let candidate = duplicate_candidate(&repo.root, self.deadline);
                 if self.checkout_result(&repo.root, candidate) != Some(true) {
+                    continue;
+                }
+                if shown >= CHECKOUT_GROUP_LIMIT {
+                    omitted += 1;
                     continue;
                 }
                 let owner = duplicate_owner(repo);
@@ -132,12 +141,26 @@ impl Collector<'_> {
                     &repo.root,
                     owner,
                     title,
-                    remote_name(&repo.remote.clone().unwrap_or_default()),
+                    group_title.clone(),
                     CleanupReason::DuplicateCheckout,
                 )?;
+                shown += 1;
+            }
+            if omitted > 0 {
+                self.skip_checkout_group(group_title, omitted);
             }
         }
         Ok(())
+    }
+    fn skip_checkout_group(&mut self, title: String, count: usize) {
+        self.result.category.skipped.push(SkippedGroup {
+            title,
+            app_id: None,
+            bytes: None,
+            reason: SkippedGroupReason::TooMany,
+            processes: vec![],
+            count: u32::try_from(count).unwrap_or(u32::MAX),
+        });
     }
     fn walk_checkouts(
         &mut self,
@@ -189,6 +212,8 @@ impl Collector<'_> {
         let Some(output) = self.checkout_result(&repo.root, output) else {
             return Ok(());
         };
+        let mut shown = 0;
+        let mut omitted = 0;
         for worktree in parse_worktrees(&output) {
             self.check()?;
             if self.checkout_expired() {
@@ -200,6 +225,10 @@ impl Collector<'_> {
                 || !belongs_to(&worktree.path, &repo.common)
                 || !listed.insert(worktree.path.clone())
             {
+                continue;
+            }
+            if shown >= CHECKOUT_GROUP_LIMIT {
+                omitted += 1;
                 continue;
             }
             let title = worktree
@@ -214,6 +243,10 @@ impl Collector<'_> {
                 group_title.clone(),
                 CleanupReason::Worktree,
             )?;
+            shown += 1;
+        }
+        if omitted > 0 {
+            self.skip_checkout_group(group_title, omitted);
         }
         Ok(())
     }

@@ -300,10 +300,24 @@ describe('Category card', () => {
       complete: true,
       groups: [],
       skipped: [
-        { title: 'Slack', appId: 'local-slack', bytes: 200_000_000, reason: 'running', processes: ['Slack'] },
-        { title: '1Password', appId: null, bytes: null, reason: 'protected', processes: [] },
-        { title: 'WeChat', appId: 'cask-wechat', bytes: 1_000_000_000, reason: 'running', processes: ['WeChat'] },
-        { title: 'WeChat', appId: 'cask-wechat', bytes: 500_000_000, reason: 'running', processes: ['WeChat Helper'] }
+        { title: 'Slack', appId: 'local-slack', bytes: 200_000_000, reason: 'running', processes: ['Slack'], count: 0 },
+        { title: '1Password', appId: null, bytes: null, reason: 'protected', processes: [], count: 0 },
+        {
+          title: 'WeChat',
+          appId: 'cask-wechat',
+          bytes: 1_000_000_000,
+          reason: 'running',
+          processes: ['WeChat'],
+          count: 0
+        },
+        {
+          title: 'WeChat',
+          appId: 'cask-wechat',
+          bytes: 500_000_000,
+          reason: 'running',
+          processes: ['WeChat Helper'],
+          count: 0
+        }
       ]
     };
     const wrapper = mount(CleanupCategoryCard, {
@@ -321,6 +335,25 @@ describe('Category card', () => {
     expect(rows[1]).toContain('Slack');
     expect(rows[2]).toContain('1Password');
     expect(wrapper.text()).toContain('已跳过 3 项');
+  });
+
+  it('Shows how many checkout rows were left out by the cap', async () => {
+    const { pinia } = await context();
+    useCleanupStore().toggleExpanded('project_checkouts');
+    const category: CategoryReport = {
+      key: 'project_checkouts',
+      risk: 'review',
+      bytes: 0,
+      complete: true,
+      groups: [],
+      skipped: [{ title: 'app', appId: null, bytes: null, reason: 'too_many', processes: [], count: 7 }]
+    };
+    const wrapper = mount(CleanupCategoryCard, {
+      props: { category },
+      global: { plugins: [pinia, i18n] }
+    });
+    expect(wrapper.text()).toContain('还有 7 个未列出');
+    wrapper.unmount();
   });
 
   it('Unfolds to one row per group with its own tick; the items of a group stay folded until it is unfolded', async () => {

@@ -198,6 +198,8 @@ pub struct SkippedGroup {
     pub bytes: Option<u64>,
     pub reason: SkippedGroupReason,
     pub processes: Vec<String>,
+    /// How many items were omitted when the limit kept them out of the report; zero for other reasons.
+    pub count: u32,
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -213,6 +215,8 @@ pub enum SkippedGroupReason {
     ToolStopped,
     /// Docker volumes: measured and shown, never offered; they can hold databases.
     Volumes,
+    /// A long checkout list was cut short; `count` says how many were not listed.
+    TooMany,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]

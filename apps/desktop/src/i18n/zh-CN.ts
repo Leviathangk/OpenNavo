@@ -1861,6 +1861,7 @@ export default {
       busy: '工具正在运行',
       recent: '最近有改动',
       git_tracked: '里面有 Git 跟踪的文件',
+      too_many: '还有 {count} 个未列出',
       protected: '受保护',
       permission: '没有权限',
       tool_stopped: '没有运行，打开后重新扫描就能看到可回收空间',

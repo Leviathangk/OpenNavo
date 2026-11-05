@@ -1046,7 +1046,14 @@ export function createCleanupMock({
         if (!visible.length) continue;
         if (spec.key === 'docker' && flags.has('cleanup-docker-stopped')) {
           if (!skipped.length)
-            skipped.push({ title: 'Docker', appId: null, bytes: null, reason: 'tool_stopped', processes: [] });
+            skipped.push({
+              title: 'Docker',
+              appId: null,
+              bytes: null,
+              reason: 'tool_stopped',
+              processes: [],
+              count: 0
+            });
           continue;
         }
         if (spec.key === 'homebrew' && !state.cacheBytes) continue;
@@ -1057,16 +1064,17 @@ export function createCleanupMock({
             appId: group.appId ?? null,
             bytes,
             reason: 'running',
-            processes: [processName(group.owner)]
+            processes: [processName(group.owner)],
+            count: 0
           });
           continue;
         }
         if (group.tool && flags.has(`cleanup-${group.tool}-compiling`)) {
-          skipped.push({ title: group.title, appId: null, bytes, reason: 'busy', processes: [group.tool] });
+          skipped.push({ title: group.title, appId: null, bytes, reason: 'busy', processes: [group.tool], count: 0 });
           continue;
         }
         if (group.skip) {
-          skipped.push({ title: group.title, appId: null, bytes, reason: group.skip, processes: [] });
+          skipped.push({ title: group.title, appId: null, bytes, reason: group.skip, processes: [], count: 0 });
           continue;
         }
         groups.push({
@@ -1094,7 +1102,14 @@ export function createCleanupMock({
         });
       }
       for (const group of spec.protectedGroups ?? [])
-        skipped.push({ title: group.title, appId: null, bytes: null, reason: 'protected', processes: [] });
+        skipped.push({
+          title: group.title,
+          appId: null,
+          bytes: null,
+          reason: 'protected',
+          processes: [],
+          count: 0
+        });
       if (!groups.length && !skipped.length) continue;
       categories.push({
         key: spec.key,

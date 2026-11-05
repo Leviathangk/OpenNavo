@@ -1865,7 +1865,8 @@
       "protected": "Protégé",
       "permission": "Autorisation manquante",
       "tool_stopped": "Non ouvert ; ouvrez-le et relancez l’analyse pour voir l’espace récupérable",
-      "volumes": "Les volumes peuvent contenir des bases de données ; affichés uniquement, jamais nettoyés"
+      "volumes": "Les volumes peuvent contenir des bases de données ; affichés uniquement, jamais nettoyés",
+      "too_many": "{count} autre non affiché | {count} autres non affichés"
     },
     "reasons": {
       "build_leaf": "Compilation incrémentale",
