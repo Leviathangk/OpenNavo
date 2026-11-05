@@ -162,7 +162,10 @@ export function currentRows(pkg: Pick<PackagePage, 'facts' | 'version'>): Requir
     row =>
       isVerified(row.evidence) &&
       (row.versions.includes(version) ||
-        (version === '' && row.versions.length === 0 && row.architectures.length === 0 && row.appleSilicon === 'unknown'))
+        (version === '' &&
+          row.versions.length === 0 &&
+          row.architectures.length === 0 &&
+          row.appleSilicon === 'unknown'))
   );
 }
 
