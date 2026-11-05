@@ -1865,7 +1865,8 @@
       "protected": "Protetto",
       "permission": "Autorizzazione mancante",
       "tool_stopped": "Non in esecuzione; apri e ripeti la scansione per vedere lo spazio recuperabile",
-      "volumes": "I volumi potrebbero contenere database o altri dati; sono solo mostrati, mai puliti"
+      "volumes": "I volumi potrebbero contenere database o altri dati; sono solo mostrati, mai puliti",
+      "too_many": "{count} altro non mostrato | {count} altri non mostrati"
     },
     "reasons": {
       "build_leaf": "Compilazione incrementale",

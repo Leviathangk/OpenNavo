@@ -1865,7 +1865,8 @@
       "protected": "Protegido",
       "permission": "Sin permiso",
       "tool_stopped": "No está abierto; ábrelo y vuelve a analizar para ver el espacio recuperable",
-      "volumes": "Los volúmenes pueden guardar bases de datos y otros datos; solo se muestran, nunca se limpian"
+      "volumes": "Los volúmenes pueden guardar bases de datos y otros datos; solo se muestran, nunca se limpian",
+      "too_many": "{count} más sin mostrar | {count} más sin mostrar"
     },
     "reasons": {
       "build_leaf": "Compilación incremental",

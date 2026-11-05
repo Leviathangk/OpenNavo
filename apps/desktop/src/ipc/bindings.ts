@@ -2230,13 +2230,17 @@ export type SkippedGroup = {
 	bytes: number | null,
 	reason: SkippedGroupReason,
 	processes: string[],
+	/**  How many items were omitted when the limit kept them out of the report; zero for other reasons. */
+	count: number,
 };
 
 export type SkippedGroupReason = "running" | "in_use" | "busy" | "recent" | "git_tracked" | "protected" | "permission" |
 /**  The tool that owns the space is not running (Docker); open it and scan again. */
 "tool_stopped" |
 /**  Docker volumes: measured and shown, never offered; they can hold databases. */
-"volumes";
+"volumes" |
+/**  A long checkout list was cut short; `count` says how many were not listed. */
+"too_many";
 
 export type SkippedItem = {
 	itemId: string,

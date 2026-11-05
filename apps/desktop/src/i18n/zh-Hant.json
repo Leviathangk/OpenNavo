@@ -1862,6 +1862,7 @@
       "busy": "工具正在執行",
       "recent": "最近有改動",
       "git_tracked": "裡面有 Git 跟蹤的檔案",
+      "too_many": "還有 {count} 個未列出",
       "protected": "受保護",
       "permission": "沒有權限",
       "tool_stopped": "沒有執行，開啟後重新掃描就能看到可回收空間",

@@ -1921,6 +1921,7 @@ const messages: MessageSchema = {
       busy: 'The tool is running',
       recent: 'Changed recently',
       git_tracked: 'Contains files tracked by Git',
+      too_many: '{count} more not listed | {count} more not listed',
       protected: 'Protected',
       permission: 'No permission',
       tool_stopped: 'Not running; open it and scan again to see what can be reclaimed',

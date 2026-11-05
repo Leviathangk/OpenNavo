@@ -101,6 +101,7 @@ impl Collected {
                 bytes,
                 reason,
                 processes,
+                count: 0,
             });
         }
     }
@@ -2822,6 +2823,60 @@ mod leaf_scan_tests {
         assert_eq!(item.restore, CleanupRestore::Never);
         assert!(!item.selected);
         assert!(item.size_bytes.is_some_and(|bytes| bytes > 0));
+    }
+    #[tokio::test]
+    async fn a_long_worktree_list_is_capped_with_a_count() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap().join("User");
+        let repo = home.join("code/app");
+        fs::create_dir_all(&repo).unwrap();
+        checkout_git(&repo, &["init", "-b", "main"]);
+        fs::write(repo.join("README.md"), "main\n").unwrap();
+        checkout_git(&repo, &["add", "."]);
+        checkout_git(&repo, &["commit", "-m", "init"]);
+        for index in 0..21 {
+            let path = home.join(format!("code/app-{index}"));
+            checkout_git(
+                &repo,
+                &[
+                    "worktree",
+                    "add",
+                    path.to_str().unwrap(),
+                    "-b",
+                    &format!("cap-{index}"),
+                ],
+            );
+            fs::write(path.join("README.md"), "worktree\n").unwrap();
+        }
+        let report = engine(&home)
+            .scan(
+                "checkouts-cap".into(),
+                Some(vec![CleanupCategory::ProjectCheckouts]),
+                granted(),
+                None,
+            )
+            .await
+            .unwrap();
+        let category = report
+            .categories
+            .iter()
+            .find(|category| category.key == CleanupCategory::ProjectCheckouts)
+            .unwrap();
+        assert_eq!(
+            category
+                .groups
+                .iter()
+                .flat_map(|group| &group.items)
+                .count(),
+            20,
+            "only the first 20 worktrees are listed"
+        );
+        let skipped = category
+            .skipped
+            .iter()
+            .find(|group| group.reason == SkippedGroupReason::TooMany)
+            .expect("the rest are counted");
+        assert_eq!(skipped.count, 1);
     }
     fn checkout_git(dir: &Path, args: &[&str]) {
         let status = std::process::Command::new("git")

@@ -106,6 +106,7 @@ fn c2_device_support_reasons_and_process_names_are_required_output_fields() {
         bytes: Some(10),
         reason: SkippedGroupReason::Running,
         processes: vec!["compile".into(), "go".into()],
+        count: 0,
     };
     let json = serde_json::to_value(skipped).unwrap();
     assert_eq!(json["processes"], serde_json::json!(["compile", "go"]));
@@ -115,6 +116,7 @@ fn c2_device_support_reasons_and_process_names_are_required_output_fields() {
         bytes: None,
         reason: SkippedGroupReason::Protected,
         processes: vec![],
+        count: 0,
     };
     assert_eq!(
         serde_json::to_value(other).unwrap()["processes"],

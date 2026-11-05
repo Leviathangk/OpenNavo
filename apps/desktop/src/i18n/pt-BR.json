@@ -1865,7 +1865,8 @@
       "protected": "Protegido",
       "permission": "Sem permissão",
       "tool_stopped": "Não está aberto; abra e verifique de novo para ver o espaço recuperável",
-      "volumes": "Os volumes podem guardar bancos de dados e outros dados; só são mostrados, nunca limpos"
+      "volumes": "Os volumes podem guardar bancos de dados e outros dados; só são mostrados, nunca limpos",
+      "too_many": "{count} mais não listado | {count} mais não listados"
     },
     "reasons": {
       "build_leaf": "Build incremental",

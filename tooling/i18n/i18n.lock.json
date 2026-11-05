@@ -2997,6 +2997,7 @@
         "cleanup.skipReasons.busy": "b6572c6ee055606ca752d79b56acc37bcab7a8b58664aa3430a612a79de5ed56",
         "cleanup.skipReasons.recent": "5c609c30aeb90865e3d4eea4074be39113df2ab85193a67e438f1f34e314e422",
         "cleanup.skipReasons.git_tracked": "9821c175ae09a27dbd8533282e166ce0daec37fcad7f0b8587d1179997e6a239",
+        "cleanup.skipReasons.too_many": "af7d02d9217bed4df8da0798533cb77311e9af2fad8f6839a68b66a2b5578308",
         "cleanup.skipReasons.protected": "8ea88256dd7677c57755c29cde59d1a5ba26c1faaac7bf321c1ada5e33d3c226",
         "cleanup.skipReasons.permission": "e32c8a6ddd7bcef39f70884d73016b224cb6ada149efb3c7d7b33ef6fffbff1f",
         "cleanup.skipReasons.tool_stopped": "64c507f4ae4e5fa13fd10b314200186300d4b79c28d31b2d04a1cf23fbe89dd7",

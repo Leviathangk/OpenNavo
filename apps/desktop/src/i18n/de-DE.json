@@ -1865,7 +1865,8 @@
       "protected": "Geschützt",
       "permission": "Keine Berechtigung",
       "tool_stopped": "Läuft nicht; öffnen und erneut scannen, um freigebbaren Speicher zu sehen",
-      "volumes": "Volumes können Datenbanken und andere Daten enthalten; nur angezeigt, nie bereinigt"
+      "volumes": "Volumes können Datenbanken und andere Daten enthalten; nur angezeigt, nie bereinigt",
+      "too_many": "{count} weiterer nicht angezeigt | {count} weitere nicht angezeigt"
     },
     "reasons": {
       "build_leaf": "Inkrementeller Build",
