@@ -26,6 +26,9 @@ pub enum CleanupCategory {
     DeviceBackups,
     /// Docker's own reclaimable space, removed only by Docker's prune commands.
     Docker,
+    /// Locally downloaded model weights (Ollama, LM Studio, Hugging Face, Jan, GPT4All). Removing one means
+    /// downloading it again, so the category is review-only and unchecked.
+    LocalModels,
     LargeFiles,
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
@@ -52,6 +55,48 @@ pub struct CleanupReport {
     pub categories: Vec<CategoryReport>,
     pub incomplete: Vec<SkippedLocation>,
 }
+/// Session-file age distribution. Counts are cumulative up to the named window; `older` is beyond one year.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryAges {
+    pub within_30_days: u64,
+    pub within_90_days: u64,
+    pub within_180_days: u64,
+    pub within_365_days: u64,
+    pub older: u64,
+    pub oldest: Option<i64>,
+    pub newest: Option<i64>,
+}
+impl HistoryAges {
+    pub fn record(&mut self, modified_at: i64, now: i64) {
+        let days = (now - modified_at).max(0) / 86_400_000;
+        if days <= 30 {
+            self.within_30_days += 1;
+        }
+        if days <= 90 {
+            self.within_90_days += 1;
+        }
+        if days <= 180 {
+            self.within_180_days += 1;
+        }
+        if days <= 365 {
+            self.within_365_days += 1;
+        } else {
+            self.older += 1;
+        }
+        self.oldest = Some(
+            self.oldest
+                .map_or(modified_at, |value| value.min(modified_at)),
+        );
+        self.newest = Some(
+            self.newest
+                .map_or(modified_at, |value| value.max(modified_at)),
+        );
+    }
+    pub fn count(&self) -> u64 {
+        self.within_365_days + self.older
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CategoryReport {
@@ -61,6 +106,9 @@ pub struct CategoryReport {
     pub complete: bool,
     pub groups: Vec<CleanupGroup>,
     pub skipped: Vec<SkippedGroup>,
+    /// Present only for AI history; old reports and other categories omit it.
+    #[serde(default)]
+    pub history: Option<HistoryAges>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -131,6 +179,7 @@ impl CleanupRestore {
             | CleanupReason::DeviceSupportLatest
             | CleanupReason::BuildArtifact
             | CleanupReason::BrewCleanup
+            | CleanupReason::LocalModel
             | CleanupReason::ToolCommand => Self::Costly,
             CleanupReason::Orphan
             | CleanupReason::OrphanService
@@ -179,6 +228,8 @@ pub enum CleanupReason {
     AiHistory,
     /// One old transcript file inside an AI history store; selected file by file and moved to the Trash.
     AiHistoryFile,
+    /// A locally downloaded model store; removing it means downloading the weights again.
+    LocalModel,
     Trash,
     DeviceBackup,
     /// An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs.

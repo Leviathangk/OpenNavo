@@ -102,6 +102,13 @@ const chip = computed(() => {
         text: t('cleanup.reasons.ai_history_file'),
         hint: t('cleanup.reasons.ai_history_fileHint')
       };
+    // Downloaded weights: deleting them is recoverable only by downloading them again.
+    case 'local_model':
+      return {
+        tone: 'warning' as const,
+        text: t('cleanup.reasons.local_model'),
+        hint: t('cleanup.reasons.local_modelHint')
+      };
     // Whole project output: correct to offer, but the next build starts from scratch.
     case 'build_artifact':
       return {

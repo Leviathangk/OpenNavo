@@ -1804,7 +1804,8 @@
       "device_backups": "Backups de dispositivos e arquivos do Xcode",
       "large_files": "Arquivos grandes e antigos",
       "docker": "Espaço recuperável do Docker",
-      "project_checkouts": "Worktrees do Git e clones duplicados"
+      "project_checkouts": "Worktrees do Git e clones duplicados",
+      "local_models": "Modelos locais"
     },
     "categoryHints": {
       "app_caches": "Caches que os próprios apps criam; são recriados automaticamente depois de apagados",
@@ -1822,7 +1823,8 @@
       "device_backups": "Depois de esvaziar o Lixo, os backups não restauram mais dispositivos e os arquivos não simbolizam mais relatórios de falha",
       "large_files": "Arquivos com mais de 1 GB não abertos há 90 dias",
       "docker": "Removidos pelos comandos de limpeza do próprio Docker e nunca pré-selecionados; os volumes só são mostrados",
-      "project_checkouts": "Por enquanto somente leitura: worktrees vinculados e clones limpos que compartilham uma origem, para mostrar o espaço antes de oferecer a remoção"
+      "project_checkouts": "Por enquanto somente leitura: worktrees vinculados e clones limpos que compartilham uma origem, para mostrar o espaço antes de oferecer a remoção",
+      "local_models": "Pesos de modelos locais de Ollama, LM Studio, Hugging Face, Jan e GPT4All; apenas os arquivos de modelo são listados, então conversas, conjuntos de dados e índices de documentos locais permanecem"
     },
     "scan": {
       "starting": "Preparando a verificação",
@@ -1854,7 +1856,8 @@
       "skipped": "{count} item ignorado, exibido só como referência | {count} itens ignorados, exibidos só como referência",
       "lastModified": "Última alteração: {time}",
       "servicesLoading": "{count} item em segundo plano ainda é carregado no login | {count} itens em segundo plano ainda são carregados no login",
-      "inUse": "{size} em uso"
+      "inUse": "{size} em uso",
+      "historyAges": "Arquivos de sessão: {within30} em 30 dias · {within90} em 90 · {within180} em 180 · {within365} em um ano · {older} mais antigos · mais antigo {oldest} · mais recente {newest}"
     },
     "skipReasons": {
       "running": "Está aberto; feche para limpar",
@@ -1894,7 +1897,9 @@
       "orphan_worktree": "Worktree órfão",
       "orphanWorktreeHint": "Worktree quebrado: os metadados do Git sumiram, então só mostramos o espaço ocupado.",
       "ai_history_file": "Arquivo de sessão antigo",
-      "ai_history_fileHint": "Move esta transcrição para o Lixo; esvaziar o Lixo torna a recuperação impossível. Só são listados arquivos com mais de 30 dias."
+      "ai_history_fileHint": "Move esta transcrição para o Lixo; esvaziar o Lixo torna a recuperação impossível. Só são listados arquivos com mais de 30 dias.",
+      "local_model": "Modelo local",
+      "local_modelHint": "Move os dados de modelo selecionados para o Lixo; a ferramenta baixará os pesos novamente quando precisar. Conversas e índices de documentos locais permanecem."
     },
     "item": {
       "command": "Comando",

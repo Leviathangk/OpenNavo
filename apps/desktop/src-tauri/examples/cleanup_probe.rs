@@ -192,6 +192,7 @@ mod tests {
             complete: true,
             groups: vec![],
             skipped: vec![],
+            history: None,
         };
         let mut item = CleanupItem {
             id: "old".into(),
@@ -199,9 +200,11 @@ mod tests {
             kind: CleanupItemKind::Dir,
             command: None,
             size_bytes: Some(10),
+            size_complete: true,
             kept_open_files: 0,
             modified_at: None,
             reason: CleanupReason::DeviceSupport,
+            restore: CleanupRestore::for_reason(CleanupReason::DeviceSupport),
             selected: true,
             delete_mode: DeleteMode::Delete,
             needs_admin: false,

@@ -22,6 +22,8 @@ pub struct Owner {
     pub external_cache: Option<PathBuf>,
     pub known: bool,
     pub protected: bool,
+    /// Why the matching rule offers this path; copied to `CleanupItem.note` when the collector adds the item.
+    pub evidence: Option<String>,
 }
 impl Owner {
     pub fn app(bundle: &str, apps: &[CachedApp]) -> Self {
@@ -88,6 +90,7 @@ impl Owner {
             group_key: None,
             group_subtitle: None,
             external_cache: None,
+            evidence: None,
         }
     }
     pub fn tool(processes: &[&str]) -> Self {

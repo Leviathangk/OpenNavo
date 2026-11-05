@@ -1794,6 +1794,7 @@ export default {
       dev_caches: '开发工具缓存',
       ai_caches: 'AI 工具缓存',
       ai_history: 'AI 历史记录',
+      local_models: '本地模型',
       homebrew: 'Homebrew 下载缓存与旧版本',
       temp: '临时文件',
       leftovers: '已删除 App 的残留',
@@ -1812,6 +1813,8 @@ export default {
       dev_caches: '下次构建或安装时会重新生成、重新下载',
       ai_caches: 'AI 开发工具的缓存、日志和废弃下载；会话、记忆和凭据保留',
       ai_history: '整目录只读；30 天前的单条会话记录可逐条移到废纸篓',
+      local_models:
+        'Ollama、LM Studio、Hugging Face、Jan、GPT4All 的本地模型权重；只列出模型文件，聊天记录、数据集和本地文档索引会保留',
       homebrew: '等同 brew cleanup：旧版本和下载缓存',
       temp: '3 天没动、没被打开的临时文件',
       leftovers: 'App 已经不在这台 Mac 上，这些文件还留着',
@@ -1853,7 +1856,9 @@ export default {
       skipped: '已跳过 {count} 项，只展示、不可选',
       lastModified: '最后修改：{time}',
       servicesLoading: '{count} 个后台项目仍在开机时加载',
-      inUse: '{size} 正在使用'
+      inUse: '{size} 正在使用',
+      historyAges:
+        '会话文件：30 天内 {within30} · 90 天内 {within90} · 180 天内 {within180} · 一年内 {within365} · 更早 {older} · 最早 {oldest} · 最新 {newest}'
     },
     skipReasons: {
       running: '正在运行，退出后可以清理',
@@ -1876,6 +1881,8 @@ export default {
       ai_historyHint: '整个目录只读；较早的单条会话记录会单独列出，可逐条移到废纸篓。',
       ai_history_file: '旧会话文件',
       ai_history_fileHint: '将这条会话记录移到废纸篓；清空废纸篓后不可恢复。仅列出 30 天以前的文件。',
+      local_model: '本地模型',
+      local_modelHint: '将选中的模型数据移到废纸篓；对应工具需要时会重新下载。聊天记录和本地文档索引会保留。',
       worktree: '关联 worktree',
       worktreeHint: '删除 worktree 会移除它的工作目录，但保留分支和主仓库；有未提交改动时 Git 会拒绝。',
       duplicate_checkout: '重复克隆',

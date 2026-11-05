@@ -1804,7 +1804,8 @@
       "device_backups": "Sauvegardes iPhone / iPad et archives Xcode",
       "large_files": "Fichiers volumineux et anciens téléchargements",
       "docker": "Espace récupérable Docker",
-      "project_checkouts": "Worktrees Git et clones en double"
+      "project_checkouts": "Worktrees Git et clones en double",
+      "local_models": "Modèles locaux"
     },
     "categoryHints": {
       "app_caches": "Caches créés par les apps, recréés automatiquement après suppression",
@@ -1822,7 +1823,8 @@
       "device_backups": "Une fois la corbeille vidée, les sauvegardes ne pourront plus restaurer les appareils ni les archives servir à interpréter les journaux de plantage",
       "large_files": "Fichiers de plus de 1 GB non ouverts depuis 90 jours",
       "docker": "Suppression par les commandes de nettoyage Docker, sans présélection ; les volumes sont affichés mais non nettoyés",
-      "project_checkouts": "Lecture seule pour l’instant : worktrees liés et clones propres partageant une origine, pour voir l’espace occupé avant de proposer leur suppression"
+      "project_checkouts": "Lecture seule pour l’instant : worktrees liés et clones propres partageant une origine, pour voir l’espace occupé avant de proposer leur suppression",
+      "local_models": "Poids de modèles locaux d’Ollama, LM Studio, Hugging Face, Jan et GPT4All ; seuls les fichiers de modèle sont listés, les conversations, jeux de données et index de documents locaux sont conservés"
     },
     "scan": {
       "starting": "Préparation de l’analyse",
@@ -1854,7 +1856,8 @@
       "skipped": "{count} élément ignoré, affiché pour information uniquement | {count} éléments ignorés, affichés pour information uniquement",
       "lastModified": "Dernière modification : {time}",
       "servicesLoading": "{count} élément d’arrière-plan se charge encore au démarrage | {count} éléments d’arrière-plan se chargent encore au démarrage",
-      "inUse": "{size} en cours d’utilisation"
+      "inUse": "{size} en cours d’utilisation",
+      "historyAges": "Fichiers de session : {within30} sur 30 jours · {within90} sur 90 · {within180} sur 180 · {within365} sur un an · {older} plus anciens · plus ancien {oldest} · plus récent {newest}"
     },
     "skipReasons": {
       "running": "En cours d’exécution ; quittez pour nettoyer",
@@ -1894,7 +1897,9 @@
       "orphan_worktree": "Worktree orphelin",
       "orphanWorktreeHint": "Worktree cassé : ses métadonnées Git ont disparu, seul l’espace occupé est affiché.",
       "ai_history_file": "Ancien fichier de session",
-      "ai_history_fileHint": "Déplace cette transcription dans la corbeille ; la vider la rend irrécupérable. Seuls les fichiers de plus de 30 jours sont affichés."
+      "ai_history_fileHint": "Déplace cette transcription dans la corbeille ; la vider la rend irrécupérable. Seuls les fichiers de plus de 30 jours sont affichés.",
+      "local_model": "Modèle local",
+      "local_modelHint": "Déplace les données de modèle sélectionnées dans la corbeille ; l’outil retéléchargera les poids si nécessaire. Les conversations et les index de documents locaux sont conservés."
     },
     "item": {
       "command": "Commande",

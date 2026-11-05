@@ -1804,7 +1804,8 @@
       "device_backups": "Copias de seguridad de dispositivos y archivos de Xcode",
       "large_files": "Archivos grandes y antiguos",
       "docker": "Espacio recuperable de Docker",
-      "project_checkouts": "Árboles de trabajo de Git y clones duplicados"
+      "project_checkouts": "Árboles de trabajo de Git y clones duplicados",
+      "local_models": "Modelos locales"
     },
     "categoryHints": {
       "app_caches": "Cachés que crean las propias apps; se regeneran solas tras eliminarlas",
@@ -1822,7 +1823,8 @@
       "device_backups": "Al vaciar la Papelera, las copias ya no restauran dispositivos y los archivos ya no simbolizan registros de fallos",
       "large_files": "Archivos de más de 1 GB sin abrir en 90 días",
       "docker": "Se eliminan con los comandos de limpieza de Docker y nunca se preseleccionan; los volúmenes solo se muestran",
-      "project_checkouts": "Por ahora solo lectura: árboles de trabajo vinculados y clones limpios que comparten un origen, para ver su espacio antes de ofrecer su eliminación"
+      "project_checkouts": "Por ahora solo lectura: árboles de trabajo vinculados y clones limpios que comparten un origen, para ver su espacio antes de ofrecer su eliminación",
+      "local_models": "Pesos de modelos locales de Ollama, LM Studio, Hugging Face, Jan y GPT4All; solo se listan los archivos de modelo, así que los chats, conjuntos de datos e índices de documentos locales se conservan"
     },
     "scan": {
       "starting": "Preparando el análisis",
@@ -1854,7 +1856,8 @@
       "skipped": "{count} elemento omitido, solo se muestra como referencia | {count} elementos omitidos, solo se muestran como referencia",
       "lastModified": "Última modificación: {time}",
       "servicesLoading": "{count} elemento en segundo plano aún se carga al iniciar sesión | {count} elementos en segundo plano aún se cargan al iniciar sesión",
-      "inUse": "{size} en uso"
+      "inUse": "{size} en uso",
+      "historyAges": "Archivos de sesión: {within30} en 30 días · {within90} en 90 · {within180} en 180 · {within365} en un año · {older} más antiguos · más antiguo {oldest} · más reciente {newest}"
     },
     "skipReasons": {
       "running": "Está abierta; ciérrala para limpiar",
@@ -1894,7 +1897,9 @@
       "orphan_worktree": "Worktree huérfano",
       "orphanWorktreeHint": "Worktree roto: sus metadatos de Git ya no existen, así que solo se muestra el espacio que ocupa.",
       "ai_history_file": "Archivo de sesión antiguo",
-      "ai_history_fileHint": "Mueve esta transcripción a la Papelera; vaciarla hace que no se pueda recuperar. Solo se muestran archivos de más de 30 días."
+      "ai_history_fileHint": "Mueve esta transcripción a la Papelera; vaciarla hace que no se pueda recuperar. Solo se muestran archivos de más de 30 días.",
+      "local_model": "Modelo local",
+      "local_modelHint": "Mueve los datos de modelo seleccionados a la Papelera; la herramienta volverá a descargar los pesos cuando los necesite. Los chats y los índices de documentos locales se conservan."
     },
     "item": {
       "command": "Comando",

@@ -542,6 +542,54 @@ const CATEGORIES: CategorySpec[] = [
     ]
   },
   {
+    key: 'local_models',
+    risk: 'review',
+    groups: [
+      {
+        id: 'local-models-ollama',
+        title: 'Ollama',
+        items: [
+          {
+            path: '~/.ollama/models',
+            size: 8.4 * GB,
+            daysAgo: 0,
+            reason: 'local_model',
+            deleteMode: 'trash',
+            note: "Ollama's model store documented at docs.ollama.com."
+          }
+        ]
+      },
+      {
+        id: 'local-models-huggingface',
+        title: 'Hugging Face',
+        items: [
+          {
+            path: '~/.cache/huggingface/hub/models--meta-llama--Llama-3.2-3B',
+            size: 3.1 * GB,
+            daysAgo: 0,
+            reason: 'local_model',
+            deleteMode: 'trash',
+            note: 'Hugging Face hub cache; only models--* directories are listed, so datasets and spaces stay.'
+          }
+        ]
+      },
+      {
+        id: 'local-models-gpt4all',
+        title: 'GPT4All',
+        items: [
+          {
+            path: '~/Library/Application Support/nomic.ai/GPT4All/model.gguf',
+            size: 2.4 * GB,
+            daysAgo: 0,
+            reason: 'local_model',
+            deleteMode: 'trash',
+            note: 'GPT4All .gguf model files only; chats, LocalDocs and settings stay.'
+          }
+        ]
+      }
+    ]
+  },
+  {
     key: 'homebrew',
     risk: 'rebuildable',
     groups: [
@@ -947,6 +995,8 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'worktree':
     case 'ai_history_file':
       return 'irreversible';
+    case 'local_model':
+      return 'costly';
     case 'duplicate_checkout':
       return 'auto';
     case 'tool_download_cache':
@@ -1125,7 +1175,19 @@ export function createCleanupMock({
         // Without Full Disk Access the sizes of gated categories are lower bounds.
         complete: fda || !spec.groups.some(group => group.items.some(item => item.fda)),
         groups,
-        skipped
+        skipped,
+        history:
+          spec.key === 'ai_history'
+            ? {
+                within30Days: 12,
+                within90Days: 31,
+                within180Days: 58,
+                within365Days: 94,
+                older: 27,
+                oldest: now - 640 * DAY,
+                newest: now - 2 * DAY
+              }
+            : null
       });
     }
     return {

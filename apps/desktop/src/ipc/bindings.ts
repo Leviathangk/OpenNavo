@@ -753,6 +753,8 @@ export type CategoryReport = {
 	complete: boolean,
 	groups: CleanupGroup[],
 	skipped: SkippedGroup[],
+	/**  Present only for AI history; old reports and other categories omit it. */
+	history?: HistoryAges | null,
 };
 
 export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" |
@@ -766,7 +768,12 @@ export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_ca
 /**  Git checkouts that duplicate another clone or are linked worktrees: shown read-only in P2 discovery. */
 "project_checkouts" | "trash" | "device_backups" |
 /**  Docker's own reclaimable space, removed only by Docker's prune commands. */
-"docker" | "large_files";
+"docker" |
+/**
+ *  Locally downloaded model weights (Ollama, LM Studio, Hugging Face, Jan, GPT4All). Removing one means
+ *  downloading it again, so the category is review-only and unchecked.
+ */
+"local_models" | "large_files";
 
 export type CleanupCategoryBytes = {
 	key: CleanupCategory,
@@ -841,7 +848,9 @@ export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_c
 /**  A whole session store of an AI coding tool, listed read-only so its total stays visible. */
 "ai_history" |
 /**  One old transcript file inside an AI history store; selected file by file and moved to the Trash. */
-"ai_history_file" | "trash" | "device_backup" |
+"ai_history_file" |
+/**  A locally downloaded model store; removing it means downloading the weights again. */
+"local_model" | "trash" | "device_backup" |
 /**  An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs. */
 "xcode_archive" |
 /**  Images no container uses; pulled or built again when needed. */
@@ -1332,6 +1341,17 @@ export type HealthIssueKey = "cpu_busy" | "memory_pressure" | "disk_low" | "disk
 export type HealthIssueLevel = "info" | "attention" | "critical";
 
 export type HealthLevel = "good" | "attention" | "critical";
+
+/**  Session-file age distribution. Counts are cumulative up to the named window; `older` is beyond one year. */
+export type HistoryAges = {
+	within30Days: number,
+	within90Days: number,
+	within180Days: number,
+	within365Days: number,
+	older: number,
+	oldest: number | null,
+	newest: number | null,
+};
 
 /**
  *  What clearing the history did: records deleted, and finished records kept because the uninstall or clean-up can still

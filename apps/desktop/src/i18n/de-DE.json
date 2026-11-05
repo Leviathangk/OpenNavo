@@ -1804,7 +1804,8 @@
       "device_backups": "iPhone- und iPad-Backups & Xcode-Archive",
       "large_files": "Große und alte Dateien",
       "docker": "Freigebbarer Docker-Speicher",
-      "project_checkouts": "Git-Worktrees und doppelte Klone"
+      "project_checkouts": "Git-Worktrees und doppelte Klone",
+      "local_models": "Lokale Modelle"
     },
     "categoryHints": {
       "app_caches": "Von Apps erstellte Caches; werden nach dem Löschen automatisch neu erstellt",
@@ -1822,7 +1823,8 @@
       "device_backups": "Nach Leeren des Papierkorbs können Backups keine Geräte mehr wiederherstellen und Archive keine Absturzprotokolle mehr auflösen",
       "large_files": "Dateien über 1 GB, seit 90 Tagen nicht geöffnet",
       "docker": "Mit Docker-Bereinigungsbefehlen gelöscht, nie vorausgewählt; Volumes werden nur angezeigt, nicht bereinigt",
-      "project_checkouts": "Vorerst schreibgeschützt: verknüpfte Worktrees und saubere Klone mit gemeinsamer Origin, damit der Speicherbedarf vor dem späteren Entfernen sichtbar ist"
+      "project_checkouts": "Vorerst schreibgeschützt: verknüpfte Worktrees und saubere Klone mit gemeinsamer Origin, damit der Speicherbedarf vor dem späteren Entfernen sichtbar ist",
+      "local_models": "Lokale Modellgewichte von Ollama, LM Studio, Hugging Face, Jan und GPT4All; es werden nur Modelldateien aufgelistet, Chats, Datensätze und Indizes lokaler Dokumente bleiben erhalten"
     },
     "scan": {
       "starting": "Scan wird vorbereitet",
@@ -1854,7 +1856,8 @@
       "skipped": "{count} Eintrag übersprungen, nur zur Ansicht | {count} Einträge übersprungen, nur zur Ansicht",
       "lastModified": "Zuletzt geändert: {time}",
       "servicesLoading": "{count} Hintergrundobjekt wird beim Start weiterhin geladen | {count} Hintergrundobjekte werden beim Start weiterhin geladen",
-      "inUse": "{size} in Verwendung"
+      "inUse": "{size} in Verwendung",
+      "historyAges": "Sitzungsdateien: {within30} in 30 Tagen · {within90} in 90 · {within180} in 180 · {within365} in einem Jahr · {older} älter · älteste {oldest} · neueste {newest}"
     },
     "skipReasons": {
       "running": "Läuft; zum Bereinigen beenden",
@@ -1894,7 +1897,9 @@
       "orphan_worktree": "Verwaister Worktree",
       "orphanWorktreeHint": "Defekter Worktree: Die Git-Metadaten fehlen, daher wird nur der belegte Speicher angezeigt.",
       "ai_history_file": "Alte Sitzungsdatei",
-      "ai_history_fileHint": "Verschiebt diese Aufzeichnung in den Papierkorb; nach dem Leeren ist sie nicht wiederherstellbar. Es werden nur Dateien älter als 30 Tage angezeigt."
+      "ai_history_fileHint": "Verschiebt diese Aufzeichnung in den Papierkorb; nach dem Leeren ist sie nicht wiederherstellbar. Es werden nur Dateien älter als 30 Tage angezeigt.",
+      "local_model": "Lokales Modell",
+      "local_modelHint": "Verschiebt die ausgewählten Modelldaten in den Papierkorb; das Tool lädt die Gewichte bei Bedarf erneut herunter. Chats und Indizes lokaler Dokumente bleiben erhalten."
     },
     "item": {
       "command": "Befehl",

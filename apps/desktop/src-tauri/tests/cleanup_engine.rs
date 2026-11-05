@@ -25,7 +25,7 @@ use std::{
         Arc, Mutex, RwLock,
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 #[derive(Default)]
 struct Apps {
@@ -493,7 +493,7 @@ async fn scan_progress_is_global_cumulative_monotonic_and_finishes() {
             progress
                 .iter()
                 // Eight P0 categories, five P1 categories, Docker and checkouts.
-                .all(|p| p.total == 15 && p.checked <= p.total)
+                .all(|p| p.total == 16 && p.checked <= p.total)
         );
         assert_eq!(progress.first().unwrap().checked, 0);
         assert!(
@@ -536,9 +536,9 @@ async fn scan_progress_is_global_cumulative_monotonic_and_finishes() {
         progress
             .iter()
             // Every available category except developer caches, which this Mac has no tools for.
-            .all(|p| p.total == 14 && p.category != CleanupCategory::DevCaches)
+            .all(|p| p.total == 15 && p.category != CleanupCategory::DevCaches)
     );
-    assert_eq!(progress.last().unwrap().checked, 14);
+    assert_eq!(progress.last().unwrap().checked, 15);
 }
 
 #[tokio::test]
@@ -3418,3 +3418,120 @@ async fn p3_old_history_transcripts_are_trashed_even_with_cli_running_and_settin
 }
 
 // FIXED-ONLY END
+
+#[tokio::test]
+async fn p3_local_models_are_unchecked_and_move_to_the_trash() {
+    let f = Fixture::new();
+    let model = f.file(".ollama/models/blobs/sha256-model");
+    let report = f.scan(&[CleanupCategory::LocalModels]).await;
+    let item = items(&report)
+        .into_iter()
+        .find(|item| item.path.ends_with(".ollama/models"))
+        .expect("the model file is listed")
+        .clone();
+    assert_eq!(item.reason, CleanupReason::LocalModel);
+    assert_eq!(item.restore, CleanupRestore::Costly);
+    assert!(!item.selected);
+    assert_eq!(item.delete_mode, DeleteMode::Trash);
+    assert!(
+        item.note
+            .as_deref()
+            .is_some_and(|note| note.contains("Ollama"))
+    );
+
+    let done = f.execute(&report, vec![item.id.clone()]).await;
+    assert_eq!(done.state, TaskState::Succeeded, "{:?}", done.error);
+    assert!(!model.exists(), "the model store moved to the Trash");
+    assert_eq!(f.files.trash_calls.load(Ordering::Acquire), 1);
+}
+
+#[tokio::test]
+async fn p3_history_summary_counts_all_allowed_transcripts_by_age() {
+    let f = Fixture::new();
+    let recent = f.file(".codex/sessions/2026/01/recent.jsonl");
+    let ninety = f.file(".codex/sessions/2026/01/ninety.jsonl");
+    let half_year = f.file(".claude/projects/demo/half-year.jsonl");
+    let year = f.file(".claude/projects/demo/year.jsonl");
+    let older = f.file(".claude/projects/demo/older.jsonl");
+    for (path, days) in [
+        (&recent, 10),
+        (&ninety, 45),
+        (&half_year, 100),
+        (&year, 200),
+        (&older, 400),
+    ] {
+        age(path, days);
+    }
+
+    let report = f.scan(&[CleanupCategory::AiHistory]).await;
+    let history = report
+        .categories
+        .iter()
+        .find(|category| category.key == CleanupCategory::AiHistory)
+        .and_then(|category| category.history.as_ref())
+        .expect("the age summary is reported");
+    assert_eq!(history.within_30_days, 1);
+    assert_eq!(history.within_90_days, 2);
+    assert_eq!(history.within_180_days, 3);
+    assert_eq!(history.within_365_days, 4);
+    assert_eq!(history.older, 1);
+    assert_eq!(history.count(), 5);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    assert!(history.oldest.unwrap() <= now - 400 * 86_400_000);
+    assert!(history.newest.unwrap() >= now - 11 * 86_400_000);
+}
+
+#[tokio::test]
+async fn p3_local_models_only_list_model_data_inside_shared_folders() {
+    let f = Fixture::new();
+    let gpt_model = f.file("Library/Application Support/nomic.ai/GPT4All/model.gguf");
+    let gpt_chat = f.file("Library/Application Support/nomic.ai/GPT4All/chat.chat");
+    let gpt_docs = f.file("Library/Application Support/nomic.ai/GPT4All/localdocs_v1.db");
+    f.file("Library/Application Support/Jan/data/llamacpp/models/llama.gguf");
+    f.file("Library/Application Support/Jan/data/mlx/models/mlx.safetensors");
+    f.file("Library/Application Support/Jan/data/threads/thread.json");
+    f.file(".cache/huggingface/hub/models--org--model/blobs/weights");
+    f.file(".cache/huggingface/hub/datasets--org--data/blobs/data");
+    f.file(".cache/huggingface/hub/spaces--org--space/blobs/app");
+
+    let report = f.scan(&[CleanupCategory::LocalModels]).await;
+    let listed: Vec<_> = items(&report)
+        .into_iter()
+        .map(|item| item.path.clone())
+        .collect();
+    assert!(
+        listed
+            .iter()
+            .any(|path| path.ends_with("GPT4All/model.gguf")),
+        "{listed:?}"
+    );
+    assert!(listed.iter().any(|path| path.ends_with("llamacpp/models")));
+    assert!(listed.iter().any(|path| path.ends_with("mlx/models")));
+    assert!(
+        listed
+            .iter()
+            .any(|path| path.contains("hub/models--org--model"))
+    );
+    for path in &listed {
+        assert!(!path.ends_with("chat.chat"), "{path}");
+        assert!(!path.ends_with("localdocs_v1.db"), "{path}");
+        assert!(!path.contains("/threads/"), "{path}");
+        assert!(!path.contains("datasets--"), "{path}");
+        assert!(!path.contains("spaces--"), "{path}");
+    }
+
+    let item = items(&report)
+        .into_iter()
+        .find(|item| item.path.ends_with("GPT4All/model.gguf"))
+        .unwrap()
+        .clone();
+    assert_eq!(item.kind, CleanupItemKind::File);
+    let done = f.execute(&report, vec![item.id.clone()]).await;
+    assert_eq!(done.state, TaskState::Succeeded, "{:?}", done.error);
+    assert!(!gpt_model.exists(), "the model file moved to the Trash");
+    assert!(gpt_chat.exists(), "GPT4All chats stay");
+    assert!(gpt_docs.exists(), "GPT4All LocalDocs stay");
+}

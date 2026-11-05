@@ -85,6 +85,46 @@
       "source": "软件包标识符",
       "text": "套件識別碼",
       "why": "Homebrew token means the package identifier; use concise Taiwan terminology"
+    },
+    {
+      "key": [
+        "cleanup",
+        "categories",
+        "local_models"
+      ],
+      "source": "本地模型",
+      "text": "本機模型",
+      "why": "Local model, matching the macOS Traditional Chinese wording for this Mac rather than 本地."
+    },
+    {
+      "key": [
+        "cleanup",
+        "reasons",
+        "local_model"
+      ],
+      "source": "本地模型",
+      "text": "本機模型",
+      "why": "Local model, matching the macOS Traditional Chinese wording for this Mac rather than 本地."
+    },
+    {
+      "key": [
+        "cleanup",
+        "categoryHints",
+        "local_models"
+      ],
+      "source": "Ollama、LM Studio、Hugging Face、Jan、GPT4All 的本地模型权重；只列出模型文件，聊天记录、数据集和本地文档索引会保留",
+      "text": "Ollama、LM Studio、Hugging Face、Jan、GPT4All 的本機模型權重；只列出模型檔案，聊天記錄、資料集和本機文件索引會保留",
+      "why": "Local models on this Mac; use 本機 for 本地 and 檔案/文件 consistently with the rest of the Traditional Chinese UI."
+    },
+    {
+      "key": [
+        "cleanup",
+        "reasons",
+        "local_modelHint"
+      ],
+      "source": "将选中的模型数据移到废纸篓；对应工具需要时会重新下载。聊天记录和本地文档索引会保留。",
+      "text": "將選取的模型資料移到垃圾桶；對應工具需要時會重新下載。聊天記錄和本機文件索引會保留。",
+      "why": "Local model hint; use 本機 for 本地 and 檔案/文件 consistently with the rest of the Traditional Chinese UI."
     }
   ],
   "apps/web/i18n/locales/zh-Hant.json": [

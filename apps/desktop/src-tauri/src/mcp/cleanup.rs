@@ -66,6 +66,7 @@ fn regenerable_reason(reason: CleanupReason) -> bool {
         | CleanupReason::LargeFile
         | CleanupReason::AiHistory
         | CleanupReason::AiHistoryFile
+        | CleanupReason::LocalModel
         | CleanupReason::Worktree
         | CleanupReason::DuplicateCheckout
         | CleanupReason::OrphanWorktree => false,
@@ -195,6 +196,7 @@ mod tests {
                 | CleanupCategory::Installers
                 | CleanupCategory::ProjectArtifacts
                 | CleanupCategory::Docker
+                | CleanupCategory::LocalModels
                 | CleanupCategory::Trash => CleanupRisk::Review,
                 CleanupCategory::DeviceBackups => CleanupRisk::Personal,
                 _ => CleanupRisk::Rebuildable,
@@ -210,6 +212,7 @@ mod tests {
                 items,
             }],
             skipped: vec![],
+            history: None,
         }
     }
 
@@ -291,6 +294,20 @@ mod tests {
                 "{key:?}/{reason:?} must never be removable"
             );
         }
+    }
+
+    #[test]
+    fn downloaded_models_are_never_removable_by_a_tool() {
+        let category = category(
+            CleanupCategory::LocalModels,
+            vec![item(
+                "a",
+                CleanupReason::LocalModel,
+                true,
+                DeleteMode::Trash,
+            )],
+        );
+        assert!(!removable(&category, &category.groups[0].items[0]));
     }
 
     #[test]

@@ -41,6 +41,19 @@ const held = computed(() => {
   const bytes = inUseBytes(props.category);
   return bytes ? t('cleanup.category.inUse', { size: format(bytes) }) : '';
 });
+const history = computed(() => {
+  const ages = props.category.history;
+  if (!ages) return '';
+  return t('cleanup.category.historyAges', {
+    within30: ages.within30Days,
+    within90: ages.within90Days,
+    within180: ages.within180Days,
+    within365: ages.within365Days,
+    older: ages.older,
+    oldest: ages.oldest ? formatRelativeTime(ages.oldest, { locale: appLocale.value }) : '',
+    newest: ages.newest ? formatRelativeTime(ages.newest, { locale: appLocale.value }) : ''
+  });
+});
 const status = computed(() =>
   chosenBytes.value
     ? t('cleanup.category.selected', { size: format(chosenBytes.value) })
@@ -172,6 +185,9 @@ const entry = (group: CleanupGroup, item: CleanupGroup['items'][number]): Cleanu
             :title="t(`cleanup.categoryHints.${category.key}`)"
             >{{ t(`cleanup.categoryHints.${category.key}`) }}</span
           >
+          <span v-if="history" class="mt-1px block truncate text-11.5px text-ink-tertiary" :title="history">{{
+            history
+          }}</span>
         </span>
         <span class="min-w-84px shrink-0 text-right">
           <span class="block text-13px tabular-nums text-ink-primary">{{ items.length ? total : '—' }}</span>

@@ -1804,7 +1804,8 @@
       "device_backups": "Backup iPhone / iPad e archivi Xcode",
       "large_files": "File grandi e vecchi download",
       "docker": "Spazio recuperabile Docker",
-      "project_checkouts": "Worktree Git e cloni duplicati"
+      "project_checkouts": "Worktree Git e cloni duplicati",
+      "local_models": "Modelli locali"
     },
     "categoryHints": {
       "app_caches": "Cache create dalle app e ricreate automaticamente dopo l’eliminazione",
@@ -1822,7 +1823,8 @@
       "device_backups": "Dopo aver svuotato il Cestino, i backup non potranno ripristinare i dispositivi e gli archivi non potranno simbolicare i rapporti di arresto anomalo",
       "large_files": "File oltre 1 GB non aperti da 90 giorni",
       "docker": "Eliminati dai comandi di pulizia di Docker, mai preselezionati; i volumi sono solo mostrati, non puliti",
-      "project_checkouts": "Per ora solo lettura: worktree collegati e cloni puliti che condividono un’origine, per mostrare lo spazio prima di proporne la rimozione"
+      "project_checkouts": "Per ora solo lettura: worktree collegati e cloni puliti che condividono un’origine, per mostrare lo spazio prima di proporne la rimozione",
+      "local_models": "Pesi dei modelli locali di Ollama, LM Studio, Hugging Face, Jan e GPT4All; sono elencati solo i file dei modelli, quindi chat, dataset e indici dei documenti locali restano"
     },
     "scan": {
       "starting": "Preparazione della scansione",
@@ -1854,7 +1856,8 @@
       "skipped": "{count} elemento saltato, mostrato solo per riferimento | {count} elementi saltati, mostrati solo per riferimento",
       "lastModified": "Ultima modifica: {time}",
       "servicesLoading": "{count} elemento in background viene ancora caricato all’avvio | {count} elementi in background vengono ancora caricati all’avvio",
-      "inUse": "{size} in uso"
+      "inUse": "{size} in uso",
+      "historyAges": "File di sessione: {within30} entro 30 giorni · {within90} entro 90 · {within180} entro 180 · {within365} entro un anno · {older} più vecchi · più vecchio {oldest} · più recente {newest}"
     },
     "skipReasons": {
       "running": "In esecuzione; chiudi per pulire",
@@ -1894,7 +1897,9 @@
       "orphan_worktree": "Worktree orfano",
       "orphanWorktreeHint": "Worktree danneggiato: i metadati Git non ci sono più, quindi mostriamo solo lo spazio occupato.",
       "ai_history_file": "Vecchio file di sessione",
-      "ai_history_fileHint": "Sposta questa trascrizione nel Cestino; svuotarlo la rende irrecuperabile. Sono elencati solo i file più vecchi di 30 giorni."
+      "ai_history_fileHint": "Sposta questa trascrizione nel Cestino; svuotarlo la rende irrecuperabile. Sono elencati solo i file più vecchi di 30 giorni.",
+      "local_model": "Modello locale",
+      "local_modelHint": "Sposta i dati del modello selezionati nel Cestino; lo strumento scaricherà di nuovo i pesi quando serve. Chat e indici dei documenti locali restano."
     },
     "item": {
       "command": "Comando",

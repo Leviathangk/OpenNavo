@@ -9,6 +9,7 @@ export const CATEGORY_ICONS: Record<CleanupCategory, string> = {
   dev_caches: 'code-xml',
   ai_caches: 'sparkles',
   ai_history: 'file-text',
+  local_models: 'database',
   homebrew: 'package',
   temp: 'clock',
   leftovers: 'scan-search',
