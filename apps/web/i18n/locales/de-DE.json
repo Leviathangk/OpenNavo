@@ -917,7 +917,8 @@
         "no": "Nicht nativ",
         "unknown": "Unbekannt"
       }
-    }
+    },
+    "metaDescription": "Handverlesene Apps für jeden Einsatzzweck, bereit zum Export als Brewfile. Öffnen Sie eine Sammlung, prüfen Sie die enthaltenen Mac-Apps und installieren Sie diese Auswahl mit Homebrew."
   },
   "browse": {
     "title": "Mac-Apps von A bis Z",
