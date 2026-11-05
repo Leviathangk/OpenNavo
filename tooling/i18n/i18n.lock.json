@@ -3012,6 +3012,8 @@
         "cleanup.reasons.worktreeHint": "5ecd6a3671ceb9aa1b61d4ffd7a11fb6853616a21559f77b60dcbe88b8d26aa7",
         "cleanup.reasons.duplicate_checkout": "09285c449675edea01ee625e7b0c30c7567ca650c9aac7b2132fd4b02ec3aaa5",
         "cleanup.reasons.duplicate_checkoutHint": "7fbcd712340699eadf0ab6a67e7d1f8600a8511b6dc7136a007d8d199ed396d7",
+        "cleanup.reasons.orphan_worktree": "f086b429e9c50e2200b6a6c0d75fddc060a4a446d362eb792e0edb03e12b24a7",
+        "cleanup.reasons.orphanWorktreeHint": "e2d94f8195e98cdc9dba5d5ee8229ff22f17f63034aaa2ff843fc0fbbaa4845c",
         "cleanup.reasons.orphan_service": "6b76017847b13af2f6f2c48efd59c7af6671981c770752af87ba2770dbb60432",
         "cleanup.reasons.installer_installed": "a8b6c39dcabfc14bb136596e34a95b424257b82d54c3ac49a7728b876ae58526",
         "cleanup.reasons.device_support_latest": "c2a497830ef7421546adb5bb23298ae20a99cd4aaebdd9ad5c08f1a0ae68fa84",

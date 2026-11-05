@@ -1890,7 +1890,9 @@
       "worktree": "Verknüpfter Worktree",
       "worktreeHint": "Das Entfernen dieses Worktrees löscht seinen Arbeitsordner; Branch und Hauptrepository bleiben. Git verweigert es bei nicht committeten Änderungen.",
       "duplicate_checkout": "Doppelter Klon",
-      "duplicate_checkoutHint": "Ein sauberer Clone ohne nicht gepushte Commits. Beim Entfernen wandert der Ordner in den Papierkorb."
+      "duplicate_checkoutHint": "Ein sauberer Clone ohne nicht gepushte Commits. Beim Entfernen wandert der Ordner in den Papierkorb.",
+      "orphan_worktree": "Verwaister Worktree",
+      "orphanWorktreeHint": "Defekter Worktree: Die Git-Metadaten fehlen, daher wird nur der belegte Speicher angezeigt."
     },
     "item": {
       "command": "Befehl",

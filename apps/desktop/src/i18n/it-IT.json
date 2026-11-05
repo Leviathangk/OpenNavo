@@ -1890,7 +1890,9 @@
       "worktree": "Worktree collegato",
       "worktreeHint": "Rimuovere questo worktree cancella la cartella di lavoro; il branch e il repository principale restano. Git rifiuta se ci sono modifiche non commitate.",
       "duplicate_checkout": "Clone duplicato",
-      "duplicate_checkoutHint": "Un clone pulito e senza commit da inviare. Rimuovendolo, la cartella va nel Cestino."
+      "duplicate_checkoutHint": "Un clone pulito e senza commit da inviare. Rimuovendolo, la cartella va nel Cestino.",
+      "orphan_worktree": "Worktree orfano",
+      "orphanWorktreeHint": "Worktree danneggiato: i metadati Git non ci sono più, quindi mostriamo solo lo spazio occupato."
     },
     "item": {
       "command": "Comando",

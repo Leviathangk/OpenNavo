@@ -942,6 +942,7 @@ const restoreFor = (reason: CleanupReason): CleanupRestore => {
     case 'build_leaf':
       return 'auto';
     case 'ai_history':
+    case 'orphan_worktree':
       return 'never';
     case 'worktree':
       return 'irreversible';

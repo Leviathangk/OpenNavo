@@ -145,7 +145,8 @@ impl CleanupRestore {
             | CleanupReason::LargeFile => Self::Irreversible,
             CleanupReason::AiHistory
             | CleanupReason::Worktree
-            | CleanupReason::DuplicateCheckout => Self::Never,
+            | CleanupReason::DuplicateCheckout
+            | CleanupReason::OrphanWorktree => Self::Never,
         }
     }
 }
@@ -189,6 +190,8 @@ pub enum CleanupReason {
     Worktree,
     /// A clone whose remote is shared with another checkout, listed read-only.
     DuplicateCheckout,
+    /// A worktree whose `.git` file points at a common dir that no longer exists; listed read-only.
+    OrphanWorktree,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
