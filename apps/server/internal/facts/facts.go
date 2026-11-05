@@ -35,11 +35,14 @@ var (
 	Methods      = []string{"vendor_site", "app_store", "vendor_docs", "in_app", "other"}
 	Statuses     = []string{"verified", "needs_review"}
 	Archs        = []string{"arm64", "x86_64"}
+	ArchUnknown  = "unknown"
 	// Supports: rosetta applies to arm64 only; unsupported ranges carry no versions.
-	Supports = []string{"native", "rosetta", "unsupported"}
-	Reasons  = []string{"free", "open_source", "lighter", "more_features", "simpler", "native_ui", "apple_silicon", "privacy", "offline", "collaboration", "cross_platform", "one_time_purchase", "active_development", "customizable"}
-	Limits   = []string{"paid", "subscription", "fewer_features", "requires_account", "learning_curve", "different_workflow", "no_apple_silicon", "online_only", "limited_languages"}
-	Audience = []string{"everyday", "professionals", "developers", "teams", "beginners", "power_users"}
+	// SupportUnknown is valid only together with ArchUnknown.
+	Supports       = []string{"native", "rosetta", "unsupported"}
+	SupportUnknown = "unknown"
+	Reasons        = []string{"free", "open_source", "lighter", "more_features", "simpler", "native_ui", "apple_silicon", "privacy", "offline", "collaboration", "cross_platform", "one_time_purchase", "active_development", "customizable"}
+	Limits         = []string{"paid", "subscription", "fewer_features", "requires_account", "learning_curve", "different_workflow", "no_apple_silicon", "online_only", "limited_languages"}
+	Audience       = []string{"everyday", "professionals", "developers", "teams", "beginners", "power_users"}
 )
 
 // Conflict and gap codes. Conflicts compare the supplement with Homebrew; gaps tell editors and
@@ -89,7 +92,9 @@ type Price struct {
 	Evidence
 }
 
-// Range is one architecture's support; versions are macOS releases such as "13" or "10.15".
+// Range is one architecture's support. ArchUnknown with SupportUnknown records a macOS
+// bound without naming a chip. That form is valid for every package kind, must be the only
+// range, and needs a minimum or maximum. Versions are macOS releases such as "13" or "10.15".
 type Range struct {
 	Arch    string  `json:"arch"`
 	Support string  `json:"support"`
@@ -280,6 +285,9 @@ func NormalizePrice(in PriceInput, actor Actor, now time.Time) (*Price, error) {
 }
 
 // NormalizeMacos validates a supplement write. No ranges clears it and takes no other field.
+// A single range with arch and support unknown records a macOS version without naming a chip.
+// That is not the same as an empty list, which clears the supplement. The unknown range needs
+// at least one bound; a content-free row would hide the missing-macOS gap without stating one.
 func NormalizeMacos(in MacosInput, actor Actor, now time.Time) (*Macos, error) {
 	if len(in.Ranges) == 0 {
 		if !in.empty() {
@@ -292,7 +300,12 @@ func NormalizeMacos(in MacosInput, actor Actor, now time.Time) (*Macos, error) {
 	}
 	ranges := make([]Range, 0, len(in.Ranges))
 	for _, r := range in.Ranges {
-		if !slices.Contains(Archs, r.Arch) || !slices.Contains(Supports, r.Support) || slices.ContainsFunc(ranges, func(seen Range) bool { return seen.Arch == r.Arch }) {
+		// Unknown is exclusive: it cannot sit beside a named chip, and it cannot use a chip support value.
+		if r.Arch == ArchUnknown {
+			if r.Support != SupportUnknown || len(in.Ranges) != 1 {
+				return nil, ErrInvalid
+			}
+		} else if !slices.Contains(Archs, r.Arch) || !slices.Contains(Supports, r.Support) || slices.ContainsFunc(ranges, func(seen Range) bool { return seen.Arch == r.Arch }) {
 			return nil, ErrInvalid
 		}
 		if r.Support == "rosetta" && r.Arch != "arm64" {
@@ -311,6 +324,9 @@ func NormalizeMacos(in MacosInput, actor Actor, now time.Time) (*Macos, error) {
 			if order, _ := homebrew.CompareVersion(*r.Minimum, *r.Maximum); order > 0 {
 				return nil, ErrInvalid
 			}
+		}
+		if r.Arch == ArchUnknown && r.Minimum == nil && r.Maximum == nil {
+			return nil, ErrInvalid
 		}
 		ranges = append(ranges, r)
 	}

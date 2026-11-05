@@ -744,6 +744,7 @@
       "download": "Download",
       "source": "Quelle",
       "allChips": "Alle Chips",
+      "unknownChip": "Chip unbekannt",
       "notNative": "Nicht nativ auf Apple silicon",
       "builtFor": "Build für macOS {versions}"
     },

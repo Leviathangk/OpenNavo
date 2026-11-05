@@ -191,6 +191,29 @@ describe('Facts forms', () => {
     expect(macosProblem(form)).toBe('rangesRequired');
   });
 
+  it('Round-trips a chip-unknown macOS bound and keeps it exclusive', () => {
+    const form = macosForm({
+      ...evidence,
+      ranges: [{ arch: 'unknown', support: 'unknown', minimum: '15', maximum: null }]
+    } as Parameters<typeof macosForm>[0]);
+    expect(form.unknown).toEqual({ include: true, minimum: '15', maximum: '' });
+    expect(form.ranges.arm64.include).toBe(false);
+    expect(form.ranges.x86_64.include).toBe(false);
+    expect(macosProblem(form)).toBeNull();
+    expect(macosBody(form).ranges).toEqual([{ arch: 'unknown', support: 'unknown', minimum: '15', maximum: null }]);
+    form.unknown.minimum = '';
+    form.unknown.maximum = '';
+    expect(macosProblem(form)).toBe('rangesRequired');
+    form.unknown.minimum = '15';
+    form.ranges.arm64.include = true;
+    expect(macosProblem(form)).toBe('rangesRequired');
+    const saved = macosBody(form);
+    const again = macosForm({ ...evidence, ranges: saved.ranges } as Parameters<typeof macosForm>[0]);
+    expect(again.unknown.include).toBe(true);
+    expect(again.unknown.minimum).toBe('15');
+    expect(macosBody(again).ranges).toEqual(saved.ranges);
+  });
+
   it('Requires reasons for alternatives and maps gap codes to messages', () => {
     const row = facts().alternatives[0] as AlternativeRow;
     expect(alternativesValid([row])).toBe(true);

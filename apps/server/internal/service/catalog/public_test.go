@@ -86,6 +86,26 @@ func TestCaskPlatformPublicMappingPreservesCompleteMetadata(t *testing.T) {
 	require.NotNil(t, legacy)
 }
 
+func TestLinkUnknownSupportDoesNotPublishBothArchitectures(t *testing.T) {
+	p := store.PublicPackage{Kind: "link", SupportsArm64: true, SupportsX8664: true, Dependencies: json.RawMessage(`{}`)}
+	metadata, _, err := platformData(p)
+	require.NoError(t, err)
+	require.Equal(t, "unknown", metadata.SupportStatus)
+	arm, intel := publishedArchitectures(p.Kind, metadata.SupportStatus, p.SupportsArm64, p.SupportsX8664)
+	require.False(t, arm)
+	require.False(t, intel)
+	p.SupportsArm64, p.SupportsX8664 = arm, intel
+	_, depends := dependencyData(p)
+	require.Empty(t, depends.Arch)
+
+	knownArm, knownIntel := publishedArchitectures("cask", "known", true, false)
+	require.True(t, knownArm)
+	require.False(t, knownIntel)
+	linkKnownArm, linkKnownIntel := publishedArchitectures("link", "known", true, false)
+	require.True(t, linkKnownArm)
+	require.False(t, linkKnownIntel)
+}
+
 func TestDisambiguatedName(t *testing.T) {
 	developer := "Example Studio"
 	require.Equal(t, "Buzz (Example Studio)", disambiguatedName("Buzz", "buzz", &developer))

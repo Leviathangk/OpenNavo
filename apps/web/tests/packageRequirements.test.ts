@@ -3,6 +3,7 @@ import { requirementMobileCards } from '../app/utils/packageRequirements';
 
 const labels = {
   allChips: 'All chips',
+  unknownChip: 'Unknown',
   native: 'Native',
   notNative: 'Not native',
   arch: (arch: string) => (arch === 'arm64' ? 'Apple silicon' : arch === 'x86_64' ? 'Intel' : arch)
@@ -29,9 +30,15 @@ describe('mobile requirement cards', () => {
     expect(cards[0]).toMatchObject({ chips: 'Apple silicon', native: 'Not native' });
   });
 
-  it('uses the all-chips label when the declaration names no architecture', () => {
+  it('uses the all-chips label when a chip-wide declaration names no architecture', () => {
+    const cards = requirementMobileCards([row([], 'yes')], labels);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ chips: 'All chips', native: 'Native' });
+  });
+
+  it('does not call an unknown architecture every chip', () => {
     const cards = requirementMobileCards([row([], 'unknown')], labels);
     expect(cards).toHaveLength(1);
-    expect(cards[0]).toMatchObject({ chips: 'All chips', native: undefined });
+    expect(cards[0]).toMatchObject({ chips: 'Unknown', native: undefined });
   });
 });

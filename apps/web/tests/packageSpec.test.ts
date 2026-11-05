@@ -22,6 +22,9 @@ const t = (key: string, named: Record<string, unknown> = {}, plural?: number) =>
     'package.spec.price': 'Price',
     'package.spec.system': 'System',
     'package.spec.chip': 'Chip',
+    'package.arch.arm64': 'Apple silicon',
+    'package.arch.x86_64': 'Intel',
+    'package.facts.minimum': `macOS ${named.version} or later`,
     'package.spec.autoUpdates': 'Auto-updates',
     'package.spec.openSource': 'Open source',
     'package.spec.repository': 'Repository',
@@ -292,6 +295,42 @@ describe('quick-info field parity with main', () => {
       expect(rows.some(row => row.key === 'install')).toBe(false);
     }
   );
+
+  it('hides the chip when architecture is unknown and still states the macOS version', async () => {
+    const pkg = page({
+      kind: 'link',
+      supports: { status: 'unknown', arm64: true, x86_64: true },
+      facts: {
+        ...page().facts,
+        requirements: [
+          {
+            versions: ['1.0.0'],
+            architectures: [],
+            platformMacOS: [],
+            minimumMacOS: '15',
+            maximumMacOS: null,
+            appleSilicon: 'unknown',
+            downloadUrl: null,
+            sha256: null,
+            evidence: { status: 'verified', checkedAt: '2026-10-01T00:00:00Z', sourceUrl: 'https://example.com/requirements' }
+          }
+        ]
+      }
+    });
+    const rows = packageSpec(pkg, t, 'en-US', SPEC_NOW).rows;
+    expect(rows.some(row => row.key === 'chip')).toBe(false);
+    expect(rows.find(row => row.key === 'macos')?.value).toBe('macOS 15 or later');
+    const html = await renderToString(createSSRApp({ render: () => h(OnPackageSpecCard, { rows }) }));
+    expect(html).toContain('macOS 15 or later');
+    expect(html).not.toContain('Chip');
+    expect(html).not.toContain('Apple silicon');
+    expect(html).not.toContain('Intel');
+  });
+
+  it('keeps a known Homebrew chip when the requirement rows name no architecture', () => {
+    const pkg = page({ supports: { status: 'known', arm64: true, x86_64: false } });
+    expect(packageSpec(pkg, t, 'en-US', SPEC_NOW).rows.find(row => row.key === 'chip')?.value).toBe('Apple silicon');
+  });
 
   it('preserves font files, formats and the declared install location', () => {
     const pkg = page({ isFont: true });

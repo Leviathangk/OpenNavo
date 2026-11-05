@@ -38,25 +38,14 @@ func (s *PublicService) normalizedFacts(ctx context.Context, d *publicapi.Packag
 	}
 	requirements := facts.Requirements(metadata.Platforms, proof)
 	if m := d.MacosSupplement; m != nil {
-		status := "verified"
-		if len(m.Conflicts) > 0 || m.AppVersion == nil || *m.AppVersion != d.Version {
-			status = "needs_review"
+		ranges := make([]facts.Range, len(m.Ranges))
+		for i, r := range m.Ranges {
+			ranges[i] = facts.Range{Arch: string(r.Arch), Support: string(r.Support), Minimum: r.Minimum, Maximum: r.Maximum}
 		}
+		status, version := facts.ProjectMacos(ranges, m.AppVersion, d.Version, len(m.Conflicts) > 0)
 		evidence := facts.NewProof(m.SourceUrl, m.VerifiedAt, facts.StaleAfter, status, now)
-		for _, r := range m.Ranges {
-			native := "unknown"
-			if r.Arch == "arm64" {
-				if r.Support == "native" {
-					native = "yes"
-				} else {
-					native = "no"
-				}
-			}
-			versions := []string{}
-			if m.AppVersion != nil {
-				versions = append(versions, *m.AppVersion)
-			}
-			requirements = append(requirements, facts.Requirement{Versions: versions, Architectures: []string{string(r.Arch)}, PlatformMacOS: []string{}, Minimum: r.Minimum, Maximum: r.Maximum, AppleSilicon: native, Evidence: evidence})
+		for _, r := range ranges {
+			requirements = append(requirements, r.Requirement(version, evidence))
 		}
 	}
 	versionRows, err := s.Store.VersionRequirements(ctx, p.ID, p.Version, now)
@@ -64,8 +53,10 @@ func (s *PublicService) normalizedFacts(ctx context.Context, d *publicapi.Packag
 		return err
 	}
 	for _, row := range versionRows {
+		// Named-chip supplement rows are already projected above. A zero-architecture
+		// row is kept only when it is a different claim, or when its evidence is stronger.
 		if len(row.Architectures) == 0 {
-			requirements = append(requirements, row)
+			requirements = facts.MergeRequirement(requirements, row)
 		}
 	}
 	view := map[string]any{

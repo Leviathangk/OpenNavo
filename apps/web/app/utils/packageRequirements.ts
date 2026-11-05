@@ -8,6 +8,7 @@ export interface RequirementMobileSource {
 
 export interface RequirementMobileLabels {
   allChips: string;
+  unknownChip: string;
   native: string;
   notNative: string;
   arch: (arch: string) => string;
@@ -28,7 +29,9 @@ export function requirementMobileCards<T extends RequirementMobileSource>(
   labels: RequirementMobileLabels
 ): RequirementMobileCard<T>[] {
   return rows.flatMap(row => {
-    const architectures = row.architectures.length ? row.architectures.map(labels.arch) : [labels.allChips];
+    const architectures = row.architectures.length
+      ? row.architectures.map(labels.arch)
+      : [row.appleSilicon === 'yes' || row.appleSilicon === 'no' ? labels.allChips : labels.unknownChip];
     const native =
       row.appleSilicon === 'yes' ? labels.native : row.appleSilicon === 'no' ? labels.notNative : undefined;
     return architectures.map((chips, index) => ({

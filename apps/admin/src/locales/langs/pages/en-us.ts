@@ -328,13 +328,14 @@ const pages: PageMessages = {
         sourceRequired: 'Enter an https:// source URL and choose how it was checked.',
         macosTitle: 'macOS supplement',
         macosHint:
-          'Fill this in only when vendor information adds to or differs from Homebrew. Where they disagree, pages show both as pending verification; chip support does not mean native code.',
+          'Fill this in only when vendor information adds to or differs from Homebrew. Where they disagree, pages show both as pending verification; chip support does not mean native code. If the vendor states a macOS version but no chip, choose “Chip not declared”.',
         homebrew: 'Homebrew records',
         homebrewMinimum: 'macOS {version} or later',
         homebrewMaximum: 'Up to macOS {version}',
         homebrewUnknown: 'No platform declared',
         requiresRosetta: 'Requires Rosetta',
         archs: { arm64: 'Apple silicon', x86_64: 'Intel' },
+        includeUnknown: 'Chip not declared',
         include: 'Include this architecture',
         support: 'Support',
         supports: { native: 'Native', rosetta: 'Through Rosetta', unsupported: 'Not supported' },
@@ -350,7 +351,7 @@ const pages: PageMessages = {
         },
         clear: 'Clear supplement',
         rangesRequired:
-          'Choose at least one architecture. Versions look like 13 or 10.15, and the minimum cannot be above the maximum.',
+          'Choose at least one architecture, or declare no chip and enter a minimum or maximum macOS. Versions look like 13 or 10.15, and the minimum cannot be above the maximum.',
         alternativesTitle: 'Alternatives',
         alternativesHint:
           'Apps confirmed to do the same job, up to 8, shown in this order. Leave it empty rather than padding it. The relation is one-way.',

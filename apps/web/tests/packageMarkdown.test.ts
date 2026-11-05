@@ -272,6 +272,20 @@ describe('Markdown alternates (X4)', () => {
     expect(md).not.toContain('Subscription');
   });
 
+  it('names an unknown architecture instead of every chip', () => {
+    const detail = structuredClone(pkg);
+    const row = detail.facts!.requirements[0]!;
+    row.architectures = [];
+    row.appleSilicon = 'unknown';
+    row.minimumMacOS = '15';
+    const md = renderPackageMarkdown(detail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
+    expect(md).toContain(
+      `- macOS 15 or later · Version: 11.0 · ${siteMessage('en-US', 'package.requirements.unknownChip')}`
+    );
+    expect(md).not.toContain('All chips');
+    expect(md).not.toContain('Apple silicon');
+  });
+
   it('Omits unknown, pending and undated claims; retains dated older-version requirements', () => {
     const detail = structuredClone(pkg);
     for (const price of detail.facts!.prices) price.evidence.status = 'unknown';

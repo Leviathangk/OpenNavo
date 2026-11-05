@@ -620,7 +620,7 @@
           "stale": "Hace más de un año",
           "sourceRequired": "Introduce una URL de fuente https:// y elige cómo se comprobó.",
           "macosTitle": "Complemento de macOS",
-          "macosHint": "Rellénalo solo cuando la información del fabricante amplíe o contradiga a Homebrew. Si no coinciden, las páginas muestran ambos datos como pendientes de verificación; ser compatible con un chip no implica código nativo.",
+          "macosHint": "Rellénalo solo cuando la información del fabricante amplíe o contradiga a Homebrew. Si no coinciden, las páginas muestran ambos datos como pendientes de verificación; ser compatible con un chip no implica código nativo. Si el fabricante indica una versión de macOS pero ningún chip, elige «Chip no declarado».",
           "homebrew": "Datos de Homebrew",
           "homebrewMinimum": "macOS {version} o posterior",
           "homebrewMaximum": "Hasta macOS {version}",
@@ -630,6 +630,7 @@
             "arm64": "Chip de Apple",
             "x86_64": "Procesador Intel"
           },
+          "includeUnknown": "Chip no declarado",
           "include": "Incluir esta arquitectura",
           "support": "Compatibilidad",
           "supports": {
@@ -648,7 +649,7 @@
             "x86_64": "procesador Intel"
           },
           "clear": "Borrar complemento",
-          "rangesRequired": "Elige al menos una arquitectura. Las versiones tienen la forma 13 o 10.15 y la mínima no puede superar a la máxima.",
+          "rangesRequired": "Elige al menos una arquitectura, o declara que el chip no consta e indica un macOS mínimo o máximo. Las versiones tienen la forma 13 o 10.15 y la mínima no puede superar a la máxima.",
           "alternativesTitle": "Alternativas",
           "alternativesHint": "Apps confirmadas para la misma tarea, hasta 8, en este orden. Mejor dejarlo vacío que rellenarlo con cualquier cosa. La relación es en un solo sentido.",
           "add": "Añadir una alternativa",

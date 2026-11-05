@@ -2169,8 +2169,8 @@ class MacosRange(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    arch: Annotated[Literal['arm64', 'x86_64'], Field(examples=['arm64'])]
-    support: Annotated[Literal['native', 'rosetta', 'unsupported'], Field(description='rosetta applies to arm64 only; unsupported takes no versions.', examples=['native'])]
+    arch: Annotated[Literal['arm64', 'x86_64', 'unknown'], Field(description='unknown is exclusive. It cannot be combined with arm64 or x86_64, its support must be unknown, and it requires a minimum or maximum. An empty ranges list still clears the supplement. Valid for every package kind.', examples=['arm64'])]
+    support: Annotated[Literal['native', 'rosetta', 'unsupported', 'unknown'], Field(description='rosetta applies to arm64 only; unsupported takes no versions. unknown is only valid with arch unknown and may carry a macOS version.', examples=['native'])]
     minimum: Annotated[str | None | MISSING, Field(description='macOS release such as 13 or 10.15', examples=['13'], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = MISSING
     maximum: Annotated[str | None | MISSING, Field(examples=[None], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = MISSING
 

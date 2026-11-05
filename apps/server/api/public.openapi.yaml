@@ -16703,12 +16703,13 @@ components:
       properties:
         arch:
           type: string
-          enum: [arm64, x86_64]
+          description: 'unknown names no chip. It is exclusive, its support is unknown, and it requires a minimum or maximum. Valid for every package kind.'
+          enum: [arm64, x86_64, unknown]
           example: arm64
         support:
           type: string
-          description: 'native, rosetta (arm64 only) or unsupported, as the vendor states it'
-          enum: [native, rosetta, unsupported]
+          description: 'native, rosetta (arm64 only), unsupported, or unknown. unknown carries a macOS version without a chip.'
+          enum: [native, rosetta, unsupported, unknown]
           example: native
         minimum:
           type: string

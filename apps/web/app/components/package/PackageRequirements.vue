@@ -26,7 +26,9 @@ const archLabel = (arch: string) => (arch === 'arm64' || arch === 'x86_64' ? t(`
 function chips(row: RequirementFact): string {
   const archs = row.architectures.length
     ? row.architectures.map(archLabel).join(' · ')
-    : t('package.requirements.allChips');
+    : row.appleSilicon === 'yes' || row.appleSilicon === 'no'
+      ? t('package.requirements.allChips')
+      : t('package.requirements.unknownChip');
   if (row.appleSilicon === 'yes') return `${archs} · ${t('package.facts.support.native')}`;
   if (row.appleSilicon === 'no') return `${archs} · ${t('package.requirements.notNative')}`;
   return archs;
@@ -62,6 +64,7 @@ const rows = computed(() =>
 const mobileRows = computed(() =>
   requirementMobileCards(rows.value, {
     allChips: t('package.requirements.allChips'),
+    unknownChip: t('package.requirements.unknownChip'),
     native: t('package.facts.support.native'),
     notNative: t('package.requirements.notNative'),
     arch: archLabel
@@ -152,7 +155,9 @@ const conflicts = computed(() => props.pkg.facts.macosSupplement?.conflicts ?? [
       >
         <div class="flex items-start justify-between gap-10px">
           <div>
-            <h3 class="m-0 text-12.5px font-600 text-ink-primary">{{ row.chips }}</h3>
+            <h3 class="m-0 text-12.5px font-600 text-ink-primary" :aria-label="`${t('package.quick.chips')}: ${row.chips}`">
+              {{ row.chips }}
+            </h3>
             <p class="m-0 mt-2px text-11.5px text-ink-tertiary">
               {{ row.macos || '—' }} · {{ row.versions || '—'
               }}<template v-if="row.native"> · {{ row.native }}</template>

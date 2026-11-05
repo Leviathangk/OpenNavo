@@ -74,6 +74,112 @@ type Requirement struct {
 	Evidence      Proof    `json:"evidence"`
 }
 
+// Requirement projects one supplement range. An unknown architecture keeps the macOS
+// bounds and names no chip, so pages do not treat it as Apple silicon or Intel.
+func (r Range) Requirement(version string, proof Proof) Requirement {
+	architectures := []string{}
+	native := "unknown"
+	switch r.Arch {
+	case "arm64":
+		architectures = []string{"arm64"}
+		if r.Support == "native" {
+			native = "yes"
+		} else if r.Support != SupportUnknown {
+			native = "no"
+		}
+	case "x86_64":
+		architectures = []string{"x86_64"}
+	}
+	versions := []string{}
+	if version != "" {
+		versions = []string{version}
+	}
+	return Requirement{Versions: versions, Architectures: architectures, PlatformMacOS: []string{}, Minimum: r.Minimum, Maximum: r.Maximum, AppleSilicon: native, Evidence: proof}
+}
+
+// UnknownOnly reports a supplement whose only statement is a chip-unknown macOS bound.
+func UnknownOnly(ranges []Range) bool {
+	return len(ranges) == 1 && ranges[0].Arch == ArchUnknown && ranges[0].Support == SupportUnknown
+}
+
+// ProjectMacos decides how a stored supplement is shown for the current version.
+// A chip-unknown bound is not a per-release chip claim: unless it conflicts with Homebrew,
+// it stays verified and is attached to the current version even when appVersion is empty
+// or older. Named-chip supplements still need review when the recorded version is missing
+// or not current. A conflict always needs review.
+func ProjectMacos(ranges []Range, appVersion *string, current string, conflicted bool) (status, version string) {
+	status = "verified"
+	if appVersion != nil {
+		version = *appVersion
+	}
+	if conflicted {
+		return "needs_review", version
+	}
+	if UnknownOnly(ranges) {
+		return "verified", current
+	}
+	if version == "" || version != current {
+		return "needs_review", version
+	}
+	return "verified", version
+}
+
+func sameBound(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
+}
+
+func sameClaim(a, b Requirement) bool {
+	return a.AppleSilicon == b.AppleSilicon && a.Evidence.SourceURL == b.Evidence.SourceURL &&
+		slices.Equal(a.Versions, b.Versions) && slices.Equal(a.Architectures, b.Architectures) &&
+		slices.Equal(a.PlatformMacOS, b.PlatformMacOS) &&
+		sameBound(a.Minimum, b.Minimum) && sameBound(a.Maximum, b.Maximum) &&
+		sameBound(a.DownloadURL, b.DownloadURL) && sameBound(a.SHA256, b.SHA256)
+}
+
+func evidenceRank(status string) int {
+	switch status {
+	case "verified":
+		return 3
+	case "stale":
+		return 2
+	case "needs_review":
+		return 1
+	default:
+		return 0
+	}
+}
+
+// evidencePrefer reports whether next should replace current for the same claim.
+func evidencePrefer(next, current Proof) bool {
+	if evidenceRank(next.Status) != evidenceRank(current.Status) {
+		return evidenceRank(next.Status) > evidenceRank(current.Status)
+	}
+	if next.CheckedAt == nil {
+		return false
+	}
+	if current.CheckedAt == nil {
+		return true
+	}
+	return next.CheckedAt.After(*current.CheckedAt)
+}
+
+// MergeRequirement keeps one row per claim. A stronger evidence status replaces a weaker one,
+// so a pending supplement cannot hide a verified compatibility row with the same bounds.
+func MergeRequirement(rows []Requirement, row Requirement) []Requirement {
+	for i, existing := range rows {
+		if sameClaim(existing, row) {
+			if evidencePrefer(row.Evidence, existing.Evidence) {
+				rows[i] = row
+			}
+			return rows
+		}
+	}
+	return append(rows, row)
+}
+
 var sha256Pattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 func FullSHA256(value *string) *string {
