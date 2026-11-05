@@ -61,15 +61,15 @@ func WrapHandler(ledger Ledger, rdb *redis.Client, handler Handler, defaults ...
 			if partial, ok := stats["partial"].(bool); ok && partial {
 				status = "partial"
 			}
-			message := "job execution failed"
 			category := failureCategory(taskErr)
-			if category != "unknown" {
-				message += " (" + category + ")"
-			}
+			message := "job execution failed (" + category + ")"
 			_, httpStatus := changelog.Failure(taskErr)
 			if httpStatus != 0 {
 				message += fmt.Sprintf(" HTTP %d", httpStatus)
 				stats["httpStatus"] = httpStatus
+			}
+			if detail := failureDetail(taskErr); detail != "" && detail != fmt.Sprintf("upstream HTTP %d", httpStatus) {
+				message += ": " + detail
 			}
 			errorMessage = &message
 			taskID, _ := asynq.GetTaskID(ctx)
@@ -91,10 +91,12 @@ func WrapHandler(ledger Ledger, rdb *redis.Client, handler Handler, defaults ...
 	}
 }
 
+var errHandlerPanic = errors.New("job handler panic")
+
 func execute(ctx context.Context, handler Handler, payload Payload) (stats map[string]any, err error) {
 	defer func() {
 		if recover() != nil {
-			err = errors.New("job handler panic")
+			err = errHandlerPanic
 		}
 	}()
 	if handler == nil {
