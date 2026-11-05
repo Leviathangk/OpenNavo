@@ -281,7 +281,8 @@ export default defineNuxtConfig({
       // Also the per-app release feeds (F6) at /apps/{token}/feed.xml. An app's changes drop its pages
       // by prefix (internal-server /cache/invalidate), and every web build caches under its own Redis
       // namespace (cache-storage.ts), so six hours never serves the previous build's HTML.
-      // staleMaxAge bounds Nitro and the Cache-Control delta. Without it, `swr: true` advertises
+      // staleMaxAge sets the Cache-Control delta; boundedCache enforces the origin deadline.
+      // Without it, `swr: true` advertises
       // `stale-while-revalidate` with no seconds, and a shared cache can serve the page for a day
       // while revalidation stays in progress (#237).
       '/apps/**': {
