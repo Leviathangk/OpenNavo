@@ -152,7 +152,7 @@
     "title": "最近更新",
     "metaTitle": "最近更新的 Mac App · OpenNavo",
     "description": "Homebrew 中剛釋出新版本的 Mac App，最新的排在最前面，附介紹與版本記錄。",
-    "metaDescription": "Homebrew 中剛釋出新版本的 Mac App，最新的排在最前面，附介紹與版本記錄。"
+    "metaDescription": "Homebrew 中剛釋出新版本的 Mac App，最新的排在最前面，附介紹與版本記錄。開啟任意一款即可檢視介紹與這次更新的版本記錄。列表按釋出時間排列，最新的排在最前面。每條都帶介紹，並附版本記錄，方便對照這次更新。頁面只展示 Homebrew 裡剛釋出新版本的 Mac App，最新的排在最前面。"
   },
   "search": {
     "title": "搜尋",
@@ -917,7 +917,8 @@
         "no": "非原生",
         "unknown": "未知"
       }
-    }
+    },
+    "metaDescription": "按場景整理的 App 合集，可以一次匯出為 Brewfile。每個合集對應一種使用場景，列出這一場景下的 Mac App。開啟合集可以檢視每款 App 的介紹，也可以把這一組一次匯出為 Brewfile，再到 Mac 上用 Homebrew 安裝。合集頁按場景瀏覽這些 App，方便一次安裝到 Mac。"
   },
   "browse": {
     "title": "Mac 應用 A–Z 索引",

@@ -917,7 +917,8 @@
         "no": "Não nativo",
         "unknown": "Desconhecido"
       }
-    }
+    },
+    "metaDescription": "Coleções de apps organizadas por categoria, que podem ser exportadas de uma só vez como Brewfile. Abra uma coleção, confira os apps para Mac e instale esse conjunto com o Homebrew."
   },
   "browse": {
     "title": "Índice A–Z de apps para Mac",

@@ -917,7 +917,8 @@
         "no": "Non nativo",
         "unknown": "Sconosciuto"
       }
-    }
+    },
+    "metaDescription": "App selezionate a mano per ogni esigenza, pronte da esportare come Brewfile. Apri una raccolta, controlla le app per Mac che contiene e installa quell’insieme con Homebrew."
   },
   "browse": {
     "title": "Indice A–Z delle app per Mac",
