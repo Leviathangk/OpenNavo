@@ -96,10 +96,24 @@ func (s *Store) ChangelogState(ctx context.Context, id int64) (ChangelogState, e
 	}
 	return row, nil
 }
-func (s *Store) ChangelogDue(ctx context.Context, now time.Time) ([]int64, error) {
+
+// changelogDueFilter selects the sources a schedule tick may fetch now. ChangelogDue and
+// ChangelogDueCount share it so the batch and the reported backlog cannot disagree about what is due.
+const changelogDueFilter = `NOT COALESCE(m.changelog_excluded,false) AND s.enabled AND ` + changelogSourceScope + ` AND p.removed_at IS NULL AND NOT p.disabled`
+
+// ChangelogDue returns at most limit due sources, highest popularity first.
+func (s *Store) ChangelogDue(ctx context.Context, now time.Time, limit int) ([]int64, error) {
 	ids := []int64{}
-	err := s.DB.WithContext(ctx).Raw("SELECT s.id FROM changelog_sources s JOIN packages p ON p.id=s.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE NOT COALESCE(m.changelog_excluded,false) AND s.enabled AND "+changelogSourceScope+" AND s.next_fetch_at<=? AND p.removed_at IS NULL AND NOT p.disabled ORDER BY p.popularity DESC,s.id LIMIT 1000", now).Scan(&ids).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT s.id FROM changelog_sources s JOIN packages p ON p.id=s.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE "+changelogDueFilter+" AND s.next_fetch_at<=? ORDER BY p.popularity DESC,s.id LIMIT ?", now, limit).Scan(&ids).Error
 	return ids, err
+}
+
+// ChangelogDueCount counts every source that is due now, without a batch limit: after a tick has claimed
+// its batch this is the backlog the next tick faces, so a recovery drains observably instead of silently.
+func (s *Store) ChangelogDueCount(ctx context.Context, now time.Time) (int64, error) {
+	var count int64
+	err := s.DB.WithContext(ctx).Raw("SELECT count(*) FROM changelog_sources s JOIN packages p ON p.id=s.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE "+changelogDueFilter+" AND s.next_fetch_at<=?", now).Scan(&count).Error
+	return count, err
 }
 
 // SaveFetchedChangelog reports whether the fetch added or completed any version.

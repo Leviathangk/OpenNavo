@@ -248,6 +248,11 @@
           "refId": "A",
           "expr": "max by(source,status)(changelog_fetch_total)",
           "legendFormat": "{{job}} {{kind}} {{task}} {{type}} {{status}}"
+        },
+        {
+          "refId": "B",
+          "expr": "max(changelog_due_sources)",
+          "legendFormat": "backlog"
         }
       ]
     },

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -73,7 +74,7 @@ func scheduleFixture(t *testing.T, count int) (*store.Store, *changelog.Service,
 	now := time.Now().UTC().Add(-time.Hour)
 	ids := make([]int64, 0, count)
 	for i := range count {
-		token := string(rune('a'+i)) + "-source"
+		token := fmt.Sprintf("source-%03d", i)
 		p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"`+token+`","version":"1.0.0"}`))
 		require.NoError(t, err)
 		require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
@@ -258,6 +259,77 @@ func TestScheduleReportsAQueueFailureWhoseReleaseAlsoFailed(t *testing.T) {
 	}
 }
 
+// After a scheduler outage every source is due at once. The claim must take a bounded batch, not the
+// whole backlog, and the count must say how much of it is left: that is what makes the drain observable and
+// keeps the changelog queue and GitHub calls from arriving as one burst.
+func TestClaimChangelogDueBatchesABacklogAndCountsTheRest(t *testing.T) {
+	st, _, ids, now := scheduleFixture(t, 5)
+	ctx := context.Background()
+	lease := now.Add(2 * time.Hour)
+
+	due, err := st.ChangelogDue(ctx, now, 2)
+	require.NoError(t, err)
+	require.Equal(t, ids[:2], due, "the batch is the most popular sources")
+
+	first, err := st.ClaimChangelogDue(ctx, now, lease, 2)
+	require.NoError(t, err)
+	require.Equal(t, ids[:2], first)
+	remaining, err := st.ChangelogDueCount(ctx, now)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, remaining, "the rest of the backlog stays visible")
+
+	second, err := st.ClaimChangelogDue(ctx, now, lease, 2)
+	require.NoError(t, err)
+	require.Equal(t, ids[2:4], second)
+	remaining, err = st.ChangelogDueCount(ctx, now)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, remaining)
+
+	last, err := st.ClaimChangelogDue(ctx, now, lease, 2)
+	require.NoError(t, err)
+	require.Equal(t, ids[4:], last)
+	remaining, err = st.ChangelogDueCount(ctx, now)
+	require.NoError(t, err)
+	require.Zero(t, remaining, "a backlog that fits in one batch drains completely")
+}
+
+// scheduleBatch is the service's scheduleClaimLimit, repeated here on purpose: raising the production bound
+// is a product decision, so it has to be a visible test change rather than a silent one.
+const scheduleBatch = 200
+
+// One tick after an outage claims scheduleBatch sources, not the whole backlog. The lease keeps the next
+// tick off the same sources, so it takes the rest and reports an empty backlog, while the metric records
+// both steps: an operator can watch a recovery instead of guessing whether the schedule is stuck.
+func TestScheduleDrainsAnOutageBacklogOverSeveralTicks(t *testing.T) {
+	st, svc, ids, now := scheduleFixture(t, scheduleBatch+2)
+	queue := &failingQueue{}
+	svc.Queue = queue
+
+	stats, err := svc.Schedule(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, scheduleBatch, stats["sources"], "one tick claims its batch, not the backlog")
+	require.Equal(t, scheduleBatch, stats["enqueued"])
+	require.EqualValues(t, 2, stats["remaining"], "the count reports what the tick did not claim")
+	require.Equal(t, ids[:scheduleBatch], queue.queued, "the batch goes out highest popularity first")
+
+	state, err := st.MetricState(context.Background(), now)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, state.ChangelogDue, "the backlog gauge sees the remaining sources")
+
+	// The claim moved this batch's next_fetch_at past the lease, so the next tick takes the rest.
+	nextQueue := &failingQueue{}
+	next := &changelog.Service{Store: st, Queue: nextQueue, Now: func() time.Time { return now.Add(10 * time.Minute) }}
+	stats, err = next.Schedule(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 2, stats["sources"])
+	require.EqualValues(t, 0, stats["remaining"])
+	require.ElementsMatch(t, ids[scheduleBatch:], nextQueue.queued)
+
+	state, err = st.MetricState(context.Background(), now.Add(10*time.Minute))
+	require.NoError(t, err)
+	require.Zero(t, state.ChangelogDue, "the gauge follows the backlog down to zero")
+}
+
 // ClaimChangelogDue is what stops two schedule ticks from enqueuing one source twice: across concurrent
 // claimants every due source is claimed exactly once, and a later claimant with the same clock sees nothing.
 func TestClaimChangelogDueIsExclusiveAcrossConcurrentClaimants(t *testing.T) {
@@ -273,7 +345,7 @@ func TestClaimChangelogDueIsExclusiveAcrossConcurrentClaimants(t *testing.T) {
 	for range 2 {
 		go func() {
 			start.Wait()
-			claimed, err := st.ClaimChangelogDue(ctx, now, now.Add(2*time.Hour))
+			claimed, err := st.ClaimChangelogDue(ctx, now, now.Add(2*time.Hour), 1000)
 			results <- result{claimed, err}
 		}()
 	}
@@ -285,7 +357,7 @@ func TestClaimChangelogDueIsExclusiveAcrossConcurrentClaimants(t *testing.T) {
 	require.ElementsMatch(t, ids, claimed, "every due source is claimed by one of the two claimants")
 	require.Len(t, claimed, len(ids), "no source is claimed twice: %v / %v", first.ids, second.ids)
 	// Both claimants used the same clock and lease end; nothing is left for a third.
-	again, err := st.ClaimChangelogDue(ctx, now, now.Add(2*time.Hour))
+	again, err := st.ClaimChangelogDue(ctx, now, now.Add(2*time.Hour), 1000)
 	require.NoError(t, err)
 	require.Empty(t, again)
 }
