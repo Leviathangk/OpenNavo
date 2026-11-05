@@ -12,7 +12,7 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 // Collections (05 §4): shared OnCollectionsView (ADR-017), with web pagination.
 const PAGE_SIZE = 24;
 
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const api = useApi();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
@@ -45,8 +45,12 @@ const subtitle = computed(() =>
     ? `${t('collections.description')} · ${t('catalog.total', { total: formatCount(data.value.total, { locale: formattingLocale.value }) }, { plural: data.value.total })}`
     : t('collections.description')
 );
+// Search snippet only. The visible subtitle stays on the short collections.description line.
+const metaDescription = computed(() =>
+  te('collections.metaDescription') ? t('collections.metaDescription') : t('collections.description')
+);
 
-usePageSeo({ title: () => t('collections.metaTitle'), page, description: () => t('collections.description') });
+usePageSeo({ title: () => t('collections.metaTitle'), page, description: metaDescription });
 // Share image (WP13): the brand icon stands beside the text; collections show their own apps.
 defineOgImage('OgListSatori', {
   locale: formattingLocale.value,
