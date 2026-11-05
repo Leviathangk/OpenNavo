@@ -158,7 +158,12 @@ export function homebrewRows(pkg: Pick<PackagePage, 'facts' | 'sourceUrl'>): Req
 /** Verified rows that describe the current version, from any source. */
 export function currentRows(pkg: Pick<PackagePage, 'facts' | 'version'>): RequirementFact[] {
   const version = currentVersion(pkg);
-  return pkg.facts.requirements.filter(row => isVerified(row.evidence) && row.versions.includes(version));
+  return pkg.facts.requirements.filter(
+    row =>
+      isVerified(row.evidence) &&
+      (row.versions.includes(version) ||
+        (version === '' && row.versions.length === 0 && row.architectures.length === 0 && row.appleSilicon === 'unknown'))
+  );
 }
 
 /** Dated, verified or stale requirement rows; pending claims stay hidden. */
