@@ -54,7 +54,9 @@ type Fetcher struct {
 	// timeout overrides defaultSourceTimeout; zero means the default. Tests lower it so the bound is
 	// observable without spending a minute per case.
 	timeout time.Duration
-	quota   quotaGuard
+	// historyTimeout overrides the first history pass budget for bounded tests.
+	historyTimeout time.Duration
+	quota          quotaGuard
 }
 
 func (f *Fetcher) sourceTimeout() time.Duration {
@@ -162,7 +164,9 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 		s.LastModified = ""
 	}
 	entries, result, err := f.commitPages(ctx, repo, params, s)
-	if err != nil && s.Since == nil && (serverError(err) || errors.Is(err, context.DeadlineExceeded)) {
+	// A history-stage deadline leaves time for a smaller window, but a canceled
+	// or expired source context must not start another upstream request.
+	if err != nil && ctx.Err() == nil && s.Since == nil && (serverError(err) || errors.Is(err, context.DeadlineExceeded)) {
 		entries, result, err = f.windowedCommits(ctx, repo, params, s)
 	}
 	if err != nil {
@@ -226,7 +230,11 @@ type commitEntry struct {
 }
 
 func (f *Fetcher) commitPages(ctx context.Context, repo string, params url.Values, source FetchSource) ([]commitEntry, FetchResult, error) {
-	ctx, cancel := context.WithTimeout(ctx, commitHistoryTimeout)
+	budget := commitHistoryTimeout
+	if f.historyTimeout > 0 {
+		budget = f.historyTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	var last error
 	for _, size := range []int{100, 10, 1} {

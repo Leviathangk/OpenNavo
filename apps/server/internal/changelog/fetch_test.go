@@ -214,3 +214,57 @@ func TestFetchClassifiesInvalidAndUnsupportedSources(t *testing.T) {
 		require.Equal(t, tc.category, category)
 	}
 }
+
+func TestHistoryDeadlineFallsBackWithinSourceBudget(t *testing.T) {
+	f := NewFetcher("test")
+	f.historyTimeout = 20 * time.Millisecond
+	f.timeout = 5 * time.Second
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Query().Get("since") == "" {
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}
+		require.NoError(t, r.Context().Err())
+		return reply(http.StatusOK, `[]`), nil
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, calls, "the timed-out history gets one successful window fallback")
+}
+
+func TestHistoryDoesNotFallbackAfterSourceDeadline(t *testing.T) {
+	f := NewFetcher("test")
+	f.timeout = 20 * time.Millisecond
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		<-r.Context().Done()
+		return nil, r.Context().Err()
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, calls)
+}
+
+func TestIncrementalHistoryDeadlineDoesNotBroadenWindow(t *testing.T) {
+	f := NewFetcher("test")
+	f.historyTimeout = 20 * time.Millisecond
+	since := time.Now().Add(-time.Hour)
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		<-r.Context().Done()
+		return nil, r.Context().Err()
+	})
+	_, err := f.Fetch(context.Background(), Candidate{Token: "app"}, FetchSource{
+		Type: "homebrew_commits", Since: &since, Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"},
+	})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, 1, calls)
+}
