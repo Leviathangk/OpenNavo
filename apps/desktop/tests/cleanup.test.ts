@@ -10,7 +10,7 @@ import RunningTask from '@/components/updates/RunningTask.vue';
 import AppShell from '@/layouts/AppShell.vue';
 import CleanupPage from '@/pages/CleanupPage.vue';
 import { i18n } from '@/i18n';
-import type { CategoryReport, CleanupCategory, CleanupItem, CleanupProgress } from '@/ipc/bindings';
+import type { CategoryReport, CleanupCategory, CleanupGroup, CleanupItem, CleanupProgress } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
 import { startLocalState, usePermissionsStore, useSettingsStore } from '@/stores';
 import { usePermissionGateStore } from '@/stores/permissionGate';
@@ -870,6 +870,43 @@ describe('AI caches and generated leaves (P0)', () => {
     store.setGroup(group, true);
     expect(store.isChecked(leaf)).toBe(true);
     expect(store.isChecked(target)).toBe(false);
+  });
+
+  it('Select-all keeps trailing-slash paths and handles equal paths correctly', async () => {
+    await context();
+    const store = await scanned();
+    const base = store.entries.find(candidate => candidate.item.restore === 'auto')!.item;
+    const item = (id: string, path: string): CleanupItem => ({
+      ...base,
+      id,
+      path,
+      kind: 'dir',
+      sizeBytes: 1,
+      sizeComplete: true,
+      selected: false
+    });
+    const group = (items: CleanupItem[]): CleanupGroup => ({
+      id: `prefix-${items.length}`,
+      title: 'prefixes',
+      subtitle: null,
+      appId: null,
+      bundleId: null,
+      items
+    });
+
+    const single = item('single', '/proj/target/');
+    store.setGroup(group([single]), true);
+    expect(store.isChecked(single)).toBe(true);
+
+    const parent = item('parent', '/a/b');
+    const child = item('child', '/a/b/');
+    const duplicate = item('duplicate', '/a/b/');
+    const sibling = item('sibling', '/proj/target2');
+    store.setGroup(group([parent, child, duplicate, sibling]), true);
+    expect(store.isChecked(parent)).toBe(false);
+    expect(store.isChecked(child)).toBe(false);
+    expect(store.isChecked(duplicate)).toBe(false);
+    expect(store.isChecked(sibling)).toBe(true);
   });
 
   it('Group header counts a middle-tier target once', async () => {

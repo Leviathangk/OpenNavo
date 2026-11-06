@@ -93,14 +93,49 @@ const nestedIn = (item: CleanupItem, parent: CleanupItem) =>
 export const outermostItems = (items: readonly CleanupItem[]) => {
   const sorted = [...items].sort((a, b) => a.path.length - b.path.length);
   const kept: CleanupItem[] = [];
+  // Keep normalized directory prefixes so large reports do not compare every row
+  // with every other row. The old `kept.some(...)` implementation was quadratic.
+  const keptPrefixes = new Set<string>();
   for (const item of sorted) {
-    if (!kept.some(parent => nestedIn(item, parent))) kept.push(item);
+    if (item.kind === 'command' || item.path.length === 0) {
+      kept.push(item);
+      continue;
+    }
+    let covered = false;
+    for (let slash = item.path.indexOf('/'); slash >= 0; slash = item.path.indexOf('/', slash + 1)) {
+      if (keptPrefixes.has(item.path.slice(0, slash + 1))) {
+        covered = true;
+        break;
+      }
+    }
+    if (!covered) {
+      kept.push(item);
+      keptPrefixes.add(item.path.endsWith('/') ? item.path : `${item.path}/`);
+    }
   }
   return kept;
 };
 /** Select-all prefers the cheap leaves over the whole `target` they sit in. */
-const innermostItems = (items: readonly CleanupItem[]) =>
-  items.filter(item => !items.some(other => other.id !== item.id && nestedIn(other, item)));
+const innermostItems = (items: readonly CleanupItem[]) => {
+  // Count paths by every directory prefix. A trailing slash is part of the
+  // item's own prefix, so subtract the current item before deciding whether a
+  // strict descendant exists.
+  const descendants = new Map<string, number>();
+  for (const item of items) {
+    if (item.kind === 'command' || item.path.length === 0) continue;
+    for (let slash = item.path.indexOf('/'); slash >= 0; slash = item.path.indexOf('/', slash + 1)) {
+      const prefix = item.path.slice(0, slash + 1);
+      descendants.set(prefix, (descendants.get(prefix) ?? 0) + 1);
+    }
+  }
+  return items.filter(item => {
+    if (item.kind === 'command' || item.path.length === 0) return true;
+    const prefix = item.path.endsWith('/') ? item.path : `${item.path}/`;
+    const count = descendants.get(prefix) ?? 0;
+    const includesSelf = item.path.startsWith(prefix);
+    return count - (includesSelf ? 1 : 0) === 0;
+  });
+};
 
 export const useCleanupStore = defineStore('cleanup', () => {
   const tasks = useTasksStore();
