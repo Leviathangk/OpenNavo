@@ -25,6 +25,7 @@ func TestGitHubReleaseSourceLifecycle(t *testing.T) {
 	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE token='iina'").Scan(&pid).Error)
 	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,'homebrew_commits','{"repo":"Homebrew/homebrew-cask","path":"Casks/i/iina.rb"}',90,'auto') RETURNING id`, pid).Scan(&brew).Error)
 	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,'github_releases','{"repo":"iina/iina"}',20,'auto') RETURNING id`, pid).Scan(&releases).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status,data) VALUES(?,'github','homepage','iina/iina','found','{"repo":"iina/iina"}')`, pid).Error)
 	require.NoError(t, st.DB.WithContext(ctx).Exec("DELETE FROM job_outbox").Error)
 
 	next, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"iina","version":"1.5.0"}`))
@@ -59,4 +60,39 @@ func TestGitHubReleaseSourceLifecycle(t *testing.T) {
 	require.Equal(t, "github_releases", rows[0].Type, "ordered by priority")
 	require.Equal(t, releases, rows[0].ID)
 	require.Equal(t, "homebrew_commits", rows[1].Type)
+}
+
+// A version bump used to enqueue every enabled GitHub source. An auto source whose repository
+// the facts job no longer verifies is outside the fetch scope, so the bump must leave it alone.
+// A manual source stays an editor's choice and is still read immediately.
+func TestVersionChangeSkipsUnverifiedGitHubReleaseSource(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	dead, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"dead-repo","version":"1.0.0"}`))
+	require.NoError(t, err)
+	manual, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"manual-repo","version":"1.0.0"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: dead}, {Package: manual}}))
+	var deadID, manualID, brew, gone, kept int64
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE token='dead-repo'").Scan(&deadID).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE token='manual-repo'").Scan(&manualID).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,'homebrew_commits','{"repo":"Homebrew/homebrew-cask"}',90,'auto') RETURNING id`, deadID).Scan(&brew).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,'github_releases','{"repo":"overtake/TelegramSwift"}',20,'auto') RETURNING id`, deadID).Scan(&gone).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO package_source_facts(package_id,source,input,subject,status) VALUES(?,'github','homepage','','none')`, deadID).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw(`INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,'github_releases','{"repo":"editor/app"}',20,'manual') RETURNING id`, manualID).Scan(&kept).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Exec("DELETE FROM job_outbox").Error)
+
+	nextDead, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"dead-repo","version":"1.1.0"}`))
+	require.NoError(t, err)
+	nextManual, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"manual-repo","version":"1.1.0"}`))
+	require.NoError(t, err)
+	rows, err := st.CatalogRows(ctx, "cask")
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{
+		{Package: nextDead, Previous: rows["dead-repo"]},
+		{Package: nextManual, Previous: rows["manual-repo"]},
+	}))
+	var queued []int64
+	require.NoError(t, st.DB.WithContext(ctx).Table("job_outbox").Where("job_type='changelog:fetch'").Pluck("(payload->>'sourceId')::bigint", &queued).Error)
+	require.ElementsMatch(t, []int64{brew, kept}, queued)
 }
