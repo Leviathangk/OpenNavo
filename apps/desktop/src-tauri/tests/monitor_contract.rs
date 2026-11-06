@@ -79,6 +79,18 @@ fn sample_event_carries_availability_without_changing_the_sample_shape() {
 }
 
 #[test]
+fn legacy_sample_events_without_process_pending_flags_still_decode() {
+    use opennavo_desktop_lib::events::MonitorSampleEvent;
+    let sample = monitor::engine::empty_sample(&monitor::snapshot(&source()).unwrap().system);
+    let mut old = serde_json::to_value(&sample).unwrap();
+    old.as_object_mut().unwrap().remove("processDiskPending");
+    old.as_object_mut().unwrap().remove("processNetworkPending");
+    let legacy: MonitorSampleEvent = serde_json::from_value(old).unwrap();
+    assert!(!legacy.sample.process_disk_pending);
+    assert!(!legacy.sample.process_network_pending);
+}
+
+#[test]
 fn optional_topology_degrades_and_intel_never_claims_efficiency_cores() {
     let mut source = source();
     source.0.remove("hw.perflevel1.physicalcpu");

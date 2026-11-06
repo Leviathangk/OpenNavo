@@ -1351,9 +1351,14 @@ fn process_io_first_delta_resets_pid_reuse_counter_rollbacks_and_missing_data() 
             .disk_read_bytes_per_sec
             .is_none()
     );
+    // The first capture only records counters; the list stays empty until the second turns them into rates.
+    assert!(engine.disk_rates_pending());
+    assert!(engine.network_rates_pending());
     let p = step(&mut engine, 2000, 1, Some((500, 800)));
     assert_eq!(f64::from(p.disk_read_bytes_per_sec.unwrap()), 200.0);
     assert_eq!(f64::from(p.net_up_bytes_per_sec.unwrap()), 300.0);
+    assert!(!engine.disk_rates_pending());
+    assert!(!engine.network_rates_pending());
     assert!(
         step(&mut engine, 4000, 2, Some((700, 1000)))
             .net_down_bytes_per_sec
@@ -1375,6 +1380,111 @@ fn process_io_first_delta_resets_pid_reuse_counter_rollbacks_and_missing_data() 
             .is_none()
     );
 }
+#[test]
+fn process_io_pending_clears_after_a_repeated_or_failed_diff() {
+    let mut engine = Engine::new(system(), frame(0));
+    let modules = m1_modules();
+    let raw = |net_at: Option<u64>, bytes: Option<(u64, u64)>| RawProcess {
+        info: process(7, 0.0, 100),
+        started: 1,
+        cpu_ns: 0,
+        child_cpu_ns: None,
+        ppid: 1,
+        group: fixture_group(),
+        disk_bytes: None,
+        net_bytes: bytes,
+        net_at,
+    };
+    let step = |engine: &mut Engine, now, net_at, bytes| {
+        let mut f = frame(1);
+        f.processes = Some(vec![raw(net_at, bytes)]);
+        engine
+            .sample(f, &modules, true, now, now as i64)
+            .processes
+            .unwrap()
+            .remove(0)
+    };
+    // The first snapshot only records counters, so one fast capture is due.
+    assert!(
+        step(&mut engine, 0, Some(100), Some((100, 200)))
+            .net_down_bytes_per_sec
+            .is_none()
+    );
+    assert!(engine.network_rates_pending());
+    // The same cached snapshot cannot make a diff: stop the fast cadence instead of spinning on it.
+    assert!(
+        step(&mut engine, 2000, Some(100), Some((100, 200)))
+            .net_down_bytes_per_sec
+            .is_none()
+    );
+    assert!(!engine.network_rates_pending());
+    // A later snapshot still makes a rate over the longer window.
+    let p = step(&mut engine, 4000, Some(2100), Some((500, 700)));
+    assert_eq!(f64::from(p.net_down_bytes_per_sec.unwrap()), 200.0);
+    assert!(!engine.network_rates_pending());
+
+    // A failed nettop read keeps the old baseline but also ends the fast cadence.
+    let mut engine = Engine::new(system(), frame(0));
+    assert!(
+        step(&mut engine, 0, None, Some((100, 200)))
+            .net_down_bytes_per_sec
+            .is_none()
+    );
+    assert!(engine.network_rates_pending());
+    assert!(
+        step(&mut engine, 2000, None, None)
+            .net_down_bytes_per_sec
+            .is_none()
+    );
+    assert!(!engine.network_rates_pending());
+    let p = step(&mut engine, 4000, None, Some((500, 800)));
+    assert_eq!(f64::from(p.net_down_bytes_per_sec.unwrap()), 100.0);
+    assert!(!engine.network_rates_pending());
+}
+
+#[test]
+fn arming_process_io_shows_reading_before_the_first_capture() {
+    let mut engine = Engine::new(system(), frame(0));
+    let process_frame = || {
+        let mut f = frame(1);
+        f.processes = Some(vec![RawProcess {
+            info: process(7, 0.0, 100),
+            started: 1,
+            cpu_ns: 0,
+            child_cpu_ns: None,
+            ppid: 1,
+            group: fixture_group(),
+            disk_bytes: None,
+            net_bytes: None,
+            net_at: None,
+        }]);
+        f
+    };
+    engine.sample(process_frame(), &m1_modules(), true, 1000, 1000);
+    assert!(!engine.disk_rates_pending());
+    assert!(!engine.network_rates_pending());
+
+    // A view becoming visible with no baseline patches the latest sample, so the subscribe snapshot reads it.
+    engine.arm_process_io(true, true);
+    assert!(engine.disk_rates_pending());
+    assert!(engine.network_rates_pending());
+    assert!(engine.latest.process_disk_pending);
+    assert!(engine.latest.process_network_pending);
+    assert!(
+        engine
+            .snapshot()
+            .history
+            .last()
+            .unwrap()
+            .process_network_pending
+    );
+
+    // A capture that records no counters ends the armed window instead of spinning on it.
+    engine.sample(process_frame(), &m1_modules(), true, 2000, 2000);
+    assert!(!engine.disk_rates_pending());
+    assert!(!engine.network_rates_pending());
+}
+
 #[test]
 fn process_union_includes_io_hogs_only_when_the_corresponding_view_is_visible() {
     use opennavo_desktop_lib::monitor::engine::top_processes_io;
@@ -1474,6 +1584,55 @@ impl Collector for ExtraCollector {
         f
     }
 }
+/// A collector whose nettop snapshot can be advanced between ticks, for the first-diff cadence.
+struct IoCollector {
+    calls: Arc<Mutex<Vec<(Modules, bool, Extras)>>>,
+    snapshot: Arc<Mutex<(u64, u64, u64)>>,
+    ready: Arc<std::sync::atomic::AtomicBool>,
+}
+impl Collector for IoCollector {
+    fn system(&self) -> SystemInfo {
+        system()
+    }
+    fn collect(&mut self, modules: &Modules, processes: bool) -> Frame {
+        let mut f = frame(1);
+        if !modules.contains(&MonitorModule::Network) {
+            f.network = None;
+        }
+        if processes && self.ready.load(Ordering::Acquire) {
+            let (net_at, down, up) = *self.snapshot.lock().unwrap();
+            f.processes = Some(vec![RawProcess {
+                info: process(7, 0.0, 100),
+                started: 1,
+                cpu_ns: 0,
+                child_cpu_ns: None,
+                ppid: 1,
+                group: fixture_group(),
+                disk_bytes: None,
+                net_bytes: Some((down, up)),
+                net_at: Some(net_at),
+            }]);
+        }
+        f
+    }
+    fn collect_requested(&mut self, modules: &Modules, processes: bool, extras: &Extras) -> Frame {
+        self.calls
+            .lock()
+            .unwrap()
+            .push((modules.clone(), processes, extras.clone()));
+        let mut f = self.collect(modules, processes);
+        if !extras.process_network
+            && let Some(items) = &mut f.processes
+        {
+            for p in items {
+                p.net_bytes = None;
+                p.net_at = None;
+            }
+        }
+        f
+    }
+}
+
 type ExtraFixture = (
     Arc<Sampler>,
     Arc<Mutex<Vec<(Modules, bool, Extras)>>>,
@@ -1758,6 +1917,61 @@ fn volume_cache_keeps_live_space_deltas_and_refreshes_for_low_space_time_or_devi
     cache.resolve("disk-raw", 0, total, 10_000_000_000, unavailable);
     cache.resolve("disk-raw", 1, total, 4_000_000_000, unavailable);
     assert_eq!(reads.get(), 13); // Without NSURL capacity, raw statfs thresholds apply.
+}
+
+#[test]
+fn first_network_diff_takes_the_fast_capture_and_a_repeated_snapshot_falls_back() {
+    let calls = Arc::new(Mutex::new(vec![]));
+    let snapshot = Arc::new(Mutex::new((100, 100, 200)));
+    let sampler = Sampler::new(
+        Box::new(IoCollector {
+            calls: calls.clone(),
+            snapshot: snapshot.clone(),
+            ready: Arc::new(std::sync::atomic::AtomicBool::new(true)),
+        }),
+        off(),
+        MonitorIntervalMs::TwoSeconds,
+    );
+    let modules: Modules = [MonitorModule::Cpu, MonitorModule::Network]
+        .into_iter()
+        .collect();
+    sampler
+        .subscribe("main", MonitorView::Detail, modules)
+        .unwrap();
+    let first = sampler.tick(0, 0).unwrap().unwrap();
+    assert!(first.sample.process_network_pending);
+    assert!(
+        first.sample.processes.as_ref().unwrap()[0]
+            .net_down_bytes_per_sec
+            .is_none()
+    );
+
+    // The 900 ms cadence takes the second capture, but the same cached snapshot cannot make a diff.
+    let second = sampler.tick(1000, 1000).unwrap().unwrap();
+    assert!(!second.sample.process_network_pending);
+    assert!(
+        second.sample.processes.as_ref().unwrap()[0]
+            .net_down_bytes_per_sec
+            .is_none()
+    );
+    assert!(calls.lock().unwrap().last().unwrap().1);
+
+    // After that attempt the normal two-second cadence is back, so the next tick skips processes.
+    let third = sampler.tick(2000, 2000).unwrap().unwrap();
+    assert!(!third.sample.process_network_pending);
+    assert!(!calls.lock().unwrap().last().unwrap().1);
+
+    // A newer snapshot still produces the next rate from the retained baseline.
+    *snapshot.lock().unwrap() = (2100, 900, 1100);
+    let fourth = sampler.tick(3000, 3000).unwrap().unwrap();
+    assert_eq!(
+        f64::from(
+            fourth.sample.processes.as_ref().unwrap()[0]
+                .net_down_bytes_per_sec
+                .unwrap()
+        ),
+        400.0
+    );
 }
 
 #[test]

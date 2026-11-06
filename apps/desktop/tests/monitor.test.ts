@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import MenuBarWidget from '@/components/monitor/MenuBarWidget.vue';
 import FanControl from '@/components/monitor/FanControl.vue';
 import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
+import MonitorDetailSheet from '@/components/monitor/MonitorDetailSheet.vue';
 import MonitorSpark from '@/components/monitor/MonitorSpark.vue';
 import { useMonitorNames } from '@/components/monitor/meta';
 import { useHelperApproval } from '@/components/monitor/useHelperApproval';
@@ -484,6 +485,65 @@ describe('Process list', () => {
     expect(memory.find('[data-testid="monitor-cpu-breakdown"]').exists()).toBe(false);
   });
 
+  it('Uses the caller’s waiting state while the CPU list has no rows', async () => {
+    const waiting = await fixed(sample => ({ ...sample, processes: [] }), { sort: 'cpu', waiting: true });
+    expect(waiting.text()).toContain('正在读取');
+    waiting.unmount();
+    const done = await fixed(sample => ({ ...sample, processes: [] }), { sort: 'cpu', waiting: false });
+    expect(done.text()).toContain('—');
+  });
+
+  it('Keeps reading while the first network rates are still pending', async () => {
+    const wrapper = await fixed(
+      sample => ({
+        ...sample,
+        processNetworkPending: true,
+        processes: sample.processes!.map(entry => ({
+          ...entry,
+          netDownBytesPerSec: null,
+          netUpBytesPerSec: null
+        }))
+      }),
+      { sort: 'network' }
+    );
+    expect(wrapper.text()).toContain('正在读取');
+    expect(wrapper.text()).not.toContain('—');
+  });
+
+  it('Keeps reading while the first disk rates are still pending', async () => {
+    const wrapper = await fixed(
+      sample => ({
+        ...sample,
+        processDiskPending: true,
+        processes: sample.processes!.map(entry => ({
+          ...entry,
+          diskReadBytesPerSec: null,
+          diskWriteBytesPerSec: null
+        }))
+      }),
+      { sort: 'disk' }
+    );
+    expect(wrapper.text()).toContain('正在读取');
+    expect(wrapper.text()).not.toContain('—');
+  });
+
+  it('Says there are no rows once the second network capture has completed', async () => {
+    const wrapper = await fixed(
+      sample => ({
+        ...sample,
+        processNetworkPending: false,
+        processes: sample.processes!.map(entry => ({
+          ...entry,
+          netDownBytesPerSec: null,
+          netUpBytesPerSec: null
+        }))
+      }),
+      { sort: 'network' }
+    );
+    expect(wrapper.text()).not.toContain('正在读取');
+    expect(wrapper.text()).toContain('—');
+  });
+
   it('Names only the parts big enough to read, and keeps the bar within the machine when they overshoot it', async () => {
     // Three rows list about 37% of the machine between them; 60% is readable, so 23% is the rest.
     const plain = await fixed(
@@ -536,6 +596,19 @@ describe('Process list', () => {
     window.dispatchEvent(new StorageEvent('storage', { key: VIEW_KEY }));
     await vi.waitFor(() => expect(rowOf(list(), 'Google Chrome Helper (Renderer)')).toBeDefined());
     expect(rowOf(list(), 'Google Chrome')?.textContent).not.toContain('×3');
+  });
+
+  it('Shows the top network processes in the menu bar popover', async () => {
+    const ctx = await context('/tray-monitor?module=network');
+    const wrapper = mountWith(TrayMonitorPage, ctx);
+    await vi.waitFor(() =>
+      expect(useMonitorStore().sample?.processes?.some(entry => entry.netDownBytesPerSec != null)).toBe(true)
+    );
+    await flushPromises();
+    const popover = wrapper.find('[data-testid="monitor-popover"]').element as HTMLElement;
+    expect(popover.textContent).toContain('网络流量最多的进程');
+    expect(rows(popover).length).toBeGreaterThan(0);
+    expect(rows(popover)[0]?.textContent).toContain('Dropbox');
   });
 
   it('Shows three rows and the accounting in the menu bar popover, in the saved view', async () => {
@@ -1289,6 +1362,41 @@ describe('M3 additions', () => {
     )!;
     expect(list.textContent).toContain('网络流量最多的进程');
     expect(list.querySelector('li')?.textContent).toContain('Dropbox');
+  });
+
+  it('Does not keep saying it is reading when a loaded network detail has no traffic rows', async () => {
+    const ctx = await context();
+    const store = useMonitorStore();
+    await store.subscribe('page', ['network']);
+    await vi.waitFor(() => expect(store.sample?.processes?.length).toBeGreaterThan(0));
+    const base = JSON.parse(JSON.stringify(store.sample)) as MonitorSample;
+    await store.unsubscribe('page');
+    const idle: MonitorSample = {
+      ...base,
+      processNetworkPending: false,
+      processes: base.processes!.map(entry => ({
+        ...entry,
+        netDownBytesPerSec: null,
+        netUpBytesPerSec: null
+      }))
+    };
+    vi.spyOn(commands, 'monitorSubscribe').mockResolvedValueOnce({
+      status: 'ok',
+      data: { system: store.system!, available: store.available, history: [idle] }
+    });
+    mount(MonitorDetailSheet, {
+      props: { module: 'network' },
+      global: { plugins: [ctx.pinia, ctx.router, i18n] },
+      attachTo: document.body
+    });
+    await vi.waitFor(() => expect(store.sample).toEqual(idle));
+    await flushPromises();
+    const list = document.querySelector<HTMLElement>(
+      '[data-testid="monitor-detail"] [data-testid="monitor-processes"]'
+    )!;
+    expect(list.textContent).toContain('网络流量最多的进程');
+    expect(list.textContent).not.toContain('正在读取');
+    expect(list.textContent).toContain('—');
   });
 
   it('Makes a failing drive a critical issue that opens the disk detail', async () => {

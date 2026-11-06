@@ -339,9 +339,11 @@ impl Network {
             }
             return None;
         }
+        let launched_at = self.origin.elapsed().as_millis() as u64;
+        let mut started = false;
         if self
             .launched
-            .is_none_or(|at| at.elapsed().as_millis() >= 2000)
+            .is_none_or(|at| at.elapsed().as_millis() >= 500)
             && !self.pending.swap(true, Ordering::AcqRel)
         {
             self.launched = Some(Instant::now());
@@ -366,10 +368,34 @@ impl Network {
                     pending.store(false, Ordering::Release);
                 });
             match job {
-                Ok(worker) => self.worker = Some(worker),
+                Ok(worker) => {
+                    self.worker = Some(worker);
+                    started = true;
+                }
                 Err(_) => self.pending.store(false, Ordering::Release),
             }
         }
+        // A capture that launched nettop should use its counters, not the previous snapshot: waiting for the
+        // next capture would otherwise leave the network list empty for another whole process interval. nettop
+        // normally finishes in tens of milliseconds, so wait briefly without blocking for its three-second limit.
+        if started {
+            return self.wait_or_recent(launched_at);
+        }
+        self.recent()
+    }
+    /// Wait for the worker to publish counters from this launch, then fall back to the last snapshot. The fallback
+    /// keeps older rates visible while nettop is slow; the caller's first-diff state prevents that from spinning.
+    fn wait_or_recent(&self, launched_at: u64) -> Option<NetworkSnapshot> {
+        let deadline = Instant::now() + Duration::from_millis(200);
+        while Instant::now() < deadline {
+            if let Some(snapshot) = self.recent().filter(|s| s.at >= launched_at) {
+                return Some(snapshot);
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        self.recent()
+    }
+    fn recent(&self) -> Option<NetworkSnapshot> {
         self.cached
             .lock()
             .ok()
@@ -415,5 +441,18 @@ mod tests {
         assert!(!network.pending.load(Ordering::Acquire));
         assert!(!network.active.load(Ordering::Acquire));
         network.finish().unwrap(); // Idempotent, including when there was no child.
+    }
+    #[test]
+    fn slow_worker_falls_back_to_the_last_snapshot() {
+        let active = Arc::new(AtomicBool::new(true));
+        let network = Network::new(active);
+        *network.cached.lock().unwrap() = Some(NetworkSnapshot {
+            at: 0,
+            counters: BTreeMap::from([(7, (100, 200))]),
+        });
+        let started = Instant::now();
+        let snapshot = network.wait_or_recent(1).unwrap();
+        assert_eq!(snapshot.counters[&7], (100, 200));
+        assert!(started.elapsed() >= Duration::from_millis(190));
     }
 }

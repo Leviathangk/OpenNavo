@@ -83,6 +83,7 @@ const openInMain = (target: 'detail' | 'settings') =>
       <MonitorModuleBody :module="module" variant="popover" @open-fans="openInMain('detail')" />
       <MonitorProcesses v-if="module === 'cpu'" sort="cpu" :limit="3" compact />
       <MonitorProcesses v-else-if="module === 'memory'" sort="memory" :limit="3" compact />
+      <MonitorProcesses v-else-if="module === 'network'" sort="network" :limit="3" compact />
       <footer class="flex gap-8px border-t border-t-solid border-line-subtle pt-10px">
         <OnButton variant="primary" size="sm" class="flex-1" @click="openInMain('detail')">{{
           t('monitor.popover.open')

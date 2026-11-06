@@ -173,6 +173,17 @@ impl Sampler {
             .filter(|((label, _), _)| !state.hidden.contains(label))
             .map(|(_, modules)| modules)
     }
+    /// A disk/network view just appeared: show reading and take the first capture early before a baseline exists.
+    fn arm_visible_process_io(state: &mut State) {
+        let visible: Modules = Self::visible_views(state)
+            .flat_map(|modules| modules.iter().copied())
+            .filter(|module| state.capable.contains(module))
+            .collect();
+        state.engine.arm_process_io(
+            visible.contains(&MonitorModule::Disk),
+            visible.contains(&MonitorModule::Network),
+        );
+    }
     pub fn set_window_visible(&self, window: &str, visible: bool) {
         if let Ok(mut state) = self.lock() {
             let changed = if visible {
@@ -183,6 +194,9 @@ impl Sampler {
             if changed {
                 Self::changed(&mut state);
                 self.update_network_flag(&state);
+                if visible {
+                    Self::arm_visible_process_io(&mut state);
+                }
             }
         }
         self.notify.notify_one();
@@ -345,9 +359,20 @@ impl Sampler {
         if state.destroyed.contains(window) {
             return Ok(state.engine.snapshot());
         }
-        state.views.insert((window.into(), view), modules);
+        let previous = state.views.insert((window.into(), view), modules.clone());
+        let added: Modules = previous.as_ref().map_or_else(
+            || modules.clone(),
+            |before| modules.difference(before).copied().collect(),
+        );
         Self::changed(&mut state);
         self.update_network_flag(&state);
+        if !state.hidden.contains(window) {
+            let disk_added = added.contains(&MonitorModule::Disk)
+                && state.capable.contains(&MonitorModule::Disk);
+            let network_added = added.contains(&MonitorModule::Network)
+                && state.capable.contains(&MonitorModule::Network);
+            state.engine.arm_process_io(disk_added, network_added);
+        }
         let snapshot = state.engine.snapshot();
         drop(state);
         self.notify.notify_one();
@@ -630,17 +655,29 @@ impl Sampler {
             let Some(plan) = Self::tick_plan(&state, now) else {
                 return Ok(None);
             };
-            let due = plan.processes
-                && (force_processes
-                    || state.engine.latest.processes.as_ref().is_none_or(|_| {
-                        state.engine.process_at.is_none_or(|last| {
-                            now.saturating_sub(last) >= state.engine.process_interval_ms()
-                        })
-                    }));
             let visible: Modules = Self::visible_views(&state)
                 .flat_map(|v| v.iter().copied())
                 .filter(|m| state.capable.contains(m))
                 .collect();
+            let process_disk = visible.contains(&MonitorModule::Disk);
+            let process_network = visible.contains(&MonitorModule::Network);
+            let rates_pending = (process_disk && state.engine.disk_rates_pending())
+                || (process_network && state.engine.network_rates_pending());
+            let process_interval = if rates_pending {
+                // The first capture after the view opens only records counters; take the next one early so the
+                // list turns into rates in about a second instead of waiting out a full process interval.
+                900
+            } else {
+                state.engine.process_interval_ms()
+            };
+            let due = plan.processes
+                && (force_processes
+                    || state.engine.latest.processes.as_ref().is_none_or(|_| {
+                        state
+                            .engine
+                            .process_at
+                            .is_none_or(|last| now.saturating_sub(last) >= process_interval)
+                    }));
             let extras = Extras {
                 power_visible: visible.contains(&MonitorModule::Cpu)
                     || visible.contains(&MonitorModule::Gpu),
@@ -653,8 +690,8 @@ impl Sampler {
                     && state
                         .smart_at
                         .is_none_or(|last| now.saturating_sub(last) >= 600_000),
-                process_disk: visible.contains(&MonitorModule::Disk),
-                process_network: visible.contains(&MonitorModule::Network),
+                process_disk,
+                process_network,
             };
             let power_visible =
                 visible.contains(&MonitorModule::Cpu) || visible.contains(&MonitorModule::Gpu);
@@ -811,13 +848,23 @@ impl Sampler {
                 extras.process_network,
             );
         }
+        if !extras.process_disk {
+            latest.process_disk_pending = false;
+        }
+        if !extras.process_network {
+            latest.process_network_pending = false;
+        }
         let mut sample = sample;
         sample.processes = state.engine.latest.processes.clone();
         sample.process_groups = state.engine.latest.process_groups.clone();
+        sample.process_disk_pending = state.engine.latest.process_disk_pending;
+        sample.process_network_pending = state.engine.latest.process_network_pending;
         sample.cpu_breakdown = state.engine.latest.cpu_breakdown.clone();
         if let Some(last) = state.engine.history.back_mut() {
             last.processes = sample.processes.clone();
             last.process_groups = sample.process_groups.clone();
+            last.process_disk_pending = sample.process_disk_pending;
+            last.process_network_pending = sample.process_network_pending;
             last.cpu_breakdown = sample.cpu_breakdown.clone();
         }
         let alerts = state.alerts.evaluate(&sample.health, now);

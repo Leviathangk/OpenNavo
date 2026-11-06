@@ -106,6 +106,9 @@ pub struct Deltas {
     process_baseline_missing: bool,
     process_disk: BTreeMap<u32, (u64, u64, u64, u64)>,
     process_net: BTreeMap<u32, (u64, u64, u64, u64)>,
+    /// A capture recorded disk/network counters and no later capture has attempted their first diff yet.
+    disk_pending: bool,
+    network_pending: bool,
 }
 fn rates(
     previous: &mut Option<(u64, String, u64, u64)>,
@@ -213,10 +216,29 @@ impl Deltas {
     pub fn retain_process_io(&mut self, disk: bool, network: bool) {
         if !disk {
             self.process_disk.clear();
+            self.disk_pending = false;
         }
         if !network {
             self.process_net.clear();
+            self.network_pending = false;
         }
+    }
+    /// A disk view just became visible without a baseline; mark it reading before the first capture arrives.
+    pub fn arm_process_io(&mut self, disk: bool, network: bool) {
+        if disk && self.process_disk.is_empty() {
+            self.disk_pending = true;
+        }
+        if network && self.process_net.is_empty() {
+            self.network_pending = true;
+        }
+    }
+    /// A capture just recorded disk counters; the next one will turn them into rates.
+    pub fn disk_rates_pending(&self) -> bool {
+        self.disk_pending
+    }
+    /// A capture just recorded network counters; the next one will turn them into rates.
+    pub fn network_rates_pending(&self) -> bool {
+        self.network_pending
     }
     pub fn retain(&mut self, modules: &Modules, processes: bool) {
         if !modules.contains(&MonitorModule::Cpu) {
@@ -233,6 +255,8 @@ impl Deltas {
             // one is refused by the interval check. The I/O baselines depend on what is being read, so they go.
             self.process_disk.clear();
             self.process_net.clear();
+            self.disk_pending = false;
+            self.network_pending = false;
         }
     }
     /// Whether the last process capture had no usable baseline, so a new one is worth taking soon.
@@ -446,6 +470,8 @@ impl Deltas {
         let mut rows: Vec<(ProcessInfo, Group)> = Vec::with_capacity(procs.len());
         let (mut readable, mut active, mut finished_ns) = (0.0_f64, 0_u32, 0_u64);
         let mut parents: Vec<(u32, String, u64)> = Vec::new();
+        let (mut disk_added, mut disk_attempted) = (false, false);
+        let (mut net_added, mut net_attempted) = (false, false);
         for mut raw in procs {
             let base = before
                 .get(&raw.info.pid)
@@ -523,6 +549,16 @@ impl Deltas {
                 previous.insert(raw.info.pid, (raw.started, captured, a, b));
                 rates
             };
+            let had_disk = self
+                .process_disk
+                .get(&raw.info.pid)
+                .is_some_and(|&(start, _, _, _)| start == raw.started);
+            let has_disk = raw.disk_bytes.is_some();
+            let had_net = self
+                .process_net
+                .get(&raw.info.pid)
+                .is_some_and(|&(start, _, _, _)| start == raw.started);
+            let has_net = raw.net_bytes.is_some();
             (
                 raw.info.disk_read_bytes_per_sec,
                 raw.info.disk_write_bytes_per_sec,
@@ -536,10 +572,33 @@ impl Deltas {
                 raw.net_at.unwrap_or(now),
                 true,
             );
+            // A baseline recorded now needs one more capture for its first rates. A capture that had a baseline
+            // attempted the diff even when the counters were missing, identical or unusable, so it must not keep
+            // the fast cadence going.
+            if has_disk {
+                if had_disk {
+                    disk_attempted = true;
+                } else {
+                    disk_added = true;
+                }
+            } else if had_disk {
+                disk_attempted = true;
+            }
+            if has_net {
+                if had_net {
+                    net_attempted = true;
+                } else {
+                    net_added = true;
+                }
+            } else if had_net {
+                net_attempted = true;
+            }
             rows.push((raw.info, raw.group));
         }
         self.process_disk.retain(|pid, _| next.contains_key(pid));
         self.process_net.retain(|pid, _| next.contains_key(pid));
+        self.disk_pending = disk_added && !disk_attempted;
+        self.network_pending = net_added && !net_attempted;
         // A deduction is only for a parent that is still there; children of one that ended go to the init process.
         self.owed
             .retain(|pid, owed| !owed.is_empty() && next.contains_key(pid));
@@ -575,6 +634,8 @@ impl Deltas {
             true,
             true,
         ));
+        sample.process_disk_pending = self.disk_pending;
+        sample.process_network_pending = self.network_pending;
     }
 }
 
@@ -683,6 +744,8 @@ pub fn empty_sample(system: &SystemInfo) -> MonitorSample {
         fans: None,
         processes: None,
         process_groups: None,
+        process_disk_pending: false,
+        process_network_pending: false,
         cpu_breakdown: None,
         health: Health {
             level: HealthLevel::Good,
@@ -728,6 +791,8 @@ impl Engine {
         self.health.reset();
         self.latest.processes = None;
         self.latest.process_groups = None;
+        self.latest.process_disk_pending = false;
+        self.latest.process_network_pending = false;
         self.latest.cpu_breakdown = None;
         self.identities.clear();
         self.process_at = None;
@@ -740,6 +805,27 @@ impl Engine {
         } else {
             2000
         }
+    }
+    /// A disk/network view just became visible: show reading and take the first capture early even before a
+    /// baseline exists. The next capture clears this if it could not record one. The latest sample is patched too,
+    /// so the subscription snapshot already says "reading" instead of waiting for the next publication.
+    pub fn arm_process_io(&mut self, disk: bool, network: bool) {
+        self.deltas.arm_process_io(disk, network);
+        self.latest.process_disk_pending = self.deltas.disk_rates_pending();
+        self.latest.process_network_pending = self.deltas.network_rates_pending();
+        if let Some(last) = self.history.back_mut() {
+            last.process_disk_pending = self.latest.process_disk_pending;
+            last.process_network_pending = self.latest.process_network_pending;
+        }
+    }
+    /// The last capture recorded disk counters and no later capture has tried their first diff, so one early
+    /// capture turns the empty list into rates. A failed or repeated snapshot clears this and returns to 2 s.
+    pub fn disk_rates_pending(&self) -> bool {
+        self.deltas.disk_rates_pending()
+    }
+    /// The same for network, whose counters arrive from an asynchronous nettop snapshot.
+    pub fn network_rates_pending(&self) -> bool {
+        self.deltas.network_rates_pending()
     }
     pub fn sample(
         &mut self,
@@ -781,6 +867,8 @@ impl Engine {
         if !processes {
             self.latest.processes = None;
             self.latest.process_groups = None;
+            self.latest.process_disk_pending = false;
+            self.latest.process_network_pending = false;
             self.latest.cpu_breakdown = None;
             self.identities.clear();
         }

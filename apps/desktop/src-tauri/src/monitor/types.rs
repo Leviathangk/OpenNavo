@@ -153,6 +153,13 @@ pub struct MonitorSample {
     /// The same processes merged by app bundle (helpers included) or executable name, selected like `processes`.
     /// Each entry stands for `count` processes: sums of CPU, memory and I/O, the main process's pid and name.
     pub process_groups: Option<Vec<ProcessInfo>>,
+    /// The first process capture after a disk view opened recorded counters; the next one has not turned them
+    /// into rates yet, so an empty list means "reading", not "idle".
+    #[serde(default)]
+    pub process_disk_pending: bool,
+    /// The same for network, whose counters come from an asynchronous nettop snapshot.
+    #[serde(default)]
+    pub process_network_pending: bool,
     /// Where the machine's CPU went in the last process window; null until two process captures exist.
     pub cpu_breakdown: Option<CpuBreakdown>,
     pub health: Health,

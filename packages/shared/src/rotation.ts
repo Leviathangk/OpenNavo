@@ -7,7 +7,10 @@ export function rotateDaily<T>(items: readonly T[], windowSize: number, outputSi
   if (windowSize <= 0 || items.length <= windowSize) return items.slice(0, outputSize);
   const day = utcDay(at);
   const offset = (day * windowSize) % items.length;
-  return Array.from({ length: Math.min(outputSize, items.length) }, (_, index) => items[(offset + index) % items.length]!);
+  return Array.from(
+    { length: Math.min(outputSize, items.length) },
+    (_, index) => items[(offset + index) % items.length]!
+  );
 }
 export function utcDay(at = new Date()): number {
   return Math.floor(at.getTime() / 86_400_000);

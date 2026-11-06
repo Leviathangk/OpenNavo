@@ -1775,6 +1775,13 @@ export type MonitorSample = {
 	 *  Each entry stands for `count` processes: sums of CPU, memory and I/O, the main process's pid and name.
 	 */
 	processGroups: ProcessInfo[] | null,
+	/**
+	 *  The first process capture after a disk view opened recorded counters; the next one has not turned them
+	 *  into rates yet, so an empty list means "reading", not "idle".
+	 */
+	processDiskPending?: boolean,
+	/**  The same for network, whose counters come from an asynchronous nettop snapshot. */
+	processNetworkPending?: boolean,
 	/**  Where the machine's CPU went in the last process window; null until two process captures exist. */
 	cpuBreakdown: CpuBreakdown | null,
 	health: Health,

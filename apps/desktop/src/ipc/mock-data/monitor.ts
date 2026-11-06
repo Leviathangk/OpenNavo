@@ -448,6 +448,8 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
       fans: hasFans ? fans : null,
       processes: listed,
       processGroups: listed ? mergeProcesses(listed, processes) : null,
+      processDiskPending: false,
+      processNetworkPending: false,
       cpuBreakdown: listed ? breakdown(listed, cpu) : null,
       health: {
         level: issues.some(issue => issue.level === 'critical') ? 'critical' : issues.length ? 'attention' : 'good',

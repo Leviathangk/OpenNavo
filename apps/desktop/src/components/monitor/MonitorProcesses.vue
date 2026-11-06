@@ -52,6 +52,27 @@ const processes = computed(() => {
   return (view.value === 'app' ? (sample?.processGroups ?? sample?.processes) : sample?.processes) ?? [];
 });
 const cores = computed(() => store.system?.logicalCores ?? 0);
+const hasRate = (entry: ProcessInfo, keys: readonly (keyof ProcessInfo)[]) => keys.some(key => entry[key] != null);
+/**
+ * The first capture after a disk or network view opens only records counters; rates stay null until the next one.
+ * That short window is still "reading", not the idle/empty state an all-zero list shows once rates exist.
+ */
+const loading = computed(() => {
+  const sample = store.sample;
+  if (!sample) return props.waiting;
+  if (order.value === 'network')
+    return (
+      sample.processNetworkPending === true &&
+      !processes.value.some(entry => hasRate(entry, ['netDownBytesPerSec', 'netUpBytesPerSec']))
+    );
+  if (order.value === 'disk')
+    return (
+      sample.processDiskPending === true &&
+      !processes.value.some(entry => hasRate(entry, ['diskReadBytesPerSec', 'diskWriteBytesPerSec']))
+    );
+  // CPU and memory have no first-diff window: their list is ready when the caller says it is.
+  return props.waiting;
+});
 /** Disk and network rates arrive only while a visible view shows those modules; offer the tabs once they do. */
 const tabOptions = computed(() => [
   { value: 'cpu' as const, label: t('monitor.processes.byCpu') },
@@ -251,7 +272,7 @@ async function activityMonitor() {
       </li>
     </ul>
     <p v-if="!list.length" class="m-0 px-16px py-12px text-12px text-ink-tertiary">
-      {{ waiting === false ? '—' : t('monitor.waiting') }}
+      {{ loading ? t('monitor.waiting') : '—' }}
     </p>
     <MonitorCpuBreakdown v-if="order === 'cpu' && list.length" :rows="list" :compact="compact" />
     <OnConfirm
