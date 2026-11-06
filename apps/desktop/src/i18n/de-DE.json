@@ -636,7 +636,8 @@
       "app_store": "App Store",
       "other": "Sonstige",
       "direct": "Manuell installiert",
-      "pkg": "PKG-Installation"
+      "pkg": "PKG-Installation",
+      "electron": "Electron"
     },
     "sourceFilter": "Nach Quelle filtern",
     "unused": "Lange ungenutzt",
@@ -663,6 +664,14 @@
       "show": "Nur diese Apps anzeigen",
       "all": "Alle Apps anzeigen",
       "none": "Jede App wurde in den letzten {days} Tagen geöffnet."
+    },
+    "runtime": {
+      "electron": "Electron",
+      "confidence": {
+        "confirmed": "Electron-Framework bestätigt",
+        "high": "Hohe Gewissheit",
+        "possible": "Möglicherweise Electron"
+      }
     }
   },
   "updates": {
@@ -1569,7 +1578,8 @@
       "source": "Quelle",
       "updater": "Update-Methode",
       "installedAt": "Installiert am",
-      "lastUsed": "Zuletzt geöffnet"
+      "lastUsed": "Zuletzt geöffnet",
+      "runtime": "Laufzeit"
     },
     "updaterNone": "OpenNavo kann diese App noch nicht aktualisieren",
     "arch": {
@@ -1583,7 +1593,15 @@
       "managed": "Diese App wird vom Administrator verwaltet und kann hier nicht deinstalliert werden."
     },
     "uninstall": "Deinstallieren",
-    "unknown": "Unbekannt"
+    "unknown": "Unbekannt",
+    "runtime": {
+      "title": "Laufzeiterkennung",
+      "confidence": {
+        "confirmed": "Das Electron-Framework wurde in dieser App gefunden.",
+        "high": "Ein Electron-Helper und ein ASAR-Paket wurden gefunden.",
+        "possible": "Ein ASAR-Paket wurde gefunden; dies könnte eine Electron-App sein."
+      }
+    }
   },
   "uninstall": {
     "title": "{name} deinstallieren?",

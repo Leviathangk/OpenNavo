@@ -636,7 +636,8 @@
       "app_store": "App Store",
       "other": "Altro",
       "direct": "Installazione manuale",
-      "pkg": "Installazione PKG"
+      "pkg": "Installazione PKG",
+      "electron": "Electron"
     },
     "sourceFilter": "Filtra per fonte",
     "unused": "Inutilizzate",
@@ -663,6 +664,14 @@
       "show": "Mostra queste app",
       "all": "Mostra tutte le app",
       "none": "Tutte le app sono state aperte negli ultimi {days} giorni."
+    },
+    "runtime": {
+      "electron": "Electron",
+      "confidence": {
+        "confirmed": "Electron confermato",
+        "high": "Alta affidabilità",
+        "possible": "Possibile Electron"
+      }
     }
   },
   "updates": {
@@ -1569,7 +1578,8 @@
       "source": "Fonte",
       "updater": "Metodo di aggiornamento",
       "installedAt": "Installata il",
-      "lastUsed": "Ultimo utilizzo"
+      "lastUsed": "Ultimo utilizzo",
+      "runtime": "Runtime"
     },
     "updaterNone": "OpenNavo non può ancora aggiornarla",
     "arch": {
@@ -1583,7 +1593,15 @@
       "managed": "Questa app è gestita dall’amministratore e non può essere disinstallata qui."
     },
     "uninstall": "Disinstalla",
-    "unknown": "Sconosciuta"
+    "unknown": "Sconosciuta",
+    "runtime": {
+      "title": "Rilevamento del runtime",
+      "confidence": {
+        "confirmed": "Il framework Electron è stato trovato in questa app.",
+        "high": "Sono stati trovati un helper Electron e un pacchetto ASAR.",
+        "possible": "È stato trovato un pacchetto ASAR; potrebbe essere un’app Electron."
+      }
+    }
   },
   "uninstall": {
     "title": "Vuoi disinstallare {name}?",

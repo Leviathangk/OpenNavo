@@ -636,7 +636,8 @@
       "app_store": "App Store",
       "other": "Другие",
       "direct": "Установлено вручную",
-      "pkg": "Установщик PKG"
+      "pkg": "Установщик PKG",
+      "electron": "Electron"
     },
     "sourceFilter": "Фильтр по источнику",
     "unused": "Не используются",
@@ -663,6 +664,14 @@
       "show": "Показать только их",
       "all": "Показать все приложения",
       "none": "Все приложения открывались за последние {days} дней."
+    },
+    "runtime": {
+      "electron": "Electron",
+      "confidence": {
+        "confirmed": "Electron подтверждён",
+        "high": "Высокая уверенность",
+        "possible": "Возможно, Electron"
+      }
     }
   },
   "updates": {
@@ -1569,7 +1578,8 @@
       "source": "Источник",
       "updater": "Способ обновления",
       "installedAt": "Установлено",
-      "lastUsed": "Последний запуск"
+      "lastUsed": "Последний запуск",
+      "runtime": "Среда выполнения"
     },
     "updaterNone": "OpenNavo пока не обновляет это приложение",
     "arch": {
@@ -1583,7 +1593,15 @@
       "managed": "Этим приложением управляет администратор, поэтому его нельзя удалить здесь."
     },
     "uninstall": "Удалить…",
-    "unknown": "Неизвестно"
+    "unknown": "Неизвестно",
+    "runtime": {
+      "title": "Определение среды",
+      "confidence": {
+        "confirmed": "Внутри приложения найден фреймворк Electron.",
+        "high": "Найдены Electron Helper и пакет ASAR.",
+        "possible": "Найден пакет ASAR; это может быть приложение Electron."
+      }
+    }
   },
   "uninstall": {
     "title": "Удалить {name}?",

@@ -85,7 +85,7 @@ const nameOf = (app: LocalApp) => localApp(app).name;
 const totalBytes = computed(() => localApps.items.reduce((total, app) => total + localApps.spaceOf(app), 0));
 
 const sources = computed<OnSegmentedOption<typeof filters.source>[]>(() =>
-  (['all', 'homebrew', 'app_store', 'other'] as const).map(value => ({
+  (['all', 'homebrew', 'app_store', 'other', 'electron'] as const).map(value => ({
     value,
     label: t(`library.sources.${value}`),
     count: localApps.items.filter(app => matchesSource(app, value)).length
@@ -509,6 +509,15 @@ async function refreshInstalled() {
                     <span class="h-6px w-6px rounded-[2px]" :class="SOURCE_DOT[row.source]" aria-hidden="true"></span>
                     {{ t(`library.sources.${row.source}`) }}
                   </span>
+                  <template v-if="row.runtime === 'electron'">
+                    <span aria-hidden="true">·</span>
+                    <span
+                      class="inline-flex shrink-0 items-center rounded-[3px] bg-status-info-subtle px-4px py-1px text-10px font-600 text-status-info"
+                      :title="t(`library.runtime.confidence.${row.runtimeConfidence ?? 'possible'}`)"
+                    >
+                      {{ t('library.runtime.electron') }}
+                    </span>
+                  </template>
                   <span aria-hidden="true">·</span>
                   <span class="truncate">{{
                     row.protectedReason === 'self' ? t('library.self') : (row.cask ?? row.bundleId ?? row.path)

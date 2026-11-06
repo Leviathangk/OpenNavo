@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn changed_team_and_failed_reads_preserve_the_last_successful_baseline() {
         let (_tmp, s, _) = super::super::tests::fixture();
-        let app: LocalApp = serde_json::from_value(serde_json::json!({"id":"one","path":"/Applications/Fixture.app","name":"Fixture","source":"direct","running":false,"removable":true})).unwrap();
+        let app: LocalApp = serde_json::from_value(serde_json::json!({"id":"one","path":"/Applications/Fixture.app","name":"Fixture","source":"direct","running":false,"removable":true,"runtimeEvidence":[]})).unwrap();
         let sig = |team: &str| SignatureInfo {
             status: SignatureStatus::DeveloperId,
             team_id: Some(team.into()),
@@ -166,7 +166,7 @@ mod tests {
         std::fs::create_dir(&kept).unwrap();
         std::fs::create_dir(&removed).unwrap();
         let app = |path: &Path, name: &str| -> LocalApp {
-            serde_json::from_value(serde_json::json!({"id":name,"path":path,"name":name,"source":"direct","running":false,"removable":true})).unwrap()
+            serde_json::from_value(serde_json::json!({"id":name,"path":path,"name":name,"source":"direct","running":false,"removable":true,"runtimeEvidence":[]})).unwrap()
         };
         let apps = [app(&kept, "Kept"), app(&removed, "Removed")];
         let checked = s
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn modified_has_its_own_issue_and_unknown_does_not_replace_identity() {
         let (_tmp, s, _) = super::super::tests::fixture();
-        let app: LocalApp = serde_json::from_value(serde_json::json!({"id":"one","path":"/Applications/Fixture.app","name":"Fixture","source":"direct","running":false,"removable":true})).unwrap();
+        let app: LocalApp = serde_json::from_value(serde_json::json!({"id":"one","path":"/Applications/Fixture.app","name":"Fixture","source":"direct","running":false,"removable":true,"runtimeEvidence":[]})).unwrap();
         let modified = SignatureInfo {
             status: SignatureStatus::Modified,
             team_id: Some("ABCDEFGHIJ".into()),

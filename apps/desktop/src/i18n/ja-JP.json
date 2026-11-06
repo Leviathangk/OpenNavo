@@ -636,7 +636,8 @@
       "app_store": "App Store",
       "other": "その他",
       "direct": "手動インストール",
-      "pkg": "PKGインストーラ"
+      "pkg": "PKGインストーラ",
+      "electron": "Electron"
     },
     "sourceFilter": "入手元で絞り込む",
     "unused": "長期間未使用",
@@ -663,6 +664,14 @@
       "show": "これらのAppだけ表示",
       "all": "すべてのAppを表示",
       "none": "どのAppも過去{days}日以内に開かれています。"
+    },
+    "runtime": {
+      "electron": "Electron",
+      "confidence": {
+        "confirmed": "Electron を確認",
+        "high": "高い確度",
+        "possible": "Electron の可能性"
+      }
     }
   },
   "updates": {
@@ -1569,7 +1578,8 @@
       "source": "入手元",
       "updater": "更新方法",
       "installedAt": "インストール日",
-      "lastUsed": "最終使用"
+      "lastUsed": "最終使用",
+      "runtime": "ランタイム"
     },
     "updaterNone": "OpenNavo ではまだ更新できません",
     "arch": {
@@ -1583,7 +1593,15 @@
       "managed": "管理者が管理しているAppのため、ここではアンインストールできません。"
     },
     "uninstall": "アンインストール…",
-    "unknown": "不明"
+    "unknown": "不明",
+    "runtime": {
+      "title": "ランタイム検出",
+      "confidence": {
+        "confirmed": "Electron フレームワークを確認しました",
+        "high": "Electron Helper と ASAR ペイロードを確認しました",
+        "possible": "ASAR ペイロードがあり、Electron の可能性があります"
+      }
+    }
   },
   "uninstall": {
     "title": "{name}をアンインストールしますか？",

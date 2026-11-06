@@ -635,8 +635,17 @@
       "homebrew": "Homebrew",
       "app_store": "App Store",
       "other": "其他",
+      "electron": "Electron",
       "direct": "手動安裝",
       "pkg": "PKG 安裝"
+    },
+    "runtime": {
+      "electron": "Electron",
+      "confidence": {
+        "confirmed": "已確認 Electron 框架",
+        "high": "高可信",
+        "possible": "可能是 Electron 應用"
+      }
     },
     "sourceFilter": "按來源篩選",
     "unused": "長期未用",
@@ -1567,9 +1576,18 @@
       "vendor": "開發者",
       "arch": "架構",
       "source": "來源",
+      "runtime": "執行時",
       "updater": "更新方式",
       "installedAt": "安裝於",
       "lastUsed": "最近使用"
+    },
+    "runtime": {
+      "title": "執行時識別",
+      "confidence": {
+        "confirmed": "在應用包內找到了 Electron 框架。",
+        "high": "找到了 Electron Helper 和 ASAR 業務包。",
+        "possible": "找到了 ASAR 業務包，可能是 Electron 應用。"
+      }
     },
     "updaterNone": "OpenNavo 暫時不能更新它",
     "arch": {

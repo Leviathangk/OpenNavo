@@ -307,6 +307,32 @@ describe('Installed page', () => {
     filters.showUnused(false);
   });
 
+  it('Electron filter shows detected apps and explains the detection evidence', async () => {
+    const wrapper = await mountPage();
+    const filters = useInstalledFilterStore();
+    filters.source = 'electron';
+    await flushPromises();
+
+    const apps = useLocalAppsStore();
+    const electronApps = apps.items.filter(app => app.runtime === 'electron');
+    expect(electronApps.length).toBeGreaterThan(0);
+    expect(wrapper.findAll('tbody tr')).toHaveLength(electronApps.length);
+    expect(text()).toContain('Electron');
+    expect(text()).not.toContain('Google Chrome');
+
+    const notion = electronApps.find(app => app.id === 'local-notion')!;
+    await wrapper
+      .findAll('tbody tr')
+      .find(row => row.text().includes('Notion'))!
+      .trigger('click');
+    await flushPromises();
+    expect(text()).toContain('运行时识别');
+    expect(text()).toContain('Contents/Frameworks/Electron Framework.framework');
+    expect(text()).toContain('已确认 Electron 框架');
+    expect(useLocalAppsStore().find(notion.id)?.runtimeConfidence).toBe('confirmed');
+    wrapper.unmount();
+  });
+
   it('Selecting rows shows the batch bar, which opens the batch uninstall', async () => {
     const wrapper = await mountPage();
     // Catalog-matched apps show the catalog's localized name; find rows by their bundle ID line instead.

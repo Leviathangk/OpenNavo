@@ -114,6 +114,13 @@ const fields = computed<OnKeyValueItem[]>(() => {
       value: t(`library.sources.${app.source}`)
     },
     {
+      key: 'runtime',
+      label: t('appInfo.fields.runtime'),
+      value: app.runtime
+        ? `${t(`library.runtime.${app.runtime}`)} · ${t(`library.runtime.confidence.${app.runtimeConfidence ?? 'possible'}`)}`
+        : unknown
+    },
+    {
       // How OpenNavo would update it (plan §11.4); not whether a newer version exists.
       key: 'updater',
       label: t('appInfo.fields.updater'),
@@ -196,6 +203,25 @@ const partialNote = computed(() =>
           {{ t('appInfo.adoptBody', { name: identity.name }) }}
         </p>
         <OnButton size="xs" @click="menu.adopt(app)">{{ t('appInfo.adopt') }}</OnButton>
+      </section>
+
+      <section
+        v-if="app.runtime === 'electron'"
+        class="rounded-big border border-solid border-status-info-border bg-status-info-subtle px-16px py-14px"
+      >
+        <h3 class="m-0 mb-4px flex items-center gap-7px text-13.5px font-600 text-status-info">
+          <OnIcon name="layers" :size="14" />{{ t('appInfo.runtime.title') }}
+          <OnChip size="sm" tone="info">{{ t('library.runtime.electron') }}</OnChip>
+        </h3>
+        <p class="m-0 mb-8px text-12.5px leading-[1.55] text-ink-secondary">
+          {{ t(`appInfo.runtime.confidence.${app.runtimeConfidence ?? 'possible'}`) }}
+        </p>
+        <ul
+          v-if="app.runtimeEvidence?.length"
+          class="m-0 list-disc pl-18px text-11.5px leading-[1.55] text-ink-tertiary"
+        >
+          <li v-for="evidence in app.runtimeEvidence ?? []" :key="evidence" class="font-mono">{{ evidence }}</li>
+        </ul>
       </section>
 
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card p-16px">

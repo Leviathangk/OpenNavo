@@ -9,6 +9,7 @@ pub mod identity;
 pub(crate) mod leftovers;
 pub mod manifest;
 pub mod rules;
+pub mod runtime;
 pub mod scan;
 mod watch;
 

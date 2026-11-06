@@ -407,6 +407,7 @@ const CASK_BUNDLES: Record<string, string> = {
   wechat: 'com.tencent.xinWeChat',
   obsidian: 'md.obsidian'
 };
+const ELECTRON_CASKS = new Set(['docker-desktop', 'visual-studio-code', 'wechat', 'obsidian']);
 const RUNNING_CASKS = new Set(['docker-desktop', 'wechat', 'raycast']);
 const LAST_USED_CASKS: Record<string, number> = {
   'docker-desktop': 1,
@@ -450,7 +451,12 @@ export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[]
         running: RUNNING_CASKS.has(item.token),
         removable: true,
         protectedReason: null,
-        uninstaller: null
+        uninstaller: null,
+        runtime: ELECTRON_CASKS.has(item.token) ? 'electron' : null,
+        runtimeConfidence: ELECTRON_CASKS.has(item.token) ? 'confirmed' : null,
+        runtimeEvidence: ELECTRON_CASKS.has(item.token)
+          ? ['Contents/Frameworks/Electron Framework.framework', 'Contents/Resources/app.asar']
+          : []
       };
     });
   const extra = EXTRA_APPS.map((app): LocalApp => {
@@ -477,7 +483,13 @@ export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[]
       running: Boolean(app.running),
       removable: !app.self,
       protectedReason: app.self ? 'self' : null,
-      uninstaller: app.uninstaller ?? null
+      uninstaller: app.uninstaller ?? null,
+      runtime: app.id === 'local-notion' || app.id === 'local-zoom' ? 'electron' : null,
+      runtimeConfidence: app.id === 'local-notion' || app.id === 'local-zoom' ? 'confirmed' : null,
+      runtimeEvidence:
+        app.id === 'local-notion' || app.id === 'local-zoom'
+          ? ['Contents/Frameworks/Electron Framework.framework', 'Contents/Resources/app.asar']
+          : []
     };
   });
   return [...casks, ...extra];

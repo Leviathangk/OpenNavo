@@ -1335,7 +1335,8 @@ mod tests {
             "name": "Firefox",
             "source": "direct",
             "running": false,
-            "removable": true
+            "removable": true,
+            "runtimeEvidence": []
         }))
         .expect("fixture");
         app.source = source;

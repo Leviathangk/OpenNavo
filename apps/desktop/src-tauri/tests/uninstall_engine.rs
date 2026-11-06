@@ -2322,6 +2322,9 @@ fn personal_data_kinds_come_from_known_bundle_ids() {
             removable: true,
             protected_reason: None,
             uninstaller: None,
+            runtime: None,
+            runtime_confidence: None,
+            runtime_evidence: Vec::new(),
         };
         opennavo_desktop_lib::uninstall::scan::personal_data(
             &opennavo_desktop_lib::uninstall::CachedApp {

@@ -141,7 +141,7 @@ fn installed_app_routing_uses_enabled_sources_in_priority_order() {
     let db = Database::open(&tmp.path().join("db")).unwrap();
     let mut app: LocalApp = serde_json::from_value(serde_json::json!({
         "id":"fixture", "path":path, "name":"Fixture", "bundleId":"test.app",
-        "source":"direct", "running":false, "removable":true
+        "source":"direct", "running":false, "removable":true, "runtimeEvidence":[]
     }))
     .unwrap();
     let rules: Vec<FeedRule> = [UpdateSource::Github, UpdateSource::Vendor]
@@ -226,7 +226,7 @@ fn routing_without_catalog_hint_uses_only_the_installed_taps_policy() {
         let app: LocalApp = serde_json::from_value(serde_json::json!({
             "id":"fixture", "path":path, "name":"Fixture", "bundleId":"test.app",
             "cask":identity, "catalogToken":null, "source":"homebrew", "running":false,
-            "removable":true
+            "removable":true, "runtimeEvidence":[]
         }))
         .unwrap();
         assert_eq!(
@@ -343,7 +343,7 @@ fn sparkle_routing_requires_supported_signing_configuration() {
     let db = Database::open(&tmp.path().join("db")).unwrap();
     let data = serde_json::json!({"kind":"cask","token":"fixture","name":"Fixture","names":[],"version":"1","autoUpdates":true,"deprecated":false,"disabled":false,"hidden":false,"isFont":false,"isLibrary":false,"categories":[],"tags":[],"installs30d":0,"popularity":0,"apps":[],"binaries":[],"versionChangedAt":""}).to_string();
     db.with(|c| { c.execute("INSERT INTO catalog_items(kind,token,data,name,version,version_changed_at) VALUES('cask','fixture',?1,'Fixture','1',0)", [&data])?; Ok(()) }).unwrap();
-    let app: LocalApp = serde_json::from_value(serde_json::json!({"id":"fixture","path":path,"name":"Fixture","bundleId":"test.app","cask":"fixture","source":"homebrew","running":false,"removable":true})).unwrap();
+    let app: LocalApp = serde_json::from_value(serde_json::json!({"id":"fixture","path":path,"name":"Fixture","bundleId":"test.app","cask":"fixture","source":"homebrew","running":false,"removable":true,"runtimeEvidence":[]})).unwrap();
     let rule: FeedRule = serde_json::from_value(serde_json::json!({"bundleId":"test.app","source":"sparkle","feedUrl":"https://example.org/feed"})).unwrap();
     for key in [
         None,

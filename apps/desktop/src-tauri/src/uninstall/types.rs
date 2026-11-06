@@ -26,6 +26,30 @@ pub struct LocalApp {
     pub removable: bool,
     pub protected_reason: Option<ProtectedReason>,
     pub uninstaller: Option<String>,
+    /// Runtime detected from files inside the application bundle.
+    pub runtime: Option<AppRuntime>,
+    /// How strong the runtime evidence is. This is deliberately separate from `runtime` so the UI can be
+    /// transparent when a bundle only contains a weak packaging signal such as `app.asar`.
+    pub runtime_confidence: Option<RuntimeConfidence>,
+    /// Relative paths inside the bundle that led to the runtime result.
+    pub runtime_evidence: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AppRuntime {
+    Electron,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RuntimeConfidence {
+    /// The bundle contains Electron's framework, including custom-named helper layouts.
+    Confirmed,
+    /// The bundle has an Electron helper and an ASAR payload, but the framework was not found at the standard path.
+    High,
+    /// The bundle has an ASAR payload without another Electron-specific marker.
+    Possible,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]

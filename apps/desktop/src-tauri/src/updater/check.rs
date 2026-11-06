@@ -490,7 +490,7 @@ mod partial_tests {
         let app: LocalApp = serde_json::from_value(serde_json::json!({
             "id":"eba15506738312750657b7c56bceb0404900d0e3", "name":"WorkBuddy",
             "path":path, "bundleId":"com.tencent.workbuddy.mac", "version":"5.6.2",
-            "teamId":"FN2V63AD2J", "source":"direct", "running":false, "removable":true
+            "teamId":"FN2V63AD2J", "source":"direct", "running":false, "removable":true, "runtimeEvidence":[]
         }))
         .unwrap();
         // Exact public response cached by the isolated acceptance app. Unlike
@@ -603,7 +603,7 @@ mod partial_tests {
             plist::Value::Dictionary(info)
                 .to_file_xml(path.join("Contents/Info.plist"))
                 .unwrap();
-            apps.push(serde_json::from_value::<LocalApp>(serde_json::json!({"id":name,"name":name,"path":path,"bundleId":format!("test.{name}"),"version":"1.0","teamId":"TESTTEAM01","source":"direct","running":false,"removable":true})).unwrap());
+            apps.push(serde_json::from_value::<LocalApp>(serde_json::json!({"id":name,"name":name,"path":path,"bundleId":format!("test.{name}"),"version":"1.0","teamId":"TESTTEAM01","source":"direct","running":false,"removable":true,"runtimeEvidence":[]})).unwrap());
             let release = if name == "broken" {
                 serde_json::Value::Null
             } else {

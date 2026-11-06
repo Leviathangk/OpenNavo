@@ -19,11 +19,12 @@ const DAY = 86_400_000;
 /** Bursts of local-apps:changed (a footprint scan sends two per app) are read once. */
 const COALESCE_MS = 150;
 
-/** Source filter on Installed: App Store keeps its own segment; drag-installed and .pkg apps share "Other". */
-export type SourceFilter = 'all' | 'homebrew' | 'app_store' | 'other';
+/** Installed filters: App Store keeps its own segment; drag-installed and .pkg apps share "Other"; Electron is runtime-based. */
+export type SourceFilter = 'all' | 'homebrew' | 'app_store' | 'other' | 'electron';
 
 export function matchesSource(app: LocalApp, filter: SourceFilter): boolean {
   if (filter === 'all') return true;
+  if (filter === 'electron') return app.runtime === 'electron';
   if (filter === 'other') return app.source === 'direct' || app.source === 'pkg';
   return app.source === (filter satisfies AppSource);
 }

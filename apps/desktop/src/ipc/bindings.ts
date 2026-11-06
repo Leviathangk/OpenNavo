@@ -396,6 +396,8 @@ export type AppPlanBlockedReason = "system" | "self" | "managed" | "app_manageme
 
 export type AppPlanRemoval = "brew" | "trash" | "blocked";
 
+export type AppRuntime = "electron";
+
 export type AppSignatureEntry = {
 	path: string,
 	name: string,
@@ -1512,6 +1514,15 @@ export type LocalApp = {
 	removable: boolean,
 	protectedReason: ProtectedReason | null,
 	uninstaller: string | null,
+	/**  Runtime detected from files inside the application bundle. */
+	runtime: AppRuntime | null,
+	/**
+	 *  How strong the runtime evidence is. This is deliberately separate from `runtime` so the UI can be
+	 *  transparent when a bundle only contains a weak packaging signal such as `app.asar`.
+	 */
+	runtimeConfidence: RuntimeConfidence | null,
+	/**  Relative paths inside the bundle that led to the runtime result. */
+	runtimeEvidence: string[],
 };
 
 export type LocalAppArch = "arm64" | "x86_64" | "universal";
@@ -2106,6 +2117,14 @@ export type RunningApp = {
 	target: TaskTarget,
 	name: string,
 };
+
+export type RuntimeConfidence =
+/**  The bundle contains Electron's framework, including custom-named helper layouts. */
+"confirmed" |
+/**  The bundle has an Electron helper and an ASAR payload, but the framework was not found at the standard path. */
+"high" |
+/**  The bundle has an ASAR payload without another Electron-specific marker. */
+"possible";
 
 export type ScanProgress = {
 	requestId: string,

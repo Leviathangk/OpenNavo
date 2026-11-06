@@ -490,6 +490,7 @@ impl Engine {
             if let Some(key) = key {
                 keys.insert(id.clone(), key);
             }
+            let runtime = crate::uninstall::runtime::detect(&path);
             let app = LocalApp {
                 id: id.clone(),
                 path: path.to_string_lossy().into_owned(),
@@ -517,6 +518,9 @@ impl Engine {
                 removable: protected_reason.is_none(),
                 protected_reason,
                 uninstaller: None,
+                runtime: runtime.runtime,
+                runtime_confidence: runtime.confidence,
+                runtime_evidence: runtime.evidence,
             };
             records.insert(
                 id,
@@ -572,6 +576,9 @@ impl Engine {
                     removable: true,
                     protected_reason: None,
                     uninstaller: None,
+                    runtime: None,
+                    runtime_confidence: None,
+                    runtime_evidence: Vec::new(),
                 };
                 records.insert(
                     id,

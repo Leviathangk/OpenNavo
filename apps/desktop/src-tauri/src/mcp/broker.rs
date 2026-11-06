@@ -1024,6 +1024,9 @@ impl<R: tauri::Runtime> ToolHost for LiveTools<R> {
                     "version": app.version,
                     "bundleId": app.bundle_id,
                     "source": app.source,
+                    "runtime": app.runtime,
+                    "runtimeConfidence": app.runtime_confidence,
+                    "runtimeEvidence": app.runtime_evidence,
                 })
             })
             .collect();

@@ -548,7 +548,7 @@ pub fn definitions() -> Vec<Value> {
         }),
         json!({
             "name": "list_installed_apps",
-            "description": "List installed applications. Returns only id, path, name, version, bundleId and source.",
+            "description": "List installed applications, including local Electron runtime detection and its confidence/evidence.",
             "inputSchema": {
                 "type": "object",
                 "properties": {},

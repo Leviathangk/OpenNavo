@@ -629,8 +629,17 @@ export default {
       homebrew: 'Homebrew',
       app_store: 'App Store',
       other: '其他',
+      electron: 'Electron',
       direct: '手动安装',
       pkg: 'PKG 安装'
+    },
+    runtime: {
+      electron: 'Electron',
+      confidence: {
+        confirmed: '已确认 Electron 框架',
+        high: '高可信',
+        possible: '可能是 Electron 应用'
+      }
     },
     sourceFilter: '按来源筛选',
     unused: '长期未用',
@@ -1565,9 +1574,18 @@ export default {
       vendor: '开发者',
       arch: '架构',
       source: '来源',
+      runtime: '运行时',
       updater: '更新方式',
       installedAt: '安装于',
       lastUsed: '最近使用'
+    },
+    runtime: {
+      title: '运行时识别',
+      confidence: {
+        confirmed: '在应用包内找到了 Electron 框架。',
+        high: '找到了 Electron Helper 和 ASAR 业务包。',
+        possible: '找到了 ASAR 业务包，可能是 Electron 应用。'
+      }
     },
     updaterNone: 'OpenNavo 暂时不能更新它',
     arch: {

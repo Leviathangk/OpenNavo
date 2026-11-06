@@ -643,8 +643,17 @@ const messages: MessageSchema = {
       homebrew: 'Homebrew',
       app_store: 'App Store',
       other: 'Other',
+      electron: 'Electron',
       direct: 'Installed manually',
       pkg: 'PKG installer'
+    },
+    runtime: {
+      electron: 'Electron',
+      confidence: {
+        confirmed: 'Electron framework confirmed',
+        high: 'High confidence',
+        possible: 'Possible Electron bundle'
+      }
     },
     sourceFilter: 'Filter by source',
     unused: 'Unused',
@@ -1610,9 +1619,18 @@ const messages: MessageSchema = {
       vendor: 'Developer',
       arch: 'Architecture',
       source: 'Source',
+      runtime: 'Runtime',
       updater: 'Update method',
       installedAt: 'Installed',
       lastUsed: 'Last opened'
+    },
+    runtime: {
+      title: 'Runtime detection',
+      confidence: {
+        confirmed: 'The Electron framework was found inside this app.',
+        high: 'An Electron helper and an ASAR payload were found.',
+        possible: 'An ASAR payload was found; this is a possible Electron app.'
+      }
     },
     updaterNone: 'OpenNavo can’t update it yet',
     arch: {
