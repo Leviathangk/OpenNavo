@@ -1,4 +1,5 @@
 import { unwrap } from '@opennavo/api';
+import { utcDay } from '@opennavo/shared';
 import { withVariantNames } from '~/utils/seoTitles';
 
 /**
@@ -12,7 +13,7 @@ export function useHome() {
   const { locale } = useI18n();
   const api = useApi();
   return useAsyncData(
-    () => `home:${locale.value}`,
+    () => `home:${locale.value}:${utcDay()}`,
     () => unwrap(api.GET('/home', { params: { query: { sectionSize: HOME_SECTION_SIZE } } })),
     { transform: withVariantNames }
   );

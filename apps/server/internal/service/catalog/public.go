@@ -24,6 +24,30 @@ import (
 	"gorm.io/gorm"
 )
 
+// rotateDaily returns a deterministic daily window from an already ranked list.
+// Keeping the day and window size identical across clients makes SSR and offline
+// desktop discovery show the same set while still exposing the wider ranking.
+func rotateDaily[T any](items []T, windowSize, outputSize int, day int64) []T {
+	if outputSize <= 0 || len(items) == 0 {
+		return []T{}
+	}
+	if windowSize <= 0 || len(items) <= windowSize {
+		if outputSize < len(items) {
+			return items[:outputSize]
+		}
+		return items
+	}
+	offset := int((day * int64(windowSize)) % int64(len(items)))
+	if outputSize > len(items) {
+		outputSize = len(items)
+	}
+	out := make([]T, outputSize)
+	for i := range out {
+		out[i] = items[(offset+i)%len(items)]
+	}
+	return out
+}
+
 type PublicService struct {
 	Now        func() time.Time
 	Store      *store.Store
@@ -168,7 +192,13 @@ func (s *PublicService) Home(ctx context.Context, locale string, requestedSize .
 	if sectionSize < 1 || sectionSize > 24 {
 		return publicapi.HomeData{}, domain.Validation()
 	}
-	data, err := cache.ReadThrough(ctx, s.Cache, fmt.Sprintf("c:home:c2:%s:%d%s", locale, sectionSize, domain.LinksCacheKey(ctx)), 5*time.Minute, func(ctx context.Context) (publicapi.HomeData, error) {
+	// Include the UTC day in the key so the rotation advances promptly after midnight.
+	now := time.Now()
+	if s.Now != nil {
+		now = s.Now()
+	}
+	day := now.UTC().Unix() / 86400
+	data, err := cache.ReadThrough(ctx, s.Cache, fmt.Sprintf("c:home:c3:%s:%d:%d%s", locale, sectionSize, day, domain.LinksCacheKey(ctx)), 5*time.Minute, func(ctx context.Context) (publicapi.HomeData, error) {
 		data := publicapi.HomeData{PopularCli: []publicapi.PackageSummary{}, Features: []publicapi.Feature{}, Collections: []publicapi.CollectionSummary{}}
 		var err error
 		data.Categories, err = s.Categories(ctx, locale)
@@ -179,11 +209,19 @@ func (s *PublicService) Home(ctx context.Context, locale string, requestedSize .
 			kind, sort string
 			target     *[]publicapi.PackageSummary
 		}{{"", "popular", &data.PopularApps}, {"", "updated", &data.RecentlyUpdated}} {
-			page, err := s.List(ctx, store.PublicFilter{Kind: section.kind, Sort: section.sort, Locale: locale, Current: 1, Size: sectionSize, IncludeFonts: true})
+			candidateSize := sectionSize
+			if section.sort == "popular" {
+				candidateSize = 100
+			}
+			page, err := s.List(ctx, store.PublicFilter{Kind: section.kind, Sort: section.sort, Locale: locale, Current: 1, Size: candidateSize, IncludeFonts: true})
 			if err != nil {
 				return data, err
 			}
-			*section.target = page.Records
+			if section.sort == "popular" {
+				*section.target = rotateDaily(page.Records, sectionSize, sectionSize, day)
+			} else {
+				*section.target = page.Records
+			}
 		}
 		stats, err := s.Store.PublicStats(ctx)
 		data.Stats.Casks = stats["casks"]

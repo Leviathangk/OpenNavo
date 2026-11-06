@@ -19,3 +19,4 @@ export { DEFAULT_LOCALE, AUTHORING_LOCALE, LOCALE_METADATA } from './locales.gen
 export * from './brewfileList';
 
 export * from './recentNavigation';
+export * from './rotation';

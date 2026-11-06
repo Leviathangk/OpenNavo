@@ -1,4 +1,5 @@
 import { unwrap } from '@opennavo/api';
+import { rotateDaily, utcDay } from '@opennavo/shared';
 import type { HomeData, PackageSummary } from '@opennavo/api';
 import { api } from '@/api';
 import { resourceCache } from './resourceCache';
@@ -8,20 +9,22 @@ const popularCached = resourceCache<PackageSummary[]>();
 const recentCached = resourceCache<{ total: number; records: PackageSummary[] }>();
 export const RECENT_PAGE_SIZE = 24;
 export const peekHome = (locale: string) => cached.peek(locale);
-export const peekPopularApps = (locale: string) => popularCached.peek(locale);
+const popularKey = (locale: string) => `${locale}:${utcDay()}`;
+export const peekPopularApps = (locale: string) => popularCached.peek(popularKey(locale));
 export const peekRecentApps = (locale: string, page: number, size = RECENT_PAGE_SIZE) =>
   recentCached.peek(`${locale}:${page}:${size}`);
 
-// The home endpoint only provides twelve apps; fetch enough for three rows in wide desktop windows.
+// Fetch the same 100-item candidate pool as the server, then expose the current
+// twelve-item daily window for the three Discover rows.
 export function fetchPopularApps(locale: string): Promise<PackageSummary[]> {
-  return popularCached(locale, async () => {
+  return popularCached(popularKey(locale), async () => {
     const page = await unwrap(
       api.GET('/packages', {
-        params: { query: { kind: 'cask', sort: 'popular', size: 100, includeFonts: true } },
+        params: { query: { sort: 'popular', size: 100, includeFonts: true } },
         headers: { 'Accept-Language': locale }
       })
     );
-    return page.records;
+    return rotateDaily(page.records, 12, 100);
   });
 }
 
