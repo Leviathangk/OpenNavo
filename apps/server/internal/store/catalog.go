@@ -332,7 +332,9 @@ func (s *Store) ApplyCatalogBatchWithLifecycle(ctx context.Context, mutations []
 					return err
 				}
 				var releaseSources []int64
-				if err := tx.WithContext(ctx).Raw("SELECT id FROM changelog_sources WHERE package_id=? AND enabled AND type='github_releases'", id).Scan(&releaseSources).Error; err != nil {
+				// Same scope as the schedule. An enabled auto source whose repository is no longer
+				// verified is not fetchable, and enqueueing it only records source_not_fetchable (#228).
+				if err := tx.WithContext(ctx).Raw("SELECT s.id FROM changelog_sources s JOIN packages p ON p.id=s.package_id WHERE s.package_id=? AND s.enabled AND s.type='github_releases' AND "+changelogSourceScope, id).Scan(&releaseSources).Error; err != nil {
 					return err
 				}
 				// A new version usually has a new GitHub release; read it without waiting for the interval.
