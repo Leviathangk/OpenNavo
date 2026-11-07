@@ -1346,6 +1346,26 @@ export function createCleanupMock({
       executions.set(task.id, { reportId, items: items as CleanupItem[] });
       return task;
     },
+    cleanup_retry_trash: args => {
+      const reportId = args.reportId as string;
+      const entry = reports.get(reportId);
+      if (!entry) throw appError('E_PLAN_EXPIRED', 'report_expired');
+      const ids = args.itemIds as string[];
+      const items = ids.map(id => entry.items.get(id));
+      // Commands have no path, and a worktree is removed by Git without a Trash copy: Rust refuses both.
+      if (
+        !ids.length ||
+        items.some(item => !item) ||
+        items.some(item => item?.kind === 'command' || item?.reason === 'worktree')
+      )
+        throw appError('E_INVALID_ARG', 'trash_retry_item');
+      // The native command creates a derived, Trash-only plan. Mirror that behavior in browser mode.
+      const retryItems = (items as CleanupItem[]).map(item => ({ ...item, deleteMode: 'trash' as const }));
+      const retryId = `${reportId}:trash-retry:${Date.now()}`;
+      const task = enqueue('clean', { kind: 'app', token: retryId }, { planId: retryId, itemIds: ids }, null);
+      executions.set(task.id, { reportId, items: retryItems });
+      return task;
+    },
     cleanup_reveal: () => null,
     cleanup_summary: (): CleanupSummary => ({
       ...(summary ?? {

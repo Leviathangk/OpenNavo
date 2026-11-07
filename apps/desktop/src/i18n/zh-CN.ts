@@ -1970,6 +1970,8 @@ export default {
       skippedHint: '原因见下方',
       skippedNone: '没有问题',
       skippedTitle: '这些没有清理',
+      retryTrash: '移到废纸篓',
+      retryUnavailable: '当前无法移到废纸篓',
       free: '可用空间',
       undo: '撤销移到废纸篓的项目',
       purge: '彻底删除这些文件',

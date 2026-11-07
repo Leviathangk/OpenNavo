@@ -1969,6 +1969,8 @@
       "skippedHint": "原因見下方",
       "skippedNone": "沒有問題",
       "skippedTitle": "這些沒有清理",
+      "retryTrash": "移到垃圾桶",
+      "retryUnavailable": "當前無法移到垃圾桶",
       "free": "可用空間",
       "undo": "撤銷移到垃圾桶的項目",
       "purge": "徹底刪除這些檔案",

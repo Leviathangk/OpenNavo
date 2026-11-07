@@ -1010,7 +1010,7 @@ impl Engine {
             });
             reconcile(entry);
         }
-        if let Some(entry) = reports.values().max_by_key(|r| r.report.scanned_at) {
+        if let Some(entry) = super::latest_scan(&reports) {
             self.save_summary(&entry.report)?;
         }
         Ok(())
@@ -1180,6 +1180,7 @@ mod prune_tests {
     fn entry(items: Vec<EntryItem>) -> super::super::Entry {
         super::super::Entry {
             category_millis: BTreeMap::new(),
+            derived: false,
             report: CleanupReport {
                 report_id: "prune".into(),
                 scanned_at: 0,

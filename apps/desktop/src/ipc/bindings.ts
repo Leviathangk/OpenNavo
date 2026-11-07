@@ -102,6 +102,8 @@ export const commands = {
 	 *  task is bound to the exact list that window showed.
 	 */
 	cleanupExecute: (reportId: string, itemIds: string[]) => typedError<Task, AppError>(__TAURI_INVOKE("cleanup_execute", { reportId, itemIds })),
+	/**  Retry skipped filesystem items through the Trash-only cleanup path. */
+	cleanupRetryTrash: (reportId: string, itemIds: string[]) => typedError<Task, AppError>(__TAURI_INVOKE("cleanup_retry_trash", { reportId, itemIds })),
 	cleanupReveal: (reportId: string, itemId: string) => typedError<null, AppError>(__TAURI_INVOKE("cleanup_reveal", { reportId, itemId })),
 	cleanupSummary: () => typedError<CleanupSummary, AppError>(__TAURI_INVOKE("cleanup_summary")),
 	cleanupProtect: (input: ProtectInput) => typedError<ProtectRule, AppError>(__TAURI_INVOKE("cleanup_protect", { input })),

@@ -3086,6 +3086,8 @@
         "cleanup.result.skippedHint": "c144851f617d7a5891913c7bb35a7258d3174b7b3287dd538dc1fc53a7542927",
         "cleanup.result.skippedNone": "454a0dd540c0ccf56698483465355e85674061fb72ef00b56263f5e86a4e985d",
         "cleanup.result.skippedTitle": "6d0878a4380fe896534d07b970432e6b75bd47009739f1791503311af75ceb14",
+        "cleanup.result.retryTrash": "fa5e1982038ca189b78eea5c6cb2215c9ddb2e13d55bee1d43c0bfa615230ec1",
+        "cleanup.result.retryUnavailable": "45ed662dffb1faa8bb7141a1ec22ede234548ccfea85f942d69230154c25be0c",
         "cleanup.result.free": "cec82ccb6e81e727b306f2a6f348884e02d2b38bdbac5f00a8b599848f63e718",
         "cleanup.result.undo": "b4905e5ce263723ab6cf24ad362228e989fa044b01ff7191f604417983489dc7",
         "cleanup.result.purge": "b42e52e14c2b1909b5baf8a052db623a45737e76b5a9a6b2be9e57735d1306a0",

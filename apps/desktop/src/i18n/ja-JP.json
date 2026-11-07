@@ -1969,6 +1969,8 @@
       "skippedHint": "理由は下に表示しています",
       "skippedNone": "問題ありません",
       "skippedTitle": "クリーンアップしなかった項目",
+      "retryTrash": "ゴミ箱に移動",
+      "retryUnavailable": "現在はゴミ箱に移動できません",
       "free": "空き容量",
       "undo": "ゴミ箱への移動を取り消す",
       "purge": "これらのファイルを完全に削除",

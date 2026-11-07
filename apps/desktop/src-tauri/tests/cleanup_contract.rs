@@ -37,6 +37,7 @@ fn protect_input_rejects_mixed_raw_paths_and_ids_and_permissions_are_main_only()
             "cleanup_scan",
             "cleanup_cancel",
             "cleanup_execute",
+            "cleanup_retry_trash",
             "cleanup_reveal",
             "cleanup_summary",
             "cleanup_protect",

@@ -1492,6 +1492,7 @@ mod tests {
             category_millis: std::collections::BTreeMap::new(),
             report: cleanup_report(),
             items: stored,
+            derived: false,
         }
     }
 

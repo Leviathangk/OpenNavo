@@ -1969,6 +1969,8 @@
       "skippedHint": "Veja os motivos abaixo",
       "skippedNone": "Sem problemas",
       "skippedTitle": "Não limpos",
+      "retryTrash": "Mover para o Lixo",
+      "retryUnavailable": "Não dá para mover para o Lixo agora",
       "free": "Espaço disponível",
       "undo": "Desfazer a ida para o Lixo",
       "purge": "Apagar estes arquivos de vez",

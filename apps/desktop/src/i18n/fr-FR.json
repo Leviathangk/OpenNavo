@@ -1969,6 +1969,8 @@
       "skippedHint": "Voir les motifs ci-dessous",
       "skippedNone": "Aucun problème",
       "skippedTitle": "Éléments non nettoyés",
+      "retryTrash": "Mettre à la corbeille",
+      "retryUnavailable": "Impossible de mettre à la corbeille pour le moment",
       "free": "Espace disponible",
       "undo": "Annuler la mise à la corbeille",
       "purge": "Supprimer définitivement",

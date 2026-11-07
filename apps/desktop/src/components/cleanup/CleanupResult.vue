@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IpcError } from '@/ipc/client';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatBytes } from '@opennavo/shared';
 import { OnButton, OnIcon } from '@opennavo/ui';
@@ -24,6 +24,7 @@ const failedTask = computed(() => (store.task && store.task.state !== 'succeeded
 const trashBytes = computed(() => store.trashedBytes);
 const nowBytes = computed(() => store.freedNow);
 const pending = computed(() => Boolean(outcome.value?.restorable && outcome.value.trashed && !store.restored));
+const retryingItem = ref<string | null>(null);
 const tiles = computed(() => {
   const value = outcome.value;
   const skipped = value?.skipped.length ?? 0;
@@ -58,6 +59,12 @@ const skippedSize = (itemId: string) => store.entries.find(entry => entry.item.i
 /** Fixed commands (brew cleanup, Docker prunes) have no path; the command names them. */
 const skippedLabel = (item: SkippedItem) =>
   item.path ? displayPath(item.path) : (store.entries.find(entry => entry.item.id === item.itemId)?.item.command ?? '');
+/** Rust refuses these too: a tool command has no path, and a worktree is removed by Git without a Trash copy. */
+const canRetryToTrash = (item: SkippedItem) =>
+  Boolean(item.path) &&
+  !store.retrying &&
+  !['in_use', 'running', 'missing', 'protected', 'tool_unavailable'].includes(item.reason) &&
+  store.entries.find(entry => entry.item.id === item.itemId)?.item.reason !== 'worktree';
 const free = computed(() =>
   store.freeBefore === null
     ? null
@@ -94,6 +101,18 @@ async function purge() {
     });
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  }
+}
+
+async function retryToTrash(item: SkippedItem) {
+  if (!canRetryToTrash(item)) return;
+  retryingItem.value = item.itemId;
+  try {
+    await store.retrySkippedToTrash([item.itemId]);
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  } finally {
+    retryingItem.value = null;
   }
 }
 </script>
@@ -170,15 +189,31 @@ async function purge() {
       <span v-if="skippedSize(item.itemId)" class="shrink-0 text-12px tabular-nums text-ink-secondary">{{
         format(skippedSize(item.itemId))
       }}</span>
+      <OnButton
+        v-if="item.path"
+        variant="ghost"
+        size="xs"
+        icon="trash"
+        :disabled="!canRetryToTrash(item)"
+        :loading="retryingItem === item.itemId"
+        :title="canRetryToTrash(item) ? t('cleanup.result.retryTrash') : t('cleanup.result.retryUnavailable')"
+        @click="retryToTrash(item)"
+      >
+        {{ t('cleanup.result.retryTrash') }}
+      </OnButton>
     </div>
   </section>
 
   <div class="mt-16px flex items-center gap-8px">
     <template v-if="pending">
-      <OnButton variant="secondary" icon="undo-2" @click="undo">{{ t('cleanup.result.undo') }}</OnButton>
-      <OnButton variant="ghost" @click="purge">{{ t('cleanup.result.purge') }}</OnButton>
+      <OnButton variant="secondary" icon="undo-2" :disabled="store.retrying" @click="undo">{{
+        t('cleanup.result.undo')
+      }}</OnButton>
+      <OnButton variant="ghost" :disabled="store.retrying" @click="purge">{{ t('cleanup.result.purge') }}</OnButton>
     </template>
     <span class="flex-1"></span>
-    <OnButton variant="primary" @click="store.finish()">{{ t('cleanup.result.done') }}</OnButton>
+    <OnButton variant="primary" :disabled="store.retrying" @click="store.finish()">{{
+      t('cleanup.result.done')
+    }}</OnButton>
   </div>
 </template>
