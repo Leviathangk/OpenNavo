@@ -59,6 +59,48 @@ pub async fn cleanup_execute(
     )
     .await
 }
+
+/// Retry skipped filesystem items through the Trash-only cleanup path.
+#[tauri::command]
+#[specta::specta]
+pub async fn cleanup_retry_trash(
+    app: tauri::AppHandle,
+    state: State<'_, Arc<DesktopCore>>,
+    confirmation: State<'_, Arc<crate::confirmation::ConfirmationService>>,
+    report_id: String,
+    item_ids: Vec<String>,
+) -> Result<Task, AppError> {
+    let engine = state.queue.cleanup_engine.clone();
+    let retry_id = {
+        let engine = engine.clone();
+        let report_id = report_id.clone();
+        let item_ids = item_ids.clone();
+        crate::blocking(move || engine.prepare_trash_retry(&report_id, &item_ids)).await?
+    };
+    let (digest, view) = {
+        let engine = engine.clone();
+        let retry_id = retry_id.clone();
+        let item_ids = item_ids.clone();
+        crate::blocking(move || engine.confirm_plan(&retry_id, &item_ids)).await?
+    };
+    let service = confirmation.inner().clone();
+    let request = crate::destructive::request("cleanup", &format!("cleanup/{retry_id}"), digest);
+    crate::destructive::confirmed(
+        &service,
+        request,
+        |request| service.confirm_window(&app, request, view),
+        |approved| {
+            let queue = state.queue.clone();
+            let engine = engine.clone();
+            let retry_id = retry_id.clone();
+            let item_ids = item_ids.clone();
+            crate::blocking(move || {
+                engine.enqueue_confirmed(&queue, &retry_id, item_ids, &approved)
+            })
+        },
+    )
+    .await
+}
 #[tauri::command]
 #[specta::specta]
 pub async fn cleanup_reveal(

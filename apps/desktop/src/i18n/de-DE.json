@@ -1969,6 +1969,8 @@
       "skippedHint": "Gründe siehe unten",
       "skippedNone": "Keine Probleme",
       "skippedTitle": "Nicht bereinigt",
+      "retryTrash": "In den Papierkorb",
+      "retryUnavailable": "Lässt sich gerade nicht in den Papierkorb verschieben",
       "free": "Verfügbarer Speicher",
       "undo": "Verschieben rückgängig machen",
       "purge": "Diese Dateien endgültig löschen",

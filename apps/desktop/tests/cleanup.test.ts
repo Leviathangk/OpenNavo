@@ -681,6 +681,50 @@ describe('Execution', () => {
     expect(wrapper.findAll('button').some(button => button.text() === '撤销移到废纸篓的项目')).toBe(false);
     wrapper.unmount();
   });
+
+  it('A retry from the result page queues a Trash-only task for that item', async () => {
+    await context();
+    const store = await scanned();
+    await store.confirm();
+    const previous = store.taskId;
+    await vi.waitFor(() => expect(store.stage).toBe('done'), { timeout: 5000 });
+    // A row the scan had chosen to delete for good: the retry must move it to the Trash instead.
+    const item = store.entries.find(candidate => candidate.item.deleteMode === 'delete')!;
+    expect(item.item.reason).not.toBe('worktree');
+    expect(await store.retrySkippedToTrash([item.item.id])).toBe(true);
+    expect(store.taskId).not.toBe(previous);
+    await vi.waitFor(() => expect(store.stage).toBe('done'), { timeout: 5000 });
+    expect(store.outcome!.trashed).toBe(1);
+    expect(store.outcome!.deleted).toBe(0);
+  });
+
+  it('Undo, purge and done wait while the retry confirmation window is open', async () => {
+    await context();
+    const store = await scanned();
+    await store.confirm();
+    await vi.waitFor(() => expect(store.stage).toBe('done'), { timeout: 5000 });
+    const finished = store.task!;
+    const item = store.entries.find(candidate => candidate.item.deleteMode === 'delete')!;
+    // Hold the answer of the confirmation window: the finished run stays on screen but cannot be acted on.
+    let answer: (value: unknown) => void = () => undefined;
+    const pending = new Promise(resolve => (answer = resolve));
+    vi.spyOn(commands, 'cleanupRetryTrash').mockReturnValueOnce(
+      pending as unknown as ReturnType<typeof commands.cleanupRetryTrash>
+    );
+    const retry = store.retrySkippedToTrash([item.item.id]);
+    await vi.waitFor(() => expect(store.retrying).toBe(true));
+    expect(store.stage).toBe('done');
+    expect(await store.restore()).toEqual({ restored: 0, missing: [] });
+    expect(await store.purge()).toBe(0);
+    store.finish();
+    expect(store.stage).toBe('done');
+
+    answer({ status: 'ok', data: { ...finished, id: 'retry-task', state: 'running' } });
+    expect(await retry).toBe(true);
+    expect(store.retrying).toBe(false);
+    expect(store.stage).toBe('running');
+    expect(store.taskId).toBe('retry-task');
+  });
 });
 
 describe('Entry points', () => {

@@ -1969,6 +1969,8 @@
       "skippedHint": "Consulta los motivos abajo",
       "skippedNone": "Sin problemas",
       "skippedTitle": "Sin limpiar",
+      "retryTrash": "Mover a la Papelera",
+      "retryUnavailable": "Ahora no se puede mover a la Papelera",
       "free": "Espacio disponible",
       "undo": "Deshacer el movimiento a la Papelera",
       "purge": "Eliminar estos archivos para siempre",

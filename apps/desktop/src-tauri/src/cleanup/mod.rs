@@ -40,6 +40,9 @@ pub struct Entry {
     pub category_millis: BTreeMap<CleanupCategory, u64>,
     pub report: CleanupReport,
     pub items: BTreeMap<String, EntryItem>,
+    /// A short-lived plan derived from a scan (the Trash-only retry of skipped items) rather than a scan of the
+    /// disk. It must never stand in for the latest scan when the stored summary is written.
+    pub derived: bool,
 }
 pub struct Engine {
     pub uninstall: Arc<uninstall::Engine>,
@@ -248,6 +251,58 @@ impl Engine {
         view.permanent = permanent;
         Ok((selection_digest(&entry, ids), view))
     }
+
+    /// Create a short-lived cleanup plan for items that were skipped at execution time.
+    /// These retries are deliberately Trash-only: the result page must never turn a skipped
+    /// item into an irreversible delete. The normal confirmation window and execution checks
+    /// still apply to the derived plan.
+    pub fn prepare_trash_retry(&self, report_id: &str, ids: &[String]) -> Result<String, AppError> {
+        let current = self.cached(report_id, uninstall::now())?;
+        let unique: std::collections::BTreeSet<_> = ids.iter().collect();
+        if ids.is_empty() || unique.len() != ids.len() {
+            return Err(AppError::new("E_INVALID_ARG", "item_ids"));
+        }
+        // Tool commands have no path, and a worktree is removed by Git itself, which ignores the delete mode and
+        // cannot be undone from the Trash.
+        if ids.iter().any(|id| {
+            current.items.get(id).is_none_or(|entry| {
+                entry.item.kind == CleanupItemKind::Command
+                    || entry.item.path.is_empty()
+                    || entry.item.reason == CleanupReason::Worktree
+            })
+        }) {
+            return Err(AppError::new("E_INVALID_ARG", "trash_retry_item"));
+        }
+
+        let retry_id = uuid::Uuid::now_v7().to_string();
+        let wanted: std::collections::BTreeSet<_> = ids.iter().cloned().collect();
+        let mut derived = current.clone();
+        derived.report.report_id = retry_id.clone();
+        derived.items.retain(|id, _| wanted.contains(id));
+        if derived.items.len() != ids.len() {
+            return Err(AppError::new("E_INVALID_ARG", "trash_retry_item"));
+        }
+        // The confirmation window, the digest and the executor all read `items`; the report's copy is only for
+        // display, so both carry the Trash-only decision.
+        derived
+            .items
+            .values_mut()
+            .for_each(|entry| trash_only(&mut entry.item));
+        for category in &mut derived.report.categories {
+            for group in &mut category.groups {
+                group.items.retain(|item| wanted.contains(&item.id));
+                group.items.iter_mut().for_each(trash_only);
+            }
+        }
+        // Drops the rows that are not part of this retry and recounts the category bytes.
+        reconcile(&mut derived);
+        derived.derived = true;
+        self.reports
+            .lock()
+            .map_err(poison)?
+            .insert(retry_id.clone(), derived);
+        Ok(retry_id)
+    }
     /// Queue a confirmed cleanup: under the same lock as [`Self::enqueue`], the selection must still
     /// have the digest the user allowed.
     pub fn enqueue_confirmed(
@@ -325,6 +380,21 @@ impl Engine {
     pub fn active_requests(&self) -> usize {
         self.requests.lock().map(|r| r.len()).unwrap_or(0)
     }
+}
+/// The cached scan the stored summary is rebuilt from: the newest one taken from the disk. A plan derived from a
+/// scan (the Trash-only retry of skipped items) is ignored — it holds the same `scanned_at` and only a handful of
+/// rows, so it would win the tie and write a summary that reports almost nothing as reclaimable.
+pub(crate) fn latest_scan(reports: &HashMap<String, Entry>) -> Option<&Entry> {
+    reports
+        .values()
+        .filter(|entry| !entry.derived)
+        .max_by_key(|entry| entry.report.scanned_at)
+}
+/// A retry from the result page moves the item to the Trash whatever the scan had chosen for it, so the
+/// confirmation window ("not through the Trash") and the executor agree.
+fn trash_only(item: &mut CleanupItem) {
+    item.delete_mode = DeleteMode::Trash;
+    item.selected = true;
 }
 /// A middle-tier project lists a whole `target` and its leaves. Only one side can be selected, so totals must not
 /// add a child to its parent.
@@ -470,6 +540,7 @@ mod expiry_tests {
                 category_millis: BTreeMap::new(),
                 report,
                 items: BTreeMap::new(),
+                derived: false,
             },
         );
         assert_eq!(
@@ -493,31 +564,37 @@ mod expiry_tests {
             Arc::new(|_| {}),
         )
         .unwrap();
-        let item = |id: &str, path: &str| EntryItem {
-            item: CleanupItem {
-                id: id.into(),
-                path: path.into(),
-                kind: CleanupItemKind::File,
-                command: None,
-                size_bytes: Some(10),
-                size_complete: true,
-                kept_open_files: 0,
-                modified_at: None,
-                reason: CleanupReason::LogFile,
-                restore: CleanupRestore::Auto,
-                selected: true,
-                delete_mode: DeleteMode::Trash,
-                needs_admin: false,
-                note: None,
-            },
-            owner: owner::Owner::default(),
-            title: "Logs".into(),
-            tree: None,
-            action: ItemAction::Path {
-                empty_only: false,
-                bootout: None,
-            },
-            docker_endpoint: None,
+        let item = |id: &str,
+                    path: &str,
+                    reason: CleanupReason,
+                    restore: CleanupRestore,
+                    mode: DeleteMode| {
+            EntryItem {
+                item: CleanupItem {
+                    id: id.into(),
+                    path: path.into(),
+                    kind: CleanupItemKind::File,
+                    command: None,
+                    size_bytes: Some(10),
+                    size_complete: true,
+                    kept_open_files: 0,
+                    modified_at: None,
+                    reason,
+                    restore,
+                    selected: true,
+                    delete_mode: mode,
+                    needs_admin: false,
+                    note: None,
+                },
+                owner: owner::Owner::default(),
+                title: "Logs".into(),
+                tree: None,
+                action: ItemAction::Path {
+                    empty_only: false,
+                    bootout: None,
+                },
+                docker_endpoint: None,
+            }
         };
         let report = CleanupReport {
             report_id: "report".into(),
@@ -536,9 +613,50 @@ mod expiry_tests {
             Entry {
                 category_millis: BTreeMap::new(),
                 report,
+                derived: false,
                 items: BTreeMap::from([
-                    ("a".into(), item("a", "/Users/me/Library/Logs/a.log")),
-                    ("b".into(), item("b", "/Users/me/Library/Logs/b.log")),
+                    (
+                        "a".into(),
+                        item(
+                            "a",
+                            "/Users/me/Library/Logs/a.log",
+                            CleanupReason::LogFile,
+                            CleanupRestore::Auto,
+                            DeleteMode::Trash,
+                        ),
+                    ),
+                    (
+                        "b".into(),
+                        item(
+                            "b",
+                            "/Users/me/Library/Logs/b.log",
+                            CleanupReason::LogFile,
+                            CleanupRestore::Auto,
+                            DeleteMode::Trash,
+                        ),
+                    ),
+                    // Removed for good by the scan's own decision; a retry must move it to the Trash instead.
+                    (
+                        "c".into(),
+                        item(
+                            "c",
+                            "/Users/me/Library/Caches/tool/c",
+                            CleanupReason::ToolCache,
+                            CleanupRestore::Auto,
+                            DeleteMode::Delete,
+                        ),
+                    ),
+                    // A linked worktree is removed by Git: no Trash, nothing to put back.
+                    (
+                        "w".into(),
+                        item(
+                            "w",
+                            "/Users/me/code/w",
+                            CleanupReason::Worktree,
+                            CleanupRestore::Irreversible,
+                            DeleteMode::Delete,
+                        ),
+                    ),
                 ]),
             },
         );
@@ -620,6 +738,86 @@ mod expiry_tests {
                 .unwrap_err()
                 .code,
             "E_PLAN_CHANGED"
+        );
+    }
+
+    /// The retry of a skipped item must reach the Trash even where the scan had chosen a permanent delete: the
+    /// confirmation window and the executor both read `items`, so the decision has to live there.
+    #[test]
+    fn a_trash_retry_plan_moves_a_permanent_item_to_the_trash() {
+        let temp = tempfile::tempdir().unwrap();
+        let queue = queue_with_entry(&temp);
+        let engine = &queue.cleanup_engine;
+        let retry = engine.prepare_trash_retry("report", &["c".into()]).unwrap();
+        let entry = engine.cached(&retry, uninstall::now()).unwrap();
+        assert!(entry.derived);
+        assert_eq!(entry.items.len(), 1);
+        assert_eq!(entry.items["c"].item.delete_mode, DeleteMode::Trash);
+        let (digest, view) = engine.confirm_plan(&retry, &["c".into()]).unwrap();
+        assert!(!view.permanent);
+        assert_eq!((view.install_count, view.bytes), (1, Some(10)));
+        // The digest of the derived plan binds the Trash decision, not the scan's permanent one.
+        assert_ne!(
+            digest,
+            engine.confirm_plan("report", &["c".into()]).unwrap().0
+        );
+        let task = engine
+            .enqueue_confirmed(&queue, &retry, vec!["c".into()], &digest)
+            .unwrap();
+        assert_eq!(task.options.plan_id.as_deref(), Some(retry.as_str()));
+        // A derived plan is spent like any other plan.
+        assert_eq!(
+            engine
+                .enqueue_confirmed(&queue, &retry, vec!["c".into()], &digest)
+                .unwrap_err()
+                .code,
+            "E_PLAN_EXPIRED"
+        );
+    }
+
+    /// Git removes a worktree itself, ignoring the delete mode, and a command has no path: neither can be
+    /// retried through the Trash.
+    #[test]
+    fn a_worktree_or_a_missing_item_cannot_be_retried_to_the_trash() {
+        let temp = tempfile::tempdir().unwrap();
+        let queue = queue_with_entry(&temp);
+        let engine = &queue.cleanup_engine;
+        for ids in [
+            vec!["w".to_owned()],
+            vec!["missing".to_owned()],
+            vec!["c".to_owned(), "c".to_owned()],
+            vec![],
+        ] {
+            assert_eq!(
+                engine.prepare_trash_retry("report", &ids).unwrap_err().code,
+                "E_INVALID_ARG"
+            );
+        }
+        assert_eq!(
+            engine
+                .prepare_trash_retry("expired", &["c".into()])
+                .unwrap_err()
+                .code,
+            "E_PLAN_EXPIRED"
+        );
+    }
+
+    /// A retry plan holds the scan's `scanned_at` and a handful of rows; it must not stand in for that scan when
+    /// the stored summary is rebuilt.
+    #[test]
+    fn a_derived_plan_is_not_the_latest_scan() {
+        let temp = tempfile::tempdir().unwrap();
+        let queue = queue_with_entry(&temp);
+        let engine = &queue.cleanup_engine;
+        let retry = engine.prepare_trash_retry("report", &["c".into()]).unwrap();
+        let reports = engine.reports.lock().unwrap();
+        assert_eq!(
+            reports[&retry].report.scanned_at,
+            reports["report"].report.scanned_at
+        );
+        assert_eq!(
+            super::latest_scan(&reports).map(|entry| entry.report.report_id.as_str()),
+            Some("report")
         );
     }
 }

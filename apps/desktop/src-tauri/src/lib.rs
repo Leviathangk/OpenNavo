@@ -130,6 +130,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::cleanup::cleanup_scan,
             commands::cleanup::cleanup_cancel,
             commands::cleanup::cleanup_execute,
+            commands::cleanup::cleanup_retry_trash,
             commands::cleanup::cleanup_reveal,
             commands::cleanup::cleanup_summary,
             commands::cleanup::cleanup_protect,

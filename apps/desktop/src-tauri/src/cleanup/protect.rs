@@ -86,7 +86,7 @@ impl Engine {
             }
             super::reconcile(entry);
         }
-        if let Some(report) = reports.values().max_by_key(|r| r.report.scanned_at) {
+        if let Some(report) = super::latest_scan(&reports) {
             self.save_summary(&report.report)?;
         }
         Ok(rule)

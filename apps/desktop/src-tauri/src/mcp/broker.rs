@@ -1956,6 +1956,7 @@ mod tests {
                         docker_endpoint: None,
                     },
                 )]),
+                derived: false,
             },
         );
     }

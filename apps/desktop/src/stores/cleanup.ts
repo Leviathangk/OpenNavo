@@ -161,6 +161,11 @@ export const useCleanupStore = defineStore('cleanup', () => {
   /** Free space when the run started, for the before / after line. */
   const freeBefore = ref<number | null>(null);
   const restored = ref(false);
+  /**
+   * A retry from the result page is waiting for the confirmation window. The finished result stays on screen
+   * (stage `done`, so the page keeps the report it came from), but undo, purge and done must wait for the answer.
+   */
+  const retrying = ref(false);
 
   const categories = computed(() => report.value?.categories ?? []);
   /** Rust reads the disk live for every summary; the report's copy is from scan time. */
@@ -417,6 +422,31 @@ export const useCleanupStore = defineStore('cleanup', () => {
     }
   }
 
+  /** Recheck a skipped filesystem item and move it to the Trash-only retry plan. */
+  async function retrySkippedToTrash(itemIds: string[]) {
+    if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return false;
+    const current = report.value;
+    if (!current || stage.value !== 'done' || retrying.value || !itemIds.length) return false;
+    // The window is open until Rust answers: nothing else on the result page may act on this task meanwhile.
+    retrying.value = true;
+    try {
+      const created = await unwrap(commands.cleanupRetryTrash(current.reportId, itemIds));
+      freeBefore.value = (volume.value ?? current.volume).freeBytes;
+      restored.value = false;
+      if (!tasks.active.some(item => item.id === created.id) && !tasks.finished.some(item => item.id === created.id))
+        tasks.applyUpdate(created);
+      taskId.value = created.id;
+      stage.value = 'running';
+      settle();
+      return true;
+    } catch (cause) {
+      if (confirmationRefused(cause)) return false;
+      throw cause;
+    } finally {
+      retrying.value = false;
+    }
+  }
+
   function settle() {
     const current = task.value;
     if (stage.value !== 'running' || !current) return;
@@ -438,7 +468,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
 
   async function restore() {
     if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return null;
-    if (!taskId.value) return { restored: 0, missing: [] as string[] };
+    if (retrying.value || !taskId.value) return { restored: 0, missing: [] as string[] };
     const result = await unwrap(commands.uninstallRestore(taskId.value));
     restored.value = result.missing.length === 0;
     void loadSummary().catch(() => undefined);
@@ -447,7 +477,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
 
   async function purge() {
     if (!(await usePermissionGateStore().require({ feature: 'cleanup' }))) return null;
-    if (!taskId.value) return 0;
+    if (retrying.value || !taskId.value) return 0;
     let freed: number;
     try {
       freed = await unwrap(commands.uninstallPurge([taskId.value]));
@@ -462,6 +492,8 @@ export const useCleanupStore = defineStore('cleanup', () => {
 
   /** Back to the overview; the summary keeps the last numbers. */
   function finish() {
+    // A retry is still queued behind the confirmation window: finishing first would strand it.
+    if (retrying.value) return;
     stage.value = 'idle';
     report.value = null;
     selected.value = {};
@@ -487,6 +519,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
     planChanged,
     freeBefore,
     restored,
+    retrying,
     volume,
     scanned,
     categories,
@@ -520,6 +553,7 @@ export const useCleanupStore = defineStore('cleanup', () => {
     addRule,
     removeRule,
     confirm,
+    retrySkippedToTrash,
     restore,
     partial,
     purge,

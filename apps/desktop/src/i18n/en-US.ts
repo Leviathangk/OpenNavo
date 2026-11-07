@@ -2039,6 +2039,8 @@ const messages: MessageSchema = {
       skippedHint: 'See the reasons below',
       skippedNone: 'No problems',
       skippedTitle: 'Not cleaned up',
+      retryTrash: 'Move to Trash',
+      retryUnavailable: 'Cannot move to Trash right now',
       free: 'Available space',
       undo: 'Undo Moving to Trash',
       purge: 'Delete These Files for Good',

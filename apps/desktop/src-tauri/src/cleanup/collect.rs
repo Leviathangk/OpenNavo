@@ -2052,6 +2052,7 @@ impl Engine {
                 incomplete: vec![],
             },
             items: BTreeMap::new(),
+            derived: false,
         };
         let mut errors = vec![];
         // Drain all collectors even after cancellation; never leave a detached filesystem scan running.

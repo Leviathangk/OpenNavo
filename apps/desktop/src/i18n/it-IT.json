@@ -1969,6 +1969,8 @@
       "skippedHint": "Vedi i motivi sotto",
       "skippedNone": "Nessun problema",
       "skippedTitle": "Elementi non puliti",
+      "retryTrash": "Sposta nel Cestino",
+      "retryUnavailable": "Al momento non è possibile spostare nel Cestino",
       "free": "Spazio disponibile",
       "undo": "Annulla spostamento nel Cestino",
       "purge": "Elimina questi file definitivamente",
