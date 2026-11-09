@@ -6,7 +6,13 @@ import { OnButton } from '@opennavo/ui';
 import PackageVersionEntry from './PackageVersionEntry.vue';
 import { formatReleaseVersion } from '@opennavo/shared';
 import { formatDate } from '~/utils/packageDate';
-import { mergeReleaseEntries, releaseAnchorId, releaseHasNotes, releaseCompatibilityText } from '~/utils/packageFacts';
+import {
+  mergeReleaseEntries,
+  releaseAnchorId,
+  releaseCompatibilityText,
+  releaseHasNotes,
+  releaseOwnsNotes
+} from '~/utils/packageFacts';
 import { useUiLocale, useUiMessages } from '@opennavo/ui';
 import type { OnVersionCompatibilityLabels } from '@opennavo/ui';
 
@@ -48,12 +54,15 @@ defineSlots<{
 const messages = useUiMessages();
 const locale = useUiLocale();
 const entries = computed(() => mergeReleaseEntries(props.entries));
-// Preserve every original fragment, even when a build is folded into its base release.
+const renderedAnchors = computed(() => new Set(entries.value.map(releaseAnchorId)));
+// Preserve the fragments of builds folded into the entry that displays their base version; an
+// entry that still renders on its own keeps its anchor and does not repeat another entry's.
 function aliases(entry: ReleaseEntry) {
+  if (releaseOwnsNotes(entry)) return [];
   const base = entry.version.split(',')[0]!.trim();
   return [
     ...new Set(props.entries.filter(original => original.version.split(',')[0]!.trim() === base).map(releaseAnchorId))
-  ].filter(id => id !== releaseAnchorId(entry));
+  ].filter(id => id !== releaseAnchorId(entry) && !renderedAnchors.value.has(id));
 }
 const text = computed(() => messages.value.version);
 

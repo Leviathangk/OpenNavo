@@ -574,7 +574,7 @@ function isBuildRecord(entry: import('@opennavo/api').ReleaseEntry): boolean {
 }
 
 /** A build's own notes make it its own timeline entry; only note-less builds share their base. */
-function ownsNotes(entry: import('@opennavo/api').ReleaseEntry): boolean {
+export function releaseOwnsNotes(entry: import('@opennavo/api').ReleaseEntry): boolean {
   return isBuildRecord(entry) && releaseHasNotes(entry);
 }
 
@@ -586,7 +586,7 @@ export function mergeReleaseEntries(
   const baseOf = (entry: import('@opennavo/api').ReleaseEntry) => entry.version.split(',')[0]!.trim();
   const groups = new Map<string, Indexed[]>();
   entries.forEach((entry, index) => {
-    if (ownsNotes(entry)) return;
+    if (releaseOwnsNotes(entry)) return;
     const key = baseOf(entry);
     const group = groups.get(key);
     if (group) group.push({ entry, index });
@@ -630,7 +630,7 @@ export function mergeReleaseEntries(
     });
   }
   return entries.flatMap((entry, index) => {
-    if (ownsNotes(entry)) return [{ ...entry, hasNotes: releaseHasNotes(entry) }];
+    if (releaseOwnsNotes(entry)) return [{ ...entry, hasNotes: releaseHasNotes(entry) }];
     const replacement = merged.get(index);
     return replacement ? [replacement] : [];
   });

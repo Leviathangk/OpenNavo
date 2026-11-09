@@ -262,6 +262,7 @@ describe('application SEO repair', () => {
       const html = await render(Timeline, { entries });
       for (const summary of ['Build 49 notes', 'Shared notes', 'Build 47 notes']) expect(html).toContain(summary);
       expect(html.match(/class="on-version-entry /g)).toHaveLength(3);
+      for (const id of ['r-31', 'r-32', 'r-33']) expect(html.split(`id="${id}"`)).toHaveLength(2);
     }
   });
   it('merges only builds without notes of their own into their base version', async () => {
@@ -302,6 +303,16 @@ describe('application SEO repair', () => {
     const html = await render(Timeline, { entries: [base, build] });
     expect(html).toContain('Shared notes');
     expect(html.match(/class="on-version-entry /g)).toHaveLength(1);
+  });
+  it('aliases only the build fragments folded into the displayed entry', async () => {
+    const entries = [
+      release({ id: 51, version: '0.1', summary: 'Shared notes', hasNotes: true }),
+      release({ id: 52, version: '0.1,49', build: '49', summary: 'Build 49 notes', hasNotes: true }),
+      release({ id: 53, version: '0.1,48', build: '48' })
+    ];
+    const html = await render(Timeline, { entries });
+    for (const id of ['r-51', 'r-52', 'r-53']) expect(html.split(`id="${id}"`)).toHaveLength(2);
+    expect(html.match(/class="on-version-entry /g)).toHaveLength(2);
   });
   it('keeps a build with its own notes separate when the base release has none', () => {
     const merged = mergeReleaseEntries([
