@@ -568,44 +568,72 @@ function hasCompatibilityEvidence(value: import('@opennavo/api').ReleaseEntry['c
   );
 }
 
-/** Coalesce Homebrew's build record with the upstream base release on this page. */
+/** A Homebrew build record carries the build suffix (0.1,49); an upstream base release does not. */
+function isBuildRecord(entry: import('@opennavo/api').ReleaseEntry): boolean {
+  return Boolean(entry.build) || entry.version.includes(',');
+}
+
+/** A build's own notes make it its own timeline entry; only note-less builds share their base. */
+function ownsNotes(entry: import('@opennavo/api').ReleaseEntry): boolean {
+  return isBuildRecord(entry) && releaseHasNotes(entry);
+}
+
+/** Coalesce only the Homebrew build records without notes of their own with their base release. */
 export function mergeReleaseEntries(
   entries: readonly import('@opennavo/api').ReleaseEntry[]
 ): import('@opennavo/api').ReleaseEntry[] {
-  const merged = new Map<string, import('@opennavo/api').ReleaseEntry>();
-  for (const entry of entries) {
-    const key = entry.version.split(',')[0]!.trim();
-    const previous = merged.get(key);
-    if (!previous) {
-      merged.set(key, { ...entry, hasNotes: releaseHasNotes(entry) });
+  type Indexed = { entry: import('@opennavo/api').ReleaseEntry; index: number };
+  const baseOf = (entry: import('@opennavo/api').ReleaseEntry) => entry.version.split(',')[0]!.trim();
+  const groups = new Map<string, Indexed[]>();
+  entries.forEach((entry, index) => {
+    if (ownsNotes(entry)) return;
+    const key = baseOf(entry);
+    const group = groups.get(key);
+    if (group) group.push({ entry, index });
+    else groups.set(key, [{ entry, index }]);
+  });
+  const merged = new Map<number, import('@opennavo/api').ReleaseEntry>();
+  for (const group of groups.values()) {
+    const preferred =
+      group.find(item => !isBuildRecord(item.entry) && releaseHasNotes(item.entry)) ??
+      group.find(item => !isBuildRecord(item.entry)) ??
+      group[0]!;
+    if (group.length === 1) {
+      merged.set(preferred.index, { ...preferred.entry, hasNotes: releaseHasNotes(preferred.entry) });
       continue;
     }
-    const preferred = releaseHasNotes(previous) ? previous : entry;
-    const other = preferred === previous ? entry : previous;
-    merged.set(key, {
-      ...preferred,
-      version: key,
-      hasNotes: releaseHasNotes(previous) || releaseHasNotes(entry),
+    const others = group.filter(item => item !== preferred).map(item => item.entry);
+    const firstValue = <T>(value: (entry: import('@opennavo/api').ReleaseEntry) => T | null | undefined): T | null => {
+      for (const entry of [preferred.entry, ...others]) {
+        const found = value(entry);
+        if (found) return found;
+      }
+      return null;
+    };
+    merged.set(preferred.index, {
+      ...preferred.entry,
+      version: baseOf(preferred.entry),
+      hasNotes: releaseHasNotes(preferred.entry),
       build: undefined,
-      isLatest: previous.isLatest || entry.isLatest,
-      publishedAt: preferred.publishedAt || other.publishedAt,
-      brewCommittedAt: preferred.brewCommittedAt || other.brewCommittedAt,
+      isLatest: group.some(item => item.entry.isLatest),
+      publishedAt: firstValue(entry => entry.publishedAt),
+      brewCommittedAt: firstValue(entry => entry.brewCommittedAt),
       // Keep one evidence snapshot intact; do not let an unknown placeholder
       // override the other release's known bounds or architecture support.
-      compatibility: hasCompatibilityEvidence(preferred.compatibility)
-        ? preferred.compatibility
-        : (other.compatibility ?? preferred.compatibility),
-      summary: [...new Set([preferred.summary, other.summary].filter(Boolean))].join('\n\n') || null,
-      bodyMarkdown: [...new Set([preferred.bodyMarkdown, other.bodyMarkdown].filter(Boolean))].join('\n\n') || null,
-      sections: [
-        ...preferred.sections,
-        ...other.sections.filter(
-          section => !preferred.sections.some(existing => JSON.stringify(existing) === JSON.stringify(section))
-        )
-      ]
+      compatibility:
+        (hasCompatibilityEvidence(preferred.entry.compatibility) ? preferred.entry.compatibility : undefined) ??
+        others.find(entry => hasCompatibilityEvidence(entry.compatibility))?.compatibility ??
+        preferred.entry.compatibility,
+      summary: preferred.entry.summary ?? null,
+      bodyMarkdown: preferred.entry.bodyMarkdown ?? null,
+      sections: preferred.entry.sections
     });
   }
-  return [...merged.values()];
+  return entries.flatMap((entry, index) => {
+    if (ownsNotes(entry)) return [{ ...entry, hasNotes: releaseHasNotes(entry) }];
+    const replacement = merged.get(index);
+    return replacement ? [replacement] : [];
+  });
 }
 
 export function releaseCompatibilityText(

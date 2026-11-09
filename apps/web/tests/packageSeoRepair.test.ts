@@ -214,28 +214,107 @@ describe('application SEO repair', () => {
     expect(base.compatibility).toEqual(unknown);
     expect(build.compatibility).toEqual(known);
   });
-  it('merges a base version and its build while preserving notes and latest status', async () => {
-    const entries = [
-      release({ version: '5.4', summary: 'Base notes', hasNotes: true }),
-      release({
-        version: '5.4,120',
-        build: '120',
-        isLatest: true,
-        bodyMarkdown: 'Build notes',
-        hasNotes: true
-      })
-    ];
-    const merged = mergeReleaseEntries(entries);
+  it('keeps builds with notes of their own as separate timeline entries', async () => {
+    const build49 = release({
+      id: 31,
+      version: '0.1,49',
+      versionBase: '0.1',
+      build: '49',
+      summary: 'Build 49 notes',
+      hasNotes: true,
+      isLatest: true,
+      publishedAt: '2026-10-13T09:23:27Z',
+      brewCommittedAt: '2026-10-13T09:47:05Z'
+    });
+    const base = release({
+      id: 32,
+      version: '0.1',
+      versionBase: '0.1',
+      summary: 'Shared notes',
+      hasNotes: true,
+      publishedAt: '2026-07-11T03:47:32Z',
+      brewCommittedAt: '2026-05-23T07:21:22Z'
+    });
+    const build47 = release({
+      id: 33,
+      version: '0.1,47',
+      versionBase: '0.1',
+      build: '47',
+      summary: 'Build 47 notes',
+      hasNotes: true,
+      publishedAt: '2026-08-07T00:43:22Z',
+      brewCommittedAt: '2026-08-07T00:43:22Z'
+    });
+    for (const entries of [
+      [build49, base, build47],
+      [base, build49, build47]
+    ]) {
+      const merged = mergeReleaseEntries(entries);
+      expect(merged.map(entry => entry.version)).toEqual(entries.map(entry => entry.version));
+      for (const [index, entry] of merged.entries()) {
+        expect(entry).toMatchObject({
+          summary: entries[index]!.summary,
+          isLatest: entries[index]!.isLatest,
+          publishedAt: entries[index]!.publishedAt,
+          brewCommittedAt: entries[index]!.brewCommittedAt
+        });
+      }
+      const html = await render(Timeline, { entries });
+      for (const summary of ['Build 49 notes', 'Shared notes', 'Build 47 notes']) expect(html).toContain(summary);
+      expect(html.match(/class="on-version-entry /g)).toHaveLength(3);
+    }
+  });
+  it('merges only builds without notes of their own into their base version', async () => {
+    const known = {
+      minimumMacOS: '13',
+      maximumMacOS: null,
+      appleSilicon: 'unknown' as const,
+      requirements: []
+    };
+    const base = release({
+      id: 41,
+      version: '4.4.0',
+      summary: 'Shared notes',
+      hasNotes: true,
+      isLatest: true,
+      publishedAt: '2026-10-10T06:38:52Z',
+      brewCommittedAt: '2026-10-13T22:33:46Z'
+    });
+    const build = release({
+      id: 42,
+      version: '4.4.0,563',
+      build: '563',
+      publishedAt: '2026-11-01T00:00:00Z',
+      brewCommittedAt: '2026-11-01T00:00:00Z',
+      compatibility: known
+    });
+    const merged = mergeReleaseEntries([base, build]);
     expect(merged).toHaveLength(1);
     expect(merged[0]).toMatchObject({
-      version: '5.4',
-      summary: 'Base notes',
-      bodyMarkdown: 'Build notes',
-      isLatest: true
+      version: '4.4.0',
+      summary: 'Shared notes',
+      isLatest: true,
+      publishedAt: '2026-10-10T06:38:52Z',
+      brewCommittedAt: '2026-10-13T22:33:46Z',
+      compatibility: known
     });
-    expect(entries[0]!.version).toBe('5.4');
-    const html = await render(Timeline, { entries });
+    expect(merged[0]!.build).toBeUndefined();
+    const html = await render(Timeline, { entries: [base, build] });
+    expect(html).toContain('Shared notes');
     expect(html.match(/class="on-version-entry /g)).toHaveLength(1);
+  });
+  it('keeps a build with its own notes separate when the base release has none', () => {
+    const merged = mergeReleaseEntries([
+      release({ version: '5.4' }),
+      release({ version: '5.4,120', build: '120', summary: 'Build notes', hasNotes: true })
+    ]);
+    expect(merged.map(entry => entry.version)).toEqual(['5.4', '5.4,120']);
+    expect(merged[1]).toMatchObject({
+      version: '5.4,120',
+      build: '120',
+      summary: 'Build notes',
+      hasNotes: true
+    });
   });
   it('keeps dated source evidence available for lifecycle warnings without claiming missing checksums', () => {
     const pkg = page();
