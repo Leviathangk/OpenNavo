@@ -2934,7 +2934,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(await title('/apps/font-sample'), 'Sample Mono Font for Mac – Download &amp; Install · OpenNavo');
     // C2: the download title contains its own brand, while category titles use categories.seo.itemTitle.
     const downloadTitle = await title('/download');
-    assert.equal(downloadTitle, 'Download OpenNavo for Mac – Homebrew App Store with Antivirus');
+    assert.equal(downloadTitle, 'Download OpenNavo for Mac – Homebrew App Store');
     assert.equal(downloadTitle.match(/OpenNavo/g)?.length, 1);
     assert.equal(await title('/categories/utilities'), 'Utilities – Mac Apps · OpenNavo');
     const description = async path =>

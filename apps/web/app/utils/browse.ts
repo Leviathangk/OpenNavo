@@ -10,6 +10,13 @@ export type BrowseItem = PublicComponents['schemas']['BrowseItem'];
 /** Names per leaf page: the API's page size (store.BrowsePageSize). */
 export const BROWSE_PAGE_SIZE = 300;
 
+/** A leaf page listing fewer names than this is a navigation stub, not a page worth indexing (S4). */
+export const MIN_INDEXABLE_BROWSE_ITEMS = 20;
+
+export function isSparseBrowseLeaf(itemCount: number): boolean {
+  return itemCount > 0 && itemCount < MIN_INDEXABLE_BROWSE_ITEMS;
+}
+
 /** Bucket keys in directory order. */
 export const BROWSE_BUCKETS: readonly string[] = ['0-9', ...'abcdefghijklmnopqrstuvwxyz', 'other'];
 

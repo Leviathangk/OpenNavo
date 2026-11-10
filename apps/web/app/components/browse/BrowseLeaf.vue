@@ -2,7 +2,14 @@
 import { ApiError, unwrap } from '@opennavo/api';
 import { LOCALES, formatCount } from '@opennavo/shared';
 import { OnBreadcrumb, OnCategoryChips, OnErrorState, OnPagination } from '@opennavo/ui';
-import { BROWSE_PAGE_SIZE, browsePath, bucketHeading, bucketLabel, isBrowseBucket } from '~/utils/browse';
+import {
+  BROWSE_PAGE_SIZE,
+  browsePath,
+  bucketHeading,
+  bucketLabel,
+  isBrowseBucket,
+  isSparseBrowseLeaf
+} from '~/utils/browse';
 import type { BrowseKind } from '~/utils/browse';
 import { packagePath } from '~/utils/packageView';
 import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
@@ -101,6 +108,13 @@ const items = computed(() =>
         name: item.displayName,
         href: localePath(packagePath(item.token))
       }))
+);
+
+// Sparse letters and the last page of a bucket list only a handful of names; there is no content here
+// worth a search result, so they stay crawlable but out of the index (S4). The root page still links them.
+const sparse = computed(() => isSparseBrowseLeaf(items.value.length));
+useHead(() =>
+  sparse.value ? { meta: [{ name: 'robots', content: 'noindex, follow', tagPriority: 'high' as const }] } : {}
 );
 
 const heading = computed(() => {

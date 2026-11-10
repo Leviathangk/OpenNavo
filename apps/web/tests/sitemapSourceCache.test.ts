@@ -41,7 +41,16 @@ async function setup(records: Record<string, unknown>[], fontsSitemap = true, fo
   const hooks: Record<string, Hook> = {};
   const fetch = vi.fn(
     async (url: string, options?: { query: { group: string; current: number; size: number; kind?: string } }) => {
-      if (url.endsWith('/browse')) return { data: { buckets: [{ key: 'a', pages: 2 }] } };
+      if (url.endsWith('/browse'))
+        return {
+          data: {
+            buckets: [
+              { key: 'a', count: 320, pages: 2 },
+              { key: 'n', count: 319, pages: 2 },
+              { key: 'q', count: 10, pages: 1 }
+            ]
+          }
+        };
       if (url.endsWith('/sitemap/articles')) return { data: { articles: [], authors: [] } };
       const { group, current, size } = options!.query;
       const source = group === 'apps' ? records : fonts;
@@ -682,4 +691,14 @@ it.each([false, true])('browse sitemap follows fontsSitemap=%s and preserves pag
   const calls = fetch.mock.calls.filter(([url]) => url.endsWith('/browse'));
   expect(calls.length).toBeGreaterThan(0);
   expect(calls.some(([, options]) => options?.query?.kind === 'fonts')).toBe(enabled);
+});
+
+it('leaves sparse browse leaves out of the sitemap', async () => {
+  const { bucket } = await setup([], true);
+  const urls = await bucket('browse');
+  const locs = urls.map(url => url.loc);
+  expect(locs.some(loc => loc.endsWith('/browse/q'))).toBe(false);
+  expect(locs.some(loc => loc.endsWith('/browse/fonts/q'))).toBe(false);
+  expect(locs.some(loc => loc.endsWith('/browse/n'))).toBe(true);
+  expect(locs.some(loc => loc.endsWith('/browse/n?page=2'))).toBe(false);
 });

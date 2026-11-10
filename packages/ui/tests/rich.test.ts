@@ -51,6 +51,15 @@ describe('sanitizeReleaseHtml', () => {
     expect(Array.from(root.querySelectorAll('h4, h5'), heading => heading.tagName)).toEqual(['H4', 'H5']);
     expect(root.querySelector('h1, h2')).toBeNull();
   });
+
+  it('Maps a deeper heading that appears before a shallower one without skipping a level', () => {
+    const root = parse(
+      sanitizeReleaseHtml('<h2>Downloads</h2><h2>Nightly</h2><h1>Changelog</h1>', {
+        headingLevel: 3
+      })
+    );
+    expect(Array.from(root.children, element => element.tagName)).toEqual(['H3', 'H3', 'H4']);
+  });
 });
 
 describe('renderMarkdown', () => {
@@ -80,6 +89,11 @@ describe('renderMarkdown', () => {
       'on-md-heading-3',
       'on-md-heading-1'
     ]);
+  });
+
+  it('Maps a deeper heading that appears before a shallower one without skipping a level', () => {
+    const root = parse(renderMarkdown('## For more downloads\n\n## For the latest features\n\n# Changelog\n\n# Added'));
+    expect(Array.from(root.children, element => element.tagName)).toEqual(['H3', 'H3', 'H4', 'H4']);
   });
 
   it('Uses headingLevel for the highest heading and clamps it to levels 2 through 6', () => {
@@ -148,7 +162,9 @@ describe('heroGlowGradient', () => {
 
 describe('OnMarkdown', () => {
   it('Renders sanitized HTML with a maximum width', () => {
-    const wrapper = mount(OnMarkdown, { props: { source: '## 新功能\n\n- 支持 `brew bundle`\n- <b>不是标签</b>' } });
+    const wrapper = mount(OnMarkdown, {
+      props: { source: '## 新功能\n\n- 支持 `brew bundle`\n- <b>不是标签</b>' }
+    });
     expect(wrapper.classes()).toContain('max-w-[72ch]');
     expect(wrapper.get('h3').text()).toBe('新功能');
     expect(wrapper.get('code').text()).toBe('brew bundle');
@@ -167,13 +183,17 @@ describe('OnMarkdown', () => {
   });
 
   it('OnMarkdownView reads article bodies across their column', () => {
-    const wrapper = mount(OnMarkdownView, { props: { html: '<h2 id="pick">怎么选</h2>', size: 'article' } });
+    const wrapper = mount(OnMarkdownView, {
+      props: { html: '<h2 id="pick">怎么选</h2>', size: 'article' }
+    });
     expect(wrapper.classes()).toEqual(expect.arrayContaining(['on-markdown', 'on-markdown-article']));
     expect(wrapper.classes()).not.toContain('max-w-[72ch]');
   });
 
   it('Passes headingLevel to rendering so content directly below the page h1 starts at h2', () => {
-    const wrapper = mount(OnMarkdown, { props: { source: '## 简介\n\n### 特性', headingLevel: 2 } });
+    const wrapper = mount(OnMarkdown, {
+      props: { source: '## 简介\n\n### 特性', headingLevel: 2 }
+    });
     expect(wrapper.get('h2').text()).toBe('简介');
     expect(wrapper.get('h3').text()).toBe('特性');
   });
@@ -223,7 +243,12 @@ describe('OnFeatureHero', () => {
 
   it('Emits action from the primary button and renders detail links with linkAs', async () => {
     const wrapper = mount(OnFeatureHero, {
-      props: { title: 'Ghostty', detailHref: '/apps/ghostty', linkAs: RouterLinkStub, responsive: true }
+      props: {
+        title: 'Ghostty',
+        detailHref: '/apps/ghostty',
+        linkAs: RouterLinkStub,
+        responsive: true
+      }
     });
     expect(wrapper.classes()).toContain('lg:h-360px');
     await wrapper.get('button').trigger('click');
@@ -232,7 +257,10 @@ describe('OnFeatureHero', () => {
     expect(detail.attributes('href')).toBe('#/apps/ghostty');
     expect(detail.text()).toBe('查看详情');
 
-    const bare = mount(OnFeatureHero, { props: { title: 'Ghostty', headingLevel: 3 }, global: withLocale('en-US') });
+    const bare = mount(OnFeatureHero, {
+      props: { title: 'Ghostty', headingLevel: 3 },
+      global: withLocale('en-US')
+    });
     expect(bare.find('a').exists()).toBe(false);
     expect(bare.get('h3').text()).toBe('Ghostty');
     expect(bare.get('button').text()).toBe('Get');
@@ -258,7 +286,10 @@ describe('OnScreenshotGallery', () => {
   });
 
   it('Uses captions as alternative text and otherwise names screenshots by index', () => {
-    const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, global: withLocale('en-US') });
+    const wrapper = mount(OnScreenshotGallery, {
+      props: { items: shots },
+      global: withLocale('en-US')
+    });
     expect(wrapper.get('section').attributes('aria-label')).toBe('Screenshots');
     expect(wrapper.findAll('img').map(image => image.attributes('alt'))).toEqual(['主窗口', 'Screenshot 2', '设置']);
     // Visible captions repeat alt text and are hidden from screen readers.
@@ -314,7 +345,10 @@ describe('OnScreenshotGallery', () => {
   });
 
   it('Renders caption chips and the lightbox in the dark theme, as their backgrounds stay dark in both themes', async () => {
-    const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
+    const wrapper = mount(OnScreenshotGallery, {
+      props: { items: shots },
+      attachTo: document.body
+    });
     expect(wrapper.get('button span').attributes('data-theme')).toBe('dark');
     await wrapper.get('button').trigger('click');
     await nextTick();
@@ -323,7 +357,10 @@ describe('OnScreenshotGallery', () => {
   });
 
   it('Moves focus into the lightbox, cycles with arrow keys, and closes with Escape while restoring focus', async () => {
-    const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
+    const wrapper = mount(OnScreenshotGallery, {
+      props: { items: shots },
+      attachTo: document.body
+    });
     const thumbs = wrapper.findAll('button');
     await thumbs[1]?.trigger('click');
     await nextTick();
@@ -355,7 +392,10 @@ describe('OnScreenshotGallery', () => {
   });
 
   it('Cycles Tab among lightbox buttons, closes on backdrop clicks, and omits navigation for a single image', async () => {
-    const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
+    const wrapper = mount(OnScreenshotGallery, {
+      props: { items: shots },
+      attachTo: document.body
+    });
     await wrapper.get('button').trigger('click');
     await nextTick();
     const buttons = Array.from(dialog()?.querySelectorAll('button') ?? []);
@@ -397,7 +437,9 @@ describe('OnTopNav', () => {
   });
 
   it('Renders links with linkAs and marks the current page with aria-current', () => {
-    const wrapper = mount(OnTopNav, { props: { items, downloadHref: '/download', linkAs: RouterLinkStub } });
+    const wrapper = mount(OnTopNav, {
+      props: { items, downloadHref: '/download', linkAs: RouterLinkStub }
+    });
     const nav = wrapper.get('nav');
     const links = nav.findAll('a');
     expect(links.map(link => link.attributes('href'))).toEqual(['#/', '#/categories', '#/rankings']);
@@ -423,7 +465,10 @@ describe('OnTopNav', () => {
   });
 
   it('Toggles the hamburger menu and closes on link clicks or Escape', async () => {
-    const wrapper = mount(OnTopNav, { props: { items, downloadHref: '/download' }, attachTo: document.body });
+    const wrapper = mount(OnTopNav, {
+      props: { items, downloadHref: '/download' },
+      attachTo: document.body
+    });
     const toggle = wrapper.get('button[aria-controls]');
     const panel = wrapper.get(`#${toggle.attributes('aria-controls')}`);
     expect(toggle.attributes('aria-expanded')).toBe('false');
@@ -456,4 +501,7 @@ describe('OnTopNav', () => {
 });
 
 // These interaction fixtures explicitly exercise the Chinese UI.
-testConfig.global.provide = { ...testConfig.global.provide, [fixtureLocaleKey as symbol]: localeRef('zh-CN') };
+testConfig.global.provide = {
+  ...testConfig.global.provide,
+  [fixtureLocaleKey as symbol]: localeRef('zh-CN')
+};

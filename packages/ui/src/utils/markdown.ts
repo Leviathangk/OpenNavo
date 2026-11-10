@@ -47,13 +47,19 @@ type MarkdownEnv = { headingLevel: number };
 const md = new MarkdownIt({ html: false, linkify: true });
 cjkFriendlyEmphasis(md);
 
-// Map encountered headings in order to headingLevel, headingLevel+1, up to h6,
-// without skipping levels for accessibility/Lighthouse; visual sizes use ordered classes independently of tags.
+// The n-th distinct heading level in document order becomes headingLevel + n. Sorting the levels instead
+// would turn a body that starts with "##" and later uses "#" into h4 before h3, skipping a level.
+function firstSeenLevels(tags: Iterable<string>): string[] {
+  const levels: string[] = [];
+  for (const tag of tags) if (!levels.includes(tag)) levels.push(tag);
+  return levels;
+}
+
+// Map headings in first-seen order to headingLevel, headingLevel+1, up to h6, without skipping levels for
+// accessibility/Lighthouse; visual sizes use ordered classes independently of tags.
 md.core.ruler.push('on_heading_level', state => {
   const base = (state.env as MarkdownEnv).headingLevel;
-  const levels = [
-    ...new Set(state.tokens.filter(token => token.type === 'heading_open').map(token => token.tag))
-  ].sort();
+  const levels = firstSeenLevels(state.tokens.filter(token => token.type === 'heading_open').map(token => token.tag));
   for (const token of state.tokens) {
     if (token.type !== 'heading_open' && token.type !== 'heading_close') continue;
     const rank = levels.indexOf(token.tag);
@@ -192,9 +198,9 @@ export function sanitizeReleaseHtml(source: string, options: RenderMarkdownOptio
     // Our own pages keep opener isolation but are not user-generated third-party content.
     link.setAttribute('rel', linkRel(href));
   }
-  // Same ordered mapping as Markdown: the n-th distinct heading level found becomes headingLevel + n.
+  // Same first-seen mapping as Markdown: the n-th distinct heading level found becomes headingLevel + n.
   const headings = [...fragment.querySelectorAll('h1, h2, h3, h4, h5, h6')];
-  const levels = [...new Set(headings.map(heading => heading.tagName.toLowerCase()))].sort();
+  const levels = firstSeenLevels(headings.map(heading => heading.tagName.toLowerCase()));
   for (const heading of headings) {
     const rank = levels.indexOf(heading.tagName.toLowerCase());
     const next = doc.createElement(`h${Math.min(6, base + rank)}`);

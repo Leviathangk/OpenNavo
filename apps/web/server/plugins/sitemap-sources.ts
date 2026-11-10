@@ -12,6 +12,7 @@ import {
 } from '../../shared/utils/sitemapBuckets';
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
+import { BROWSE_PAGE_SIZE, MIN_INDEXABLE_BROWSE_ITEMS } from '../../app/utils/browse';
 import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
 import { createStaleCache, type StaleCache } from '../utils/staleCache';
 
@@ -656,8 +657,9 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
       appendSitemapUrls(urls, packageEntries(item, `/articles/${item.slug}`, 'articles'), 'articles');
     return urls;
   },
-  // T1: every page of every A–Z leaf in each language open for indexing. Names sort into buckets by the
-  // language they are shown in, so a leaf's alternates are the languages that have the same leaf page.
+  // T1: every indexable page of every A–Z leaf in each language open for indexing. A leaf with fewer than
+  // MIN_INDEXABLE_BROWSE_ITEMS names is noindex in BrowseLeaf, so it stays out here too. Names sort into
+  // buckets by the language they are shown in, so a leaf's alternates are the languages with that leaf page.
   browse: async () => {
     const languages = new Map<string, Locale[]>();
     const includeFonts = (await getSiteSettings()).pages.fontsSitemap;
@@ -665,11 +667,14 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
     let localizedCount = 0;
     for (const locale of await openLocales())
       for (const kind of kinds) {
-        const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
-          query: { kind, locale }
-        });
+        const root = await $fetch<{ data: { buckets: { key: string; count: number; pages: number }[] } }>(
+          `${apiBase()}/browse`,
+          { query: { kind, locale } }
+        );
         for (const bucket of root.data.buckets)
           for (let page = 1; page <= bucket.pages; page += 1) {
+            const itemsOnPage = Math.min(BROWSE_PAGE_SIZE, bucket.count - (page - 1) * BROWSE_PAGE_SIZE);
+            if (itemsOnPage < MIN_INDEXABLE_BROWSE_ITEMS) continue;
             const path =
               kind === 'fonts'
                 ? `/browse/fonts/${bucket.key}${page > 1 ? `?page=${page}` : ''}`

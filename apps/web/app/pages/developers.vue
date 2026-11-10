@@ -49,15 +49,10 @@ defineOgImage('OgDefaultSatori', {
         <span class="text-12px font-600 uppercase tracking-[0.08em] text-ink-tertiary">{{
           t('developers.mcpEndpoint')
         }}</span>
-        <a
-          href="https://opennavo.com/mcp"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex w-fit max-w-full items-center gap-6px break-all rounded-tiny font-mono text-13px text-ink-primary underline-offset-3 outline-none hover:text-ink-secondary hover:underline focus-visible:shadow-focus-ring"
+        <!-- The endpoint only accepts POST and DELETE; a normal link would open a 405 page. -->
+        <code class="w-fit max-w-full break-all font-mono text-13px text-ink-primary select-all"
+          >https://opennavo.com/mcp</code
         >
-          https://opennavo.com/mcp
-          <OnIcon name="arrow-up-right" :size="14" class="shrink-0" />
-        </a>
       </div>
       <div class="flex flex-col gap-12px">
         <h3 class="m-0 text-16px font-600 text-ink-primary">{{ t('developers.setupTitle') }}</h3>

@@ -6,7 +6,8 @@ import {
   bucketHeading,
   bucketLabel,
   bucketPages,
-  isBrowseBucket
+  isBrowseBucket,
+  isSparseBrowseLeaf
 } from '../app/utils/browse';
 import { routeQueryRule } from '../shared/utils/routeQuery';
 
@@ -32,6 +33,14 @@ describe('A–Z directory (T1)', () => {
     expect(bucketPages({ pages: 3 })).toEqual([1, 2, 3]);
     expect(browseTotal([{ count: 300 }, { count: 12 }])).toBe(312);
     expect(browseTotal(undefined)).toBe(0);
+  });
+
+  it('Marks a leaf with only a handful of names as sparse, but not an empty page', () => {
+    expect(isSparseBrowseLeaf(0)).toBe(false);
+    expect(isSparseBrowseLeaf(1)).toBe(true);
+    expect(isSparseBrowseLeaf(19)).toBe(true);
+    expect(isSparseBrowseLeaf(20)).toBe(false);
+    expect(isSparseBrowseLeaf(300)).toBe(false);
   });
 
   it('Names buckets for headings and links', () => {

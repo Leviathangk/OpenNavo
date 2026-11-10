@@ -926,7 +926,7 @@
     "description": "按名稱瀏覽目錄裡的 Mac 應用，共 {count} 個，每個都有介紹、版本記錄和安裝方式。",
     "fontsTitle": "Mac 字型 A–Z 索引",
     "fontsMetaTitle": "Mac 字型 A–Z 索引 · OpenNavo",
-    "fontsDescription": "按名稱瀏覽目錄裡的字型，共 {count} 款，都可以用 Homebrew 安裝。",
+    "fontsDescription": "按名稱瀏覽目錄裡的字型，共 {count} 款，都可以用 Homebrew 安裝，並按字母或數字快速篩選。",
     "crumb": "A–Z 索引",
     "apps": "應用",
     "fonts": "字型",
@@ -1152,7 +1152,7 @@
   "about": {
     "title": "關於 OpenNavo",
     "metaTitle": "關於與隱私 · OpenNavo",
-    "description": "OpenNavo 是什麼、資料從哪裡來、我們如何對待你的資訊。",
+    "description": "OpenNavo 是什麼、資料從哪裡來、我們如何對待你的資訊，以及廣告與分析的使用方式。",
     "draft": "待審"
   },
   "security": {
@@ -2071,7 +2071,7 @@
   "developers": {
     "title": "用 OpenNavo 構建工具",
     "metaTitle": "OpenNavo 開發者 — 公共 API 與 MCP",
-    "description": "透過 MCP 或 HTTP 連線 OpenNavo 的公開只讀 Mac 應用目錄。",
+    "description": "透過 MCP 或 HTTP 連線 OpenNavo 的公開只讀 Mac 應用目錄，查詢應用、版本、依賴、合集和文章。",
     "intro": "你可以使用無需登入的公共 MCP，或只讀 HTTP API，搜尋目錄、檢視應用、瀏覽版本和依賴，並讀取公開的合集與文章。",
     "mcpTitle": "公共 MCP",
     "mcpDescription": "基於可流式 HTTP 的 MCP 服務，提供 9 個只讀目錄工具，無需帳號或令牌。",

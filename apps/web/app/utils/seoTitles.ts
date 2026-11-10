@@ -196,8 +196,11 @@ export function textWidth(text: string): number {
 /** Search results show about 60 columns (≈580 px at the site's type sizes); a wide glyph takes two. */
 export const TITLE_WIDTH = 60;
 
-/** The level a title had to fall back to: T0 branded template, T1 brandless, T2 short, T3 published as is. */
-export type TitleTier = 'T0' | 'T1' | 'T2' | 'T3';
+/**
+ * The level a title had to fall back to: T0 branded template, T1 brandless, T2 short, T3 name only,
+ * T4 over budget (the name is published as it is).
+ */
+export type TitleTier = 'T0' | 'T1' | 'T2' | 'T3' | 'T4';
 
 export interface TitleOverflow {
   locale: string;
@@ -216,22 +219,42 @@ export interface TitleFit {
   name?: string;
   /** T2 template, used only when both T0 and T1 exceed the budget. */
   short?: string;
+  /** Overview pages: keep just the name (with the brand when it fits) instead of overflowing with boilerplate. */
+  allowNameOnly?: boolean;
 }
 
 /**
  * A title that fits the result-page budget without cutting the package name. The name is what tells
  * similar pages apart, so the brand suffix goes first, then a short template when the language has
- * one. T3 keeps the full name and reports one warning with its language, width and final tier.
+ * one. When every template is over budget, T3 keeps the name and the brand when that fits. T4 is the
+ * last resort for a name that is itself over budget; it reports one warning with the width and final tier.
  */
 export function fitTitle(title: string, fit: TitleFit = {}): string {
   if (textWidth(title) <= TITLE_WIDTH) return title;
   const brandless = brandlessTitle(title);
   if (textWidth(brandless) <= TITLE_WIDTH) return brandless;
   if (fit.short && textWidth(fit.short) <= TITLE_WIDTH) return fit.short;
+  const name = fit.name?.trim() ?? '';
+  const nameWidth = textWidth(name);
+  if (fit.allowNameOnly && name) {
+    if (nameWidth <= TITLE_WIDTH) {
+      const brandedName = `${name}${TITLE_SUFFIX}`;
+      return textWidth(brandedName) <= TITLE_WIDTH ? brandedName : name;
+    }
+    if (nameWidth > TITLE_WIDTH) {
+      reportTitleOverflow({
+        locale: fit.locale ?? 'unknown',
+        nameWidth,
+        tier: 'T4',
+        titleWidth: nameWidth
+      });
+      return name;
+    }
+  }
   reportTitleOverflow({
     locale: fit.locale ?? 'unknown',
-    nameWidth: textWidth(fit.name ?? ''),
-    tier: 'T3',
+    nameWidth,
+    tier: 'T4',
     titleWidth: textWidth(brandless)
   });
   return brandless;
@@ -324,7 +347,8 @@ export function overviewTitle(pkg: OverviewFacts, t: Translate, locale?: string)
             t,
             key === 'package.seo.titleFont' ? 'package.seo.titleFontShort' : 'package.seo.titleAppShort',
             name
-          )
+          ),
+    allowNameOnly: true
   });
 }
 

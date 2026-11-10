@@ -1036,7 +1036,7 @@
   },
   "download": {
     "title": "The Homebrew app store for Mac, with virus scanning and an app firewall",
-    "metaTitle": "Download OpenNavo for Mac – Homebrew App Store with Antivirus",
+    "metaTitle": "Download OpenNavo for Mac – Homebrew App Store",
     "description": "Install, update and uninstall apps in one click, scanned for malware first, plus cleanup and monitoring. Runs your own Homebrew; no account needed.",
     "button": "Download for macOS",
     "meta": "Version {version} · {size} · macOS {macos} or later · Released {date}",
@@ -1489,7 +1489,7 @@
     },
     "firewall": {
       "metaTitle": "Free Mac App Firewall for Outgoing Connections · OpenNavo",
-      "description": "OpenNavo’s app firewall asks before each Mac app connects to the internet, then allows or blocks it by your rules. Free and open source, adapted from LuLu, and decided on your Mac.",
+      "description": "OpenNavo’s app firewall asks before each Mac app connects, then allows or blocks it by your rules. Free, open source, adapted from LuLu, decided on your Mac.",
       "breadcrumb": "App firewall",
       "hero": {
         "kicker": "App firewall",
@@ -1567,7 +1567,7 @@
     },
     "clamav": {
       "metaTitle": "ClamAV for Mac: Free Virus Scan and Its Limits · OpenNavo",
-      "description": "Scan your Mac with the open-source ClamAV engine and its official virus database, for free. What ClamAV finds on a Mac, what it misses, and the extra checks OpenNavo adds.",
+      "description": "Scan your Mac with the open-source ClamAV engine and its official virus database, for free. What it finds, what it misses, and what OpenNavo adds.",
       "breadcrumb": "ClamAV",
       "hero": {
         "kicker": "ClamAV virus scan",
@@ -1667,7 +1667,7 @@
       }
     },
     "xprotect": {
-      "metaTitle": "What Is XProtect on Mac? Built-in Malware Protection and Its Limits · OpenNavo",
+      "metaTitle": "XProtect on Mac: What It Does and What It Misses · OpenNavo",
       "description": "XProtect is the malware protection Apple builds into macOS. How it works, what it misses, how to check it’s up to date, and what OpenNavo adds.",
       "breadcrumb": "XProtect",
       "hero": {

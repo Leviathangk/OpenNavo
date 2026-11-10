@@ -244,9 +244,23 @@ describe('Title width budget', () => {
     expect(title).not.toContain('OpenNavo');
   });
 
+  it('keeps the full name within budget when boilerplate would overflow', () => {
+    const names = [
+      'LibreOffice Language Pack (The Document Foundation)',
+      'Oracle Java Standard Edition Development Kit 25',
+      'Azul Zulu Java Standard Edition Development Kit'
+    ];
+    for (const name of names)
+      for (const code of ['en-US', 'es-ES', 'ja-JP', 'ru-RU'] as const) {
+        const title = overviewTitle({ ...app, displayName: name }, translator(code));
+        expect(title, `${code} ${name}`).toContain(name);
+        expect(textWidth(title), `${code} ${name}`).toBeLessThanOrEqual(TITLE_WIDTH);
+      }
+  });
+
   it('publishes an over-width name once and reports language, width and tier (AC-107-07)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const name = 'a'.repeat(60);
+    const name = 'a'.repeat(61);
     try {
       for (const code of ['ru-RU', 'ja-JP'] as const) {
         warn.mockClear();
@@ -258,8 +272,8 @@ describe('Title width budget', () => {
         const line = String(warn.mock.calls[0]?.[0]);
         expect(JSON.parse(line.slice(line.indexOf('{')))).toMatchObject({
           locale: code,
-          nameWidth: 60,
-          tier: 'T3'
+          nameWidth: 61,
+          tier: 'T4'
         });
       }
     } finally {
@@ -296,8 +310,8 @@ describe('Title width budget', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       for (const [code, expected] of [
-        ['fr-FR', { branded: false, fits: false }],
-        ['de-DE', { branded: false, fits: false }],
+        ['fr-FR', { branded: true, fits: true }],
+        ['de-DE', { branded: true, fits: true }],
         ['it-IT', { branded: false, fits: true }],
         ['pt-BR', { branded: true, fits: true }]
       ] as const) {
@@ -308,6 +322,24 @@ describe('Title width budget', () => {
         expect(textWidth(title) <= TITLE_WIDTH, code).toBe(expected.fits);
         expect(warn, code).toHaveBeenCalledTimes(expected.fits ? 0 : 1);
       }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('falls back to name and brand in the mid-sized gap without a T4 warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const appName = 'Mozilla Firefox Developer Edition';
+      const appTitle = overviewTitle({ ...app, displayName: appName }, translator('en-US'));
+      expect(appTitle).toBe(`${appName}${TITLE_SUFFIX}`);
+      expect(textWidth(appTitle)).toBeLessThanOrEqual(TITLE_WIDTH);
+
+      const fontName = 'ABCDEFGHIJKLMNOPQRST';
+      const fontTitle = overviewTitle({ ...app, displayName: fontName, isFont: true }, translator('de-DE'));
+      expect(fontTitle).toBe(`${fontName}${TITLE_SUFFIX}`);
+      expect(textWidth(fontTitle)).toBeLessThanOrEqual(TITLE_WIDTH);
+      expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }
@@ -1057,6 +1089,81 @@ describe('Meta descriptions for static and version pages (#208)', () => {
       expect(rendered, page.label).not.toMatch(/[{}]/);
       expect(Array.from(rendered).length, `${page.label}: ${rendered}`).toBeGreaterThanOrEqual(150);
       expect(Array.from(rendered).length, `${page.label}: ${rendered}`).toBeLessThanOrEqual(160);
+    }
+  });
+
+  it('keeps the static titles named in the SEO crawl within 60 columns', () => {
+    const pages = [
+      ['en-US', 'download.metaTitle'],
+      ['en-US', 'securityTopics.xprotect.metaTitle'],
+      ['es-ES', 'site.title'],
+      ['es-ES', 'download.metaTitle'],
+      ['es-ES', 'rankings.metaTitle'],
+      ['es-ES', 'securityTopics.clamav.metaTitle'],
+      ['es-ES', 'securityTopics.firewall.metaTitle'],
+      ['es-ES', 'securityTopics.xprotect.metaTitle'],
+      ['ru-RU', 'backgroundItems.metaTitle'],
+      ['ru-RU', 'download.metaTitle'],
+      ['ru-RU', 'rankings.metaTitle'],
+      ['ru-RU', 'recent.metaTitle'],
+      ['ru-RU', 'securityTopics.clamav.metaTitle'],
+      ['ru-RU', 'securityTopics.firewall.metaTitle'],
+      ['ru-RU', 'securityTopics.xprotect.metaTitle']
+    ] as const;
+    for (const [code, key] of pages) {
+      const title = translator(code)(key);
+      expect(textWidth(title), `${code} ${key}: ${title}`).toBeLessThanOrEqual(TITLE_WIDTH);
+    }
+    const ru = translator('ru-RU');
+    for (const page of [2, 101, 217])
+      expect(
+        textWidth(pagedTitle(ru('rankings.metaTitle'), page, ru('catalog.pageTitle', { page }))),
+        `ru rankings page ${page}`
+      ).toBeLessThanOrEqual(TITLE_WIDTH);
+    expect(
+      textWidth(pagedTitle(ru('recent.metaTitle'), 217, ru('catalog.pageTitle', { page: 217 }))),
+      'ru recent page 217'
+    ).toBeLessThanOrEqual(TITLE_WIDTH);
+  });
+
+  it('keeps the long meta descriptions named in the SEO crawl within 160 columns', () => {
+    const pages = [
+      ['en-US', 'securityTopics.clamav.description'],
+      ['en-US', 'securityTopics.firewall.description'],
+      ['es-ES', 'collections.metaDescription'],
+      ['es-ES', 'securityTopics.clamav.description'],
+      ['es-ES', 'securityTopics.firewall.description'],
+      ['es-ES', 'securityTopics.xprotect.description'],
+      ['ru-RU', 'backgroundItems.description'],
+      ['ru-RU', 'collections.metaDescription'],
+      ['ru-RU', 'securityTopics.clamav.description'],
+      ['ru-RU', 'securityTopics.firewall.description'],
+      ['ru-RU', 'securityTopics.xprotect.description']
+    ] as const;
+    for (const [code, key] of pages) {
+      const description = translator(code)(key);
+      expect(textWidth(description), `${code} ${key}: ${description}`).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+    }
+    const es = translator('es-ES');
+    for (const plural of [1, 2]) {
+      const description = es('home.introBody', { count: '5,187' }, plural);
+      expect(textWidth(description), `es discover plural ${plural}: ${description}`).toBeLessThanOrEqual(
+        DESCRIPTION_WIDTH
+      );
+    }
+  });
+
+  it('keeps the short static descriptions above 70 columns without exceeding the budget', () => {
+    const pages = [
+      ['ja-JP', 'about.description'],
+      ['zh-CN', 'about.description'],
+      ['zh-CN', 'browse.fontsDescription'],
+      ['zh-CN', 'developers.description']
+    ] as const;
+    for (const [code, key] of pages) {
+      const description = translator(code)(key, { count: '2,602' });
+      expect(textWidth(description), `${code} ${key}: ${description}`).toBeGreaterThanOrEqual(70);
+      expect(textWidth(description), `${code} ${key}: ${description}`).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
     }
   });
 });
