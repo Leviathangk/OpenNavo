@@ -66,8 +66,10 @@ function enableMac() {
 
 function scrollToBottom() {
   void nextTick(() => {
-    const element = scroll.value;
-    if (element) element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+    window.requestAnimationFrame(() => {
+      const element = scroll.value;
+      if (element) element.scrollTop = element.scrollHeight;
+    });
   });
 }
 
@@ -270,7 +272,9 @@ const lastTextLength = computed(() => store.messages.at(-1)?.text?.length ?? 0);
 const streamingAssistant = computed(() =>
   store.messages.some(message => message.role === 'assistant' && message.streaming === true)
 );
-watch(() => [store.messages.length, store.thinking, lastTextLength.value], scrollToBottom);
+watch(() => store.messages.length, scrollToBottom, { flush: 'post' });
+watch(() => store.thinking, scrollToBottom, { flush: 'post' });
+watch(lastTextLength, scrollToBottom, { flush: 'post' });
 watch(
   () => store.activeId,
   () => {
