@@ -144,7 +144,7 @@ function onPackageCancel() {
           class="flex h-32px cursor-pointer list-none items-center gap-8px px-10px text-11px text-ink-tertiary outline-none focus-visible:shadow-focus-ring"
         >
           <OnIcon name="lucide:brain" :size="13" />
-          {{ content.composer.thinking }}
+          {{ content.composer.reasoning }}
           <OnIcon name="lucide:chevron-down" :size="13" class="ml-auto transition-transform group-open:rotate-180" />
         </summary>
         <pre
