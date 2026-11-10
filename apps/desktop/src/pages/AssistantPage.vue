@@ -45,9 +45,18 @@ const macTone = computed<'success' | 'neutral'>(() =>
 );
 
 function enableMac() {
-  // Header shortcut only restores the existing policy. It must not silently
-  // enable every capability or turn off write confirmation.
-  store.saveMac({ ...store.mac, enabled: true });
+  // Enabling is an explicit grant: default to full control with every capability.
+  const next = {
+    ...store.mac,
+    enabled: true,
+    level: 'full' as const,
+    terminal: true,
+    screen: true,
+    files: true,
+    cron: true,
+    confirmWrites: false
+  };
+  store.saveMac(next);
   toasts.push({
     tone: 'success',
     title: content.value.common.settingsSaved,
@@ -57,8 +66,10 @@ function enableMac() {
 
 function scrollToBottom() {
   void nextTick(() => {
-    const element = scroll.value;
-    if (element) element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+    window.requestAnimationFrame(() => {
+      const element = scroll.value;
+      if (element) element.scrollTop = element.scrollHeight;
+    });
   });
 }
 
@@ -261,7 +272,9 @@ const lastTextLength = computed(() => store.messages.at(-1)?.text?.length ?? 0);
 const streamingAssistant = computed(() =>
   store.messages.some(message => message.role === 'assistant' && message.streaming === true)
 );
-watch(() => [store.messages.length, store.thinking, lastTextLength.value], scrollToBottom);
+watch(() => store.messages.length, scrollToBottom, { flush: 'post' });
+watch(() => store.thinking, scrollToBottom, { flush: 'post' });
+watch(lastTextLength, scrollToBottom, { flush: 'post' });
 watch(
   () => store.activeId,
   () => {
