@@ -48,6 +48,7 @@ __pycache__/
 
 # Internal development material excluded from the open-source repository.
 /.codex/
+/proposal/
 /docs/*
 # Public documentation; other internal material under docs remains excluded.
 !/docs/i18n/
