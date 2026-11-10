@@ -3,6 +3,7 @@ pub mod catalog;
 pub mod deeplink;
 pub mod env;
 pub mod firewall;
+pub mod hermes;
 pub mod library;
 pub mod maintenance;
 pub mod mcp;

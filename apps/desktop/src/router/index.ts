@@ -18,6 +18,7 @@ declare module 'vue-router' {
       | 'monitor'
       | 'security'
       | 'firewall'
+      | 'assistant'
       | 'settings';
     /** Render without the app shell (Welcome, menu-bar popover). */
     bare?: boolean;
@@ -26,6 +27,7 @@ declare module 'vue-router' {
 
 // Page-specific right statistics rails (08 §9.1: Discover, Installed, Updates), supplied by named rail views.
 const DiscoverRail = () => import('@/components/rails/DiscoverRail.vue');
+const AssistantRail = () => import('@/components/hermes/AssistantRail.vue');
 const LibraryRail = () => import('@/components/rails/LibraryRail.vue');
 const UpdatesRail = () => import('@/components/rails/UpdatesRail.vue');
 const CleanupRail = () => import('@/components/rails/CleanupRail.vue');
@@ -35,6 +37,15 @@ const FirewallRail = () => import('@/components/rails/FirewallRail.vue');
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/discover' },
+  {
+    path: '/assistant',
+    name: 'assistant',
+    components: {
+      default: () => import('@/pages/AssistantPage.vue'),
+      rail: AssistantRail
+    },
+    meta: { nav: 'assistant' }
+  },
   {
     path: '/discover',
     name: 'discover',

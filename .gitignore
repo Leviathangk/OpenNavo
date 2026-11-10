@@ -75,3 +75,16 @@ __pycache__/
 
 # Staged native executables are rebuilt from locked sources.
 /apps/desktop/native/staged/
+
+# Hermes sidecar build output (prepared by apps/desktop/scripts/prepare-hermes-runtime.mjs)
+apps/desktop/src-tauri/resources/hermes/python/
+apps/desktop/src-tauri/resources/hermes/site/
+apps/desktop/src-tauri/resources/hermes/bin/
+apps/desktop/src-tauri/resources/hermes/CuaDriver.app/
+apps/desktop/src-tauri/resources/hermes/manifest.json
+
+# Optional Hermes runtime release artifact
+apps/desktop/hermes-dist/
+
+# Generated Hermes runtime plugin tree (hermes:prepare)
+apps/desktop/src-tauri/resources/hermes/plugins/

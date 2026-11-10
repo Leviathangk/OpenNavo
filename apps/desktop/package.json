@@ -11,6 +11,8 @@
     "tauri": "tauri",
     "gen": "cd src-tauri && cargo test --lib export_bindings -- --exact --quiet",
     "gen:mock": "node scripts/mock-fixtures.mjs",
+    "hermes:prepare": "node scripts/prepare-hermes-runtime.mjs",
+    "hermes:package": "node scripts/package-hermes-runtime.mjs",
     "lint": "node ../../tooling/scripts/lint-frontend.mjs --eslint",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run"

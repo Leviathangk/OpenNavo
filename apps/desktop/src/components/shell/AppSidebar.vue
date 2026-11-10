@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { formatBytes } from '@opennavo/shared';
 import { OnSidebar } from '@opennavo/ui';
+import HermesLauncher from '@/components/hermes/HermesLauncher.vue';
 import type { OnSidebarGroup, OnSidebarItem } from '@opennavo/ui';
 import { useBrewfileStore } from '@/stores/brewfile';
 import { useAppLocale } from '@/composables/useAppLocale';
@@ -138,5 +139,9 @@ function reselect(event: MouseEvent) {
     drag-region
     :link-as="RouterLink"
     @click="reselect"
-  />
+  >
+    <template #top>
+      <HermesLauncher />
+    </template>
+  </OnSidebar>
 </template>

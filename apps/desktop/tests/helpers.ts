@@ -20,6 +20,12 @@ export const stub = (text: string) => defineComponent({ name: `Stub${text}`, set
 export const stubRoutes: RouteRecordRaw[] = [
   { path: '/', redirect: '/discover' },
   {
+    path: '/assistant',
+    name: 'assistant',
+    components: { default: stub('Hermes 助手'), rail: stub('Hermes 状态') },
+    meta: { nav: 'assistant' }
+  },
+  {
     path: '/discover',
     name: 'discover',
     components: { default: stub('发现页'), rail: stub('本机 Homebrew 状态') },

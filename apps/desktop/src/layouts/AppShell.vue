@@ -71,6 +71,15 @@ function onKeydown(event: KeyboardEvent) {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !event.isComposing) {
     event.preventDefault();
     paletteOpen.value = !paletteOpen.value;
+    return;
+  }
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j' && !event.isComposing) {
+    event.preventDefault();
+    if (route.name === 'assistant') document.getElementById('hermes-composer')?.focus();
+    else
+      void router
+        .push({ name: 'assistant' })
+        .then(() => requestAnimationFrame(() => document.getElementById('hermes-composer')?.focus()));
   }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown));

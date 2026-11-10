@@ -5,7 +5,7 @@
     "apps/server/go.mod": "c709a8153cea115e70132c1887dbc10e7d3bf1f61d465f50d107b1627bca72ae",
     "apps/server/go.sum": "f435b6582a31c4569095a98bfc084855b2aad610255acc66caa9eeb71066a1ee",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
-    "apps/desktop/src-tauri/Cargo.lock": "dd02be2f3a88a03950357d62431a50b46506213fb5ae14f4596e0ec6815bc2c8",
+    "apps/desktop/src-tauri/Cargo.lock": "3858f596588b6929e451f8b895c505d5366fcf7dc0620f02c0e6f6432230e32a",
     "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
     "docs/legal/native/manifest.json": "d9619fd270ab33851ceabd487e00888046bfd386e9ce5568943772bf2d4a923a",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
@@ -17572,6 +17572,25 @@
     },
     {
       "ecosystem": "Rust",
+      "name": "data-encoding",
+      "version": "2.11.1",
+      "license": "MIT",
+      "url": "https://crates.io/crates/data-encoding/2.11.1",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/b68ad1a3367b825447089e1f8d6829b97f47a89eb78d2f4ebaef4672f5606186.txt",
+          "sha256": "b68ad1a3367b825447089e1f8d6829b97f47a89eb78d2f4ebaef4672f5606186"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
       "name": "dbus",
       "version": "0.9.12",
       "license": "Apache-2.0/MIT",
@@ -20742,6 +20761,30 @@
           "source": "LICENSE-MIT",
           "path": "licenses/31dbbab009f1b2e59a1622d5955dfafc38ebe834000215b49d954c6f85fe927c.txt",
           "sha256": "31dbbab009f1b2e59a1622d5955dfafc38ebe834000215b49d954c6f85fe927c"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "keyring",
+      "version": "3.6.3",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://crates.io/crates/keyring/3.6.3",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE-APACHE",
+          "path": "licenses/78ebc2ea2a1cec9cbec2e1a6fc15e73474fe22bdad7575518e7f4628651d49c4.txt",
+          "sha256": "78ebc2ea2a1cec9cbec2e1a6fc15e73474fe22bdad7575518e7f4628651d49c4"
+        },
+        {
+          "source": "LICENSE-MIT",
+          "path": "licenses/157cc607717b1b372a69f6b4526f6ad18c1279af9f3267835cca2943f37bc07d.txt",
+          "sha256": "157cc607717b1b372a69f6b4526f6ad18c1279af9f3267835cca2943f37bc07d"
         }
       ]
     },
@@ -24110,6 +24153,30 @@
     {
       "ecosystem": "Rust",
       "name": "security-framework",
+      "version": "2.11.1",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://crates.io/crates/security-framework/2.11.1",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE-APACHE",
+          "path": "licenses/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "source": "LICENSE-MIT",
+          "path": "licenses/91e934255ba3b2f21103d68c5581c23ef34aa95c4628e4405b8c901935e11c69.txt",
+          "sha256": "91e934255ba3b2f21103d68c5581c23ef34aa95c4628e4405b8c901935e11c69"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "security-framework",
       "version": "3.7.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/security-framework/3.7.0",
@@ -26599,6 +26666,25 @@
     },
     {
       "ecosystem": "Rust",
+      "name": "tokio-tungstenite",
+      "version": "0.28.0",
+      "license": "MIT",
+      "url": "https://crates.io/crates/tokio-tungstenite/0.28.0",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/fdd55e2b2da854b0fbdc1e607df7c2ba1e1ebf91ecb77c515511ebeef972bc8f.txt",
+          "sha256": "fdd55e2b2da854b0fbdc1e607df7c2ba1e1ebf91ecb77c515511ebeef972bc8f"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
       "name": "tokio-util",
       "version": "0.7.19",
       "license": "MIT",
@@ -27039,6 +27125,30 @@
     },
     {
       "ecosystem": "Rust",
+      "name": "tungstenite",
+      "version": "0.28.0",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://crates.io/crates/tungstenite/0.28.0",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE-APACHE",
+          "path": "licenses/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "source": "LICENSE-MIT",
+          "path": "licenses/7fea0ee51a4ca5d5cea7464135fd55e8b09caf3a61da3d451ac8a22af95c033f.txt",
+          "sha256": "7fea0ee51a4ca5d5cea7464135fd55e8b09caf3a61da3d451ac8a22af95c033f"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
       "name": "typeid",
       "version": "1.0.3",
       "license": "MIT OR Apache-2.0",
@@ -27212,6 +27322,25 @@
     },
     {
       "ecosystem": "Rust",
+      "name": "urlencoding",
+      "version": "2.1.3",
+      "license": "MIT",
+      "url": "https://crates.io/crates/urlencoding/2.1.3",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/5a952e4a62a3022a7f39e9f0eb8d0638addd3efffb3f4092890923668152296e.txt",
+          "sha256": "5a952e4a62a3022a7f39e9f0eb8d0638addd3efffb3f4092890923668152296e"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
       "name": "urlpattern",
       "version": "0.6.0",
       "license": "MIT",
@@ -27226,6 +27355,30 @@
           "source": "LICENSE",
           "path": "licenses/5cf1c9dc617e4cad7fa03181ff893601ad5243aa3be527ef39034e1cd6377676.txt",
           "sha256": "5cf1c9dc617e4cad7fa03181ff893601ad5243aa3be527ef39034e1cd6377676"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "utf-8",
+      "version": "0.7.6",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://crates.io/crates/utf-8/0.7.6",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE-APACHE",
+          "path": "licenses/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "source": "LICENSE-MIT",
+          "path": "licenses/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
         }
       ]
     },

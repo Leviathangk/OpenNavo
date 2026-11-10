@@ -1112,6 +1112,130 @@ export function installMockIpc(
       mcp = { ...mcp, writeEnabled: enabled, error: null };
       return { ...mcp };
     },
+    hermes_runtime_status: () =>
+      flags.has('hermes-ready')
+        ? {
+            ready: true,
+            installed: true,
+            version: 'Hermes Agent v0.23.0',
+            path: '/mock/OpenNavoData/runtime/hermes/bin/hermes',
+            dataPath: '/mock/OpenNavoData',
+            computerUse: true,
+            message: null
+          }
+        : {
+            ready: false,
+            installed: false,
+            version: null,
+            path: null,
+            dataPath: null,
+            computerUse: false,
+            message: 'Hermes runtime is not installed in browser preview.'
+          },
+    hermes_chat: () => {
+      throw { code: 'E_HERMES_RUNTIME', message: 'Hermes runtime is not installed in browser preview', detail: null };
+    },
+    hermes_test_connection: () => ({ ok: true, status: 200, message: '连接成功 · HTTP 200' }),
+    hermes_model_options: () => ({
+      providers: [
+        {
+          slug: 'openai-api',
+          name: 'OpenAI API',
+          models: ['gpt-5.4', 'gpt-5.4-mini'],
+          total_models: 2,
+          authenticated: true,
+          capabilities: { 'gpt-5.4': { fast: true, reasoning: true }, 'gpt-5.4-mini': { fast: true, reasoning: true } },
+          pricing: {}
+        },
+        {
+          slug: 'openai-codex',
+          name: 'OpenAI Codex',
+          models: ['gpt-5.3-codex', 'gpt-5.2-codex'],
+          total_models: 2,
+          authenticated: true,
+          capabilities: {},
+          pricing: {}
+        },
+        {
+          slug: 'anthropic',
+          name: 'Anthropic',
+          models: ['claude-sonnet-4.5', 'claude-opus-4.5'],
+          total_models: 2,
+          authenticated: true,
+          capabilities: {},
+          pricing: {}
+        },
+        {
+          slug: 'copilot',
+          name: 'GitHub Copilot',
+          models: ['gpt-5.4', 'claude-sonnet-4.5'],
+          total_models: 2,
+          authenticated: true,
+          capabilities: {},
+          pricing: {}
+        },
+        {
+          slug: 'opencode-zen',
+          name: 'OpenCode Zen',
+          models: ['kimi-k2.6', 'gpt-5.5'],
+          total_models: 2,
+          authenticated: false,
+          capabilities: {},
+          pricing: {}
+        },
+        {
+          slug: 'opencode-go',
+          name: 'OpenCode Go',
+          models: ['kimi-k3', 'glm-5.2'],
+          total_models: 2,
+          authenticated: false,
+          capabilities: {},
+          pricing: {}
+        }
+      ],
+      model: 'gpt-5.4',
+      provider: 'openai-api'
+    }),
+    hermes_login_start: () => null,
+    hermes_login_input: () => null,
+    hermes_login_cancel: () => null,
+    hermes_login_status: () => ({
+      codex: false,
+      claudeCode: false,
+      copilot: false,
+      opencode: false,
+      opencodeGo: false,
+      nous: false,
+      codexSource: null,
+      claudeCodeSource: null,
+      copilotSource: null,
+      opencodeSource: null,
+      opencodeGoSource: null,
+      nousSource: null
+    }),
+    hermes_runtime_install: () => {
+      throw {
+        code: 'E_HERMES_INSTALL',
+        message: 'Installing the Hermes runtime is only available in the desktop app',
+        detail: null
+      };
+    },
+    hermes_runtime_uninstall: () => ({
+      ready: false,
+      installed: false,
+      version: null,
+      path: null,
+      dataPath: null,
+      computerUse: false,
+      message: 'Hermes runtime is not installed in browser preview.'
+    }),
+    hermes_stop: () => null,
+    hermes_interrupt: () => null,
+    hermes_steer: () => null,
+    hermes_secret_set: () => null,
+    hermes_secret_status: () => false,
+    hermes_secret_delete: () => null,
+    hermes_audit_open: () => null,
     settings_get: () => settings,
     settings_set: args => {
       const before = settings.locale;

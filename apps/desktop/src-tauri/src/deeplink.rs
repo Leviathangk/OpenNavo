@@ -641,6 +641,20 @@ fn fit_main_to_work_area<R: tauri::Runtime>(
 pub fn show_main<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     // A hidden resident has no Dock icon; bringing the main window back restores the regular app first.
     crate::resident::set_activation(app, false);
+    #[cfg(target_os = "macos")]
+    if let Some(mtm) = objc2::MainThreadMarker::new() {
+        let application = objc2_app_kit::NSApplication::sharedApplication(mtm);
+        application.unhide(None);
+        let major = objc2_foundation::NSProcessInfo::processInfo()
+            .operatingSystemVersion()
+            .majorVersion;
+        if major >= 14 {
+            application.activate();
+        } else {
+            #[allow(deprecated)]
+            application.activateIgnoringOtherApps(true);
+        }
+    }
     // Explicit navigation/Dock requests supersede transient menu-bar panels.
     // They no longer close through Focused(false) on macOS.
     crate::tray::hide(app);

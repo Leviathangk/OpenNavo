@@ -21,7 +21,11 @@ commands.allow = [
   "locale_get", "system_locale_get", "settings_get", "settings_set", "mirror_probe", "brewfile_export", "brewfile_preview", "brewfile_install", "doctor_run",
   "app_open", "app_reveal", "system_open_privacy", "app_quit", "app_cancel_quit",
   "permissions_get", "permission_settings_open", "permission_guide_open", "permission_guide_close",
-  "mcp_status", "mcp_set_enabled", "mcp_set_write_enabled", "mcp_audit_list", "mcp_audit_clear"
+  "mcp_status", "mcp_set_enabled", "mcp_set_write_enabled", "mcp_audit_list", "mcp_audit_clear",
+  "hermes_permissions_status", "hermes_permissions_request_screen", "hermes_attachment_info", "hermes_clipboard_image", "hermes_attachment_preview", "hermes_history_load", "hermes_history_save", "hermes_logout", "hermes_runtime_status", "hermes_runtime_install_cancel", "hermes_chat", "hermes_stop", "hermes_approval_respond", "hermes_interrupt", "hermes_steer",
+  "hermes_secret_set", "hermes_secret_status", "hermes_secret_delete", "hermes_audit_open", "hermes_audit_read", "hermes_logs_open", "hermes_cli_read", "hermes_cron_action", "hermes_skill_action", "hermes_mcp_action", "hermes_tool_action",
+  "hermes_runtime_install", "hermes_runtime_uninstall",
+  "hermes_login_status", "hermes_model_options", "hermes_test_connection", "hermes_login_start", "hermes_login_input", "hermes_login_cancel"
 ]
 
 [[permission]]

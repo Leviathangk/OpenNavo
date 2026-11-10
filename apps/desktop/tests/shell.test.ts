@@ -65,7 +65,7 @@ describe('AppShell', () => {
   it('Sidebar omits Homebrew source module', async () => {
     const { wrapper } = await mountShell('/discover');
     const sidebar = wrapper.get('aside');
-    expect(sidebar.find('section').exists()).toBe(false);
+    expect(sidebar.find('section').text()).toContain('Hermes');
     expect(sidebar.text()).not.toContain('HOMEBREW');
     expect(sidebar.text()).not.toContain('7.0.7 · arm64');
     expect(sidebar.text()).not.toContain('清华 TUNA 镜像');

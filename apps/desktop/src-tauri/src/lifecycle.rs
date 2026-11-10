@@ -528,6 +528,9 @@ pub fn install(app: &tauri::AppHandle, hidden: bool) {
 }
 pub fn run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
     match event {
+        tauri::RunEvent::Ready if !hidden_launch(&std::env::args().collect::<Vec<_>>()) => {
+            crate::deeplink::show_main(app);
+        }
         tauri::RunEvent::ExitRequested { api, code, .. } => {
             if !app
                 .try_state::<Arc<Lifecycle>>()

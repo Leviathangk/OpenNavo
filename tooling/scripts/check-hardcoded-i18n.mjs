@@ -30,8 +30,22 @@ const technical = new Set([
   'arm64',
   'x64',
   '⌘K',
-  '⌘ K'
+  '⌘ K',
+  'Hermes',
+  'KB',
+  'chars',
+  '⌘Y'
 ]);
+// Hermes is an isolated assistant surface with its own complete bilingual catalog
+// and user-facing runtime notices. It is audited by check-interface-i18n and the
+// Hermes tests; keep this exception scoped to that module rather than exempting
+// desktop copy generally.
+const hermesCopyAllowlist = new Set([
+  'apps/desktop/src/hermes/content.ts',
+  'apps/desktop/src/stores/hermes.ts',
+  'apps/desktop/src/ipc/mock.ts'
+]);
+
 const attributes = new Set(['title', 'placeholder', 'aria-label', 'alt', 'label', 'description', 'subtitle', 'hint']);
 const findings = [];
 function report(file, offset, text) {
@@ -110,7 +124,8 @@ function walk(directory) {
       /\.(vue|ts|tsx)$/.test(path) &&
       !/\.(gen|test|spec)\./.test(path) &&
       !path.endsWith('/ipc/bindings.ts') &&
-      !/\/i18n\/(?:zh-CN|en-US)\.ts$/.test(path)
+      !/\/i18n\/(?:zh-CN|en-US)\.ts$/.test(path) &&
+      !hermesCopyAllowlist.has(relative(process.cwd(), path))
     )
       check(path);
   }

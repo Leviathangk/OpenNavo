@@ -6,6 +6,40 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	hermesRuntimeStatus: () => typedError<HermesRuntimeStatus, AppError>(__TAURI_INVOKE("hermes_runtime_status")),
+	hermesChat: (input: HermesChatInput) => typedError<HermesChatReply, AppError>(__TAURI_INVOKE("hermes_chat", { input })),
+	hermesStop: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_stop")),
+	hermesApprovalRespond: (choice: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_approval_respond", { choice })),
+	hermesInterrupt: (liveSessionId: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_interrupt", { liveSessionId })),
+	hermesSteer: (liveSessionId: string, text: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_steer", { liveSessionId, text })),
+	hermesSecretSet: (provider: string, key: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_secret_set", { provider, key })),
+	hermesSecretStatus: (provider: string) => typedError<boolean, AppError>(__TAURI_INVOKE("hermes_secret_status", { provider })),
+	hermesSecretDelete: (provider: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_secret_delete", { provider })),
+	hermesAuditOpen: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_audit_open")),
+	hermesLogsOpen: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_logs_open")),
+	hermesCliRead: (kind: string) => typedError<string, AppError>(__TAURI_INVOKE("hermes_cli_read", { kind })),
+	hermesCronAction: (action: string, jobId: string) => typedError<string, AppError>(__TAURI_INVOKE("hermes_cron_action", { action, jobId })),
+	hermesMcpAction: (action: string, name: string, url: string) => typedError<string, AppError>(__TAURI_INVOKE("hermes_mcp_action", { action, name, url })),
+	hermesSkillAction: (action: string, identifier: string) => typedError<string, AppError>(__TAURI_INVOKE("hermes_skill_action", { action, identifier })),
+	hermesToolAction: (action: string, name: string) => typedError<string, AppError>(__TAURI_INVOKE("hermes_tool_action", { action, name })),
+	hermesAuditRead: (limit: number) => typedError<HermesAuditEntry[], AppError>(__TAURI_INVOKE("hermes_audit_read", { limit })),
+	hermesRuntimeInstall: () => typedError<HermesRuntimeStatus, AppError>(__TAURI_INVOKE("hermes_runtime_install")),
+	hermesRuntimeUninstall: () => typedError<HermesRuntimeStatus, AppError>(__TAURI_INVOKE("hermes_runtime_uninstall")),
+	hermesRuntimeInstallCancel: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_runtime_install_cancel")),
+	hermesPermissionsStatus: () => typedError<HermesPermissions, AppError>(__TAURI_INVOKE("hermes_permissions_status")),
+	hermesPermissionsRequestScreen: () => __TAURI_INVOKE<boolean>("hermes_permissions_request_screen"),
+	hermesAttachmentInfo: (paths: string[]) => __TAURI_INVOKE<HermesAttachmentInfo[]>("hermes_attachment_info", { paths }),
+	hermesClipboardImage: () => typedError<string | null, AppError>(__TAURI_INVOKE("hermes_clipboard_image")),
+	hermesAttachmentPreview: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("hermes_attachment_preview", { path })),
+	hermesHistoryLoad: () => typedError<string | null, AppError>(__TAURI_INVOKE("hermes_history_load")),
+	hermesHistorySave: (json: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_history_save", { json })),
+	hermesLogout: (provider: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_logout", { provider })),
+	hermesLoginStatus: () => typedError<HermesLoginStatus, AppError>(__TAURI_INVOKE("hermes_login_status")),
+	hermesModelOptions: (input: HermesModelOptionsInput) => typedError<HermesModelOptions, AppError>(__TAURI_INVOKE("hermes_model_options", { input })),
+	hermesTestConnection: (input: HermesTestInput) => typedError<HermesTestResult, AppError>(__TAURI_INVOKE("hermes_test_connection", { input })),
+	hermesLoginStart: (provider: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_login_start", { provider })),
+	hermesLoginInput: (text: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_login_input", { text })),
+	hermesLoginCancel: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_login_cancel")),
 	firewallStatus: () => typedError<FirewallStatus, AppError>(__TAURI_INVOKE("firewall_status")),
 	firewallEnable: (options: {
 	allowApple: boolean,
@@ -1345,6 +1379,163 @@ export type HealthIssueKey = "cpu_busy" | "memory_pressure" | "disk_low" | "disk
 export type HealthIssueLevel = "info" | "attention" | "critical";
 
 export type HealthLevel = "good" | "attention" | "critical";
+
+export type HermesAttachmentInfo = {
+	path: string,
+	name: string,
+	size: number,
+	isImage: boolean,
+};
+
+export type HermesAuditEntry = {
+	at: string,
+	provider: string,
+	model: string,
+	toolsets: string,
+	controlLevel: string,
+	promptChars: number,
+	outcome: string,
+	sessionId: string | null,
+	detail: string | null,
+};
+
+export type HermesAuxAssignment = {
+	task?: string,
+	provider?: string,
+	model?: string,
+};
+
+export type HermesChatInput = {
+	prompt: string,
+	requestId: string,
+	sessionId: string | null,
+	provider: string,
+	model: string,
+	effort: string,
+	fast: boolean,
+	apiKey: string | null,
+	endpoint: string | null,
+	cwd: string | null,
+	attachments: string[],
+	auxiliary: HermesAuxAssignment[],
+	forceAuxVision: boolean,
+	macEnabled: boolean,
+	controlLevel: string,
+	macTerminal: boolean,
+	macScreen: boolean,
+	macFiles: boolean,
+	macCron: boolean,
+	confirmWrites: boolean,
+};
+
+export type HermesChatReply = {
+	text: string,
+	sessionId: string | null,
+	liveSessionId: string | null,
+	usage: HermesUsage | null,
+};
+
+export type HermesLoginStatus = {
+	codex: boolean,
+	claudeCode: boolean,
+	copilot: boolean,
+	opencode: boolean,
+	opencodeGo: boolean,
+	nous: boolean,
+	codexSource: string | null,
+	claudeCodeSource: string | null,
+	copilotSource: string | null,
+	opencodeSource: string | null,
+	opencodeGoSource: string | null,
+	nousSource: string | null,
+};
+
+export type HermesModelCapability = {
+	fast?: boolean,
+	reasoning?: boolean,
+};
+
+export type HermesModelOptions = {
+	providers?: HermesModelProvider[],
+	model?: string | null,
+	provider?: string | null,
+};
+
+export type HermesModelOptionsInput = {
+	provider: string,
+	model: string,
+	effort: string,
+	fast: boolean,
+	apiKey: string | null,
+	endpoint: string | null,
+	refresh: boolean,
+	includeUnconfigured: boolean,
+};
+
+export type HermesModelPricing = {
+	input?: string | null,
+	output?: string | null,
+	cache?: string | null,
+	free?: boolean | null,
+};
+
+export type HermesModelProvider = {
+	slug?: string,
+	name?: string,
+	is_current?: boolean,
+	is_user_defined?: boolean,
+	models?: string[],
+	total_models?: number,
+	source?: string | null,
+	authenticated?: boolean,
+	auth_type?: string | null,
+	key_env?: string | null,
+	warning?: string | null,
+	base_url?: string | null,
+	capabilities?: { [key in string]: HermesModelCapability },
+	pricing?: { [key in string]: HermesModelPricing },
+	free_tier?: boolean | null,
+	unavailable_models?: string[],
+};
+
+export type HermesPermissions = {
+	accessibility: boolean,
+	screenRecording: boolean,
+	fullDisk: boolean,
+	computerUse: boolean,
+};
+
+export type HermesRuntimeStatus = {
+	ready: boolean,
+	installed: boolean,
+	version: string | null,
+	path: string | null,
+	dataPath: string | null,
+	computerUse: boolean,
+	outdated: boolean,
+	message: string | null,
+};
+
+export type HermesTestInput = {
+	provider: string,
+	apiKey: string | null,
+	endpoint: string | null,
+};
+
+export type HermesTestResult = {
+	ok: boolean,
+	status: number | null,
+	message: string,
+};
+
+export type HermesUsage = {
+	input?: number | null,
+	output?: number | null,
+	total?: number | null,
+	context_used?: number | null,
+	context_max?: number | null,
+	context_percent?: number | null,
+};
 
 /**  Session-file age distribution. Counts are cumulative up to the named window; `older` is beyond one year. */
 export type HistoryAges = {
