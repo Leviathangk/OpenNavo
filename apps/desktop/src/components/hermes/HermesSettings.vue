@@ -381,10 +381,8 @@ function toggleMaster(enabled: boolean) {
   // step. Individual switches below can still be turned off afterwards.
   if (enabled) {
     for (const key of MAC_CAPABILITIES) draftMac.value[key] = true;
-    if (draftMac.value.level === 'open') {
-      draftMac.value.level = 'guarded';
-      draftMac.value.confirmWrites = true;
-    }
+    draftMac.value.level = 'full';
+    draftMac.value.confirmWrites = false;
   }
 }
 
