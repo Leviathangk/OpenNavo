@@ -3288,7 +3288,7 @@
     "remote": "遠端 / 分散式團隊",
     "contact": "聯絡郵箱",
     "contactHint": "只用於稽核期間聯絡你，不會公開。",
-    "contactPlaceholder": "you@example.com",
+    "contactPlaceholder": "you{'@'}example.com",
     "submit": "提交稽核",
     "submitting": "提交中…",
     "successTitle": "已提交，進入稽核",

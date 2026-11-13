@@ -3297,7 +3297,7 @@ export default {
     remote: '远程 / 分布式团队',
     contact: '联系邮箱',
     contactHint: '只用于审核期间联系你，不会公开。',
-    contactPlaceholder: 'you@example.com',
+    contactPlaceholder: "you{'@'}example.com",
     submit: '提交审核',
     submitting: '提交中…',
     successTitle: '已提交，进入审核',

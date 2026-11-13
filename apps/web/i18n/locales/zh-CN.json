@@ -2285,6 +2285,6 @@
     "kindLocation": "位置",
     "claimHint": "先选择你的 App，再勾选要更新的内容。所有修改都会经过编辑审核后才会生效。",
     "proofPlaceholder": "域名、仓库或说明（可选）",
-    "contactPlaceholder": "you@example.com"
+    "contactPlaceholder": "you{'@'}example.com"
   }
 }

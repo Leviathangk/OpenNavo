@@ -2285,6 +2285,6 @@
     "kindLocation": "Локация",
     "claimHint": "Выберите приложение и укажите, что обновить. Каждое изменение проверяет редактор перед публикацией.",
     "proofPlaceholder": "Домен, репозиторий или заметка (необязательно)",
-    "contactPlaceholder": "you@example.com"
+    "contactPlaceholder": "you{'@'}example.com"
   }
 }

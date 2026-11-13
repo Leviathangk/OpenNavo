@@ -3352,6 +3352,6 @@
     "kindLocation": "Ubicación",
     "claimHint": "Selecciona tu app y dinos qué actualizar. Cada cambio pasa por la revisión de un editor antes de publicarse.",
     "proofPlaceholder": "Dominio, repositorio o nota (opcional)",
-    "contactPlaceholder": "you@example.com"
+    "contactPlaceholder": "you{'@'}example.com"
   }
 }

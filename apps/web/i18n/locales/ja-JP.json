@@ -2285,6 +2285,6 @@
     "kindLocation": "所在地",
     "claimHint": "アプリを選び、更新する内容を指定してください。変更はすべて編集者の審査後に反映されます。",
     "proofPlaceholder": "ドメイン、リポジトリ、メモ（任意）",
-    "contactPlaceholder": "you@example.com"
+    "contactPlaceholder": "you{'@'}example.com"
   }
 }
