@@ -16,6 +16,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cache"
 	pipeline "github.com/opennavo/opennavo/server/internal/changelog"
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/developer"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/admin"
 	"github.com/opennavo/opennavo/server/internal/http/middleware"
@@ -114,7 +115,7 @@ func run(ctx context.Context) error {
 	adminService.Snapshots = snapshots
 	queueMetrics := observability.NewQueueMetrics(st.Redis)
 	defer func() { _ = queueMetrics.Close() }()
-	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: snapshots, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
+	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient), queueMetrics}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: snapshots, Catalog: catalogService, Search: searchService, Developer: developer.NewClient()}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)
 	}

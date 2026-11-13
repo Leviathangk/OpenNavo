@@ -6,6 +6,7 @@ declare module 'vue-router' {
     /** Highlighted sidebar navigation item; group detail/search subpages under their top-level destination. */
     nav?:
       | 'discover'
+      | 'developer-map'
       | 'categories'
       | 'collections'
       | 'articles'
@@ -54,6 +55,12 @@ export const routes: RouteRecordRaw[] = [
       rail: DiscoverRail
     },
     meta: { nav: 'discover' }
+  },
+  {
+    path: '/developer-map',
+    name: 'developer-map',
+    component: () => import('@/pages/DeveloperMapPage.vue'),
+    meta: { nav: 'developer-map' }
   },
   {
     path: '/categories',

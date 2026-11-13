@@ -35,6 +35,7 @@ describe('AppShell', () => {
     const links = wrapper.findAll('aside nav a, aside > div > a');
     expect(links.map(link => link.attributes('href'))).toEqual([
       '/discover',
+      '/developer-map',
       '/categories',
       '/rankings',
       '/recent',

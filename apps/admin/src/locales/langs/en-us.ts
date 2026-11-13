@@ -226,6 +226,9 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    developer: 'Developer',
+    developer_review: 'Submissions',
+    developer_picks: "Developer picks",
     'oauth-consent': 'Connect to OpenNavo',
     login: 'Login',
     403: 'No Permission',

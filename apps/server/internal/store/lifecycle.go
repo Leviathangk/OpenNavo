@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/domain"
 )
 
 // LifecycleRow is where a requested package token leads (WP2).
@@ -38,10 +40,14 @@ func (s *Store) LifecycleAlternatives(ctx context.Context, packageID int64, limi
 	return ids, err
 }
 
-// LivePackageID finds an available cask by token, for replacements Homebrew names.
+// LivePackageID finds an available package by kind and token. Link apps are only
+// visible to callers that advertise the link capability, matching the public catalog.
 func (s *Store) LivePackageID(ctx context.Context, kind, token string) (int64, bool, error) {
+	if kind == "link" && !domain.LinksAllowed(ctx) {
+		return 0, false, nil
+	}
 	var ids []int64
-	err := s.DB.WithContext(ctx).Raw(`SELECT p.id`+publicJoins+` WHERE `+publicVisible+` AND p.kind=? AND p.token=?`, kind, token).Scan(&ids).Error
+	err := s.DB.WithContext(ctx).Raw(`SELECT p.id`+publicJoins+` WHERE p.kind=? AND p.token=? AND p.removed_at IS NULL AND `+publicReadable+` AND NOT COALESCE(m.hidden,false)`, kind, token).Scan(&ids).Error
 	if err != nil || len(ids) == 0 {
 		return 0, false, err
 	}

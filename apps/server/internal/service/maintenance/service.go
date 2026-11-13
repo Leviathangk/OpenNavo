@@ -100,6 +100,14 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	submissions, err := s.Store.PruneDeveloperSubmissions(ctx, now.Add(-store.DeveloperRetention))
+	if err != nil {
+		return nil, err
+	}
+	submissionEvents, err := s.Store.PruneDeveloperSubmissionEvents(ctx, now.Add(-store.DeveloperRetention))
+	if err != nil {
+		return nil, err
+	}
 	assets, err := s.Store.PruneAssets(ctx, now.AddDate(0, 0, -30), func(ctx context.Context, a store.Asset) error {
 		for _, key := range VariantKeys(a) {
 			if err := s.Objects.Delete(ctx, key); err != nil {
@@ -109,5 +117,6 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		return nil
 	})
 	return map[string]any{"catalogChanges": changes, "urlNotifications": notifications, "searchQueries": logs["search_queries"], "syncRuns": logs["sync_runs"], "agentWriteControls": logs["agent_write_controls"],
-		"intentPageOrphans": orphans["package_intent_pages"], "seoOverrideOrphans": orphans["package_seo_overrides"], "assets": assets}, err
+		"intentPageOrphans": orphans["package_intent_pages"], "seoOverrideOrphans": orphans["package_seo_overrides"], "assets": assets,
+		"developerSubmissions": submissions, "developerSubmissionEvents": submissionEvents}, err
 }

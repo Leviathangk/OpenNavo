@@ -1726,6 +1726,57 @@ const pages = {
       moduleCount:
         '源语言正文保存后自动翻译；开源章节统一使用英文，不参与翻译。已收录 {count} 项依赖，可展开 JSON 编辑清单。'
     }
+  },
+  developerReview: {
+    "title": "开发者提交",
+    "allStatuses": "全部状态",
+    "kind": "类型",
+    "status": "状态",
+    "contact": "联系邮箱",
+    "created": "提交时间",
+    "review": "审核",
+    "payload": "Payload",
+    "decisionNote": "审核备注",
+    "feature": "加入开发者精选",
+    "sort": "精选排序",
+    "quote": "开发者 quote",
+    "publish": "发布",
+    "save": "保存",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "loadFailed": "加载提交失败",
+    "invalidJson": "Payload 必须是合法 JSON",
+    "statuses": {
+      "submitted": "已提交",
+      "in_review": "审核中",
+      "changes_requested": "需补充",
+      "approved": "已通过",
+      "rejected": "已拒绝",
+      "published": "已发布"
+    },
+    "kindLabel": "类型",
+    "sourceLabel": "来源",
+    "proofLabel": "补充材料",
+    "statusToken": "查询码",
+    "packageKind": "包类型",
+    "packageToken": "包 Token",
+    "packageTokenPlaceholder": "visual-studio-code",
+
+    "searchPlaceholder": "搜索邮箱、编号或 App 名称",
+  },
+
+  developerPicks:   {
+    "title": "开发者精选",
+    "hint": "管理发现页「热门 App」上方的精选排序、quote 和上下架。",
+    "app": "App",
+    "quote": "开发者 quote",
+    "sort": "排序",
+    "active": "上架",
+    "publishedAt": "发布时间",
+    "save": "保存",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "loadFailed": "加载精选失败"
   }
 };
 

@@ -236,6 +236,41 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'developer',
+    path: '/developer',
+    component: 'layout.base',
+    meta: {
+      title: 'developer',
+      i18nKey: 'route.developer',
+      icon: 'lucide:map',
+      order: 3
+    },
+    children: [
+      {
+        name: 'developer_picks',
+        path: '/developer/picks',
+        component: 'view.developer_picks',
+        meta: {
+          title: 'developer_picks',
+          i18nKey: 'route.developer_picks',
+          order: 2,
+          roles: ['R_ADMIN', 'R_EDITOR', 'R_REVIEWER']
+        }
+      },
+      {
+        name: 'developer_review',
+        path: '/developer/review',
+        component: 'view.developer_review',
+        meta: {
+          title: 'developer_review',
+          i18nKey: 'route.developer_review',
+          order: 1,
+          roles: ['R_ADMIN', 'R_EDITOR', 'R_REVIEWER']
+        }
+      }
+    ]
+  },
+  {
     name: 'iframe-page',
     path: '/iframe-page/:url',
     component: 'layout.base$view.iframe-page',

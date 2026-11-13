@@ -37,6 +37,9 @@ declare module "@elegant-router/types" {
     "content_feature": "/content/feature";
     "content_glossary": "/content/glossary";
     "dashboard": "/dashboard";
+    "developer": "/developer";
+    "developer_picks": "/developer/picks";
+    "developer_review": "/developer/review";
     "iframe-page": "/iframe-page/:url";
     "login": "/login/:module(pwd-login)?";
     "oauth-consent": "/oauth-consent";
@@ -95,6 +98,7 @@ declare module "@elegant-router/types" {
     | "changelog"
     | "content"
     | "dashboard"
+    | "developer"
     | "iframe-page"
     | "login"
     | "oauth-consent"
@@ -137,6 +141,8 @@ declare module "@elegant-router/types" {
     | "content_feature"
     | "content_glossary"
     | "dashboard"
+    | "developer_picks"
+    | "developer_review"
     | "oauth-consent"
     | "ops_agent-log"
     | "ops_feedback"

@@ -3,9 +3,9 @@
 ## Public read-only MCP
 
 The `opennavo-public-mcp` entry point is a separate anonymous FastMCP server. It
-registers only the nine public catalog tools (`search_apps`, `get_app`,
+registers only the ten public catalog tools (`search_apps`, `get_app`,
 `get_app_releases`, `get_app_dependencies`, `similar_apps`, `list_categories`,
-`rankings`, `collections`, and `articles`) and sends only allowlisted `GET`
+`rankings`, `collections`, `articles`, and `developer_map`) and sends only allowlisted `GET`
 requests to `OPENNAVO_PUBLIC_API_BASE` (default
 `https://api.opennavo.com/api/v1`). It has no admin tools, OAuth, gateway key,
 agent API, or credentials. Results select public fields, include OpenNavo links,
@@ -32,7 +32,7 @@ The public API package lookup is intentionally `POST /packages/lookup` with a
 JSON body; `GET /packages/lookup?tokens=...` is outside the OpenAPI route and
 returns 404.
 
-Python 3.13 + uv, using FastMCP 4.0.x. The 103 tools and 9 resources adapt only the internal `/agent-api`.
+Python 3.13 + uv, using FastMCP 4.0.x. The 107 tools and 9 resources adapt only the internal `/agent-api`.
 
 Run `uv sync --locked` in this directory. From the repository root, run `make gen-mcp lint-mcp test-mcp build-mcp` to generate and check artifacts. `make gen` and `make lint test` also include MCP. The authoritative tool manifest is `src/opennavo_mcp/tools/manifest.py`.
 

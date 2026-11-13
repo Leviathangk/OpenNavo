@@ -47,6 +47,8 @@ tags:
     description: 'Website configuration: SEO and analytics settings'
   - name: articles
     description: 'Published articles and author pages'
+  - name: developer
+    description: 'Developer map, picks and anonymous submissions'
 
 paths:
   /background-items:
@@ -9521,6 +9523,246 @@ paths:
                 type: string
         default:
           $ref: '#/components/responses/Error'
+  /developer-map:
+    get:
+      tags: [developer]
+      operationId: getDeveloperMap
+      summary: Developer map totals, cities and countries
+      description: Public read model behind the developer map. Cached for five minutes and rate limited like the rest of the public API.
+      parameters:
+        - $ref: '#/components/parameters/Locale'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperMapResponse'
+              examples:
+                en-US:
+                  summary: en-US
+                  value: {"code": "0000", "msg": "ok", "data": {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 7, "countries": 5}, "places": [{"key": "san-francisco", "kind": "city", "name": "San Francisco", "countryCode": "US", "region": "americas", "lat": 37.7749, "lng": -122.4194, "developers": 4, "apps": 6, "installs30d": 120000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "cityKey": "san-francisco", "city": "San Francisco", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}}
+                zh-CN:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
+        '429':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /developer-picks:
+    get:
+      tags: [developer]
+      operationId: listDeveloperPicks
+      summary: Developer picks shown above Hot Apps
+      parameters:
+        - $ref: '#/components/parameters/Locale'
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 12, default: 4, example: 4 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperPicksResponse'
+              examples:
+                en-US:
+                  summary: en-US
+                  value: {"code": "0000", "msg": "ok", "data": [{"package": {"kind": "cask", "token": "ghostty", "name": "Ghostty", "displayName": "Ghostty", "version": "1.2.0", "installs30d": 12000, "autoUpdates": true, "deprecated": false, "disabled": false, "isFont": false, "isLibrary": false, "editorChoice": true, "versionChangedAt": "2026-11-01T00:00:00Z"}, "quote": "A calm terminal that stays out of the way.", "publishedAt": "2026-11-11T09:30:00Z"}]}
+                zh-CN:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer-picks/get/responses/200/content/application~1json/examples/en-US'
+        '429':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /developer/fetch:
+    post:
+      tags: [developer]
+      operationId: fetchDeveloperMetadata
+      summary: Fetch public metadata for a GitHub, App Store or website link
+      description: Reads only public pages. Rejects private addresses, non-http(s) schemes and oversized responses.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeveloperFetchRequest'
+            example:
+              url: https://apps.apple.com/us/app/things-3/id904237743
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperFetchResponse'
+              examples:
+                en-US:
+                  summary: en-US
+                  value: {"code": "0000", "msg": "ok", "data": {"source": "github", "name": "Ghostty", "summary": "Fast, native terminal for macOS.", "description": "A terminal emulator.", "developer": "Ghostty", "homepage": "https://ghostty.org", "repoUrl": "https://github.com/ghostty-org/ghostty", "downloadUrl": "https://ghostty.org/download", "iconUrl": "https://ghostty.org/icon.png", "version": "1.2.0", "minMacos": "13", "category": "developer-tools", "license": "MIT", "warnings": []}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1fetch/post/responses/200/content/application~1json/examples/en-US'
+        '429':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /developer/submissions:
+    post:
+      tags: [developer]
+      operationId: createDeveloperSubmission
+      summary: Submit a new app, a claim, or a location update
+      description: Anonymous. The receipt carries a random token used to read the submission status without an account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeveloperSubmissionCreateRequest'
+            example:
+              kind: new
+              sourceKind: github
+              sourceUrl: https://github.com/ghostty-org/ghostty
+              payload:
+                name: Ghostty
+                summary: Fast, native terminal for macOS.
+                developer: Ghostty
+                category: developer-tools
+                homepage: https://ghostty.org
+                repoUrl: https://github.com/ghostty-org/ghostty
+                downloadUrl: https://ghostty.org/download
+                countryCode: US
+                city: San Francisco
+                remote: true
+              contactEmail: dev@example.com
+              proof: ''
+              website: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperSubmissionReceiptResponse'
+              examples:
+                en-US:
+                  summary: en-US
+                  value: {"code": "0000", "msg": "ok", "data": {"id": 123, "reference": "DS-000123", "token": "example-receipt-token-0000000001", "statusUrl": "https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001"}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1submissions/post/responses/200/content/application~1json/examples/en-US'
+        '429':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /developer/submissions/{token}:
+    get:
+      tags: [developer]
+      operationId: getDeveloperSubmission
+      summary: Read submission status by receipt token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: 32-character hex receipt token returned when the submission was created.
+          schema: { type: string, maxLength: 64, example: example-receipt-token-0000000001 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperSubmissionStatusResponse'
+              examples:
+                en-US:
+                  summary: en-US
+                  value: {"code": "0000", "msg": "ok", "data": {"reference": "DS-000123", "kind": "new", "status": "published", "createdAt": "2026-11-10T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": "2026-11-11T10:00:00Z", "decisionNote": "Approved after a quick look.", "package": {"kind": "link", "token": "ghostty", "name": "Ghostty"}, "events": [{"status": "submitted", "actor": "developer", "createdAt": "2026-11-10T10:00:00Z"}, {"status": "published", "note": "Approved after a quick look.", "actor": "admin", "createdAt": "2026-11-11T10:00:00Z"}]}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1submissions~1{token}/get/responses/200/content/application~1json/examples/en-US'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
 components:
   parameters:
     Locale:
@@ -18967,6 +19209,203 @@ components:
           inSitemap: false
           announce: false
           reason: consolidated
+    DeveloperMapResponse:
+      example: {"code": "0000", "msg": "ok", "data": {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 7, "countries": 5}, "places": [{"key": "san-francisco", "kind": "city", "name": "San Francisco", "countryCode": "US", "region": "americas", "lat": 37.7749, "lng": -122.4194, "developers": 4, "apps": 6, "installs30d": 120000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "cityKey": "san-francisco", "city": "San Francisco", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}}
+      type: object
+      required: [code, msg, data]
+      properties:
+        code: { $ref: '#/components/schemas/Code' }
+        msg: { type: string, example: ok }
+        data: { $ref: '#/components/schemas/DeveloperMap' }
+    DeveloperMap:
+      example: {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 7, "countries": 5}, "places": [{"key": "san-francisco", "kind": "city", "name": "San Francisco", "countryCode": "US", "region": "americas", "lat": 37.7749, "lng": -122.4194, "developers": 4, "apps": 6, "installs30d": 120000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "cityKey": "san-francisco", "city": "San Francisco", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}
+      type: object
+      required: [generatedAt, totals, places, countries, recentDevelopers]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        totals:
+          type: object
+          required: [developers, located, apps, locatedApps, places, countries]
+          properties:
+            developers: { type: integer, example: 12 }
+            located: { type: integer, example: 9 }
+            apps: { type: integer, example: 4210 }
+            locatedApps: { type: integer, example: 14 }
+            places: { type: integer, example: 7 }
+            countries: { type: integer, example: 5 }
+        places:
+          type: array
+          items:
+            type: object
+            required: [key, kind, name, countryCode, region, lat, lng, developers, apps, installs30d, topDevelopers]
+            properties:
+              key: { type: string, example: san-francisco }
+              kind: { type: string, enum: [city, country] }
+              name: { type: string, example: San Francisco }
+              countryCode: { type: string, example: US }
+              region: { type: string, enum: [americas, europe, apac, other] }
+              lat: { type: number, format: double }
+              lng: { type: number, format: double }
+              developers: { type: integer }
+              apps: { type: integer }
+              installs30d: { type: integer, format: int64 }
+              topDevelopers:
+                type: array
+                items:
+                  type: object
+                  required: [name, apps, installs30d]
+                  properties:
+                    name: { type: string }
+                    apps: { type: integer }
+                    installs30d: { type: integer, format: int64 }
+        countries:
+          type: array
+          items:
+            type: object
+            required: [code, developers, apps, installs30d]
+            properties:
+              code: { type: string, example: US }
+              developers: { type: integer }
+              apps: { type: integer }
+              installs30d: { type: integer, format: int64 }
+        recentDevelopers:
+          type: array
+          items:
+            type: object
+            required: [name, cityKey, city, countryCode, apps, updatedAt]
+            properties:
+              name: { type: string }
+              cityKey: { type: string }
+              city: { type: string }
+              countryCode: { type: string }
+              apps: { type: integer }
+              updatedAt: { type: string, format: date-time }
+    DeveloperPick:
+      example: {"package": {"kind": "cask", "token": "ghostty", "name": "Ghostty", "displayName": "Ghostty", "version": "1.2.0", "installs30d": 12000, "autoUpdates": true, "deprecated": false, "disabled": false, "isFont": false, "isLibrary": false, "editorChoice": true, "versionChangedAt": "2026-11-01T00:00:00Z"}, "quote": "A calm terminal that stays out of the way.", "publishedAt": "2026-11-11T09:30:00Z"}
+      type: object
+      required: [package, quote, publishedAt]
+      properties:
+        package: { $ref: '#/components/schemas/PackageSummary' }
+        quote: { type: string }
+        publishedAt: { type: string, format: date-time }
+    DeveloperPicksResponse:
+      example: {"code": "0000", "msg": "ok", "data": [{"package": {"kind": "cask", "token": "ghostty", "name": "Ghostty", "displayName": "Ghostty", "version": "1.2.0", "installs30d": 12000, "autoUpdates": true, "deprecated": false, "disabled": false, "isFont": false, "isLibrary": false, "editorChoice": true, "versionChangedAt": "2026-11-01T00:00:00Z"}, "quote": "A calm terminal that stays out of the way.", "publishedAt": "2026-11-11T09:30:00Z"}]}
+      type: object
+      required: [code, msg, data]
+      properties:
+        code: { $ref: '#/components/schemas/Code' }
+        msg: { type: string, example: ok }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DeveloperPick' }
+    DeveloperFetchRequest:
+      example: {"url": "https://github.com/ghostty-org/ghostty"}
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri, maxLength: 2048, example: https://github.com/ghostty-org/ghostty }
+    DeveloperFetchResult:
+      example: {"source": "github", "name": "Ghostty", "summary": "Fast, native terminal for macOS.", "description": "A terminal emulator.", "developer": "Ghostty", "homepage": "https://ghostty.org", "repoUrl": "https://github.com/ghostty-org/ghostty", "downloadUrl": "https://ghostty.org/download", "iconUrl": "https://ghostty.org/icon.png", "version": "1.2.0", "minMacos": "13", "category": "developer-tools", "license": "MIT", "warnings": []}
+      type: object
+      required: [source, name, summary, description, developer, homepage, repoUrl, downloadUrl, iconUrl, version, minMacos, category, license, warnings]
+      properties:
+        source: { type: string, enum: [github, appstore, website] }
+        name: { type: string }
+        summary: { type: string }
+        description: { type: string }
+        developer: { type: string }
+        homepage: { type: string }
+        repoUrl: { type: string }
+        downloadUrl: { type: string }
+        iconUrl: { type: string }
+        version: { type: string }
+        minMacos: { type: string }
+        category: { type: string }
+        license: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    DeveloperFetchResponse:
+      example: {"code": "0000", "msg": "ok", "data": {"source": "github", "name": "Ghostty", "summary": "Fast, native terminal for macOS.", "description": "A terminal emulator.", "developer": "Ghostty", "homepage": "https://ghostty.org", "repoUrl": "https://github.com/ghostty-org/ghostty", "downloadUrl": "https://ghostty.org/download", "iconUrl": "https://ghostty.org/icon.png", "version": "1.2.0", "minMacos": "13", "category": "developer-tools", "license": "MIT", "warnings": []}}
+      type: object
+      required: [code, msg, data]
+      properties:
+        code: { $ref: '#/components/schemas/Code' }
+        msg: { type: string, example: ok }
+        data: { $ref: '#/components/schemas/DeveloperFetchResult' }
+    DeveloperSubmissionCreateRequest:
+      example: {"kind": "new", "sourceKind": "github", "sourceUrl": "https://github.com/ghostty-org/ghostty", "contactEmail": "dev@example.com", "payload": {"name": "Ghostty", "summary": "Fast, native terminal for macOS.", "developer": "Ghostty", "homepage": "https://ghostty.org", "repoUrl": "https://github.com/ghostty-org/ghostty", "countryCode": "US", "city": "San Francisco"}, "proof": "", "website": ""}
+      type: object
+      required: [kind, contactEmail]
+      properties:
+        kind: { type: string, enum: [new, claim, location] }
+        sourceKind: { type: string, enum: [github, appstore, website] }
+        sourceUrl: { type: string, maxLength: 2048 }
+        packageKind: { type: string, enum: [cask, link] }
+        packageToken: { type: string, maxLength: 128 }
+        payload:
+          type: object
+          additionalProperties: true
+        contactEmail: { type: string, format: email, maxLength: 320 }
+        proof: { type: string, maxLength: 2000 }
+        website:
+          type: string
+          description: Honeypot. A non-empty value returns a fake success and stores nothing.
+    DeveloperSubmissionReceipt:
+      example: {"id": 123, "reference": "DS-000123", "token": "example-receipt-token-0000000001", "statusUrl": "https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001"}
+      type: object
+      required: [id, reference, token, statusUrl]
+      properties:
+        id: { type: integer, format: int64 }
+        reference: { type: string, example: DS-000123 }
+        token: { type: string, example: example-receipt-token-0000000001 }
+        statusUrl: { type: string, example: 'https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001' }
+    DeveloperSubmissionReceiptResponse:
+      example: {"code": "0000", "msg": "ok", "data": {"id": 123, "reference": "DS-000123", "token": "example-receipt-token-0000000001", "statusUrl": "https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001"}}
+      type: object
+      required: [code, msg, data]
+      properties:
+        code: { $ref: '#/components/schemas/Code' }
+        msg: { type: string, example: ok }
+        data: { $ref: '#/components/schemas/DeveloperSubmissionReceipt' }
+    DeveloperSubmissionStatus:
+      example: {"reference": "DS-000123", "kind": "new", "status": "published", "createdAt": "2026-11-10T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": "2026-11-11T10:00:00Z", "decisionNote": "Approved after a quick look.", "package": {"kind": "link", "token": "ghostty", "name": "Ghostty"}, "events": [{"status": "submitted", "actor": "developer", "createdAt": "2026-11-10T10:00:00Z"}, {"status": "published", "note": "Approved after a quick look.", "actor": "admin", "createdAt": "2026-11-11T10:00:00Z"}]}
+      type: object
+      required: [reference, kind, status, createdAt, updatedAt, events]
+      properties:
+        reference: { type: string, example: DS-000123 }
+        kind: { type: string, enum: [new, claim, location] }
+        status: { type: string, enum: [submitted, in_review, changes_requested, approved, rejected, published] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time, nullable: true }
+        decisionNote: { type: string, nullable: true }
+        package:
+          type: object
+          nullable: true
+          required: [kind, token, name]
+          properties:
+            kind: { type: string }
+            token: { type: string }
+            name: { type: string }
+        events:
+          type: array
+          items:
+            type: object
+            required: [status, actor, createdAt]
+            properties:
+              status: { type: string }
+              note: { type: string, nullable: true }
+              actor: { type: string, enum: [developer, admin, system] }
+              createdAt: { type: string, format: date-time }
+    DeveloperSubmissionStatusResponse:
+      example: {"code": "0000", "msg": "ok", "data": {"reference": "DS-000123", "kind": "new", "status": "published", "createdAt": "2026-11-10T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": "2026-11-11T10:00:00Z", "decisionNote": "Approved after a quick look.", "package": {"kind": "link", "token": "ghostty", "name": "Ghostty"}, "events": [{"status": "submitted", "actor": "developer", "createdAt": "2026-11-10T10:00:00Z"}, {"status": "published", "note": "Approved after a quick look.", "actor": "admin", "createdAt": "2026-11-11T10:00:00Z"}]}}
+      type: object
+      required: [code, msg, data]
+      properties:
+        code: { $ref: '#/components/schemas/Code' }
+        msg: { type: string, example: ok }
+        data: { $ref: '#/components/schemas/DeveloperSubmissionStatus' }
   examples:
     ArticlePageSixLocales:
       value:

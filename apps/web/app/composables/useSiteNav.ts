@@ -19,6 +19,7 @@ export function useSiteNav() {
       return path === href || path.startsWith(`${href}/`);
     };
     if (path === localePath('/apps') || under('/browse')) return 'apps';
+    if (under('/developer-map')) return 'developerMap';
     for (const key of [
       'categories',
       'rankings',
@@ -51,6 +52,7 @@ export function useSiteNav() {
       label: t('nav.browse'),
       items: [
         item('discover', '/discover', 'lucide:compass'),
+        item('developerMap', '/developer-map', 'globe'),
         item('apps', '/apps', 'lucide:layers'),
         item('categories', '/categories', 'lucide:layout-grid'),
         item('rankings', '/rankings', 'lucide:chart-no-axes-column'),

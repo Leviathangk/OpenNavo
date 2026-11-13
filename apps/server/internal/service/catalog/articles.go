@@ -94,7 +94,7 @@ func (s *PublicService) Article(ctx context.Context, slug, locale string) (publi
 		if err != nil {
 			return publicapi.ArticleLookup{}, err
 		}
-		return publicapi.ArticleLookup{State: publicapi.Published, Slug: row.Slug, Article: &article}, nil
+		return publicapi.ArticleLookup{State: publicapi.ArticleLookupStatePublished, Slug: row.Slug, Article: &article}, nil
 	})
 }
 

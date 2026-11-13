@@ -141,7 +141,7 @@ async def test_public_tools_are_read_only_and_compact() -> None:
     server = create_public_server(settings(), api)
     async with Client(server) as client:
         tools = await client.list_tools()
-        assert len(tools) == 9
+        assert len(tools) == 10
         assert {tool.name for tool in tools} == {
             "search_apps",
             "get_app",
@@ -152,6 +152,7 @@ async def test_public_tools_are_read_only_and_compact() -> None:
             "rankings",
             "collections",
             "articles",
+            "developer_map",
         }
         for tool in tools:
             assert tool.annotations is not None

@@ -12,12 +12,12 @@ from opennavo_mcp.tools.manifest import RESOURCE_PERMISSIONS, TOOLS
 
 
 def test_contract_and_permission_drift() -> None:
-    assert len(TOOLS) == len({tool.name for tool in TOOLS}) == 103
+    assert len(TOOLS) == len({tool.name for tool in TOOLS}) == 108
     assert len(RESOURCE_PERMISSIONS) == 9
     assert len(PERMISSIONS) == len(set(PERMISSIONS)) == 24
     assert {tool.permission for tool in TOOLS} - {""} == set(PERMISSIONS)
     assert {op for tool in TOOLS for op in tool.operations} == set(OPERATIONS)
-    assert len(OPERATIONS) == 121
+    assert len(OPERATIONS) == 126
     # Only the generic write-safety headers are forwarded, under their current names.
     assert {key: name for op in OPERATIONS.values() for key, name in op["headerNames"].items()} == {
         "expectedRevision": "X-Expected-Revision",

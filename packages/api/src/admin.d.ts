@@ -2812,6 +2812,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/developer/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Developer submissions */
+        get: operations["listDeveloperSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/developer/submissions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Developer submission */
+        get: operations["getDeveloperSubmission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Review a developer submission */
+        patch: operations["updateDeveloperSubmission"];
+        trace?: never;
+    };
+    "/developer/picks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Developer picks, active or not */
+        get: operations["listDeveloperPicks"];
+        put?: never;
+        /** Feature a developer pick */
+        post: operations["setDeveloperPick"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -24540,6 +24593,230 @@ export interface components {
             msg: string;
             data: components["schemas"]["DueFactRecordList"];
         };
+        /**
+         * @example {
+         *       "id": 7,
+         *       "publicToken": "example-receipt-token-0000000002",
+         *       "kind": "new",
+         *       "status": "submitted",
+         *       "sourceKind": "github",
+         *       "sourceUrl": "https://github.com/example/hyperfocus",
+         *       "packageId": null,
+         *       "payload": {
+         *         "name": "Hyperfocus Timer",
+         *         "summary": "A tiny focus timer for macOS."
+         *       },
+         *       "contactEmail": "dev@example.com",
+         *       "proof": "",
+         *       "reviewerId": null,
+         *       "decisionNote": null,
+         *       "createdAt": "2026-11-11T10:00:00Z",
+         *       "updatedAt": "2026-11-11T10:00:00Z",
+         *       "decidedAt": null
+         *     }
+         */
+        DeveloperSubmission: {
+            /** Format: int64 */
+            id: number;
+            publicToken?: string;
+            /** @enum {string} */
+            kind: "new" | "claim" | "location";
+            /** @enum {string} */
+            status: "submitted" | "in_review" | "changes_requested" | "approved" | "rejected" | "published";
+            sourceKind?: string;
+            sourceUrl?: string;
+            /** Format: int64 */
+            packageId?: number | null;
+            payload: {
+                [key: string]: unknown;
+            };
+            contactEmail: string;
+            proof?: string;
+            /** Format: int64 */
+            reviewerId?: number | null;
+            decisionNote?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            decidedAt?: string | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": [
+         *         {
+         *           "id": 7,
+         *           "publicToken": "example-receipt-token-0000000002",
+         *           "kind": "new",
+         *           "status": "submitted",
+         *           "sourceKind": "github",
+         *           "sourceUrl": "https://github.com/example/hyperfocus",
+         *           "packageId": null,
+         *           "payload": {
+         *             "name": "Hyperfocus Timer",
+         *             "summary": "A tiny focus timer for macOS."
+         *           },
+         *           "contactEmail": "dev@example.com",
+         *           "proof": "",
+         *           "reviewerId": null,
+         *           "decisionNote": null,
+         *           "createdAt": "2026-11-11T10:00:00Z",
+         *           "updatedAt": "2026-11-11T10:00:00Z",
+         *           "decidedAt": null
+         *         }
+         *       ]
+         *     }
+         */
+        DeveloperSubmissionListResponse: {
+            code: string;
+            msg: string;
+            data?: components["schemas"]["DeveloperSubmission"][] | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 7,
+         *         "publicToken": "example-receipt-token-0000000002",
+         *         "kind": "new",
+         *         "status": "submitted",
+         *         "sourceKind": "github",
+         *         "sourceUrl": "https://github.com/example/hyperfocus",
+         *         "packageId": null,
+         *         "payload": {
+         *           "name": "Hyperfocus Timer",
+         *           "summary": "A tiny focus timer for macOS."
+         *         },
+         *         "contactEmail": "dev@example.com",
+         *         "proof": "",
+         *         "reviewerId": null,
+         *         "decisionNote": null,
+         *         "createdAt": "2026-11-11T10:00:00Z",
+         *         "updatedAt": "2026-11-11T10:00:00Z",
+         *         "decidedAt": null
+         *       }
+         *     }
+         */
+        DeveloperSubmissionResponse: {
+            code: string;
+            msg: string;
+            data?: components["schemas"]["DeveloperSubmission"] | null;
+        };
+        /**
+         * @example {
+         *       "status": "published",
+         *       "decisionNote": "Approved.",
+         *       "feature": true,
+         *       "quote": "A calm timer.",
+         *       "sort": 1
+         *     }
+         */
+        DeveloperSubmissionUpdate: {
+            /** @enum {string} */
+            status?: "submitted" | "in_review" | "changes_requested" | "approved" | "rejected" | "published";
+            decisionNote?: string | null;
+            payload?: {
+                [key: string]: unknown;
+            };
+            packageKind?: string;
+            packageToken?: string;
+            feature?: boolean;
+            quote?: string;
+            sort?: number;
+        };
+        /**
+         * @example {
+         *       "packageId": 42,
+         *       "kind": "link",
+         *       "token": "orbit-notes",
+         *       "name": "Orbit Notes",
+         *       "iconUrl": "https://example.com/orbit.png",
+         *       "quote": "Notes, but lighter.",
+         *       "sort": 2,
+         *       "active": true,
+         *       "publishedAt": "2026-11-11T10:00:00Z",
+         *       "submissionId": 11
+         *     }
+         */
+        DeveloperPickAdmin: {
+            /** Format: int64 */
+            packageId: number;
+            kind: string;
+            token: string;
+            name: string;
+            iconUrl?: string | null;
+            quote?: string;
+            sort: number;
+            active: boolean;
+            /** Format: date-time */
+            publishedAt: string;
+            /** Format: int64 */
+            submissionId?: number | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": [
+         *         {
+         *           "packageId": 42,
+         *           "kind": "link",
+         *           "token": "orbit-notes",
+         *           "name": "Orbit Notes",
+         *           "iconUrl": "https://example.com/orbit.png",
+         *           "quote": "Notes, but lighter.",
+         *           "sort": 2,
+         *           "active": true,
+         *           "publishedAt": "2026-11-11T10:00:00Z",
+         *           "submissionId": 11
+         *         }
+         *       ]
+         *     }
+         */
+        DeveloperPickListResponse: {
+            code: string;
+            msg: string;
+            data?: components["schemas"]["DeveloperPickAdmin"][] | null;
+        };
+        /**
+         * @example {
+         *       "packageKind": "cask",
+         *       "packageToken": "ghostty",
+         *       "quote": "A calm terminal.",
+         *       "sort": 1,
+         *       "active": true
+         *     }
+         */
+        DeveloperPickRequest: {
+            packageKind?: string;
+            packageToken: string;
+            quote?: string;
+            sort?: number;
+            active?: boolean;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 42,
+         *         "active": true
+         *       }
+         *     }
+         */
+        DeveloperPickResponse: {
+            code: string;
+            msg: string;
+            data?: {
+                /** Format: int64 */
+                packageId?: number;
+                active?: boolean;
+            } | null;
+        };
     };
     responses: {
         /** @description On success data is null; see code for failures */
@@ -31345,6 +31622,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DueFactRecordListResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    listDeveloperSubmissions: {
+        parameters: {
+            query?: {
+                status?: "submitted" | "in_review" | "changes_requested" | "approved" | "rejected" | "published";
+                limit?: number;
+                /** @description Matches contact email, payload name or DS reference */
+                q?: string;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperSubmissionListResponse"];
+                };
+            };
+        };
+    };
+    getDeveloperSubmission: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperSubmissionResponse"];
+                };
+            };
+        };
+    };
+    updateDeveloperSubmission: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeveloperSubmissionUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperSubmissionResponse"];
+                };
+            };
+        };
+    };
+    listDeveloperPicks: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperPickListResponse"];
+                };
+            };
+        };
+    };
+    setDeveloperPick: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeveloperPickRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperPickResponse"];
                 };
             };
         };

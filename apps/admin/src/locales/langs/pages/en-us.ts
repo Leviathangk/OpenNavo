@@ -1799,6 +1799,57 @@ const pages: PageMessages = {
       moduleCount:
         'Source-language content is translated automatically after saving. The open-source section stays in English and is not translated. {count} dependencies listed; expand JSON to edit the inventory.'
     }
+  },
+  developerReview: {
+    "title": "Developer submissions",
+    "allStatuses": "All statuses",
+    "kind": "Kind",
+    "status": "Status",
+    "contact": "Contact",
+    "created": "Created",
+    "review": "Review",
+    "payload": "Payload",
+    "decisionNote": "Decision note",
+    "feature": "Feature in Developer Picks",
+    "sort": "Pick order",
+    "quote": "Developer quote",
+    "publish": "Publish",
+    "save": "Save",
+    "saved": "Saved",
+    "saveFailed": "Could not save the submission",
+    "loadFailed": "Could not load submissions",
+    "invalidJson": "Payload must be valid JSON",
+    "statuses": {
+      "submitted": "Submitted",
+      "in_review": "In review",
+      "changes_requested": "Changes requested",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "published": "Published"
+    },
+    "kindLabel": "Kind",
+    "sourceLabel": "Source",
+    "proofLabel": "Proof",
+    "statusToken": "Status token",
+    "packageKind": "Package kind",
+    "packageToken": "Package token",
+    "packageTokenPlaceholder": "visual-studio-code",
+
+    "searchPlaceholder": "Search email, DS number or app name",
+  },
+
+  developerPicks:   {
+    "title": "Developer picks",
+    "hint": "Manage the picks above Hot Apps: order, quote and visibility.",
+    "app": "App",
+    "quote": "Developer quote",
+    "sort": "Order",
+    "active": "Active",
+    "publishedAt": "Published",
+    "save": "Save",
+    "saved": "Saved",
+    "saveFailed": "Could not save the pick",
+    "loadFailed": "Could not load picks"
   }
 };
 
