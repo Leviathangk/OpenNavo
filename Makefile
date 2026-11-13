@@ -68,6 +68,12 @@ build-web: ## Build frontend only
 i18n-sync: ## Incrementally sync interface translations: four languages, eight for the desktop app (ARGS="--targets native,server --dry-run")
 	@node tooling/scripts/workspace.mjs i18n-sync $(ARGS)
 
+.PHONY: tap-import cask-verify
+tap-import: ## Import every cask from a third-party tap repository (ARGS="-tap opennavo/tap -dry-run")
+	@node tooling/scripts/workspace.mjs tap-import $(ARGS)
+cask-verify: ## Check one cask file with the catalog's static reader (ARGS="-file Casks/g/ghostty.rb")
+	@node tooling/scripts/workspace.mjs cask-verify $(ARGS)
+
 .PHONY: gen-mcp lint-mcp test-mcp build-mcp dev-mcp
 gen-mcp: ## Generate MCP Python contracts and allowlist only
 	@node tooling/scripts/workspace.mjs gen-mcp

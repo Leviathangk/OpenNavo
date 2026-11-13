@@ -20,6 +20,8 @@ export const tasks = new Set([
   'verify-infra',
   'catalog-sync',
   'analytics-sync',
+  'tap-import',
+  'cask-verify',
   'search-verify',
   'llm-smoke',
   'snapshot-build',
@@ -122,6 +124,14 @@ export function runTask(task) {
       return;
     case 'catalog-sync':
       run('go', ['run', './cmd/catalog-sync'], 'apps/server', developmentEnvironment());
+      return;
+    case 'tap-import':
+      // Registers every cask a third-party tap lists; flags come from `make tap-import ARGS="-tap owner/tap"`.
+      run('go', ['run', './cmd/tap-import', ...process.argv.slice(3)], 'apps/server', developmentEnvironment());
+      return;
+    case 'cask-verify':
+      // Checks one cask file the way the tap sync reads it; no database or configuration is needed.
+      run('go', ['run', './cmd/cask-verify', ...process.argv.slice(3)], 'apps/server');
       return;
     case 'analytics-sync':
       run('go', ['run', './cmd/analytics-sync'], 'apps/server', developmentEnvironment());

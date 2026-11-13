@@ -243,6 +243,12 @@ func (s *Service) readFile(ctx context.Context, tap, sha, path string) (string, 
 // Read locates a cask in its tap, reads it at the newest commit and evaluates it. Errors carry
 // messages meant for the editor (unsupported DSL with its line, missing repository or file).
 func (s *Service) Read(ctx context.Context, fullToken string) (*Candidate, error) {
+	return s.read(ctx, fullToken, true)
+}
+
+// read is Read with an option to skip the file's history. A whole-tap import registers many casks at
+// once and cannot afford a commit listing per cask; the first tap sync backfills history instead.
+func (s *Service) read(ctx context.Context, fullToken string, withHistory bool) (*Candidate, error) {
 	tap, token, err := homebrew.ParseTapCask(fullToken)
 	if err != nil {
 		reason := "cask_name_invalid:cask"
@@ -267,8 +273,10 @@ func (s *Service) Read(ctx context.Context, fullToken string) (*Candidate, error
 			return nil, err
 		}
 		// Older versions let editors write notes for them right away. A failed read is not fatal.
-		if versions, err := s.history(ctx, tap, path, "", map[string]string{head.SHA: candidate.Package.Version}); err == nil {
-			candidate.History, candidate.HistorySHA = versions, head.SHA
+		if withHistory {
+			if versions, err := s.history(ctx, tap, path, "", map[string]string{head.SHA: candidate.Package.Version}); err == nil {
+				candidate.History, candidate.HistorySHA = versions, head.SHA
+			}
 		}
 		return candidate, nil
 	}
