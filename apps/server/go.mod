@@ -1,6 +1,6 @@
 module github.com/opennavo/opennavo/server
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/HugoSmits86/nativewebp v1.3.0
