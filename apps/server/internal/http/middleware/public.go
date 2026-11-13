@@ -76,6 +76,13 @@ func RateLimit(limiter RateLimiter, loggers ...*slog.Logger) gin.HandlerFunc {
 			count, scope = 30, "sitemap"
 		case "/api/v1/feedback":
 			count, window, scope = 5, time.Hour, "feedback"
+		case "/api/v1/developer/fetch":
+			// Outbound metadata reads are the most expensive public call; keep them tight.
+			count, scope = 20, "developer-fetch"
+		case "/api/v1/developer/submissions":
+			count, window, scope = 10, time.Hour, "developer-submit"
+		case "/api/v1/developer/submissions/:token":
+			count, scope = 60, "developer-status"
 		}
 		key := scope + ":" + c.ClientIP()
 		decision, err := limiter.Check(c.Request.Context(), key, count, window)
@@ -179,6 +186,13 @@ func PublicCacheHeaders() gin.HandlerFunc {
 		c.Next()
 		c.Writer = writer.ResponseWriter
 		status := writer.Status()
+		// A handler that marks a response private (for example a receipt lookup) wins over
+		// the path-level public cache policy.
+		if c.Writer.Header().Get("Cache-Control") == "no-store" {
+			c.Writer.WriteHeader(status)
+			_, _ = c.Writer.Write(writer.body.Bytes())
+			return
+		}
 		if status == 200 {
 			hash := sha256.Sum256(writer.body.Bytes())
 			etag := c.Writer.Header().Get("ETag")

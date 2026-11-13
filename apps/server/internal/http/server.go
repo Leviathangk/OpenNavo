@@ -143,6 +143,7 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 	publicGroup := engine.Group("/api/v1", publicMiddleware...)
 	publicHandler := publicapi.NewStrictHandlerWithOptions(publicService, nil, publicapi.StrictGinServerOptions{RequestErrorHandlerFunc: invalid(false), HandlerErrorFunc: fail(false), ResponseErrorHandlerFunc: fail(false)})
 	publicapi.RegisterHandlersWithOptions(publicGroup, publicHandler, publicapi.GinServerOptions{ErrorHandler: func(c *gin.Context, _ error, _ int) { respond.Error(c, domain.Validation(), false) }})
+
 	adminSpec, err := adminapi.GetSpec()
 	if err != nil {
 		return nil, err
@@ -173,6 +174,7 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 			limiter = deps[0].Rate
 		}
 		adminGroup.Use(adminService.Middleware(limiter))
+
 	}
 	adminGroup.Use(func(c *gin.Context) {
 		if strings.HasPrefix(c.GetHeader("Content-Type"), "application/json") {

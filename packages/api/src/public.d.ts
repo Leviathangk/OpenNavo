@@ -624,6 +624,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/developer-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Developer map totals, cities and countries
+         * @description Public read model behind the developer map. Cached for five minutes and rate limited like the rest of the public API.
+         */
+        get: operations["getDeveloperMap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/developer-picks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Developer picks shown above Hot Apps */
+        get: operations["listDeveloperPicks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/developer/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fetch public metadata for a GitHub, App Store or website link
+         * @description Reads only public pages. Rejects private addresses, non-http(s) schemes and oversized responses.
+         */
+        post: operations["fetchDeveloperMetadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/developer/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a new app, a claim, or a location update
+         * @description Anonymous. The receipt carries a random token used to read the submission status without an account.
+         */
+        post: operations["createDeveloperSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/developer/submissions/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read submission status by receipt token */
+        get: operations["getDeveloperSubmission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8498,6 +8592,485 @@ export interface components {
             dependencies: components["schemas"]["PageDecision"];
             details: components["schemas"]["PageDecision"];
         };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "generatedAt": "2026-11-11T10:00:00Z",
+         *         "totals": {
+         *           "developers": 12,
+         *           "located": 9,
+         *           "apps": 4210,
+         *           "locatedApps": 14,
+         *           "places": 7,
+         *           "countries": 5
+         *         },
+         *         "places": [
+         *           {
+         *             "key": "san-francisco",
+         *             "kind": "city",
+         *             "name": "San Francisco",
+         *             "countryCode": "US",
+         *             "region": "americas",
+         *             "lat": 37.7749,
+         *             "lng": -122.4194,
+         *             "developers": 4,
+         *             "apps": 6,
+         *             "installs30d": 120000,
+         *             "topDevelopers": [
+         *               {
+         *                 "name": "Example Studio",
+         *                 "apps": 2,
+         *                 "installs30d": 80000
+         *               }
+         *             ]
+         *           }
+         *         ],
+         *         "countries": [
+         *           {
+         *             "code": "US",
+         *             "developers": 7,
+         *             "apps": 9,
+         *             "installs30d": 200000
+         *           }
+         *         ],
+         *         "recentDevelopers": [
+         *           {
+         *             "name": "Example Studio",
+         *             "cityKey": "san-francisco",
+         *             "city": "San Francisco",
+         *             "countryCode": "US",
+         *             "apps": 2,
+         *             "updatedAt": "2026-11-11T09:00:00Z"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        DeveloperMapResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["DeveloperMap"];
+        };
+        /**
+         * @example {
+         *       "generatedAt": "2026-11-11T10:00:00Z",
+         *       "totals": {
+         *         "developers": 12,
+         *         "located": 9,
+         *         "apps": 4210,
+         *         "locatedApps": 14,
+         *         "places": 7,
+         *         "countries": 5
+         *       },
+         *       "places": [
+         *         {
+         *           "key": "san-francisco",
+         *           "kind": "city",
+         *           "name": "San Francisco",
+         *           "countryCode": "US",
+         *           "region": "americas",
+         *           "lat": 37.7749,
+         *           "lng": -122.4194,
+         *           "developers": 4,
+         *           "apps": 6,
+         *           "installs30d": 120000,
+         *           "topDevelopers": [
+         *             {
+         *               "name": "Example Studio",
+         *               "apps": 2,
+         *               "installs30d": 80000
+         *             }
+         *           ]
+         *         }
+         *       ],
+         *       "countries": [
+         *         {
+         *           "code": "US",
+         *           "developers": 7,
+         *           "apps": 9,
+         *           "installs30d": 200000
+         *         }
+         *       ],
+         *       "recentDevelopers": [
+         *         {
+         *           "name": "Example Studio",
+         *           "cityKey": "san-francisco",
+         *           "city": "San Francisco",
+         *           "countryCode": "US",
+         *           "apps": 2,
+         *           "updatedAt": "2026-11-11T09:00:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        DeveloperMap: {
+            /** Format: date-time */
+            generatedAt: string;
+            totals: {
+                /** @example 12 */
+                developers: number;
+                /** @example 9 */
+                located: number;
+                /** @example 4210 */
+                apps: number;
+                /** @example 14 */
+                locatedApps: number;
+                /** @example 7 */
+                places: number;
+                /** @example 5 */
+                countries: number;
+            };
+            places: {
+                /** @example san-francisco */
+                key: string;
+                /** @enum {string} */
+                kind: "city" | "country";
+                /** @example San Francisco */
+                name: string;
+                /** @example US */
+                countryCode: string;
+                /** @enum {string} */
+                region: "americas" | "europe" | "apac" | "other";
+                /** Format: double */
+                lat: number;
+                /** Format: double */
+                lng: number;
+                developers: number;
+                apps: number;
+                /** Format: int64 */
+                installs30d: number;
+                topDevelopers: {
+                    name: string;
+                    apps: number;
+                    /** Format: int64 */
+                    installs30d: number;
+                }[];
+            }[];
+            countries: {
+                /** @example US */
+                code: string;
+                developers: number;
+                apps: number;
+                /** Format: int64 */
+                installs30d: number;
+            }[];
+            recentDevelopers: {
+                name: string;
+                cityKey: string;
+                city: string;
+                countryCode: string;
+                apps: number;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+        };
+        /**
+         * @example {
+         *       "package": {
+         *         "kind": "cask",
+         *         "token": "ghostty",
+         *         "name": "Ghostty",
+         *         "displayName": "Ghostty",
+         *         "version": "1.2.0",
+         *         "installs30d": 12000,
+         *         "autoUpdates": true,
+         *         "deprecated": false,
+         *         "disabled": false,
+         *         "isFont": false,
+         *         "isLibrary": false,
+         *         "editorChoice": true,
+         *         "versionChangedAt": "2026-11-01T00:00:00Z"
+         *       },
+         *       "quote": "A calm terminal that stays out of the way.",
+         *       "publishedAt": "2026-11-11T09:30:00Z"
+         *     }
+         */
+        DeveloperPick: {
+            package: components["schemas"]["PackageSummary"];
+            quote: string;
+            /** Format: date-time */
+            publishedAt: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": [
+         *         {
+         *           "package": {
+         *             "kind": "cask",
+         *             "token": "ghostty",
+         *             "name": "Ghostty",
+         *             "displayName": "Ghostty",
+         *             "version": "1.2.0",
+         *             "installs30d": 12000,
+         *             "autoUpdates": true,
+         *             "deprecated": false,
+         *             "disabled": false,
+         *             "isFont": false,
+         *             "isLibrary": false,
+         *             "editorChoice": true,
+         *             "versionChangedAt": "2026-11-01T00:00:00Z"
+         *           },
+         *           "quote": "A calm terminal that stays out of the way.",
+         *           "publishedAt": "2026-11-11T09:30:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        DeveloperPicksResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["DeveloperPick"][];
+        };
+        /**
+         * @example {
+         *       "url": "https://github.com/ghostty-org/ghostty"
+         *     }
+         */
+        DeveloperFetchRequest: {
+            /**
+             * Format: uri
+             * @example https://github.com/ghostty-org/ghostty
+             */
+            url: string;
+        };
+        /**
+         * @example {
+         *       "source": "github",
+         *       "name": "Ghostty",
+         *       "summary": "Fast, native terminal for macOS.",
+         *       "description": "A terminal emulator.",
+         *       "developer": "Ghostty",
+         *       "homepage": "https://ghostty.org",
+         *       "repoUrl": "https://github.com/ghostty-org/ghostty",
+         *       "downloadUrl": "https://ghostty.org/download",
+         *       "iconUrl": "https://ghostty.org/icon.png",
+         *       "version": "1.2.0",
+         *       "minMacos": "13",
+         *       "category": "developer-tools",
+         *       "license": "MIT",
+         *       "warnings": []
+         *     }
+         */
+        DeveloperFetchResult: {
+            /** @enum {string} */
+            source: "github" | "appstore" | "website";
+            name: string;
+            summary: string;
+            description: string;
+            developer: string;
+            homepage: string;
+            repoUrl: string;
+            downloadUrl: string;
+            iconUrl: string;
+            version: string;
+            minMacos: string;
+            category: string;
+            license: string;
+            warnings: string[];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "source": "github",
+         *         "name": "Ghostty",
+         *         "summary": "Fast, native terminal for macOS.",
+         *         "description": "A terminal emulator.",
+         *         "developer": "Ghostty",
+         *         "homepage": "https://ghostty.org",
+         *         "repoUrl": "https://github.com/ghostty-org/ghostty",
+         *         "downloadUrl": "https://ghostty.org/download",
+         *         "iconUrl": "https://ghostty.org/icon.png",
+         *         "version": "1.2.0",
+         *         "minMacos": "13",
+         *         "category": "developer-tools",
+         *         "license": "MIT",
+         *         "warnings": []
+         *       }
+         *     }
+         */
+        DeveloperFetchResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["DeveloperFetchResult"];
+        };
+        /**
+         * @example {
+         *       "kind": "new",
+         *       "sourceKind": "github",
+         *       "sourceUrl": "https://github.com/ghostty-org/ghostty",
+         *       "contactEmail": "dev@example.com",
+         *       "payload": {
+         *         "name": "Ghostty",
+         *         "summary": "Fast, native terminal for macOS.",
+         *         "developer": "Ghostty",
+         *         "homepage": "https://ghostty.org",
+         *         "repoUrl": "https://github.com/ghostty-org/ghostty",
+         *         "countryCode": "US",
+         *         "city": "San Francisco"
+         *       },
+         *       "proof": "",
+         *       "website": ""
+         *     }
+         */
+        DeveloperSubmissionCreateRequest: {
+            /** @enum {string} */
+            kind: "new" | "claim" | "location";
+            /** @enum {string} */
+            sourceKind?: "github" | "appstore" | "website";
+            sourceUrl?: string;
+            /** @enum {string} */
+            packageKind?: "cask" | "link";
+            packageToken?: string;
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Format: email */
+            contactEmail: string;
+            proof?: string;
+            /** @description Honeypot. A non-empty value returns a fake success and stores nothing. */
+            website?: string;
+        };
+        /**
+         * @example {
+         *       "id": 123,
+         *       "reference": "DS-000123",
+         *       "token": "example-receipt-token-0000000001",
+         *       "statusUrl": "https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001"
+         *     }
+         */
+        DeveloperSubmissionReceipt: {
+            /** Format: int64 */
+            id: number;
+            /** @example DS-000123 */
+            reference: string;
+            /** @example example-receipt-token-0000000001 */
+            token: string;
+            /** @example https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001 */
+            statusUrl: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 123,
+         *         "reference": "DS-000123",
+         *         "token": "example-receipt-token-0000000001",
+         *         "statusUrl": "https://opennavo.com/developer-map?tab=submit&submission=example-receipt-token-0000000001"
+         *       }
+         *     }
+         */
+        DeveloperSubmissionReceiptResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["DeveloperSubmissionReceipt"];
+        };
+        /**
+         * @example {
+         *       "reference": "DS-000123",
+         *       "kind": "new",
+         *       "status": "published",
+         *       "createdAt": "2026-11-10T10:00:00Z",
+         *       "updatedAt": "2026-11-11T10:00:00Z",
+         *       "decidedAt": "2026-11-11T10:00:00Z",
+         *       "decisionNote": "Approved after a quick look.",
+         *       "package": {
+         *         "kind": "link",
+         *         "token": "ghostty",
+         *         "name": "Ghostty"
+         *       },
+         *       "events": [
+         *         {
+         *           "status": "submitted",
+         *           "actor": "developer",
+         *           "createdAt": "2026-11-10T10:00:00Z"
+         *         },
+         *         {
+         *           "status": "published",
+         *           "note": "Approved after a quick look.",
+         *           "actor": "admin",
+         *           "createdAt": "2026-11-11T10:00:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        DeveloperSubmissionStatus: {
+            /** @example DS-000123 */
+            reference: string;
+            /** @enum {string} */
+            kind: "new" | "claim" | "location";
+            /** @enum {string} */
+            status: "submitted" | "in_review" | "changes_requested" | "approved" | "rejected" | "published";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            decidedAt?: string | null;
+            decisionNote?: string | null;
+            package?: {
+                kind: string;
+                token: string;
+                name: string;
+            } | null;
+            events: {
+                status: string;
+                note?: string | null;
+                /** @enum {string} */
+                actor: "developer" | "admin" | "system";
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "reference": "DS-000123",
+         *         "kind": "new",
+         *         "status": "published",
+         *         "createdAt": "2026-11-10T10:00:00Z",
+         *         "updatedAt": "2026-11-11T10:00:00Z",
+         *         "decidedAt": "2026-11-11T10:00:00Z",
+         *         "decisionNote": "Approved after a quick look.",
+         *         "package": {
+         *           "kind": "link",
+         *           "token": "ghostty",
+         *           "name": "Ghostty"
+         *         },
+         *         "events": [
+         *           {
+         *             "status": "submitted",
+         *             "actor": "developer",
+         *             "createdAt": "2026-11-10T10:00:00Z"
+         *           },
+         *           {
+         *             "status": "published",
+         *             "note": "Approved after a quick look.",
+         *             "actor": "admin",
+         *             "createdAt": "2026-11-11T10:00:00Z"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        DeveloperSubmissionStatusResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["DeveloperSubmissionStatus"];
+        };
     };
     responses: {
         /** @description Error response. code is a stable numeric OpenNavo error code, msg a localized message, and data is null. */
@@ -9636,6 +10209,162 @@ export interface operations {
                 };
                 content?: never;
             };
+            default: components["responses"]["Error"];
+        };
+    };
+    getDeveloperMap: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperMapResponse"];
+                };
+            };
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listDeveloperPicks: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (the ten site languages, matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperPicksResponse"];
+                };
+            };
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    fetchDeveloperMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "url": "https://apps.apple.com/us/app/things-3/id904237743"
+                 *     }
+                 */
+                "application/json": components["schemas"]["DeveloperFetchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperFetchResponse"];
+                };
+            };
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    createDeveloperSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "kind": "new",
+                 *       "sourceKind": "github",
+                 *       "sourceUrl": "https://github.com/ghostty-org/ghostty",
+                 *       "payload": {
+                 *         "name": "Ghostty",
+                 *         "summary": "Fast, native terminal for macOS.",
+                 *         "developer": "Ghostty",
+                 *         "category": "developer-tools",
+                 *         "homepage": "https://ghostty.org",
+                 *         "repoUrl": "https://github.com/ghostty-org/ghostty",
+                 *         "downloadUrl": "https://ghostty.org/download",
+                 *         "countryCode": "US",
+                 *         "city": "San Francisco",
+                 *         "remote": true
+                 *       },
+                 *       "contactEmail": "dev@example.com",
+                 *       "proof": "",
+                 *       "website": ""
+                 *     }
+                 */
+                "application/json": components["schemas"]["DeveloperSubmissionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperSubmissionReceiptResponse"];
+                };
+            };
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getDeveloperSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 32-character hex receipt token returned when the submission was created. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperSubmissionStatusResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

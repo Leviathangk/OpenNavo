@@ -171,6 +171,23 @@ func (s *Store) RemoveLinkApp(ctx context.Context, id int64) error {
 	return s.linkChanged(ctx, id, "delete", "removed", nil)
 }
 
+// RestoreLinkApp brings a removed link package back with the same token, curated
+// metadata and history. It is the undo for a withdrawal, so republishing keeps the
+// public URL instead of minting a suffixed token.
+func (s *Store) RestoreLinkApp(ctx context.Context, id int64) error {
+	if err := LockCatalogWrites(ctx, s.DB); err != nil {
+		return err
+	}
+	r := s.DB.WithContext(ctx).Exec("UPDATE packages SET removed_at=NULL,updated_at=now() WHERE id=? AND kind='link' AND removed_at IS NOT NULL", id)
+	if r.Error != nil {
+		return r.Error
+	}
+	if r.RowsAffected != 1 {
+		return &domain.AppError{Code: domain.CodeNotFound, HTTPStatus: 404}
+	}
+	return s.linkChanged(ctx, id, "upsert", "created", nil)
+}
+
 // linkChanged records a link app change for snapshots, the URL change feed and catalog activity. event is
 // created, updated (a new version), removed or empty for a definition edit; the row carries the current
 // version, and previous names the version an update replaced.

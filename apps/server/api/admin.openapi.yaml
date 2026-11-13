@@ -13750,6 +13750,270 @@ paths:
         - bearerAuth: []
         - agentToken: []
           agentGateway: []
+  /developer/submissions:
+    get:
+      tags: [developer]
+      operationId: listDeveloperSubmissions
+      summary: 'Developer submissions'
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [submitted, in_review, changes_requested, approved, rejected, published]
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+        - name: q
+          in: query
+          description: 'Matches contact email, payload name or DS reference'
+          schema: {type: string, maxLength: 200}
+        - $ref: '#/components/parameters/AgentTool'
+        - $ref: '#/components/parameters/AgentRequestId'
+        - $ref: '#/components/parameters/AgentClientIP'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeveloperSubmissionListResponse'}
+              examples:
+                en-US:
+                  value: {"code": "0000", "msg": "ok", "data": [{"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "submitted", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": null, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": null, "decisionNote": null, "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": null}]}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1submissions/get/responses/200/content/application~1json/examples/en-US'
+      x-permissions: [catalog:package:edit]
+      x-agent-access: {permissions: [catalog:package:edit], deleteAction: never}
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /developer/submissions/{id}:
+    get:
+      tags: [developer]
+      operationId: getDeveloperSubmission
+      summary: 'Developer submission'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+        - $ref: '#/components/parameters/AgentTool'
+        - $ref: '#/components/parameters/AgentRequestId'
+        - $ref: '#/components/parameters/AgentClientIP'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeveloperSubmissionResponse'}
+              examples:
+                en-US:
+                  value: {"code": "0000", "msg": "ok", "data": {"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "submitted", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": null, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": null, "decisionNote": null, "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": null}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+      x-permissions: [catalog:package:edit]
+      x-agent-access: {permissions: [catalog:package:edit], deleteAction: never}
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+    patch:
+      tags: [developer]
+      operationId: updateDeveloperSubmission
+      summary: 'Review a developer submission'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+        - name: dryRun
+          in: query
+          schema: {type: boolean, default: false}
+        - $ref: '#/components/parameters/AgentTool'
+        - $ref: '#/components/parameters/AgentRequestId'
+        - $ref: '#/components/parameters/AgentClientIP'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeveloperSubmissionUpdate'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeveloperSubmissionResponse'}
+              examples:
+                dry-run:
+                  value: {"code": "0000", "msg": "ok", "data": {"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "published", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": 42, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": 1, "decisionNote": "Approved.", "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": "2026-11-11T10:00:00Z"}}
+                en-US:
+                  value: {"code": "0000", "msg": "ok", "data": {"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "submitted", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": null, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": null, "decisionNote": null, "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": null}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1submissions~1{id}/get/responses/200/content/application~1json/examples/en-US'
+      x-permissions: [catalog:package:edit]
+      x-agent-access: {permissions: [catalog:package:edit], deleteAction: never}
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /developer/picks:
+    get:
+      tags: [developer]
+      operationId: listDeveloperPicks
+      summary: 'Developer picks, active or not'
+      parameters:
+        - $ref: '#/components/parameters/AgentTool'
+        - $ref: '#/components/parameters/AgentRequestId'
+        - $ref: '#/components/parameters/AgentClientIP'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeveloperPickListResponse'}
+              examples:
+                en-US:
+                  value: {"code":"0000","msg":"ok","data":[{"packageId":42,"kind":"link","token":"orbit-notes","name":"Orbit Notes","iconUrl":"https://example.com/orbit.png","quote":"Notes, but lighter.","sort":2,"active":true,"publishedAt":"2026-11-11T10:00:00Z","submissionId":11}]}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1picks/get/responses/200/content/application~1json/examples/en-US'
+      x-permissions: [catalog:package:edit]
+      x-agent-access: {permissions: [catalog:package:edit], deleteAction: never}
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+    post:
+      tags: [developer]
+      operationId: setDeveloperPick
+      summary: 'Feature a developer pick'
+      parameters:
+        - name: dryRun
+          in: query
+          schema: {type: boolean, default: false}
+        - $ref: '#/components/parameters/AgentTool'
+        - $ref: '#/components/parameters/AgentRequestId'
+        - $ref: '#/components/parameters/AgentClientIP'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeveloperPickRequest'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeveloperPickResponse'}
+              examples:
+                dry-run:
+                  value: {"code": "0000", "msg": "ok", "data": {"packageId": 42, "active": true}}
+                en-US:
+                  value: {"code": "0000", "msg": "ok", "data": {"packageId": 42, "active": true}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1picks/post/responses/200/content/application~1json/examples/en-US'
+      x-permissions: [catalog:package:edit]
+      x-agent-access: {permissions: [catalog:package:edit], deleteAction: never}
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+
 components:
   securitySchemes:
     bearerAuth:
@@ -37760,6 +38024,112 @@ components:
           total: 0
           withinDays: 14
           records: []
+    DeveloperSubmission:
+      example: {"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "submitted", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": null, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": null, "decisionNote": null, "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": null}
+      type: object
+      required: [id, kind, status, contactEmail, payload, createdAt, updatedAt]
+      properties:
+        id: {type: integer, format: int64}
+        publicToken: {type: string}
+        kind: {type: string, enum: [new, claim, location]}
+        status: {type: string, enum: [submitted, in_review, changes_requested, approved, rejected, published]}
+        sourceKind: {type: string}
+        sourceUrl: {type: string}
+        packageId: {type: integer, format: int64, nullable: true}
+        payload: {type: object, additionalProperties: true}
+        contactEmail: {type: string}
+        proof: {type: string}
+        reviewerId: {type: integer, format: int64, nullable: true}
+        decisionNote: {type: string, nullable: true}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        decidedAt: {type: string, format: date-time, nullable: true}
+    DeveloperSubmissionListResponse:
+      example: {"code": "0000", "msg": "ok", "data": [{"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "submitted", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": null, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": null, "decisionNote": null, "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": null}]}
+      type: object
+      required: [code, msg]
+      properties:
+        code: {type: string}
+        msg: {type: string}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/DeveloperSubmission'}
+          nullable: true
+    DeveloperSubmissionResponse:
+      example: {"code": "0000", "msg": "ok", "data": {"id": 7, "publicToken": "example-receipt-token-0000000002", "kind": "new", "status": "submitted", "sourceKind": "github", "sourceUrl": "https://github.com/example/hyperfocus", "packageId": null, "payload": {"name": "Hyperfocus Timer", "summary": "A tiny focus timer for macOS."}, "contactEmail": "dev@example.com", "proof": "", "reviewerId": null, "decisionNote": null, "createdAt": "2026-11-11T10:00:00Z", "updatedAt": "2026-11-11T10:00:00Z", "decidedAt": null}}
+      type: object
+      required: [code, msg]
+      properties:
+        code: {type: string}
+        msg: {type: string}
+        data:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/DeveloperSubmission'
+          nullable: true
+    DeveloperSubmissionUpdate:
+      example: {"status": "published", "decisionNote": "Approved.", "feature": true, "quote": "A calm timer.", "sort": 1}
+      type: object
+      properties:
+        status: {type: string, enum: [submitted, in_review, changes_requested, approved, rejected, published]}
+        decisionNote: {type: string, nullable: true}
+        payload: {type: object, additionalProperties: true}
+        packageKind: {type: string}
+        packageToken: {type: string}
+        feature: {type: boolean}
+        quote: {type: string}
+        sort: {type: integer}
+    DeveloperPickAdmin:
+      type: object
+      required: [packageId, kind, token, name, sort, active, publishedAt]
+      properties:
+        packageId: {type: integer, format: int64}
+        kind: {type: string}
+        token: {type: string}
+        name: {type: string}
+        iconUrl: {type: string, nullable: true}
+        quote: {type: string}
+        sort: {type: integer}
+        active: {type: boolean}
+        publishedAt: {type: string, format: date-time}
+        submissionId: {type: integer, format: int64, nullable: true}
+      example: {"packageId":42,"kind":"link","token":"orbit-notes","name":"Orbit Notes","iconUrl":"https://example.com/orbit.png","quote":"Notes, but lighter.","sort":2,"active":true,"publishedAt":"2026-11-11T10:00:00Z","submissionId":11}
+    DeveloperPickListResponse:
+      type: object
+      required: [code, msg]
+      properties:
+        code: {type: string}
+        msg: {type: string}
+        data:
+          type: array
+          nullable: true
+          items: {$ref: '#/components/schemas/DeveloperPickAdmin'}
+      example: {"code":"0000","msg":"ok","data":[{"packageId":42,"kind":"link","token":"orbit-notes","name":"Orbit Notes","iconUrl":"https://example.com/orbit.png","quote":"Notes, but lighter.","sort":2,"active":true,"publishedAt":"2026-11-11T10:00:00Z","submissionId":11}]}
+    DeveloperPickRequest:
+      example: {"packageKind": "cask", "packageToken": "ghostty", "quote": "A calm terminal.", "sort": 1, "active": true}
+      type: object
+      required: [packageToken]
+      properties:
+        packageKind: {type: string}
+        packageToken: {type: string}
+        quote: {type: string}
+        sort: {type: integer}
+        active: {type: boolean}
+    DeveloperPickResponse:
+      example: {"code": "0000", "msg": "ok", "data": {"packageId": 42, "active": true}}
+      type: object
+      required: [code, msg]
+      properties:
+        code: {type: string}
+        msg: {type: string}
+        data:
+          type: object
+          nullable: true
+          properties:
+            packageId: {type: integer, format: int64}
+            active: {type: boolean}
+
+
   examples:
     UsageIntradayResponse:
       value: *usageIntradayResponseExample

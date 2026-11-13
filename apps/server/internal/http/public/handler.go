@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/developer"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/http/respond"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
@@ -19,10 +20,11 @@ import (
 
 // Replace Handler placeholder methods individually in the corresponding business tasks.
 type Handler struct {
-	Desktop  *desktop.Service
-	Snapshot *snapshot.Service
-	Catalog  *catalog.PublicService
-	Search   *search.Service
+	Desktop   *desktop.Service
+	Snapshot  *snapshot.Service
+	Catalog   *catalog.PublicService
+	Search    *search.Service
+	Developer *developer.Client
 }
 
 func requestContext(ctx context.Context) context.Context {

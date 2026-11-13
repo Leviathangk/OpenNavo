@@ -15,7 +15,7 @@ import (
 
 func Main() {
 	if err := run(); err != nil {
-		slog.Error("migration failed")
+		slog.Error("migration failed", "error", err)
 		os.Exit(1)
 	}
 }

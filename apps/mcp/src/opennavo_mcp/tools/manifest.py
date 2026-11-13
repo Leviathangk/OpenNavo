@@ -130,6 +130,16 @@ TOOLS = (
         write=True,
         delete=True,
     ),
+    tool("developer_submissions_list", "catalog:package:edit", "listDeveloperSubmissions"),
+    tool("developer_picks_list", "catalog:package:edit", "listDeveloperPicks"),
+    tool("developer_submission_get", "catalog:package:edit", "getDeveloperSubmission"),
+    tool(
+        "developer_submission_update",
+        "catalog:package:edit",
+        "updateDeveloperSubmission",
+        write=True,
+    ),
+    tool("developer_pick_set", "catalog:package:edit", "setDeveloperPick", write=True),
     tool("tap_packages_list", "catalog:package:view", "listTapPackages"),
     tool("tap_package_add", "catalog:package:edit", "addTapPackage", write=True),
     tool(

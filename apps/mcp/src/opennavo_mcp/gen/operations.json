@@ -763,6 +763,27 @@
     },
     "summary": "Client release details"
   },
+  "getDeveloperSubmission": {
+    "body": null,
+    "headerNames": {},
+    "method": "GET",
+    "model": "GetDeveloperSubmissionInput",
+    "parameters": {
+      "header": [],
+      "path": [
+        "id"
+      ],
+      "query": []
+    },
+    "path": "/developer/submissions/{id}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Developer submission"
+  },
   "getFeature": {
     "body": null,
     "headerNames": {},
@@ -1375,6 +1396,48 @@
       ]
     },
     "summary": "Client release list"
+  },
+  "listDeveloperPicks": {
+    "body": null,
+    "headerNames": {},
+    "method": "GET",
+    "model": "ListDeveloperPicksInput",
+    "parameters": {
+      "header": [],
+      "path": [],
+      "query": []
+    },
+    "path": "/developer/picks",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Developer picks, active or not"
+  },
+  "listDeveloperSubmissions": {
+    "body": null,
+    "headerNames": {},
+    "method": "GET",
+    "model": "ListDeveloperSubmissionsInput",
+    "parameters": {
+      "header": [],
+      "path": [],
+      "query": [
+        "status",
+        "limit",
+        "q"
+      ]
+    },
+    "path": "/developer/submissions",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Developer submissions"
   },
   "listDueFactRecords": {
     "body": null,
@@ -2327,6 +2390,29 @@
     },
     "summary": "Set collection recommendation criteria"
   },
+  "setDeveloperPick": {
+    "body": {
+      "$ref": "#/components/schemas/DeveloperPickRequest"
+    },
+    "headerNames": {},
+    "method": "POST",
+    "model": "SetDeveloperPickInput",
+    "parameters": {
+      "header": [],
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/developer/picks",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Feature a developer pick"
+  },
   "setPackageAlternatives": {
     "body": {
       "$ref": "#/components/schemas/PackageAlternativesUpdate"
@@ -2847,6 +2933,31 @@
       ]
     },
     "summary": "Edit client release notes only"
+  },
+  "updateDeveloperSubmission": {
+    "body": {
+      "$ref": "#/components/schemas/DeveloperSubmissionUpdate"
+    },
+    "headerNames": {},
+    "method": "PATCH",
+    "model": "UpdateDeveloperSubmissionInput",
+    "parameters": {
+      "header": [],
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/developer/submissions/{id}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Review a developer submission"
   },
   "updateFeature": {
     "body": {

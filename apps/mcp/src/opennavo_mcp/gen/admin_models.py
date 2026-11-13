@@ -3540,6 +3540,85 @@ class DueFactRecordListResult(BaseModel):
     data: DueFactRecordList
 
 
+class DeveloperSubmission(BaseModel):
+    id: int
+    publicToken: str | MISSING = MISSING
+    kind: Literal['new', 'claim', 'location']
+    status: Literal['submitted', 'in_review', 'changes_requested', 'approved', 'rejected', 'published']
+    sourceKind: str | MISSING = MISSING
+    sourceUrl: str | MISSING = MISSING
+    packageId: int | None | MISSING = MISSING
+    payload: dict[str, Any]
+    contactEmail: str
+    proof: str | MISSING = MISSING
+    reviewerId: int | None | MISSING = MISSING
+    decisionNote: str | None | MISSING = MISSING
+    createdAt: AwareDatetime
+    updatedAt: AwareDatetime
+    decidedAt: AwareDatetime | None | MISSING = MISSING
+
+
+class DeveloperSubmissionListResponse(BaseModel):
+    code: str
+    msg: str
+    data: list[DeveloperSubmission] | None | MISSING = MISSING
+
+
+class DeveloperSubmissionResponse(BaseModel):
+    code: str
+    msg: str
+    data: DeveloperSubmission | None | MISSING = MISSING
+
+
+class DeveloperSubmissionUpdate(BaseModel):
+    status: Literal['submitted', 'in_review', 'changes_requested', 'approved', 'rejected', 'published'] | MISSING = MISSING
+    decisionNote: str | None | MISSING = MISSING
+    payload: dict[str, Any] | MISSING = MISSING
+    packageKind: str | MISSING = MISSING
+    packageToken: str | MISSING = MISSING
+    feature: bool | MISSING = MISSING
+    quote: str | MISSING = MISSING
+    sort: int | MISSING = MISSING
+
+
+class DeveloperPickAdmin(BaseModel):
+    packageId: int
+    kind: str
+    token: str
+    name: str
+    iconUrl: str | None | MISSING = MISSING
+    quote: str | MISSING = MISSING
+    sort: int
+    active: bool
+    publishedAt: AwareDatetime
+    submissionId: int | None | MISSING = MISSING
+
+
+class DeveloperPickListResponse(BaseModel):
+    code: str
+    msg: str
+    data: list[DeveloperPickAdmin] | None | MISSING = MISSING
+
+
+class DeveloperPickRequest(BaseModel):
+    packageKind: str | MISSING = MISSING
+    packageToken: str
+    quote: str | MISSING = MISSING
+    sort: int | MISSING = MISSING
+    active: bool | MISSING = MISSING
+
+
+class Data28(BaseModel):
+    packageId: int | MISSING = MISSING
+    active: bool | MISSING = MISSING
+
+
+class DeveloperPickResponse(BaseModel):
+    code: str
+    msg: str
+    data: Data28 | None | MISSING = MISSING
+
+
 class GetTranslationsSourceInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -4603,6 +4682,45 @@ class ListDueFactRecordsInput(BaseModel):
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
     withinDays: Annotated[int, Field(examples=[14], ge=0, le=90)] = 14
     kind: Annotated[Literal['integration', 'issue', 'compatibility', 'attribute', 'migration', 'security', 'price'] | MISSING, Field(examples=['attribute'])] = MISSING
+
+
+class ListDeveloperSubmissionsInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    status: Literal['submitted', 'in_review', 'changes_requested', 'approved', 'rejected', 'published'] | MISSING = MISSING
+    limit: Annotated[int, Field(ge=1, le=100)] = 50
+    q: Annotated[str | MISSING, Field(max_length=200)] = MISSING
+
+
+class GetDeveloperSubmissionInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: int
+
+
+class UpdateDeveloperSubmissionInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: int
+    dryRun: bool = False
+    body: DeveloperSubmissionUpdate
+
+
+class ListDeveloperPicksInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+
+
+class SetDeveloperPickInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: bool = False
+    body: DeveloperPickRequest
 
 
 class TranslationReadFields(BaseModel):

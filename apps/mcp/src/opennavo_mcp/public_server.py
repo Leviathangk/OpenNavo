@@ -128,7 +128,15 @@ class PublicAPIClient:
     def _url(self, endpoint: str) -> str:
         if not endpoint.startswith("/") or "//" in endpoint or ".." in endpoint:
             raise ValueError("invalid public API endpoint")
-        allowed = ("/categories", "/search", "/packages/", "/rankings", "/collections", "/articles")
+        allowed = (
+            "/categories",
+            "/search",
+            "/packages/",
+            "/rankings",
+            "/collections",
+            "/articles",
+            "/developer-map",
+        )
         if not any(
             endpoint.startswith(prefix)
             if prefix.endswith("/")
@@ -365,7 +373,7 @@ def _tool_annotations() -> ToolAnnotations:
 
 
 def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
-    """Register only the nine anonymous public tools."""
+    """Register only the ten anonymous public tools."""
 
     annotations = _tool_annotations()
 
@@ -699,6 +707,55 @@ def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
                 "collections": records,
             },
             f"{PUBLIC_SITE}/collections",
+        )
+
+    @server.tool(
+        name="developer_map",
+        description=(
+            "Read the public OpenNavo developer map: developer and app totals, "
+            "cities with their top developers, and country counts."
+        ),
+        annotations=annotations,
+    )
+    async def developer_map(
+        limit: Annotated[int, Field(ge=1, le=12)] = 8,
+        locale: Annotated[str | None, Field(max_length=16)] = None,
+    ) -> dict[str, Any]:
+        data = await api.get("/developer-map", _locale_params(locale))
+        source = _map(data)
+        totals = _map(source.get("totals"))
+        places = [
+            _pick(
+                _map(item),
+                "name",
+                "countryCode",
+                "region",
+                "developers",
+                "apps",
+                "installs30d",
+            )
+            for item in _list(source.get("places"))[:limit]
+        ]
+        countries = [
+            _pick(_map(item), "code", "developers", "apps", "installs30d")
+            for item in _list(source.get("countries"))[:limit]
+        ]
+        return fit_public_output(
+            {
+                "link": f"{PUBLIC_SITE}/developer-map",
+                "totals": _pick(
+                    totals,
+                    "developers",
+                    "located",
+                    "apps",
+                    "locatedApps",
+                    "places",
+                    "countries",
+                ),
+                "places": places,
+                "countries": countries,
+            },
+            f"{PUBLIC_SITE}/developer-map",
         )
 
     @server.tool(

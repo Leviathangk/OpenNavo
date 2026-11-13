@@ -142,7 +142,7 @@ func (s *Store) Alternatives(ctx context.Context, id int64, publicOnly bool) ([]
 		condition = " AND " + visible + " AND NOT " + PackageDisabledSQL
 	}
 	err := s.DB.WithContext(ctx).Raw(`SELECT a.alternative_id,to_jsonb(a.reasons)::text AS reasons,to_jsonb(a.limits)::text AS limits,a.best_for,a.note,a.source,
- p.token,p.name,COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,ia.url AS icon_url,
+ p.token,p.name,COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,COALESCE(ia.url,m.icon_url) AS icon_url,
  (`+visible+` AND NOT `+PackageDisabledSQL+`) AS available
  FROM package_alternatives a JOIN packages p ON p.id=a.alternative_id LEFT JOIN package_meta m ON m.package_id=p.id
  LEFT JOIN package_i18n si ON si.package_id=p.id AND si.locale=p.source_locale LEFT JOIN assets ia ON ia.id=m.icon_asset_id
