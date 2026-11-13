@@ -35,7 +35,6 @@ const expected: Record<Role, Array<[string, string[]]>> = {
   R_REVIEWER: [
     ['仪表盘', []],
     ['目录', ['包管理']],
-    ['开发者', ['提交审核', '开发者精选']],
     ['版本记录', ['版本列表', '翻译管理']]
   ],
   R_OPS: [
@@ -59,8 +58,11 @@ for (const [role, menu] of Object.entries(expected) as Array<[Role, Array<[strin
 
 test('Direct access without the required role shows 403', async ({ page }) => {
   await loginAs(page, 'R_REVIEWER');
-  await page.goto('/system/user');
-  await page.waitForURL('**/403');
+  // The developer pages need catalog:package:edit, which the translation reviewer does not hold.
+  for (const path of ['/system/user', '/developer/review', '/developer/picks']) {
+    await page.goto(path);
+    await page.waitForURL('**/403');
+  }
 });
 
 test('Details highlight their parent menu; Profile opens from the avatar menu', async ({ page }) => {
