@@ -254,7 +254,7 @@ export const generatedRoutes: GeneratedRoute[] = [
           title: 'developer_picks',
           i18nKey: 'route.developer_picks',
           order: 2,
-          roles: ['R_ADMIN', 'R_EDITOR', 'R_REVIEWER']
+          roles: ['R_ADMIN', 'R_EDITOR']
         }
       },
       {
@@ -265,7 +265,7 @@ export const generatedRoutes: GeneratedRoute[] = [
           title: 'developer_review',
           i18nKey: 'route.developer_review',
           order: 1,
-          roles: ['R_ADMIN', 'R_EDITOR', 'R_REVIEWER']
+          roles: ['R_ADMIN', 'R_EDITOR']
         }
       }
     ]
