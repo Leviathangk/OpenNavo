@@ -13,7 +13,7 @@ import (
 
 // Every live FK into packages has an explicit policy below. Audit snapshots also
 // include colliding rows and overflow alternatives; history keeps its original IDs.
-var linkMergeTables = append([]string{"package_meta", "package_i18n", "package_categories", "package_screenshots", "package_versions", "releases", "changelog_sources", "analytics_snapshots", "collection_items", "features", "feedback", "package_aliases", "tap_casks", "article_revision_packages", "article_test_artifacts", "package_source_facts", "package_facts", "package_alternatives", "link_apps", "update_feeds", "package_page_state", "package_page_dirty", "package_intent_pages", "package_seo_overrides"}, factRelationshipTables...)
+var linkMergeTables = append([]string{"package_meta", "package_i18n", "package_categories", "package_screenshots", "package_versions", "releases", "changelog_sources", "analytics_snapshots", "collection_items", "features", "feedback", "package_aliases", "tap_casks", "article_revision_packages", "article_test_artifacts", "package_source_facts", "package_facts", "package_alternatives", "link_apps", "update_feeds", "package_page_state", "package_page_dirty", "package_intent_pages", "package_seo_overrides", "package_locations", "developer_picks", "developer_submissions"}, factRelationshipTables...)
 
 func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutation, now time.Time) error {
 	if mutation.Previous == nil || mutation.RenamedFrom == "" {
@@ -197,6 +197,16 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	}
 	for _, table := range []string{"package_screenshots", "features", "feedback", "package_aliases", "update_feeds"} {
 		if err := exec("UPDATE "+table+" SET package_id=? WHERE package_id=?", to, from); err != nil {
+			return err
+		}
+	}
+	// A developer submission follows the app it was filed against, however many exist.
+	if err := exec("UPDATE developer_submissions SET package_id=? WHERE package_id=?", to, from); err != nil {
+		return err
+	}
+	// A map location and a Discover pick are one row per app, so the newer edit survives.
+	for _, table := range []string{"package_locations", "developer_picks"} {
+		if err := mergeNewerPackageRows(db, table, "true", "s.updated_at>d.updated_at", from, to); err != nil {
 			return err
 		}
 	}
