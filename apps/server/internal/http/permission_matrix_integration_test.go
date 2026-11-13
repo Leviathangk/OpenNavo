@@ -69,6 +69,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	// Editorial intent switches, app search titles and due facts replace the SEO engine's routes.
 	groups["catalog:package:view"] += " getPackageIntentPages listIntentPages getPackageSeo listDueFactRecords"
 	groups["catalog:package:edit"] += " setPackageIntentPages setPackageSeo"
+	groups["catalog:package:edit"] += " listDeveloperSubmissions getDeveloperSubmission updateDeveloperSubmission listDeveloperPicks setDeveloperPick"
 	groups["changelog:release:edit"] += " upsertReleaseNotes"
 	groups["translation:review"] += " listTranslations getTranslationStatus fixTranslation getTranslationsSource writeTranslations"
 	groups["content:glossary:edit"] = "listGlossary upsertGlossaryTerm deleteGlossaryTerm"

@@ -218,7 +218,7 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 
 	// Public: source text until a language is ready; apps as the catalog shows them now.
 	page := lookup("choose-a-screenshot-app", "zh-CN")
-	require.Equal(t, publicapi.Published, page.State)
+	require.Equal(t, publicapi.ArticleLookupStatePublished, page.State)
 	article := page.Article
 	require.Equal(t, publicapi.Locale("en-US"), article.Locale)
 	require.Equal(t, []publicapi.Locale{"en-US"}, article.AvailableLocales)
