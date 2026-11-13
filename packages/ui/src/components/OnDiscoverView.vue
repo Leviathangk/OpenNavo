@@ -45,7 +45,16 @@ export interface OnDiscoverFeature extends Omit<OnDiscoverHero, 'icons'> {
   detailLabel: string;
 }
 
+export interface OnDiscoverPick {
+  key: string;
+  pkg: PackageSummary;
+  href: string;
+  quote?: string | null;
+}
+
 export interface OnDiscoverLabels {
+  developerPicks?: string;
+  developerPicksHint?: string;
   categories: string;
   popularApps: string;
   popularAppsHint: string;
@@ -71,6 +80,8 @@ export interface OnDiscoverViewProps {
    */
   fixedCount?: number;
   recent: readonly PackageSummary[] | null;
+  developerPicks?: readonly OnDiscoverPick[];
+  developerPicksHref?: string;
   collections?: readonly OnDiscoverCollection[];
   labels: OnDiscoverLabels;
   rankingsHref: string;
@@ -82,6 +93,7 @@ export interface OnDiscoverViewProps {
 
 const props = withDefaults(defineProps<OnDiscoverViewProps>(), {
   features: () => [],
+  developerPicks: () => [],
   collections: () => [],
   linkAs: 'a'
 });
@@ -266,6 +278,54 @@ function featureLinkAttrs(feature: OnDiscoverFeature) {
       :aria-label="labels.categories"
       :link-as="linkAs"
     />
+
+    <section v-if="developerPicks.length" aria-labelledby="on-discover-developer-picks">
+      <OnSectionHeader
+        :title="labels.developerPicks || 'Developer picks'"
+        :hint="labels.developerPicksHint"
+        :more-label="labels.viewAll"
+        :more-href="developerPicksHref"
+        :link-as="linkAs"
+      />
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-12px">
+        <component
+          :is="linkAs"
+          v-for="pick in developerPicks.slice(0, 3)"
+          :key="pick.key"
+          :to="linkAs === 'a' ? undefined : pick.href"
+          :href="linkAs === 'a' ? pick.href : undefined"
+          class="on-discover-pick box-border flex min-w-0 flex-col gap-10px rounded-big border border-solid border-line-subtle bg-surface-card p-14px text-ink-primary no-underline outline-none hover:bg-surface-raised focus-visible:shadow-focus-ring"
+        >
+          <span class="flex items-center gap-5px text-10.5px font-600 uppercase tracking-[0.08em] text-ink-accent">
+            <OnIcon name="check" :size="13" />
+            {{ labels.developerPicks || 'Developer picks' }}
+          </span>
+          <span class="flex min-w-0 items-center gap-10px">
+            <OnAppIcon
+              :kind="pick.pkg.kind"
+              :token="pick.pkg.token"
+              :name="pick.pkg.displayName"
+              :src="pick.pkg.iconUrl"
+              :accent="pick.pkg.accentColor"
+              :size="40"
+            />
+            <span class="min-w-0">
+              <span class="block truncate text-14px font-600">{{ pick.pkg.displayName }}</span>
+              <span v-if="pick.pkg.summary" class="mt-2px block truncate text-11.5px text-ink-secondary">{{
+                pick.pkg.summary
+              }}</span>
+            </span>
+          </span>
+          <p v-if="pick.quote" class="m-0 line-clamp-2 text-11.5px leading-[1.6] text-ink-secondary">
+            “{{ pick.quote }}”
+          </p>
+          <span class="mt-auto inline-flex items-center gap-3px text-11px font-500 text-ink-secondary">
+            {{ pick.pkg.primaryCategory?.name || labels.developerPicks || 'Developer picks' }}
+            <OnIcon name="chevron-right" :size="12" />
+          </span>
+        </component>
+      </div>
+    </section>
 
     <template v-if="popular && recent">
       <section v-if="popular.length">

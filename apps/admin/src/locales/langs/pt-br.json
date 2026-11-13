@@ -224,7 +224,6 @@
     "500": "Erro no servidor",
     "oauth-consent": "Conectar ao OpenNavo",
     "login": "Entrar",
-    "iframe-page": "Iframe",
     "dashboard": "Painel",
     "catalog": "Catálogo",
     "catalog_package": "Pacotes",
@@ -245,9 +244,7 @@
     "ops": "Operações",
     "ops_job": "Tarefas",
     "ops_search": "Análises de pesquisa",
-    "ops_feedback": "Feedback",
     "ops_agent-log": "Logs do Agent e da IA",
-    "release": "Desktop",
     "release_desktop": "Versões para desktop",
     "release_mirror": "Espelhos",
     "release_config": "Configuração remota",
@@ -258,7 +255,13 @@
     "system_seo": "Site e indexação",
     "system_agent": "Acesso do Agent",
     "system_audit": "Log de auditoria",
-    "user-center": "Central do usuário"
+    "user-center": "Central do usuário",
+    "developer": "Desenvolvedores",
+    "developer_review": "Envios",
+    "iframe-page": "Página iframe",
+    "ops_feedback": "Feedback",
+    "release": "Versões",
+    "developer_picks": "Seleção"
   },
   "page": {
     "shared": {
@@ -2150,6 +2153,55 @@
         "draft": "Marcar como pendente de revisão",
         "moduleCount": "O conteúdo no idioma de origem é traduzido automaticamente após salvar; a seção de código aberto permanece em inglês e não é traduzida. {count} dependências listadas; expanda JSON para editar a lista."
       }
+    },
+    "developerReview": {
+      "title": "Envios de desenvolvedores",
+      "allStatuses": "Todos os status",
+      "kind": "Tipo",
+      "status": "Status",
+      "contact": "E-mail de contato",
+      "created": "Criado",
+      "review": "Revisar",
+      "payload": "Payload",
+      "decisionNote": "Nota da decisão",
+      "feature": "Destacar na seleção",
+      "sort": "Ordem",
+      "quote": "Citação do desenvolvedor",
+      "publish": "Publicar",
+      "save": "Salvar",
+      "saved": "Salvo",
+      "saveFailed": "Não foi possível salvar o envio",
+      "loadFailed": "Não foi possível carregar os envios",
+      "invalidJson": "O payload deve ser um JSON válido",
+      "statuses": {
+        "submitted": "Enviado",
+        "in_review": "Em revisão",
+        "changes_requested": "Alterações solicitadas",
+        "approved": "Aprovado",
+        "rejected": "Rejeitado",
+        "published": "Publicado"
+      },
+      "kindLabel": "Tipo",
+      "sourceLabel": "Origem",
+      "proofLabel": "Material complementar",
+      "statusToken": "Token de consulta",
+      "packageKind": "Tipo do pacote",
+      "packageToken": "Token do pacote",
+      "packageTokenPlaceholder": "visual-studio-code",
+      "searchPlaceholder": "Buscar e-mail, número DS ou nome do app"
+    },
+    "developerPicks": {
+      "title": "Seleção de desenvolvedores",
+      "hint": "Gerencie a seleção acima do Hot Apps: ordem, citação e visibilidade.",
+      "app": "App",
+      "quote": "Citação do desenvolvedor",
+      "sort": "Ordem",
+      "active": "Ativo",
+      "publishedAt": "Publicado",
+      "save": "Salvar",
+      "saved": "Salvo",
+      "saveFailed": "Não foi possível salvar a seleção",
+      "loadFailed": "Não foi possível carregar a seleção"
     },
     "placeholder": "Esta página será implementada em uma tarefa futura",
     "login": {

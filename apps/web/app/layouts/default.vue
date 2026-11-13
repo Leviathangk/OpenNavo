@@ -30,6 +30,7 @@ useCommandPaletteShortcut();
     <slot />
     <template #rail>
       <SiteDiscoverRail v-if="rail === 'discover'" />
+      <SiteDeveloperMapRail v-else-if="rail === 'developer-map'" />
     </template>
     <template #footer>
       <SiteFooter />

@@ -88,6 +88,7 @@ export type {
   OnDiscoverFeature,
   OnDiscoverHero,
   OnDiscoverLabels,
+  OnDiscoverPick,
   OnDiscoverViewProps
 } from './components/OnDiscoverView.vue';
 export type { OnCommandGroup, OnCommandItem, OnCommandPaletteProps } from './components/OnCommandPalette.vue';
@@ -192,3 +193,4 @@ export type { PaginationItem } from './utils/pagination';
 export { default as OnAboutContent } from './components/OnAboutContent.vue';
 export { default as OnDialogShell } from './components/OnDialogShell.vue';
 export type { OnDialogShellProps } from './components/OnDialogShell.vue';
+export { WORLD_HEIGHT, WORLD_PATHS, WORLD_WIDTH } from './utils/worldMap';

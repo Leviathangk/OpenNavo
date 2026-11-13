@@ -224,7 +224,6 @@
     "500": "サーバーエラー",
     "oauth-consent": "OpenNavo に接続",
     "login": "ログイン",
-    "iframe-page": "Iframe",
     "dashboard": "ダッシュボード",
     "catalog": "カタログ",
     "catalog_package": "パッケージ",
@@ -258,7 +257,11 @@
     "system_seo": "サイトとインデックス",
     "system_agent": "Agentアクセス",
     "system_audit": "監査ログ",
-    "user-center": "ユーザーセンター"
+    "user-center": "ユーザーセンター",
+    "developer": "開発者",
+    "developer_review": "申請",
+    "iframe-page": "iframe ページ",
+    "developer_picks": "開発者ピック"
   },
   "page": {
     "shared": {
@@ -2150,6 +2153,55 @@
         "draft": "審査待ちとしてマーク",
         "moduleCount": "原文の言語で書かれた本文は保存後に自動翻訳されます。オープンソースのセクションは英語のままで、翻訳されません。依存関係が{count}件登録されています。JSONを展開して一覧を編集できます。"
       }
+    },
+    "developerReview": {
+      "title": "開発者の申請",
+      "allStatuses": "すべての状態",
+      "kind": "種類",
+      "status": "状態",
+      "contact": "連絡先メール",
+      "created": "作成日時",
+      "review": "審査",
+      "payload": "ペイロード",
+      "decisionNote": "判断メモ",
+      "feature": "開発者ピックに掲載",
+      "sort": "並び順",
+      "quote": "開発者の引用",
+      "publish": "公開",
+      "save": "保存",
+      "saved": "保存しました",
+      "saveFailed": "申請を保存できませんでした",
+      "loadFailed": "申請を読み込めませんでした",
+      "invalidJson": "ペイロードは有効な JSON である必要があります",
+      "statuses": {
+        "submitted": "提出済み",
+        "in_review": "審査中",
+        "changes_requested": "修正依頼",
+        "approved": "承認済み",
+        "rejected": "却下",
+        "published": "公開済み"
+      },
+      "kindLabel": "種類",
+      "sourceLabel": "ソース",
+      "proofLabel": "補足資料",
+      "statusToken": "受付トークン",
+      "packageKind": "パッケージ種別",
+      "packageToken": "パッケージトークン",
+      "packageTokenPlaceholder": "visual-studio-code",
+      "searchPlaceholder": "メール、DS 番号、アプリ名で検索"
+    },
+    "developerPicks": {
+      "title": "開発者ピック",
+      "hint": "Hot Apps の上に表示するピックの順序・引用・公開状態を管理します。",
+      "app": "アプリ",
+      "quote": "開発者の引用",
+      "sort": "並び順",
+      "active": "公開",
+      "publishedAt": "公開日時",
+      "save": "保存",
+      "saved": "保存しました",
+      "saveFailed": "ピックを保存できませんでした",
+      "loadFailed": "ピックを読み込めませんでした"
     },
     "placeholder": "このページは後続のタスクで実装されます",
     "login": {

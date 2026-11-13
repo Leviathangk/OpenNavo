@@ -224,7 +224,6 @@
     "500": "Error del servidor",
     "oauth-consent": "Conectar con OpenNavo",
     "login": "Iniciar sesión",
-    "iframe-page": "Iframe",
     "dashboard": "Panel de control",
     "catalog": "Catálogo",
     "catalog_package": "Paquetes",
@@ -258,7 +257,11 @@
     "system_seo": "Sitio e indexación",
     "system_agent": "Acceso de Agent",
     "system_audit": "Registro de auditoría",
-    "user-center": "Centro de usuario"
+    "user-center": "Centro de usuario",
+    "developer": "Desarrolladores",
+    "developer_review": "Envíos",
+    "iframe-page": "Página iframe",
+    "developer_picks": "Selección"
   },
   "page": {
     "shared": {
@@ -2150,6 +2153,55 @@
         "draft": "Marcar como pendiente de revisión",
         "moduleCount": "El contenido en el idioma de origen se traduce automáticamente al guardarlo; la sección de código abierto se mantiene en inglés y no se traduce. Se han incluido {count} dependencias; puedes expandir JSON para editar la lista."
       }
+    },
+    "developerReview": {
+      "title": "Envíos de desarrolladores",
+      "allStatuses": "Todos los estados",
+      "kind": "Tipo",
+      "status": "Estado",
+      "contact": "Correo de contacto",
+      "created": "Creado",
+      "review": "Revisar",
+      "payload": "Payload",
+      "decisionNote": "Nota de decisión",
+      "feature": "Destacar en la selección",
+      "sort": "Orden",
+      "quote": "Cita del desarrollador",
+      "publish": "Publicar",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "saveFailed": "No se pudo guardar el envío",
+      "loadFailed": "No se pudieron cargar los envíos",
+      "invalidJson": "El payload debe ser JSON válido",
+      "statuses": {
+        "submitted": "Enviado",
+        "in_review": "En revisión",
+        "changes_requested": "Cambios solicitados",
+        "approved": "Aprobado",
+        "rejected": "Rechazado",
+        "published": "Publicado"
+      },
+      "kindLabel": "Tipo",
+      "sourceLabel": "Origen",
+      "proofLabel": "Material complementario",
+      "statusToken": "Token de consulta",
+      "packageKind": "Tipo de paquete",
+      "packageToken": "Token del paquete",
+      "packageTokenPlaceholder": "visual-studio-code",
+      "searchPlaceholder": "Buscar correo, número DS o nombre de app"
+    },
+    "developerPicks": {
+      "title": "Selección de desarrolladores",
+      "hint": "Gestiona la selección sobre Hot Apps: orden, cita y visibilidad.",
+      "app": "App",
+      "quote": "Cita del desarrollador",
+      "sort": "Orden",
+      "active": "Activo",
+      "publishedAt": "Publicado",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "saveFailed": "No se pudo guardar la selección",
+      "loadFailed": "No se pudo cargar la selección"
     },
     "placeholder": "Esta página se implementará en una tarea posterior",
     "login": {

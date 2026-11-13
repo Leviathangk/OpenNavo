@@ -224,7 +224,6 @@
     "500": "Ошибка сервера",
     "oauth-consent": "Подключение к OpenNavo",
     "login": "Вход",
-    "iframe-page": "Iframe",
     "dashboard": "Панель управления",
     "catalog": "Каталог",
     "catalog_package": "Пакеты",
@@ -258,7 +257,11 @@
     "system_seo": "Сайт и индексация",
     "system_agent": "Доступ Agent",
     "system_audit": "Журнал аудита",
-    "user-center": "Личный кабинет"
+    "user-center": "Личный кабинет",
+    "developer": "Разработчики",
+    "developer_review": "Заявки",
+    "iframe-page": "Страница iframe",
+    "developer_picks": "Выбор разработчиков"
   },
   "page": {
     "shared": {
@@ -2150,6 +2153,55 @@
         "draft": "Отметить как ожидающее проверки",
         "moduleCount": "Текст на исходном языке автоматически переводится после сохранения; раздел об открытом исходном коде остается на английском и не переводится. Указано зависимостей: {count}; разверните JSON, чтобы изменить список."
       }
+    },
+    "developerReview": {
+      "title": "Заявки разработчиков",
+      "allStatuses": "Все статусы",
+      "kind": "Тип",
+      "status": "Статус",
+      "contact": "Контактный e-mail",
+      "created": "Создано",
+      "review": "Проверить",
+      "payload": "Payload",
+      "decisionNote": "Заметка о решении",
+      "feature": "В выборку разработчиков",
+      "sort": "Порядок",
+      "quote": "Цитата разработчика",
+      "publish": "Опубликовать",
+      "save": "Сохранить",
+      "saved": "Сохранено",
+      "saveFailed": "Не удалось сохранить заявку",
+      "loadFailed": "Не удалось загрузить заявки",
+      "invalidJson": "Payload должен быть корректным JSON",
+      "statuses": {
+        "submitted": "Отправлено",
+        "in_review": "На проверке",
+        "changes_requested": "Нужны правки",
+        "approved": "Одобрено",
+        "rejected": "Отклонено",
+        "published": "Опубликовано"
+      },
+      "kindLabel": "Тип",
+      "sourceLabel": "Источник",
+      "proofLabel": "Дополнительные материалы",
+      "statusToken": "Токен заявки",
+      "packageKind": "Тип пакета",
+      "packageToken": "Токен пакета",
+      "packageTokenPlaceholder": "visual-studio-code",
+      "searchPlaceholder": "Поиск по e-mail, номеру DS или названию приложения"
+    },
+    "developerPicks": {
+      "title": "Выбор разработчиков",
+      "hint": "Управляйте подборкой над Hot Apps: порядок, цитата и видимость.",
+      "app": "Приложение",
+      "quote": "Цитата разработчика",
+      "sort": "Порядок",
+      "active": "Активно",
+      "publishedAt": "Опубликовано",
+      "save": "Сохранить",
+      "saved": "Сохранено",
+      "saveFailed": "Не удалось сохранить подборку",
+      "loadFailed": "Не удалось загрузить подборку"
     },
     "placeholder": "Содержимое этой страницы будет реализовано в одной из следующих задач",
     "login": {

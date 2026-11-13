@@ -10,6 +10,7 @@ import type {
   OnDiscoverFeature,
   OnDiscoverHero,
   OnDiscoverLabels,
+  OnDiscoverPick,
   OnFeatureHeroIcon
 } from '@opennavo/ui';
 import OfflineNotice from '@/components/common/OfflineNotice.vue';
@@ -31,6 +32,7 @@ import { useLoader } from '@/composables/useLoader';
 import { useCatalogLoader } from '@/composables/useCatalogLoader';
 import { usePackageSummary } from '@/composables/usePackageSummary';
 import { useCatalogStore } from '@/stores';
+import { fetchDeveloperPicks } from '@/composables/useDeveloperMap';
 
 // Discover (mockup 02, 06 §13): online API homepage; offline popular apps and recent updates from the local catalog. Cask-only (ADR-018).
 const { t } = useI18n();
@@ -64,6 +66,19 @@ const { data: recentApps } = useLoader(
   undefined,
   [appLocale],
   () => peekRecentPreview(appLocale.value)
+);
+
+const { data: developerPicks } = useLoader(() => fetchDeveloperPicks(appLocale.value, 3), [appLocale], undefined, [
+  appLocale
+]);
+
+const picks = computed<OnDiscoverPick[]>(() =>
+  (developerPicks.value ?? []).map(pick => ({
+    key: `${pick.package.kind}/${pick.package.token}`,
+    pkg: pick.package,
+    quote: pick.quote,
+    href: `/package/${pick.package.kind}/${pick.package.token}`
+  }))
 );
 
 const base: Omit<ListQuery, 'sort' | 'limit'> = {
@@ -197,6 +212,8 @@ const labels = computed<OnDiscoverLabels>(() => ({
   viewRankings: t('common.viewRankings'),
   recentlyUpdated: t('discover.recentlyUpdated'),
   recentlyUpdatedHint: t('discover.recentlyUpdatedHint'),
+  developerPicks: t('discover.developerPicks'),
+  developerPicksHint: t('discover.developerPicksHint'),
   collections: t('discover.collections'),
   viewAll: t('common.viewAll')
 }));
@@ -221,6 +238,8 @@ const chips = computed(() => [
     :popular="sections?.apps ?? (offlineError ? [] : null)"
     :popular-rows="3"
     :recent="sections?.recent ?? (offlineError ? [] : null)"
+    :developer-picks="picks"
+    developer-picks-href="/developer-map"
     :collections="collections"
     :labels="labels"
     rankings-href="/rankings"

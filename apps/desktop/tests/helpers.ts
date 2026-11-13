@@ -32,6 +32,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'discover' }
   },
   {
+    path: '/developer-map',
+    name: 'developer-map',
+    component: stub('开发者地图页'),
+    meta: { nav: 'developer-map' }
+  },
+  {
     path: '/categories',
     name: 'categories',
     component: stub('分类页'),

@@ -18,6 +18,7 @@ export const PAGE_SECTIONS: ReadonlySet<string> = new Set([
   'categories',
   'collections',
   'discover',
+  'developer-map',
   'developers',
   'download',
   'feedback',

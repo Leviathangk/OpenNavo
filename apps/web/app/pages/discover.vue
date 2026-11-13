@@ -7,6 +7,7 @@ import type {
   OnDiscoverFeature,
   OnDiscoverHero,
   OnDiscoverLabels,
+  OnDiscoverPick,
   OnFeatureHeroIcon
 } from '@opennavo/ui';
 import { HOME_SECTION_SIZE } from '~/composables/useHome';
@@ -27,8 +28,18 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
 const { data: home, error, refresh } = await useHome();
+const { data: developerPicks } = await useDeveloperPicks(3);
 
 const detailPath = (token: string) => localePath(packagePath(token));
+
+const picks = computed<OnDiscoverPick[]>(() =>
+  (developerPicks.value ?? []).map(pick => ({
+    key: `${pick.package.kind}/${pick.package.token}`,
+    pkg: pick.package,
+    quote: pick.quote,
+    href: detailPath(pick.package.token)
+  }))
+);
 
 const toIcon = (pkg: PackageSummary): OnFeatureHeroIcon => ({
   kind: pkg.kind,
@@ -130,6 +141,8 @@ const collections = computed<OnDiscoverCollection[]>(() =>
 );
 
 const labels = computed<OnDiscoverLabels>(() => ({
+  developerPicks: t('developerMap.picksTitle'),
+  developerPicksHint: t('developerMap.picksHint'),
   categories: t('home.categoriesLabel'),
   popularApps: t('home.popularApps'),
   popularAppsHint: t('home.popularAppsHint'),
@@ -179,6 +192,8 @@ defineOgImage('OgDefaultSatori', {
     :popular-rows="3"
     :fixed-count="HOME_SECTION_SIZE"
     :recent="home.recentlyUpdated"
+    :developer-picks="picks"
+    :developer-picks-href="localePath('/developer-map')"
     :collections="collections"
     :labels="labels"
     :rankings-href="localePath('/rankings')"
