@@ -1652,7 +1652,7 @@
         "developerForm.kindLocation": "1fb4d574da92f1c182183f205b77a1fcfc538ab438a04f2399ceac29687a7a56",
         "developerForm.claimHint": "6edb45edd7bcf2e947647814d26826b969a69a3ed593121f750536b25353a72e",
         "developerForm.proofPlaceholder": "7ec6cf53785396387977cb852117ab1342cc0d22d858cbb66ebdcefa7c8760c9",
-        "developerForm.contactPlaceholder": "53e6cdc30765aade0129f85e5aeb50124b1d3f5bb9a70373be31e4eb328371e0"
+        "developerForm.contactPlaceholder": "cf0a9acc802120172e7e52943f0abfeea51dae5bfc2a5061a40d4dc1860410d1"
       }
     },
     "desktop": {
@@ -4279,7 +4279,7 @@
         "developerForm.remote": "d142f4ec27ec06a7a6f4ffec76f6a99e6a8c6ac77d16804ffb0886ead8d1bb6a",
         "developerForm.contact": "215bee80e894920adfa3bb6f7290da164ab0ac9c8d85a94ceb12890d9f189384",
         "developerForm.contactHint": "56219313963f5bfe2e6411162813fe253b4bcada706f1b923722b6d058052ac7",
-        "developerForm.contactPlaceholder": "53e6cdc30765aade0129f85e5aeb50124b1d3f5bb9a70373be31e4eb328371e0",
+        "developerForm.contactPlaceholder": "cf0a9acc802120172e7e52943f0abfeea51dae5bfc2a5061a40d4dc1860410d1",
         "developerForm.submit": "034829aca81d88fc0c4701226507f6a96408fc36983defc672b09f8cc69ddd8b",
         "developerForm.submitting": "18931020ad52e63a09e01c7e84c4e9ab498fa2a4e209fbdc15525b8989fe9834",
         "developerForm.successTitle": "059181a03ed45b36ea472f622863d38176404a83736b628c446631724a1e7114",

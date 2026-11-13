@@ -2285,6 +2285,6 @@
     "kindLocation": "Location",
     "claimHint": "Select your app, then tell us what to update. Every change is reviewed by an editor before it goes live.",
     "proofPlaceholder": "Domain, repository or note (optional)",
-    "contactPlaceholder": "you@example.com"
+    "contactPlaceholder": "you{'@'}example.com"
   }
 }

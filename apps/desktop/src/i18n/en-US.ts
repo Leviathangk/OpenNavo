@@ -3413,7 +3413,7 @@ const messages: MessageSchema = {
     remote: 'Remote / distributed team',
     contact: 'Contact email',
     contactHint: 'We only use this to ask follow-up questions during review.',
-    contactPlaceholder: 'you@example.com',
+    contactPlaceholder: "you{'@'}example.com",
     submit: 'Submit for review',
     submitting: 'Submitting…',
     successTitle: 'Submitted for review',
