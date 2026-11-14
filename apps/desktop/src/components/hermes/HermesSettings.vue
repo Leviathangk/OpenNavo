@@ -75,9 +75,10 @@ const loginDetected = computed(() => {
   if (!key || !status) return false;
   return key === 'claude-code' ? status.claudeCode : status[key];
 });
+const scopedModelOptions = computed(() => store.modelOptionsForScope(editProfileName.value, draftModel.value));
 const officialProvider = computed(() => {
   // Annotated so the generic keeps the full catalog row type (`capabilities`, `pricing`).
-  const providers: NonNullable<typeof store.modelOptions>['providers'] = store.modelOptions?.providers ?? [];
+  const providers: NonNullable<typeof store.modelOptions>['providers'] = scopedModelOptions.value?.providers ?? [];
   return pickOfficialProvider(providers, draftModel.value.provider);
 });
 const officialAuthenticated = computed(() => officialProvider.value?.authenticated ?? false);
@@ -87,6 +88,7 @@ const models = computed(() => {
 });
 const needsImport = computed(() => loginDetected.value && !officialAuthenticated.value);
 const modelOptionsUpdated = computed(() => {
+  if (!scopedModelOptions.value) return '';
   const at = store.modelOptionsUpdatedAt;
   if (!at) return '';
   const minutes = Math.max(0, Math.round((Date.now() - at) / 60_000));
@@ -129,8 +131,11 @@ function onModelPickerPointer(event: PointerEvent) {
 }
 
 function alignOfficialModel() {
-  if (models.value.length && !models.value.includes(draftModel.value.model))
-    draftModel.value.model = models.value[0] ?? draftModel.value.model;
+  // Static provider fallbacks are for the picker only. They must not replace a saved model,
+  // especially when the catalog request just failed and left the last good selection intact.
+  const official = officialProvider.value?.models ?? [];
+  if (store.modelOptionsError || !official.length || official.includes(draftModel.value.model)) return;
+  draftModel.value.model = official[0] ?? draftModel.value.model;
 }
 const warning = computed(() => {
   if (draftMac.value.level === 'open') {
@@ -149,7 +154,7 @@ const terminalCredentialWarning = computed(
 );
 
 const auxProviders = computed(() =>
-  (store.modelOptions?.providers ?? []).filter(entry => (entry.models?.length ?? 0) > 0)
+  (scopedModelOptions.value?.providers ?? []).filter(entry => (entry.models?.length ?? 0) > 0)
 );
 const auxModelCount = computed(() =>
   auxProviders.value.reduce((count, entry) => count + (entry.models?.length ?? 0), 0)
@@ -243,6 +248,7 @@ async function ensureLoginListener() {
         loginPhase.value = 'success';
         void refreshLogin();
         store.resetSession();
+        store.invalidateModelOptionsCache(editProfileName.value);
         void store
           .loadModelOptions(true, draftModel.value, secret.value, editProfileName.value)
           .then(alignOfficialModel);
@@ -290,6 +296,7 @@ async function logout() {
     await unwrap(commands.hermesLogout(key, profileArg.value));
     await refreshLogin();
     store.resetSession();
+    store.invalidateModelOptionsCache(editProfileName.value);
     await store.loadModelOptions(true, draftModel.value, secret.value, editProfileName.value);
     alignOfficialModel();
     toasts.push({ tone: 'success', title: content.value.settings.model.logout, description: providerCopy.value.name });
@@ -386,10 +393,10 @@ watch(
     resetTest();
     void refreshSecret();
     void refreshPermissions();
-    // Paint from the cached catalog immediately, then refresh it in the background: a
-    // payload fetched for another provider can carry a warning that describes *that*
-    // provider, not the card being edited.
-    if (store.modelOptions) alignOfficialModel();
+    // Paint only from a catalog owned by this connection, profile and endpoint. A fresh entry
+    // is reused; a stale one is revalidated while the cached list stays on screen. A catalog
+    // left over from another profile must not rewrite the model being edited here.
+    if (scopedModelOptions.value) alignOfficialModel();
     void ensureRuntime()
       .then(() => store.loadModelOptions(false, draftModel.value, secret.value, editProfileName.value))
       .then(alignOfficialModel);
@@ -418,10 +425,8 @@ async function selectProvider(id: HermesProvider) {
   modelOpen.value = false;
   resetTest();
   await refreshSecret();
-  // Always reload for the newly selected card. Reusing the catalog because *some* slug
-  // already had models kept a payload built for the previous provider, and its
-  // `configured-current` warning then described a provider the user was no longer editing.
-  // `loadModelOptions` already ignores re-entrant calls.
+  // The cache is scoped to the connection, profile and endpoint, not to a provider card, so
+  // the full catalog can be reused here. A missing or stale entry still reloads.
   await ensureRuntime();
   await store.loadModelOptions(false, draftModel.value, secret.value, editProfileName.value);
   alignOfficialModel();
@@ -447,9 +452,11 @@ function selectLevel(level: HermesMacSettings['level']) {
 async function save() {
   // A panel connection authenticates on its own host; never write this Mac's `.env` for it.
   const entered = remoteCredentials.value ? '' : secret.value.trim();
+  let keyWritten = false;
   if (entered) {
     try {
       await unwrap(commands.hermesSecretSet(draftModel.value.provider, entered, profileArg.value));
+      keyWritten = true;
     } catch (error) {
       const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
       toasts.push({ tone: 'warning', title: content.value.settings.model.keyError, description: detail });
@@ -469,6 +476,7 @@ async function save() {
   // runtime reads it from. Keeping a copy in the store for a profile that is not active made
   // the next `write_config` in a different profile copy it into that profile's `.env`.
   const editingActive = editProfileName.value === store.activeAgentProfileName;
+  if (keyWritten) store.invalidateModelOptionsCache(editProfileName.value);
   store.setApiKey(editingActive && !remoteCredentials.value ? secret.value : '');
   const previous = store.model;
   const sessionWillReset =
@@ -508,12 +516,14 @@ async function save() {
 async function removeApiKey() {
   try {
     await unwrap(commands.hermesSecretDelete(draftModel.value.provider, profileArg.value));
+    store.invalidateModelOptionsCache(editProfileName.value);
     draftModel.value.keySet = false;
     secret.value = '';
     // Drop the in-memory copy too: `write_config` persists whatever key the request carries,
     // so a stale one would put the deleted credential back into `.env` on the next turn.
     if (editProfileName.value === store.activeAgentProfileName) store.setApiKey('');
     resetTest();
+    void store.loadModelOptions(true, draftModel.value, secret.value, editProfileName.value);
     toasts.push({ tone: 'success', title: content.value.settings.model.keyRemoved });
   } catch (error) {
     const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
