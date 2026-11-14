@@ -133,7 +133,7 @@ const confirmText = computed(() => (hermes.mac.confirmWrites ? content.value.com
           class="flex flex-col items-start gap-7px border-b border-b-solid border-line-subtle py-8px"
         >
           <span class="text-11px leading-[1.45] text-status-warning">{{ runtimeUpdateLabel }}</span>
-          <OnButton variant="accent" size="sm" :disabled="hermes.installing" @click="hermes.installRuntime()">{{
+          <OnButton variant="accent" size="sm" :loading="hermes.installing" @click="hermes.installRuntime()">{{
             content.install.updateRuntime
           }}</OnButton>
         </div>

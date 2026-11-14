@@ -264,4 +264,61 @@ describe('Hermes settings credentials', () => {
     // home listed the default profile's state while another profile was selected.
     await vi.waitFor(() => expect(cliRead).toHaveBeenCalledWith('tools', 'research'));
   });
+
+  it('Shows the shared loading ring while updating the local runtime', async () => {
+    seedConnection('local');
+    vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue(
+      ok({
+        ready: true,
+        installed: true,
+        version: '0.23.0',
+        expectedVersion: '0.23.1',
+        path: '/tmp/hermes',
+        dataPath: '/tmp',
+        computerUse: false,
+        outdated: true,
+        message: null
+      })
+    );
+    let finishInstall!: () => void;
+    const install = new Promise<Awaited<ReturnType<typeof commands.hermesRuntimeInstall>>>(resolve => {
+      finishInstall = () =>
+        resolve(
+          ok({
+            ready: true,
+            installed: true,
+            version: '0.23.1',
+            expectedVersion: '0.23.1',
+            path: '/tmp/hermes',
+            dataPath: '/tmp',
+            computerUse: false,
+            outdated: false,
+            message: null
+          })
+        );
+    });
+    vi.spyOn(commands, 'hermesRuntimeInstall').mockReturnValue(install);
+    wrapper = mount(HermesSettings, {
+      props: { open: false, tab: 'mac' },
+      attachTo: document.body,
+      global: { plugins: [i18n] }
+    });
+    await wrapper.setProps({ open: true });
+
+    await vi.waitFor(() => expect(sheetText()).toContain('Update local Hermes'));
+    const update = Array.from(document.body.querySelectorAll('button')).find(
+      button => button.textContent?.trim() === 'Update local Hermes'
+    );
+    expect(update).toBeDefined();
+    update!.click();
+
+    await vi.waitFor(() =>
+      expect(document.body.querySelector('button[aria-busy="true"]')?.textContent).toContain('Update local Hermes')
+    );
+    const busy = document.body.querySelector('button[aria-busy="true"]');
+    expect(busy?.hasAttribute('disabled')).toBe(true);
+    expect(busy?.querySelector('.on-spinner')).not.toBeNull();
+
+    finishInstall();
+  });
 });

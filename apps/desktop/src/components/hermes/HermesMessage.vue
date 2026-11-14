@@ -131,15 +131,15 @@ function decisionTone(decision: HermesDecision): string {
   <div v-if="message.role === 'user'" class="flex justify-end">
     <div
       class="max-w-[82%] rounded-[14px_14px_4px_14px] border border-solid px-14px py-10px text-13.5px leading-[1.65] text-ink-primary"
-      :class="
-        message.steering
-          ? 'border-[rgba(250,178,25,0.22)] bg-[rgba(250,178,25,0.06)]'
-          : 'border-line-subtle bg-surface-raised'
-      "
+      :class="message.steering ? 'border-line-default bg-surface-card' : 'border-line-subtle bg-surface-raised'"
     >
-      <div v-if="message.steering" class="mb-5px flex items-center gap-5px text-10px font-500 text-status-warning/80">
-        <OnIcon name="lucide:corner-down-right" :size="10" />
-        {{ content.steering }}
+      <div v-if="message.steering" class="mb-6px flex items-center gap-7px">
+        <span
+          class="inline-flex h-18px items-center rounded-full bg-status-warning-subtle px-8px text-10px font-600 leading-none text-status-warning"
+        >
+          {{ content.steering }}
+        </span>
+        <span class="h-px flex-1 bg-line-subtle" aria-hidden="true"></span>
       </div>
       <div v-if="attachments.length" class="mb-7px flex flex-wrap gap-5px">
         <span
