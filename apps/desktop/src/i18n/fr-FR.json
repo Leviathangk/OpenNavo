@@ -3245,6 +3245,7 @@
       "developersAt": "{count} développeurs"
     },
     "rail": {
+      "countries": "Tous les pays",
       "topCountries": "Principaux pays",
       "recent": "Ajoutés récemment"
     },

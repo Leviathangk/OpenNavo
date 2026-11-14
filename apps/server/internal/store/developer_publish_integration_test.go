@@ -148,7 +148,7 @@ func TestDeveloperRetentionPrunesRejectedLeadsAndOldEvents(t *testing.T) {
 	require.Zero(t, gone.ID)
 }
 
-// Publishing is one transaction: a bad city or invalid metadata leaves no package.
+// Publishing is one transaction: invalid metadata leaves no package.
 func TestPublishDeveloperSubmissionIsAtomic(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
@@ -183,9 +183,9 @@ func TestPublishDeveloperSubmissionIsAtomic(t *testing.T) {
 		Lat     float64
 	}
 	require.NoError(t, st.DB.Raw(`SELECT city_key, region, lat FROM package_locations WHERE package_id = ?`, *published.PackageID).Scan(&location).Error)
-	require.Equal(t, "berlin", location.CityKey)
+	require.Empty(t, location.CityKey, "the map stores country precision only")
 	require.Equal(t, "europe", location.Region)
-	require.InDelta(t, 52.52, location.Lat, 0.01)
+	require.Zero(t, location.Lat, "coordinates come from the country map, not the submission")
 
 	picks, err := st.DeveloperPicks(ctx, 4)
 	require.NoError(t, err)
@@ -199,8 +199,8 @@ func TestPublishDeveloperSubmissionIsAtomic(t *testing.T) {
 	require.Contains(t, joined, "c:developer-picks:*")
 	require.Contains(t, joined, "c:pkg:*")
 
-	// An unknown city fails validation and must not leave a package behind.
-	bad := json.RawMessage(`{"name":"Nowhere App","summary":"x","developer":"x","homepage":"https://example.com/n","countryCode":"US","city":"Nowhere City"}`)
+	// A bad curated field fails validation and must not leave a package behind.
+	bad := json.RawMessage(`{"name":"Bad Category App","summary":"x","developer":"x","homepage":"https://example.com/n","category":"not-a-category","countryCode":"US"}`)
 	badRow, err := st.CreateDeveloperSubmission(ctx, store.DeveloperSubmissionInput{
 		Kind: "new", SourceURL: "https://example.com/nowhere", Payload: bad, ContactEmail: "nowhere@example.com",
 	})
@@ -221,9 +221,13 @@ func TestPublishDeveloperSubmissionIsAtomic(t *testing.T) {
 	require.NoError(t, err)
 	_, err = st.PublishDeveloperSubmission(ctx, store.DeveloperPublishInput{SubmissionID: claimRow.ID, Status: "published", Payload: claim})
 	require.NoError(t, err)
-	var cityKey string
-	require.NoError(t, st.DB.Raw(`SELECT city_key FROM package_locations WHERE package_id = ?`, *published.PackageID).Scan(&cityKey).Error)
-	require.Equal(t, "berlin", cityKey)
+	var claimLocation struct {
+		CountryCode string
+		CityKey     string
+	}
+	require.NoError(t, st.DB.Raw(`SELECT country_code, COALESCE(city_key, '') AS city_key FROM package_locations WHERE package_id = ?`, *published.PackageID).Scan(&claimLocation).Error)
+	require.Equal(t, "DE", claimLocation.CountryCode)
+	require.Empty(t, claimLocation.CityKey, "even legacy city input is stored at country precision")
 }
 
 // A submission that names only a country belongs on that country's tab; without a
@@ -236,7 +240,7 @@ func TestPublishDeveloperSubmissionCountryOnlyRegion(t *testing.T) {
 		{"US", "americas"},
 		{"DE", "europe"},
 		{"JP", "apac"},
-		{"ZZ", "other"},
+		{"ZZ", ""},
 	} {
 		token := strings.ToLower(tc.code)
 		payload := json.RawMessage(`{"name":"Region App ` + tc.code + `","summary":"x","developer":"x","homepage":"https://example.com/region-` + token + `","countryCode":"` + tc.code + `"}`)
@@ -256,6 +260,124 @@ func TestPublishDeveloperSubmissionCountryOnlyRegion(t *testing.T) {
 		require.NoError(t, st.DB.Raw(`SELECT COALESCE(city_key, '') AS city_key, region FROM package_locations WHERE package_id = ?`, *published.PackageID).Scan(&location).Error)
 		require.Empty(t, location.CityKey, "a country-only submission has no city")
 		require.Equal(t, tc.want, location.Region, tc.code)
+	}
+}
+
+// The country map includes every live catalog kind, not only Homebrew casks.
+func TestDeveloperMapIncludesAllLivePackageKindsByCountry(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO packages(id,kind,token,full_token,tap,name,names,desc_en,version,version_base,raw,raw_hash,source_locale)
+		VALUES
+		  (1601,'cask','map-cask','map-cask','homebrew/cask','Map Cask',ARRAY['Map Cask'],'x','1.0','1.0','{}','cask','en-US'),
+		  (1602,'formula','map-formula','map-formula','homebrew/core','Map Formula',ARRAY['Map Formula'],'x','1.0','1.0','{}','formula','en-US'),
+		  (1603,'link','map-link','map-link','link','Map Link',ARRAY['Map Link'],'x','1.0','1.0','{}','link','en-US')
+	`).Error)
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO package_meta(package_id,developer) VALUES
+		  (1601,'Cask Studio'),(1602,'Formula Studio'),(1603,'Link Studio')
+	`).Error)
+	for _, id := range []int64{1601, 1602} {
+		require.NoError(t, st.SetDeveloperLocation(ctx, id, "US", false, nil))
+	}
+	require.NoError(t, st.SetDeveloperLocation(ctx, 1603, "DE", false, nil))
+
+	places, err := st.DeveloperMapPlaces(ctx, true)
+	require.NoError(t, err)
+	require.Len(t, places, 2)
+	byCountry := make(map[string]store.DeveloperPlace, len(places))
+	for _, place := range places {
+		byCountry[place.CountryCode] = place
+		require.Equal(t, "country", place.Kind)
+		require.Equal(t, place.CountryCode, place.Key)
+		require.Equal(t, place.CountryCode, place.Name, "the UI localizes the country code")
+	}
+	require.Equal(t, 2, byCountry["US"].Apps)
+	require.Equal(t, 2, byCountry["US"].Developers)
+	require.Equal(t, 1, byCountry["DE"].Apps)
+	require.Equal(t, "americas", byCountry["US"].Region)
+	require.Equal(t, "europe", byCountry["DE"].Region)
+
+	withoutLinks, err := st.DeveloperMapPlaces(ctx, false)
+	require.NoError(t, err)
+	require.Len(t, withoutLinks, 1)
+	require.Equal(t, "US", withoutLinks[0].CountryCode)
+
+	withLinksTotals, err := st.DeveloperMapTotals(ctx, true)
+	require.NoError(t, err)
+	require.Equal(t, 3, withLinksTotals.TotalApps)
+	require.Equal(t, 3, withLinksTotals.Apps)
+
+	require.Error(t, st.SetDeveloperLocation(ctx, 1601, "ZZ", false, nil), "unsupported country codes must not create a 0,0 point")
+
+	withoutLinksTotals, err := st.DeveloperMapTotals(ctx, false)
+	require.NoError(t, err)
+	require.Equal(t, 2, withoutLinksTotals.TotalApps)
+	require.Equal(t, 2, withoutLinksTotals.Apps)
+}
+
+// Codes the map cannot draw must not inflate the header or take a recent slot.
+func TestDeveloperMapIgnoresUnsupportedCountryLocations(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO packages(id,kind,token,full_token,tap,name,names,desc_en,version,version_base,raw,raw_hash,source_locale)
+		VALUES
+		  (1801,'cask','map-us','map-us','homebrew/cask','Map US',ARRAY['Map US'],'x','1.0','1.0','{}','cask','en-US'),
+		  (1802,'cask','map-de','map-de','homebrew/cask','Map DE',ARRAY['Map DE'],'x','1.0','1.0','{}','cask','en-US'),
+		  (1803,'cask','map-jp','map-jp','homebrew/cask','Map JP',ARRAY['Map JP'],'x','1.0','1.0','{}','cask','en-US'),
+		  (1804,'cask','map-gb','map-gb','homebrew/cask','Map GB',ARRAY['Map GB'],'x','1.0','1.0','{}','cask','en-US'),
+		  (1805,'cask','map-zz','map-zz','homebrew/cask','Map ZZ',ARRAY['Map ZZ'],'x','1.0','1.0','{}','cask','en-US')
+	`).Error)
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO package_meta(package_id,developer) VALUES
+		  (1801,'Map US Studio'),(1802,'Map DE Studio'),(1803,'Map JP Studio'),
+		  (1804,'Map GB Studio'),(1805,'Map ZZ Studio')
+	`).Error)
+	for _, location := range []struct {
+		id   int64
+		code string
+	}{
+		{1801, "US"},
+		{1802, "DE"},
+		{1803, "JP"},
+		{1804, "GB"},
+	} {
+		require.NoError(t, st.SetDeveloperLocation(ctx, location.id, location.code, false, nil))
+	}
+	// Legacy rows can hold a two-letter code with no map point.
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO package_locations(package_id,country_code,region,source,status,updated_at)
+		VALUES(1805,'ZZ','other','admin','approved',now())
+	`).Error)
+	require.NoError(t, st.DB.Exec(`
+		UPDATE package_locations SET updated_at = now() - interval '2 days'
+		WHERE package_id IN (1801,1802,1803,1804)
+	`).Error)
+
+	totals, err := st.DeveloperMapTotals(ctx, true)
+	require.NoError(t, err)
+	require.Equal(t, 5, totals.TotalApps)
+	require.Equal(t, 4, totals.LocatedDevelopers)
+	require.Equal(t, 4, totals.Apps)
+	require.Equal(t, 4, totals.Places)
+	require.Equal(t, 4, totals.Countries)
+
+	recent, err := st.DeveloperMapRecent(ctx, 4, true)
+	require.NoError(t, err)
+	require.Len(t, recent, 4, "an unsupported country must not consume a recent slot")
+	for _, person := range recent {
+		require.NotEqual(t, "ZZ", person.CountryCode)
+	}
+
+	places, err := st.DeveloperMapPlaces(ctx, true)
+	require.NoError(t, err)
+	require.Len(t, places, 4)
+	for _, place := range places {
+		require.NotEqual(t, "ZZ", place.CountryCode)
 	}
 }
 
@@ -383,7 +505,6 @@ func TestPublishDeveloperSubmissionNamesTheRejection(t *testing.T) {
 
 	cases := []struct{ name, payload, want string }{
 		{"unknown category", `{"name":"Unknown Category","homepage":"https://example.com/unknown-category","category":"not-a-category"}`, "category_not_found"},
-		{"unknown city", `{"name":"Unknown City","homepage":"https://example.com/unknown-city","countryCode":"US","city":"Nowhere City"}`, "city_not_found"},
 		{"plain http homepage", `{"name":"Insecure Homepage","homepage":"http://example.com/insecure"}`, "url_invalid:homepage"},
 	}
 	for _, tc := range cases {
@@ -424,8 +545,8 @@ func TestReviewDeveloperSubmissionLeavesUntouchedClaimLocation(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,names,desc_en,version,version_base,raw,raw_hash,source_locale)
 VALUES(1401,'cask','curated-claim','curated-claim','homebrew/cask','Curated Claim',ARRAY['Curated Claim'],'x summary','1.0.0','1.0.0','{}','fixture','en-US')`).Error)
-	// An editor already approved this app's point, from the admin UI.
-	require.NoError(t, st.UpsertPackageLocation(ctx, 1401, "US", "Seattle", "seattle", "americas", 47.6062, -122.3321, false, "admin", "approved", "verified", "", nil))
+	// An editor already approved this app's country from the admin tools.
+	require.NoError(t, st.SetDeveloperLocation(ctx, 1401, "US", false, nil))
 
 	packageID := int64(1401)
 	payload := json.RawMessage(`{"summary":"A curated claim.","updateLocation":false,"countryCode":"US","city":"Austin"}`)
@@ -442,12 +563,116 @@ VALUES(1401,'cask','curated-claim','curated-claim','homebrew/cask','Curated Clai
 	require.NoError(t, err)
 
 	var location struct {
-		CityKey string
-		Status  string
+		CountryCode string
+		Source      string
+		Status      string
 	}
-	require.NoError(t, st.DB.Raw(`SELECT COALESCE(city_key, '') AS city_key, status FROM package_locations WHERE package_id = ?`, packageID).Scan(&location).Error)
-	require.Equal(t, "seattle", location.CityKey)
+	require.NoError(t, st.DB.Raw(`SELECT country_code, source, status FROM package_locations WHERE package_id = ?`, packageID).Scan(&location).Error)
+	require.Equal(t, "US", location.CountryCode)
+	require.Equal(t, "admin", location.Source)
 	require.Equal(t, "approved", location.Status, "a claim that never touched the location cannot withdraw it")
+}
+
+// Withdrawing an older developer submission must not erase a newer admin edit.
+func TestWithdrawDeveloperSubmissionKeepsAdminLocation(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,names,desc_en,version,version_base,raw,raw_hash,source_locale)
+VALUES(1701,'cask','admin-location','admin-location','homebrew/cask','Admin Location',ARRAY['Admin Location'],'x summary','1.0.0','1.0.0','{}','fixture','en-US')`).Error)
+
+	packageID := int64(1701)
+	payload := json.RawMessage(`{"summary":"A claimed app.","countryCode":"DE","updateLocation":true}`)
+	row, err := st.CreateDeveloperSubmission(ctx, store.DeveloperSubmissionInput{
+		Kind: "claim", PackageID: &packageID, SourceURL: "https://example.com/admin-location", Payload: payload, ContactEmail: "claim@example.com",
+	})
+	require.NoError(t, err)
+	_, err = st.PublishDeveloperSubmission(ctx, store.DeveloperPublishInput{SubmissionID: row.ID, Status: "published", Payload: payload})
+	require.NoError(t, err)
+
+	require.NoError(t, st.SetDeveloperLocation(ctx, packageID, "US", false, nil))
+
+	note := "The submission was withdrawn after the map was corrected."
+	_, err = st.ReviewDeveloperSubmission(ctx, store.DeveloperReviewInput{SubmissionID: row.ID, Status: "rejected", Note: &note})
+	require.NoError(t, err)
+
+	var location struct {
+		CountryCode string
+		Source      string
+		Status      string
+	}
+	require.NoError(t, st.DB.Raw(`SELECT country_code, source, status FROM package_locations WHERE package_id = ?`, packageID).Scan(&location).Error)
+	require.Equal(t, "US", location.CountryCode)
+	require.Equal(t, "admin", location.Source)
+	require.Equal(t, "approved", location.Status, "an old submission cannot withdraw an admin location")
+}
+
+// A legacy country with no map point still belongs to the submission that wrote it.
+func TestWithdrawDeveloperSubmissionRejectsUnsupportedCountryLocation(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,names,desc_en,version,version_base,raw,raw_hash,source_locale)
+VALUES(1901,'cask','legacy-country','legacy-country','homebrew/cask','Legacy Country',ARRAY['Legacy Country'],'x summary','1.0.0','1.0.0','{}','fixture','en-US')`).Error)
+
+	packageID := int64(1901)
+	payload := json.RawMessage(`{"summary":"A claimed app.","countryCode":"UK","updateLocation":true}`)
+	row, err := st.CreateDeveloperSubmission(ctx, store.DeveloperSubmissionInput{
+		Kind: "claim", PackageID: &packageID, SourceURL: "https://example.com/legacy-country", Payload: payload, ContactEmail: "claim@example.com",
+	})
+	require.NoError(t, err)
+	_, err = st.PublishDeveloperSubmission(ctx, store.DeveloperPublishInput{SubmissionID: row.ID, Status: "published", Payload: payload})
+	require.NoError(t, err)
+
+	// Publishing skips UK now. This row stands in for one written before the map
+	// stopped accepting the code.
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO package_locations(package_id,country_code,region,source,status,confidence)
+		VALUES(?, 'UK', 'europe', 'self', 'approved', 'self_reported')
+	`, packageID).Error)
+
+	note := "The location was based on a retired country code."
+	_, err = st.ReviewDeveloperSubmission(ctx, store.DeveloperReviewInput{SubmissionID: row.ID, Status: "rejected", Note: &note})
+	require.NoError(t, err)
+
+	var locationStatus string
+	require.NoError(t, st.DB.Raw(`SELECT status FROM package_locations WHERE package_id = ?`, packageID).Scan(&locationStatus).Error)
+	require.Equal(t, "rejected", locationStatus)
+}
+
+// A claim that names an unsupported country must not withdraw a different
+// self-reported country already on the package.
+func TestWithdrawDeveloperSubmissionKeepsEarlierSelfLocation(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,names,desc_en,version,version_base,raw,raw_hash,source_locale)
+VALUES(2001,'cask','earlier-location','earlier-location','homebrew/cask','Earlier Location',ARRAY['Earlier Location'],'x summary','1.0.0','1.0.0','{}','fixture','en-US')`).Error)
+
+	packageID := int64(2001)
+	require.NoError(t, st.DB.Exec(`
+		INSERT INTO package_locations(package_id,country_code,region,source,status,confidence)
+		VALUES(?, 'US', 'americas', 'self', 'approved', 'self_reported')
+	`, packageID).Error)
+
+	payload := json.RawMessage(`{"summary":"A later claim.","countryCode":"UK","updateLocation":true}`)
+	row, err := st.CreateDeveloperSubmission(ctx, store.DeveloperSubmissionInput{
+		Kind: "claim", PackageID: &packageID, SourceURL: "https://example.com/earlier-location", Payload: payload, ContactEmail: "claim@example.com",
+	})
+	require.NoError(t, err)
+	_, err = st.PublishDeveloperSubmission(ctx, store.DeveloperPublishInput{SubmissionID: row.ID, Status: "published", Payload: payload})
+	require.NoError(t, err)
+
+	note := "The unsupported country was rejected."
+	_, err = st.ReviewDeveloperSubmission(ctx, store.DeveloperReviewInput{SubmissionID: row.ID, Status: "rejected", Note: &note})
+	require.NoError(t, err)
+
+	var location struct {
+		CountryCode string
+		Source      string
+		Status      string
+	}
+	require.NoError(t, st.DB.Raw(`SELECT country_code, source, status FROM package_locations WHERE package_id = ?`, packageID).Scan(&location).Error)
+	require.Equal(t, "US", location.CountryCode)
+	require.Equal(t, "self", location.Source)
+	require.Equal(t, "approved", location.Status, "the claim never wrote the earlier self location")
 }
 
 // Re-saving a published submission with the same pick must not reset published_at,

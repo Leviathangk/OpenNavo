@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/opennavo/opennavo/server/internal/domain"
 )
 
 // DeveloperSubmission is one anonymous new/claim/location lead. Editors review it before publishing.
@@ -178,6 +180,16 @@ func (s *Store) UpdateDeveloperSubmission(ctx context.Context, id int64, status 
 		status, decisionNote, payloadValue, packageID, reviewerID, status, id,
 	).Scan(&row).Error
 	return row, err
+}
+
+// SetDeveloperLocation writes an approved country-level location for one live App.
+func (s *Store) SetDeveloperLocation(ctx context.Context, packageID int64, countryCode string, remote bool, reviewerID *int64) error {
+	code, valid := domain.NormalizeCountryCode(countryCode)
+	_, supported := domain.CountryPoint(code)
+	if packageID == 0 || !valid || !supported {
+		return domain.Validation()
+	}
+	return s.UpsertPackageLocation(ctx, packageID, code, "", "", domain.RegionForCountry(code), 0, 0, remote, "admin", "approved", "verified", "", reviewerID)
 }
 
 // UpsertPackageLocation writes an approved (or pending) per-App location.

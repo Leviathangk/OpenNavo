@@ -3574,11 +3574,32 @@ class DeveloperSubmissionUpdate(BaseModel):
     status: Literal['submitted', 'in_review', 'changes_requested', 'approved', 'rejected', 'published'] | MISSING = MISSING
     decisionNote: str | None | MISSING = MISSING
     payload: dict[str, Any] | MISSING = MISSING
-    packageKind: str | MISSING = MISSING
+    packageKind: Annotated[Literal['cask', 'formula', 'link'] | MISSING, Field(description='Catalog package kind. Any live package can receive a country-level developer-map location.')] = MISSING
     packageToken: str | MISSING = MISSING
     feature: bool | MISSING = MISSING
     quote: str | MISSING = MISSING
     sort: int | MISSING = MISSING
+
+
+class DeveloperLocationUpdate(BaseModel):
+    packageKind: Literal['cask', 'formula', 'link']
+    packageToken: Annotated[str, Field(max_length=128, min_length=1)]
+    countryCode: Annotated[str, Field(examples=['US'], pattern='^[A-Za-z]{2}$')]
+    remote: bool | MISSING = MISSING
+
+
+class DeveloperLocation(BaseModel):
+    packageId: int
+    packageKind: Literal['cask', 'formula', 'link']
+    packageToken: str
+    countryCode: str
+    remote: bool | MISSING = MISSING
+
+
+class DeveloperLocationResponse(BaseModel):
+    code: str
+    msg: str
+    data: DeveloperLocation | None | MISSING = MISSING
 
 
 class DeveloperPickAdmin(BaseModel):
@@ -4721,6 +4742,14 @@ class SetDeveloperPickInput(BaseModel):
     )
     dryRun: bool = False
     body: DeveloperPickRequest
+
+
+class SetDeveloperLocationInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: bool = False
+    body: DeveloperLocationUpdate
 
 
 class TranslationReadFields(BaseModel):

@@ -85,7 +85,7 @@ function onKey(place: DeveloperMapPlace, event: KeyboardEvent) {
       class="dm-world"
       :viewBox="`0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`"
       role="img"
-      :aria-label="t('developerMap.mapAria')"
+      :aria-label="t('developerMap.title')"
     >
       <defs>
         <radialGradient id="dmGlow">
@@ -101,7 +101,7 @@ function onKey(place: DeveloperMapPlace, event: KeyboardEvent) {
           v-for="place in visiblePlaces"
           :key="place.key"
           class="dm-city"
-          :class="{ 'is-selected': props.selected === place.key, 'is-top': place.key === 'bay-area' }"
+          :class="{ 'is-selected': props.selected === place.key, 'is-top': place.key === topLabels[0]?.key }"
           :transform="`translate(${project(place.lng, place.lat)[0].toFixed(1)} ${project(place.lng, place.lat)[1].toFixed(1)})`"
           tabindex="0"
           role="button"
@@ -161,7 +161,6 @@ function onKey(place: DeveloperMapPlace, event: KeyboardEvent) {
           {{ developer.name }}
         </span>
       </div>
-      <div class="dm-tip-cta">{{ t('developerMap.clickCity') }} →</div>
     </div>
 
     <div v-if="!visiblePlaces.length" class="dm-empty">{{ t('developerMap.empty') }}</div>

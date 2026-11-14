@@ -6,7 +6,7 @@ import { gotoReady } from './helpers';
 
 const apiBase = process.env.E2E_API_BASE ?? 'http://127.0.0.1:18082/api/v1';
 
-test('the developer map shows totals, tabs and the city list', async ({ page }) => {
+test('the developer map shows totals, tabs and the country list', async ({ page }) => {
   await gotoReady(page, '/zh/developer-map');
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('开发者地图');

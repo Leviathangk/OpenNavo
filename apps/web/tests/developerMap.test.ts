@@ -3,9 +3,9 @@ import { developerCountryName, developerPlaceName, type DeveloperMapPlace } from
 
 function place(overrides: Partial<DeveloperMapPlace>): DeveloperMapPlace {
   return {
-    key: 'US|bay-area',
-    kind: 'city',
-    name: 'San Francisco',
+    key: 'US',
+    kind: 'country',
+    name: 'US',
     countryCode: 'US',
     region: 'americas',
     lat: 37.77,
@@ -19,16 +19,15 @@ function place(overrides: Partial<DeveloperMapPlace>): DeveloperMapPlace {
 }
 
 describe('developer map place labels', () => {
-  it('shows the stored city text as submitted', () => {
-    expect(developerPlaceName(place({}), 'en-US')).toBe('San Francisco');
-    expect(developerPlaceName(place({ name: '杭州' }), 'ja-JP')).toBe('杭州');
-  });
-
-  it('localizes country-only places instead of printing the code', () => {
-    const japan = place({ kind: 'country', key: 'JP', name: 'JP', countryCode: 'JP' });
+  it('localizes country places instead of printing the code', () => {
+    const japan = place({ key: 'JP', name: 'JP', countryCode: 'JP' });
     expect(developerPlaceName(japan, 'en-US')).toBe('Japan');
     expect(developerPlaceName(japan, 'ja-JP')).toBe('日本');
     expect(developerPlaceName(japan, 'zh-CN')).toBe('日本');
+  });
+
+  it('does not show legacy city text from a cached payload', () => {
+    expect(developerPlaceName(place({ name: 'San Francisco' }), 'en-US')).toBe('United States');
   });
 
   it('falls back to the raw code when the code is not a region', () => {

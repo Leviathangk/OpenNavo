@@ -632,8 +632,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Developer map totals, cities and countries
-         * @description Public read model behind the developer map. Cached for five minutes and rate limited like the rest of the public API.
+         * Developer map totals and country aggregates
+         * @description Public read model behind the developer map. Locations are country-level; cached for five minutes and rate limited like the rest of the public API.
          */
         get: operations["getDeveloperMap"];
         put?: never;
@@ -8603,21 +8603,21 @@ export interface components {
          *           "located": 9,
          *           "apps": 4210,
          *           "locatedApps": 14,
-         *           "places": 7,
+         *           "places": 5,
          *           "countries": 5
          *         },
          *         "places": [
          *           {
-         *             "key": "san-francisco",
-         *             "kind": "city",
-         *             "name": "San Francisco",
+         *             "key": "US",
+         *             "kind": "country",
+         *             "name": "US",
          *             "countryCode": "US",
          *             "region": "americas",
-         *             "lat": 37.7749,
-         *             "lng": -122.4194,
-         *             "developers": 4,
-         *             "apps": 6,
-         *             "installs30d": 120000,
+         *             "lat": 39.8,
+         *             "lng": -98.6,
+         *             "developers": 7,
+         *             "apps": 9,
+         *             "installs30d": 200000,
          *             "topDevelopers": [
          *               {
          *                 "name": "Example Studio",
@@ -8638,8 +8638,6 @@ export interface components {
          *         "recentDevelopers": [
          *           {
          *             "name": "Example Studio",
-         *             "cityKey": "san-francisco",
-         *             "city": "San Francisco",
          *             "countryCode": "US",
          *             "apps": 2,
          *             "updatedAt": "2026-11-11T09:00:00Z"
@@ -8662,21 +8660,21 @@ export interface components {
          *         "located": 9,
          *         "apps": 4210,
          *         "locatedApps": 14,
-         *         "places": 7,
+         *         "places": 5,
          *         "countries": 5
          *       },
          *       "places": [
          *         {
-         *           "key": "san-francisco",
-         *           "kind": "city",
-         *           "name": "San Francisco",
+         *           "key": "US",
+         *           "kind": "country",
+         *           "name": "US",
          *           "countryCode": "US",
          *           "region": "americas",
-         *           "lat": 37.7749,
-         *           "lng": -122.4194,
-         *           "developers": 4,
-         *           "apps": 6,
-         *           "installs30d": 120000,
+         *           "lat": 39.8,
+         *           "lng": -98.6,
+         *           "developers": 7,
+         *           "apps": 9,
+         *           "installs30d": 200000,
          *           "topDevelopers": [
          *             {
          *               "name": "Example Studio",
@@ -8697,8 +8695,6 @@ export interface components {
          *       "recentDevelopers": [
          *         {
          *           "name": "Example Studio",
-         *           "cityKey": "san-francisco",
-         *           "city": "San Francisco",
          *           "countryCode": "US",
          *           "apps": 2,
          *           "updatedAt": "2026-11-11T09:00:00Z"
@@ -8724,11 +8720,11 @@ export interface components {
                 countries: number;
             };
             places: {
-                /** @example san-francisco */
+                /** @example US */
                 key: string;
                 /** @enum {string} */
-                kind: "city" | "country";
-                /** @example San Francisco */
+                kind: "country";
+                /** @example US */
                 name: string;
                 /** @example US */
                 countryCode: string;
@@ -8759,8 +8755,6 @@ export interface components {
             }[];
             recentDevelopers: {
                 name: string;
-                cityKey: string;
-                city: string;
                 countryCode: string;
                 apps: number;
                 /** Format: date-time */
@@ -8914,8 +8908,7 @@ export interface components {
          *         "developer": "Ghostty",
          *         "homepage": "https://ghostty.org",
          *         "repoUrl": "https://github.com/ghostty-org/ghostty",
-         *         "countryCode": "US",
-         *         "city": "San Francisco"
+         *         "countryCode": "US"
          *       },
          *       "proof": "",
          *       "website": ""
@@ -8928,7 +8921,7 @@ export interface components {
             sourceKind?: "github" | "appstore" | "website";
             sourceUrl?: string;
             /** @enum {string} */
-            packageKind?: "cask" | "link";
+            packageKind?: "cask" | "formula" | "link";
             packageToken?: string;
             payload?: {
                 [key: string]: unknown;
@@ -10317,7 +10310,6 @@ export interface operations {
                  *         "repoUrl": "https://github.com/ghostty-org/ghostty",
                  *         "downloadUrl": "https://ghostty.org/download",
                  *         "countryCode": "US",
-                 *         "city": "San Francisco",
                  *         "remote": true
                  *       },
                  *       "contactEmail": "dev@example.com",

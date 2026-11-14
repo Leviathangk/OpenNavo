@@ -3245,6 +3245,7 @@
       "developersAt": "{count} 位開發者"
     },
     "rail": {
+      "countries": "全部國家 / 地區",
       "topCountries": "開發者最多的國家",
       "recent": "最近加入"
     },

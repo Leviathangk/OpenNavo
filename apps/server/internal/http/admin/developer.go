@@ -140,8 +140,8 @@ func (h *Handler) UpdateDeveloperSubmission(ctx context.Context, request adminap
 	packageID := row.PackageID
 	if body.PackageToken != nil && strings.TrimSpace(*body.PackageToken) != "" {
 		kind := "cask"
-		if body.PackageKind != nil && strings.TrimSpace(*body.PackageKind) != "" {
-			kind = strings.TrimSpace(*body.PackageKind)
+		if body.PackageKind != nil && strings.TrimSpace(string(*body.PackageKind)) != "" {
+			kind = strings.TrimSpace(string(*body.PackageKind))
 		}
 		found, ok, err := h.Management.Store.LivePackageID(domain.WithLinks(requestContext(ctx), true), kind, strings.TrimSpace(*body.PackageToken))
 		if err != nil {
@@ -254,4 +254,52 @@ func (h *Handler) SetDeveloperPick(ctx context.Context, request adminapi.SetDeve
 		PackageID int64 `json:"packageId"`
 		Active    bool  `json:"active"`
 	}{PackageID: id, Active: active}, nil)
+}
+
+// SetDeveloperLocation writes a country-level map location for any live package.
+// It accepts casks, formulae and link listings so every published App has the same
+// location path through the admin MCP.
+func (h *Handler) SetDeveloperLocation(ctx context.Context, request adminapi.SetDeveloperLocationRequestObject) (adminapi.SetDeveloperLocationResponseObject, error) {
+	if h.Management == nil || h.Management.Store == nil {
+		return nil, domain.Internal(nil)
+	}
+	if request.Body == nil {
+		return nil, domain.Validation()
+	}
+	body := request.Body
+	kind := strings.TrimSpace(string(body.PackageKind))
+	if kind != "cask" && kind != "formula" && kind != "link" {
+		return nil, domain.Validation()
+	}
+	token := strings.TrimSpace(body.PackageToken)
+	countryCode, ok := domain.NormalizeCountryCode(body.CountryCode)
+	_, supported := domain.CountryPoint(countryCode)
+	if token == "" || !ok || !supported {
+		return nil, domain.Validation()
+	}
+	requestCtx := domain.WithLinks(requestContext(ctx), true)
+	packageID, found, err := h.Management.Store.LivePackageID(requestCtx, kind, token)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, &domain.AppError{Code: domain.CodeNotFound, HTTPStatus: http.StatusNotFound}
+	}
+	remote := false
+	if body.Remote != nil {
+		remote = *body.Remote
+	}
+	dryRun := request.Params.DryRun != nil && *request.Params.DryRun
+	if !dryRun {
+		if err := h.Management.Store.SetDeveloperLocation(requestCtx, packageID, countryCode, remote, actor(ctx).ID); err != nil {
+			return nil, err
+		}
+	}
+	return response[adminapi.SetDeveloperLocation200JSONResponse](map[string]any{
+		"packageId":    packageID,
+		"packageKind":  kind,
+		"packageToken": token,
+		"countryCode":  countryCode,
+		"remote":       remote,
+	}, nil)
 }

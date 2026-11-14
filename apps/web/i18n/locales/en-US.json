@@ -2104,7 +2104,7 @@
   "developerMap": {
     "title": "Developer map",
     "metaTitle": "Developer map — OpenNavo",
-    "description": "Find the teams and cities behind the Mac apps in OpenNavo, and submit or update your own app's location.",
+    "description": "Find the teams and countries behind the apps in OpenNavo, and submit or update your own app's location.",
     "lede": "The people and places behind the apps.",
     "tabs": {
       "map": "Map",

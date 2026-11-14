@@ -35,7 +35,6 @@ const form = reactive({
   minMacos: '',
   license: '',
   countryCode: 'US',
-  city: '',
   remote: false,
   contactEmail: ''
 });
@@ -82,7 +81,7 @@ const countryName = (code: string) => {
   }
 };
 
-const previewLocation = computed(() => [form.city, countryName(form.countryCode)].filter(Boolean).join(' · '));
+const previewLocation = computed(() => countryName(form.countryCode));
 const iconToken = computed(
   () =>
     form.name
@@ -160,7 +159,6 @@ async function submit() {
         minMacos: form.minMacos.trim(),
         license: form.license.trim(),
         countryCode: form.countryCode,
-        city: form.city.trim(),
         remote: form.remote
       }
     });
@@ -190,7 +188,6 @@ function reset() {
     minMacos: '',
     license: '',
     countryCode: 'US',
-    city: '',
     remote: false,
     contactEmail: ''
   });
@@ -357,10 +354,6 @@ function reset() {
                 <option v-for="code in countries" :key="code" :value="code">{{ countryName(code) }}</option>
               </select></label
             >
-            <label class="flex flex-col gap-4px"
-              ><span class="text-11px font-500 text-ink-secondary">{{ t('developerForm.city') }}</span
-              ><input v-model="form.city" class="dev-input"
-            /></label>
             <label class="flex items-center gap-7px text-11.5px text-ink-secondary sm:col-span-2"
               ><input v-model="form.remote" type="checkbox" /> {{ t('developerForm.remote') }}</label
             >

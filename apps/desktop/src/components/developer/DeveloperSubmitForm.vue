@@ -32,7 +32,6 @@ const form = reactive({
   version: '',
   category: '',
   countryCode: 'US',
-  city: '',
   remote: false,
   contactEmail: ''
 });
@@ -133,7 +132,6 @@ async function submit() {
         iconUrl: form.iconUrl.trim(),
         version: form.version.trim(),
         countryCode: form.countryCode,
-        city: form.city.trim(),
         remote: form.remote
       }
     });
@@ -161,7 +159,6 @@ function reset() {
     version: '',
     category: '',
     countryCode: 'US',
-    city: '',
     remote: false,
     contactEmail: ''
   });
@@ -294,10 +291,6 @@ function reset() {
               <option v-for="code in countries" :key="code" :value="code">{{ countryName(code) }}</option>
             </select>
           </label>
-          <label class="flex flex-col gap-4px"
-            ><span class="text-11px text-ink-secondary">{{ t('developerForm.city') }}</span
-            ><input v-model="form.city" class="dev-input"
-          /></label>
           <label class="flex items-center gap-6px text-11px text-ink-secondary sm:col-span-2"
             ><input v-model="form.remote" type="checkbox" /> {{ t('developerForm.remote') }}</label
           >

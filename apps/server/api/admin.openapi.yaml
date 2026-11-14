@@ -14013,6 +14013,62 @@ paths:
         - bearerAuth: []
         - agentToken: []
           agentGateway: []
+  /developer/locations:
+    post:
+      tags: [developer]
+      operationId: setDeveloperLocation
+      summary: Set a live app's developer-map country
+      description: Upserts an approved country-level location for any live catalog package, including casks, formulae and link listings. The request has no city or coordinate fields.
+      parameters:
+        - name: dryRun
+          in: query
+          schema: {type: boolean, default: false}
+        - $ref: '#/components/parameters/AgentTool'
+        - $ref: '#/components/parameters/AgentRequestId'
+        - $ref: '#/components/parameters/AgentClientIP'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeveloperLocationUpdate'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeveloperLocationResponse'}
+              examples:
+                dry-run:
+                  value: {"code": "0000", "msg": "ok", "data": {"packageId": 42, "packageKind": "formula", "packageToken": "ghostty", "countryCode": "US", "remote": false}}
+                en-US:
+                  value: {"code": "0000", "msg": "ok", "data": {"packageId": 42, "packageKind": "formula", "packageToken": "ghostty", "countryCode": "US", "remote": false}}
+                zh-CN:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                ja-JP:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                es-ES:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                pt-BR:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                ru-RU:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                de-DE:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1developer~1locations/post/responses/200/content/application~1json/examples/en-US'
+      x-permissions: [catalog:package:edit]
+      x-agent-access: {permissions: [catalog:package:edit], deleteAction: never}
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
 
 components:
   securitySchemes:
@@ -38074,11 +38130,42 @@ components:
         status: {type: string, enum: [submitted, in_review, changes_requested, approved, rejected, published]}
         decisionNote: {type: string, nullable: true}
         payload: {type: object, additionalProperties: true}
-        packageKind: {type: string}
+        packageKind: {type: string, enum: [cask, formula, link], description: 'Catalog package kind. Any live package can receive a country-level developer-map location.'}
         packageToken: {type: string}
         feature: {type: boolean}
         quote: {type: string}
         sort: {type: integer}
+    DeveloperLocationUpdate:
+      type: object
+      required: [packageKind, packageToken, countryCode]
+      properties:
+        packageKind: {type: string, enum: [cask, formula, link]}
+        packageToken: {type: string, minLength: 1, maxLength: 128}
+        countryCode: {type: string, pattern: '^[A-Za-z]{2}$', example: US}
+        remote: {type: boolean}
+      example: {"packageKind": "formula", "packageToken": "ghostty", "countryCode": "US", "remote": false}
+    DeveloperLocation:
+      type: object
+      required: [packageId, packageKind, packageToken, countryCode]
+      properties:
+        packageId: {type: integer, format: int64}
+        packageKind: {type: string, enum: [cask, formula, link]}
+        packageToken: {type: string}
+        countryCode: {type: string}
+        remote: {type: boolean}
+      example: {"packageId": 42, "packageKind": "formula", "packageToken": "ghostty", "countryCode": "US", "remote": false}
+    DeveloperLocationResponse:
+      type: object
+      required: [code, msg]
+      properties:
+        code: {type: string}
+        msg: {type: string}
+        data:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/DeveloperLocation'
+          nullable: true
+      example: {"code": "0000", "msg": "ok", "data": {"packageId": 42, "packageKind": "formula", "packageToken": "ghostty", "countryCode": "US", "remote": false}}
     DeveloperPickAdmin:
       type: object
       required: [packageId, kind, token, name, sort, active, publishedAt]

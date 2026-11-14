@@ -3245,6 +3245,7 @@
       "developersAt": "開発者 {count} 人"
     },
     "rail": {
+      "countries": "すべての国・地域",
       "topCountries": "上位の国",
       "recent": "最近追加"
     },

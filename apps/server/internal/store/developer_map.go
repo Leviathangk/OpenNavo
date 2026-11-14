@@ -2,20 +2,23 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/domain"
 )
 
-// DeveloperTop is one developer inside a city card.
+// DeveloperTop is one developer inside a country card.
 type DeveloperTop struct {
 	Name        string `json:"name" gorm:"column:name"`
 	Apps        int    `json:"apps" gorm:"column:apps"`
 	Installs30d int64  `json:"installs30d" gorm:"column:installs30d"`
 }
 
-// DeveloperPlace is a city (or country-only fallback) aggregate for the map.
+// DeveloperPlace is a country aggregate for the map.
 type DeveloperPlace struct {
 	Key           string         `json:"key"`
-	Kind          string         `json:"kind"` // city | country
+	Kind          string         `json:"kind"` // country
 	Name          string         `json:"name"`
 	CountryCode   string         `json:"countryCode"`
 	Region        string         `json:"region"`
@@ -38,8 +41,6 @@ type DeveloperCountry struct {
 // DeveloperRecent is one recently approved location.
 type DeveloperRecent struct {
 	Name        string    `json:"name" gorm:"column:name"`
-	CityKey     string    `json:"cityKey" gorm:"column:city_key"`
-	City        string    `json:"city" gorm:"column:city"`
 	CountryCode string    `json:"countryCode" gorm:"column:country_code"`
 	Apps        int       `json:"apps" gorm:"column:apps"`
 	UpdatedAt   time.Time `json:"updatedAt" gorm:"column:updated_at"`
@@ -56,6 +57,7 @@ type DeveloperPick struct {
 type DeveloperTotals struct {
 	TotalDevelopers   int `json:"totalDevelopers" gorm:"column:total_developers"`
 	LocatedDevelopers int `json:"locatedDevelopers" gorm:"column:located_developers"`
+	TotalApps         int `json:"totalApps" gorm:"column:total_apps"`
 	Apps              int `json:"apps" gorm:"column:apps"`
 	Places            int `json:"places" gorm:"column:places"`
 	Countries         int `json:"countries" gorm:"column:countries"`
@@ -63,37 +65,32 @@ type DeveloperTotals struct {
 
 func developerKindFilter(includeLinks bool) string {
 	if includeLinks {
-		return "p.kind IN ('cask','link')"
+		return "p.kind IN ('cask','formula','link')"
 	}
-	return "p.kind='cask'"
+	return "p.kind IN ('cask','formula')"
 }
 
-// developerPlaceKey keeps same-named cities in different countries apart.
-func developerPlaceKey(countryCode, cityKey string) string {
-	return countryCode + "|" + cityKey
+// developerCountryFilter keeps aggregate numbers on the same country set the map can draw.
+func developerCountryFilter() string {
+	codes := domain.SupportedCountryCodes()
+	quoted := make([]string, len(codes))
+	for index, code := range codes {
+		quoted[index] = "'" + code + "'"
+	}
+	return "pl.country_code IN (" + strings.Join(quoted, ",") + ")"
 }
 
-// DeveloperMapPlaces returns approved city aggregates with their top developers.
+// DeveloperMapPlaces returns approved country aggregates with their top developers.
 func (s *Store) DeveloperMapPlaces(ctx context.Context, includeLinks bool) ([]DeveloperPlace, error) {
 	kindFilter := developerKindFilter(includeLinks)
 	var rows []struct {
-		CityKey     string  `gorm:"column:city_key"`
-		City        string  `gorm:"column:city"`
-		CountryCode string  `gorm:"column:country_code"`
-		Region      string  `gorm:"column:region"`
-		Lat         float64 `gorm:"column:lat"`
-		Lng         float64 `gorm:"column:lng"`
-		Apps        int     `gorm:"column:apps"`
-		Developers  int     `gorm:"column:developers"`
-		Installs30d int64   `gorm:"column:installs30d"`
+		CountryCode string `gorm:"column:country_code"`
+		Apps        int    `gorm:"column:apps"`
+		Developers  int    `gorm:"column:developers"`
+		Installs30d int64  `gorm:"column:installs30d"`
 	}
 	err := s.DB.WithContext(ctx).Raw(`
-		SELECT COALESCE(pl.city_key, '') AS city_key,
-		       COALESCE(pl.city, '') AS city,
-		       pl.country_code,
-		       pl.region,
-		       COALESCE(pl.lat, 0) AS lat,
-		       COALESCE(pl.lng, 0) AS lng,
+		SELECT pl.country_code,
 		       count(*) AS apps,
 		       count(DISTINCT NULLIF(m.developer, '')) AS developers,
 		       COALESCE(sum(p.installs_30d), 0)::bigint AS installs30d
@@ -101,28 +98,27 @@ func (s *Store) DeveloperMapPlaces(ctx context.Context, includeLinks bool) ([]De
 		JOIN packages p ON p.id = pl.package_id
 		LEFT JOIN package_meta m ON m.package_id = p.id
 		WHERE pl.status = 'approved'
+		  AND ` + developerCountryFilter() + `
 		  AND p.removed_at IS NULL
 		  AND NOT (p.disabled OR p.stale_disabled)
 		  AND NOT COALESCE(m.hidden, false)
 		  AND NOT COALESCE(m.private, false)
 		  AND ` + kindFilter + `
-		GROUP BY pl.city_key, pl.city, pl.country_code, pl.region, pl.lat, pl.lng
-		ORDER BY developers DESC, installs30d DESC, city_key
+			GROUP BY pl.country_code
+			ORDER BY developers DESC, installs30d DESC, country_code
 	`).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
 
 	var topRows []struct {
-		CityKey     string `gorm:"column:city_key"`
 		CountryCode string `gorm:"column:country_code"`
 		Developer   string `gorm:"column:developer"`
 		Apps        int    `gorm:"column:apps"`
 		Installs30d int64  `gorm:"column:installs30d"`
 	}
 	err = s.DB.WithContext(ctx).Raw(`
-		SELECT COALESCE(pl.city_key, '') AS city_key,
-		       pl.country_code,
+		SELECT pl.country_code,
 		       m.developer AS developer,
 		       count(*) AS apps,
 		       COALESCE(sum(p.installs_30d), 0)::bigint AS installs30d
@@ -130,50 +126,40 @@ func (s *Store) DeveloperMapPlaces(ctx context.Context, includeLinks bool) ([]De
 		JOIN packages p ON p.id = pl.package_id
 		JOIN package_meta m ON m.package_id = p.id
 		WHERE pl.status = 'approved'
+		  AND ` + developerCountryFilter() + `
 		  AND p.removed_at IS NULL
 		  AND NOT (p.disabled OR p.stale_disabled)
 		  AND NOT COALESCE(m.hidden, false)
 		  AND NOT COALESCE(m.private, false)
 		  AND NULLIF(m.developer, '') IS NOT NULL
 		  AND ` + kindFilter + `
-		GROUP BY pl.country_code, pl.city_key, m.developer
+			GROUP BY pl.country_code, m.developer
 		ORDER BY installs30d DESC, developer
 	`).Scan(&topRows).Error
 	if err != nil {
 		return nil, err
 	}
-	topByCity := make(map[string][]DeveloperTop)
+	topByCountry := make(map[string][]DeveloperTop)
 	for _, row := range topRows {
-		key := developerPlaceKey(row.CountryCode, row.CityKey)
-		items := topByCity[key]
+		items := topByCountry[row.CountryCode]
 		if len(items) >= 3 {
 			continue
 		}
-		topByCity[key] = append(items, DeveloperTop{Name: row.Developer, Apps: row.Apps, Installs30d: row.Installs30d})
+		topByCountry[row.CountryCode] = append(items, DeveloperTop{Name: row.Developer, Apps: row.Apps, Installs30d: row.Installs30d})
 	}
 
 	places := make([]DeveloperPlace, 0, len(rows))
 	for _, row := range rows {
-		kind := "city"
-		key := row.CityKey
-		name := row.City
-		if key == "" {
-			kind = "country"
-			key = row.CountryCode
-			name = row.CountryCode
-		}
-		top := topByCity[developerPlaceKey(row.CountryCode, row.CityKey)]
+		top := topByCountry[row.CountryCode]
 		if top == nil {
 			top = []DeveloperTop{}
 		}
 		places = append(places, DeveloperPlace{
-			Key:           key,
-			Kind:          kind,
-			Name:          name,
+			Key:           row.CountryCode,
+			Kind:          "country",
+			Name:          row.CountryCode,
 			CountryCode:   row.CountryCode,
-			Region:        row.Region,
-			Lat:           row.Lat,
-			Lng:           row.Lng,
+			Region:        domain.RegionForCountry(row.CountryCode),
 			Developers:    row.Developers,
 			Apps:          row.Apps,
 			Installs30d:   row.Installs30d,
@@ -196,6 +182,7 @@ func (s *Store) DeveloperMapCountries(ctx context.Context, includeLinks bool) ([
 		JOIN packages p ON p.id = pl.package_id
 		LEFT JOIN package_meta m ON m.package_id = p.id
 		WHERE pl.status = 'approved'
+		  AND ` + developerCountryFilter() + `
 		  AND p.removed_at IS NULL
 		  AND NOT (p.disabled OR p.stale_disabled)
 		  AND NOT COALESCE(m.hidden, false)
@@ -219,8 +206,6 @@ func (s *Store) DeveloperMapRecent(ctx context.Context, limit int, includeLinks 
 	var rows []DeveloperRecent
 	err := s.DB.WithContext(ctx).Raw(`
 		SELECT COALESCE(NULLIF(m.developer, ''), p.name) AS name,
-		       COALESCE(pl.city_key, '') AS city_key,
-		       COALESCE(pl.city, '') AS city,
 		       pl.country_code,
 		       count(*) AS apps,
 		       max(pl.updated_at) AS updated_at
@@ -228,12 +213,13 @@ func (s *Store) DeveloperMapRecent(ctx context.Context, limit int, includeLinks 
 		JOIN packages p ON p.id = pl.package_id
 		LEFT JOIN package_meta m ON m.package_id = p.id
 		WHERE pl.status = 'approved'
+		  AND `+developerCountryFilter()+`
 		  AND p.removed_at IS NULL
 		  AND NOT (p.disabled OR p.stale_disabled)
 		  AND NOT COALESCE(m.hidden, false)
 		  AND NOT COALESCE(m.private, false)
 		  AND `+kindFilter+`
-		GROUP BY 1, 2, 3, 4
+			GROUP BY 1, 2
 		ORDER BY updated_at DESC
 		LIMIT ?
 	`, limit).Scan(&rows).Error
@@ -261,36 +247,59 @@ func (s *Store) DeveloperMapTotals(ctx context.Context, includeLinks bool) (Deve
 		     JOIN packages p ON p.id = pl.package_id
 		     LEFT JOIN package_meta m ON m.package_id = p.id
 		    WHERE pl.status = 'approved'
+		      AND ` + developerCountryFilter() + `
 		      AND p.removed_at IS NULL
 		      AND NOT (p.disabled OR p.stale_disabled)
 		      AND NOT COALESCE(m.hidden, false)
 		      AND NOT COALESCE(m.private, false)
 		      AND ` + kindFilter + `) AS located_developers,
 		  (SELECT count(*)
+		     FROM packages p
+		     LEFT JOIN package_meta m ON m.package_id = p.id
+		    WHERE p.removed_at IS NULL
+		      AND NOT (p.disabled OR p.stale_disabled)
+		      AND NOT COALESCE(m.hidden, false)
+		      AND NOT COALESCE(m.private, false)
+		      AND ` + kindFilter + `) AS total_apps,
+		  (SELECT count(*)
 		     FROM package_locations pl
 		     JOIN packages p ON p.id = pl.package_id
 		     LEFT JOIN package_meta m ON m.package_id = p.id
 		    WHERE pl.status = 'approved'
+		      AND ` + developerCountryFilter() + `
 		      AND p.removed_at IS NULL
 		      AND NOT (p.disabled OR p.stale_disabled)
 		      AND NOT COALESCE(m.hidden, false)
 		      AND NOT COALESCE(m.private, false)
 		      AND ` + kindFilter + `) AS apps,
-		  (SELECT count(DISTINCT pl.city_key)
-		     FROM package_locations pl
-		     JOIN packages p ON p.id = pl.package_id
-		     LEFT JOIN package_meta m ON m.package_id = p.id
-		    WHERE pl.status = 'approved' AND pl.city_key IS NOT NULL AND ` + kindFilter + `) AS places,
 		  (SELECT count(DISTINCT pl.country_code)
 		     FROM package_locations pl
 		     JOIN packages p ON p.id = pl.package_id
 		     LEFT JOIN package_meta m ON m.package_id = p.id
-		    WHERE pl.status = 'approved' AND ` + kindFilter + `) AS countries
+		    WHERE pl.status = 'approved'
+		      AND ` + developerCountryFilter() + `
+		      AND p.removed_at IS NULL
+		      AND NOT (p.disabled OR p.stale_disabled)
+		      AND NOT COALESCE(m.hidden, false)
+		      AND NOT COALESCE(m.private, false)
+		      AND ` + kindFilter + `) AS places,
+		  (SELECT count(DISTINCT pl.country_code)
+		     FROM package_locations pl
+		     JOIN packages p ON p.id = pl.package_id
+		     LEFT JOIN package_meta m ON m.package_id = p.id
+		    WHERE pl.status = 'approved'
+		      AND ` + developerCountryFilter() + `
+		      AND p.removed_at IS NULL
+		      AND NOT (p.disabled OR p.stale_disabled)
+		      AND NOT COALESCE(m.hidden, false)
+		      AND NOT COALESCE(m.private, false)
+		      AND ` + kindFilter + `) AS countries
 	`).Scan(&totals).Error
 	return totals, err
 }
 
-// DeveloperPicks returns active picks in display order.
+// DeveloperPicks returns active picks in display order. Discover only renders
+// packages with public detail pages, so formula entries stay map-only.
 func (s *Store) DeveloperPicks(ctx context.Context, limit int) ([]DeveloperPick, error) {
 	if limit < 1 || limit > 12 {
 		limit = 4

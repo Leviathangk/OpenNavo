@@ -8,7 +8,7 @@ export interface DeveloperTop {
 
 export interface DeveloperMapPlace {
   key: string;
-  kind: 'city' | 'country';
+  kind: 'country';
   name: string;
   countryCode: string;
   region: 'americas' | 'europe' | 'apac' | 'other';
@@ -29,8 +29,6 @@ export interface DeveloperMapCountry {
 
 export interface DeveloperMapRecent {
   name: string;
-  cityKey?: string;
-  city: string;
   countryCode: string;
   apps: number;
   updatedAt: string;
@@ -67,10 +65,9 @@ export function developerCountryName(countryCode: string, locale: string): strin
   }
 }
 
-/** City labels are the submitted text kept in the database; only countries need a localized name. */
+/** Developer-map places are countries, so the label always comes from the reader's locale. */
 export function developerPlaceName(place: DeveloperMapPlace, locale: string): string {
-  if (place.kind === 'country') return developerCountryName(place.countryCode, locale);
-  return place.name;
+  return developerCountryName(place.countryCode, locale);
 }
 
 export interface DeveloperPickView {

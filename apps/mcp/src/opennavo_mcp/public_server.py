@@ -773,8 +773,9 @@ def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
         name="developer_map",
         description=(
             "Read the public OpenNavo developer map: developer and app totals, "
-            "city and country aggregates with coordinates and top developers, and "
-            "recently approved locations. Use offset and limit to page through places, "
+            "country aggregates with coordinates and top developers, and recently "
+            "approved locations. Every place is country-level. Use offset and limit "
+            "to page through places, "
             "and country_offset and country_limit for countries."
         ),
         annotations=annotations,
@@ -817,8 +818,6 @@ def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
             return _pick(
                 _map(item),
                 "name",
-                "cityKey",
-                "city",
                 "countryCode",
                 "apps",
                 "updatedAt",
@@ -943,11 +942,13 @@ def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
             "the anonymous write creates a review record and returns a receipt token "
             "for developer_submission_status. For kind=new, source_url is required. "
             "For kind=claim or kind=location, package_kind and package_token are "
-            "required. For kind=location, payload.countryCode must be a two-letter "
-            "country code. The payload object carries the form fields, such as name, "
+            "required; package_kind is cask, formula, or link. For kind=location, "
+            "payload.countryCode must be a two-letter country code; locations are "
+            "country-level and no city is needed. The payload object carries the form "
+            "fields, such as name, "
             "summary, description, developer, category, homepage, repoUrl, "
             "downloadUrl, iconUrl, version, "
-            "minMacos, license, countryCode, city, remote, updateLocation, "
+            "minMacos, license, countryCode, remote, updateLocation, "
             "updateSummary, updateIcon, evidence, and note."
         ),
         annotations=write_annotations,
@@ -957,7 +958,7 @@ def register_public_tools(server: FastMCP[Any], api: PublicAPIClient) -> None:
         contact_email: Annotated[str, Field(min_length=3, max_length=320)],
         source_kind: Literal["github", "appstore", "website"] | None = None,
         source_url: Annotated[str | None, Field(max_length=2048)] = None,
-        package_kind: Literal["cask", "link"] | None = None,
+        package_kind: Literal["cask", "formula", "link"] | None = None,
         package_token: Annotated[str | None, Field(max_length=128)] = None,
         proof: Annotated[str | None, Field(max_length=2000)] = None,
         payload: dict[str, Any] | None = None,

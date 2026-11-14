@@ -9527,8 +9527,8 @@ paths:
     get:
       tags: [developer]
       operationId: getDeveloperMap
-      summary: Developer map totals, cities and countries
-      description: Public read model behind the developer map. Cached for five minutes and rate limited like the rest of the public API.
+      summary: Developer map totals and country aggregates
+      description: Public read model behind the developer map. Locations are country-level; cached for five minutes and rate limited like the rest of the public API.
       parameters:
         - $ref: '#/components/parameters/Locale'
       responses:
@@ -9541,7 +9541,7 @@ paths:
               examples:
                 en-US:
                   summary: en-US
-                  value: {"code": "0000", "msg": "ok", "data": {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 7, "countries": 5}, "places": [{"key": "san-francisco", "kind": "city", "name": "San Francisco", "countryCode": "US", "region": "americas", "lat": 37.7749, "lng": -122.4194, "developers": 4, "apps": 6, "installs30d": 120000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "cityKey": "san-francisco", "city": "San Francisco", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}}
+                  value: {"code": "0000", "msg": "ok", "data": {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 5, "countries": 5}, "places": [{"key": "US", "kind": "country", "name": "US", "countryCode": "US", "region": "americas", "lat": 39.8, "lng": -98.6, "developers": 7, "apps": 9, "installs30d": 200000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}}
                 zh-CN:
                   $ref: '#/paths/~1developer-map/get/responses/200/content/application~1json/examples/en-US'
                 ja-JP:
@@ -9679,7 +9679,6 @@ paths:
                 repoUrl: https://github.com/ghostty-org/ghostty
                 downloadUrl: https://ghostty.org/download
                 countryCode: US
-                city: San Francisco
                 remote: true
               contactEmail: dev@example.com
               proof: ''
@@ -19210,7 +19209,7 @@ components:
           announce: false
           reason: consolidated
     DeveloperMapResponse:
-      example: {"code": "0000", "msg": "ok", "data": {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 7, "countries": 5}, "places": [{"key": "san-francisco", "kind": "city", "name": "San Francisco", "countryCode": "US", "region": "americas", "lat": 37.7749, "lng": -122.4194, "developers": 4, "apps": 6, "installs30d": 120000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "cityKey": "san-francisco", "city": "San Francisco", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}}
+      example: {"code": "0000", "msg": "ok", "data": {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 5, "countries": 5}, "places": [{"key": "US", "kind": "country", "name": "US", "countryCode": "US", "region": "americas", "lat": 39.8, "lng": -98.6, "developers": 7, "apps": 9, "installs30d": 200000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}}
       type: object
       required: [code, msg, data]
       properties:
@@ -19218,7 +19217,7 @@ components:
         msg: { type: string, example: ok }
         data: { $ref: '#/components/schemas/DeveloperMap' }
     DeveloperMap:
-      example: {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 7, "countries": 5}, "places": [{"key": "san-francisco", "kind": "city", "name": "San Francisco", "countryCode": "US", "region": "americas", "lat": 37.7749, "lng": -122.4194, "developers": 4, "apps": 6, "installs30d": 120000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "cityKey": "san-francisco", "city": "San Francisco", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}
+      example: {"generatedAt": "2026-11-11T10:00:00Z", "totals": {"developers": 12, "located": 9, "apps": 4210, "locatedApps": 14, "places": 5, "countries": 5}, "places": [{"key": "US", "kind": "country", "name": "US", "countryCode": "US", "region": "americas", "lat": 39.8, "lng": -98.6, "developers": 7, "apps": 9, "installs30d": 200000, "topDevelopers": [{"name": "Example Studio", "apps": 2, "installs30d": 80000}]}], "countries": [{"code": "US", "developers": 7, "apps": 9, "installs30d": 200000}], "recentDevelopers": [{"name": "Example Studio", "countryCode": "US", "apps": 2, "updatedAt": "2026-11-11T09:00:00Z"}]}
       type: object
       required: [generatedAt, totals, places, countries, recentDevelopers]
       properties:
@@ -19239,9 +19238,9 @@ components:
             type: object
             required: [key, kind, name, countryCode, region, lat, lng, developers, apps, installs30d, topDevelopers]
             properties:
-              key: { type: string, example: san-francisco }
-              kind: { type: string, enum: [city, country] }
-              name: { type: string, example: San Francisco }
+              key: { type: string, example: US }
+              kind: { type: string, enum: [country] }
+              name: { type: string, example: US }
               countryCode: { type: string, example: US }
               region: { type: string, enum: [americas, europe, apac, other] }
               lat: { type: number, format: double }
@@ -19272,11 +19271,9 @@ components:
           type: array
           items:
             type: object
-            required: [name, cityKey, city, countryCode, apps, updatedAt]
+            required: [name, countryCode, apps, updatedAt]
             properties:
               name: { type: string }
-              cityKey: { type: string }
-              city: { type: string }
               countryCode: { type: string }
               apps: { type: integer }
               updatedAt: { type: string, format: date-time }
@@ -19334,14 +19331,14 @@ components:
         msg: { type: string, example: ok }
         data: { $ref: '#/components/schemas/DeveloperFetchResult' }
     DeveloperSubmissionCreateRequest:
-      example: {"kind": "new", "sourceKind": "github", "sourceUrl": "https://github.com/ghostty-org/ghostty", "contactEmail": "dev@example.com", "payload": {"name": "Ghostty", "summary": "Fast, native terminal for macOS.", "developer": "Ghostty", "homepage": "https://ghostty.org", "repoUrl": "https://github.com/ghostty-org/ghostty", "countryCode": "US", "city": "San Francisco"}, "proof": "", "website": ""}
+      example: {"kind": "new", "sourceKind": "github", "sourceUrl": "https://github.com/ghostty-org/ghostty", "contactEmail": "dev@example.com", "payload": {"name": "Ghostty", "summary": "Fast, native terminal for macOS.", "developer": "Ghostty", "homepage": "https://ghostty.org", "repoUrl": "https://github.com/ghostty-org/ghostty", "countryCode": "US"}, "proof": "", "website": ""}
       type: object
       required: [kind, contactEmail]
       properties:
         kind: { type: string, enum: [new, claim, location] }
         sourceKind: { type: string, enum: [github, appstore, website] }
         sourceUrl: { type: string, maxLength: 2048 }
-        packageKind: { type: string, enum: [cask, link] }
+        packageKind: { type: string, enum: [cask, formula, link] }
         packageToken: { type: string, maxLength: 128 }
         payload:
           type: object

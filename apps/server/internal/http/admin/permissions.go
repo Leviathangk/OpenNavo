@@ -18,6 +18,7 @@ var Permissions = map[string]string{
 	"PATCH /admin-api/developer/submissions/:id":     "catalog:package:edit",
 	"GET /admin-api/developer/picks":                 "catalog:package:edit",
 	"POST /admin-api/developer/picks":                "catalog:package:edit",
+	"POST /admin-api/developer/locations":            "catalog:package:edit",
 	"GET /admin-api/links/packages":                  "catalog:package:edit",
 	"POST /admin-api/links/packages":                 "catalog:package:edit",
 	"PATCH /admin-api/links/packages/:id":            "catalog:package:edit",

@@ -106,7 +106,7 @@ func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
 	// 117 routes plus BE-B's page decision, site index settings, intent page and app SEO routes.
-	require.Len(t, policies, 126)
+	require.Len(t, policies, 127)
 	require.Contains(t, policies, "POST /introspect")
 	for _, retired := range []string{"POST /seo/tasks/claim", "GET /seo/tasks/:id", "POST /seo/evidence", "GET /seo/automation", "POST /seo/tasks/import", "POST /seo/geo", "GET /seo/keywords", "GET /seo/overview", "PUT /seo/listings/:token"} {
 		require.NotContains(t, policies, retired)

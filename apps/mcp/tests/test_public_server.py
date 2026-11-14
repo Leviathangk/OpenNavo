@@ -195,16 +195,16 @@ async def test_public_tools_are_compact_and_mark_the_developer_write() -> None:
         assert len(json.dumps(data, ensure_ascii=False).encode()) <= MAX_OUTPUT_BYTES
 
 
-async def test_developer_map_returns_coordinates_top_developers_and_recent_places() -> None:
+async def test_developer_map_returns_country_coordinates_and_top_developers() -> None:
     places: list[dict[str, Any]] = [
         {
-            "key": "san-francisco",
-            "kind": "city",
-            "name": "San Francisco",
+            "key": "US",
+            "kind": "country",
+            "name": "US",
             "countryCode": "US",
             "region": "americas",
-            "lat": 37.7749,
-            "lng": -122.4194,
+            "lat": 39.8,
+            "lng": -98.6,
             "developers": 4,
             "apps": 6,
             "installs30d": 120000,
@@ -213,13 +213,13 @@ async def test_developer_map_returns_coordinates_top_developers_and_recent_place
             ],
         },
         {
-            "key": "tokyo",
-            "kind": "city",
-            "name": "Tokyo",
+            "key": "JP",
+            "kind": "country",
+            "name": "JP",
             "countryCode": "JP",
             "region": "apac",
-            "lat": 35.6762,
-            "lng": 139.6503,
+            "lat": 36.2,
+            "lng": 138.3,
             "developers": 2,
             "apps": 2,
             "installs30d": 30000,
@@ -241,15 +241,16 @@ async def test_developer_map_returns_coordinates_top_developers_and_recent_place
                         "apps": 4210,
                         "locatedApps": 14,
                         "places": 2,
-                        "countries": 1,
+                        "countries": 2,
                     },
                     "places": places,
-                    "countries": [{"code": "US", "developers": 7, "apps": 9}],
+                    "countries": [
+                        {"code": "US", "developers": 7, "apps": 9},
+                        {"code": "JP", "developers": 2, "apps": 2},
+                    ],
                     "recentDevelopers": [
                         {
                             "name": "Example Studio",
-                            "cityKey": "san-francisco",
-                            "city": "San Francisco",
                             "countryCode": "US",
                             "apps": 2,
                             "updatedAt": "2026-11-11T09:00:00Z",
@@ -265,8 +266,8 @@ async def test_developer_map_returns_coordinates_top_developers_and_recent_place
         data = cast(dict[str, Any], result.data)
         assert data["generatedAt"] == "2026-11-11T10:00:00Z"
         assert data["totals"]["places"] == 2
-        assert data["places"][0]["lat"] == 37.7749
-        assert data["places"][0]["lng"] == -122.4194
+        assert data["places"][0]["lat"] == 39.8
+        assert data["places"][0]["lng"] == -98.6
         assert data["places"][0]["topDevelopers"] == [
             {"name": "Example Studio", "apps": 2, "installs30d": 80000}
         ]
@@ -274,19 +275,19 @@ async def test_developer_map_returns_coordinates_top_developers_and_recent_place
         assert data["countryPaging"] == {
             "offset": 0,
             "limit": 12,
-            "total": 1,
+            "total": 2,
             "hasMore": False,
         }
-        assert data["recentDevelopers"][0]["cityKey"] == "san-francisco"
+        assert data["recentDevelopers"][0]["countryCode"] == "US"
         assert "internal" not in json.dumps(data)
 
 
 async def test_developer_map_pages_the_complete_upstream_lists() -> None:
     places: list[dict[str, Any]] = [
         {
-            "key": f"city-{index}",
-            "kind": "city",
-            "name": f"City {index}",
+            "key": f"C{index:02}",
+            "kind": "country",
+            "name": f"C{index:02}",
             "countryCode": "US",
             "region": "americas",
             "lat": 1.0,
@@ -335,7 +336,7 @@ async def test_developer_map_pages_the_complete_upstream_lists() -> None:
             },
         )
         data = cast(dict[str, Any], result.data)
-        assert [place["key"] for place in data["places"]] == ["city-204"]
+        assert [place["key"] for place in data["places"]] == ["C204"]
         assert data["paging"] == {
             "offset": 204,
             "limit": 12,
@@ -461,7 +462,6 @@ async def test_developer_submission_create_posts_the_receipt_request() -> None:
                     "name": "Ghostty",
                     "summary": "Fast terminal.",
                     "countryCode": "US",
-                    "city": "San Francisco",
                 },
             },
         )
@@ -473,7 +473,8 @@ async def test_developer_submission_create_posts_the_receipt_request() -> None:
         assert body["kind"] == "new"
         assert body["contactEmail"] == "dev@example.com"
         assert body["sourceUrl"] == "https://github.com/ghostty-org/ghostty"
-        assert body["payload"]["city"] == "San Francisco"
+        assert body["payload"]["countryCode"] == "US"
+        assert "city" not in body["payload"]
         assert "website" not in body
         assert data["reference"] == "DS-000123"
         assert data["token"] == "test-receipt-token"  # noqa: S105
@@ -499,14 +500,14 @@ async def test_developer_submission_location_accepts_a_two_letter_country() -> N
             {
                 "kind": "location",
                 "contact_email": "dev@example.com",
-                "package_kind": "link",
+                "package_kind": "formula",
                 "package_token": "ghostty",
-                "payload": {"countryCode": "us", "city": "San Francisco"},
+                "payload": {"countryCode": "us"},
             },
         )
         assert result.is_error is False
         body = json.loads(calls[0].content)
-        assert body["packageKind"] == "link"
+        assert body["packageKind"] == "formula"
         assert body["packageToken"] == "ghostty"
         assert body["payload"]["countryCode"] == "us"
 
@@ -584,7 +585,7 @@ async def test_developer_submission_status_selects_events_and_masks_unknown_fiel
                 "contact_email": "dev@example.com",
                 "package_kind": "link",
                 "package_token": "demo",
-                "payload": {"city": "San Francisco"},
+                "payload": {},
             },
             "invalid_country_code",
         ),
@@ -594,7 +595,7 @@ async def test_developer_submission_status_selects_events_and_masks_unknown_fiel
                 "contact_email": "dev@example.com",
                 "package_kind": "link",
                 "package_token": "demo",
-                "payload": {"countryCode": "USA", "city": "San Francisco"},
+                "payload": {"countryCode": "USA"},
             },
             "invalid_country_code",
         ),

@@ -2104,7 +2104,7 @@
   "developerMap": {
     "title": "开发者地图",
     "metaTitle": "开发者地图 — OpenNavo",
-    "description": "找到 OpenNavo 里 Mac App 背后的团队和城市，也可以提交或更新自己 App 的位置。",
+    "description": "找到 OpenNavo 里 App 背后的团队和国家，也可以提交或更新自己 App 的位置。",
     "lede": "App 背后的人和地方。",
     "tabs": {
       "map": "地图",

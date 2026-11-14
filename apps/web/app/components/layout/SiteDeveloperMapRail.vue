@@ -80,7 +80,7 @@ const recent = computed(() => data.value?.recentDevelopers ?? []);
       <ul class="m-0 flex list-none flex-col gap-7px p-0">
         <li
           v-for="person in recent"
-          :key="`${person.name}-${person.countryCode}-${person.city}`"
+          :key="`${person.name}-${person.countryCode}`"
           class="flex min-w-0 items-center gap-8px"
         >
           <span
@@ -89,9 +89,7 @@ const recent = computed(() => data.value?.recentDevelopers ?? []);
           >
           <span class="min-w-0 flex-1">
             <span class="block truncate text-11.5px font-500 text-ink-primary">{{ person.name }}</span>
-            <span class="block truncate text-10px text-ink-tertiary">{{
-              person.city || countryName(person.countryCode)
-            }}</span>
+            <span class="block truncate text-10px text-ink-tertiary">{{ countryName(person.countryCode) }}</span>
           </span>
           <span class="shrink-0 text-9.5px text-ink-tertiary">{{ t('developerMap.rail.weekly') }}</span>
         </li>

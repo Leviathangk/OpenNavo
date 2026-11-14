@@ -139,6 +139,7 @@ TOOLS = (
         "updateDeveloperSubmission",
         write=True,
     ),
+    tool("developer_location_set", "catalog:package:edit", "setDeveloperLocation", write=True),
     tool("developer_pick_set", "catalog:package:edit", "setDeveloperPick", write=True),
     tool("tap_packages_list", "catalog:package:view", "listTapPackages"),
     tool("tap_package_add", "catalog:package:edit", "addTapPackage", write=True),

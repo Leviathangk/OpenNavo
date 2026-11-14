@@ -17,25 +17,27 @@ import (
 // DeveloperPayload is the editable metadata a developer submits with a new app or a
 // claim/update. Fields are optional: publishing applies only what is present.
 type DeveloperPayload struct {
-	Name        string  `json:"name"`
-	Summary     string  `json:"summary"`
-	Description string  `json:"description"`
-	Developer   string  `json:"developer"`
-	Category    string  `json:"category"`
-	Homepage    string  `json:"homepage"`
-	RepoURL     string  `json:"repoUrl"`
-	DownloadURL string  `json:"downloadUrl"`
-	IconURL     string  `json:"iconUrl"`
-	Version     string  `json:"version"`
-	MinMacos    string  `json:"minMacos"`
-	License     string  `json:"license"`
-	CountryCode string  `json:"countryCode"`
-	City        string  `json:"city"`
-	CityKey     string  `json:"cityKey"`
-	Region      string  `json:"region"`
-	Lat         float64 `json:"lat"`
-	Lng         float64 `json:"lng"`
-	Remote      bool    `json:"remote"`
+	Name        string `json:"name"`
+	Summary     string `json:"summary"`
+	Description string `json:"description"`
+	Developer   string `json:"developer"`
+	Category    string `json:"category"`
+	Homepage    string `json:"homepage"`
+	RepoURL     string `json:"repoUrl"`
+	DownloadURL string `json:"downloadUrl"`
+	IconURL     string `json:"iconUrl"`
+	Version     string `json:"version"`
+	MinMacos    string `json:"minMacos"`
+	License     string `json:"license"`
+	CountryCode string `json:"countryCode"`
+	// City and CityKey are legacy submission fields. Publishing keeps only the
+	// country so old clients cannot reintroduce city-precision map data.
+	City    string  `json:"city"`
+	CityKey string  `json:"cityKey"`
+	Region  string  `json:"region"`
+	Lat     float64 `json:"lat"`
+	Lng     float64 `json:"lng"`
+	Remote  bool    `json:"remote"`
 	// Claim forms send these; a missing flag means "update", so new submissions
 	// keep writing every field they collected.
 	UpdateLocation bool `json:"updateLocation"`
@@ -81,9 +83,10 @@ func (p DeveloperPayload) normalized() DeveloperPayload {
 	return p
 }
 
-// HasLocation reports whether the payload carries a usable country for the map.
+// HasLocation reports whether the payload carries a supported country for the map.
 func (p DeveloperPayload) HasLocation() bool {
-	return len(p.CountryCode) == 2
+	_, ok := domain.CountryPoint(p.CountryCode)
+	return ok
 }
 
 // GithubRepo extracts owner/repo from a github.com URL, if the payload has one.
@@ -454,18 +457,9 @@ func (s *Store) PublishDeveloperSubmission(ctx context.Context, in DeveloperPubl
 		}
 
 		if parsed.HasLocation() && (row.Kind == "new" || parsed.UpdateLocation) {
-			cityKey, region, lat, lng := parsed.CityKey, parsed.Region, parsed.Lat, parsed.Lng
-			if parsed.City != "" {
-				location, ok := domain.ResolveCity(parsed.CountryCode, parsed.City)
-				if !ok {
-					return domain.RejectedDetail("city_not_found", parsed.CountryCode)
-				}
-				cityKey, region, lat, lng = location.Key, location.Region, location.Lat, location.Lng
-			}
-			if region == "" {
-				region = domain.RegionForCountry(parsed.CountryCode)
-			}
-			if err := txStore.UpsertPackageLocation(ctx, *packageID, parsed.CountryCode, parsed.City, cityKey, region, lat, lng, parsed.Remote, "self", "approved", "self_reported", "", in.ReviewerID); err != nil {
+			// The map is country-level. Ignore legacy city fields so one location cannot
+			// drift back to city precision through an older submission payload.
+			if err := txStore.UpsertPackageLocation(ctx, *packageID, parsed.CountryCode, "", "", domain.RegionForCountry(parsed.CountryCode), 0, 0, parsed.Remote, "self", "approved", "self_reported", "", in.ReviewerID); err != nil {
 				return err
 			}
 		}
@@ -569,12 +563,16 @@ func (s *Store) withdrawDeveloperSurface(ctx context.Context, row DeveloperSubmi
 	// Publishing writes the point only for a `new` submission or a claim that turned
 	// updateLocation on; anything else never touched the editor's location.
 	published := ParseDeveloperPayload(row.Payload)
-	if published.HasLocation() && (row.Kind == "new" || published.UpdateLocation) {
+	// Publishing skips a country the map cannot draw, but an earlier publish may
+	// already have written this submission's self location. Retire only the
+	// country this submission names, so another submission's point stays live.
+	countryCode, hasCountryCode := domain.NormalizeCountryCode(published.CountryCode)
+	if hasCountryCode && (row.Kind == "new" || published.UpdateLocation) {
 		if err := s.DB.WithContext(ctx).Exec(`
 			UPDATE package_locations
 			SET status = 'rejected', verified_by = NULL, verified_at = NULL, updated_at = now()
-			WHERE package_id = ? AND status = 'approved'
-		`, packageID).Error; err != nil {
+			WHERE package_id = ? AND country_code = ? AND status = 'approved' AND source = 'self'
+		`, packageID, countryCode).Error; err != nil {
 			return err
 		}
 		if err := QueueCacheInvalidation(ctx, s.DB, fmt.Sprintf("developer:location:%d", packageID), "c:developer-map:*"); err != nil {

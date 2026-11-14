@@ -26,16 +26,7 @@ const tab = computed<Tab>({
 const { data, error, refresh } = await useDeveloperMap();
 
 const number = computed(() => new Intl.NumberFormat(locale.value));
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
 const dateFormat = computed(() => new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }));
-
-function countryName(code: string): string {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
-}
 
 function placeName(place: DeveloperMapPlace): string {
   return developerPlaceName(place, locale.value);
@@ -74,7 +65,7 @@ const regions = [
   { key: 'other', label: 'developerMap.map.other' }
 ] as const;
 
-function selectCity(place: DeveloperMapPlace) {
+function selectPlace(place: DeveloperMapPlace) {
   selectedKey.value = place.key;
 }
 
@@ -109,10 +100,6 @@ usePageSchema({ type: 'WebPage' });
           <span
             ><b class="text-14px font-600 tabular-nums text-ink-primary">{{ number.format(data.totals.located) }}</b>
             {{ t('developerMap.stats.located') }}</span
-          >
-          <span
-            ><b class="text-14px font-600 tabular-nums text-ink-primary">{{ number.format(data.totals.places) }}</b>
-            {{ t('developerMap.stats.cities') }}</span
           >
           <span
             ><b class="text-14px font-600 tabular-nums text-ink-primary">{{ number.format(data.totals.countries) }}</b>
@@ -253,7 +240,7 @@ usePageSchema({ type: 'WebPage' });
               <button
                 type="button"
                 class="grid h-24px w-24px place-items-center rounded-[6px] text-ink-secondary outline-none hover:bg-surface-raised hover:text-ink-primary focus-visible:shadow-focus-ring"
-                :aria-label="t('developerMap.map.cities')"
+                :aria-label="t('developerMap.rail.countries')"
                 @click="selectedKey = null"
               >
                 <OnIcon name="lucide:arrow-left" :size="14" />
@@ -288,7 +275,7 @@ usePageSchema({ type: 'WebPage' });
           </template>
           <template v-else>
             <div class="mb-8px flex items-baseline justify-between gap-10px">
-              <b class="text-13px font-600 text-ink-primary">{{ t('developerMap.map.topCities') }}</b>
+              <b class="text-13px font-600 text-ink-primary">{{ t('developerMap.rail.topCountries') }}</b>
               <span class="text-10.5px text-ink-tertiary">{{ t('developerMap.map.citiesHint') }}</span>
             </div>
             <div class="grid grid-cols-1 gap-x-14px gap-y-1px sm:grid-cols-2 lg:grid-cols-3">
@@ -297,17 +284,16 @@ usePageSchema({ type: 'WebPage' });
                 :key="place.key"
                 type="button"
                 class="flex min-w-0 items-center gap-8px rounded-[6px] px-5px py-6px text-left outline-none hover:bg-surface-raised focus-visible:shadow-focus-ring"
-                @click="selectCity(place)"
+                @click="selectPlace(place)"
               >
                 <span class="w-16px shrink-0 text-10.5px tabular-nums text-ink-tertiary">{{
                   String(index + 1).padStart(2, '0')
                 }}</span>
                 <span class="min-w-0 flex-1">
                   <span class="block truncate text-12px font-500 text-ink-primary">{{ placeName(place) }}</span>
-                  <span class="block truncate text-10.5px text-ink-tertiary"
-                    >{{ countryName(place.countryCode) }} ·
-                    {{ t('developerMap.map.appsAt', { count: place.apps }) }}</span
-                  >
+                  <span class="block truncate text-10.5px text-ink-tertiary">{{
+                    t('developerMap.map.appsAt', { count: place.apps })
+                  }}</span>
                 </span>
                 <span class="shrink-0 text-12px font-600 tabular-nums text-ink-primary">{{
                   number.format(metricValue(place))
@@ -318,11 +304,11 @@ usePageSchema({ type: 'WebPage' });
         </div>
       </section>
 
-      <section aria-labelledby="developer-map-cities">
+      <section aria-labelledby="developer-map-countries">
         <div class="mb-10px flex items-baseline justify-between gap-12px">
           <div>
-            <h2 id="developer-map-cities" class="m-0 text-16px font-600 text-ink-primary">
-              {{ t('developerMap.map.cities') }}
+            <h2 id="developer-map-countries" class="m-0 text-16px font-600 text-ink-primary">
+              {{ t('developerMap.rail.countries') }}
             </h2>
             <p class="m-0 mt-2px text-11.5px text-ink-tertiary">
               {{ t('developerMap.map.citiesHint') }} · {{ number.format(visiblePlaces.length) }}
@@ -335,7 +321,7 @@ usePageSchema({ type: 'WebPage' });
             :key="place.key"
             type="button"
             class="group relative flex min-w-0 flex-col gap-7px overflow-hidden rounded-big border border-solid border-line-subtle bg-surface-card px-12px py-10px text-left outline-none hover:bg-surface-raised focus-visible:shadow-focus-ring"
-            @click="selectCity(place)"
+            @click="selectPlace(place)"
           >
             <span class="flex items-baseline justify-between gap-8px">
               <span class="text-10.5px tabular-nums text-ink-tertiary">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -345,9 +331,9 @@ usePageSchema({ type: 'WebPage' });
             </span>
             <span class="min-w-0">
               <span class="block truncate text-13px font-600 text-ink-primary">{{ placeName(place) }}</span>
-              <span class="block truncate text-10.5px text-ink-tertiary"
-                >{{ countryName(place.countryCode) }} · {{ t('developerMap.map.appsAt', { count: place.apps }) }}</span
-              >
+              <span class="block truncate text-10.5px text-ink-tertiary">{{
+                t('developerMap.map.appsAt', { count: place.apps })
+              }}</span>
             </span>
             <span class="mt-2px block h-2px rounded-full bg-surface-inset">
               <span

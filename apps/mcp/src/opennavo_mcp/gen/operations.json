@@ -2390,6 +2390,29 @@
     },
     "summary": "Set collection recommendation criteria"
   },
+  "setDeveloperLocation": {
+    "body": {
+      "$ref": "#/components/schemas/DeveloperLocationUpdate"
+    },
+    "headerNames": {},
+    "method": "POST",
+    "model": "SetDeveloperLocationInput",
+    "parameters": {
+      "header": [],
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/developer/locations",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Set a live app's developer-map country"
+  },
   "setDeveloperPick": {
     "body": {
       "$ref": "#/components/schemas/DeveloperPickRequest"

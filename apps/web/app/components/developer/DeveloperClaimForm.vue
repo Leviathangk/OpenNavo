@@ -24,7 +24,6 @@ const form = reactive({
   updateSummary: true,
   updateIcon: false,
   countryCode: 'US',
-  city: '',
   remote: false,
   evidence: '',
   note: '',
@@ -110,7 +109,6 @@ async function submit() {
         updateSummary: form.updateSummary,
         updateIcon: form.updateIcon,
         countryCode: form.updateLocation ? form.countryCode : '',
-        city: form.updateLocation ? form.city.trim() : '',
         remote: form.updateLocation ? form.remote : false,
         evidence: form.evidence.trim(),
         note: form.note.trim()
@@ -135,7 +133,6 @@ function reset() {
     updateSummary: true,
     updateIcon: false,
     countryCode: 'US',
-    city: '',
     remote: false,
     evidence: '',
     note: '',
@@ -288,10 +285,6 @@ function reset() {
                   <option v-for="code in countries" :key="code" :value="code">{{ countryName(code) }}</option>
                 </select></label
               >
-              <label class="flex flex-col gap-4px"
-                ><span class="text-11px font-500 text-ink-secondary">{{ t('developerForm.city') }}</span
-                ><input v-model="form.city" class="dev-input"
-              /></label>
               <label class="flex items-center gap-7px text-11.5px text-ink-secondary sm:col-span-2"
                 ><input v-model="form.remote" type="checkbox" /> {{ t('developerForm.remote') }}</label
               >
@@ -353,7 +346,7 @@ function reset() {
             </div>
           </div>
           <div class="mt-9px border-t border-solid border-line-subtle pt-8px text-10.5px text-ink-tertiary">
-            {{ [form.city, countryName(form.countryCode)].filter(Boolean).join(' · ') }}
+            {{ countryName(form.countryCode) }}
           </div>
           <p class="m-0 mt-8px text-10.5px leading-[1.65] text-ink-tertiary">{{ t('developerForm.proofHint') }}</p>
         </aside>

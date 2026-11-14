@@ -14,10 +14,11 @@ has no admin tools, OAuth, gateway key, agent API, or credentials. Results selec
 public fields, include OpenNavo links, and are capped at 24 KiB with bounded text
 and lists.
 
-The developer-map tools mirror the public page. `developer_map` returns totals,
-places with coordinates and their top developers, country rollups, and recently
-approved locations; use `offset` and `limit` to page through places, and
-`country_offset` and `country_limit` for country rollups.
+The developer-map tools mirror the public page. Locations are country-level.
+`developer_map` returns totals, country places with representative coordinates
+and their top developers, country rollups, and recently approved locations; use
+`offset` and `limit` to page through places, and `country_offset` and
+`country_limit` for country rollups.
 `developer_picks` reads the active picks above Hot Apps. `developer_metadata_fetch`
 posts a public GitHub, App Store, or website URL to the API's SSRF-protected
 metadata reader. `developer_submission_create` anonymously files a `new`, `claim`,
@@ -30,7 +31,9 @@ call also consumes the public MCP quota below.
 Developer review stays in the authenticated admin MCP:
 `developer_submissions_list`, `developer_submission_get`,
 `developer_submission_update` (status, note, payload, package binding, publish,
-feature, quote, and sort), `developer_picks_list`, and `developer_pick_set`.
+feature, quote, and sort), `developer_location_set` (a direct country-level
+location upsert for any live cask, formula, or link listing),
+`developer_picks_list`, and `developer_pick_set`.
 
 Production Compose runs this process as `public-mcp` and Caddy routes the exact
 `/mcp` path on `WEB_DOMAIN` (`https://opennavo.com/mcp`) to it. The admin MCP
@@ -53,7 +56,7 @@ The public API package lookup is intentionally `POST /packages/lookup` with a
 JSON body; `GET /packages/lookup?tokens=...` is outside the OpenAPI route and
 returns 404.
 
-Python 3.13 + uv, using FastMCP 4.0.x. The 107 tools and 9 resources adapt only the internal `/agent-api`.
+Python 3.13 + uv, using FastMCP 4.0.x. The 109 tools and 9 resources adapt only the internal `/agent-api`.
 
 Run `uv sync --locked` in this directory. From the repository root, run `make gen-mcp lint-mcp test-mcp build-mcp` to generate and check artifacts. `make gen` and `make lint test` also include MCP. The authoritative tool manifest is `src/opennavo_mcp/tools/manifest.py`.
 

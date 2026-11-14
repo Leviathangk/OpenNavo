@@ -68,7 +68,9 @@ const tabs = computed(() => [
   <div class="mx-auto flex w-full max-w-1160 flex-col gap-20px pb-32px">
     <header class="flex flex-wrap items-end justify-between gap-12px">
       <div class="min-w-0">
-        <h1 class="m-0 text-24px font-700 leading-[1.15] text-ink-primary">{{ t('developerMap.title') }}</h1>
+        <h1 class="m-0 text-24px font-700 leading-[1.15] text-ink-primary">
+          {{ t('developerMap.title') }}
+        </h1>
         <p class="m-0 mt-6px max-w-720px text-13px leading-[1.7] text-ink-secondary">
           <template v-if="data">
             <b class="font-600 text-ink-primary">{{ number.format(data.totals.apps) }}</b>
@@ -86,10 +88,6 @@ const tabs = computed(() => [
           <span
             ><b class="text-13px font-600 tabular-nums text-ink-primary">{{ number.format(data.totals.located) }}</b>
             {{ t('developerMap.stats.located') }}</span
-          >
-          <span
-            ><b class="text-13px font-600 tabular-nums text-ink-primary">{{ number.format(data.totals.places) }}</b>
-            {{ t('developerMap.stats.cities') }}</span
           >
           <span
             ><b class="text-13px font-600 tabular-nums text-ink-primary">{{ number.format(data.totals.countries) }}</b>
@@ -213,9 +211,12 @@ const tabs = computed(() => [
                 {{
                   metric === 'installs'
                     ? `${number.format(selectedPlace.installs30d)} ${t('developerMap.map.installs')}`
-                    : t('developerMap.map.developersAt', { count: number.format(selectedPlace.developers) })
+                    : t('developerMap.map.developersAt', {
+                        count: number.format(selectedPlace.developers)
+                      })
                 }}
-                · {{ t('developerMap.map.appsAt', { count: number.format(selectedPlace.apps) }) }}</span
+                ·
+                {{ t('developerMap.map.appsAt', { count: number.format(selectedPlace.apps) }) }}</span
               >
             </div>
             <div class="grid grid-cols-1 gap-5px sm:grid-cols-2">
@@ -237,7 +238,7 @@ const tabs = computed(() => [
           </template>
           <template v-else>
             <div class="mb-7px flex items-baseline justify-between gap-8px">
-              <b class="text-12.5px font-600 text-ink-primary">{{ t('developerMap.map.topCities') }}</b
+              <b class="text-12.5px font-600 text-ink-primary">{{ t('developerMap.rail.topCountries') }}</b
               ><span class="text-10px text-ink-tertiary">{{ t('developerMap.map.citiesHint') }}</span>
             </div>
             <div class="grid grid-cols-1 gap-x-12px gap-y-1px sm:grid-cols-2 lg:grid-cols-3">
@@ -253,10 +254,9 @@ const tabs = computed(() => [
                 }}</span>
                 <span class="min-w-0 flex-1"
                   ><span class="block truncate text-11.5px font-500 text-ink-primary">{{ placeName(place) }}</span
-                  ><span class="block truncate text-10px text-ink-tertiary"
-                    >{{ countryName(place.countryCode) }} ·
-                    {{ t('developerMap.map.appsAt', { count: place.apps }) }}</span
-                  ></span
+                  ><span class="block truncate text-10px text-ink-tertiary">{{
+                    t('developerMap.map.appsAt', { count: place.apps })
+                  }}</span></span
                 >
                 <span class="shrink-0 text-11.5px font-600 tabular-nums text-ink-primary">{{
                   number.format(metricValue(place))
@@ -269,7 +269,9 @@ const tabs = computed(() => [
 
       <section>
         <div class="mb-9px">
-          <h2 class="m-0 text-15px font-600 text-ink-primary">{{ t('developerMap.map.cities') }}</h2>
+          <h2 class="m-0 text-15px font-600 text-ink-primary">
+            {{ t('developerMap.rail.countries') }}
+          </h2>
           <p class="m-0 mt-2px text-11px text-ink-tertiary">
             {{ t('developerMap.map.citiesHint') }} · {{ number.format(visiblePlaces.length) }}
           </p>
@@ -290,9 +292,9 @@ const tabs = computed(() => [
             >
             <span class="min-w-0"
               ><span class="block truncate text-12.5px font-600 text-ink-primary">{{ placeName(place) }}</span
-              ><span class="block truncate text-10px text-ink-tertiary"
-                >{{ countryName(place.countryCode) }} · {{ t('developerMap.map.appsAt', { count: place.apps }) }}</span
-              ></span
+              ><span class="block truncate text-10px text-ink-tertiary">{{
+                t('developerMap.map.appsAt', { count: place.apps })
+              }}</span></span
             >
           </button>
         </div>
@@ -300,7 +302,9 @@ const tabs = computed(() => [
 
       <div class="grid grid-cols-1 gap-10px md:grid-cols-2">
         <section class="rounded-big border border-solid border-line-subtle bg-surface-card p-12px">
-          <h3 class="m-0 text-12.5px font-600 text-ink-primary">{{ t('developerMap.rail.topCountries') }}</h3>
+          <h3 class="m-0 text-12.5px font-600 text-ink-primary">
+            {{ t('developerMap.rail.topCountries') }}
+          </h3>
           <ul class="m-0 mt-7px flex list-none flex-col gap-5px p-0">
             <li v-for="(country, index) in countries" :key="country.code" class="flex items-center gap-7px">
               <span class="w-13px text-9.5px tabular-nums text-ink-tertiary">{{
@@ -318,11 +322,13 @@ const tabs = computed(() => [
           </ul>
         </section>
         <section class="rounded-big border border-solid border-line-subtle bg-surface-card p-12px">
-          <h3 class="m-0 text-12.5px font-600 text-ink-primary">{{ t('developerMap.rail.recent') }}</h3>
+          <h3 class="m-0 text-12.5px font-600 text-ink-primary">
+            {{ t('developerMap.rail.recent') }}
+          </h3>
           <ul class="m-0 mt-7px flex list-none flex-col gap-5px p-0">
             <li
               v-for="person in recent"
-              :key="`${person.name}-${person.countryCode}-${person.city}`"
+              :key="`${person.name}-${person.countryCode}`"
               class="flex min-w-0 items-center gap-7px"
             >
               <span
@@ -332,7 +338,7 @@ const tabs = computed(() => [
               <span class="min-w-0 flex-1"
                 ><span class="block truncate text-11.5px text-ink-primary">{{ person.name }}</span
                 ><span class="block truncate text-10px text-ink-tertiary">{{
-                  person.city || countryName(person.countryCode)
+                  countryName(person.countryCode)
                 }}</span></span
               >
             </li>
@@ -352,7 +358,9 @@ const tabs = computed(() => [
 
     <section v-else class="rounded-big border border-solid border-line-subtle bg-surface-card p-18px">
       <h2 class="m-0 text-16px font-600 text-ink-primary">{{ t('developerMap.docs.title') }}</h2>
-      <p class="m-0 mt-5px max-w-680px text-12px leading-[1.7] text-ink-secondary">{{ t('developerMap.docs.body') }}</p>
+      <p class="m-0 mt-5px max-w-680px text-12px leading-[1.7] text-ink-secondary">
+        {{ t('developerMap.docs.body') }}
+      </p>
       <a
         :href="docsURL"
         target="_blank"

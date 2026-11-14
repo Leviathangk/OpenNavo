@@ -3253,6 +3253,7 @@ export default {
       developersAt: '{count} 位开发者'
     },
     rail: {
+      countries: '全部国家 / 地区',
       topCountries: '开发者最多的国家',
       recent: '最近加入'
     },

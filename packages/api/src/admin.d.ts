@@ -2865,6 +2865,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/developer/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a live app's developer-map country
+         * @description Upserts an approved country-level location for any live catalog package, including casks, formulae and link listings. The request has no city or coordinate fields.
+         */
+        post: operations["setDeveloperLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -24722,11 +24742,67 @@ export interface components {
             payload?: {
                 [key: string]: unknown;
             };
-            packageKind?: string;
+            /**
+             * @description Catalog package kind. Any live package can receive a country-level developer-map location.
+             * @enum {string}
+             */
+            packageKind?: "cask" | "formula" | "link";
             packageToken?: string;
             feature?: boolean;
             quote?: string;
             sort?: number;
+        };
+        /**
+         * @example {
+         *       "packageKind": "formula",
+         *       "packageToken": "ghostty",
+         *       "countryCode": "US",
+         *       "remote": false
+         *     }
+         */
+        DeveloperLocationUpdate: {
+            /** @enum {string} */
+            packageKind: "cask" | "formula" | "link";
+            packageToken: string;
+            /** @example US */
+            countryCode: string;
+            remote?: boolean;
+        };
+        /**
+         * @example {
+         *       "packageId": 42,
+         *       "packageKind": "formula",
+         *       "packageToken": "ghostty",
+         *       "countryCode": "US",
+         *       "remote": false
+         *     }
+         */
+        DeveloperLocation: {
+            /** Format: int64 */
+            packageId: number;
+            /** @enum {string} */
+            packageKind: "cask" | "formula" | "link";
+            packageToken: string;
+            countryCode: string;
+            remote?: boolean;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 42,
+         *         "packageKind": "formula",
+         *         "packageToken": "ghostty",
+         *         "countryCode": "US",
+         *         "remote": false
+         *       }
+         *     }
+         */
+        DeveloperLocationResponse: {
+            code: string;
+            msg: string;
+            data?: components["schemas"]["DeveloperLocation"] | null;
         };
         /**
          * @example {
@@ -31778,6 +31854,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeveloperPickResponse"];
+                };
+            };
+        };
+    };
+    setDeveloperLocation: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeveloperLocationUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeveloperLocationResponse"];
                 };
             };
         };
