@@ -1347,7 +1347,7 @@ onBeforeUnmount(() => {
                 >
                 <div v-if="store.runtime?.outdated" class="mt-10px flex items-center gap-8px">
                   <span class="text-11px text-status-warning">{{ runtimeUpdateLabel }}</span>
-                  <OnButton variant="accent" size="sm" :disabled="store.installing" @click="updateRuntime">{{
+                  <OnButton variant="accent" size="sm" :loading="store.installing" @click="updateRuntime">{{
                     content.install.updateRuntime
                   }}</OnButton>
                 </div>
