@@ -51,7 +51,7 @@ function modelCatalogCount(options: HermesModelOptions | null): number {
   );
 }
 
-/** Opaque fingerprint used only to de-duplicate catalog requests; never persisted or sent. */
+/** Opaque fingerprint used to scope catalog caches by endpoint; never sent to the runtime. */
 function credentialFingerprint(value: string): string {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {
@@ -346,7 +346,10 @@ const PANEL_TRANSCRIPT_PAGE = 120;
 /** History page size per slice. The host caps a page at 200 (500 through the aggregated route). */
 const PANEL_HISTORY_PAGE = 40;
 const PANEL_HISTORY_MAX = 200;
-const MODEL_OPTIONS_CACHE_KEY = 'ONV_HERMES_MODEL_OPTIONS_V2';
+const LEGACY_MODEL_OPTIONS_CACHE_KEY = 'ONV_HERMES_MODEL_OPTIONS_V2';
+const MODEL_OPTIONS_CACHE_PREFIX = 'ONV_HERMES_MODEL_OPTIONS_V3';
+const MODEL_OPTIONS_CACHE_SCHEMA = 3;
+const MODEL_OPTIONS_CACHE_TTL = 15 * 60_000;
 const PROFILES_KEY = 'ONV_HERMES_PROFILES_V1';
 
 const RECTANGLE: PackageSummary = {
@@ -674,27 +677,109 @@ function read(): PersistedHermes {
 }
 
 interface HermesModelOptionsCache {
+  schema: number;
   options: HermesModelOptions;
   at: number;
 }
 
-function readModelOptionsCache(): HermesModelOptionsCache | null {
+function modelOptionsCachePrefix(connectionId?: string, agentProfile?: string): string {
+  if (!connectionId) return `${MODEL_OPTIONS_CACHE_PREFIX}::`;
+  const connection = `${MODEL_OPTIONS_CACHE_PREFIX}::${encodeURIComponent(connectionId)}::`;
+  return agentProfile ? `${connection}${encodeURIComponent(agentProfile)}::` : connection;
+}
+
+function modelOptionsCacheKey(connectionId: string, agentProfile: string, endpoint: string): string {
+  const endpointKey = endpoint.trim() ? credentialFingerprint(endpoint.trim()) : 'none';
+  return `${modelOptionsCachePrefix(connectionId, agentProfile)}${endpointKey}`;
+}
+
+function modelOptionsCacheKeys(connectionId?: string, agentProfile?: string): string[] {
+  if (typeof localStorage === 'undefined') return [];
+  const prefix = modelOptionsCachePrefix(connectionId, agentProfile);
+  const keys: string[] = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(prefix)) keys.push(key);
+  }
+  return keys;
+}
+
+function clearModelOptionsCache(connectionId?: string, agentProfile?: string) {
+  for (const key of modelOptionsCacheKeys(connectionId, agentProfile)) localStorage.removeItem(key);
+}
+
+function removeLegacyModelOptionsCache() {
+  if (typeof localStorage !== 'undefined') localStorage.removeItem(LEGACY_MODEL_OPTIONS_CACHE_KEY);
+}
+
+function readModelOptionsCache(key: string): HermesModelOptionsCache | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(MODEL_OPTIONS_CACHE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<HermesModelOptionsCache>;
-    if (!parsed.options || !Array.isArray(parsed.options.providers) || typeof parsed.at !== 'number') return null;
-    return { options: parsed.options, at: parsed.at };
+    if (
+      parsed.schema !== MODEL_OPTIONS_CACHE_SCHEMA ||
+      !parsed.options ||
+      !Array.isArray(parsed.options.providers) ||
+      typeof parsed.at !== 'number'
+    )
+      return null;
+    return { schema: MODEL_OPTIONS_CACHE_SCHEMA, options: parsed.options, at: parsed.at };
   } catch {
     return null;
   }
 }
 
+function writeModelOptionsCache(key: string, options: HermesModelOptions, at: number) {
+  if (typeof localStorage === 'undefined') return;
+  const payload = JSON.stringify({ schema: MODEL_OPTIONS_CACHE_SCHEMA, options, at } satisfies HermesModelOptionsCache);
+  try {
+    localStorage.setItem(key, payload);
+    return;
+  } catch (error) {
+    if (!isQuotaExceededError(error)) {
+      console.warn('Hermes model catalog cache could not be persisted:', error);
+      return;
+    }
+  }
+  // Quota is shared by every catalog entry. Free the oldest catalogs one at a time and stop as
+  // soon as this payload fits, instead of discarding every other connection wholesale.
+  const stale = modelOptionsCacheKeys()
+    .filter(candidate => candidate !== key)
+    .map(candidate => ({ key: candidate, at: readModelOptionsCache(candidate)?.at ?? 0 }))
+    .sort((left, right) => left.at - right.at);
+  for (const entry of stale) {
+    localStorage.removeItem(entry.key);
+    try {
+      localStorage.setItem(key, payload);
+      return;
+    } catch (error) {
+      if (!isQuotaExceededError(error)) {
+        console.warn('Hermes model catalog cache could not be persisted:', error);
+        return;
+      }
+    }
+  }
+  console.warn('Hermes model catalog cache could not be persisted: storage quota is full.');
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  const name =
+    typeof error === 'object' && error !== null && 'name' in error ? String((error as { name?: unknown }).name) : '';
+  if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
+  return (
+    typeof DOMException !== 'undefined' && error instanceof DOMException && (error.code === 22 || error.code === 1014)
+  );
+}
+
+function modelOptionsEndpoint(connection: HermesProfile | undefined, localEndpoint: string): string {
+  return connection && connection.kind !== 'local' ? connection.endpoint.trim() : localEndpoint.trim();
+}
+
 /** Local Hermes session store. The assistant runtime is intentionally replaceable; today the demo replies locally. */
 export const useHermesStore = defineStore('hermes', () => {
   const initial = read();
-  const cachedOptions = readModelOptionsCache();
   const model = ref<HermesModelSettings>(initial.model);
   const mac = ref<HermesMacSettings>(initial.mac);
   const conversations = ref<HermesConversation[]>(initial.conversations);
@@ -756,11 +841,30 @@ export const useHermesStore = defineStore('hermes', () => {
   for (const [connectionId, profile] of Object.entries(defaultAgentProfiles.value)) {
     activeAgentProfiles.value = { ...activeAgentProfiles.value, [connectionId]: profile };
   }
+  removeLegacyModelOptionsCache();
+  const initialAgentProfile = preferredAgentProfile(storedProfiles.activeProfileId);
+  const initialProfileState = profileStates.value[`${storedProfiles.activeProfileId}::${initialAgentProfile}`];
+  const initialModelSettings = initialProfileState?.model ?? initial.model;
+  const initialModelOptionsKey = modelOptionsCacheKey(
+    storedProfiles.activeProfileId,
+    initialAgentProfile,
+    modelOptionsEndpoint(
+      profiles.value.find(profile => profile.id === storedProfiles.activeProfileId),
+      initialModelSettings.endpoint
+    )
+  );
+  const cachedOptions = readModelOptionsCache(initialModelOptionsKey);
   const loginStatus = ref<HermesLoginStatus | null>(null);
   const modelOptions = ref<HermesModelOptions | null>(cachedOptions?.options ?? null);
   const modelOptionsUpdatedAt = ref<number | null>(cachedOptions?.at ?? null);
+  const modelOptionsOwner = ref<string | null>(cachedOptions ? initialModelOptionsKey : null);
+  if (cachedOptions) {
+    const cachedConnection = profiles.value.find(profile => profile.id === storedProfiles.activeProfileId);
+    if (cachedConnection) cachedConnection.models = modelCatalogCount(cachedOptions.options);
+  }
   const modelOptionsLoading = ref(false);
   let modelOptionsSeq = 0;
+  let modelOptionsEpoch = 0;
   let modelOptionsRequestKey: string | null = null;
   const profileSwitching = ref(false);
   const profileSwitchError = ref<string | null>(null);
@@ -1277,9 +1381,11 @@ export const useHermesStore = defineStore('hermes', () => {
     try {
       runtime.value = await unwrap(commands.hermesRuntimeUninstall());
       localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(MODEL_OPTIONS_CACHE_KEY);
+      invalidateModelOptionsCacheFor();
+      removeLegacyModelOptionsCache();
       modelOptions.value = null;
       modelOptionsUpdatedAt.value = null;
+      modelOptionsOwner.value = null;
       conversations.value = [];
       activeId.value = null;
       model.value = { ...DEFAULT_MODEL };
@@ -1291,6 +1397,63 @@ export const useHermesStore = defineStore('hermes', () => {
       toasts.push({ tone: 'danger', title: 'Hermes uninstall', description: detail });
       return false;
     }
+  }
+
+  function modelOptionsCacheEndpoint(connectionId: string, localEndpoint: string): string {
+    return modelOptionsEndpoint(
+      profiles.value.find(profile => profile.id === connectionId),
+      localEndpoint
+    );
+  }
+
+  /** The in-memory catalog, but only when it belongs to this connection, profile and endpoint. */
+  function modelOptionsForScope(
+    profileName = activeAgentProfileName.value,
+    source: HermesModelSettings = model.value
+  ): HermesModelOptions | null {
+    const cacheKey = modelOptionsCacheKey(
+      activeProfileId.value,
+      profileName,
+      modelOptionsCacheEndpoint(activeProfileId.value, source.endpoint)
+    );
+    return modelOptionsOwner.value === cacheKey ? modelOptions.value : null;
+  }
+
+  function alignRemoteModelToCatalog(options: HermesModelOptions) {
+    if (!remoteActive.value) return;
+    const remoteProviders = options.providers ?? [];
+    const remoteProvider =
+      remoteProviders.find(provider => provider.is_current && (provider.models?.length ?? 0) > 0) ??
+      remoteProviders.find(provider => (provider.models?.length ?? 0) > 0);
+    if (!remoteProvider) return;
+    const remoteModels = remoteProvider.models ?? [];
+    if (!remoteModels.includes(model.value.model)) {
+      model.value.model = remoteModels[0]!;
+    }
+    const mapped: Record<string, HermesProvider> = {
+      'openai-api': 'openai',
+      anthropic: 'claude-code',
+      'openai-codex': 'codex',
+      copilot: 'copilot',
+      'opencode-go': 'opencode-go',
+      'opencode-zen': 'opencode',
+      gemini: 'google',
+      openrouter: 'openrouter',
+      'openavoo-custom': 'custom',
+      custom: 'custom',
+      nous: 'nous'
+    };
+    const mappedProvider = remoteProvider.slug ? mapped[remoteProvider.slug] : undefined;
+    if (mappedProvider) model.value.provider = mappedProvider;
+  }
+
+  function applyModelOptionsCatalog(options: HermesModelOptions, at: number, ownerKey: string, alignModel = false) {
+    modelOptions.value = options;
+    modelOptionsUpdatedAt.value = at;
+    modelOptionsOwner.value = ownerKey;
+    const catalogProfile = profiles.value.find(profile => profile.id === activeProfileId.value);
+    if (catalogProfile) catalogProfile.models = modelCatalogCount(options);
+    if (alignModel) alignRemoteModelToCatalog(options);
   }
 
   async function loadModelOptions(
@@ -1318,7 +1481,29 @@ export const useHermesStore = defineStore('hermes', () => {
       panelAuthExpired.value ?? ''
     ].join('::');
     if (modelOptionsLoading.value && modelOptionsRequestKey === requestKey) return;
+    const cacheKey = modelOptionsCacheKey(
+      activeProfileId.value,
+      profileName,
+      modelOptionsCacheEndpoint(activeProfileId.value, source.endpoint)
+    );
+    const cached = readModelOptionsCache(cacheKey);
     const seq = ++modelOptionsSeq;
+    const epoch = modelOptionsEpoch;
+    if (cached) {
+      if (modelOptionsOwner.value !== cacheKey || (modelOptionsUpdatedAt.value ?? 0) < cached.at) {
+        // A cached catalog may be stale relative to the model the user just saved, so it only
+        // fills the picker and never rewrites the active model. Only a fresh response aligns.
+        applyModelOptionsCatalog(cached.options, cached.at, cacheKey);
+      }
+      if (!refresh && Date.now() - cached.at < MODEL_OPTIONS_CACHE_TTL) {
+        modelOptionsError.value = null;
+        // This call supersedes any catalog still in flight for another scope. Its `seq` is now
+        // stale, so its `finally` will not clear the loading state this call owns.
+        modelOptionsLoading.value = false;
+        modelOptionsRequestKey = null;
+        return;
+      }
+    }
     modelOptionsRequestKey = requestKey;
     modelOptionsLoading.value = true;
     modelOptionsError.value = null;
@@ -1347,48 +1532,17 @@ export const useHermesStore = defineStore('hermes', () => {
       ]);
       // A newer profile, provider or refresh owns the visible catalog. The old response must not
       // overwrite it, and it must not persist a model choice for the newly selected profile.
-      if (seq !== modelOptionsSeq || stateKey(activeProfileId.value, profileName) !== owner) return;
-      modelOptions.value = options;
-      modelOptionsUpdatedAt.value = Date.now();
-      const catalogProfile = profiles.value.find(profile => profile.id === activeProfileId.value);
-      if (catalogProfile) catalogProfile.models = modelCatalogCount(options);
-      if (remoteActive.value) {
-        const remoteProviders = options.providers ?? [];
-        const remoteProvider =
-          remoteProviders.find(provider => provider.is_current && (provider.models?.length ?? 0) > 0) ??
-          remoteProviders.find(provider => (provider.models?.length ?? 0) > 0);
-        if (remoteProvider) {
-          const remoteModels = remoteProvider.models ?? [];
-          if (!remoteModels.includes(model.value.model)) {
-            model.value.model = remoteModels[0]!;
-          }
-          const mapped: Record<string, HermesProvider> = {
-            'openai-api': 'openai',
-            anthropic: 'claude-code',
-            'openai-codex': 'codex',
-            copilot: 'copilot',
-            'opencode-go': 'opencode-go',
-            'opencode-zen': 'opencode',
-            gemini: 'google',
-            openrouter: 'openrouter',
-            'openavoo-custom': 'custom',
-            custom: 'custom',
-            nous: 'nous'
-          };
-          const mappedProvider = remoteProvider.slug ? mapped[remoteProvider.slug] : undefined;
-          if (mappedProvider) model.value.provider = mappedProvider;
-        }
-      }
-      try {
-        localStorage.setItem(
-          MODEL_OPTIONS_CACHE_KEY,
-          JSON.stringify({ options, at: modelOptionsUpdatedAt.value } satisfies HermesModelOptionsCache)
-        );
-      } catch {
-        // A full localStorage should not break the catalog.
-      }
+      if (
+        seq !== modelOptionsSeq ||
+        epoch !== modelOptionsEpoch ||
+        stateKey(activeProfileId.value, profileName) !== owner
+      )
+        return;
+      const at = Date.now();
+      applyModelOptionsCatalog(options, at, cacheKey, profileName === activeAgentProfileName.value);
+      writeModelOptionsCache(cacheKey, options, at);
     } catch (error) {
-      if (seq !== modelOptionsSeq) return;
+      if (seq !== modelOptionsSeq || epoch !== modelOptionsEpoch) return;
       modelOptionsError.value = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
       notePanelAuthError(error);
     } finally {
@@ -1397,6 +1551,32 @@ export const useHermesStore = defineStore('hermes', () => {
         modelOptionsRequestKey = null;
       }
     }
+  }
+
+  function cancelModelOptionsRequest() {
+    // A request started before this point carries a catalog for the invalidated scope. Advance
+    // the epoch so it cannot apply or write itself back over the cleared cache.
+    modelOptionsEpoch += 1;
+    modelOptionsLoading.value = false;
+    modelOptionsRequestKey = null;
+  }
+
+  /**
+   * Drop cached catalogs for one connection (or every connection when omitted), optionally
+   * scoped to one or more agent profiles. A request already in flight for the active connection
+   * is invalidated with the cache it would otherwise repopulate.
+   */
+  function invalidateModelOptionsCacheFor(connectionId?: string, ...profileNames: (string | undefined)[]) {
+    if (profileNames.length === 0) {
+      clearModelOptionsCache(connectionId);
+    } else {
+      for (const profileName of profileNames) clearModelOptionsCache(connectionId, profileName);
+    }
+    if (!connectionId || connectionId === activeProfileId.value) cancelModelOptionsRequest();
+  }
+
+  function invalidateModelOptionsCache(profileName?: string) {
+    invalidateModelOptionsCacheFor(activeProfileId.value, profileName);
   }
 
   function agentProfileModel(name: string): HermesModelSettings {
@@ -1481,6 +1661,7 @@ export const useHermesStore = defineStore('hermes', () => {
     const profile = profiles.value.find(item => item.id === profileId && item.kind === 'panel');
     if (!profile) throw new Error('Panel connection not found.');
     await commands.hermesPanelLogout(profileId).catch(() => undefined);
+    invalidateModelOptionsCacheFor(profileId);
     await unwrap(commands.hermesPanelLogin(profileId, baseUrl.trim(), username.trim(), password));
     panelAuthGeneration += 1;
     panelAuthExpired.value = null;
@@ -1528,6 +1709,7 @@ export const useHermesStore = defineStore('hermes', () => {
       await commands.hermesPanelLogout(profileId).catch(() => undefined);
       panelAuthGeneration += 1;
     }
+    invalidateModelOptionsCacheFor(profileId);
     const wasActive = activeProfileId.value === profileId;
     profiles.value = profiles.value.filter(item => item.id !== profileId);
     const nextStates = { ...profileStates.value };
@@ -1547,6 +1729,7 @@ export const useHermesStore = defineStore('hermes', () => {
       applyProfileState(profileStates.value[stateKey('local', 'default')] ?? blankProfileState());
       modelOptions.value = null;
       modelOptionsUpdatedAt.value = null;
+      modelOptionsOwner.value = null;
     }
     persist();
   }
@@ -1574,15 +1757,16 @@ export const useHermesStore = defineStore('hermes', () => {
     }
     modelOptions.value = null;
     modelOptionsUpdatedAt.value = null;
+    modelOptionsOwner.value = null;
     if (profile.kind !== 'local') {
       mac.value = { ...DEFAULT_MAC };
     }
     applyProfileState(profileStates.value[stateKey()] ?? blankProfileState());
+    persist();
     void loadAgentProfiles();
     void loadHistory();
     void loadPanelHistory();
     void activateCurrentProfile();
-    persist();
   }
 
   /** Panel requests carry the agent profile so the host scopes its own session store. */
@@ -2056,7 +2240,7 @@ export const useHermesStore = defineStore('hermes', () => {
     profileSwitching.value = true;
     profileSwitchError.value = null;
     try {
-      await loadModelOptions(true);
+      await loadModelOptions(false);
       if (activation !== profileActivationSeq) return;
       if (modelOptionsError.value) profileSwitchError.value = modelOptionsError.value;
     } finally {
@@ -2077,6 +2261,7 @@ export const useHermesStore = defineStore('hermes', () => {
     activeAgentProfiles.value = { ...activeAgentProfiles.value, [activeProfileId.value]: name };
     modelOptions.value = null;
     modelOptionsUpdatedAt.value = null;
+    modelOptionsOwner.value = null;
     applyProfileState(profileStates.value[stateKey(activeProfileId.value, name)] ?? blankProfileState());
     if (remoteActive.value) mac.value = { ...DEFAULT_MAC };
     panelHistoryGeneration += 1;
@@ -2108,6 +2293,7 @@ export const useHermesStore = defineStore('hermes', () => {
   async function renameAgentProfile(name: string, newName: string) {
     const args = connectionArgs();
     await unwrap(commands.hermesAgentProfileRename(args.connectionId, args.gatewayUrl, name, newName));
+    invalidateModelOptionsCacheFor(activeProfileId.value, name, newName);
     const oldKey = stateKey(activeProfileId.value, name);
     const newKey = stateKey(activeProfileId.value, newName);
     const nextStates = { ...profileStates.value };
@@ -2136,6 +2322,7 @@ export const useHermesStore = defineStore('hermes', () => {
   async function deleteAgentProfile(name: string) {
     const args = connectionArgs();
     await unwrap(commands.hermesAgentProfileDelete(args.connectionId, args.gatewayUrl, name));
+    invalidateModelOptionsCacheFor(activeProfileId.value, name);
     if (activeAgentProfileName.value === name) {
       await switchAgentProfile('default');
     }
@@ -2175,7 +2362,16 @@ export const useHermesStore = defineStore('hermes', () => {
   function updateProfile(profileId: string, patch: Partial<HermesProfile>) {
     const profile = profiles.value.find(item => item.id === profileId);
     if (!profile) return;
+    const endpointChanged = typeof patch.endpoint === 'string' && patch.endpoint.trim() !== profile.endpoint.trim();
     Object.assign(profile, patch);
+    if (endpointChanged) {
+      invalidateModelOptionsCacheFor(profileId);
+      if (profileId === activeProfileId.value) {
+        modelOptions.value = null;
+        modelOptionsUpdatedAt.value = null;
+        modelOptionsOwner.value = null;
+      }
+    }
     persist();
   }
 
@@ -3024,7 +3220,9 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
     profileSwitchingTo,
     modelOptionsError,
     modelOptionsUpdatedAt,
+    modelOptionsForScope,
     loadModelOptions,
+    invalidateModelOptionsCache,
     apiKey,
     loadRuntime,
     loadHistory,

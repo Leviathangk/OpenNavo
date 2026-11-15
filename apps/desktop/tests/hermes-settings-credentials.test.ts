@@ -39,6 +39,32 @@ const PANEL_PAYLOAD = {
   ]
 };
 
+const SAVED_CATALOG = {
+  providers: [
+    {
+      slug: 'openavoo-custom',
+      name: 'Custom',
+      is_current: true,
+      models: ['saved-model', 'grok-default'],
+      total_models: 2,
+      authenticated: true
+    }
+  ]
+};
+
+const RESEARCH_CATALOG = {
+  providers: [
+    {
+      slug: 'openavoo-custom',
+      name: 'Custom',
+      is_current: true,
+      models: ['grok-research'],
+      total_models: 1,
+      authenticated: true
+    }
+  ]
+};
+
 function seedConnection(kind: 'local' | 'panel') {
   if (kind === 'panel') {
     localStorage.setItem(
@@ -93,6 +119,16 @@ function profileScopeSelect(): HTMLSelectElement | null {
       Array.from(select.options).some(option => option.value === 'research')
     ) ?? null
   );
+}
+
+function cacheKeysForProfile(connectionId: string, agentProfile: string): string[] {
+  const prefix = `ONV_HERMES_MODEL_OPTIONS_V3::${encodeURIComponent(connectionId)}::${encodeURIComponent(agentProfile)}::`;
+  const keys: string[] = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(prefix)) keys.push(key);
+  }
+  return keys;
 }
 
 async function mountSheet() {
@@ -239,6 +275,78 @@ describe('Hermes settings credentials', () => {
     // its own `.env` through `write_config`.
     expect(store.activeAgentProfileName).toBe('default');
     expect(store.apiKey).toBe('');
+  });
+
+  it('Drops the cached catalog for the profile whose API key was written', async () => {
+    seedConnection('local');
+    vi.spyOn(commands, 'hermesAgentProfiles').mockResolvedValue(ok(AGENT_PROFILES));
+    vi.spyOn(commands, 'hermesSecretSet').mockResolvedValue(ok(null));
+    vi.spyOn(commands, 'hermesSecretStatus').mockResolvedValue(ok(true));
+    const store = useHermesStore();
+    await store.loadAgentProfiles();
+    store.setAgentProfileModel('research', {
+      ...store.model,
+      provider: 'custom',
+      model: 'grok-4.7',
+      endpoint: 'https://api.example.test/v1',
+      keySet: false
+    });
+    store.useProvider('custom');
+    wrapper = await mountSheet();
+
+    const select = profileScopeSelect();
+    expect(select).not.toBeNull();
+    select!.value = 'research';
+    select!.dispatchEvent(new Event('change'));
+    await vi.waitFor(() => expect(cacheKeysForProfile('local', 'research')).toHaveLength(1));
+
+    const key = document.body.querySelector<HTMLInputElement>('#hermes-key');
+    expect(key).not.toBeNull();
+    key!.value = 'sk-research-only';
+    key!.dispatchEvent(new Event('input'));
+
+    const save = Array.from(document.body.querySelectorAll('button')).find(
+      button => button.textContent?.trim() === 'Save'
+    );
+    expect(save).toBeDefined();
+    save!.click();
+
+    await vi.waitFor(() => expect(cacheKeysForProfile('local', 'research')).toHaveLength(0));
+  });
+
+  it('Does not align the model being edited from another profile catalog', async () => {
+    seedConnection('panel');
+    vi.spyOn(commands, 'hermesAgentProfiles').mockResolvedValue(ok(AGENT_PROFILES));
+    vi.mocked(commands.hermesModelOptions).mockImplementation(input =>
+      Promise.resolve(ok(input.profile === 'research' ? RESEARCH_CATALOG : SAVED_CATALOG))
+    );
+    const store = useHermesStore();
+    await store.loadAgentProfiles();
+    store.useProvider('custom');
+    store.saveModel({ ...store.model, provider: 'custom', model: 'saved-model' });
+    store.setAgentProfileModel('research', { ...store.model, model: 'grok-research' });
+    wrapper = await mountSheet();
+    await vi.waitFor(() => expect(store.modelOptionsForScope('default', store.model)).not.toBeNull());
+    expect(document.body.querySelector<HTMLInputElement>('#hermes-model')?.value).toBe('saved-model');
+
+    const select = profileScopeSelect();
+    expect(select).not.toBeNull();
+    select!.value = 'research';
+    select!.dispatchEvent(new Event('change'));
+    await vi.waitFor(() => expect(store.modelOptionsForScope('research', store.model)).not.toBeNull());
+    expect(document.body.querySelector<HTMLInputElement>('#hermes-model')?.value).toBe('grok-research');
+
+    await wrapper.setProps({ open: false });
+    store.invalidateModelOptionsCache('default');
+    expect(store.model.model).toBe('saved-model');
+    vi.mocked(commands.hermesModelOptions).mockImplementation(input =>
+      input.profile === 'research' ? Promise.resolve(ok(RESEARCH_CATALOG)) : Promise.reject(new Error('panel offline'))
+    );
+    await wrapper.setProps({ open: true });
+    await vi.waitFor(() => expect(sheetText()).toContain('panel offline'));
+
+    const model = document.body.querySelector<HTMLInputElement>('#hermes-model');
+    expect(model?.value).toBe('saved-model');
   });
 
   it('Reads the diagnostics pane for the profile the sheet is editing', async () => {
