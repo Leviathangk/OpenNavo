@@ -12,7 +12,7 @@ export const commands = {
 	hermesStop: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_stop")),
 	hermesAskRespond: (requestId: string, reply: HermesAskReply) => typedError<null, AppError>(__TAURI_INVOKE("hermes_ask_respond", { requestId, reply })),
 	hermesInterrupt: (liveSessionId: string, gatewayUrl: string | null, profileId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_interrupt", { liveSessionId, gatewayUrl, profileId })),
-	hermesSteer: (liveSessionId: string, text: string, gatewayUrl: string | null, profileId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_steer", { liveSessionId, text, gatewayUrl, profileId })),
+	hermesSteer: (liveSessionId: string, executionGeneration: number, text: string, gatewayUrl: string | null, profileId: string | null) => typedError<HermesSteerResult, AppError>(__TAURI_INVOKE("hermes_steer", { liveSessionId, executionGeneration, text, gatewayUrl, profileId })),
 	hermesSecretSet: (provider: string, key: string, profile: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_secret_set", { provider, key, profile })),
 	hermesSecretStatus: (provider: string, profile: string | null) => typedError<boolean, AppError>(__TAURI_INVOKE("hermes_secret_status", { provider, profile })),
 	hermesSecretDelete: (provider: string, profile: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_secret_delete", { provider, profile })),
@@ -1584,6 +1584,18 @@ export type HermesRuntimeStatus = {
 	outdated: boolean,
 	message: string | null,
 };
+
+export type HermesSteerResult = {
+	status: HermesSteerStatus,
+	/**
+	 *  Only set to `false` when Hermes confirms no live agent saw the correction. A plain
+	 *  `rejected` may follow delivery (for example, a Codex steer whose ACK timed out), so it
+	 *  carries no `delivered` field and must never be re-sent as the next prompt.
+	 */
+	delivered: boolean | null,
+};
+
+export type HermesSteerStatus = "queued" | "redirected" | "rejected";
 
 export type HermesTestInput = {
 	provider: string,

@@ -169,6 +169,24 @@ pub struct HermesChatReply {
     pub usage: Option<HermesUsage>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum HermesSteerStatus {
+    Queued,
+    Redirected,
+    Rejected,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesSteerResult {
+    pub status: HermesSteerStatus,
+    /// Only set to `false` when Hermes confirms no live agent saw the correction. A plain
+    /// `rejected` may follow delivery (for example, a Codex steer whose ACK timed out), so it
+    /// carries no `delivered` field and must never be re-sent as the next prompt.
+    pub delivered: Option<bool>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Default)]
 #[serde(default)]
 pub struct HermesUsage {
