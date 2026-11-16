@@ -41,6 +41,9 @@ const composer = ref<HTMLTextAreaElement>();
 const dragging = ref(false);
 let unlistenDrop: (() => void) | undefined;
 const SUGGESTIONS = ['rectangle', 'cleanup', 'updates', 'explain'] as const;
+const IME_ENTER_GRACE_MS = 50;
+const compositionActive = ref(false);
+let compositionEndedAt = 0;
 
 const modelLabel = computed(
   () => `${content.value.header.model} · ${store.modelShort} · ${content.value.effort[store.model.effort]}`
@@ -245,9 +248,27 @@ function send() {
 }
 
 function onEnter(event: KeyboardEvent) {
-  if (event.isComposing || event.shiftKey) return;
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  if (
+    event.isComposing ||
+    event.keyCode === 229 ||
+    compositionActive.value ||
+    Date.now() - compositionEndedAt < IME_ENTER_GRACE_MS
+  ) {
+    return;
+  }
   event.preventDefault();
   send();
+}
+
+function onCompositionStart() {
+  compositionActive.value = true;
+}
+
+function onCompositionEnd() {
+  compositionActive.value = false;
+  // Safari/WKWebView can dispatch the confirming Enter after compositionend, sometimes with keyCode 13.
+  compositionEndedAt = Date.now();
 }
 
 function suggestion(prompt: string) {
@@ -609,6 +630,8 @@ onBeforeUnmount(() => {
               class="block max-h-110px min-h-42px w-full resize-none border-none bg-transparent px-4px pb-8px pt-4px font-sans text-13.5px leading-[1.55] text-ink-primary outline-none placeholder:text-ink-tertiary"
               :placeholder="content.composer.placeholder"
               :aria-label="content.composer.placeholder"
+              @compositionstart="onCompositionStart"
+              @compositionend="onCompositionEnd"
               @keydown.enter="onEnter"
             ></textarea>
             <div class="flex items-center gap-8px">

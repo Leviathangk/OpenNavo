@@ -15,7 +15,7 @@ import {
 } from '@/hermes/providers';
 import { commands, unwrap, IpcError } from '@/ipc/client';
 import { isMessagingSource } from '@/hermes/platforms';
-import type { HermesLoginStatus, HermesModelOptions, HermesRuntimeStatus } from '@/ipc/bindings';
+import type { HermesLoginStatus, HermesModelOptions, HermesRuntimeStatus, HermesSteerResult } from '@/ipc/bindings';
 import { useToasts } from '@/composables/useToasts';
 import rectangleIcon from '@/assets/hermes/rectangle.png';
 
@@ -239,6 +239,8 @@ export interface HermesSessionEvent {
   requestId: string;
   liveSessionId: string;
   sessionId: string;
+  /** Running turn's fence for `session.steer`; absent until the runtime claims the turn. */
+  executionGeneration?: number | null;
 }
 
 export interface HermesContextUsage {
@@ -293,6 +295,8 @@ export interface HermesConversation {
   sessionId?: string;
   /** Live gateway session id for the in-flight turn (steer/interrupt). */
   liveSessionId?: string;
+  /** Runtime `execution_generation` for the in-flight turn; `session.steer` rejects a stale value. */
+  executionGeneration?: number;
   /** Hermes Panel row: the list carries host metadata until the transcript is opened. */
   panel?: boolean;
   /** Panel-provided preview line, so the list renders without reading a transcript. */
@@ -663,7 +667,8 @@ function read(): PersistedHermes {
             .map(conversation => ({
               ...conversation,
               messages: conversation.messages.map(entry => ({ ...entry, streaming: false })),
-              liveSessionId: undefined
+              liveSessionId: undefined,
+              executionGeneration: undefined
             }))
             .filter(
               conversation => !(conversation.messages.length > 0 && conversation.messages.every(entry => entry.textKey))
@@ -934,8 +939,15 @@ export const useHermesStore = defineStore('hermes', () => {
   let historyReadyPromise = new Promise<void>(resolve => {
     resolveHistoryReady = resolve;
   });
-  const pendingSteers = new Map<string, string[]>();
+  const pendingSteers = new Map<string, { text: string; messageId: string }[]>();
   const queuedAfterTurn = new Map<string, string[]>();
+  /**
+   * The conversation whose queued text is already inside `send`. One drain at a time.
+   * `stopThinking` clears it: that bump retires the in-flight turn, and a hung chat would
+   * otherwise leave `select` unable to start the rows still queued.
+   */
+  let queuedDrain: { id: string; epoch: number } | null = null;
+  let queuedDrainEpoch = 0;
 
   function preferredAgentProfile(connectionId: string) {
     return activeAgentProfiles.value[connectionId] ?? defaultAgentProfiles.value[connectionId] ?? 'default';
@@ -1342,7 +1354,8 @@ export const useHermesStore = defineStore('hermes', () => {
               }
               return { ...entryMessage, streaming: false };
             }),
-            liveSessionId: undefined
+            liveSessionId: undefined,
+            executionGeneration: undefined
           };
         });
         const localLatest = conversations.value.reduce((latest, item) => Math.max(latest, item.updatedAt || 0), 0);
@@ -1730,6 +1743,7 @@ export const useHermesStore = defineStore('hermes', () => {
       modelOptions.value = null;
       modelOptionsUpdatedAt.value = null;
       modelOptionsOwner.value = null;
+      drainActiveQueue();
     }
     persist();
   }
@@ -1766,6 +1780,7 @@ export const useHermesStore = defineStore('hermes', () => {
     void loadAgentProfiles();
     void loadHistory();
     void loadPanelHistory();
+    drainActiveQueue();
     void activateCurrentProfile();
   }
 
@@ -2268,6 +2283,7 @@ export const useHermesStore = defineStore('hermes', () => {
     persist();
     void loadHistory();
     void loadPanelHistory();
+    drainActiveQueue();
     try {
       await activateCurrentProfile();
     } finally {
@@ -2404,10 +2420,13 @@ export const useHermesStore = defineStore('hermes', () => {
 
   function resetSession() {
     if (active.value) {
+      const conversationId = active.value.id;
       active.value.sessionId = undefined;
       active.value.liveSessionId = undefined;
-      pendingSteers.delete(active.value.id);
-      queuedAfterTurn.delete(active.value.id);
+      active.value.executionGeneration = undefined;
+      // A new session can no longer satisfy a steer's generation. Hand the text to the
+      // next-turn queue instead of dropping it; rows already queued there stay valid.
+      deferPendingSteers(conversationId);
     }
   }
 
@@ -2427,6 +2446,8 @@ export const useHermesStore = defineStore('hermes', () => {
     activeId.value = idValue;
     // A panel row is metadata only until it is opened.
     void loadPanelConversation(idValue);
+    // A steer that failed while this conversation was in the background waits here.
+    drainQueuedAfterTurn(idValue);
   }
 
   function newChat() {
@@ -2467,6 +2488,8 @@ export const useHermesStore = defineStore('hermes', () => {
       stopThinking();
       activeId.value = null;
     }
+    pendingSteers.delete(idValue);
+    queuedAfterTurn.delete(idValue);
     conversations.value = conversations.value.filter(item => item.id !== idValue);
     // The host dropped the row: other slices still list it until they are re-read.
     if (target?.panel) invalidatePanelSlices();
@@ -2518,7 +2541,12 @@ export const useHermesStore = defineStore('hermes', () => {
     if (historyLoadStarted && !historyLoaded) await historyReadyPromise;
     stopThinking();
     // Panel rows live on the host, so only this Mac's own conversations can be cleared here.
+    const cleared = conversations.value.filter(item => !item.panel).map(item => item.id);
     conversations.value = conversations.value.filter(item => item.panel);
+    for (const idValue of cleared) {
+      pendingSteers.delete(idValue);
+      queuedAfterTurn.delete(idValue);
+    }
     if (activeId.value && !conversations.value.some(item => item.id === activeId.value)) activeId.value = null;
     persist();
     flushHistorySave();
@@ -2605,29 +2633,157 @@ export const useHermesStore = defineStore('hermes', () => {
     return message({ role: 'assistant', textKey: 'messages.fallback.assistant' });
   }
 
-  async function flushSteers(conversation: HermesConversation) {
-    const live = conversation.liveSessionId;
-    if (!live) return;
-    const queued = pendingSteers.get(conversation.id) ?? [];
-    pendingSteers.delete(conversation.id);
-    for (const text of queued) {
+  function dropSteeringMessage(conversationId: string, messageId: string) {
+    const target = conversations.value.find(item => item.id === conversationId);
+    const index = target?.messages.findIndex(entry => entry.id === messageId) ?? -1;
+    if (!target || index < 0) return;
+    target.messages.splice(index, 1);
+    target.updatedAt = Date.now();
+  }
+
+  function queueSteerAfterTurn(conversationId: string, text: string, front = false) {
+    const queued = queuedAfterTurn.get(conversationId) ?? [];
+    queuedAfterTurn.set(conversationId, front ? [text, ...queued] : [...queued, text]);
+  }
+
+  /** A steer accepted before its generation arrived still has to be sent on a later turn. */
+  function deferPendingSteers(conversationId: string) {
+    const pending = pendingSteers.get(conversationId);
+    pendingSteers.delete(conversationId);
+    if (!pending?.length) return;
+    for (const steer of pending) {
+      dropSteeringMessage(conversationId, steer.messageId);
+      queueSteerAfterTurn(conversationId, steer.text);
+    }
+  }
+
+  function drainQueuedAfterTurn(conversationId: string) {
+    if (thinking.value || queuedDrain) return;
+    // Turns are global but the queue belongs to one conversation. Switching away before the
+    // failed steer returns must not start this text in whichever conversation is active now.
+    if (active.value?.id !== conversationId) return;
+    const queued = queuedAfterTurn.get(conversationId);
+    if (!queued?.length) return;
+    const next = queued[0];
+    if (!next) return;
+    const rest = queued.slice(1);
+    if (rest.length) queuedAfterTurn.set(conversationId, rest);
+    else queuedAfterTurn.delete(conversationId);
+    const epoch = ++queuedDrainEpoch;
+    queuedDrain = { id: conversationId, epoch };
+    void send(next, [], conversationId).finally(() => {
+      if (queuedDrain?.epoch === epoch) queuedDrain = null;
+    });
+  }
+
+  function releaseQueuedDrain(conversationId: string) {
+    if (queuedDrain?.id === conversationId) queuedDrain = null;
+  }
+
+  function drainActiveQueue() {
+    if (activeId.value) drainQueuedAfterTurn(activeId.value);
+  }
+
+  function steerWasUndelivered(result: HermesSteerResult) {
+    return result.status === 'rejected' && result.delivered === false;
+  }
+
+  function steerFailureDetail(error: unknown) {
+    return error instanceof IpcError ? (error.detail ?? error.message) : String(error);
+  }
+
+  function isStaleGenerationError(error: unknown) {
+    return steerFailureDetail(error).includes('stale_generation');
+  }
+
+  function isUnsupportedSteerError(error: unknown) {
+    return steerFailureDetail(error).includes('does not support steer');
+  }
+
+  /**
+   * `stale_generation` is the gateway's fence, not a broken turn. Retry once when a newer
+   * stamp has already arrived; a second miss is the caller's signal to queue the text.
+   */
+  async function dispatchSteer(
+    conversation: HermesConversation,
+    live: string,
+    generation: number,
+    text: string
+  ): Promise<{ ok: true; result: HermesSteerResult } | { ok: false; error: unknown }> {
+    const request = (sessionId: string, stamp: number) =>
+      unwrap(commands.hermesSteer(sessionId, stamp, text, gatewayUrl.value, gatewayProfileId.value));
+    try {
+      return { ok: true, result: await request(live, generation) };
+    } catch (error) {
+      const latest = conversation.executionGeneration;
+      const latestLive = conversation.liveSessionId;
+      if (!isStaleGenerationError(error) || latest === undefined || latest === generation || !latestLive) {
+        return { ok: false, error };
+      }
       try {
-        await unwrap(commands.hermesSteer(live, text, gatewayUrl.value, gatewayProfileId.value));
-      } catch (error) {
-        notePanelAuthError(error);
-        toasts.push({
-          tone: 'warning',
-          title: 'Hermes steer',
-          description: error instanceof IpcError ? (error.detail ?? error.message) : String(error)
-        });
+        return { ok: true, result: await request(latestLive, latest) };
+      } catch (retryError) {
+        return { ok: false, error: retryError };
       }
     }
   }
 
-  async function send(text: string, attachments: string[] = []) {
-    if (historyLoadStarted && !historyLoaded) {
-      await historyReadyPromise;
+  async function flushSteers(conversation: HermesConversation) {
+    const live = conversation.liveSessionId;
+    const generation = conversation.executionGeneration;
+    if (!live || generation === undefined) return;
+    const queued = pendingSteers.get(conversation.id) ?? [];
+    if (!queued.length) return;
+    pendingSteers.delete(conversation.id);
+    for (const steer of queued) {
+      const dispatched = await dispatchSteer(conversation, live, generation, steer.text);
+      if (dispatched.ok) {
+        if (steerWasUndelivered(dispatched.result)) {
+          dropSteeringMessage(conversation.id, steer.messageId);
+          queueSteerAfterTurn(conversation.id, steer.text);
+          toasts.push({
+            tone: 'info',
+            title: 'Hermes steer',
+            description: '这条引导未送达，已排队到本轮结束后发送。'
+          });
+        }
+      } else {
+        notePanelAuthError(dispatched.error);
+        dropSteeringMessage(conversation.id, steer.messageId);
+        queueSteerAfterTurn(conversation.id, steer.text);
+        toasts.push({
+          tone: 'warning',
+          title: 'Hermes steer',
+          description: steerFailureDetail(dispatched.error)
+        });
+      }
     }
+    drainQueuedAfterTurn(conversation.id);
+  }
+
+  async function send(text: string, attachments: string[] = [], targetConversationId?: string) {
+    const findTarget = () =>
+      targetConversationId ? (conversations.value.find(item => item.id === targetConversationId) ?? null) : null;
+    const targetIsActive = () =>
+      targetConversationId === undefined || (active.value?.id === targetConversationId && Boolean(findTarget()));
+    const restoreTargetQueue = () => {
+      if (targetConversationId) queueSteerAfterTurn(targetConversationId, text, true);
+    };
+    let pendingUserId: string | undefined;
+    let pendingAssistantId: string | undefined;
+    const restoreUnsentTurn = (conversation: HermesConversation) => {
+      // A profile switch can replace the live array with a restored copy; clean both the object
+      // this send started with and the one currently in the store, so neither keeps a phantom turn.
+      const targets = new Set([conversation, conversations.value.find(item => item.id === conversation.id)]);
+      for (const target of targets) {
+        if (!target) continue;
+        target.messages = target.messages.filter(
+          entry => entry.id !== pendingUserId && entry.id !== pendingAssistantId
+        );
+        target.updatedAt = Date.now();
+      }
+      restoreTargetQueue();
+    };
     const value = text.trim();
     if (remoteActive.value && attachments.length) {
       toasts.push({
@@ -2638,25 +2794,18 @@ export const useHermesStore = defineStore('hermes', () => {
       return;
     }
     if (!value && !attachments.length) return;
-    if (!remoteActive.value) {
-      // Verify against the runtime instead of trusting the cached flag: a stale `true`
-      // used to let the turn through and fail later with a provider error.
-      const info = HERMES_PROVIDER_MAP[model.value.provider];
-      if (requiresStoredKey(model.value, info) && !(await refreshCredentialState())) {
-        toasts.push({
-          tone: 'warning',
-          title: 'Hermes profile',
-          description: 'Configure this profile’s model and credentials before chatting.'
-        });
+    // Decide steer versus a new turn before any await. History and credential checks used to
+    // leave `thinking` false, so two drains could both start `hermesChat`.
+    if (thinking.value) {
+      if (!targetIsActive()) {
+        restoreTargetQueue();
         return;
       }
-    }
-    if (thinking.value) {
       if (attachments.length) {
         toasts.push({ tone: 'warning', title: 'Hermes', description: '请等待当前回复结束再发送附件。' });
         return;
       }
-      const steerConversation = ensureConversation();
+      const steerConversation = findTarget() ?? ensureConversation();
       const steerMessage = message({ role: 'user', text: value, steering: true });
       const streamingIndex = steerConversation.messages.findLastIndex(
         entry => entry.role === 'assistant' && entry.streaming
@@ -2667,52 +2816,139 @@ export const useHermesStore = defineStore('hermes', () => {
         steerConversation.messages = [...steerConversation.messages, steerMessage];
       }
       steerConversation.updatedAt = Date.now();
-      if (steerConversation.liveSessionId) {
-        try {
-          await unwrap(
-            commands.hermesSteer(steerConversation.liveSessionId, value, gatewayUrl.value, gatewayProfileId.value)
-          );
-        } catch (error) {
-          const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
-          const index = steerConversation.messages.findIndex(entry => entry.id === steerMessage.id);
-          if (index >= 0) steerConversation.messages.splice(index, 1);
-          queuedAfterTurn.set(steerConversation.id, [...(queuedAfterTurn.get(steerConversation.id) ?? []), value]);
+      const live = steerConversation.liveSessionId;
+      const generation = steerConversation.executionGeneration;
+      if (live && generation !== undefined) {
+        const dispatched = await dispatchSteer(steerConversation, live, generation, value);
+        if (dispatched.ok) {
+          if (steerWasUndelivered(dispatched.result)) {
+            dropSteeringMessage(steerConversation.id, steerMessage.id);
+            queueSteerAfterTurn(steerConversation.id, value);
+            toasts.push({
+              tone: 'info',
+              title: 'Hermes steer',
+              description: '这条引导未送达，已排队到本轮结束后发送。'
+            });
+          }
+        } else {
+          const detail = steerFailureDetail(dispatched.error);
+          dropSteeringMessage(steerConversation.id, steerMessage.id);
+          queueSteerAfterTurn(steerConversation.id, value);
           toasts.push({
             tone: 'info',
             title: 'Hermes',
-            description: detail.includes('does not support steer')
+            description: isUnsupportedSteerError(dispatched.error)
               ? '当前模型不支持中途引导，这条消息已排队到本轮结束后发送。'
               : detail
           });
-          if (thinking.value) {
+          // A stale generation is a fence race. Stopping the turn would cancel the reply the
+          // user is still reading. Only a model that cannot steer falls back to interrupt.
+          if (
+            isUnsupportedSteerError(dispatched.error) &&
+            thinking.value &&
+            active.value?.id === steerConversation.id
+          ) {
             stopRequested.value = true;
             stopping.value = true;
             armStopFallbacks(activeTurn, steerConversation.id);
-            await commands
-              .hermesInterrupt(steerConversation.liveSessionId, gatewayUrl.value, gatewayProfileId.value)
-              .catch(() => undefined);
+            await commands.hermesInterrupt(live, gatewayUrl.value, gatewayProfileId.value).catch(() => undefined);
           }
         }
+        drainQueuedAfterTurn(steerConversation.id);
       } else {
-        pendingSteers.set(steerConversation.id, [...(pendingSteers.get(steerConversation.id) ?? []), value]);
+        pendingSteers.set(steerConversation.id, [
+          ...(pendingSteers.get(steerConversation.id) ?? []),
+          { text: value, messageId: steerMessage.id }
+        ]);
       }
       return;
     }
+    if (!targetIsActive()) {
+      restoreTargetQueue();
+      return;
+    }
     const prompt = value || '请查看附件。';
-    const conversation = ensureConversation();
-    conversation.messages = [
-      ...conversation.messages,
-      message({ role: 'user', text: value, attachments: attachments.length ? [...attachments] : undefined })
-    ];
+    let conversation = findTarget() ?? ensureConversation();
+    // The drain that called us published this epoch synchronously, before the first await.
+    const drainEpoch = queuedDrain?.id === conversation.id ? queuedDrain.epoch : undefined;
+    conversation.executionGeneration = undefined;
+    const userMessage = message({
+      role: 'user',
+      text: value,
+      attachments: attachments.length ? [...attachments] : undefined
+    });
+    pendingUserId = userMessage.id;
+    conversation.messages = [...conversation.messages, userMessage];
     conversation.updatedAt = Date.now();
     thinking.value = true;
     const turn = ++turnSeq;
     activeTurn = turn;
+    const abandonClaim = () => {
+      restoreUnsentTurn(conversation);
+      if (activeTurn === turn) {
+        thinking.value = false;
+        activeTurn = ++turnSeq;
+      }
+    };
+    // `loadHistory` may swap `conversations` for new objects while this await is in flight.
+    // The user row was appended to the object captured above; carry it onto the live one
+    // or the assistant reply and session metadata land on a conversation the store dropped.
+    const syncConversation = () => {
+      const live = conversations.value.find(item => item.id === conversation.id);
+      if (!live) {
+        conversations.value = [conversation, ...conversations.value];
+        return;
+      }
+      if (live === conversation) return;
+      const carried = conversation.messages.filter(entry => !live.messages.some(item => item.id === entry.id));
+      if (carried.length) {
+        live.messages = [...live.messages, ...carried];
+        live.updatedAt = Date.now();
+      }
+      conversation = live;
+    };
+    if (historyLoadStarted && !historyLoaded) {
+      await historyReadyPromise;
+      if (!targetIsActive() || activeTurn !== turn) {
+        abandonClaim();
+        return;
+      }
+      syncConversation();
+    }
+    if (!remoteActive.value) {
+      // Verify against the runtime instead of trusting the cached flag: a stale `true`
+      // used to let the turn through and fail later with a provider error.
+      const info = HERMES_PROVIDER_MAP[model.value.provider];
+      if (requiresStoredKey(model.value, info) && !(await refreshCredentialState())) {
+        abandonClaim();
+        toasts.push({
+          tone: 'warning',
+          title: 'Hermes profile',
+          description: 'Configure this profile’s model and credentials before chatting.'
+        });
+        return;
+      }
+    }
+    // The active conversation or profile can change while an await above is in flight.
+    if (!targetIsActive() || activeTurn !== turn) {
+      abandonClaim();
+      return;
+    }
 
     const tauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
     if (!runtime.value && tauri) await loadRuntime();
+    if (!targetIsActive() || activeTurn !== turn) {
+      restoreUnsentTurn(conversation);
+      if (activeTurn === turn) {
+        thinking.value = false;
+        activeTurn = ++turnSeq;
+      }
+      return;
+    }
     if (!runtime.value?.ready && tauri && !remoteActive.value) {
-      thinking.value = false;
+      // The drain already popped this row. Put it back and drop the unsent bubble, or a
+      // later select has nothing to send and the transcript keeps a message that never went out.
+      abandonClaim();
       toasts.push({
         tone: 'warning',
         title: 'Local Hermes',
@@ -2721,11 +2957,13 @@ export const useHermesStore = defineStore('hermes', () => {
       return;
     }
     if (runtime.value?.ready || remoteActive.value) {
+      syncConversation();
       const requestId =
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? crypto.randomUUID()
           : `hermes-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const assistant = message({ role: 'assistant', text: '', streaming: true });
+      pendingAssistantId = assistant.id;
       conversation.messages = [...conversation.messages, assistant];
       conversation.updatedAt = Date.now();
       let unlisten: (() => void) | undefined;
@@ -2745,6 +2983,9 @@ export const useHermesStore = defineStore('hermes', () => {
             const target = conversations.value.find(item => item.id === conversation.id);
             if (!target) return;
             target.liveSessionId = event.payload.liveSessionId;
+            if (event.payload.executionGeneration != null) {
+              target.executionGeneration = event.payload.executionGeneration;
+            }
             void flushSteers(target);
           });
           // The turn is parked on a human answer: approval, clarify questions or a masked prompt.
@@ -2809,6 +3050,11 @@ export const useHermesStore = defineStore('hermes', () => {
         }
       }
       try {
+        if (!targetIsActive() || activeTurn !== turn) {
+          restoreUnsentTurn(conversation);
+          return;
+        }
+        syncConversation();
         const reply = await unwrap(
           commands.hermesChat({
             prompt,
@@ -2840,6 +3086,7 @@ export const useHermesStore = defineStore('hermes', () => {
           })
         );
         if (activeTurn !== turn) return;
+        syncConversation();
         const target = conversations.value.find(item => item.id === conversation.id);
         const entry = target?.messages.find(item => item.id === assistant.id);
         if (target && entry) {
@@ -2860,6 +3107,7 @@ export const useHermesStore = defineStore('hermes', () => {
         }
       } catch (error) {
         if (activeTurn !== turn) return;
+        syncConversation();
         if (stopping.value || stopRequested.value) {
           const target = conversations.value.find(item => item.id === conversation.id);
           const entry = target?.messages.find(item => item.id === assistant.id);
@@ -2880,6 +3128,7 @@ export const useHermesStore = defineStore('hermes', () => {
 
 OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.ai/console) 创建新的 API Key，然后在 Hermes 设置 → OpenCode Go 中填写。`
           : detail;
+        syncConversation();
         const target = conversations.value.find(item => item.id === conversation.id);
         const entry = target?.messages.find(item => item.id === assistant.id);
         if (target && entry) {
@@ -2900,13 +3149,17 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
           stopping.value = false;
           stopRequested.value = false;
           asks.value = [];
-          const queued = queuedAfterTurn.get(conversation.id);
-          if (queued?.length) {
-            const [next, ...rest] = queued;
-            if (rest.length) queuedAfterTurn.set(conversation.id, rest);
-            else queuedAfterTurn.delete(conversation.id);
-            if (next) void send(next);
-          }
+          const finished = conversations.value.find(item => item.id === conversation.id);
+          if (finished) finished.executionGeneration = undefined;
+          deferPendingSteers(conversation.id);
+          // Let the next queued row start. This send's own finally still holds the previous epoch.
+          releaseQueuedDrain(conversation.id);
+          drainQueuedAfterTurn(conversation.id);
+        } else if (active.value?.id === conversation.id && !thinking.value) {
+          // `stopThinking` retired this turn, so the branch above did not run. Continue the
+          // queue once this chat settles, and only clear the guard epoch this send took.
+          if (queuedDrain?.id === conversation.id && queuedDrain.epoch === drainEpoch) queuedDrain = null;
+          if (!queuedDrain) drainQueuedAfterTurn(conversation.id);
         }
       }
       return;
@@ -2943,13 +3196,19 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
     stopping.value = false;
     stopRequested.value = false;
     asks.value = [];
+    // The superseded send skips its drain, and a hung chat never settles to clear this.
+    // Drop it now so a later select can start the rows still queued.
+    queuedDrain = null;
     // Read the live id before clearing it: the remote interrupt below used to run with
     // `undefined` and never stopped the turn on a remote gateway.
     const live = active.value?.liveSessionId;
     if (active.value) {
+      const conversationId = active.value.id;
       active.value.liveSessionId = undefined;
-      pendingSteers.delete(active.value.id);
-      queuedAfterTurn.delete(active.value.id);
+      active.value.executionGeneration = undefined;
+      // Same handoff as a finished turn. Deleting the wait list left the steering bubble
+      // on screen and gave select nothing to send.
+      deferPendingSteers(conversationId);
     }
     const last = messages.value.at(-1);
     if (last?.streaming) {
@@ -3051,6 +3310,10 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
     }
   }
 
+  function credentialsUsable(settings: HermesModelSettings) {
+    return !requiresStoredKey(settings, HERMES_PROVIDER_MAP[settings.provider]) || settings.keySet;
+  }
+
   function saveModel(next: HermesModelSettings) {
     const previous = model.value;
     const changed =
@@ -3059,8 +3322,12 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
       previous.effort !== next.effort ||
       previous.fast !== next.fast ||
       previous.endpoint !== next.endpoint;
+    const becameUsable = !credentialsUsable(previous) && credentialsUsable(next);
     model.value = { ...next };
     if (changed) resetSession();
+    // A queued row parked on a missing key stays on this conversation. Saving a usable
+    // model is the signal to send it; select and profile switches are not required.
+    if (becameUsable) drainActiveQueue();
   }
 
   function saveMac(next: HermesMacSettings) {
@@ -3115,6 +3382,9 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
       if (model.value.provider === provider) {
         model.value = { ...model.value, keySet };
       }
+      // The send that parked the queue already returned. A key that is present now can
+      // continue it while this conversation is still on screen.
+      if (keySet && provider === model.value.provider && credentialsUsable(model.value)) drainActiveQueue();
       return keySet;
     } catch {
       return false;
