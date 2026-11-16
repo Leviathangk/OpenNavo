@@ -239,6 +239,8 @@ export interface HermesSessionEvent {
   requestId: string;
   liveSessionId: string;
   sessionId: string;
+  /** Running turn's fence for `session.steer`; absent until the runtime claims the turn. */
+  executionGeneration?: number | null;
 }
 
 export interface HermesContextUsage {
@@ -293,6 +295,8 @@ export interface HermesConversation {
   sessionId?: string;
   /** Live gateway session id for the in-flight turn (steer/interrupt). */
   liveSessionId?: string;
+  /** Runtime `execution_generation` for the in-flight turn; `session.steer` rejects a stale value. */
+  executionGeneration?: number;
   /** Hermes Panel row: the list carries host metadata until the transcript is opened. */
   panel?: boolean;
   /** Panel-provided preview line, so the list renders without reading a transcript. */
@@ -663,7 +667,8 @@ function read(): PersistedHermes {
             .map(conversation => ({
               ...conversation,
               messages: conversation.messages.map(entry => ({ ...entry, streaming: false })),
-              liveSessionId: undefined
+              liveSessionId: undefined,
+              executionGeneration: undefined
             }))
             .filter(
               conversation => !(conversation.messages.length > 0 && conversation.messages.every(entry => entry.textKey))
@@ -1342,7 +1347,8 @@ export const useHermesStore = defineStore('hermes', () => {
               }
               return { ...entryMessage, streaming: false };
             }),
-            liveSessionId: undefined
+            liveSessionId: undefined,
+            executionGeneration: undefined
           };
         });
         const localLatest = conversations.value.reduce((latest, item) => Math.max(latest, item.updatedAt || 0), 0);
@@ -2406,6 +2412,7 @@ export const useHermesStore = defineStore('hermes', () => {
     if (active.value) {
       active.value.sessionId = undefined;
       active.value.liveSessionId = undefined;
+      active.value.executionGeneration = undefined;
       pendingSteers.delete(active.value.id);
       queuedAfterTurn.delete(active.value.id);
     }
@@ -2607,14 +2614,17 @@ export const useHermesStore = defineStore('hermes', () => {
 
   async function flushSteers(conversation: HermesConversation) {
     const live = conversation.liveSessionId;
-    if (!live) return;
+    const generation = conversation.executionGeneration;
+    if (!live || generation === undefined) return;
     const queued = pendingSteers.get(conversation.id) ?? [];
+    if (!queued.length) return;
     pendingSteers.delete(conversation.id);
     for (const text of queued) {
       try {
-        await unwrap(commands.hermesSteer(live, text, gatewayUrl.value, gatewayProfileId.value));
+        await unwrap(commands.hermesSteer(live, generation, text, gatewayUrl.value, gatewayProfileId.value));
       } catch (error) {
         notePanelAuthError(error);
+        queuedAfterTurn.set(conversation.id, [...(queuedAfterTurn.get(conversation.id) ?? []), text]);
         toasts.push({
           tone: 'warning',
           title: 'Hermes steer',
@@ -2667,11 +2677,11 @@ export const useHermesStore = defineStore('hermes', () => {
         steerConversation.messages = [...steerConversation.messages, steerMessage];
       }
       steerConversation.updatedAt = Date.now();
-      if (steerConversation.liveSessionId) {
+      const live = steerConversation.liveSessionId;
+      const generation = steerConversation.executionGeneration;
+      if (live && generation !== undefined) {
         try {
-          await unwrap(
-            commands.hermesSteer(steerConversation.liveSessionId, value, gatewayUrl.value, gatewayProfileId.value)
-          );
+          await unwrap(commands.hermesSteer(live, generation, value, gatewayUrl.value, gatewayProfileId.value));
         } catch (error) {
           const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
           const index = steerConversation.messages.findIndex(entry => entry.id === steerMessage.id);
@@ -2688,9 +2698,7 @@ export const useHermesStore = defineStore('hermes', () => {
             stopRequested.value = true;
             stopping.value = true;
             armStopFallbacks(activeTurn, steerConversation.id);
-            await commands
-              .hermesInterrupt(steerConversation.liveSessionId, gatewayUrl.value, gatewayProfileId.value)
-              .catch(() => undefined);
+            await commands.hermesInterrupt(live, gatewayUrl.value, gatewayProfileId.value).catch(() => undefined);
           }
         }
       } else {
@@ -2700,6 +2708,7 @@ export const useHermesStore = defineStore('hermes', () => {
     }
     const prompt = value || '请查看附件。';
     const conversation = ensureConversation();
+    conversation.executionGeneration = undefined;
     conversation.messages = [
       ...conversation.messages,
       message({ role: 'user', text: value, attachments: attachments.length ? [...attachments] : undefined })
@@ -2745,6 +2754,9 @@ export const useHermesStore = defineStore('hermes', () => {
             const target = conversations.value.find(item => item.id === conversation.id);
             if (!target) return;
             target.liveSessionId = event.payload.liveSessionId;
+            if (event.payload.executionGeneration != null) {
+              target.executionGeneration = event.payload.executionGeneration;
+            }
             void flushSteers(target);
           });
           // The turn is parked on a human answer: approval, clarify questions or a masked prompt.
@@ -2900,6 +2912,13 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
           stopping.value = false;
           stopRequested.value = false;
           asks.value = [];
+          const finished = conversations.value.find(item => item.id === conversation.id);
+          if (finished) finished.executionGeneration = undefined;
+          const pending = pendingSteers.get(conversation.id);
+          if (pending?.length) {
+            queuedAfterTurn.set(conversation.id, [...(queuedAfterTurn.get(conversation.id) ?? []), ...pending]);
+            pendingSteers.delete(conversation.id);
+          }
           const queued = queuedAfterTurn.get(conversation.id);
           if (queued?.length) {
             const [next, ...rest] = queued;
@@ -2948,6 +2967,7 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
     const live = active.value?.liveSessionId;
     if (active.value) {
       active.value.liveSessionId = undefined;
+      active.value.executionGeneration = undefined;
       pendingSteers.delete(active.value.id);
       queuedAfterTurn.delete(active.value.id);
     }

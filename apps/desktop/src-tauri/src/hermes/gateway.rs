@@ -1012,6 +1012,7 @@ async fn stream_turn(
     }
     let mut deadline = Instant::now() + MESSAGE_TIMEOUT;
     let mut accumulated = String::new();
+    let mut execution_generation: Option<i64> = None;
     loop {
         // A parked question owns the clock: the turn's stall budget does not run while the user decides.
         if asks.is_empty() && Instant::now() >= deadline {
@@ -1142,6 +1143,25 @@ async fn stream_turn(
             .and_then(Value::as_str)
             .unwrap_or_default();
         let payload = params.get("payload").cloned().unwrap_or(Value::Null);
+        // Every running stamp carries the generation a steer must echo back. The value does not
+        // exist until the admission is claimed, so `session.resume`'s snapshot cannot supply it;
+        // the official client also learns it from the turn's events.
+        if let Some(generation) = params.get("execution_generation").and_then(Value::as_i64)
+            && execution_generation != Some(generation)
+        {
+            execution_generation = Some(generation);
+            if let Some(app) = app {
+                let _ = app.emit(
+                    "hermes-session",
+                    json!({
+                        "requestId": input.request_id,
+                        "liveSessionId": live_sid,
+                        "sessionId": stored_sid,
+                        "executionGeneration": generation
+                    }),
+                );
+            }
+        }
         match event {
             "message.delta" => {
                 let delta = payload
@@ -1344,6 +1364,7 @@ pub async fn steer_remote_auth(
     url: &str,
     query: &str,
     live_session_id: &str,
+    execution_generation: i64,
     text: &str,
 ) -> Result<(), AppError> {
     if text.trim().is_empty() {
@@ -1354,21 +1375,16 @@ pub async fn steer_remote_auth(
         &mut socket,
         1,
         "session.steer",
-        json!({"session_id": live_session_id, "text": text}),
+        steer_params(live_session_id, execution_generation, text),
     )
     .await?;
-    if result.get("status").and_then(Value::as_str) == Some("rejected") {
-        return Err(AppError::new(
-            "E_HERMES_STEER",
-            "The running agent did not accept the steering message.",
-        ));
-    }
-    Ok(())
+    steer_result(result)
 }
 
 pub async fn steer(
     state: &HermesRuntimeState,
     live_session_id: &str,
+    execution_generation: i64,
     text: &str,
 ) -> Result<(), AppError> {
     if text.trim().is_empty() {
@@ -1379,16 +1395,35 @@ pub async fn steer(
         &mut socket,
         1,
         "session.steer",
-        json!({"session_id": live_session_id, "text": text}),
+        steer_params(live_session_id, execution_generation, text),
     )
     .await?;
-    if result.get("status").and_then(Value::as_str) == Some("rejected") {
-        return Err(AppError::new(
+    steer_result(result)
+}
+
+/// `session.steer` rejects any other key and requires this exact generation, so keep the wire
+/// shape in one place instead of letting the local and remote paths drift apart.
+fn steer_params(live_session_id: &str, execution_generation: i64, text: &str) -> Value {
+    json!({
+        "session_id": live_session_id,
+        "text": text,
+        "execution_generation": execution_generation
+    })
+}
+
+fn steer_result(result: Value) -> Result<(), AppError> {
+    match result.get("status").and_then(Value::as_str) {
+        Some("queued" | "redirected") => Ok(()),
+        Some("rejected") => Err(AppError::new(
             "E_HERMES_STEER",
             "The running agent did not accept the steering message.",
-        ));
+        )),
+        _ => Err(AppError::new(
+            "E_HERMES_STEER",
+            "Hermes gateway returned an unexpected steer response.",
+        )
+        .with_detail(result.to_string())),
     }
-    Ok(())
 }
 
 /// Read the official Hermes model catalog through the local gateway.
@@ -1564,6 +1599,27 @@ mod tests {
         for method in ["vault.save_login", "preview.read", "tour", "setup_beat"] {
             assert_eq!(AskKind::of(method), None, "{method}");
         }
+    }
+
+    #[test]
+    fn steer_carries_the_running_generation() {
+        let params = steer_params("live-1", 7, "check the failing test");
+        assert_eq!(
+            params,
+            json!({
+                "session_id": "live-1",
+                "text": "check the failing test",
+                "execution_generation": 7
+            })
+        );
+        assert!(steer_result(json!({"status": "queued"})).is_ok());
+        assert!(steer_result(json!({"status": "redirected"})).is_ok());
+        assert_eq!(
+            steer_result(json!({"status": "rejected"}))
+                .expect_err("a rejected steer must reach the UI")
+                .code,
+            "E_HERMES_STEER"
+        );
     }
 
     #[tokio::test]

@@ -81,6 +81,7 @@ pub async fn hermes_interrupt(
 pub async fn hermes_steer(
     state: State<'_, Arc<HermesRuntimeState>>,
     live_session_id: String,
+    execution_generation: i64,
     text: String,
     gateway_url: Option<String>,
     profile_id: Option<String>,
@@ -94,12 +95,18 @@ pub async fn hermes_steer(
             let ticket = hermes::panel::ticket_for(id).await?;
             let query = format!("ticket={}", urlencoding::encode(&ticket));
             let panel_url = hermes::panel::base_url_for(id)?;
-            return hermes::gateway::steer_remote_auth(&panel_url, &query, &live_session_id, &text)
-                .await;
+            return hermes::gateway::steer_remote_auth(
+                &panel_url,
+                &query,
+                &live_session_id,
+                execution_generation,
+                &text,
+            )
+            .await;
         }
         return Err(hermes::remote_auth_required());
     }
-    hermes::gateway::steer(state.inner(), &live_session_id, &text).await
+    hermes::gateway::steer(state.inner(), &live_session_id, execution_generation, &text).await
 }
 
 #[tauri::command]
