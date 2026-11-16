@@ -6,6 +6,7 @@ import { OnMarkdown } from '@opennavo/ui/markdown';
 import { formatCount } from '@opennavo/shared';
 import HermesMark from './HermesMark.vue';
 import HermesMediaCard from './HermesMediaCard.vue';
+import HermesCopyButton from './HermesCopyButton.vue';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
@@ -193,42 +194,45 @@ watch(() => props.message.attachments, loadAttachmentPreviews, { immediate: true
 
 <template>
   <div v-if="message.role === 'user'" class="flex justify-end">
-    <div
-      class="max-w-[82%] rounded-[14px_14px_4px_14px] border border-solid px-14px py-10px text-13.5px leading-[1.65] text-ink-primary"
-      :class="message.steering ? 'border-line-default bg-surface-card' : 'border-line-subtle bg-surface-raised'"
-    >
-      <div v-if="message.steering" class="mb-6px flex items-center gap-7px">
-        <span
-          class="inline-flex h-18px items-center rounded-full bg-status-warning-subtle px-8px text-10px font-600 leading-none text-status-warning"
-        >
-          {{ content.steering }}
-        </span>
-        <span class="h-px flex-1 bg-line-subtle" aria-hidden="true"></span>
-      </div>
-      <div v-if="attachments.length" class="mb-7px flex flex-wrap items-start gap-6px">
-        <button
-          v-for="file in attachments"
-          :key="file.path"
-          type="button"
-          class="m-0 max-w-full overflow-hidden rounded-small border border-solid border-line-subtle bg-surface-control p-0 text-left outline-none transition-colors hover:border-line-strong focus-visible:shadow-focus-ring"
-          @click="openUserAttachment(file)"
-        >
-          <img
-            v-if="file.image && attachmentPreviews[file.path]"
-            :src="attachmentPreviews[file.path]"
-            :alt="file.name"
-            class="block max-h-96px max-w-180px object-cover"
-          />
+    <div class="flex max-w-[82%] flex-col items-end gap-5px">
+      <div
+        class="max-w-full rounded-[14px_14px_4px_14px] border border-solid px-14px py-10px text-13.5px leading-[1.65] text-ink-primary"
+        :class="message.steering ? 'border-line-default bg-surface-card' : 'border-line-subtle bg-surface-raised'"
+      >
+        <div v-if="message.steering" class="mb-6px flex items-center gap-7px">
           <span
-            v-else
-            class="inline-flex max-w-full items-center gap-4px bg-surface-control px-7px py-4px text-11px text-ink-secondary"
+            class="inline-flex h-18px items-center rounded-full bg-status-warning-subtle px-8px text-10px font-600 leading-none text-status-warning"
           >
-            <OnIcon :name="attachmentIcon(file.kind)" :size="11" class="shrink-0 text-ink-tertiary" />
-            <span class="min-w-0 truncate">{{ file.name }}</span>
+            {{ content.steering }}
           </span>
-        </button>
+          <span class="h-px flex-1 bg-line-subtle" aria-hidden="true"></span>
+        </div>
+        <div v-if="attachments.length" class="mb-7px flex flex-wrap items-start gap-6px">
+          <button
+            v-for="file in attachments"
+            :key="file.path"
+            type="button"
+            class="m-0 max-w-full overflow-hidden rounded-small border border-solid border-line-subtle bg-surface-control p-0 text-left outline-none transition-colors hover:border-line-strong focus-visible:shadow-focus-ring"
+            @click="openUserAttachment(file)"
+          >
+            <img
+              v-if="file.image && attachmentPreviews[file.path]"
+              :src="attachmentPreviews[file.path]"
+              :alt="file.name"
+              class="block max-h-96px max-w-180px object-cover"
+            />
+            <span
+              v-else
+              class="inline-flex max-w-full items-center gap-4px bg-surface-control px-7px py-4px text-11px text-ink-secondary"
+            >
+              <OnIcon :name="attachmentIcon(file.kind)" :size="11" class="shrink-0 text-ink-tertiary" />
+              <span class="min-w-0 truncate">{{ file.name }}</span>
+            </span>
+          </button>
+        </div>
+        <div v-if="text" class="whitespace-pre-wrap">{{ text }}</div>
       </div>
-      <div v-if="text" class="whitespace-pre-wrap">{{ text }}</div>
+      <HermesCopyButton v-if="text && !message.streaming" :text="text" />
     </div>
   </div>
 
@@ -567,6 +571,8 @@ watch(() => props.message.attachments, loadAttachmentPreviews, { immediate: true
           >
         </div>
       </div>
+
+      <HermesCopyButton v-if="text && !message.streaming" :text="text" class="-mt-5px self-start" />
 
       <p v-if="foot" class="m-0 text-11px leading-[1.5] text-ink-tertiary">{{ foot }}</p>
     </div>
