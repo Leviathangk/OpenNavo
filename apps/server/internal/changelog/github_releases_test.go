@@ -495,7 +495,7 @@ func TestGitHubReleasesCapsFallbackBackfillAtTwentyPages(t *testing.T) {
 			}
 			items := make([]string, 10)
 			for i := range items {
-				items[i] = fmt.Sprintf(`{"tag_name":"v%d.%d.0","body":"notes"}`, page, i)
+				items[i] = fmt.Sprintf(`{"tag_name":"v1.0.%d","body":"notes"}`, (page-1)*10+i)
 			}
 			return reply(http.StatusOK, "["+strings.Join(items, ",")+"]"), nil
 		default:
@@ -508,7 +508,7 @@ func TestGitHubReleasesCapsFallbackBackfillAtTwentyPages(t *testing.T) {
 		Type: "github_releases", Config: map[string]any{"repo": "owner/app"}, Backfill: true,
 	})
 	require.NoError(t, err)
-	require.NotEmpty(t, result.Releases)
+	require.Len(t, result.Releases, 20*10)
 	require.Equal(t, 23, listCalls)
 }
 
