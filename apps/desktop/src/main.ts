@@ -14,6 +14,7 @@ import { deepLinkOpened, resumeDeepLink, startDeepLinks } from './composables/us
 import { startAppLocale } from './composables/startAppLocale';
 import { syncMainWindow } from './composables/syncMainWindow';
 import { startupRedirect } from './composables/startupRoute';
+import { queueHermesNotificationOpen } from './hermes/notificationOpen';
 import {
   startFirewallAlertState,
   startGuideState,
@@ -103,6 +104,17 @@ if (location.hash.startsWith('#/tray-monitor')) {
     else if (!deepLinkOpened()) await resumeDeepLink(router);
   }
   await router.isReady();
+  if (isTauri()) {
+    const { listen } = await import('@tauri-apps/api/event');
+    navigationCleanups.push(
+      await listen<{ conversationId: string }>('hermes-notification-open', event => {
+        const conversationId = String(event.payload?.conversationId ?? '').trim();
+        if (!conversationId) return;
+        queueHermesNotificationOpen({ conversationId });
+        void router.push('/assistant').catch(() => undefined);
+      })
+    );
+  }
   if (!profileWindow) {
     await syncMainWindow(router.currentRoute.value.name === 'welcome');
     navigationCleanups.push(

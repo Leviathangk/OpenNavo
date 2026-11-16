@@ -5,7 +5,7 @@
     "apps/server/go.mod": "ff8c6aa45fb91c5452370488158da02e1a479024ee9575762af1d10d91a8d290",
     "apps/server/go.sum": "f435b6582a31c4569095a98bfc084855b2aad610255acc66caa9eeb71066a1ee",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
-    "apps/desktop/src-tauri/Cargo.lock": "92a721d19883028fde7808eaabd2a2c990c096aebf00cbffd1941f94d90010d5",
+    "apps/desktop/src-tauri/Cargo.lock": "ee8a9c3ee1372f46eaaa4efe561dca51cf72aadd811b4374cabc2e0aacb4541b",
     "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
     "docs/legal/native/manifest.json": "d9619fd270ab33851ceabd487e00888046bfd386e9ce5568943772bf2d4a923a",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
@@ -7304,9 +7304,9 @@
     {
       "ecosystem": "Rust",
       "name": "notify-rust",
-      "version": "4.17.0",
-      "license": "MIT/Apache-2.0",
-      "url": "https://crates.io/crates/notify-rust/4.17.0",
+      "version": "4.19.0",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://crates.io/crates/notify-rust/4.19.0",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -11420,9 +11420,9 @@
     {
       "ecosystem": "Rust",
       "name": "tauri-plugin-notification",
-      "version": "2.5.1",
+      "version": "2.8.1",
       "license": "Apache-2.0 OR MIT",
-      "url": "https://crates.io/crates/tauri-plugin-notification/2.5.1",
+      "url": "https://crates.io/crates/tauri-plugin-notification/2.8.1",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -11793,9 +11793,9 @@
     {
       "ecosystem": "Rust",
       "name": "tauri-winrt-notification",
-      "version": "0.7.3",
+      "version": "0.8.1",
       "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/tauri-winrt-notification/0.7.3",
+      "url": "https://crates.io/crates/tauri-winrt-notification/0.8.1",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -13663,57 +13663,9 @@
     {
       "ecosystem": "Rust",
       "name": "windows",
-      "version": "0.61.3",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows/0.61.3",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows",
       "version": "0.62.2",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/windows/0.62.2",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-collections",
-      "version": "0.2.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-collections/0.2.0",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -13759,57 +13711,9 @@
     {
       "ecosystem": "Rust",
       "name": "windows-core",
-      "version": "0.61.2",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-core/0.61.2",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-core",
       "version": "0.62.2",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/windows-core/0.62.2",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-future",
-      "version": "0.2.1",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-future/0.2.1",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -13903,57 +13807,9 @@
     {
       "ecosystem": "Rust",
       "name": "windows-link",
-      "version": "0.1.3",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-link/0.1.3",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-link",
       "version": "0.2.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/windows-link/0.2.1",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-numerics",
-      "version": "0.2.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-numerics/0.2.0",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -14023,57 +13879,9 @@
     {
       "ecosystem": "Rust",
       "name": "windows-result",
-      "version": "0.3.4",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-result/0.3.4",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-result",
       "version": "0.4.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/windows-result/0.4.1",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-strings",
-      "version": "0.4.2",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-strings/0.4.2",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -14266,30 +14074,6 @@
       "version": "0.53.5",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/windows-targets/0.53.5",
-      "scope": "runtime-candidate",
-      "evidence": {
-        "source": "Cargo.lock and downloaded crate manifest",
-        "registry": "registry+https://github.com/rust-lang/crates.io-index"
-      },
-      "licenseFiles": [
-        {
-          "source": "license-apache-2.0",
-          "path": "licenses/c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b.txt",
-          "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b"
-        },
-        {
-          "source": "license-mit",
-          "path": "licenses/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Rust",
-      "name": "windows-threading",
-      "version": "0.1.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://crates.io/crates/windows-threading/0.1.0",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -15274,10 +15058,48 @@
     },
     {
       "ecosystem": "Rust",
+      "name": "zbus",
+      "version": "6.3.0",
+      "license": "MIT",
+      "url": "https://crates.io/crates/zbus/6.3.0",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad.txt",
+          "sha256": "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
       "name": "zbus_macros",
       "version": "5.13.2",
       "license": "MIT",
       "url": "https://crates.io/crates/zbus_macros/5.13.2",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad.txt",
+          "sha256": "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "zbus_macros",
+      "version": "6.3.0",
+      "license": "MIT",
+      "url": "https://crates.io/crates/zbus_macros/6.3.0",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "Cargo.lock and downloaded crate manifest",
@@ -15307,6 +15129,44 @@
           "source": "LICENSE",
           "path": "licenses/260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad.txt",
           "sha256": "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "zbus_utils",
+      "version": "6.1.0",
+      "license": "MIT",
+      "url": "https://crates.io/crates/zbus_utils/6.1.0",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad.txt",
+          "sha256": "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "zcheapstr",
+      "version": "1.2.0",
+      "license": "MIT",
+      "url": "https://crates.io/crates/zcheapstr/1.2.0",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/59871bb1612f8a0569655c10b995636827eceab42c6578cebdc45ad2922e0142.txt",
+          "sha256": "59871bb1612f8a0569655c10b995636827eceab42c6578cebdc45ad2922e0142"
         }
       ]
     },
@@ -15560,6 +15420,25 @@
           "source": "COPYING",
           "path": "licenses/018b1cb87efdf7a04c2fcc13d57ed63f62149113fb207b27ea13430d64f13513.txt",
           "sha256": "018b1cb87efdf7a04c2fcc13d57ed63f62149113fb207b27ea13430d64f13513"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "zruntime",
+      "version": "0.2.3",
+      "license": "MIT",
+      "url": "https://crates.io/crates/zruntime/0.2.3",
+      "scope": "runtime-candidate",
+      "evidence": {
+        "source": "Cargo.lock and downloaded crate manifest",
+        "registry": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/ec2e030f7cd75edbe3e981d10b458a100a90a6c6056334538ab933f8db71654e.txt",
+          "sha256": "ec2e030f7cd75edbe3e981d10b458a100a90a6c6056334538ab933f8db71654e"
         }
       ]
     },

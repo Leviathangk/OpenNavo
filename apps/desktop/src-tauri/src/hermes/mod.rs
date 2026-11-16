@@ -31,6 +31,7 @@ pub mod panel;
 pub(crate) mod permissions;
 pub mod profiles;
 pub(crate) mod test_connection;
+pub(crate) mod window;
 use gateway::GatewayServer;
 
 #[allow(dead_code)]
@@ -1683,10 +1684,7 @@ fn panel_cache() -> &'static Mutex<std::collections::HashMap<String, panel::Pane
 }
 
 fn missing_panel_session() -> AppError {
-    AppError::new(
-        "E_HERMES_PANEL_AUTH",
-        "Hermes Panel session is missing. Sign in again.",
-    )
+    panel::session_missing()
 }
 
 /// Persist a panel session and prime the in-process cache.
