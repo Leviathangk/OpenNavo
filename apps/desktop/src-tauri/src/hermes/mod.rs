@@ -33,6 +33,7 @@ pub mod panel;
 pub(crate) mod permissions;
 pub mod profiles;
 pub(crate) mod test_connection;
+pub(crate) mod window;
 use gateway::GatewayServer;
 
 #[allow(dead_code)]
@@ -168,6 +169,24 @@ pub struct HermesChatReply {
     pub session_id: Option<String>,
     pub live_session_id: Option<String>,
     pub usage: Option<HermesUsage>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum HermesSteerStatus {
+    Queued,
+    Redirected,
+    Rejected,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesSteerResult {
+    pub status: HermesSteerStatus,
+    /// Only set to `false` when Hermes confirms no live agent saw the correction. A plain
+    /// `rejected` may follow delivery (for example, a Codex steer whose ACK timed out), so it
+    /// carries no `delivered` field and must never be re-sent as the next prompt.
+    pub delivered: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Default)]
@@ -1658,10 +1677,7 @@ fn panel_cache() -> &'static Mutex<std::collections::HashMap<String, panel::Pane
 }
 
 fn missing_panel_session() -> AppError {
-    AppError::new(
-        "E_HERMES_PANEL_AUTH",
-        "Hermes Panel session is missing. Sign in again.",
-    )
+    panel::session_missing()
 }
 
 /// Persist a panel session and prime the in-process cache.

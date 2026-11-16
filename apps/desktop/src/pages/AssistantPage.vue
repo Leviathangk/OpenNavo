@@ -17,6 +17,12 @@ import { useHermesUiStore } from '@/stores/hermesUi';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useToasts } from '@/composables/useToasts';
 import { mediaKind } from '@/hermes/media';
+import {
+  queueHermesNotificationOpen,
+  takeHermesNotificationOpen,
+  watchHermesNotificationOpen,
+  type HermesNotificationOpen
+} from '@/hermes/notificationOpen';
 
 const store = useHermesStore();
 const ui = useHermesUiStore();
@@ -42,7 +48,11 @@ const scroll = ref<HTMLElement>();
 const composer = ref<HTMLTextAreaElement>();
 const dragging = ref(false);
 let unlistenDrop: (() => void) | undefined;
+let stopNotificationWatch: (() => void) | undefined;
 const SUGGESTIONS = ['rectangle', 'cleanup', 'updates', 'explain'] as const;
+const IME_ENTER_GRACE_MS = 50;
+const compositionActive = ref(false);
+let compositionEndedAt = 0;
 
 const modelLabel = computed(
   () => `${content.value.header.model} · ${store.modelShort} · ${content.value.effort[store.model.effort]}`
@@ -251,9 +261,27 @@ function send() {
 }
 
 function onEnter(event: KeyboardEvent) {
-  if (event.isComposing || event.shiftKey) return;
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  if (
+    event.isComposing ||
+    event.keyCode === 229 ||
+    compositionActive.value ||
+    Date.now() - compositionEndedAt < IME_ENTER_GRACE_MS
+  ) {
+    return;
+  }
   event.preventDefault();
   send();
+}
+
+function onCompositionStart() {
+  compositionActive.value = true;
+}
+
+function onCompositionEnd() {
+  compositionActive.value = false;
+  // Safari/WKWebView can dispatch the confirming Enter after compositionend, sometimes with keyCode 13.
+  compositionEndedAt = Date.now();
 }
 
 function suggestion(prompt: string) {
@@ -273,6 +301,15 @@ function newChat() {
 function selectConversation(id: string) {
   store.stopThinking();
   store.select(id);
+  attachments.value = [];
+  historyOpen.value = false;
+  void nextTick(() => {
+    scroll.value?.scrollTo({ top: 0 });
+  });
+}
+
+async function openNotificationConversation(open: HermesNotificationOpen) {
+  if (!(await store.revealConversation(open.conversationId))) return;
   attachments.value = [];
   historyOpen.value = false;
   void nextTick(() => {
@@ -362,6 +399,8 @@ onMounted(async () => {
   const params = new URLSearchParams(window.location.search);
   const requestedConnection = params.get('connection');
   const requestedProfile = params.get('profile');
+  const requestedConversation = params.get('conversation');
+  if (requestedConversation) queueHermesNotificationOpen({ conversationId: requestedConversation });
   if (requestedConnection && requestedConnection !== store.activeProfileId) {
     store.switchProfile(requestedConnection);
   }
@@ -392,6 +431,11 @@ onMounted(async () => {
       // Native drag/drop is an enhancement; the file picker still works.
     }
   }
+  stopNotificationWatch = watchHermesNotificationOpen(open => {
+    void openNotificationConversation(open);
+  });
+  const pendingNotificationOpen = takeHermesNotificationOpen();
+  if (pendingNotificationOpen) void openNotificationConversation(pendingNotificationOpen);
   scrollToBottom();
   void nextTick(() => composer.value?.focus());
 });
@@ -401,6 +445,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
   window.removeEventListener('paste', onPaste);
   unlistenDrop?.();
+  stopNotificationWatch?.();
 });
 </script>
 
@@ -610,6 +655,8 @@ onBeforeUnmount(() => {
               class="block max-h-110px min-h-42px w-full resize-none border-none bg-transparent px-4px pb-8px pt-4px font-sans text-13.5px leading-[1.55] text-ink-primary outline-none placeholder:text-ink-tertiary"
               :placeholder="content.composer.placeholder"
               :aria-label="content.composer.placeholder"
+              @compositionstart="onCompositionStart"
+              @compositionend="onCompositionEnd"
               @keydown.enter="onEnter"
             ></textarea>
             <div class="flex items-center gap-8px">
