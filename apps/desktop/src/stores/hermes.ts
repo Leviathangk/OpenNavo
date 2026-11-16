@@ -15,7 +15,12 @@ import {
 } from '@/hermes/providers';
 import { commands, unwrap, IpcError } from '@/ipc/client';
 import { isMessagingSource } from '@/hermes/platforms';
-import type { HermesLoginStatus, HermesModelOptions, HermesRuntimeStatus } from '@/ipc/bindings';
+import type {
+  HermesLoginStatus,
+  HermesModelOptions,
+  HermesRuntimeStatus,
+  HermesSteerResult
+} from '@/ipc/bindings';
 import { useToasts } from '@/composables/useToasts';
 import rectangleIcon from '@/assets/hermes/rectangle.png';
 
@@ -939,7 +944,7 @@ export const useHermesStore = defineStore('hermes', () => {
   let historyReadyPromise = new Promise<void>(resolve => {
     resolveHistoryReady = resolve;
   });
-  const pendingSteers = new Map<string, string[]>();
+  const pendingSteers = new Map<string, { text: string; messageId: string }[]>();
   const queuedAfterTurn = new Map<string, string[]>();
 
   function preferredAgentProfile(connectionId: string) {
@@ -2612,6 +2617,32 @@ export const useHermesStore = defineStore('hermes', () => {
     return message({ role: 'assistant', textKey: 'messages.fallback.assistant' });
   }
 
+  function dropSteeringMessage(conversationId: string, messageId: string) {
+    const target = conversations.value.find(item => item.id === conversationId);
+    const index = target?.messages.findIndex(entry => entry.id === messageId) ?? -1;
+    if (!target || index < 0) return;
+    target.messages.splice(index, 1);
+    target.updatedAt = Date.now();
+  }
+
+  function queueSteerAfterTurn(conversationId: string, text: string) {
+    queuedAfterTurn.set(conversationId, [...(queuedAfterTurn.get(conversationId) ?? []), text]);
+  }
+
+  function drainQueuedAfterTurn(conversationId: string) {
+    if (thinking.value) return;
+    const queued = queuedAfterTurn.get(conversationId);
+    if (!queued?.length) return;
+    const [next, ...rest] = queued;
+    if (rest.length) queuedAfterTurn.set(conversationId, rest);
+    else queuedAfterTurn.delete(conversationId);
+    if (next) void send(next);
+  }
+
+  function steerWasUndelivered(result: HermesSteerResult) {
+    return result.status === 'rejected' && result.delivered === false;
+  }
+
   async function flushSteers(conversation: HermesConversation) {
     const live = conversation.liveSessionId;
     const generation = conversation.executionGeneration;
@@ -2619,12 +2650,24 @@ export const useHermesStore = defineStore('hermes', () => {
     const queued = pendingSteers.get(conversation.id) ?? [];
     if (!queued.length) return;
     pendingSteers.delete(conversation.id);
-    for (const text of queued) {
+    for (const steer of queued) {
       try {
-        await unwrap(commands.hermesSteer(live, generation, text, gatewayUrl.value, gatewayProfileId.value));
+        const result = await unwrap(
+          commands.hermesSteer(live, generation, steer.text, gatewayUrl.value, gatewayProfileId.value)
+        );
+        if (steerWasUndelivered(result)) {
+          dropSteeringMessage(conversation.id, steer.messageId);
+          queueSteerAfterTurn(conversation.id, steer.text);
+          toasts.push({
+            tone: 'info',
+            title: 'Hermes steer',
+            description: '这条引导未送达，已排队到本轮结束后发送。'
+          });
+        }
       } catch (error) {
         notePanelAuthError(error);
-        queuedAfterTurn.set(conversation.id, [...(queuedAfterTurn.get(conversation.id) ?? []), text]);
+        dropSteeringMessage(conversation.id, steer.messageId);
+        queueSteerAfterTurn(conversation.id, steer.text);
         toasts.push({
           tone: 'warning',
           title: 'Hermes steer',
@@ -2632,6 +2675,7 @@ export const useHermesStore = defineStore('hermes', () => {
         });
       }
     }
+    drainQueuedAfterTurn(conversation.id);
   }
 
   async function send(text: string, attachments: string[] = []) {
@@ -2681,12 +2725,22 @@ export const useHermesStore = defineStore('hermes', () => {
       const generation = steerConversation.executionGeneration;
       if (live && generation !== undefined) {
         try {
-          await unwrap(commands.hermesSteer(live, generation, value, gatewayUrl.value, gatewayProfileId.value));
+          const result = await unwrap(
+            commands.hermesSteer(live, generation, value, gatewayUrl.value, gatewayProfileId.value)
+          );
+          if (steerWasUndelivered(result)) {
+            dropSteeringMessage(steerConversation.id, steerMessage.id);
+            queueSteerAfterTurn(steerConversation.id, value);
+            toasts.push({
+              tone: 'info',
+              title: 'Hermes steer',
+              description: '这条引导未送达，已排队到本轮结束后发送。'
+            });
+          }
         } catch (error) {
           const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
-          const index = steerConversation.messages.findIndex(entry => entry.id === steerMessage.id);
-          if (index >= 0) steerConversation.messages.splice(index, 1);
-          queuedAfterTurn.set(steerConversation.id, [...(queuedAfterTurn.get(steerConversation.id) ?? []), value]);
+          dropSteeringMessage(steerConversation.id, steerMessage.id);
+          queueSteerAfterTurn(steerConversation.id, value);
           toasts.push({
             tone: 'info',
             title: 'Hermes',
@@ -2701,8 +2755,12 @@ export const useHermesStore = defineStore('hermes', () => {
             await commands.hermesInterrupt(live, gatewayUrl.value, gatewayProfileId.value).catch(() => undefined);
           }
         }
+        drainQueuedAfterTurn(steerConversation.id);
       } else {
-        pendingSteers.set(steerConversation.id, [...(pendingSteers.get(steerConversation.id) ?? []), value]);
+        pendingSteers.set(steerConversation.id, [
+          ...(pendingSteers.get(steerConversation.id) ?? []),
+          { text: value, messageId: steerMessage.id }
+        ]);
       }
       return;
     }
@@ -2916,16 +2974,13 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
           if (finished) finished.executionGeneration = undefined;
           const pending = pendingSteers.get(conversation.id);
           if (pending?.length) {
-            queuedAfterTurn.set(conversation.id, [...(queuedAfterTurn.get(conversation.id) ?? []), ...pending]);
+            for (const steer of pending) {
+              dropSteeringMessage(conversation.id, steer.messageId);
+              queueSteerAfterTurn(conversation.id, steer.text);
+            }
             pendingSteers.delete(conversation.id);
           }
-          const queued = queuedAfterTurn.get(conversation.id);
-          if (queued?.length) {
-            const [next, ...rest] = queued;
-            if (rest.length) queuedAfterTurn.set(conversation.id, rest);
-            else queuedAfterTurn.delete(conversation.id);
-            if (next) void send(next);
-          }
+          drainQueuedAfterTurn(conversation.id);
         }
       }
       return;

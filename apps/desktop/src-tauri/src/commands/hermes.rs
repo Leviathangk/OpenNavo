@@ -4,7 +4,7 @@ use tauri::State;
 use crate::AppError;
 use crate::hermes::{
     self, AskAnswer, HermesAskReply, HermesChatInput, HermesChatReply, HermesRuntimeState,
-    HermesRuntimeStatus,
+    HermesRuntimeStatus, HermesSteerResult,
 };
 
 #[tauri::command]
@@ -85,7 +85,7 @@ pub async fn hermes_steer(
     text: String,
     gateway_url: Option<String>,
     profile_id: Option<String>,
-) -> Result<(), AppError> {
+) -> Result<HermesSteerResult, AppError> {
     if gateway_url
         .as_deref()
         .is_some_and(|value| !value.trim().is_empty())

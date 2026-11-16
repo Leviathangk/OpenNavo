@@ -20,8 +20,9 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 
 use super::{
     AppError, AskAnswer, HermesAskReply, HermesChatInput, HermesChatReply, HermesChunk,
-    HermesModelOptions, HermesRuntimeState, HermesUsage, append_audit, clean_output, kill_pid,
-    provider_id, reasoning_effort, toolsets, write_catalog_config, write_config,
+    HermesModelOptions, HermesRuntimeState, HermesSteerResult, HermesSteerStatus, HermesUsage,
+    append_audit, clean_output, kill_pid, provider_id, reasoning_effort, toolsets,
+    write_catalog_config, write_config,
 };
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -1366,7 +1367,7 @@ pub async fn steer_remote_auth(
     live_session_id: &str,
     execution_generation: i64,
     text: &str,
-) -> Result<(), AppError> {
+) -> Result<HermesSteerResult, AppError> {
     if text.trim().is_empty() {
         return Err(AppError::new("E_HERMES_INPUT", "The message is empty."));
     }
@@ -1386,7 +1387,7 @@ pub async fn steer(
     live_session_id: &str,
     execution_generation: i64,
     text: &str,
-) -> Result<(), AppError> {
+) -> Result<HermesSteerResult, AppError> {
     if text.trim().is_empty() {
         return Err(AppError::new("E_HERMES_INPUT", "The message is empty."));
     }
@@ -1411,19 +1412,23 @@ fn steer_params(live_session_id: &str, execution_generation: i64, text: &str) ->
     })
 }
 
-fn steer_result(result: Value) -> Result<(), AppError> {
-    match result.get("status").and_then(Value::as_str) {
-        Some("queued" | "redirected") => Ok(()),
-        Some("rejected") => Err(AppError::new(
-            "E_HERMES_STEER",
-            "The running agent did not accept the steering message.",
-        )),
+fn steer_result(result: Value) -> Result<HermesSteerResult, AppError> {
+    let status = match result.get("status").and_then(Value::as_str) {
+        Some("queued") => HermesSteerStatus::Queued,
+        Some("redirected") => HermesSteerStatus::Redirected,
+        Some("rejected") => HermesSteerStatus::Rejected,
         _ => Err(AppError::new(
             "E_HERMES_STEER",
             "Hermes gateway returned an unexpected steer response.",
         )
-        .with_detail(result.to_string())),
-    }
+        .with_detail(result.to_string()))?,
+    };
+    let delivered = if status == HermesSteerStatus::Rejected {
+        result.get("delivered").and_then(Value::as_bool)
+    } else {
+        None
+    };
+    Ok(HermesSteerResult { status, delivered })
 }
 
 /// Read the official Hermes model catalog through the local gateway.
@@ -1612,11 +1617,38 @@ mod tests {
                 "execution_generation": 7
             })
         );
-        assert!(steer_result(json!({"status": "queued"})).is_ok());
-        assert!(steer_result(json!({"status": "redirected"})).is_ok());
         assert_eq!(
-            steer_result(json!({"status": "rejected"}))
-                .expect_err("a rejected steer must reach the UI")
+            steer_result(json!({"status": "queued"})).expect("queued steer"),
+            HermesSteerResult {
+                status: HermesSteerStatus::Queued,
+                delivered: None
+            }
+        );
+        assert_eq!(
+            steer_result(json!({"status": "redirected"})).expect("redirected steer"),
+            HermesSteerResult {
+                status: HermesSteerStatus::Redirected,
+                delivered: None
+            }
+        );
+        assert_eq!(
+            steer_result(json!({"status": "rejected", "delivered": false}))
+                .expect("an undelivered rejection reaches the UI"),
+            HermesSteerResult {
+                status: HermesSteerStatus::Rejected,
+                delivered: Some(false)
+            }
+        );
+        assert_eq!(
+            steer_result(json!({"status": "rejected"})).expect("a delivered rejection is final"),
+            HermesSteerResult {
+                status: HermesSteerStatus::Rejected,
+                delivered: None
+            }
+        );
+        assert_eq!(
+            steer_result(json!({"status": "unexpected"}))
+                .expect_err("an unknown steer status must reach the UI")
                 .code,
             "E_HERMES_STEER"
         );
