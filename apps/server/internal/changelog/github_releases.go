@@ -22,7 +22,7 @@ import (
 const (
 	releasesPerPage          = 100
 	releasesBackfillPages    = 5       // A first fetch reads up to 500 releases so history is not page one only.
-	releasesBackfillMaxPages = 50      // Bounds smaller fallback pages so a backfill cannot spend the whole source timeout.
+	releasesBackfillMaxPages = 20      // A 5-item fallback would otherwise need 100 requests; cap the backfill instead.
 	releasesMaxBody          = 8 << 20 // Maximum response size for one release page; oversized pages retry smaller.
 	releaseTitleMaxRune      = 300
 	// GitHubQuotaReserve pauses github_releases fetches once the remaining primary quota falls to this
