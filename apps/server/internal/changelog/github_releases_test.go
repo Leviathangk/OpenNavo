@@ -397,6 +397,41 @@ func TestGitHubReleasesBackfillsOnceThenSkipsTheVisibilityRequestForAnUnchangedL
 	require.False(t, *result.Archived)
 }
 
+func TestGitHubReleasesFallsBackToSmallerPagesAtTheSameLogicalOffset(t *testing.T) {
+	page := func(prefix string, count int) string {
+		items := make([]string, count)
+		for i := range items {
+			items[i] = fmt.Sprintf(`{"tag_name":"%s%d","body":"notes"}`, prefix, i)
+		}
+		return "[" + strings.Join(items, ",") + "]"
+	}
+	requests := []string{}
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		perPage, pageNumber := r.URL.Query().Get("per_page"), r.URL.Query().Get("page")
+		requests = append(requests, perPage+":"+pageNumber)
+		switch perPage + ":" + pageNumber {
+		case "100:1":
+			return reply(http.StatusOK, page("v1.0.", releasesPerPage)), nil
+		case "100:2":
+			return reply(http.StatusOK, strings.Repeat("x", releasesMaxBody+1)), nil
+		case "50:3":
+			return reply(http.StatusOK, `[]`), nil
+		default:
+			t.Fatalf("unexpected release request %s:%s", perPage, pageNumber)
+			return nil, nil
+		}
+	})
+
+	result, err := f.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "owner/app"}, Backfill: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"100:1", "100:2", "50:3"}, requests)
+	require.Len(t, result.Releases, releasesPerPage)
+	require.NotEmpty(t, result.ContentHash)
+}
+
 func TestNormalizeGitHubRepo(t *testing.T) {
 	for raw, want := range map[string]string{
 		"overtake/TelegramSwift":                             "overtake/TelegramSwift",

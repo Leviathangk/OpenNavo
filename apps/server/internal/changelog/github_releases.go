@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -21,7 +22,7 @@ import (
 const (
 	releasesPerPage       = 100
 	releasesBackfillPages = 5       // A first fetch reads up to 500 releases so history is not page one only.
-	releasesMaxBody       = 8 << 20 // One page of 100 releases with long notes and asset lists.
+	releasesMaxBody       = 8 << 20 // Maximum response size for one release page; oversized pages retry smaller.
 	releaseTitleMaxRune   = 300
 	// GitHubQuotaReserve pauses github_releases fetches once the remaining primary quota falls to this
 	// fraction of the limit, leaving the rest for Homebrew commit history and source facts (#64 keeps
@@ -30,6 +31,19 @@ const (
 	// Without a limit header the pause starts below this many remaining requests.
 	githubQuotaFloor = 100
 )
+
+// releasePageSizes falls back when GitHub's asset-heavy release list exceeds releasesMaxBody. Repositories
+// such as Temurin can exceed 8 MiB with fewer than 100 releases, so the page size shrinks until one page fits.
+var releasePageSizes = [...]int{100, 50, 20, 10, 5}
+
+func nextReleasePageSize(current int) (int, bool) {
+	for i, size := range releasePageSizes {
+		if size == current && i+1 < len(releasePageSizes) {
+			return releasePageSizes[i+1], true
+		}
+	}
+	return 0, false
+}
 
 // Release is one published GitHub release mapped to a package version.
 type Release struct {
@@ -147,15 +161,20 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		return out, &RateLimitError{Reset: reset}
 	}
 	// The first fetch walks older pages so history is not limited to the newest 100 releases. Later
-	// fetches read page one only: the list is newest-first, so everything older is already stored and
-	// re-reading it every few hours would multiply the quota cost for unchanged notes.
-	pages := 1
+	// fetches read the newest 100 releases only: the list is newest-first, so everything older is already
+	// stored and re-reading it every few hours would multiply the quota cost for unchanged notes.
+	want := releasesPerPage
 	if s.Backfill {
-		pages = releasesBackfillPages
+		want = releasesPerPage * releasesBackfillPages
 	}
 	batch := []githubRelease{}
 	digest := sha256.New()
-	for page := 1; page <= pages; page++ {
+	perPage := releasesPerPage
+	fetched := 0
+	for fetched < want {
+		// Recompute the page from the number of releases already read so a fallback can continue at the
+		// same logical offset with a different page size.
+		page := fetched/perPage + 1
 		headers := http.Header{}
 		if page == 1 && s.ETag != "" {
 			// A 304 costs no primary quota. The list embeds asset download counters, so busy repositories
@@ -163,7 +182,7 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 			headers.Set("If-None-Match", s.ETag)
 		}
 		target := "https://api.github.com/repos/" + repo + "/releases?" + url.Values{
-			"per_page": {strconv.Itoa(releasesPerPage)},
+			"per_page": {strconv.Itoa(perPage)},
 			"page":     {strconv.Itoa(page)},
 		}.Encode()
 		body, status, responseHeaders, err := f.HTTP.readRequest(ctx, target, releasesMaxBody, headers)
@@ -171,6 +190,13 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 			f.quota.observe(responseHeaders)
 		}
 		if err != nil {
+			var tooLarge *Error
+			if errors.As(err, &tooLarge) && tooLarge.Kind == "response_too_large" {
+				if smaller, ok := nextReleasePageSize(perPage); ok {
+					perPage = smaller
+					continue
+				}
+			}
 			return out, err
 		}
 		if err := checkStatus(status, responseHeaders); err != nil {
@@ -190,13 +216,16 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		if err := json.Unmarshal(body, &items); err != nil || items == nil {
 			return out, &Error{Kind: "invalid_json"}
 		}
-		if page == 1 {
-			// The steady-state fetch reads page one only, so the hash is over page one: hashing the
+		if fetched < releasesPerPage {
+			// Hash the newest 100 releases even when they arrived over several smaller pages: hashing the
 			// backfill pages too would make every first fetch's hash differ from the next fetch's.
 			digest.Write(body)
 		}
 		batch = append(batch, items...)
-		if len(items) < releasesPerPage {
+		// A page covers up to page*perPage releases even when it overlaps releases already read after a
+		// mid-stream fallback. Advancing by the covered offset keeps the next page from skipping releases.
+		fetched = max(fetched, page*perPage)
+		if len(items) < perPage {
 			break
 		}
 	}
