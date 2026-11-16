@@ -285,6 +285,23 @@ pub fn hermes_attachment_info(paths: Vec<String>) -> Vec<crate::hermes::HermesAt
 
 #[tauri::command]
 #[specta::specta]
+pub async fn hermes_media_resolve(
+    app: tauri::AppHandle,
+    input: crate::hermes::media::HermesMediaInput,
+) -> Result<crate::hermes::media::HermesMediaSource, AppError> {
+    crate::hermes::media::resolve(&app, input).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn hermes_media_open_url(
+    input: crate::hermes::media::HermesMediaInput,
+) -> Result<String, AppError> {
+    crate::hermes::media::open_url(input).await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn hermes_permissions_request_screen() -> bool {
     crate::hermes::permissions::request_screen_capture()
 }

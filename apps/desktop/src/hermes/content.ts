@@ -314,6 +314,20 @@ export const en = {
     stopping: 'Stopping…'
   },
   steering: 'Steering',
+  media: {
+    loading: 'Loading file…',
+    imageAlt: 'Image from Hermes',
+    video: 'Video',
+    audio: 'Audio',
+    file: 'File',
+    preview: 'Preview image',
+    open: 'Open file',
+    openInBrowser: 'Open in browser',
+    failed: 'Could not load this file.',
+    failedHint: 'It may have moved, been deleted, or be too large to preview.',
+    openFailed: 'Could not open this file.',
+    retry: 'Retry'
+  },
   approval: {
     title: 'Hermes needs approval',
     body: 'A tool wants to perform a sensitive action. Review the command before allowing it.',
@@ -1056,6 +1070,20 @@ export const zhCN: HermesContent = {
     stopping: '停止中…'
   },
   steering: '引导',
+  media: {
+    loading: '正在加载文件…',
+    imageAlt: 'Hermes 生成的图片',
+    video: '视频',
+    audio: '音频',
+    file: '文件',
+    preview: '预览图片',
+    open: '打开文件',
+    openInBrowser: '在浏览器打开',
+    failed: '无法加载这个文件。',
+    failedHint: '文件可能已被移动、删除，或体积过大无法预览。',
+    openFailed: '无法打开这个文件。',
+    retry: '重试'
+  },
   approval: {
     title: 'Hermes 请求执行确认',
     body: 'Hermes 要执行敏感操作，请检查命令后再决定。',

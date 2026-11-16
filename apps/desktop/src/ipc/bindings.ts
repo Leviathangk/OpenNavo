@@ -31,6 +31,8 @@ export const commands = {
 	hermesAttachmentInfo: (paths: string[]) => __TAURI_INVOKE<HermesAttachmentInfo[]>("hermes_attachment_info", { paths }),
 	hermesClipboardImage: () => typedError<string | null, AppError>(__TAURI_INVOKE("hermes_clipboard_image")),
 	hermesAttachmentPreview: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("hermes_attachment_preview", { path })),
+	hermesMediaResolve: (input: HermesMediaInput) => typedError<HermesMediaSource, AppError>(__TAURI_INVOKE("hermes_media_resolve", { input })),
+	hermesMediaOpenUrl: (input: HermesMediaInput) => typedError<string, AppError>(__TAURI_INVOKE("hermes_media_open_url", { input })),
 	hermesHistoryLoad: (profile: string | null) => typedError<string | null, AppError>(__TAURI_INVOKE("hermes_history_load", { profile })),
 	hermesHistorySave: (json: string, profile: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_history_save", { json, profile })),
 	hermesLogout: (provider: string, profile: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_logout", { provider, profile })),
@@ -1511,6 +1513,23 @@ export type HermesLoginStatus = {
 	opencodeSource: string | null,
 	opencodeGoSource: string | null,
 	nousSource: string | null,
+};
+
+export type HermesMediaInput = {
+	path: string,
+	kind: string,
+	profileId: string | null,
+	profile: string | null,
+	sessionId: string | null,
+	cwd: string | null,
+};
+
+export type HermesMediaSource = {
+	remote: boolean,
+	path: string,
+	dataUrl: string | null,
+	streamUrl: string | null,
+	size: number | null,
 };
 
 export type HermesModelCapability = {

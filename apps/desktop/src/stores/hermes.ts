@@ -239,6 +239,8 @@ export interface HermesSessionEvent {
   requestId: string;
   liveSessionId: string;
   sessionId: string;
+  /** False when the stored session could not be resumed and `session.create` made a new one. */
+  resumed: boolean;
 }
 
 export interface HermesContextUsage {
@@ -785,6 +787,12 @@ export const useHermesStore = defineStore('hermes', () => {
   const conversations = ref<HermesConversation[]>(initial.conversations);
   const activeId = ref<string | null>(initial.activeId);
   const thinking = ref(false);
+  /**
+   * The stored session id a running turn is using. Media cards need it as soon as the gateway
+   * opens the session, but it must not become the conversation's resumable id until the turn
+   * succeeds (or the old session is known to be gone).
+   */
+  const turnSessionIds = ref<Record<string, string>>({});
   /** Server→client requests the running turn is parked on: approval, clarify, masked prompts. */
   const asks = ref<HermesAsk[]>([]);
   /** The runtime coalesces its own approval queue, so the cards are answered one at a time. */
@@ -1063,6 +1071,11 @@ export const useHermesStore = defineStore('hermes', () => {
 
   const active = computed(() => conversations.value.find(item => item.id === activeId.value) ?? null);
   const messages = computed(() => active.value?.messages ?? []);
+  const mediaSessionId = computed(() => {
+    const conversation = active.value;
+    if (!conversation) return null;
+    return turnSessionIds.value[conversation.id] ?? conversation.sessionId ?? null;
+  });
   // A panel row is a real conversation even while its transcript is still only on the host.
   const history = computed(() =>
     [...conversations.value]
@@ -2629,14 +2642,6 @@ export const useHermesStore = defineStore('hermes', () => {
       await historyReadyPromise;
     }
     const value = text.trim();
-    if (remoteActive.value && attachments.length) {
-      toasts.push({
-        tone: 'warning',
-        title: 'Hermes',
-        description: 'Remote gateways do not accept local attachment paths yet.'
-      });
-      return;
-    }
     if (!value && !attachments.length) return;
     if (!remoteActive.value) {
       // Verify against the runtime instead of trusting the cached flag: a stale `true`
@@ -2729,6 +2734,7 @@ export const useHermesStore = defineStore('hermes', () => {
       conversation.messages = [...conversation.messages, assistant];
       conversation.updatedAt = Date.now();
       let unlisten: (() => void) | undefined;
+      let turnSessionId: string | undefined;
       if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
         try {
           const { listen } = await import('@tauri-apps/api/event');
@@ -2745,6 +2751,16 @@ export const useHermesStore = defineStore('hermes', () => {
             const target = conversations.value.find(item => item.id === conversation.id);
             if (!target) return;
             target.liveSessionId = event.payload.liveSessionId;
+            if (event.payload.sessionId) {
+              turnSessionId = event.payload.sessionId;
+              turnSessionIds.value = {
+                ...turnSessionIds.value,
+                [conversation.id]: event.payload.sessionId
+              };
+              // A session that was not resumed is already the only usable id: either there was
+              // no stored one, or resume failed and this turn created its replacement.
+              if (!event.payload.resumed) target.sessionId = event.payload.sessionId;
+            }
             void flushSteers(target);
           });
           // The turn is parked on a human answer: approval, clarify questions or a masked prompt.
@@ -2894,6 +2910,11 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
         });
       } finally {
         unlisten?.();
+        if (turnSessionId && turnSessionIds.value[conversation.id] === turnSessionId) {
+          const remainingTurnSessions = { ...turnSessionIds.value };
+          delete remainingTurnSessions[conversation.id];
+          turnSessionIds.value = remainingTurnSessions;
+        }
         if (activeTurn === turn) {
           clearStopTimers();
           thinking.value = false;
@@ -3144,6 +3165,7 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
     activeId,
     active,
     messages,
+    mediaSessionId,
     history,
     thinking,
     historyReady,

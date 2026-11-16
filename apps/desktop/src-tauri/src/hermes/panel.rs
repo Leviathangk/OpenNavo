@@ -62,16 +62,26 @@ fn base_url(raw: &str) -> Result<String, AppError> {
     Ok(value.to_owned())
 }
 
-fn client() -> Result<reqwest::Client, AppError> {
+fn client_with_timeout(timeout: Duration) -> Result<reqwest::Client, AppError> {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
-        .timeout(Duration::from_secs(20))
+        .timeout(timeout)
         .build()
         .map_err(|error| {
             AppError::new("E_HERMES_PANEL", "Could not prepare the panel request.")
                 .with_detail(error.to_string())
         })
+}
+
+fn client() -> Result<reqwest::Client, AppError> {
+    client_with_timeout(Duration::from_secs(20))
+}
+
+/// A 16 MiB upload or image preview over a tailnet can outlast the API timeout. File transfers
+/// get their own budget; the upload body streams instead of being read into memory first.
+fn transfer_client() -> Result<reqwest::Client, AppError> {
+    client_with_timeout(Duration::from_secs(300))
 }
 
 fn cookie_value(headers: &reqwest::header::HeaderMap, name: &str) -> Option<String> {
@@ -329,12 +339,16 @@ async fn get_json(profile_id: &str, path: &str) -> Result<serde_json::Value, App
     .await
 }
 
+fn named_profile(profile: Option<&str>) -> Option<&str> {
+    profile
+        .map(str::trim)
+        .filter(|name| !name.is_empty() && *name != "default")
+}
+
 /// Scope a panel request to one Hermes profile. `default` is the host's own profile and
 /// takes no parameter; anything unnameable is dropped rather than sent.
 fn profile_query(profile: Option<&str>) -> Option<String> {
-    let name = profile
-        .map(str::trim)
-        .filter(|name| !name.is_empty() && *name != "default")?;
+    let name = named_profile(profile)?;
     if !name
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
@@ -352,6 +366,354 @@ fn with_profile(path: String, profile: Option<&str>) -> String {
         }
         None => path,
     }
+}
+
+fn non_empty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn build_file_url(
+    base: &str,
+    route: &str,
+    path: &str,
+    profile: Option<&str>,
+    session_id: Option<&str>,
+    ticket: Option<&str>,
+) -> Result<String, AppError> {
+    let mut url = reqwest::Url::parse(&format!("{}{route}", base.trim_end_matches('/'))).map_err(
+        |error| {
+            AppError::new("E_HERMES_MEDIA", "Could not prepare the Hermes media URL.")
+                .with_detail(error.to_string())
+        },
+    )?;
+    {
+        let mut query = url.query_pairs_mut();
+        query.append_pair("path", path);
+        if let Some(profile) = named_profile(profile) {
+            query.append_pair("profile", profile);
+        }
+        if let Some(session_id) = non_empty(session_id) {
+            query.append_pair("session_id", session_id);
+        }
+        if let Some(ticket) = ticket.filter(|ticket| !ticket.is_empty()) {
+            query.append_pair("ticket", ticket);
+        }
+    }
+    Ok(url.to_string())
+}
+
+const MAX_IMAGE_DATA_URL_BYTES: usize = 24 * 1024 * 1024;
+const MAX_IMAGE_RESPONSE_BYTES: usize = MAX_IMAGE_DATA_URL_BYTES + 64 * 1024;
+
+fn image_too_large() -> AppError {
+    AppError::new(
+        "E_HERMES_MEDIA",
+        "This Hermes image is too large to preview.",
+    )
+}
+
+fn validate_image_data_url(data: &str) -> Result<(), AppError> {
+    if data.is_empty() {
+        return Err(AppError::new(
+            "E_HERMES_MEDIA",
+            "Hermes panel returned no image data.",
+        ));
+    }
+    // The panel is another process: never let its response turn into an arbitrary navigation or
+    // a payload larger than the documented image cap.
+    if !data
+        .get(.."data:image/".len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("data:image/"))
+    {
+        return Err(AppError::new(
+            "E_HERMES_MEDIA",
+            "Hermes panel returned an unsupported image payload.",
+        ));
+    }
+    if data.len() > MAX_IMAGE_DATA_URL_BYTES {
+        return Err(image_too_large());
+    }
+    Ok(())
+}
+
+/// The image route returns a data URL inside JSON, so cap the response while reading it instead
+/// of buffering an unbounded body and rejecting it afterwards.
+async fn get_image_json(profile_id: &str, path: &str) -> Result<serde_json::Value, AppError> {
+    let session = super::panel_session(profile_id)?;
+    let client = transfer_client()?;
+    let mut response = client
+        .get(format!("{}{}", session.base_url, path))
+        .header(COOKIE, cookie_header(&session))
+        .send()
+        .await
+        .map_err(|error| {
+            AppError::new("E_HERMES_MEDIA", "Could not read this Hermes image.")
+                .with_detail(error.to_string())
+        })?;
+    let status = response.status();
+    let headers = response.headers().clone();
+    persist_response_cookies(profile_id, &headers)?;
+    if !status.is_success() {
+        return Err(status_error(status, "Could not read this Hermes image."));
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_IMAGE_RESPONSE_BYTES as u64)
+    {
+        return Err(image_too_large());
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|error| {
+        AppError::new("E_HERMES_MEDIA", "Could not read this Hermes image.")
+            .with_detail(error.to_string())
+    })? {
+        if body.len().saturating_add(chunk.len()) > MAX_IMAGE_RESPONSE_BYTES {
+            return Err(image_too_large());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    serde_json::from_slice(&body).map_err(|error| {
+        AppError::new(
+            "E_HERMES_MEDIA",
+            "Hermes panel returned an invalid image response.",
+        )
+        .with_detail(error.to_string())
+    })
+}
+
+/// `GET /api/fs/read-data-url` for a panel-owned image. The panel caps the payload (16 MiB).
+pub async fn read_data_url(
+    profile_id: &str,
+    path: &str,
+    profile: Option<&str>,
+    session_id: Option<&str>,
+) -> Result<String, AppError> {
+    let mut route = format!("/api/fs/read-data-url?path={}", urlencoding::encode(path));
+    if let Some(session_id) = non_empty(session_id) {
+        route.push_str("&session_id=");
+        route.push_str(&urlencoding::encode(session_id));
+    }
+    let value = get_image_json(profile_id, &with_profile(route, profile)).await?;
+    let data = value
+        .as_str()
+        .or_else(|| value.get("dataUrl").and_then(serde_json::Value::as_str))
+        .unwrap_or_default();
+    validate_image_data_url(data)?;
+    Ok(data.to_owned())
+}
+
+/// Mint the path-bound ticket the panel's stream/download routes accept without a cookie.
+async fn file_ticket(
+    profile_id: &str,
+    route: &str,
+    path: &str,
+    profile: Option<&str>,
+    session_id: Option<&str>,
+) -> Result<String, AppError> {
+    let body = serde_json::json!({
+        "route": route,
+        "path": path,
+        "profile": named_profile(profile),
+        "session_id": non_empty(session_id),
+    });
+    let value = send(
+        profile_id,
+        reqwest::Method::POST,
+        "/api/files/ticket",
+        Some(body),
+        "Could not prepare this Hermes file.",
+    )
+    .await?;
+    value
+        .get("ticket")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            AppError::new(
+                "E_HERMES_MEDIA",
+                "Hermes panel did not return a file ticket.",
+            )
+        })
+}
+
+/// One panel stream the loopback proxy may fetch. `cookie` is set only when the panel is a
+/// dashboard: that surface answers 404 for `POST /api/files/ticket` (`browser_files` is webapp-only)
+/// but still serves `/api/files/stream` to the session cookie.
+pub(crate) struct PanelStreamRequest {
+    pub url: String,
+    pub cookie: Option<String>,
+}
+
+pub(crate) async fn file_stream_request(
+    profile_id: &str,
+    path: &str,
+    profile: Option<&str>,
+    session_id: Option<&str>,
+) -> Result<PanelStreamRequest, AppError> {
+    let base = base_url_for(profile_id)?;
+    match file_ticket(profile_id, "stream", path, profile, session_id).await {
+        Ok(ticket) => Ok(PanelStreamRequest {
+            url: build_file_url(
+                &base,
+                "/api/files/stream",
+                path,
+                profile,
+                session_id,
+                Some(&ticket),
+            )?,
+            cookie: None,
+        }),
+        Err(error) if error.code == "E_HERMES_PANEL_UNSUPPORTED" => Ok(PanelStreamRequest {
+            url: build_file_url(&base, "/api/files/stream", path, profile, session_id, None)?,
+            cookie: Some(cookie_header(&super::panel_session(profile_id)?)),
+        }),
+        Err(error) => Err(error),
+    }
+}
+
+pub async fn file_download_url(
+    profile_id: &str,
+    path: &str,
+    profile: Option<&str>,
+    session_id: Option<&str>,
+) -> Result<String, AppError> {
+    let base = base_url_for(profile_id)?;
+    match file_ticket(profile_id, "download", path, profile, session_id).await {
+        Ok(ticket) => build_file_url(
+            &base,
+            "/api/fs/download",
+            path,
+            profile,
+            session_id,
+            Some(&ticket),
+        ),
+        // The browser that opens this URL has no panel cookie. A dashboard cannot mint a ticket,
+        // so the file is saved here and opened as a local path.
+        Err(error) if error.code == "E_HERMES_PANEL_UNSUPPORTED" => {
+            download_for_open(profile_id, &base, path, profile, session_id).await
+        }
+        Err(error) => Err(error),
+    }
+}
+
+const MAX_DOWNLOAD_BYTES: u64 = 1024 * 1024 * 1024;
+const DOWNLOAD_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+
+fn download_file_name(path: &str) -> String {
+    let base = path.rsplit(['/', '\\']).next().unwrap_or(path).trim();
+    let mut name = String::new();
+    for ch in base.chars() {
+        if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_') {
+            name.push(ch);
+        } else {
+            name.push('_');
+        }
+    }
+    let name = name.trim_matches('.').to_owned();
+    if name.is_empty() {
+        "download".to_owned()
+    } else {
+        name
+    }
+}
+
+async fn cleanup_stale_downloads(dir: &std::path::Path) {
+    let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
+        return;
+    };
+    let now = std::time::SystemTime::now();
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let stale = entry
+            .metadata()
+            .await
+            .ok()
+            .and_then(|metadata| metadata.modified().ok())
+            .and_then(|modified| now.duration_since(modified).ok())
+            .is_some_and(|age| age > DOWNLOAD_MAX_AGE);
+        if stale {
+            let _ = tokio::fs::remove_file(entry.path()).await;
+        }
+    }
+}
+
+async fn download_for_open(
+    profile_id: &str,
+    base: &str,
+    path: &str,
+    profile: Option<&str>,
+    session_id: Option<&str>,
+) -> Result<String, AppError> {
+    let url = build_file_url(base, "/api/fs/download", path, profile, session_id, None)?;
+    let session = super::panel_session(profile_id)?;
+    let mut response = transfer_client()?
+        .get(url)
+        .header(COOKIE, cookie_header(&session))
+        .send()
+        .await
+        .map_err(|error| {
+            AppError::new("E_HERMES_MEDIA", "Could not download this Hermes file.")
+                .with_detail(error.to_string())
+        })?;
+    let status = response.status();
+    let headers = response.headers().clone();
+    persist_response_cookies(profile_id, &headers)?;
+    if !status.is_success() {
+        return Err(status_error(status, "Could not download this Hermes file."));
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_DOWNLOAD_BYTES)
+    {
+        return Err(AppError::new(
+            "E_HERMES_MEDIA",
+            "This Hermes file is too large to download.",
+        ));
+    }
+    let dir = std::env::temp_dir().join("opennavo-hermes-media");
+    tokio::fs::create_dir_all(&dir).await.map_err(|error| {
+        AppError::new("E_HERMES_MEDIA", "Could not download this Hermes file.")
+            .with_detail(error.to_string())
+    })?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = tokio::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).await;
+    }
+    cleanup_stale_downloads(&dir).await;
+    let file_path = dir.join(format!(
+        "{}-{}",
+        uuid::Uuid::new_v4().simple(),
+        download_file_name(path)
+    ));
+    let mut file = tokio::fs::File::create(&file_path).await.map_err(|error| {
+        AppError::new("E_HERMES_MEDIA", "Could not download this Hermes file.")
+            .with_detail(error.to_string())
+    })?;
+    let mut written = 0u64;
+    use tokio::io::AsyncWriteExt;
+    while let Some(chunk) = response.chunk().await.map_err(|error| {
+        AppError::new("E_HERMES_MEDIA", "Could not download this Hermes file.")
+            .with_detail(error.to_string())
+    })? {
+        written = written.saturating_add(chunk.len() as u64);
+        if written > MAX_DOWNLOAD_BYTES {
+            drop(file);
+            let _ = tokio::fs::remove_file(&file_path).await;
+            return Err(AppError::new(
+                "E_HERMES_MEDIA",
+                "This Hermes file is too large to download.",
+            ));
+        }
+        file.write_all(&chunk).await.map_err(|error| {
+            AppError::new("E_HERMES_MEDIA", "Could not download this Hermes file.")
+                .with_detail(error.to_string())
+        })?;
+    }
+    file.flush().await.map_err(|error| {
+        AppError::new("E_HERMES_MEDIA", "Could not download this Hermes file.")
+            .with_detail(error.to_string())
+    })?;
+    Ok(file_path.to_string_lossy().into_owned())
 }
 
 /// `GET /api/sessions` path. Each Hermes profile keeps its own session store on the host,
@@ -1020,6 +1382,76 @@ mod path_tests {
 }
 
 #[cfg(test)]
+mod media_url_tests {
+    use super::*;
+
+    #[test]
+    fn omits_the_default_profile_and_encodes_the_path_and_ticket() {
+        let url = build_file_url(
+            "https://panel.tail1234.ts.net:9119",
+            "/api/files/stream",
+            "/home/kaka/.hermes/cache/scratch/sample scene.mp4",
+            Some("default"),
+            Some("session 1"),
+            Some("ticket+/="),
+        )
+        .unwrap();
+        assert!(url.starts_with("https://panel.tail1234.ts.net:9119/api/files/stream?"));
+        assert!(url.contains("path=%2Fhome%2Fkaka%2F.hermes%2Fcache%2Fscratch%2Fsample+scene.mp4"));
+        assert!(!url.contains("profile="));
+        assert!(url.contains("session_id=session+1"));
+        assert!(url.contains("ticket=ticket%2B%2F%3D"));
+    }
+
+    #[test]
+    fn keeps_a_named_profile_in_the_file_query() {
+        let url = build_file_url(
+            "http://100.64.0.9:9119",
+            "/api/fs/download",
+            "/tmp/a.pdf",
+            Some("aso"),
+            None,
+            Some("abc"),
+        )
+        .unwrap();
+        assert!(url.contains("profile=aso"));
+        assert!(url.contains("ticket=abc"));
+    }
+
+    #[test]
+    fn cookie_fetch_omits_the_ticket_query() {
+        let url = build_file_url(
+            "http://100.64.0.9:9119",
+            "/api/files/stream",
+            "/tmp/clip.mp4",
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(!url.contains("ticket="));
+        assert!(url.contains("path=%2Ftmp%2Fclip.mp4"));
+    }
+
+    #[test]
+    fn download_names_keep_the_extension_and_drop_directories() {
+        assert_eq!(download_file_name("/tmp/a b.pdf"), "a_b.pdf");
+        assert_eq!(download_file_name(r"C:\shots\..\note.txt"), "note.txt");
+        assert_eq!(download_file_name(".."), "download");
+        assert_eq!(download_file_name(""), "download");
+    }
+
+    #[test]
+    fn only_accepts_bounded_image_data_urls() {
+        assert!(validate_image_data_url("data:image/png;base64,AAAA").is_ok());
+        assert!(validate_image_data_url("DATA:IMAGE/PNG;base64,AAAA").is_ok());
+        assert!(validate_image_data_url("https://panel.example/a.png").is_err());
+        assert!(validate_image_data_url("data:text/html;base64,AAAA").is_err());
+        assert!(validate_image_data_url("").is_err());
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -1199,7 +1631,7 @@ mod tests {
         };
         let reply = super::super::gateway::chat_remote_auth(
             &session.base_url,
-            &query,
+            Some(&query),
             home.path(),
             &state,
             input,

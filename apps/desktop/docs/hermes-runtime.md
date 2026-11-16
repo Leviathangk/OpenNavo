@@ -193,6 +193,58 @@ WebKit's own WebsiteData remains under
   belongs to Hermes and is never read, rewritten or scrubbed by the app.
 - Each conversation stores the gateway's `stored_session_id` and resumes it
   with `session.resume`, so follow-up turns keep agent context.
+- The renderer keeps the id reported by `hermes-session` as a per-turn value
+  for media tickets. It only writes that id to the conversation after the turn
+  succeeds, unless the gateway confirms the old session could not be resumed.
+
+## Chat media
+
+Hermes delivers files by writing a `MEDIA:<path>` tag in an assistant reply.
+The renderer treats that tag as a delivery instruction, not prose, and supports
+the same image, video, audio and document extensions as the official desktop.
+Paths may be quoted or unquoted, contain spaces, use `~/` or a Windows drive
+letter, and may appear inline or on their own line. A partial path during
+streaming stays as text until it has a file extension.
+`MEDIA:` examples inside fenced code, blockquotes and JSON string values stay
+prose. An inline code span whose only content is a `MEDIA:` tag is a real
+delivery, matching the official renderer; inline code with other text stays a
+sample. Before a local path enters the asset protocol scope it is canonicalized
+and rejected when it names a system directory, a credential store or a Hermes
+conversation/config file; generated Hermes cache directories are exempt.
+
+- Images: local files use Tauri's asset protocol; panel files are fetched with
+  `GET /api/fs/read-data-url` and rendered from the returned data URL. Only a
+  `data:image/` payload within the preview cap is accepted, and the response
+  body is bounded while streaming rather than buffered first.
+- Video and audio: local files use the asset protocol's byte-range support.
+  Panel files play through a loopback proxy on `http://127.0.0.1`. On a webapp
+  the proxy forwards Range requests to `/api/files/stream` with a path-bound
+  ticket from `POST /api/files/ticket`. A dashboard does not serve that ticket
+  route, so the same stream is fetched with the panel session cookie. The
+  ticket, cookie and panel host stay in the proxy; the webview only sees the
+  loopback URL.
+- Other documents render as a file card. Local files open through the system
+  opener. Webapp panel files open a ticketed `/api/fs/download` URL in the
+  browser. Dashboard panels download the file with the session cookie and open
+  the local path. Only image, video and audio files enter the asset protocol
+  scope, and media previews are size-capped before that scope is widened.
+- Attachments picked, pasted or dropped on a panel connection are read locally
+  (16 MiB cap) before the gateway WebSocket is opened. The single-use ws ticket
+  is minted after that read. png, jpeg, gif and webp are sent with
+  `image.attach_bytes`. Every other file, including HEIC and the formats
+  `image.attach` accepts but the authority session does not, is sent with
+  `file.attach` and a `data_url`. `image.attach` is only used for a local
+  gateway, which can read this Mac's path.
+
+`hermes_media_resolve` dynamically allows each local file in the asset protocol
+scope; `tauri.conf.json` does not need a blanket `$HOME/**` scope. The CSP
+allows `asset:`, `data:` and `blob:` media, and `http://127.0.0.1` for the panel
+stream proxy. It does not allow arbitrary HTTP or HTTPS images or media.
+Catalog icons stay on `cdn.opennavo.com` and `*.mzstatic.com`. A Tailscale HTTP
+panel is fetched by the Rust proxy, so the webview does not need an App
+Transport Security exception. An `MEDIA:https://…` URL is shown as a file card
+and only opened by an explicit click; the webview never fetches it automatically.
+Markdown image tags remain disabled by the shared sanitizer.
 
 ## Mac control and TCC
 
