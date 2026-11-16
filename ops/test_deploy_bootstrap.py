@@ -472,6 +472,19 @@ class RetentionTests(BootstrapTestCase):
         bootstrap.prune(self.receiver)
         self.assertFalse((self.receiver / ('%040x' % 200)).exists())
 
+    def test_a_bytecode_directory_inside_an_old_version_is_removed(self):
+        # py_compile leaves __pycache__ next to github-deploy.py. unlink() on
+        # that directory raised IsADirectoryError after current had moved.
+        for index in range(bootstrap.RETENTION + 1):
+            name = '%040x' % (index + 300)
+            self.install_revision(name)
+            os.utime(self.receiver / name, (index, index))
+            cache = self.receiver / name / '__pycache__'
+            cache.mkdir()
+            (cache / 'github-deploy.cpython-312.pyc').write_bytes(b'\0')
+        bootstrap.prune(self.receiver)
+        self.assertFalse((self.receiver / ('%040x' % 300)).exists())
+
 
 class HandoverTests(BootstrapTestCase):
     def test_the_payload_crosses_the_handover_unchanged(self):

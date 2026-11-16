@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -112,7 +113,10 @@ def check(receiver):
     Standard input is closed: neither step takes a payload, and a receiver that
     tried to read one here would block until CHECK_TIMEOUT instead of failing.
     """
-    steps = ((['-I', '-m', 'py_compile', str(receiver)], 'compile'),
+    # -B: py_compile otherwise writes __pycache__ beside the receiver. prune()
+    # used to unlink every child, and that directory made the next retention
+    # pass raise IsADirectoryError after current had already moved.
+    steps = ((['-B', '-I', '-m', 'py_compile', str(receiver)], 'compile'),
              ([str(receiver), '--self-check'], 'self-check'))
     for arguments, name in steps:
         try:
@@ -214,9 +218,7 @@ def prune(directory):
     for entry in versions[RETENTION:]:
         if entry.name in protected:
             continue
-        for child in sorted(entry.iterdir()):
-            child.unlink()
-        entry.rmdir()
+        shutil.rmtree(entry)
 
 
 def run(receiver, payload, timeout=None, arguments=()):
