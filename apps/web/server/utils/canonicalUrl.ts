@@ -16,16 +16,20 @@ export const PAGE_SECTIONS: ReadonlySet<string> = new Set([
   'brewfile',
   'browse',
   'categories',
+  'cleanup',
   'collections',
   'discover',
   'developer-map',
   'developers',
   'download',
   'feedback',
+  'installed',
+  'monitor',
   'rankings',
   'recent',
   'search',
-  'security'
+  'security',
+  'updates'
 ]);
 
 /** Sections whose entity segment may contain dots: app tokens and background-item labels. */

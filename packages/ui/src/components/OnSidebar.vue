@@ -21,11 +21,17 @@ export interface OnSidebarItem {
   /** Right attention dot without a number; badgeLabel names it. */
   dot?: boolean;
   badgeLabel?: string;
+  /** Right-side tag, e.g. Mac for a destination that needs the desktop app. */
+  tag?: string;
+  /** Accessible text for the tag. */
+  tagLabel?: string;
 }
 
 export interface OnSidebarGroup {
   key: string;
   label: string;
+  /** Short note beside the group label, e.g. "Runs on your Mac". */
+  hint?: string;
   items: readonly OnSidebarItem[];
 }
 
@@ -61,7 +67,14 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
     </section>
     <nav class="flex min-h-0 flex-1 flex-col gap-12px overflow-y-auto pt-4px" :aria-label="label">
       <div v-for="group in groups" :key="group.key" class="flex flex-col gap-2px">
-        <div class="px-8px pb-6px pt-2px text-label text-ink-tertiary">{{ group.label }}</div>
+        <div class="flex items-baseline gap-6px px-8px pb-6px pt-2px text-label text-ink-tertiary">
+          <span class="shrink-0">{{ group.label }}</span>
+          <span
+            v-if="group.hint"
+            class="min-w-0 truncate text-[10px] font-400 normal-case tracking-normal text-ink-disabled"
+            >{{ group.hint }}</span
+          >
+        </div>
         <OnNavItem
           v-for="item in group.items"
           :key="item.key"
@@ -74,6 +87,8 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
           :badge="item.badge"
           :dot="item.dot"
           :badge-label="item.badgeLabel"
+          :tag="item.tag"
+          :tag-label="item.tagLabel"
         >
           {{ item.label }}
         </OnNavItem>
@@ -92,6 +107,8 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
         :badge="item.badge"
         :dot="item.dot"
         :badge-label="item.badgeLabel"
+        :tag="item.tag"
+        :tag-label="item.tagLabel"
       >
         {{ item.label }}
       </OnNavItem>

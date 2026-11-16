@@ -27,6 +27,7 @@ beforeEach(() => {
   vi.stubGlobal('useI18n', () => ({ t, locale: ref('en-US') }));
   vi.stubGlobal('useLocalePath', () => (path: string) => path);
   vi.stubGlobal('useToasts', () => ({ push: vi.fn() }));
+  vi.stubGlobal('useClientHandoff', () => ({ openUrl: vi.fn() }));
   vi.stubGlobal('toAppLocale', () => 'en-US');
 });
 afterEach(() => vi.unstubAllGlobals());

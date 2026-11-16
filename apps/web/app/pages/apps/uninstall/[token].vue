@@ -29,6 +29,7 @@ usePageDecision(() => pkg.value?.indexing?.pages?.uninstall);
 const name = computed(() => pkg.value?.displayName ?? '');
 const overviewPath = computed(() => localePath(packagePath(pkg.value?.token ?? '')));
 const preview = computed(() => (pkg.value ? uninstallPreviewLink(pkg.value.token) : null));
+const { openUrl } = useClientHandoff();
 const zapCount = computed(() => (pkg.value ? uninstallFacts(pkg.value, 'zap').length : 0));
 
 const breadcrumb = computed(() => {
@@ -48,6 +49,12 @@ const title = computed(() => t('package.uninstallPage.title', { name: name.value
 const description = computed(() =>
   t('package.uninstallPage.description', { name: name.value, count: zapCount.value }, zapCount.value)
 );
+
+function previewUninstall(event: MouseEvent) {
+  if (!preview.value) return;
+  event.preventDefault();
+  openUrl(preview.value, 'uninstall', name.value);
+}
 usePageSeo({ title: () => t('package.uninstallPage.metaTitle', { name: name.value }), description });
 if (pkg.value)
   defineOgImage('OgListSatori', {
@@ -82,7 +89,9 @@ if (pkg.value)
         {{ t('package.uninstallPage.withOpenNavoBody') }}
       </p>
       <p class="m-0 mt-12px flex flex-wrap gap-x-16px gap-y-8px text-13px">
-        <a v-if="preview" :href="preview" class="text-ink-primary">{{ t('package.uninstallPage.open') }}</a>
+        <a v-if="preview" :href="preview" class="text-ink-primary" @click="previewUninstall">{{
+          t('package.uninstallPage.open')
+        }}</a>
         <NuxtLink :to="localePath('/download')" class="text-ink-secondary">{{
           t('package.uninstallPage.download')
         }}</NuxtLink>

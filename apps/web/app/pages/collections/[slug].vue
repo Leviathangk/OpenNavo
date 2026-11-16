@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { buildDeepLink, formatDate, isInstallableKind } from '@opennavo/shared';
+import { formatDate, isInstallableKind } from '@opennavo/shared';
 import { OnButton, OnCollectionView, OnErrorState, OnIcon } from '@opennavo/ui';
 import type { OnCollectionEntry } from '@opennavo/ui';
-import { trackEvent } from '~/utils/analytics';
-import { launchDeepLink } from '~/utils/deepLink';
 import { packagePath } from '~/utils/packageView';
 import { withVariantNames } from '~/utils/seoTitles';
 
@@ -20,6 +18,7 @@ const config = useRuntimeConfig();
 const localePath = useLocalePath();
 const toasts = useToasts();
 const brewfile = useBrewfileList();
+const { openCollection } = useClientHandoff();
 const NuxtLink = resolveComponent('NuxtLink');
 const appLocale = computed(() => toAppLocale(locale.value));
 
@@ -74,30 +73,10 @@ function addAll() {
   toasts.push({ tone: 'success', title: t('collections.addedAll', { count: added }, { plural: added }) });
 }
 
-// Install all (F4): the client opens this collection and installs its casks after the visitor confirms
-// (opennavo://collection/{slug}?action=install, as useOpenInApp does for one app). If the page never loses
-// focus the client is not installed; the Brewfile stays available.
-const DETECT_MS = 1500;
+// Install all (F4): the client opens this collection and installs its casks after the visitor confirms.
+// If the page never loses focus, the shared handoff dialog offers the download; the Brewfile stays available.
 function installAll() {
-  trackEvent('open_in_app');
-  let left = false;
-  const mark = () => {
-    left = true;
-  };
-  window.addEventListener('blur', mark, { once: true });
-  document.addEventListener('visibilitychange', mark, { once: true });
-  launchDeepLink(buildDeepLink({ type: 'collection', slug: slug.value, action: 'install' }));
-  setTimeout(() => {
-    window.removeEventListener('blur', mark);
-    document.removeEventListener('visibilitychange', mark);
-    if (!left)
-      toasts.push({
-        tone: 'warning',
-        title: t('collections.setup.notDetected'),
-        description: t('collections.setup.notDetectedBody'),
-        duration: 0
-      });
-  }, DETECT_MS);
+  openCollection(slug.value, data.value?.title ?? slug.value);
 }
 
 // F6: the collection's release feed (server/handlers/collectionFeed.ts).

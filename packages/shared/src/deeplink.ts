@@ -12,7 +12,12 @@ export type DeepLinkTarget =
   | { type: 'package'; kind: PackageKind; token: string; action?: 'install' }
   | { type: 'collection'; slug: string; action?: 'install' }
   | { type: 'search'; q: string }
-  | { type: 'updates' };
+  | { type: 'updates' }
+  | { type: 'route'; route: ClientRoute };
+
+/** Desktop pages a web link may open. Navigation only: no query and no action. */
+export const CLIENT_ROUTES = ['installed', 'updates', 'cleanup', 'monitor', 'security', 'firewall'] as const;
+export type ClientRoute = (typeof CLIENT_ROUTES)[number];
 
 function truncate(text: string, length: number): string {
   return Array.from(text).slice(0, length).join('');
@@ -34,6 +39,9 @@ export function buildDeepLink(target: DeepLinkTarget): string {
       return `${base}search?q=${encodeURIComponent(truncate(target.q, SEARCH_QUERY_MAX_LENGTH))}`;
     case 'updates':
       return `${base}updates`;
+    case 'route':
+      if (!CLIENT_ROUTES.includes(target.route)) throw new Error('Invalid client route');
+      return `${base}${target.route}`;
   }
 }
 
@@ -75,6 +83,12 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
     }
     case 'updates':
       return segments.length === 0 ? { type: 'updates' } : null;
+    case 'installed':
+    case 'cleanup':
+    case 'monitor':
+    case 'security':
+    case 'firewall':
+      return segments.length === 0 && !url.searchParams.toString() ? { type: 'route', route } : null;
     default:
       return null;
   }

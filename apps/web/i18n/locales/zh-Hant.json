@@ -30,10 +30,13 @@
     "themeDark": "深色",
     "skipToContent": "跳到正文",
     "developers": "開發者",
-    "developerMap": "開發者地圖"
+    "developerMap": "開發者地圖",
+    "clientGroup": "Mac 用戶端",
+    "clientHint": "需在 Mac 上執行",
+    "firewall": "防火牆"
   },
   "sidebar": {
-    "appLabel": "Mac 客戶端",
+    "appLabel": "取得用戶端",
     "appTitle": "OpenNavo for Mac",
     "appHint": "macOS 13+ · 免費"
   },
@@ -2286,5 +2289,51 @@
     "claimHint": "先選擇你的 App，再勾選要更新的內容。所有修改都會經過編輯稽核後才會生效。",
     "proofPlaceholder": "域名、倉庫或說明（可選）",
     "contactPlaceholder": "you{'@'}example.com"
+  },
+  "client": {
+    "tag": "Mac",
+    "requires": "需 Mac 用戶端",
+    "installWith": "用 OpenNavo 安裝",
+    "open": "在 OpenNavo 中開啟",
+    "opening": "正在開啟 OpenNavo…",
+    "notMac": "此頁面介紹的是 macOS 用戶端。請在 Mac 上開啟以繼續。",
+    "copyLink": "複製頁面連結",
+    "copied": "連結已複製",
+    "preview": "用戶端預覽",
+    "sample": "範例資料",
+    "webTitle": "網頁上可以做什麼",
+    "appTitle": "Mac 用戶端裡可以做什麼",
+    "whyTitle": "為什麼需要用戶端？",
+    "why": "瀏覽器無法讀取「應用程式」資料夾，也無法執行 Homebrew。OpenNavo 在你的 Mac 上完成這些操作，資料只留在本機。",
+    "local": "本機執行，不上傳資料。",
+    "related": "相關",
+    "web": {
+      "browse": "瀏覽應用程式、版本說明和系統需求",
+      "command": "複製準確的 brew 指令",
+      "brewfile": "為新 Mac 產生 Brewfile"
+    },
+    "handoff": {
+      "title": "需要 OpenNavo Mac 用戶端",
+      "body": "這一步會在你的 Mac 上執行。下載用戶端繼續，或已安裝時直接開啟。",
+      "copy": "複製安裝指令",
+      "notNow": "暫不"
+    },
+    "pages": {
+      "installed": {
+        "lede": "OpenNavo 會列出 Mac 上的應用程式、版本、大小和最近開啟時間，方便你決定保留哪些。",
+        "metaTitle": "查看 Mac 上已安裝的應用程式 · OpenNavo"
+      },
+      "updates": {
+        "commandTitle": "在終端機檢查更新",
+        "commandNote": "列出可更新的 Cask，不會執行安裝。",
+        "commandLabel": "指令"
+      },
+      "cleanup": {
+        "app": {
+          "review": "清理前先查看能釋放多少空間",
+          "undo": "殘留檔案進入垃圾桶，可以復原"
+        }
+      }
+    }
   }
 }

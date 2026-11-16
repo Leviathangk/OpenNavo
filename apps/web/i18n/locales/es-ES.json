@@ -30,10 +30,13 @@
     "themeDark": "Oscuro",
     "skipToContent": "Saltar al contenido",
     "developers": "Desarrolladores",
-    "developerMap": "Mapa de desarrolladores"
+    "developerMap": "Mapa de desarrolladores",
+    "clientGroup": "App para Mac",
+    "clientHint": "Se ejecuta en tu Mac",
+    "firewall": "Cortafuegos"
   },
   "sidebar": {
-    "appLabel": "Cliente para Mac",
+    "appLabel": "Obtén la app",
     "appTitle": "OpenNavo para Mac",
     "appHint": "macOS 13+ · Gratis"
   },
@@ -2286,5 +2289,51 @@
     "claimHint": "Selecciona tu app y dinos qué actualizar. Cada cambio pasa por la revisión de un editor antes de publicarse.",
     "proofPlaceholder": "Dominio, repositorio o nota (opcional)",
     "contactPlaceholder": "you{'@'}example.com"
+  },
+  "client": {
+    "tag": "Mac",
+    "requires": "Requiere la app para Mac",
+    "installWith": "Instalar con OpenNavo",
+    "open": "Abrir en OpenNavo",
+    "opening": "Abriendo OpenNavo…",
+    "notMac": "Esta página describe la app para macOS. Ábrela en tu Mac para continuar.",
+    "copyLink": "Copiar enlace de la página",
+    "copied": "Enlace copiado",
+    "preview": "Vista previa de la app",
+    "sample": "Datos de ejemplo",
+    "webTitle": "En la web",
+    "appTitle": "En la app para Mac",
+    "whyTitle": "¿Por qué la app?",
+    "why": "Los navegadores no pueden leer tu carpeta Aplicaciones ni ejecutar Homebrew. OpenNavo lo hace en tu Mac y tus datos se quedan allí.",
+    "local": "Se ejecuta localmente. No se sube nada.",
+    "related": "Relacionado",
+    "web": {
+      "browse": "Explora apps, notas de versión y requisitos",
+      "command": "Copia el comando brew exacto",
+      "brewfile": "Crea un Brewfile para un Mac nuevo"
+    },
+    "handoff": {
+      "title": "Se necesita OpenNavo para Mac",
+      "body": "Este paso se ejecuta en tu Mac. Descarga la app para continuar o ábrela si ya está instalada.",
+      "copy": "Copiar comando de instalación",
+      "notNow": "Ahora no"
+    },
+    "pages": {
+      "installed": {
+        "lede": "OpenNavo enumera las apps de tu Mac, con su versión, tamaño y cuándo las abriste por última vez, para que decidas qué conservar.",
+        "metaTitle": "Ver las apps instaladas en Mac · OpenNavo"
+      },
+      "updates": {
+        "commandTitle": "Comprobar actualizaciones en Terminal",
+        "commandNote": "Muestra las actualizaciones de Cask disponibles. No instala nada.",
+        "commandLabel": "Comando"
+      },
+      "cleanup": {
+        "app": {
+          "review": "Mira cuánto espacio liberará antes de limpiar",
+          "undo": "Los restos van a la Papelera, así que puedes deshacer"
+        }
+      }
+    }
   }
 }

@@ -41,7 +41,7 @@ beforeEach(() => {
   vi.stubGlobal('toAppLocale', () => locale);
   vi.stubGlobal('useLocalePath', () => (path: string) => path);
   vi.stubGlobal('useToasts', () => ({ push: vi.fn() }));
-  vi.stubGlobal('useOpenInApp', () => ({ open: vi.fn() }));
+  vi.stubGlobal('useClientHandoff', () => ({ openPackage: vi.fn(), opening: ref(false) }));
   vi.stubGlobal('useCopyCommand', () => ({ copy: vi.fn() }));
   vi.stubGlobal('useBrewfileList', () => ({ has: () => false, add: () => 'added' }));
 });

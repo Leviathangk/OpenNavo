@@ -26,6 +26,7 @@ beforeEach(() => {
   vi.stubGlobal('useI18n', () => ({ t: translate, locale: ref(locale) }));
   vi.stubGlobal('toAppLocale', () => locale);
   vi.stubGlobal('useLocalePath', () => (path: string) => path);
+  vi.stubGlobal('useClientHandoff', () => ({ openUrl: vi.fn() }));
 });
 afterEach(() => {
   mounted?.unmount();

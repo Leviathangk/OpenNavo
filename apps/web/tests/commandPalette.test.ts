@@ -41,7 +41,7 @@ describe('Web command palette groups', () => {
   it('Without text lists only the pages, with no search row', () => {
     const [jump, packages] = paletteGroups('   ', [], t);
     expect(jump!.items.every(item => item.key.startsWith('page:'))).toBe(true);
-    expect(jump!.items).toHaveLength(7);
+    expect(jump!.items).toHaveLength(11);
     expect(packages!.items).toEqual([]);
   });
 
