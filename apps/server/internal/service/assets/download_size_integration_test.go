@@ -52,6 +52,13 @@ func TestDownloadSizeAllVisibleUnknownAndStaleVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, true, stats["changed"])
 	require.Equal(t, 2, calls)
+
+	// A catalog sync can hide or remove a package after its size job was queued. The job has nothing
+	// left to measure and must not keep retrying a row that is intentionally out of scope.
+	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE packages SET removed_at=now() WHERE id=?", row.ID).Error)
+	stats, err = svc.Run(ctx, row.ID)
+	require.NoError(t, err)
+	require.Equal(t, true, stats["skipped"])
 }
 
 func TestDailySizesOnlyQueueMissingVisibleCasks(t *testing.T) {
