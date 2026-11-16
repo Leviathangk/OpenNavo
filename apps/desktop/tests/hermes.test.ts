@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useHermesStore } from '@/stores/hermes';
 import { HERMES_PROVIDER_MAP, hermesProviderSlug, pickOfficialProvider } from '@/hermes/providers';
 import { useToasts } from '@/composables/useToasts';
-import { commands } from '@/ipc/client';
+import { IpcError, commands } from '@/ipc/client';
 
 const eventMock = vi.hoisted(() => {
   type EventPayload = Record<string, unknown>;
@@ -21,6 +21,63 @@ const eventMock = vi.hoisted(() => {
 vi.mock('@tauri-apps/api/event', () => ({ listen: eventMock.listen }));
 
 const STORAGE_KEY = 'ONV_HERMES_STATE_V2';
+const PROFILES_KEY = 'ONV_HERMES_PROFILES_V1';
+
+const PANEL_CATALOG = {
+  providers: [
+    {
+      slug: 'custom',
+      name: 'Custom',
+      is_current: true,
+      authenticated: false,
+      models: ['grok-4.7'],
+      total_models: 1
+    },
+    {
+      slug: 'custom:newapi',
+      name: 'newapi',
+      is_current: true,
+      authenticated: true,
+      models: ['grok-4.6', 'grok-4.3'],
+      total_models: 2
+    }
+  ],
+  model: 'grok-4.7',
+  provider: 'custom'
+};
+
+function seedPanelProfile() {
+  localStorage.setItem(
+    PROFILES_KEY,
+    JSON.stringify({
+      version: 1,
+      activeProfileId: 'panel-1',
+      profiles: [
+        {
+          id: 'local',
+          name: 'Local Mac',
+          kind: 'local',
+          endpoint: '',
+          status: 'connected',
+          version: '0.23.0',
+          latency: null,
+          models: 0
+        },
+        {
+          id: 'panel-1',
+          name: 'Panel',
+          kind: 'panel',
+          endpoint: 'http://panel.tail1234.ts.net:9119',
+          status: 'connected',
+          version: '0.23.0',
+          latency: 12,
+          models: 2
+        }
+      ],
+      states: {}
+    })
+  );
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -137,6 +194,32 @@ describe('Hermes conversation store', () => {
 
     expect(interrupt).toHaveBeenCalledWith('live-1', 'wss://remote.test/api/ws', 'remote-test');
     expect(store.active?.liveSessionId).toBeUndefined();
+  });
+
+  it('Selects a notification conversation without stopping the active turn', async () => {
+    const store = useHermesStore();
+    store.conversations.push(
+      {
+        id: 'finished-chat',
+        messages: [{ id: 'finished-message', role: 'user', text: 'finished', at: 1 }],
+        updatedAt: 1
+      },
+      {
+        id: 'running-chat',
+        messages: [{ id: 'running-message', role: 'user', text: 'running', at: 2 }],
+        updatedAt: 2,
+        liveSessionId: 'live-2'
+      }
+    );
+    store.activeId = 'running-chat';
+    const interrupt = vi.spyOn(commands, 'hermesInterrupt');
+    const stop = vi.spyOn(commands, 'hermesStop');
+
+    await expect(store.revealConversation('finished-chat')).resolves.toBe(true);
+
+    expect(store.activeId).toBe('finished-chat');
+    expect(interrupt).not.toHaveBeenCalled();
+    expect(stop).not.toHaveBeenCalled();
   });
 
   it('Ignores a history read that finishes after another profile took over', async () => {
@@ -322,6 +405,108 @@ describe('Hermes conversation store', () => {
       })
     );
     expect(store.messages.at(-1)?.text).toBe('Remote reply');
+  });
+
+  it('Aligns a panel profile to the authenticated provider row', async () => {
+    seedPanelProfile();
+    vi.spyOn(commands, 'hermesModelOptions').mockResolvedValue({
+      status: 'ok',
+      data: PANEL_CATALOG
+    });
+    const store = useHermesStore();
+
+    await store.loadModelOptions(false);
+
+    // `custom` is a stale, unauthenticated row with one saved model. The endpoint that
+    // actually answers is the scoped `custom:newapi` row, so a new profile must not inherit
+    // the stale model or card-level provider id.
+    expect(store.model.provider).toBe('custom');
+    expect(store.model.model).toBe('grok-4.6');
+  });
+
+  it('Sends the scoped panel provider slug instead of the provider card id', async () => {
+    seedPanelProfile();
+    vi.spyOn(commands, 'hermesModelOptions').mockResolvedValue({
+      status: 'ok',
+      data: PANEL_CATALOG
+    });
+    const chat = vi.spyOn(commands, 'hermesChat').mockResolvedValue({
+      status: 'ok',
+      data: { text: 'Panel reply', sessionId: 'panel-session', liveSessionId: null, usage: null }
+    });
+    const store = useHermesStore();
+    await store.loadModelOptions(false);
+
+    await store.send('Use the working endpoint');
+
+    expect(chat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'custom:newapi',
+        model: 'grok-4.6'
+      })
+    );
+  });
+
+  it('Repairs a stale saved model before the next panel turn', async () => {
+    seedPanelProfile();
+    vi.spyOn(commands, 'hermesModelOptions').mockResolvedValue({
+      status: 'ok',
+      data: PANEL_CATALOG
+    });
+    const chat = vi.spyOn(commands, 'hermesChat').mockResolvedValue({
+      status: 'ok',
+      data: { text: 'Panel reply', sessionId: 'panel-session', liveSessionId: null, usage: null }
+    });
+    const store = useHermesStore();
+    await store.loadModelOptions(false);
+    store.saveModel({ ...store.model, provider: 'custom', model: 'grok-4.7' });
+
+    await store.send('Use the repaired endpoint');
+
+    expect(store.model.model).toBe('grok-4.6');
+    expect(chat).toHaveBeenCalledWith(expect.objectContaining({ provider: 'custom:newapi', model: 'grok-4.6' }));
+  });
+
+  it('Does not treat a model provider 401 as an expired panel session', async () => {
+    seedPanelProfile();
+    vi.spyOn(commands, 'hermesModelOptions').mockResolvedValue({
+      status: 'ok',
+      data: PANEL_CATALOG
+    });
+    vi.spyOn(commands, 'hermesChat').mockRejectedValue(
+      new IpcError({
+        code: 'E_HERMES_GATEWAY_STREAM',
+        message: 'custom rejected your API key',
+        detail: 'Provider said: HTTP 401: Invalid token'
+      })
+    );
+    const store = useHermesStore();
+    await store.loadModelOptions(false);
+
+    await store.send('Trigger the provider error');
+
+    expect(store.panelAuthExpired).toBeNull();
+  });
+
+  it('Still asks for a panel login when the panel session itself expired', async () => {
+    seedPanelProfile();
+    vi.spyOn(commands, 'hermesModelOptions').mockResolvedValue({
+      status: 'ok',
+      data: PANEL_CATALOG
+    });
+    vi.spyOn(commands, 'hermesChat').mockRejectedValue(
+      new IpcError({
+        code: 'E_HERMES_PANEL_AUTH',
+        message: 'Hermes Panel session is missing. Sign in again.',
+        detail: null
+      })
+    );
+    const store = useHermesStore();
+    await store.loadModelOptions(false);
+
+    await store.send('Trigger the panel auth error');
+
+    expect(store.panelAuthExpired).toBe('panel-1');
   });
 
   it('Starts with an empty desktop history', () => {

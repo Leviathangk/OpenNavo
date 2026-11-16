@@ -306,14 +306,39 @@ async fn send(
     Ok(value)
 }
 
+/// 401 and 403 reject the stored panel session. Profile probes and panel requests share
+/// this set so a later auth status is classified in one place. 419 and 429 stay with the
+/// caller until a panel response shows they mean the session itself.
+pub(crate) fn session_rejected(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 401 | 403)
+}
+
+pub(crate) fn session_expired(detail: impl Into<String>) -> AppError {
+    AppError::new(
+        "E_HERMES_PANEL_AUTH",
+        "Hermes Panel session expired. Sign in again.",
+    )
+    .with_detail(detail)
+}
+
+pub(crate) fn session_missing() -> AppError {
+    AppError::new(
+        "E_HERMES_PANEL_AUTH",
+        "Hermes Panel session is missing. Sign in again.",
+    )
+}
+
 /// A non-2xx panel response, classified so callers can tell "sign in again" (401/403)
 /// from "this host has no such route" (404). Reporting every failure as an auth error
 /// left the history list unable to degrade when an older host lacks an endpoint.
+/// The message stays the operation failure; the sign-in sheet keys off the auth code.
 fn status_error(status: reqwest::StatusCode, failure: &str) -> AppError {
-    let code = match status.as_u16() {
-        401 | 403 => "E_HERMES_PANEL_AUTH",
-        404 => "E_HERMES_PANEL_UNSUPPORTED",
-        _ => "E_HERMES_PANEL",
+    let code = if session_rejected(status) {
+        "E_HERMES_PANEL_AUTH"
+    } else if status.as_u16() == 404 {
+        "E_HERMES_PANEL_UNSUPPORTED"
+    } else {
+        "E_HERMES_PANEL"
     };
     AppError::new(code, failure).with_detail(format!("Panel request returned {status}."))
 }
@@ -976,9 +1001,15 @@ mod path_tests {
 
     #[test]
     fn classifies_panel_status_codes() {
+        let expired = status_error(
+            reqwest::StatusCode::UNAUTHORIZED,
+            "Could not read panel data.",
+        );
+        assert_eq!(expired.code, "E_HERMES_PANEL_AUTH");
+        assert_eq!(expired.message, "Could not read panel data.");
         assert_eq!(
-            status_error(reqwest::StatusCode::UNAUTHORIZED, "x").code,
-            "E_HERMES_PANEL_AUTH"
+            expired.detail.as_deref(),
+            Some("Panel request returned 401 Unauthorized.")
         );
         assert_eq!(
             status_error(reqwest::StatusCode::NOT_FOUND, "x").code,
@@ -987,6 +1018,11 @@ mod path_tests {
         assert_eq!(
             status_error(reqwest::StatusCode::BAD_GATEWAY, "x").code,
             "E_HERMES_PANEL"
+        );
+        assert!(!session_rejected(reqwest::StatusCode::TOO_MANY_REQUESTS));
+        assert_eq!(
+            session_missing().message,
+            "Hermes Panel session is missing. Sign in again."
         );
     }
 

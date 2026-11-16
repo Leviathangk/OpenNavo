@@ -123,6 +123,26 @@ export function hermesProviderSlug(provider: HermesProvider): string {
   }
 }
 
+/** Map a catalog row back to the card that owns it, including scoped rows (`custom:name`). */
+const PROVIDER_CARD_BY_SLUG: Record<string, HermesProvider> = {
+  'openai-api': 'openai',
+  anthropic: 'claude-code',
+  'openai-codex': 'codex',
+  copilot: 'copilot',
+  'opencode-go': 'opencode-go',
+  'opencode-zen': 'opencode',
+  gemini: 'google',
+  openrouter: 'openrouter',
+  'openavoo-custom': 'custom',
+  custom: 'custom',
+  nous: 'nous'
+};
+
+export function providerCardForSlug(slug: string | undefined): HermesProvider | undefined {
+  if (!slug) return undefined;
+  return PROVIDER_CARD_BY_SLUG[slug] ?? PROVIDER_CARD_BY_SLUG[slug.split(':')[0] ?? ''];
+}
+
 /** Official Hermes auxiliary task slots exposed by the desktop GUI. */
 export const HERMES_AUX_TASKS = [
   'vision',

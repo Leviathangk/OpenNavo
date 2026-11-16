@@ -8,6 +8,8 @@ import {
   HERMES_PROVIDER_MAP,
   defaultProviderEndpoint,
   modelId,
+  pickOfficialProvider,
+  providerCardForSlug,
   providerModels,
   shortModel,
   type HermesAuxTask,
@@ -15,8 +17,10 @@ import {
 } from '@/hermes/providers';
 import { commands, unwrap, IpcError } from '@/ipc/client';
 import { isMessagingSource } from '@/hermes/platforms';
+import { notifyHermesReply } from '@/hermes/notifications';
 import type { HermesLoginStatus, HermesModelOptions, HermesRuntimeStatus } from '@/ipc/bindings';
 import { useToasts } from '@/composables/useToasts';
+import { useHermesNotificationsStore } from '@/stores/hermesNotifications';
 import rectangleIcon from '@/assets/hermes/rectangle.png';
 
 export type HermesControlLevel = 'open' | 'guarded' | 'full';
@@ -780,6 +784,7 @@ function modelOptionsEndpoint(connection: HermesProfile | undefined, localEndpoi
 /** Local Hermes session store. The assistant runtime is intentionally replaceable; today the demo replies locally. */
 export const useHermesStore = defineStore('hermes', () => {
   const initial = read();
+  const notificationPrefs = useHermesNotificationsStore();
   const model = ref<HermesModelSettings>(initial.model);
   const mac = ref<HermesMacSettings>(initial.mac);
   const conversations = ref<HermesConversation[]>(initial.conversations);
@@ -877,8 +882,10 @@ export const useHermesStore = defineStore('hermes', () => {
 
   function notePanelAuthError(error: unknown) {
     if (!panelActive.value) return;
-    const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
-    if (!/401|Unauthorized|E_HERMES_PANEL_AUTH|session/i.test(detail)) return;
+    // A provider 401 ("custom rejected your API key") is a model failure reported inside
+    // the turn, not proof that the panel session expired. Only the panel's own auth error
+    // may open the sign-in sheet.
+    if (!(error instanceof IpcError) || error.code !== 'E_HERMES_PANEL_AUTH') return;
     if (panelAuthExpired.value === activeProfile.value.id) return;
     panelAuthExpired.value = activeProfile.value.id;
     toasts.push({
@@ -922,6 +929,8 @@ export const useHermesStore = defineStore('hermes', () => {
   let panelHistoryGeneration = 0;
   /** Latest request per `connection::profile::slice`; an older response must not publish over it. */
   const panelHistoryRequests = new Map<string, number>();
+  /** Callers waiting on a slice read that is already in flight. */
+  const panelHistoryWaiters = new Map<string, Array<() => void>>();
   /** Read every profile on the host through `/api/profiles/sessions`. */
   const panelAllProfiles = ref(false);
   /** Connection ids whose profile list is in flight (the rail shows a spinner meanwhile). */
@@ -1422,7 +1431,17 @@ export const useHermesStore = defineStore('hermes', () => {
   function alignRemoteModelToCatalog(options: HermesModelOptions) {
     if (!remoteActive.value) return;
     const remoteProviders = options.providers ?? [];
+    // A host can list a stale `custom` row next to the scoped `custom:newapi` row that
+    // actually answers. The stale row is often `is_current` and carries one old model, so
+    // "first current provider" selects exactly the broken one. Prefer an authenticated row.
+    const forCard = pickOfficialProvider(remoteProviders, model.value.provider);
     const remoteProvider =
+      (forCard?.authenticated && (forCard.models?.length ?? 0) > 0 ? forCard : undefined) ??
+      remoteProviders.find(
+        provider => provider.is_current && provider.authenticated && (provider.models?.length ?? 0) > 0
+      ) ??
+      remoteProviders.find(provider => provider.authenticated && (provider.models?.length ?? 0) > 0) ??
+      ((forCard?.models?.length ?? 0) > 0 ? forCard : undefined) ??
       remoteProviders.find(provider => provider.is_current && (provider.models?.length ?? 0) > 0) ??
       remoteProviders.find(provider => (provider.models?.length ?? 0) > 0);
     if (!remoteProvider) return;
@@ -1430,21 +1449,29 @@ export const useHermesStore = defineStore('hermes', () => {
     if (!remoteModels.includes(model.value.model)) {
       model.value.model = remoteModels[0]!;
     }
-    const mapped: Record<string, HermesProvider> = {
-      'openai-api': 'openai',
-      anthropic: 'claude-code',
-      'openai-codex': 'codex',
-      copilot: 'copilot',
-      'opencode-go': 'opencode-go',
-      'opencode-zen': 'opencode',
-      gemini: 'google',
-      openrouter: 'openrouter',
-      'openavoo-custom': 'custom',
-      custom: 'custom',
-      nous: 'nous'
-    };
-    const mappedProvider = remoteProvider.slug ? mapped[remoteProvider.slug] : undefined;
+    const mappedProvider = providerCardForSlug(remoteProvider.slug);
     if (mappedProvider) model.value.provider = mappedProvider;
+  }
+
+  /**
+   * The concrete provider slug the panel host must receive.
+   *
+   * `model.provider` is an OpenNavo card id (`custom`), while a panel may register the
+   * working endpoint under a scoped runtime slug (`custom:newapi`). Sending the card id
+   * resolves to the host's stale canonical provider instead.
+   */
+  function remoteChatTarget(): { provider: string; model: string } {
+    const options = modelOptionsForScope();
+    const row = options ? pickOfficialProvider(options.providers ?? [], model.value.provider) : undefined;
+    if (!row) return { provider: model.value.provider, model: modelId(model.value.model) };
+    const models = row.models ?? [];
+    if (models.length && !models.includes(model.value.model)) {
+      // Repair state saved by an older build that aligned to the stale row. Keeping the
+      // visible selection and the outgoing turn in sync avoids sending a model the
+      // authenticated endpoint does not serve.
+      model.value.model = models[0]!;
+    }
+    return { provider: row.slug?.trim() || model.value.provider, model: modelId(model.value.model) };
   }
 
   function applyModelOptionsCatalog(options: HermesModelOptions, at: number, ownerKey: string, alignModel = false) {
@@ -1843,10 +1870,11 @@ export const useHermesStore = defineStore('hermes', () => {
       }
       return list;
     } catch (error) {
+      const code = error instanceof IpcError ? error.code : '';
       const detail = error instanceof IpcError ? (error.detail ?? error.message) : String(error);
       connection.status = 'error';
       connection.error = detail;
-      if (connection.kind === 'panel' && (detail.includes('401') || detail.includes('Unauthorized'))) {
+      if (connection.kind === 'panel' && code === 'E_HERMES_PANEL_AUTH') {
         panelAuthExpired.value = connection.id;
         toasts.push({
           tone: 'warning',
@@ -2018,7 +2046,13 @@ export const useHermesStore = defineStore('hermes', () => {
     const generation = panelHistoryGeneration;
     const requestId = `${key}::${slice}`;
     const state = sliceState(slice, key);
-    if (state.loading) return;
+    if (state.loading) {
+      return new Promise<void>(resolve => {
+        const waiters = panelHistoryWaiters.get(requestId) ?? [];
+        waiters.push(resolve);
+        panelHistoryWaiters.set(requestId, waiters);
+      });
+    }
     if (!append && state.loaded) return;
     const seq = (panelHistoryRequests.get(requestId) ?? 0) + 1;
     panelHistoryRequests.set(requestId, seq);
@@ -2077,6 +2111,11 @@ export const useHermesStore = defineStore('hermes', () => {
       }
     } finally {
       if (seq === panelHistoryRequests.get(requestId)) state.loading = false;
+      const waiters = panelHistoryWaiters.get(requestId);
+      if (waiters) {
+        panelHistoryWaiters.delete(requestId);
+        for (const resolve of waiters) resolve();
+      }
     }
   }
 
@@ -2429,6 +2468,29 @@ export const useHermesStore = defineStore('hermes', () => {
     void loadPanelConversation(idValue);
   }
 
+  /**
+   * Select a conversation opened from a system notification. Unlike a history-row click this
+   * must not stop the turn that may be running in another conversation, and it has to cope with
+   * a page that mounted before the conversation history had finished loading.
+   */
+  async function revealConversation(idValue: string): Promise<boolean> {
+    const conversationId = idValue.trim();
+    if (!conversationId) return false;
+    if (!historyLoadStarted) await loadHistory();
+    else if (!historyLoaded) await historyReadyPromise;
+    if (!conversations.value.some(item => item.id === conversationId) && panelActive.value) {
+      for (const slice of PANEL_HISTORY_SLICES) {
+        if (conversations.value.some(item => item.id === conversationId)) break;
+        const state = sliceState(slice);
+        if (state.loading || !state.loaded) await loadPanelHistory(slice);
+      }
+    }
+    if (!conversations.value.some(item => item.id === conversationId)) return false;
+    activeId.value = conversationId;
+    void loadPanelConversation(conversationId);
+    return true;
+  }
+
   function newChat() {
     activeId.value = null;
   }
@@ -2624,6 +2686,18 @@ export const useHermesStore = defineStore('hermes', () => {
     }
   }
 
+  function maybeNotifyHermesReply(
+    kind: 'turnDone' | 'turnError',
+    conversationId: string,
+    text: string | null | undefined
+  ) {
+    if (!notificationPrefs.isEnabled(kind)) return;
+    // Completion kinds follow the official desktop rule: only the conversation on
+    // screen may notify, so background sessions cannot produce a toast per reply.
+    if (activeId.value !== conversationId) return;
+    void notifyHermesReply(kind, conversationId, text);
+  }
+
   async function send(text: string, attachments: string[] = []) {
     if (historyLoadStarted && !historyLoaded) {
       await historyReadyPromise;
@@ -2809,13 +2883,14 @@ export const useHermesStore = defineStore('hermes', () => {
         }
       }
       try {
+        const chatTarget = remoteActive.value ? remoteChatTarget() : null;
         const reply = await unwrap(
           commands.hermesChat({
             prompt,
             requestId,
             sessionId: conversation.sessionId ?? null,
-            provider: model.value.provider,
-            model: modelId(model.value.model),
+            provider: chatTarget?.provider ?? model.value.provider,
+            model: chatTarget?.model ?? modelId(model.value.model),
             effort: model.value.effort,
             fast: model.value.fast,
             apiKey: apiKey.value.trim() || null,
@@ -2858,6 +2933,7 @@ export const useHermesStore = defineStore('hermes', () => {
           }
           target.updatedAt = Date.now();
         }
+        maybeNotifyHermesReply('turnDone', conversation.id, reply.text);
       } catch (error) {
         if (activeTurn !== turn) return;
         if (stopping.value || stopRequested.value) {
@@ -2892,6 +2968,7 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
           title: expiredOpenCode ? 'OpenCode API Key' : 'Local Hermes',
           description: expiredOpenCode ? 'OpenCode Go Key 已过期，请创建新的 API Key。' : detail
         });
+        maybeNotifyHermesReply('turnError', conversation.id, detail);
       } finally {
         unlisten?.();
         if (activeTurn === turn) {
@@ -3244,6 +3321,7 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
     macStatus,
     providers: providerModels,
     select,
+    revealConversation,
     newChat,
     deleteConversation,
     renameConversation,

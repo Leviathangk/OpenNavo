@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
-export type HermesSettingsTab = 'model' | 'mac' | 'tools';
+export type HermesSettingsTab = 'model' | 'mac' | 'notifications' | 'tools';
 
 /** Cross-component UI state for the assistant: the right rail and header open the same settings sheet. */
 export const useHermesUiStore = defineStore('hermesUi', () => {

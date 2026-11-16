@@ -244,10 +244,7 @@ async fn remote_request(
     body: Option<Value>,
 ) -> Result<Value, AppError> {
     if !super::panel::has_session(connection_id) {
-        return Err(AppError::new(
-            "E_HERMES_PANEL_AUTH",
-            "Hermes Panel session is missing. Sign in again.",
-        ));
+        return Err(super::panel::session_missing());
     }
     let url = panel_url(&super::panel::base_url_for(connection_id)?, path)?;
     let client = reqwest::Client::builder()
@@ -285,13 +282,23 @@ async fn remote_request(
             .and_then(Value::as_str)
             .map(str::to_owned)
             .unwrap_or_else(|| value.to_string());
-        return Err(AppError::new(
-            "E_HERMES_PROFILE_HTTP",
-            format!("Remote profile API returned {status}."),
-        )
-        .with_detail(detail));
+        return Err(remote_status_error(status, detail));
     }
     Ok(value)
+}
+
+/// A 401/403 from the profile API is the panel session, not a malformed profile request.
+/// Callers use the code to open the sign-in sheet; a model provider's own 401 must never
+/// be classified here.
+fn remote_status_error(status: reqwest::StatusCode, detail: String) -> AppError {
+    if super::panel::session_rejected(status) {
+        return super::panel::session_expired(detail);
+    }
+    AppError::new(
+        "E_HERMES_PROFILE_HTTP",
+        format!("Remote profile API returned {status}."),
+    )
+    .with_detail(detail)
 }
 
 fn parse_remote_profiles(value: &Value) -> Vec<HermesAgentProfile> {
@@ -363,16 +370,23 @@ pub struct HermesConnectionProbe {
     pub profiles: u32,
 }
 
+fn probe_status_error(status: reqwest::StatusCode) -> AppError {
+    if super::panel::session_rejected(status) {
+        return super::panel::session_expired(format!("Gateway status returned {status}."));
+    }
+    AppError::new(
+        "E_HERMES_PROBE",
+        format!("Gateway status returned {status}."),
+    )
+}
+
 pub async fn probe(
     connection_id: &str,
     _gateway_url: &str,
 ) -> Result<HermesConnectionProbe, AppError> {
     let started = std::time::Instant::now();
     if !super::panel::has_session(connection_id) {
-        return Err(AppError::new(
-            "E_HERMES_PANEL_AUTH",
-            "Hermes Panel session is missing. Sign in again.",
-        ));
+        return Err(super::panel::session_missing());
     }
     let url = panel_url(&super::panel::base_url_for(connection_id)?, "/api/status")?;
     let client = reqwest::Client::builder()
@@ -400,10 +414,7 @@ pub async fn probe(
     super::panel::persist_response_cookies(connection_id, &headers)?;
     let value: Value = response.json().await.unwrap_or(Value::Null);
     if !status.is_success() {
-        return Err(AppError::new(
-            "E_HERMES_PROBE",
-            format!("Gateway status returned {status}."),
-        ));
+        return Err(probe_status_error(status));
     }
     Ok(HermesConnectionProbe {
         ok: true,
@@ -915,6 +926,44 @@ mod tests {
         assert!(!info.is_default);
         assert_eq!(info.path, profile.display().to_string());
     }
+
+    #[test]
+    fn classifies_expired_panel_credentials_as_auth_errors() {
+        let expired = remote_status_error(reqwest::StatusCode::UNAUTHORIZED, "unauthorized".into());
+        assert_eq!(expired.code, "E_HERMES_PANEL_AUTH");
+        assert_eq!(
+            expired.message,
+            "Hermes Panel session expired. Sign in again."
+        );
+        assert_eq!(expired.detail.as_deref(), Some("unauthorized"));
+
+        let failed = remote_status_error(reqwest::StatusCode::INTERNAL_SERVER_ERROR, "boom".into());
+        assert_eq!(failed.code, "E_HERMES_PROFILE_HTTP");
+        assert_eq!(
+            failed.message,
+            "Remote profile API returned 500 Internal Server Error."
+        );
+    }
+
+    #[test]
+    fn classifies_probe_auth_failures_with_the_shared_session_error() {
+        let expired = probe_status_error(reqwest::StatusCode::FORBIDDEN);
+        assert_eq!(expired.code, "E_HERMES_PANEL_AUTH");
+        assert_eq!(
+            expired.message,
+            "Hermes Panel session expired. Sign in again."
+        );
+        assert_eq!(
+            expired.detail.as_deref(),
+            Some("Gateway status returned 403 Forbidden.")
+        );
+
+        let failed = probe_status_error(reqwest::StatusCode::BAD_GATEWAY);
+        assert_eq!(failed.code, "E_HERMES_PROBE");
+        assert_eq!(failed.message, "Gateway status returned 502 Bad Gateway.");
+        assert!(failed.detail.is_none());
+    }
+
     #[tokio::test]
     #[ignore = "requires HERMES_PANEL_URL, HERMES_PANEL_USER and HERMES_PANEL_PASSWORD"]
     async fn panel_profile_list_uses_the_panel_cookie() {

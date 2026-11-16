@@ -8,6 +8,7 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 export const commands = {
 	hermesRuntimeStatus: () => typedError<HermesRuntimeStatus, AppError>(__TAURI_INVOKE("hermes_runtime_status")),
 	hermesChat: (input: HermesChatInput) => typedError<HermesChatReply, AppError>(__TAURI_INVOKE("hermes_chat", { input })),
+	hermesNotifyReply: (conversationId: string, title: string, body: string) => typedError<null, AppError>(__TAURI_INVOKE("hermes_notify_reply", { conversationId, title, body })),
 	hermesStop: () => typedError<null, AppError>(__TAURI_INVOKE("hermes_stop")),
 	hermesAskRespond: (requestId: string, reply: HermesAskReply) => typedError<null, AppError>(__TAURI_INVOKE("hermes_ask_respond", { requestId, reply })),
 	hermesInterrupt: (liveSessionId: string, gatewayUrl: string | null, profileId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("hermes_interrupt", { liveSessionId, gatewayUrl, profileId })),

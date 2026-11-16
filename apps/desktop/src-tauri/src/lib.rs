@@ -64,6 +64,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         .commands(collect_commands![
             commands::hermes::hermes_runtime_status,
             commands::hermes::hermes_chat,
+            commands::hermes::hermes_notify_reply,
             commands::hermes::hermes_stop,
             commands::hermes::hermes_ask_respond,
             commands::hermes::hermes_interrupt,

@@ -4,6 +4,7 @@ import { OnButton, OnIcon, OnModal, OnToggle } from '@opennavo/ui';
 import { commands, unwrap, IpcError } from '@/ipc/client';
 import { openExternal } from '@/utils/external';
 import { useHermesStore } from '@/stores/hermes';
+import { useHermesNotificationsStore } from '@/stores/hermesNotifications';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useToasts } from '@/composables/useToasts';
 import {
@@ -25,6 +26,7 @@ const props = defineProps<{ open: boolean; tab: HermesSettingsTab }>();
 const emit = defineEmits<{ close: [] }>();
 
 const store = useHermesStore();
+const notifications = useHermesNotificationsStore();
 const content = useHermesContent();
 const toasts = useToasts();
 
@@ -786,6 +788,18 @@ onBeforeUnmount(() => {
               type="button"
               class="h-32px rounded-small px-10px text-left font-sans text-12px outline-none transition-colors focus-visible:shadow-focus-ring"
               :class="
+                activeTab === 'notifications'
+                  ? 'bg-surface-raised font-600 text-ink-primary'
+                  : 'text-ink-tertiary hover:bg-surface-raised hover:text-ink-secondary'
+              "
+              @click="activeTab = 'notifications'"
+            >
+              {{ content.settings.tabs.notifications }}
+            </button>
+            <button
+              type="button"
+              class="h-32px rounded-small px-10px text-left font-sans text-12px outline-none transition-colors focus-visible:shadow-focus-ring"
+              :class="
                 activeTab === 'mac'
                   ? 'bg-surface-raised font-600 text-ink-primary'
                   : 'text-ink-tertiary hover:bg-surface-raised hover:text-ink-secondary'
@@ -1116,7 +1130,68 @@ onBeforeUnmount(() => {
               </p>
             </template>
 
-            <template v-else>
+            <template v-if="activeTab === 'notifications'">
+              <section class="mb-18px">
+                <h3 class="m-0 text-12px font-600 text-ink-primary">
+                  {{ content.settings.notifications.title }}
+                </h3>
+                <p class="m-0 mt-3px text-11px leading-[1.5] text-ink-tertiary">
+                  {{ content.settings.notifications.body }}
+                </p>
+              </section>
+
+              <div class="mb-18px flex items-center gap-12px border-b border-b-solid border-line-subtle py-10px">
+                <div class="min-w-0 flex-1">
+                  <b class="block text-12px font-500 text-ink-primary">{{ content.settings.notifications.master }}</b>
+                  <span class="mt-2px block text-11px leading-[1.45] text-ink-tertiary">{{
+                    content.settings.notifications.masterHint
+                  }}</span>
+                </div>
+                <OnToggle
+                  :model-value="notifications.enabled"
+                  :aria-label="content.settings.notifications.master"
+                  @update:model-value="notifications.setEnabled"
+                />
+              </div>
+
+              <div class="mb-18px flex items-center gap-12px border-b border-b-solid border-line-subtle py-10px">
+                <div class="min-w-0 flex-1">
+                  <b class="block text-12px font-500 text-ink-primary">{{ content.settings.notifications.turnDone }}</b>
+                  <span class="mt-2px block text-11px leading-[1.45] text-ink-tertiary">{{
+                    content.settings.notifications.turnDoneHint
+                  }}</span>
+                </div>
+                <OnToggle
+                  :disabled="!notifications.enabled"
+                  :model-value="notifications.turnDone"
+                  :aria-label="content.settings.notifications.turnDone"
+                  @update:model-value="value => notifications.setKind('turnDone', value)"
+                />
+              </div>
+
+              <div class="mb-18px flex items-center gap-12px border-b border-b-solid border-line-subtle py-10px">
+                <div class="min-w-0 flex-1">
+                  <b class="block text-12px font-500 text-ink-primary">{{
+                    content.settings.notifications.turnError
+                  }}</b>
+                  <span class="mt-2px block text-11px leading-[1.45] text-ink-tertiary">{{
+                    content.settings.notifications.turnErrorHint
+                  }}</span>
+                </div>
+                <OnToggle
+                  :disabled="!notifications.enabled"
+                  :model-value="notifications.turnError"
+                  :aria-label="content.settings.notifications.turnError"
+                  @update:model-value="value => notifications.setKind('turnError', value)"
+                />
+              </div>
+
+              <p class="m-0 text-11px leading-[1.5] text-ink-tertiary">
+                {{ content.settings.notifications.focusedHint }}
+              </p>
+            </template>
+
+            <template v-if="activeTab === 'mac'">
               <div
                 v-if="store.remoteActive"
                 class="mb-16px flex items-start gap-8px rounded-small border border-solid border-[rgba(145,135,255,0.16)] bg-[rgba(145,135,255,0.045)] p-10px text-11px leading-[1.55] text-[#bbb7db]"

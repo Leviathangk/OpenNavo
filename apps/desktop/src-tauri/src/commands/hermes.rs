@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::AppError;
 use crate::hermes::{
@@ -21,6 +21,21 @@ pub async fn hermes_chat(
     input: HermesChatInput,
 ) -> Result<HermesChatReply, AppError> {
     hermes::chat(app, state.inner(), input).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn hermes_notify_reply(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    conversation_id: String,
+    title: String,
+    body: String,
+) -> Result<(), AppError> {
+    let notifications = app
+        .try_state::<Arc<crate::notifications::NativeNotifications>>()
+        .ok_or_else(|| AppError::new("E_UNKNOWN", "notification_unavailable"))?;
+    notifications.hermes_reply(&window, &conversation_id, title, body)
 }
 
 #[tauri::command]
@@ -425,38 +440,7 @@ pub async fn hermes_open_profile_window(
     connection_id: Option<String>,
     profile: String,
 ) -> Result<(), AppError> {
-    let profile = profile.trim().to_owned();
-    if profile.is_empty()
-        || !profile
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-    {
-        return Err(AppError::new(
-            "E_HERMES_PROFILE_NAME",
-            "Invalid profile name for a new window.",
-        ));
-    }
-    let label = format!("hermes-profile-{profile}");
-    if let Some(window) = tauri::Manager::get_webview_window(&app, &label) {
-        let _ = window.show();
-        let _ = window.set_focus();
-        return Ok(());
-    }
-    let connection = connection_id.unwrap_or_else(|| "local".into());
-    let url = format!(
-        "index.html?profile={}&connection={}#/assistant",
-        urlencoding::encode(&profile),
-        urlencoding::encode(&connection)
-    );
-    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App(url.into()))
-        .title(format!("Hermes · {profile}"))
-        .inner_size(1200.0, 820.0)
-        .min_inner_size(900.0, 640.0)
-        .build()
-        .map_err(|error| {
-            AppError::new("E_HERMES_WINDOW", "Could not open the profile window.")
-                .with_detail(error.to_string())
-        })?;
+    crate::hermes::window::open_profile_window(&app, connection_id.as_deref(), &profile, None)?;
     Ok(())
 }
 
