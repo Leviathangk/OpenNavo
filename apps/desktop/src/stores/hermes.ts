@@ -15,12 +15,7 @@ import {
 } from '@/hermes/providers';
 import { commands, unwrap, IpcError } from '@/ipc/client';
 import { isMessagingSource } from '@/hermes/platforms';
-import type {
-  HermesLoginStatus,
-  HermesModelOptions,
-  HermesRuntimeStatus,
-  HermesSteerResult
-} from '@/ipc/bindings';
+import type { HermesLoginStatus, HermesModelOptions, HermesRuntimeStatus, HermesSteerResult } from '@/ipc/bindings';
 import { useToasts } from '@/composables/useToasts';
 import rectangleIcon from '@/assets/hermes/rectangle.png';
 
@@ -2439,6 +2434,8 @@ export const useHermesStore = defineStore('hermes', () => {
     activeId.value = idValue;
     // A panel row is metadata only until it is opened.
     void loadPanelConversation(idValue);
+    // A steer that failed while this conversation was in the background waits here.
+    drainQueuedAfterTurn(idValue);
   }
 
   function newChat() {
@@ -2625,18 +2622,22 @@ export const useHermesStore = defineStore('hermes', () => {
     target.updatedAt = Date.now();
   }
 
-  function queueSteerAfterTurn(conversationId: string, text: string) {
-    queuedAfterTurn.set(conversationId, [...(queuedAfterTurn.get(conversationId) ?? []), text]);
+  function queueSteerAfterTurn(conversationId: string, text: string, front = false) {
+    const queued = queuedAfterTurn.get(conversationId) ?? [];
+    queuedAfterTurn.set(conversationId, front ? [text, ...queued] : [...queued, text]);
   }
 
   function drainQueuedAfterTurn(conversationId: string) {
     if (thinking.value) return;
+    // Turns are global but the queue belongs to one conversation. Switching away before the
+    // failed steer returns must not start this text in whichever conversation is active now.
+    if (active.value?.id !== conversationId) return;
     const queued = queuedAfterTurn.get(conversationId);
     if (!queued?.length) return;
     const [next, ...rest] = queued;
     if (rest.length) queuedAfterTurn.set(conversationId, rest);
     else queuedAfterTurn.delete(conversationId);
-    if (next) void send(next);
+    if (next) void send(next, [], conversationId);
   }
 
   function steerWasUndelivered(result: HermesSteerResult) {
@@ -2678,9 +2679,23 @@ export const useHermesStore = defineStore('hermes', () => {
     drainQueuedAfterTurn(conversation.id);
   }
 
-  async function send(text: string, attachments: string[] = []) {
+  async function send(text: string, attachments: string[] = [], targetConversationId?: string) {
+    const findTarget = () =>
+      targetConversationId ? (conversations.value.find(item => item.id === targetConversationId) ?? null) : null;
+    if (targetConversationId && !findTarget()) return;
+    const targetIsActive = () =>
+      targetConversationId === undefined || (active.value?.id === targetConversationId && Boolean(findTarget()));
+    const restoreTargetQueue = () => {
+      if (targetConversationId && findTarget()) {
+        queueSteerAfterTurn(targetConversationId, text, true);
+      }
+    };
     if (historyLoadStarted && !historyLoaded) {
       await historyReadyPromise;
+      if (!targetIsActive()) {
+        restoreTargetQueue();
+        return;
+      }
     }
     const value = text.trim();
     if (remoteActive.value && attachments.length) {
@@ -2704,13 +2719,18 @@ export const useHermesStore = defineStore('hermes', () => {
         });
         return;
       }
+      // The active conversation can change while the credential check is in flight.
+      if (!targetIsActive()) {
+        restoreTargetQueue();
+        return;
+      }
     }
     if (thinking.value) {
       if (attachments.length) {
         toasts.push({ tone: 'warning', title: 'Hermes', description: '请等待当前回复结束再发送附件。' });
         return;
       }
-      const steerConversation = ensureConversation();
+      const steerConversation = findTarget() ?? ensureConversation();
       const steerMessage = message({ role: 'user', text: value, steering: true });
       const streamingIndex = steerConversation.messages.findLastIndex(
         entry => entry.role === 'assistant' && entry.streaming
@@ -2748,7 +2768,7 @@ export const useHermesStore = defineStore('hermes', () => {
               ? '当前模型不支持中途引导，这条消息已排队到本轮结束后发送。'
               : detail
           });
-          if (thinking.value) {
+          if (thinking.value && active.value?.id === steerConversation.id) {
             stopRequested.value = true;
             stopping.value = true;
             armStopFallbacks(activeTurn, steerConversation.id);
@@ -2765,7 +2785,11 @@ export const useHermesStore = defineStore('hermes', () => {
       return;
     }
     const prompt = value || '请查看附件。';
-    const conversation = ensureConversation();
+    if (!targetIsActive()) {
+      restoreTargetQueue();
+      return;
+    }
+    const conversation = findTarget() ?? ensureConversation();
     conversation.executionGeneration = undefined;
     conversation.messages = [
       ...conversation.messages,
@@ -2778,6 +2802,13 @@ export const useHermesStore = defineStore('hermes', () => {
 
     const tauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
     if (!runtime.value && tauri) await loadRuntime();
+    if (!targetIsActive()) {
+      if (activeTurn === turn) {
+        thinking.value = false;
+        activeTurn = ++turnSeq;
+      }
+      return;
+    }
     if (!runtime.value?.ready && tauri && !remoteActive.value) {
       thinking.value = false;
       toasts.push({
@@ -2879,6 +2910,7 @@ export const useHermesStore = defineStore('hermes', () => {
         }
       }
       try {
+        if (!targetIsActive()) return;
         const reply = await unwrap(
           commands.hermesChat({
             prompt,
