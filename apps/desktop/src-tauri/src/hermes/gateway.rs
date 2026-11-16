@@ -322,7 +322,7 @@ async fn open_session(
     input: &HermesChatInput,
     home: &Path,
     remote: bool,
-) -> Result<(String, String, Vec<Value>), AppError> {
+) -> Result<(String, String, Vec<Value>, Option<i64>), AppError> {
     let provider = if remote {
         input.provider.clone()
     } else {
@@ -354,7 +354,8 @@ async fn open_session(
                 .and_then(Value::as_array)
                 .cloned()
                 .unwrap_or_default();
-            return Ok((live.to_owned(), stored_id, open));
+            let generation = result.get("execution_generation").and_then(Value::as_i64);
+            return Ok((live.to_owned(), stored_id, open, generation));
         }
     }
     let mut params = json!({
@@ -411,7 +412,8 @@ async fn open_session(
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
-    Ok((live, stored, open))
+    let generation = result.get("execution_generation").and_then(Value::as_i64);
+    Ok((live, stored, open, generation))
 }
 
 /// Stream a turn through the local Hermes gateway. The desktop has no fallback
@@ -867,7 +869,7 @@ async fn chat_over_socket(
         json!({"server_requests": true}),
     )
     .await;
-    let (live_sid, stored_sid, open_requests) =
+    let (live_sid, stored_sid, open_requests, resumed_generation) =
         open_session(&mut socket, &input, home, remote).await?;
     if let Some(app) = app {
         let _ = app.emit(
@@ -957,6 +959,7 @@ async fn chat_over_socket(
         &stored_sid,
         policy,
         open_requests,
+        resumed_generation,
     )
     .await;
     // The cards, and the sender a late answer would reach, die with the turn.
@@ -976,6 +979,7 @@ async fn stream_turn(
     stored_sid: &str,
     policy: AskPolicy,
     open_requests: Vec<Value>,
+    resumed_generation: Option<i64>,
 ) -> Result<HermesChatReply, AppError> {
     let mut asks: Vec<PendingAsk> = Vec::new();
     let (answers, mut answered) = tokio::sync::mpsc::unbounded_channel::<AskAnswer>();
@@ -1013,7 +1017,10 @@ async fn stream_turn(
     }
     let mut deadline = Instant::now() + MESSAGE_TIMEOUT;
     let mut accumulated = String::new();
-    let mut execution_generation: Option<i64> = None;
+    // Resume reports the last claimed generation. The turn this submit is about to claim is
+    // strictly newer, so the snapshot is only a floor: publishing it would steer with a value
+    // the gateway is about to retire.
+    let mut execution_generation = resumed_generation;
     loop {
         // A parked question owns the clock: the turn's stall budget does not run while the user decides.
         if asks.is_empty() && Instant::now() >= deadline {
@@ -1144,12 +1151,11 @@ async fn stream_turn(
             .and_then(Value::as_str)
             .unwrap_or_default();
         let payload = params.get("payload").cloned().unwrap_or(Value::Null);
-        // Every running stamp carries the generation a steer must echo back. The value does not
-        // exist until the admission is claimed, so `session.resume`'s snapshot cannot supply it;
-        // the official client also learns it from the turn's events.
-        if let Some(generation) = params.get("execution_generation").and_then(Value::as_i64)
-            && execution_generation != Some(generation)
-        {
+        // `prompt.submit` publishes `session.info` before the claim, still carrying the previous
+        // generation and `running: false`. A steer flushed with that value is refused as
+        // `stale_generation`. Only the claim (`message.start`) or a frame that says the turn is
+        // running may advance the stamp, and only to a newer value.
+        if let Some(generation) = accepted_running_generation(execution_generation, event, params) {
             execution_generation = Some(generation);
             if let Some(app) = app {
                 let _ = app.emit(
@@ -1402,6 +1408,28 @@ pub async fn steer(
     steer_result(result)
 }
 
+/// Generation a queued steer may echo, or `None` when this frame must not move the stamp.
+///
+/// Idle `session.info` (the frame `prompt.submit` publishes before the admission is claimed)
+/// still carries the previous turn's generation. The official desktop client also refuses to
+/// move a generation backwards.
+fn accepted_running_generation(current: Option<i64>, event: &str, params: &Value) -> Option<i64> {
+    let payload = params.get("payload").unwrap_or(&Value::Null);
+    let running =
+        event == "message.start" || payload.get("running").and_then(Value::as_bool) == Some(true);
+    if !running {
+        return None;
+    }
+    let generation = params
+        .get("execution_generation")
+        .and_then(Value::as_i64)
+        .or_else(|| payload.get("execution_generation").and_then(Value::as_i64))?;
+    if current.is_some_and(|current| generation <= current) {
+        return None;
+    }
+    Some(generation)
+}
+
 /// `session.steer` rejects any other key and requires this exact generation, so keep the wire
 /// shape in one place instead of letting the local and remote paths drift apart.
 fn steer_params(live_session_id: &str, execution_generation: i64, text: &str) -> Value {
@@ -1604,6 +1632,66 @@ mod tests {
         for method in ["vault.save_login", "preview.read", "tour", "setup_beat"] {
             assert_eq!(AskKind::of(method), None, "{method}");
         }
+    }
+
+    #[test]
+    fn an_idle_session_info_is_not_the_running_generation() {
+        let idle = json!({
+            "type": "session.info",
+            "execution_generation": 7,
+            "payload": {"running": false, "execution_generation": 7}
+        });
+        assert_eq!(
+            accepted_running_generation(None, "session.info", &idle),
+            None
+        );
+        assert_eq!(
+            accepted_running_generation(Some(7), "session.info", &idle),
+            None
+        );
+        // A token frame is not a claim. The generation arrives on `message.start`.
+        let delta = json!({
+            "type": "message.delta",
+            "execution_generation": 8,
+            "payload": {"text": "x"}
+        });
+        assert_eq!(
+            accepted_running_generation(Some(7), "message.delta", &delta),
+            None
+        );
+
+        let start = json!({
+            "type": "message.start",
+            "execution_generation": 8,
+            "payload": {"text": ""}
+        });
+        assert_eq!(
+            accepted_running_generation(Some(7), "message.start", &start),
+            Some(8)
+        );
+        assert_eq!(
+            accepted_running_generation(Some(8), "message.start", &start),
+            None,
+            "the same stamp must not be published twice"
+        );
+        assert_eq!(
+            accepted_running_generation(
+                Some(8),
+                "message.start",
+                &json!({"execution_generation": 7, "payload": {}})
+            ),
+            None,
+            "a replay must not rewind the floor"
+        );
+
+        let running = json!({
+            "type": "session.info",
+            "payload": {"running": true, "execution_generation": 9}
+        });
+        assert_eq!(
+            accepted_running_generation(Some(8), "session.info", &running),
+            Some(9)
+        );
     }
 
     #[test]
