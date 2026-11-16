@@ -490,8 +490,8 @@ func TestGitHubReleasesCapsFallbackBackfillAtTwentyPages(t *testing.T) {
 		case "10":
 			page, err := strconv.Atoi(pageNumber)
 			require.NoError(t, err)
-			if page < 1 || page > releasesBackfillMaxPages {
-				t.Fatalf("requested page %d beyond the %d-page backfill cap", page, releasesBackfillMaxPages)
+			if page < 1 || page > 20 {
+				t.Fatalf("requested page %d beyond the 20-page backfill cap", page)
 			}
 			items := make([]string, 10)
 			for i := range items {
@@ -509,7 +509,7 @@ func TestGitHubReleasesCapsFallbackBackfillAtTwentyPages(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, result.Releases)
-	require.Equal(t, 3+releasesBackfillMaxPages, listCalls)
+	require.Equal(t, 23, listCalls)
 }
 
 func TestNormalizeGitHubRepo(t *testing.T) {
