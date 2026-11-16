@@ -20,10 +20,11 @@ import (
 // capped at 200 KB, matching releases.body_markdown) and rendered by @opennavo/ui's markdown-it (html:false)
 // + DOMPurify pipeline, exactly like the other upstream release sources.
 const (
-	releasesPerPage       = 100
-	releasesBackfillPages = 5       // A first fetch reads up to 500 releases so history is not page one only.
-	releasesMaxBody       = 8 << 20 // Maximum response size for one release page; oversized pages retry smaller.
-	releaseTitleMaxRune   = 300
+	releasesPerPage          = 100
+	releasesBackfillPages    = 5       // A first fetch reads up to 500 releases so history is not page one only.
+	releasesBackfillMaxPages = 50      // Bounds smaller fallback pages so a backfill cannot spend the whole source timeout.
+	releasesMaxBody          = 8 << 20 // Maximum response size for one release page; oversized pages retry smaller.
+	releaseTitleMaxRune      = 300
 	// GitHubQuotaReserve pauses github_releases fetches once the remaining primary quota falls to this
 	// fraction of the limit, leaving the rest for Homebrew commit history and source facts (#64 keeps
 	// the same last-tenth reserve).
@@ -168,17 +169,20 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		want = releasesPerPage * releasesBackfillPages
 	}
 	batch := []githubRelease{}
-	digest := sha256.New()
+	hashBatch := []githubRelease{}
+	hashTags := map[string]bool{}
 	perPage := releasesPerPage
 	fetched := 0
+	pagesFetched := 0
 	for fetched < want {
 		// Recompute the page from the number of releases already read so a fallback can continue at the
 		// same logical offset with a different page size.
 		page := fetched/perPage + 1
 		headers := http.Header{}
-		if page == 1 && s.ETag != "" {
+		if page == 1 && perPage == releasesPerPage && s.ETag != "" {
 			// A 304 costs no primary quota. The list embeds asset download counters, so busy repositories
-			// still change ETag often; unchanged notes are then deduplicated by body hash in the store.
+			// still change ETag often; unchanged notes are then deduplicated by body hash in the store. Only
+			// the full page validates the whole newest-100 window; a fallback ETag covers fewer releases.
 			headers.Set("If-None-Match", s.ETag)
 		}
 		target := "https://api.github.com/repos/" + repo + "/releases?" + url.Values{
@@ -202,7 +206,7 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		if err := checkStatus(status, responseHeaders); err != nil {
 			return out, err
 		}
-		if page == 1 {
+		if page == 1 && perPage == releasesPerPage {
 			out.ETag = responseHeaders.Get("ETag")
 			if status == http.StatusNotModified {
 				out.NotModified = true
@@ -216,10 +220,15 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		if err := json.Unmarshal(body, &items); err != nil || items == nil {
 			return out, &Error{Kind: "invalid_json"}
 		}
-		if fetched < releasesPerPage {
-			// Hash the newest 100 releases even when they arrived over several smaller pages: hashing the
-			// backfill pages too would make every first fetch's hash differ from the next fetch's.
-			digest.Write(body)
+		for _, item := range items {
+			if len(hashBatch) >= releasesPerPage {
+				break
+			}
+			if item.TagName == "" || hashTags[item.TagName] {
+				continue
+			}
+			hashTags[item.TagName] = true
+			hashBatch = append(hashBatch, item)
 		}
 		batch = append(batch, items...)
 		// A page covers up to page*perPage releases even when it overlaps releases already read after a
@@ -228,8 +237,19 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		if len(items) < perPage {
 			break
 		}
+		pagesFetched++
+		if s.Backfill && pagesFetched >= releasesBackfillMaxPages {
+			break
+		}
 	}
-	out.ContentHash = hex.EncodeToString(digest.Sum(nil))
+	// Hash the newest 100 unique releases, not the raw page bodies: the same releases split across
+	// fallback pages must produce the same ContentHash as one full page.
+	hashPayload, err := json.Marshal(hashBatch)
+	if err != nil {
+		return out, &Error{Kind: "invalid_json"}
+	}
+	sum := sha256.Sum256(hashPayload)
+	out.ContentHash = hex.EncodeToString(sum[:])
 	if s.ContentHash != "" && s.ContentHash == out.ContentHash {
 		// The same list as last time, so nothing would be written and the visibility request that
 		// gates writes has nothing to decide. This is the common case for a busy repository whose

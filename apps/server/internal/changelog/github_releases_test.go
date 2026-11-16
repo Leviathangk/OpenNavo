@@ -432,6 +432,52 @@ func TestGitHubReleasesFallsBackToSmallerPagesAtTheSameLogicalOffset(t *testing.
 	require.NotEmpty(t, result.ContentHash)
 }
 
+func TestGitHubReleasesFallbackHashAndETagStayPageLayoutIndependent(t *testing.T) {
+	items := make([]string, releasesPerPage)
+	for i := range items {
+		items[i] = fmt.Sprintf(`{"tag_name":"v1.%d.0","body":"notes"}`, i)
+	}
+	list := func(start, end int) string { return "[" + strings.Join(items[start:end], ",") + "]" }
+
+	full := NewFetcher("test")
+	full.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		require.Equal(t, "100", r.URL.Query().Get("per_page"))
+		response := reply(http.StatusOK, list(0, releasesPerPage))
+		response.Header.Set("ETag", `W/"full"`)
+		return response, nil
+	})
+	fullResult, err := full.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "owner/app"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, `W/"full"`, fullResult.ETag)
+
+	fallback := NewFetcher("test")
+	fallback.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		perPage, pageNumber := r.URL.Query().Get("per_page"), r.URL.Query().Get("page")
+		switch perPage + ":" + pageNumber {
+		case "100:1":
+			return reply(http.StatusOK, strings.Repeat("x", releasesMaxBody+1)), nil
+		case "50:1":
+			response := reply(http.StatusOK, list(0, 50))
+			response.Header.Set("ETag", `W/"half"`)
+			return response, nil
+		case "50:2":
+			return reply(http.StatusOK, list(50, releasesPerPage)), nil
+		default:
+			t.Fatalf("unexpected release request %s:%s", perPage, pageNumber)
+			return nil, nil
+		}
+	})
+	fallbackResult, err := fallback.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "owner/app"},
+	})
+	require.NoError(t, err)
+	require.Empty(t, fallbackResult.ETag, "a fallback page ETag covers fewer than 100 releases")
+	require.Len(t, fallbackResult.Releases, releasesPerPage)
+	require.Equal(t, fullResult.ContentHash, fallbackResult.ContentHash)
+}
+
 func TestNormalizeGitHubRepo(t *testing.T) {
 	for raw, want := range map[string]string{
 		"overtake/TelegramSwift":                             "overtake/TelegramSwift",

@@ -61,6 +61,26 @@ func TestDownloadSizeAllVisibleUnknownAndStaleVersion(t *testing.T) {
 	require.Equal(t, true, stats["skipped"])
 }
 
+func TestDownloadSizeSkipsHiddenPackage(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"hidden-sample","version":"1","url":"https://download.example.test/app.dmg"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	row, err := st.PublicPackage(ctx, "cask", "hidden-sample", "zh-CN")
+	require.NoError(t, err)
+	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO package_meta(package_id,hidden) VALUES (?,true)
+		ON CONFLICT (package_id) DO UPDATE SET hidden=true`, row.ID).Error)
+
+	svc := &SizeService{Store: st, Fetcher: sizeStub(func(context.Context, string) (*int64, error) {
+		t.Fatal("a hidden package must not be measured")
+		return nil, nil
+	})}
+	stats, err := svc.Run(ctx, row.ID)
+	require.NoError(t, err)
+	require.Equal(t, true, stats["skipped"])
+}
+
 func TestDailySizesOnlyQueueMissingVisibleCasks(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewStore(t)
