@@ -36,6 +36,7 @@ async function copyLink() {
 
 <template>
   <aside
+    data-testid="client-cta"
     class="flex h-full flex-col gap-14px rounded-huge border border-solid border-line-subtle bg-surface-card p-18px"
   >
     <div class="flex items-center gap-10px">
@@ -77,7 +78,15 @@ async function copyLink() {
         >
           {{ t('download.button') }}
         </OnButton>
-        <OnButton variant="secondary" block icon="arrow-up-right" :loading="opening" @click="openClient">
+        <!-- Hide the Mac-only action until detection finishes, so a phone never flashes it. -->
+        <OnButton
+          v-if="platform"
+          variant="secondary"
+          block
+          icon="arrow-up-right"
+          :loading="opening"
+          @click="openClient"
+        >
           {{ opening ? t('client.opening') : t('client.open') }}
         </OnButton>
       </template>

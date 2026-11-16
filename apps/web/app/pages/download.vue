@@ -220,9 +220,6 @@ useSchemaOrg(
         <OnButton variant="primary" size="lg" shape="round" icon="copy" @click="copyPageLink">
           {{ t('client.copyLink') }}
         </OnButton>
-        <OnButton v-if="release && dmg" variant="ghost" shape="round" :href="dmg.url">
-          {{ t('download.button') }}
-        </OnButton>
       </div>
       <div v-else-if="release && dmg" class="mt-32px flex flex-col items-center gap-14px">
         <OnButton
@@ -287,7 +284,7 @@ useSchemaOrg(
       <LandingPackageLinks />
 
       <div
-        v-if="release && dmg"
+        v-if="release && dmg && !nonMac"
         class="grid grid-cols-1 items-start gap-12px lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]"
       >
         <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-20px py-20px md:px-24px">

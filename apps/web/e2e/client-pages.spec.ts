@@ -16,7 +16,7 @@ test('Mac app pages explain the client and offer the download', async ({ page })
     'href',
     '/download'
   );
-  await expect(page.getByText('Runs locally. Nothing is uploaded.')).toBeVisible();
+  await expect(page.getByTestId('client-cta').getByText('Runs locally. Nothing is uploaded.')).toBeVisible();
 });
 
 test('The sidebar lists every Mac app destination', async ({ page }) => {

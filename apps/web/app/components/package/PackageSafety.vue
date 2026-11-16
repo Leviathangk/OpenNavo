@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatDate } from '~/utils/packageDate';
+import { BRAND } from '@opennavo/shared';
 import { displayUrl, OnIcon } from '@opennavo/ui';
 import { aroundDate, isoDate, isVerified, verifiedIdentities, verifiedPrices } from '~/utils/packageFacts';
 import type { FactEvidence, PackagePage } from '~/utils/packageFacts';
@@ -65,6 +66,8 @@ const visible = computed(() => Boolean(security.value) || channels.value.length 
 function scan(event: MouseEvent) {
   const url = security.value?.scanUrl;
   if (!url) return;
+  // The API may return a plain web address; only the app's own preview link needs the handoff.
+  if (!url.startsWith(`${BRAND.scheme}://`)) return;
   event.preventDefault();
   openUrl(url, 'scan', props.pkg.displayName);
 }

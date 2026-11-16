@@ -18,7 +18,7 @@ const { openUrl } = useClientHandoff();
 function open(event: MouseEvent) {
   event.preventDefault();
   trackEvent('open_in_app');
-  openUrl(props.href, props.href.includes('/uninstall/') ? 'uninstall' : 'scan', props.label);
+  openUrl(props.href, props.href.includes('/uninstall/') ? 'uninstall' : 'scan');
 }
 </script>
 

@@ -1,3 +1,4 @@
+import { getCurrentScope, onScopeDispose } from 'vue';
 import { buildDeepLink } from '@opennavo/shared';
 import type { ClientRoute, PackageKind } from '@opennavo/shared';
 import { trackEvent } from '~/utils/analytics';
@@ -26,7 +27,6 @@ export interface ClientHandoffTarget {
 const PROMPT_KEY = 'client-handoff:prompt';
 const OPENING_KEY = 'client-handoff:opening';
 const SKIP_PROMPT_KEY = 'onv:skip-app-prompt';
-const SEEN_KEY = 'onv:client-seen';
 // Opening the client can take a moment, especially on first launch. Give it long enough that a slow
 // launch does not show the fallback over an app that is already opening.
 const DETECT_MS = 2200;
@@ -40,6 +40,18 @@ export function useClientHandoff() {
   const prompt = useState<ClientHandoffTarget | null>(PROMPT_KEY, () => null);
   const opening = useState<boolean>(OPENING_KEY, () => false);
   const { copy } = useCopyCommand();
+  // A page change unmounts the component that started the handoff. Cancel its pending detection so a
+  // fallback dialog cannot appear on the next page, and release the shared opening flag with it.
+  let cancelPending: (() => void) | null = null;
+
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      if (!cancelPending) return;
+      cancelPending();
+      cancelPending = null;
+      opening.value = false;
+    });
+  }
 
   function open(target: ClientHandoffTarget) {
     if (opening.value) return;
@@ -49,21 +61,21 @@ export function useClientHandoff() {
     const mark = () => {
       left = true;
     };
+    const markHidden = () => {
+      if (document.visibilityState === 'hidden') left = true;
+    };
     window.addEventListener('blur', mark, { once: true });
-    document.addEventListener('visibilitychange', mark, { once: true });
-    launchDeepLink(target.url);
-    setTimeout(() => {
+    document.addEventListener('visibilitychange', markHidden);
+    const detach = () => {
       window.removeEventListener('blur', mark);
-      document.removeEventListener('visibilitychange', mark);
+      document.removeEventListener('visibilitychange', markHidden);
+    };
+    launchDeepLink(target.url);
+    const timer = setTimeout(() => {
+      detach();
+      cancelPending = null;
       opening.value = false;
-      if (left) {
-        try {
-          localStorage.setItem(SEEN_KEY, '1');
-        } catch {
-          // Storage is optional; the handoff already succeeded.
-        }
-        return;
-      }
+      if (left) return;
       let skip = false;
       try {
         skip = localStorage.getItem(SKIP_PROMPT_KEY) === '1';
@@ -76,6 +88,10 @@ export function useClientHandoff() {
       }
       prompt.value = target;
     }, DETECT_MS);
+    cancelPending = () => {
+      clearTimeout(timer);
+      detach();
+    };
   }
 
   function openPackage(target: { kind: PackageKind; token: string; name: string; command?: string }) {
