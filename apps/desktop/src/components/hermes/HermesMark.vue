@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { useId } from 'vue';
+import { computed, useId } from 'vue';
+import { LOGO } from '@opennavo/shared';
 
-withDefaults(defineProps<{ size?: number }>(), { size: 24 });
+const props = withDefaults(defineProps<{ size?: number }>(), { size: 24 });
 const gradient = `hermes-${useId()}`;
+// Polaris is 11.3 units tall in the logo's 24-unit box; use the fuller small cut at 32 px and below.
+const compact = computed(() => props.size <= 32);
+const star = computed(() => (compact.value ? LOGO.small.innerPath : LOGO.innerPath));
+const transform = computed(() =>
+  compact.value ? 'translate(-15.25 2.71) scale(1.65)' : 'translate(-15.8648 1.8) scale(1.7)'
+);
 </script>
 
 <template>
@@ -15,24 +22,24 @@ const gradient = `hermes-${useId()}`;
     aria-hidden="true"
   >
     <defs>
-      <linearGradient :id="gradient" x1="5" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FF8F6B" />
-        <stop offset="0.55" stop-color="#C9C9FF" />
-        <stop offset="1" stop-color="#8E8EF7" />
+      <linearGradient :id="gradient" x1="0" y1="0" x2="1" y2="1">
+        <stop v-for="stop in LOGO.outerGradient" :key="stop.offset" :offset="stop.offset" :stop-color="stop.color" />
+      </linearGradient>
+      <linearGradient :id="`${gradient}-spark`" x1="0" y1="0" x2="1" y2="1">
+        <stop
+          v-for="stop in LOGO.innerGradientOnLight"
+          :key="stop.offset"
+          :offset="stop.offset"
+          :stop-color="stop.color"
+        />
       </linearGradient>
     </defs>
+    <g :transform="transform">
+      <path :d="star" :fill="`url(#${gradient})`" />
+    </g>
     <path
-      d="M12 3.15c.38 4.45 1.4 5.47 5.85 5.85-4.45.38-5.47 1.4-5.85 5.85-.38-4.45-1.4-5.47-5.85-5.85 4.45-.38 5.47-1.4 5.85-5.85Z"
-      :fill="`url(#${gradient})`"
+      d="M19 14.9c.23 1.9.68 2.35 2.58 2.58-1.9.23-2.35.68-2.58 2.58-.23-1.9-.68-2.35-2.58-2.58 1.9-.23 2.35-.68 2.58-2.58Z"
+      :fill="`url(#${gradient}-spark)`"
     />
-    <path
-      d="M17.15 14.9c.25 2.55-1.15 4.4-3.7 4.95"
-      fill="none"
-      stroke="#8E8EF7"
-      stroke-width="1.35"
-      stroke-linecap="round"
-      opacity="0.75"
-    />
-    <circle cx="18.55" cy="14.15" r="1.15" fill="#FFB08F" />
   </svg>
 </template>

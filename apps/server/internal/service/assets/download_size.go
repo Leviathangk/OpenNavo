@@ -13,6 +13,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/fetch"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"golang.org/x/time/rate"
+	"gorm.io/gorm"
 )
 
 type domainRate struct {
@@ -125,6 +126,11 @@ func (s *SizeService) Run(ctx context.Context, id int64) (map[string]any, error)
 		return s.Batch(ctx)
 	}
 	p, err := s.Store.DownloadSizePackage(ctx, id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// Catalog syncs can hide or remove a package after this job was queued. Nothing is left to
+		// measure, and retrying cannot bring the row back; treat it as an idempotent skip.
+		return map[string]any{"skipped": true}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
