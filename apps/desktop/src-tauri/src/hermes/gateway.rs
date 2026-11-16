@@ -329,6 +329,7 @@ async fn next_frame(socket: &mut Socket, limit: Option<Duration>) -> Result<Valu
     }
 }
 
+#[cfg(test)]
 async fn recv_json(socket: &mut Socket) -> Result<Value, AppError> {
     next_frame(socket, Some(MESSAGE_TIMEOUT)).await
 }
@@ -415,33 +416,32 @@ async fn open_session(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
+        && let Some(result) = resume_session(socket, stored).await?
     {
-        if let Some(result) = resume_session(socket, stored).await? {
-            let live = result
-                .get("session_id")
-                .and_then(Value::as_str)
-                .ok_or_else(|| {
-                    AppError::new(
-                        "E_HERMES_GATEWAY_STREAM",
-                        "Hermes gateway resumed a session without a runtime id.",
-                    )
-                })?;
-            let stored_id = result
-                .get("stored_session_id")
-                .and_then(Value::as_str)
-                .unwrap_or(stored)
-                .to_owned();
-            // `open_requests` replays whoever was still waiting on a human (an approval card written
-            // to the previous connection): without re-delivering it the agent stays parked until the
-            // runtime's own deadline and the user never sees the question.
-            let open = result
-                .get("open_requests")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
-            let generation = result.get("execution_generation").and_then(Value::as_i64);
-            return Ok((live.to_owned(), stored_id, open, true, generation));
-        }
+        let live = result
+            .get("session_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| {
+                AppError::new(
+                    "E_HERMES_GATEWAY_STREAM",
+                    "Hermes gateway resumed a session without a runtime id.",
+                )
+            })?;
+        let stored_id = result
+            .get("stored_session_id")
+            .and_then(Value::as_str)
+            .unwrap_or(stored)
+            .to_owned();
+        // `open_requests` replays whoever was still waiting on a human (an approval card written
+        // to the previous connection): without re-delivering it the agent stays parked until the
+        // runtime's own deadline and the user never sees the question.
+        let open = result
+            .get("open_requests")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let generation = result.get("execution_generation").and_then(Value::as_i64);
+        return Ok((live.to_owned(), stored_id, open, true, generation));
     }
     let mut params = json!({
         "cols": 120,
@@ -1111,6 +1111,7 @@ fn emit_settled(app: Option<&AppHandle>, settled: &Value) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn chat_over_socket(
     mut socket: Socket,
     home: &Path,

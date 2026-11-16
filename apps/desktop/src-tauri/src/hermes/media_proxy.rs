@@ -144,6 +144,7 @@ fn stream_client() -> Result<reqwest::Client, AppError> {
 }
 
 /// Remember one panel stream URL and return the loopback URL the webview may load.
+#[cfg(test)]
 pub(super) fn publish(upstream: String) -> Result<String, AppError> {
     publish_with_cookie(upstream, None)
 }
