@@ -88,6 +88,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::hermes::hermes_attachment_info,
             commands::hermes::hermes_clipboard_image,
             commands::hermes::hermes_attachment_preview,
+            commands::hermes::hermes_media_resolve,
+            commands::hermes::hermes_media_open_url,
             commands::hermes::hermes_history_load,
             commands::hermes::hermes_history_save,
             commands::hermes::hermes_logout,

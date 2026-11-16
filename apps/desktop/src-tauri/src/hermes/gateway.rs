@@ -8,6 +8,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
+use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use tauri::{AppHandle, Emitter};
@@ -203,13 +204,46 @@ async fn ensure_server(
 }
 
 fn rpc_error(value: &Value) -> Option<String> {
-    value.get("error").map(|error| {
-        error
-            .get("message")
-            .and_then(Value::as_str)
-            .unwrap_or("Hermes gateway error")
-            .to_owned()
-    })
+    value
+        .get("error")
+        .filter(|error| !error.is_null())
+        .map(|error| {
+            error
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("Hermes gateway error")
+                .to_owned()
+        })
+}
+
+fn is_session_not_found_error(value: &Value) -> bool {
+    let Some(error) = value.get("error").filter(|error| !error.is_null()) else {
+        return false;
+    };
+    let message = error
+        .get("message")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or_default();
+    let message = message.trim_end_matches('.');
+    let canonical = message
+        .strip_prefix("4001:")
+        .map(str::trim)
+        .unwrap_or(message)
+        .eq_ignore_ascii_case("session not found");
+    let code = error.get("code").and_then(|code| {
+        code.as_i64()
+            .or_else(|| code.as_str().and_then(|value| value.parse().ok()))
+    });
+    match code {
+        // `session.resume` reports a missing stored session as 4007. Older gateways used 4001
+        // for the same condition, but only when the message is the canonical one.
+        Some(4007) => true,
+        Some(4001) => canonical,
+        // Never accept a 5000 (`resume failed: …`) payload that merely wraps the phrase.
+        Some(_) => false,
+        None => canonical,
+    }
 }
 
 async fn send_json(socket: &mut Socket, value: Value) -> Result<(), AppError> {
@@ -295,18 +329,29 @@ async fn next_frame(socket: &mut Socket, limit: Option<Duration>) -> Result<Valu
     }
 }
 
+#[cfg(test)]
 async fn recv_json(socket: &mut Socket) -> Result<Value, AppError> {
     next_frame(socket, Some(MESSAGE_TIMEOUT)).await
 }
 
 async fn rpc(socket: &mut Socket, id: u64, method: &str, params: Value) -> Result<Value, AppError> {
+    rpc_within(socket, id, method, params, MESSAGE_TIMEOUT).await
+}
+
+async fn rpc_within(
+    socket: &mut Socket,
+    id: u64,
+    method: &str,
+    params: Value,
+    limit: Duration,
+) -> Result<Value, AppError> {
     send_json(
         socket,
         json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}),
     )
     .await?;
     loop {
-        let value = recv_json(socket).await?;
+        let value = next_frame(socket, Some(limit)).await?;
         if value.get("id").and_then(Value::as_u64) != Some(id) {
             continue;
         }
@@ -317,12 +362,48 @@ async fn rpc(socket: &mut Socket, id: u64, method: &str, params: Value) -> Resul
     }
 }
 
+/// Resume a stored session without treating every transport/RPC failure as "the session is gone".
+/// Only an explicit `session not found` may fall through to `session.create`; timeouts, auth
+/// failures and transient gateway errors must reach the caller with the original session intact.
+async fn resume_session(socket: &mut Socket, stored: &str) -> Result<Option<Value>, AppError> {
+    send_json(
+        socket,
+        json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session.resume",
+            "params": {"session_id": stored, "cols": 120, "source": "desktop"}
+        }),
+    )
+    .await?;
+    loop {
+        let value = next_frame(socket, Some(MESSAGE_TIMEOUT)).await?;
+        if value.get("id").and_then(Value::as_u64) != Some(1) {
+            continue;
+        }
+        if value.get("error").is_some_and(|error| !error.is_null()) {
+            if is_session_not_found_error(&value) {
+                return Ok(None);
+            }
+            let message = rpc_error(&value).unwrap_or_else(|| "Hermes gateway error".to_owned());
+            let code = value
+                .get("error")
+                .and_then(|error| error.get("code"))
+                .map(Value::to_string)
+                .unwrap_or_else(|| "unknown".to_owned());
+            return Err(AppError::new("E_HERMES_GATEWAY_STREAM", message)
+                .with_detail(format!("session.resume failed with code {code}.")));
+        }
+        return Ok(Some(value.get("result").cloned().unwrap_or(Value::Null)));
+    }
+}
+
 async fn open_session(
     socket: &mut Socket,
     input: &HermesChatInput,
     home: &Path,
     remote: bool,
-) -> Result<(String, String, Vec<Value>, Option<i64>), AppError> {
+) -> Result<(String, String, Vec<Value>, bool, Option<i64>), AppError> {
     let provider = if remote {
         input.provider.clone()
     } else {
@@ -335,28 +416,32 @@ async fn open_session(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
+        && let Some(result) = resume_session(socket, stored).await?
     {
-        let resume = json!({"session_id": stored, "cols": 120, "source": "desktop"});
-        let result = rpc(socket, 1, "session.resume", resume).await;
-        if let Ok(result) = result
-            && let Some(live) = result.get("session_id").and_then(Value::as_str)
-        {
-            let stored_id = result
-                .get("stored_session_id")
-                .and_then(Value::as_str)
-                .unwrap_or(stored)
-                .to_owned();
-            // `open_requests` replays whoever was still waiting on a human (an approval card written
-            // to the previous connection): without re-delivering it the agent stays parked until the
-            // runtime's own deadline and the user never sees the question.
-            let open = result
-                .get("open_requests")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
-            let generation = result.get("execution_generation").and_then(Value::as_i64);
-            return Ok((live.to_owned(), stored_id, open, generation));
-        }
+        let live = result
+            .get("session_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| {
+                AppError::new(
+                    "E_HERMES_GATEWAY_STREAM",
+                    "Hermes gateway resumed a session without a runtime id.",
+                )
+            })?;
+        let stored_id = result
+            .get("stored_session_id")
+            .and_then(Value::as_str)
+            .unwrap_or(stored)
+            .to_owned();
+        // `open_requests` replays whoever was still waiting on a human (an approval card written
+        // to the previous connection): without re-delivering it the agent stays parked until the
+        // runtime's own deadline and the user never sees the question.
+        let open = result
+            .get("open_requests")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let generation = result.get("execution_generation").and_then(Value::as_i64);
+        return Ok((live.to_owned(), stored_id, open, true, generation));
     }
     let mut params = json!({
         "cols": 120,
@@ -413,7 +498,166 @@ async fn open_session(
         .cloned()
         .unwrap_or_default();
     let generation = result.get("execution_generation").and_then(Value::as_i64);
-    Ok((live, stored, open, generation))
+    Ok((live, stored, open, false, generation))
+}
+
+/// One attachment ready for the open session.
+#[derive(Debug)]
+struct PreparedAttachment {
+    path: String,
+    name: String,
+    kind: AttachKind,
+}
+
+#[derive(Debug)]
+enum AttachKind {
+    /// Local `hermes serve` can read `path`. `image.attach` accepts the gateway allowlist.
+    LocalImage,
+    LocalFile,
+    /// Panel authority sessions only implement `image.attach_bytes`, and only for these types.
+    /// `image.attach` looks the session up in the legacy table and returns `session not found`.
+    RemoteImage(Vec<u8>),
+    /// Everything else, including bmp/tiff/svg/ico and HEIC, goes through `file.attach`'s
+    /// `data_url`. The panel gateway cannot read this Mac's path.
+    RemoteFile(Vec<u8>),
+}
+
+/// Extensions `image.attach` accepts. This is Hermes gateway `_IMAGE_EXTENSIONS`
+/// (`hermes_cli/cli_terminal_input.py`). HEIC, HEIF and AVIF are not in that set:
+/// sending them as `image.attach` fails the turn with 4016 before `prompt.submit`.
+pub(crate) fn attachment_is_image(path: &Path) -> bool {
+    extension_is(
+        path,
+        &[
+            "png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tif", "svg", "ico",
+        ],
+    )
+}
+
+/// Types `gateway.session_images.attach_bytes` will stage. The wider `image.attach` set is
+/// rejected there with `invalid_params`.
+fn remote_image_bytes(path: &Path) -> bool {
+    extension_is(path, &["png", "jpg", "jpeg", "gif", "webp"])
+}
+
+fn extension_is(path: &Path, allowed: &[&str]) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            allowed
+                .iter()
+                .any(|allowed| extension.eq_ignore_ascii_case(allowed))
+        })
+}
+
+fn encode_bytes(bytes: &[u8]) -> String {
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+/// Remote attachments travel inside one JSON-RPC frame. The panel raises its websocket limit
+/// for this (`_DESKTOP_ATTACHMENT_WS_MAX_BYTES`); 16 MiB matches the webapp upload cap.
+const REMOTE_ATTACHMENT_MAX_BYTES: u64 = 16 * 1024 * 1024;
+const ATTACHMENT_RPC_TIMEOUT: Duration = Duration::from_secs(300);
+
+fn file_name(path: &Path) -> String {
+    path.file_name()
+        .map(|value| value.to_string_lossy().into_owned())
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "attachment".to_owned())
+}
+
+async fn prepare_attachments(
+    input: &HermesChatInput,
+    remote: bool,
+) -> Result<Vec<PreparedAttachment>, AppError> {
+    if remote {
+        input
+            .profile_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(super::remote_auth_required)?;
+    }
+    let mut prepared = Vec::with_capacity(input.attachments.len());
+    for attachment in &input.attachments {
+        let path = Path::new(attachment);
+        let metadata = tokio::fs::metadata(path).await.map_err(|error| {
+            AppError::new("E_HERMES_ATTACHMENT", "The attached file no longer exists.")
+                .with_detail(error.to_string())
+        })?;
+        if !metadata.is_file() {
+            return Err(AppError::new(
+                "E_HERMES_ATTACHMENT",
+                "The attached file is not a regular file.",
+            ));
+        }
+        let name = file_name(path);
+        let kind = if remote {
+            if metadata.len() > REMOTE_ATTACHMENT_MAX_BYTES {
+                return Err(AppError::new(
+                    "E_HERMES_ATTACHMENT",
+                    "Remote attachments are limited to 16 MB.",
+                ));
+            }
+            let bytes = tokio::fs::read(path).await.map_err(|error| {
+                AppError::new("E_HERMES_ATTACHMENT", "Could not read the attached file.")
+                    .with_detail(error.to_string())
+            })?;
+            if bytes.len() as u64 > REMOTE_ATTACHMENT_MAX_BYTES {
+                return Err(AppError::new(
+                    "E_HERMES_ATTACHMENT",
+                    "Remote attachments are limited to 16 MB.",
+                ));
+            }
+            if remote_image_bytes(path) {
+                AttachKind::RemoteImage(bytes)
+            } else {
+                AttachKind::RemoteFile(bytes)
+            }
+        } else if attachment_is_image(path) {
+            AttachKind::LocalImage
+        } else {
+            AttachKind::LocalFile
+        };
+        prepared.push(PreparedAttachment {
+            path: attachment.clone(),
+            name,
+            kind,
+        });
+    }
+    Ok(prepared)
+}
+
+fn attach_params(attachment: &PreparedAttachment, session_id: &str) -> (&'static str, Value) {
+    match &attachment.kind {
+        AttachKind::LocalImage => (
+            "image.attach",
+            json!({"session_id": session_id, "path": attachment.path}),
+        ),
+        AttachKind::LocalFile => (
+            "file.attach",
+            json!({"session_id": session_id, "path": attachment.path}),
+        ),
+        AttachKind::RemoteImage(bytes) => (
+            "image.attach_bytes",
+            json!({
+                "session_id": session_id,
+                "content_base64": encode_bytes(bytes),
+                "filename": attachment.name,
+            }),
+        ),
+        AttachKind::RemoteFile(bytes) => (
+            "file.attach",
+            json!({
+                "session_id": session_id,
+                "name": attachment.name,
+                "data_url": format!(
+                    "data:application/octet-stream;base64,{}",
+                    encode_bytes(bytes)
+                ),
+            }),
+        ),
+    }
 }
 
 /// Stream a turn through the local Hermes gateway. The desktop has no fallback
@@ -442,7 +686,8 @@ pub async fn chat(
         )
         .with_detail(error.to_string())
     })?;
-    chat_over_socket(socket, home, state, input, app, sink, false).await
+    let attachments = prepare_attachments(&input, false).await?;
+    chat_over_socket(socket, home, state, input, attachments, app, sink, false).await
 }
 
 fn remote_ws_url_auth(url: &str, query: &str) -> Result<String, AppError> {
@@ -501,15 +746,31 @@ async fn connect_remote_auth(url: &str, query: &str) -> Result<Socket, AppError>
 
 pub async fn chat_remote_auth(
     url: &str,
-    query: &str,
+    query: Option<&str>,
     home: &Path,
     state: &HermesRuntimeState,
     input: HermesChatInput,
     app: Option<&AppHandle>,
     sink: Option<UnboundedSender<String>>,
 ) -> Result<HermesChatReply, AppError> {
-    let socket = connect_remote_auth(url, query).await?;
-    chat_over_socket(socket, home, state, input, app, sink, true).await
+    // Read attachments before opening the socket. The panel ws ticket is single-use and lives
+    // for 30 seconds, so it is minted immediately before connect, after this local read.
+    let attachments = prepare_attachments(&input, true).await?;
+    let query = match query {
+        Some(query) => query.to_owned(),
+        None => {
+            let profile_id = input
+                .profile_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(super::remote_auth_required)?;
+            let ticket = super::panel::ticket_for(profile_id).await?;
+            format!("ticket={}", urlencoding::encode(&ticket))
+        }
+    };
+    let socket = connect_remote_auth(url, &query).await?;
+    chat_over_socket(socket, home, state, input, attachments, app, sink, true).await
 }
 
 /// Fallback window when a request carries no `timeout_s`. Matches the runtime's own
@@ -850,11 +1111,13 @@ fn emit_settled(app: Option<&AppHandle>, settled: &Value) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn chat_over_socket(
     mut socket: Socket,
     home: &Path,
     state: &HermesRuntimeState,
     input: HermesChatInput,
+    attachments: Vec<PreparedAttachment>,
     app: Option<&AppHandle>,
     sink: Option<UnboundedSender<String>>,
     remote: bool,
@@ -869,12 +1132,17 @@ async fn chat_over_socket(
         json!({"server_requests": true}),
     )
     .await;
-    let (live_sid, stored_sid, open_requests, resumed_generation) =
+    let (live_sid, stored_sid, open_requests, resumed, resumed_generation) =
         open_session(&mut socket, &input, home, remote).await?;
     if let Some(app) = app {
         let _ = app.emit(
             "hermes-session",
-            json!({"requestId": input.request_id, "liveSessionId": live_sid, "sessionId": stored_sid}),
+            json!({
+                "requestId": input.request_id,
+                "liveSessionId": live_sid,
+                "sessionId": stored_sid,
+                "resumed": resumed
+            }),
         );
     }
     // A remote host still owns its tools, so its approval must reach the user even though this Mac's
@@ -895,51 +1163,30 @@ async fn chat_over_socket(
         )
         .await;
     }
-    if remote && !input.attachments.is_empty() {
-        return Err(AppError::new(
-            "E_HERMES_REMOTE_ATTACHMENT",
-            "Remote gateways do not accept local attachment paths yet.",
-        ));
-    }
     let mut prompt = input.prompt.clone();
-    for (index, attachment) in input.attachments.iter().enumerate() {
-        let path = Path::new(attachment);
-        if !path.is_file() {
-            return Err(AppError::new(
-                "E_HERMES_ATTACHMENT",
-                "The attached file no longer exists.",
-            ));
-        }
-        let image = path
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .map(|extension| {
-                matches!(
-                    extension.to_ascii_lowercase().as_str(),
-                    "png" | "jpg" | "jpeg" | "gif" | "webp" | "heic" | "heif" | "bmp" | "tiff"
-                )
-            })
-            .unwrap_or(false);
-        if image {
-            rpc(
+    for (index, attachment) in attachments.iter().enumerate() {
+        let (method, params) = attach_params(attachment, &live_sid);
+        // A remote payload can be 16 MiB of base64 on a tailnet. The turn's 180s frame budget
+        // is too short for that transfer; the old HTTP upload used the same 300s budget.
+        let attached = if remote {
+            rpc_within(
                 &mut socket,
                 10 + index as u64,
-                "image.attach",
-                json!({"session_id": live_sid, "path": attachment}),
+                method,
+                params,
+                ATTACHMENT_RPC_TIMEOUT,
             )
-            .await?;
+            .await?
         } else {
-            let attached = rpc(
-                &mut socket,
-                10 + index as u64,
-                "file.attach",
-                json!({"session_id": live_sid, "path": attachment}),
-            )
-            .await?;
-            if let Some(reference) = attached.get("ref_text").and_then(Value::as_str) {
-                prompt.push('\n');
-                prompt.push_str(reference);
-            }
+            rpc(&mut socket, 10 + index as u64, method, params).await?
+        };
+        if matches!(
+            attachment.kind,
+            AttachKind::LocalFile | AttachKind::RemoteFile(_)
+        ) && let Some(reference) = attached.get("ref_text").and_then(Value::as_str)
+        {
+            prompt.push('\n');
+            prompt.push_str(reference);
         }
     }
     send_json(
@@ -1555,8 +1802,124 @@ pub async fn chat_for_test(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
     use crate::hermes::HermesClarifyAnswer;
+
+    #[test]
+    fn image_attachments_match_the_gateway_allowlist() {
+        for extension in [
+            "png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tif", "svg", "ico",
+        ] {
+            assert!(
+                attachment_is_image(Path::new(&format!("/tmp/shot.{extension}"))),
+                "{extension}"
+            );
+            assert!(
+                attachment_is_image(Path::new(&format!(
+                    "/tmp/shot.{}",
+                    extension.to_ascii_uppercase()
+                ))),
+                "{extension} uppercase"
+            );
+        }
+        for extension in ["heic", "heif", "avif", "mp4", "pdf", "txt"] {
+            assert!(
+                !attachment_is_image(Path::new(&format!("/tmp/shot.{extension}"))),
+                "{extension}"
+            );
+        }
+    }
+
+    #[test]
+    fn remote_png_uses_attach_bytes_and_other_files_use_a_data_url() {
+        let image = PreparedAttachment {
+            path: "/tmp/a.png".into(),
+            name: "a.png".into(),
+            kind: AttachKind::RemoteImage(b"png".to_vec()),
+        };
+        let (method, params) = attach_params(&image, "sid");
+        assert_eq!(method, "image.attach_bytes");
+        assert_eq!(params["filename"], "a.png");
+        assert_eq!(params["content_base64"], encode_bytes(b"png"));
+        assert!(params.get("path").is_none());
+
+        let file = PreparedAttachment {
+            path: "/tmp/a.heic".into(),
+            name: "a.heic".into(),
+            kind: AttachKind::RemoteFile(b"heic".to_vec()),
+        };
+        let (method, params) = attach_params(&file, "sid");
+        assert_eq!(method, "file.attach");
+        assert_eq!(params["name"], "a.heic");
+        assert_eq!(
+            params["data_url"],
+            format!(
+                "data:application/octet-stream;base64,{}",
+                encode_bytes(b"heic")
+            )
+        );
+        assert!(params.get("path").is_none());
+    }
+
+    #[tokio::test]
+    async fn remote_attachments_are_read_locally() {
+        let dir = std::env::temp_dir().join(format!("hermes-attach-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let png = dir.join("shot.PNG");
+        let bmp = dir.join("shot.bmp");
+        let big = dir.join("big.bin");
+        std::fs::write(&png, b"png-bytes").unwrap();
+        std::fs::write(&bmp, b"bmp-bytes").unwrap();
+        std::fs::File::create(&big)
+            .unwrap()
+            .set_len(REMOTE_ATTACHMENT_MAX_BYTES + 1)
+            .unwrap();
+        let input = HermesChatInput {
+            prompt: "hi".into(),
+            request_id: "req".into(),
+            session_id: None,
+            provider: "custom".into(),
+            model: "m".into(),
+            effort: "low".into(),
+            fast: false,
+            api_key: None,
+            endpoint: None,
+            cwd: None,
+            attachments: vec![png.display().to_string(), bmp.display().to_string()],
+            auxiliary: Vec::new(),
+            force_aux_vision: false,
+            gateway_url: Some("http://panel.example:9119".into()),
+            profile_id: Some("panel".into()),
+            profile: None,
+            panel_auth: true,
+            mac_enabled: false,
+            control_level: "open".into(),
+            mac_terminal: false,
+            mac_screen: false,
+            mac_files: false,
+            mac_cron: false,
+            confirm_writes: false,
+        };
+        let prepared = prepare_attachments(&input, true).await.unwrap();
+        assert!(matches!(
+            &prepared[0].kind,
+            AttachKind::RemoteImage(bytes) if bytes == b"png-bytes"
+        ));
+        assert!(matches!(
+            &prepared[1].kind,
+            AttachKind::RemoteFile(bytes) if bytes == b"bmp-bytes"
+        ));
+        let local = prepare_attachments(&input, false).await.unwrap();
+        assert!(matches!(local[0].kind, AttachKind::LocalImage));
+        assert!(matches!(local[1].kind, AttachKind::LocalImage));
+        let mut too_big = input;
+        too_big.attachments = vec![big.display().to_string()];
+        let error = prepare_attachments(&too_big, true).await.unwrap_err();
+        assert_eq!(error.code, "E_HERMES_ATTACHMENT");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     /// Connect a client to an in-process WebSocket server and return both ends.
     async fn ws_pair() -> (
@@ -1589,6 +1952,80 @@ mod tests {
                 _ => continue,
             }
         }
+    }
+
+    #[tokio::test]
+    async fn resume_only_falls_back_for_an_explicit_missing_session() {
+        let (mut client, mut server) = ws_pair().await;
+        let server_task = tokio::spawn(async move {
+            let request = next_text(&mut server).await;
+            assert_eq!(request["method"], "session.resume");
+            server
+                .send(Message::Text(
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "error": {"code": 4007, "message": "session not found"}
+                    })
+                    .to_string()
+                    .into(),
+                ))
+                .await
+                .expect("resume error");
+        });
+        assert!(
+            resume_session(&mut client, "stale")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        server_task.await.unwrap();
+    }
+
+    #[test]
+    fn session_not_found_detection_rejects_wrapped_errors() {
+        for not_found in [
+            json!({"error": {"code": 4007, "message": "session not found"}}),
+            json!({"error": {"code": 4001, "message": "session not found"}}),
+            json!({"error": {"message": "Session not found."}}),
+            json!({"error": {"message": "4001: session not found"}}),
+        ] {
+            assert!(is_session_not_found_error(&not_found), "{not_found}");
+        }
+        for hidden in [
+            json!({"error": {"code": 5000, "message": "resume failed: session not found"}}),
+            json!({"error": {"code": 4001, "message": "resume failed: session not found"}}),
+            json!({"error": {"code": 5030, "message": "session not found"}}),
+        ] {
+            assert!(!is_session_not_found_error(&hidden), "{hidden}");
+        }
+    }
+
+    #[tokio::test]
+    async fn resume_does_not_hide_transient_gateway_errors() {
+        let (mut client, mut server) = ws_pair().await;
+        let server_task = tokio::spawn(async move {
+            let request = next_text(&mut server).await;
+            assert_eq!(request["method"], "session.resume");
+            server
+                .send(Message::Text(
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "error": {"code": 5030, "message": "gateway temporarily unavailable"}
+                    })
+                    .to_string()
+                    .into(),
+                ))
+                .await
+                .expect("resume error");
+        });
+        let error = resume_session(&mut client, "stored")
+            .await
+            .expect_err("transient errors must not create a new session");
+        assert_eq!(error.code, "E_HERMES_GATEWAY_STREAM");
+        assert!(error.to_string().contains("temporarily unavailable"));
+        server_task.await.unwrap();
     }
 
     fn ask(target: AskTarget, kind: AskKind, params: Value) -> PendingAsk {

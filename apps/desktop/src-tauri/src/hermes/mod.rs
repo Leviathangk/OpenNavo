@@ -27,6 +27,8 @@ pub(crate) mod install;
 pub(crate) mod legacy_migration;
 pub(crate) mod login;
 pub(crate) mod login_session;
+pub(crate) mod media;
+mod media_proxy;
 pub mod panel;
 pub(crate) mod permissions;
 pub mod profiles;
@@ -625,16 +627,7 @@ pub fn attachment_info(paths: Vec<String>) -> Vec<HermesAttachmentInfo> {
                 .map(|value| value.to_string_lossy().into_owned())
                 .unwrap_or_else(|| path.clone());
             let size = std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
-            let is_image = std::path::Path::new(&path)
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| {
-                    matches!(
-                        ext.to_ascii_lowercase().as_str(),
-                        "png" | "jpg" | "jpeg" | "gif" | "webp" | "heic" | "heif" | "bmp" | "tiff"
-                    )
-                })
-                .unwrap_or(false);
+            let is_image = gateway::attachment_is_image(std::path::Path::new(&path));
             HermesAttachmentInfo {
                 path,
                 name,
@@ -1977,12 +1970,12 @@ pub async fn chat(
     {
         let profile_id = input.profile_id.as_deref().unwrap_or_default().to_owned();
         if input.panel_auth {
-            let ticket = panel::ticket_for(&profile_id).await?;
-            let query = format!("ticket={}", urlencoding::encode(&ticket));
             let panel_url = panel::base_url_for(&profile_id)?;
+            // The ws ticket is minted inside `chat_remote_auth`, after attachments are read.
+            // Minting it here let a slow transfer spend the 30-second single-use ticket.
             return gateway::chat_remote_auth(
                 &panel_url,
-                &query,
+                None,
                 &home,
                 state,
                 input,
@@ -2288,6 +2281,20 @@ pub async fn stop(state: &HermesRuntimeState) -> Result<(), AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn attachment_info_uses_the_gateway_image_allowlist() {
+        let info = attachment_info(vec![
+            "/tmp/shot.tif".into(),
+            "/tmp/shot.heic".into(),
+            "/tmp/shot.ico".into(),
+            "/tmp/shot.avif".into(),
+        ]);
+        assert!(info[0].is_image);
+        assert!(!info[1].is_image);
+        assert!(info[2].is_image);
+        assert!(!info[3].is_image);
+    }
 
     #[test]
     fn maps_ui_providers_to_hermes_provider_ids() {

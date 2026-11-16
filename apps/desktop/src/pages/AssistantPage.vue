@@ -16,6 +16,7 @@ import { commands, unwrap } from '@/ipc/client';
 import { useHermesUiStore } from '@/stores/hermesUi';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useToasts } from '@/composables/useToasts';
+import { mediaKind } from '@/hermes/media';
 import {
   queueHermesNotificationOpen,
   takeHermesNotificationOpen,
@@ -40,6 +41,7 @@ let headerObserver: ResizeObserver | undefined;
 const contextOpen = ref(false);
 const attachments = ref<{ path: string; name: string; isImage: boolean; size?: number }[]>([]);
 const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+const REMOTE_ATTACHMENT_BYTES = 16 * 1024 * 1024;
 const attachmentPreviews = ref<Record<string, string>>({});
 const fileInput = ref<HTMLInputElement>();
 const scroll = ref<HTMLElement>();
@@ -113,17 +115,29 @@ const directoryLabel = computed(() => {
 });
 
 function addAttachment(path: string, name?: string, size?: number, image?: boolean) {
-  if (store.remoteActive) return;
   const displayName = name || path.split('/').filter(Boolean).at(-1) || path;
-  if (size && size > MAX_ATTACHMENT_BYTES) {
-    toasts.push({ tone: 'warning', title: content.value.composer.attach, description: `${displayName} > 50 MB` });
+  const limit = store.remoteActive ? REMOTE_ATTACHMENT_BYTES : MAX_ATTACHMENT_BYTES;
+  if (size && size > limit) {
+    toasts.push({
+      tone: 'warning',
+      title: content.value.composer.attach,
+      description: `${displayName} > ${store.remoteActive ? '16' : '50'} MB`
+    });
     return;
   }
-  const isImage = image ?? /\.(png|jpe?g|gif|webp|heic|heif|bmp|tiff)$/i.test(displayName);
+  const isImage = image ?? mediaKind(displayName) === 'image';
   if (!attachments.value.some(item => item.path === path)) {
     attachments.value.push({ path, name: displayName, isImage, size });
     if (isImage) void loadAttachmentPreview(path);
   }
+}
+
+function attachmentIcon(path: string): string {
+  const kind = mediaKind(path);
+  if (kind === 'image') return 'lucide:image';
+  if (kind === 'video') return 'lucide:film';
+  if (kind === 'audio') return 'lucide:music';
+  return 'lucide:paperclip';
 }
 
 async function addAttachmentPaths(paths: string[]) {
@@ -161,14 +175,6 @@ async function openAttachment(path: string) {
 }
 
 async function pickFiles() {
-  if (store.remoteActive) {
-    toasts.push({
-      tone: 'warning',
-      title: content.value.profiles.remote,
-      description: 'Remote gateways do not accept local attachment paths yet.'
-    });
-    return;
-  }
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
@@ -626,12 +632,7 @@ onBeforeUnmount(() => {
                   :alt="file.name"
                   class="h-22px w-22px shrink-0 rounded-3px object-cover"
                 />
-                <OnIcon
-                  v-else
-                  :name="file.isImage ? 'lucide:image' : 'lucide:paperclip'"
-                  :size="12"
-                  class="shrink-0 text-ink-tertiary"
-                />
+                <OnIcon v-else :name="attachmentIcon(file.path)" :size="12" class="shrink-0 text-ink-tertiary" />
                 <span class="min-w-0 truncate">{{ file.name }}</span>
                 <span v-if="file.size" class="shrink-0 text-10px text-ink-tertiary"
                   >{{ Math.ceil(file.size / 1024) }} KB</span

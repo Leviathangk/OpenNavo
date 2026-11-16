@@ -28,8 +28,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost https://cdn.opennavo.com https://*.mzstatic.com; connect-src 'self' ipc: http://ipc.localhost https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
-      "devCsp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost http://localhost:9000 https://cdn.opennavo.com https://*.mzstatic.com; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:4010 http://localhost:8080 https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost https://cdn.opennavo.com https://*.mzstatic.com; media-src 'self' asset: http://asset.localhost data: blob: http://127.0.0.1:*; connect-src 'self' ipc: http://ipc.localhost https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
+      "devCsp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost http://localhost:9000 https://cdn.opennavo.com https://*.mzstatic.com; media-src 'self' asset: http://asset.localhost data: blob: http://127.0.0.1:*; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:4010 http://localhost:8080 https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
       "assetProtocol": {
         "enable": true,
         "scope": ["$CACHE/com.opennavo.desktop/icons/**", "$APPDATA/logs/local-app-icons/**"]

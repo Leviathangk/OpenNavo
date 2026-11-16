@@ -669,6 +669,94 @@ describe('Hermes conversation store', () => {
     Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
   });
 
+  it('Keeps a resumed session id provisional until the turn succeeds', async () => {
+    vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue({
+      status: 'ok',
+      data: {
+        ready: true,
+        installed: true,
+        version: 'Hermes Agent v0.19.0',
+        expectedVersion: '0.19.0',
+        path: '/tmp/hermes',
+        dataPath: '/tmp/OpenNavoData',
+        computerUse: true,
+        outdated: false,
+        message: null
+      }
+    });
+    let requestId = '';
+    let finish: (value: unknown) => void = () => undefined;
+    vi.spyOn(commands, 'hermesChat').mockImplementation(input => {
+      requestId = input.requestId;
+      return new Promise(resolve => {
+        finish = resolve;
+      }) as never;
+    });
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+    eventMock.listeners.length = 0;
+    const store = useHermesStore();
+    await store.loadRuntime();
+    store.conversations.push({ id: 'resume-chat', messages: [], updatedAt: 1, sessionId: 'stored-old' });
+    store.activeId = 'resume-chat';
+    const sending = store.send('Continue');
+    await vi.waitFor(() => expect(requestId).not.toBe(''));
+    await vi.waitFor(() =>
+      expect(eventMock.listeners.some(listener => listener.event === 'hermes-session')).toBe(true)
+    );
+    const session = eventMock.listeners.find(listener => listener.event === 'hermes-session')!.handler;
+
+    session({ payload: { requestId, liveSessionId: 'live-new', sessionId: 'stored-new', resumed: true } });
+    await nextTick();
+    expect(store.active?.sessionId).toBe('stored-old');
+    expect(store.mediaSessionId).toBe('stored-new');
+
+    finish({ status: 'ok', data: { text: 'done', sessionId: 'stored-new', liveSessionId: 'live-new', usage: null } });
+    await sending;
+    expect(store.active?.sessionId).toBe('stored-new');
+    expect(store.mediaSessionId).toBe('stored-new');
+    Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
+  });
+
+  it('Adopts a replacement session when resume failed', async () => {
+    vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue({
+      status: 'ok',
+      data: {
+        ready: true,
+        installed: true,
+        version: 'Hermes Agent v0.19.0',
+        expectedVersion: '0.19.0',
+        path: '/tmp/hermes',
+        dataPath: '/tmp/OpenNavoData',
+        computerUse: true,
+        outdated: false,
+        message: null
+      }
+    });
+    let requestId = '';
+    vi.spyOn(commands, 'hermesChat').mockImplementation(input => {
+      requestId = input.requestId;
+      return new Promise(() => undefined) as never;
+    });
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+    eventMock.listeners.length = 0;
+    const store = useHermesStore();
+    await store.loadRuntime();
+    store.conversations.push({ id: 'replacement-chat', messages: [], updatedAt: 1, sessionId: 'stored-old' });
+    store.activeId = 'replacement-chat';
+    void store.send('Start over');
+    await vi.waitFor(() => expect(requestId).not.toBe(''));
+    await vi.waitFor(() =>
+      expect(eventMock.listeners.some(listener => listener.event === 'hermes-session')).toBe(true)
+    );
+    const session = eventMock.listeners.find(listener => listener.event === 'hermes-session')!.handler;
+
+    session({ payload: { requestId, liveSessionId: 'live-new', sessionId: 'stored-new', resumed: false } });
+    await nextTick();
+    expect(store.active?.sessionId).toBe('stored-new');
+    expect(store.mediaSessionId).toBe('stored-new');
+    Reflect.deleteProperty(window, '__TAURI_INTERNALS__');
+  });
+
   it('Shows one card at a time and records what the runtime did with it', async () => {
     vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue({
       status: 'ok',

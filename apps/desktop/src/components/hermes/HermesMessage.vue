@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { OnAppIcon, OnButton, OnChip, OnGetButton, OnIcon, OnModal } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
 import { formatCount } from '@opennavo/shared';
 import HermesMark from './HermesMark.vue';
+import HermesMediaCard from './HermesMediaCard.vue';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useHermesStore } from '@/stores/hermes';
 import { useTasksStore } from '@/stores';
+import { commands, unwrap } from '@/ipc/client';
+import { mediaKind, mediaName, parseHermesMedia, type HermesContentPart, type HermesMediaKind } from '@/hermes/media';
 import type { HermesDecision, HermesMessage } from '@/stores/hermes';
 
 const props = defineProps<{ message: HermesMessage }>();
@@ -24,6 +27,15 @@ const { appLocale } = useAppLocale();
 
 const confirmOpen = ref(false);
 const demoCards = import.meta.env.MODE === 'web';
+interface MessageAttachment {
+  path: string;
+  name: string;
+  kind: HermesMediaKind;
+  image: boolean;
+}
+const attachmentPreviews = ref<Record<string, string>>({});
+const previewAttachment = ref<MessageAttachment | null>(null);
+let attachmentPreviewRequest = 0;
 const pkg = computed(() => props.message.package ?? null);
 const packageState = computed(() =>
   pkg.value ? pkgState.stateOf(pkg.value.kind, pkg.value.token, pkg.value.disabled) : null
@@ -37,13 +49,20 @@ function toolText(key: string): string {
 }
 
 const text = computed(() => messageText(props.message.textKey) || props.message.text || '');
-const attachments = computed(() =>
-  (props.message.attachments ?? []).map(path => ({
-    path,
-    name: path.split('/').filter(Boolean).at(-1) ?? path,
-    image: /\.(png|jpe?g|gif|webp|heic|heif|bmp|tiff)$/i.test(path)
-  }))
+const attachments = computed<MessageAttachment[]>(() =>
+  (props.message.attachments ?? []).map(path => {
+    const kind = mediaKind(path);
+    return { path, name: mediaName(path), kind, image: kind === 'image' };
+  })
 );
+const contentParts = computed<HermesContentPart[]>(() =>
+  parseHermesMedia(text.value, props.message.streaming === true)
+);
+const mediaRemote = computed(() => hermes.panelActive);
+const mediaProfileId = computed(() => (mediaRemote.value ? hermes.gatewayProfileId : null));
+const mediaProfile = computed(() => hermes.active?.panelProfile?.trim() || hermes.activeAgentProfileName || null);
+const mediaSessionId = computed(() => hermes.mediaSessionId);
+const mediaCwd = computed(() => (mediaRemote.value ? null : hermes.workingDir.trim() || null));
 const foot = computed(() => messageText(props.message.footKey));
 const time = computed(() =>
   new Date(props.message.at).toLocaleTimeString(appLocale.value, { hour: '2-digit', minute: '2-digit' })
@@ -125,6 +144,51 @@ function decisionTone(decision: HermesDecision): string {
   if (decision.outcome === 'denied') return 'text-status-danger';
   return 'text-ink-tertiary';
 }
+
+function attachmentIcon(kind: HermesMediaKind): string {
+  if (kind === 'image') return 'lucide:image';
+  if (kind === 'video') return 'lucide:film';
+  if (kind === 'audio') return 'lucide:music';
+  return 'lucide:paperclip';
+}
+
+async function loadAttachmentPreviews() {
+  if (!(typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window)) return;
+  const request = ++attachmentPreviewRequest;
+  for (const file of attachments.value) {
+    if (!file.image || attachmentPreviews.value[file.path] !== undefined) continue;
+    try {
+      const preview = await unwrap(commands.hermesAttachmentPreview(file.path));
+      if (request !== attachmentPreviewRequest) return;
+      if (preview) attachmentPreviews.value = { ...attachmentPreviews.value, [file.path]: preview };
+    } catch {
+      // A preview is optional; the attachment chip still names the file.
+    }
+  }
+}
+
+async function openAttachmentPath(path: string) {
+  try {
+    const { openPath } = await import('@tauri-apps/plugin-opener');
+    await openPath(path);
+  } catch (error) {
+    toasts.push({
+      tone: 'warning',
+      title: content.value.media.openFailed,
+      description: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+function openUserAttachment(file: MessageAttachment) {
+  if (file.image && attachmentPreviews.value[file.path]) {
+    previewAttachment.value = file;
+    return;
+  }
+  void openAttachmentPath(file.path);
+}
+
+watch(() => props.message.attachments, loadAttachmentPreviews, { immediate: true });
 </script>
 
 <template>
@@ -141,19 +205,28 @@ function decisionTone(decision: HermesDecision): string {
         </span>
         <span class="h-px flex-1 bg-line-subtle" aria-hidden="true"></span>
       </div>
-      <div v-if="attachments.length" class="mb-7px flex flex-wrap gap-5px">
-        <span
+      <div v-if="attachments.length" class="mb-7px flex flex-wrap items-start gap-6px">
+        <button
           v-for="file in attachments"
           :key="file.path"
-          class="inline-flex max-w-full items-center gap-4px rounded-tiny bg-surface-control px-7px py-4px text-11px text-ink-secondary"
+          type="button"
+          class="m-0 max-w-full overflow-hidden rounded-small border border-solid border-line-subtle bg-surface-control p-0 text-left outline-none transition-colors hover:border-line-strong focus-visible:shadow-focus-ring"
+          @click="openUserAttachment(file)"
         >
-          <OnIcon
-            :name="file.image ? 'lucide:image' : 'lucide:paperclip'"
-            :size="11"
-            class="shrink-0 text-ink-tertiary"
+          <img
+            v-if="file.image && attachmentPreviews[file.path]"
+            :src="attachmentPreviews[file.path]"
+            :alt="file.name"
+            class="block max-h-96px max-w-180px object-cover"
           />
-          <span class="min-w-0 truncate">{{ file.name }}</span>
-        </span>
+          <span
+            v-else
+            class="inline-flex max-w-full items-center gap-4px bg-surface-control px-7px py-4px text-11px text-ink-secondary"
+          >
+            <OnIcon :name="attachmentIcon(file.kind)" :size="11" class="shrink-0 text-ink-tertiary" />
+            <span class="min-w-0 truncate">{{ file.name }}</span>
+          </span>
+        </button>
       </div>
       <div v-if="text" class="whitespace-pre-wrap">{{ text }}</div>
     </div>
@@ -288,7 +361,21 @@ function decisionTone(decision: HermesDecision): string {
           <span class="h-5px w-5px animate-pulse rounded-full bg-brand-coral"></span>
           {{ content.composer.thinking }}
         </div>
-        <OnMarkdown v-else-if="text" :source="text" size="sm" :heading-level="4" />
+        <div v-else-if="text" class="flex min-w-0 flex-col gap-8px">
+          <template v-for="(part, index) in contentParts" :key="`${message.id}-part-${index}`">
+            <OnMarkdown v-if="part.type === 'text'" :source="part.text" size="sm" :heading-level="4" />
+            <HermesMediaCard
+              v-else
+              :path="part.path"
+              :kind="part.kind"
+              :remote="mediaRemote"
+              :profile-id="mediaProfileId"
+              :profile="mediaProfile"
+              :session-id="mediaSessionId"
+              :cwd="mediaCwd"
+            />
+          </template>
+        </div>
         <span
           v-if="message.streaming && text"
           class="ml-2px inline-block h-13px w-7px animate-pulse rounded-2px bg-ink-secondary align-[-2px]"
@@ -517,6 +604,25 @@ function decisionTone(decision: HermesDecision): string {
         "
         >{{ content.cards.package.confirmRun }}</OnButton
       >
+    </template>
+  </OnModal>
+
+  <OnModal
+    :open="Boolean(previewAttachment)"
+    :title="previewAttachment?.name ?? ''"
+    size="lg"
+    @close="previewAttachment = null"
+  >
+    <img
+      v-if="previewAttachment"
+      :src="attachmentPreviews[previewAttachment.path]"
+      :alt="previewAttachment.name"
+      class="mx-auto block max-h-[70vh] max-w-full object-contain"
+    />
+    <template #footer>
+      <OnButton variant="ghost" @click="previewAttachment && openAttachmentPath(previewAttachment.path)">
+        {{ content.media.open }}
+      </OnButton>
     </template>
   </OnModal>
 </template>
