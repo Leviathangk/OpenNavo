@@ -1736,6 +1736,7 @@ export const useHermesStore = defineStore('hermes', () => {
       modelOptions.value = null;
       modelOptionsUpdatedAt.value = null;
       modelOptionsOwner.value = null;
+      drainActiveQueue();
     }
     persist();
   }
@@ -1772,6 +1773,7 @@ export const useHermesStore = defineStore('hermes', () => {
     void loadAgentProfiles();
     void loadHistory();
     void loadPanelHistory();
+    drainActiveQueue();
     void activateCurrentProfile();
   }
 
@@ -2274,6 +2276,7 @@ export const useHermesStore = defineStore('hermes', () => {
     persist();
     void loadHistory();
     void loadPanelHistory();
+    drainActiveQueue();
     try {
       await activateCurrentProfile();
     } finally {
@@ -2476,6 +2479,8 @@ export const useHermesStore = defineStore('hermes', () => {
       stopThinking();
       activeId.value = null;
     }
+    pendingSteers.delete(idValue);
+    queuedAfterTurn.delete(idValue);
     conversations.value = conversations.value.filter(item => item.id !== idValue);
     // The host dropped the row: other slices still list it until they are re-read.
     if (target?.panel) invalidatePanelSlices();
@@ -2527,7 +2532,12 @@ export const useHermesStore = defineStore('hermes', () => {
     if (historyLoadStarted && !historyLoaded) await historyReadyPromise;
     stopThinking();
     // Panel rows live on the host, so only this Mac's own conversations can be cleared here.
+    const cleared = conversations.value.filter(item => !item.panel).map(item => item.id);
     conversations.value = conversations.value.filter(item => item.panel);
+    for (const idValue of cleared) {
+      pendingSteers.delete(idValue);
+      queuedAfterTurn.delete(idValue);
+    }
     if (activeId.value && !conversations.value.some(item => item.id === activeId.value)) activeId.value = null;
     persist();
     flushHistorySave();
@@ -2640,6 +2650,10 @@ export const useHermesStore = defineStore('hermes', () => {
     if (next) void send(next, [], conversationId);
   }
 
+  function drainActiveQueue() {
+    if (activeId.value) drainQueuedAfterTurn(activeId.value);
+  }
+
   function steerWasUndelivered(result: HermesSteerResult) {
     return result.status === 'rejected' && result.delivered === false;
   }
@@ -2682,13 +2696,25 @@ export const useHermesStore = defineStore('hermes', () => {
   async function send(text: string, attachments: string[] = [], targetConversationId?: string) {
     const findTarget = () =>
       targetConversationId ? (conversations.value.find(item => item.id === targetConversationId) ?? null) : null;
-    if (targetConversationId && !findTarget()) return;
     const targetIsActive = () =>
       targetConversationId === undefined || (active.value?.id === targetConversationId && Boolean(findTarget()));
     const restoreTargetQueue = () => {
-      if (targetConversationId && findTarget()) {
-        queueSteerAfterTurn(targetConversationId, text, true);
+      if (targetConversationId) queueSteerAfterTurn(targetConversationId, text, true);
+    };
+    let pendingUserId: string | undefined;
+    let pendingAssistantId: string | undefined;
+    const restoreUnsentTurn = (conversation: HermesConversation) => {
+      // A profile switch can replace the live array with a restored copy; clean both the object
+      // this send started with and the one currently in the store, so neither keeps a phantom turn.
+      const targets = new Set([conversation, conversations.value.find(item => item.id === conversation.id)]);
+      for (const target of targets) {
+        if (!target) continue;
+        target.messages = target.messages.filter(
+          entry => entry.id !== pendingUserId && entry.id !== pendingAssistantId
+        );
+        target.updatedAt = Date.now();
       }
+      restoreTargetQueue();
     };
     if (historyLoadStarted && !historyLoaded) {
       await historyReadyPromise;
@@ -2712,6 +2738,7 @@ export const useHermesStore = defineStore('hermes', () => {
       // used to let the turn through and fail later with a provider error.
       const info = HERMES_PROVIDER_MAP[model.value.provider];
       if (requiresStoredKey(model.value, info) && !(await refreshCredentialState())) {
+        restoreTargetQueue();
         toasts.push({
           tone: 'warning',
           title: 'Hermes profile',
@@ -2719,11 +2746,11 @@ export const useHermesStore = defineStore('hermes', () => {
         });
         return;
       }
-      // The active conversation can change while the credential check is in flight.
-      if (!targetIsActive()) {
-        restoreTargetQueue();
-        return;
-      }
+    }
+    // The active conversation or profile can change while an await above is in flight.
+    if (!targetIsActive()) {
+      restoreTargetQueue();
+      return;
     }
     if (thinking.value) {
       if (attachments.length) {
@@ -2791,10 +2818,13 @@ export const useHermesStore = defineStore('hermes', () => {
     }
     const conversation = findTarget() ?? ensureConversation();
     conversation.executionGeneration = undefined;
-    conversation.messages = [
-      ...conversation.messages,
-      message({ role: 'user', text: value, attachments: attachments.length ? [...attachments] : undefined })
-    ];
+    const userMessage = message({
+      role: 'user',
+      text: value,
+      attachments: attachments.length ? [...attachments] : undefined
+    });
+    pendingUserId = userMessage.id;
+    conversation.messages = [...conversation.messages, userMessage];
     conversation.updatedAt = Date.now();
     thinking.value = true;
     const turn = ++turnSeq;
@@ -2803,6 +2833,7 @@ export const useHermesStore = defineStore('hermes', () => {
     const tauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
     if (!runtime.value && tauri) await loadRuntime();
     if (!targetIsActive()) {
+      restoreUnsentTurn(conversation);
       if (activeTurn === turn) {
         thinking.value = false;
         activeTurn = ++turnSeq;
@@ -2824,6 +2855,7 @@ export const useHermesStore = defineStore('hermes', () => {
           ? crypto.randomUUID()
           : `hermes-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const assistant = message({ role: 'assistant', text: '', streaming: true });
+      pendingAssistantId = assistant.id;
       conversation.messages = [...conversation.messages, assistant];
       conversation.updatedAt = Date.now();
       let unlisten: (() => void) | undefined;
@@ -2910,7 +2942,10 @@ export const useHermesStore = defineStore('hermes', () => {
         }
       }
       try {
-        if (!targetIsActive()) return;
+        if (!targetIsActive()) {
+          restoreUnsentTurn(conversation);
+          return;
+        }
         const reply = await unwrap(
           commands.hermesChat({
             prompt,
@@ -3056,7 +3091,6 @@ OpenCode Go 的 API Key 已过期。请在 [OpenCode Console](https://opencode.a
       active.value.liveSessionId = undefined;
       active.value.executionGeneration = undefined;
       pendingSteers.delete(active.value.id);
-      queuedAfterTurn.delete(active.value.id);
     }
     const last = messages.value.at(-1);
     if (last?.streaming) {

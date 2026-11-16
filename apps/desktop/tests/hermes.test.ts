@@ -986,6 +986,152 @@ describe('Hermes conversation store', () => {
     expect(store.messages.some(entry => entry.text === 'steer this' && !entry.steering)).toBe(true);
   });
 
+  it('Keeps a queued steer across a profile switch and drains it on return', async () => {
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+    vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue({
+      status: 'ok',
+      data: {
+        ready: true,
+        installed: true,
+        version: 'Hermes Agent v0.19.0',
+        expectedVersion: '0.19.0',
+        path: '/tmp/hermes',
+        dataPath: '/tmp/OpenNavoData',
+        computerUse: true,
+        outdated: false,
+        message: null
+      }
+    });
+    vi.spyOn(commands, 'hermesHistoryLoad').mockResolvedValue({ status: 'ok', data: null } as never);
+    vi.spyOn(commands, 'hermesHistorySave').mockResolvedValue({ status: 'ok', data: null } as never);
+    vi.spyOn(commands, 'hermesModelOptions').mockResolvedValue({
+      status: 'ok',
+      data: { providers: [], model: null, provider: null }
+    } as never);
+    let requestId = '';
+    const chat = vi
+      .spyOn(commands, 'hermesChat')
+      .mockImplementationOnce(input => {
+        requestId = input.requestId;
+        return new Promise(() => undefined) as never;
+      })
+      .mockResolvedValue({
+        status: 'ok',
+        data: { text: 'done', sessionId: null, liveSessionId: null, usage: null }
+      } as never);
+    let failSteer!: (reason: unknown) => void;
+    vi.spyOn(commands, 'hermesSteer').mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          failSteer = reject;
+        }) as never
+    );
+    const store = useHermesStore();
+    await store.loadRuntime();
+    store.newChat();
+    void store.send('initial turn');
+    await vi.waitFor(() => expect(requestId).not.toBe(''));
+    const original = store.active!;
+    original.liveSessionId = 'live-1';
+    original.executionGeneration = 7;
+
+    const steering = store.send('steer this');
+    await vi.waitFor(() => expect(commands.hermesSteer).toHaveBeenCalled());
+    store.stopThinking();
+    store.newChat();
+    failSteer(new Error('gateway unavailable'));
+    await steering;
+    expect(chat).toHaveBeenCalledTimes(1);
+
+    const beforeQueue = original.messages.length;
+    let releaseListen!: () => void;
+    const listen = eventMock.listen.getMockImplementation();
+    expect(listen).toBeDefined();
+    eventMock.listen.mockImplementationOnce(
+      (event, handler) =>
+        new Promise(resolve => {
+          releaseListen = () => resolve(listen!(event, handler));
+        })
+    );
+
+    store.select(original.id);
+    await vi.waitFor(() => expect(original.messages.length).toBe(beforeQueue + 2));
+    await vi.waitFor(() => expect(releaseListen).toBeDefined());
+    await store.switchAgentProfile('work');
+    releaseListen();
+    await vi.waitFor(() => expect(original.messages.length).toBe(beforeQueue));
+
+    await store.switchAgentProfile('default');
+    await vi.waitFor(() => expect(chat).toHaveBeenCalledTimes(2));
+    expect(chat.mock.calls[1]?.[0]).toMatchObject({ prompt: 'steer this' });
+    expect(store.activeId).toBe(original.id);
+    expect(store.messages.some(entry => entry.text === 'steer this' && !entry.steering)).toBe(true);
+  });
+
+  it('Requeues a queued steer when the profile has no credentials yet', async () => {
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { value: {}, configurable: true });
+    vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue({
+      status: 'ok',
+      data: {
+        ready: true,
+        installed: true,
+        version: 'Hermes Agent v0.19.0',
+        expectedVersion: '0.19.0',
+        path: '/tmp/hermes',
+        dataPath: '/tmp/OpenNavoData',
+        computerUse: true,
+        outdated: false,
+        message: null
+      }
+    });
+    vi.spyOn(commands, 'hermesSecretStatus')
+      .mockResolvedValueOnce({ status: 'ok', data: false } as never)
+      .mockResolvedValue({ status: 'ok', data: true } as never);
+    const toasts = useToasts();
+    toasts.clear();
+    const chat = vi
+      .spyOn(commands, 'hermesChat')
+      .mockImplementationOnce(() => new Promise(() => undefined) as never)
+      .mockResolvedValue({
+        status: 'ok',
+        data: { text: 'done', sessionId: null, liveSessionId: null, usage: null }
+      } as never);
+    let failSteer!: (reason: unknown) => void;
+    vi.spyOn(commands, 'hermesSteer').mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          failSteer = reject;
+        }) as never
+    );
+    const store = useHermesStore();
+    await store.loadRuntime();
+    store.newChat();
+    void store.send('initial turn');
+    await vi.waitFor(() => expect(chat).toHaveBeenCalledTimes(1));
+    const original = store.active!;
+    original.liveSessionId = 'live-1';
+    original.executionGeneration = 7;
+
+    const steering = store.send('steer this');
+    await vi.waitFor(() => expect(commands.hermesSteer).toHaveBeenCalled());
+    store.stopThinking();
+    store.newChat();
+    failSteer(new Error('gateway unavailable'));
+    await steering;
+    expect(chat).toHaveBeenCalledTimes(1);
+
+    store.saveModel({ ...store.model, provider: 'openai', model: 'GPT-5.6', endpoint: '' });
+    store.select(original.id);
+    await vi.waitFor(() => expect(toasts.items.value.some(item => item.title === 'Hermes profile')).toBe(true));
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(original.messages.some(entry => entry.text === 'steer this')).toBe(false);
+
+    store.select(original.id);
+    await vi.waitFor(() => expect(chat).toHaveBeenCalledTimes(2));
+    expect(chat.mock.calls[1]?.[0]).toMatchObject({ prompt: 'steer this' });
+    expect(store.messages.some(entry => entry.text === 'steer this' && !entry.steering)).toBe(true);
+  });
+
   it('Arms stop fallbacks when steering is rejected', async () => {
     vi.useFakeTimers();
     vi.spyOn(commands, 'hermesRuntimeStatus').mockResolvedValue({
