@@ -8,7 +8,12 @@ import DeveloperClaimForm from '@/components/developer/DeveloperClaimForm.vue';
 import DeveloperStatusPanel from '@/components/developer/DeveloperStatusPanel.vue';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { useLoader } from '@/composables/useLoader';
-import { developerPlaceName, fetchDeveloperMap, type DeveloperMapPlace } from '@/composables/useDeveloperMap';
+import {
+  developerCountryName,
+  developerPlaceName,
+  fetchDeveloperMap,
+  type DeveloperMapPlace
+} from '@/composables/useDeveloperMap';
 
 const { t, locale } = useI18n();
 const { appLocale } = useAppLocale();
@@ -24,15 +29,10 @@ function setRegion(key: string) {
 }
 
 const number = computed(() => new Intl.NumberFormat(locale.value));
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
 const dateFormat = computed(() => new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }));
 
 function countryName(code: string): string {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
+  return developerCountryName(code, locale.value);
 }
 
 function placeName(place: DeveloperMapPlace): string {

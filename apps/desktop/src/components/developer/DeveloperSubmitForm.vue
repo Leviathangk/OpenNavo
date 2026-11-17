@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnIcon, runOnEnter } from '@opennavo/ui';
 import {
+  developerCountryName,
   fetchDeveloperMetadata,
   submitDeveloperSubmission,
   type DeveloperSubmitResult
@@ -62,13 +63,8 @@ const countries = [
   'IL'
 ];
 const { locale } = useI18n();
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
 function countryName(code: string) {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
+  return developerCountryName(code, locale.value);
 }
 
 const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail));

@@ -1,19 +1,14 @@
 <script setup lang="ts">
 import { OnRailPanel, OnRailSection } from '@opennavo/ui';
-import { useDeveloperMap } from '~/composables/useDeveloperMap';
+import { developerCountryName, useDeveloperMap } from '~/composables/useDeveloperMap';
 
 const { t, locale } = useI18n();
 const { data } = useDeveloperMap();
 
 const number = computed(() => new Intl.NumberFormat(locale.value));
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
 
 function countryName(code: string): string {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
+  return developerCountryName(code, locale.value);
 }
 
 const topCountries = computed(() => (data.value?.countries ?? []).slice(0, 6));
