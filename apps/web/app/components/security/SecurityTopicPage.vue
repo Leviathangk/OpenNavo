@@ -62,7 +62,7 @@ defineOgImage('OgListSatori', {
 </script>
 
 <template>
-  <div ref="root" class="landing flex flex-col gap-96px pb-56px md:gap-120px">
+  <div ref="root" class="landing flex flex-col gap-56px pb-56px md:gap-72px">
     <section class="relative isolate overflow-hidden">
       <div class="security-topic-glow pointer-events-none absolute left-1/2 rounded-full" aria-hidden="true"></div>
       <div
@@ -105,78 +105,85 @@ defineOgImage('OgListSatori', {
     <section
       v-for="part in config.sections"
       :key="part.key"
-      class="mx-auto box-border w-full max-w-1040px px-24px"
+      class="mx-auto box-border grid w-full max-w-1040px gap-16px px-24px lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-x-48px"
       :aria-labelledby="`topic-${part.key}`"
       data-reveal
     >
-      <h2 :id="`topic-${part.key}`" class="security-topic-title m-0 text-title1 text-ink-primary md:text-section">
+      <h2 :id="`topic-${part.key}`" class="security-topic-title m-0 text-title1 text-ink-primary">
         {{ t(section(part.key, 'title')) }}
       </h2>
-      <OnHighlightText
-        v-if="part.body"
-        as="p"
-        :text="t(section(part.key, 'body'))"
-        class="m-0 mt-14px max-w-760px text-15.5px leading-[1.7] text-ink-secondary"
-      />
-      <ul v-if="part.cards" class="m-0 mt-28px grid list-none gap-12px p-0 sm:grid-cols-2">
-        <li
-          v-for="card in part.cards"
-          :key="card"
-          class="flex flex-col gap-8px rounded-big border border-solid border-line-subtle bg-surface-card px-20px pb-20px pt-18px"
-        >
-          <h3 class="m-0 text-15px font-600 text-ink-primary">{{ t(section(part.key, `cards.${card}.title`)) }}</h3>
-          <p class="m-0 text-13.5px leading-[1.65] text-ink-secondary">
-            {{ t(section(part.key, `cards.${card}.body`)) }}
-          </p>
-        </li>
-      </ul>
-      <ul v-if="part.items" class="m-0 mt-24px flex max-w-820px list-none flex-col gap-12px p-0">
-        <li
-          v-for="item in part.items"
-          :key="item"
-          class="flex items-start gap-10px text-15px leading-[1.7] text-ink-secondary"
-        >
-          <OnIcon name="info" :size="17" class="mt-4px shrink-0 text-ink-tertiary" />
-          <span>{{ t(section(part.key, `items.${item}`)) }}</span>
-        </li>
-      </ul>
-      <ol
-        v-if="part.steps"
-        class="m-0 mt-24px flex max-w-820px flex-col gap-12px pl-22px text-15px leading-[1.7] text-ink-secondary"
-      >
-        <li v-for="step in part.steps" :key="step">{{ t(section(part.key, `steps.${step}`)) }}</li>
-      </ol>
-      <p v-if="part.note" class="m-0 mt-18px max-w-760px text-13.5px leading-[1.7] text-ink-tertiary">
-        {{ t(section(part.key, 'note')) }}
-      </p>
+      <div class="flex min-w-0 flex-col gap-24px">
+        <OnHighlightText
+          v-if="part.body"
+          as="p"
+          :text="t(section(part.key, 'body'))"
+          class="m-0 max-w-760px text-15.5px leading-[1.7] text-ink-secondary"
+        />
+        <ul v-if="part.cards" class="m-0 grid list-none gap-12px p-0 sm:grid-cols-2">
+          <li
+            v-for="card in part.cards"
+            :key="card"
+            class="flex flex-col gap-8px rounded-big border border-solid border-line-subtle bg-surface-card px-20px pb-20px pt-18px"
+          >
+            <h3 class="m-0 text-15px font-600 text-ink-primary">
+              {{ t(section(part.key, `cards.${card}.title`)) }}
+            </h3>
+            <p class="m-0 text-13.5px leading-[1.65] text-ink-secondary">
+              {{ t(section(part.key, `cards.${card}.body`)) }}
+            </p>
+          </li>
+        </ul>
+        <ul v-if="part.items" class="m-0 flex list-none flex-col gap-12px p-0">
+          <li
+            v-for="item in part.items"
+            :key="item"
+            class="flex items-start gap-10px text-15px leading-[1.7] text-ink-secondary"
+          >
+            <OnIcon name="info" :size="17" class="mt-4px shrink-0 text-ink-tertiary" />
+            <span>{{ t(section(part.key, `items.${item}`)) }}</span>
+          </li>
+        </ul>
+        <ol v-if="part.steps" class="m-0 flex flex-col gap-12px pl-22px text-15px leading-[1.7] text-ink-secondary">
+          <li v-for="step in part.steps" :key="step">{{ t(section(part.key, `steps.${step}`)) }}</li>
+        </ol>
+        <p v-if="part.note" class="m-0 max-w-760px text-13.5px leading-[1.7] text-ink-tertiary">
+          {{ t(section(part.key, 'note')) }}
+        </p>
+      </div>
     </section>
 
     <section
       v-if="apps.length"
-      class="mx-auto box-border w-full max-w-1040px px-24px"
+      class="mx-auto box-border grid w-full max-w-1040px gap-16px px-24px lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-x-48px"
       aria-labelledby="topic-apps"
       data-reveal
     >
-      <h2 id="topic-apps" class="m-0 text-title2 text-ink-primary">{{ t('securityTopics.apps.title') }}</h2>
-      <p class="m-0 mt-10px max-w-760px text-14px leading-[1.7] text-ink-secondary">
-        {{ t('securityTopics.apps.body') }}
-      </p>
-      <ul class="m-0 mt-16px flex list-none flex-wrap gap-8px p-0">
-        <li v-for="app in apps" :key="app.token">
-          <NuxtLink
-            :to="app.path"
-            class="inline-flex h-32px items-center gap-6px rounded-full border border-solid border-line-subtle bg-surface-card px-14px text-13.5px text-ink-primary no-underline hover:border-line-strong"
-            >{{ app.name }}<OnIcon name="arrow-right" :size="13" class="text-ink-tertiary"
-          /></NuxtLink>
-        </li>
-      </ul>
+      <h2 id="topic-apps" class="m-0 text-title1 text-ink-primary">{{ t('securityTopics.apps.title') }}</h2>
+      <div class="flex min-w-0 flex-col gap-12px">
+        <p class="m-0 max-w-760px text-14px leading-[1.7] text-ink-secondary">
+          {{ t('securityTopics.apps.body') }}
+        </p>
+        <ul class="m-0 flex list-none flex-wrap gap-8px p-0">
+          <li v-for="app in apps" :key="app.token">
+            <NuxtLink
+              :to="app.path"
+              class="inline-flex h-32px items-center gap-6px rounded-full border border-solid border-line-subtle bg-surface-card px-14px text-13.5px text-ink-primary no-underline hover:border-line-strong"
+              >{{ app.name }}<OnIcon name="arrow-right" :size="13" class="text-ink-tertiary"
+            /></NuxtLink>
+          </li>
+        </ul>
+      </div>
     </section>
 
-    <section class="mx-auto box-border w-full max-w-860px px-24px" aria-labelledby="topic-faq" data-reveal>
-      <h2 id="topic-faq" class="m-0 text-center text-title1 text-ink-primary md:text-section">
+    <section
+      class="mx-auto box-border grid w-full max-w-1040px gap-16px px-24px lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-x-48px"
+      aria-labelledby="topic-faq"
+      data-reveal
+    >
+      <h2 id="topic-faq" class="m-0 text-title1 text-ink-primary">
         {{ t('securityTopics.faqTitle') }}
       </h2>
-      <div class="mt-32px rounded-big border border-solid border-line-subtle bg-surface-card px-20px py-6px">
+      <div class="rounded-big border border-solid border-line-subtle bg-surface-card px-20px py-6px">
         <details
           v-for="(item, index) in config.faq"
           :key="item"
@@ -194,7 +201,7 @@ defineOgImage('OgListSatori', {
       </div>
     </section>
 
-    <SecurityTopicLinks :title="t('securityTopics.linksTitle')" :current="topic" />
+    <SecurityTopicLinks :title="t('securityTopics.linksTitle')" :current="topic" align="left" />
 
     <LandingCta :title="t(key('cta.title'))" :body="t(key('cta.body'))" />
   </div>
@@ -202,16 +209,15 @@ defineOgImage('OgListSatori', {
 
 <style>
 .security-topic-glow {
-  top: 40px;
-  width: 960px;
-  height: 960px;
-  margin-left: -480px;
+  inset: 0;
   background: radial-gradient(
-    closest-side,
+    ellipse 52% 58% at 50% 0%,
     color-mix(in srgb, var(--on-status-success) 14%, transparent),
     color-mix(in srgb, var(--on-brand-violet) 10%, transparent) 55%,
-    transparent
+    transparent 100%
   );
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
 }
 
 .security-topic-title {

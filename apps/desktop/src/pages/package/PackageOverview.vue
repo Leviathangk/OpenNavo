@@ -8,7 +8,6 @@ import { catalogInstallCommand } from '@/utils/brew';
 import { OnPackageOverview, OnPackageSpecCard } from '@opennavo/ui';
 import type { OnRelatedPackage } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
-import ArticleCard from '@/components/article/ArticleCard.vue';
 import LatestRelease from '@/components/package/LatestRelease.vue';
 import LinkDownloadPanel from '@/components/package/LinkDownloadPanel.vue';
 import MasAlsoPanel from '@/components/appstore/MasAlsoPanel.vue';
@@ -156,10 +155,6 @@ function onCopied(text: string) {
         :total="detail.releaseCount"
         :versions-to="withRecentReturn(`/package/${kind}/${token}/versions`, route.query.returnTo)"
       />
-      <section v-if="detail?.articles?.length" class="mt-24px" aria-labelledby="package-articles">
-        <h2 id="package-articles" class="m-0 text-15px font-600 text-ink-primary">{{ t('articles.related') }}</h2>
-        <ArticleCard v-for="card in detail.articles" :key="card.slug" :card="card" compact :heading-level="3" />
-      </section>
     </template>
     <template v-if="kind === 'link' && link" #download>
       <LinkDownloadPanel :token="token" :link="link" />

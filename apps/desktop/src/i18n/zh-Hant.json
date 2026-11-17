@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "文章",
-    "subtitle": "Mac 軟體推薦、評測、教程和合集",
-    "all": "全部",
-    "typesLabel": "文章型別",
-    "types": {
-      "recommendation": "推薦",
-      "review": "評測",
-      "tutorial": "教程",
-      "roundup": "合集",
-      "news": "新聞"
-    },
-    "emptyTitle": "還沒有文章",
-    "emptyDescription": "文章釋出後會顯示在這裡。",
-    "readingTime": "閱讀約 {minutes} 分鐘",
-    "published": "{date} 釋出",
-    "updated": "{date} 更新",
-    "editorial": "OpenNavo 編輯部",
-    "sourceText": "這篇文章還沒有當前語言的版本，下面顯示的是原文。",
-    "testNote": "測試環境：",
-    "toc": "目錄",
-    "sources": "參考來源",
-    "appCardNote": "當前目錄資料：版本和安裝量隨目錄更新，可能與撰寫時不同。",
-    "mentionedApps": "文中提到的 App",
-    "related": "相關文章",
-    "withdrawnTitle": "這篇文章已撤下",
-    "withdrawnBody": "文章內容可能已過時或不再準確，因此不再提供。可以看看其他文章。",
-    "backToList": "瀏覽全部文章"
-  },
   "brewfile": {
     "installTitle": "安裝清單中的軟體",
     "title": "我的清單",
