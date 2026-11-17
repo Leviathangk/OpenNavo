@@ -230,48 +230,68 @@ fn build_bundle(
     if app_path.exists() {
         return Err(AppError::new("E_WEBAPP_EXISTS", "webapp_exists"));
     }
-    let contents = app_path.join("Contents");
-    let macos = contents.join("MacOS");
-    let resources = contents.join("Resources");
-    std::fs::create_dir_all(&macos).map_err(io_error)?;
-    std::fs::create_dir_all(&resources).map_err(io_error)?;
-
-    let executable = macos.join(HELPER_NAME);
-    std::fs::copy(helper, &executable).map_err(io_error)?;
-    make_executable(&executable)?;
 
     let id = uuid::Uuid::new_v4().simple().to_string();
-    let bundle_id = format!("com.opennavo.webapp.{}", &id[..12]);
-    let created_at = created_at.to_rfc3339_opts(SecondsFormat::Secs, true);
-    let config = RuntimeConfig {
-        marker: MARKER.to_owned(),
-        id: id.clone(),
-        name: name.to_owned(),
-        url: url.to_owned(),
-        bundle_id: bundle_id.clone(),
-        created_at: created_at.clone(),
-        width: DEFAULT_WIDTH,
-        height: DEFAULT_HEIGHT,
-    };
-    let config_json = serde_json::to_vec_pretty(&config)?;
-    std::fs::write(resources.join(CONFIG_NAME), config_json).map_err(io_error)?;
-    let icon = app_icon(icon, &resources)?;
-    write_info_plist(
-        &contents.join("Info.plist"),
-        name,
-        &bundle_id,
-        icon.is_some(),
-    )?;
+    let staging_path = directory.join(format!(".opennavo-webapp-{id}.tmp"));
+    let built = (|| -> Result<WebApp, AppError> {
+        let contents = staging_path.join("Contents");
+        let macos = contents.join("MacOS");
+        let resources = contents.join("Resources");
+        std::fs::create_dir_all(&macos).map_err(io_error)?;
+        std::fs::create_dir_all(&resources).map_err(io_error)?;
 
-    Ok(WebApp {
-        id,
-        name: name.to_owned(),
-        url: url.to_owned(),
-        path: app_path.to_string_lossy().into_owned(),
-        bundle_id,
-        created_at,
-        icon,
-    })
+        let executable = macos.join(HELPER_NAME);
+        std::fs::copy(helper, &executable).map_err(io_error)?;
+        make_executable(&executable)?;
+
+        let bundle_id = format!("com.opennavo.webapp.{}", &id[..12]);
+        let created_at = created_at.to_rfc3339_opts(SecondsFormat::Secs, true);
+        let config = RuntimeConfig {
+            marker: MARKER.to_owned(),
+            id: id.clone(),
+            name: name.to_owned(),
+            url: url.to_owned(),
+            bundle_id: bundle_id.clone(),
+            created_at: created_at.clone(),
+            width: DEFAULT_WIDTH,
+            height: DEFAULT_HEIGHT,
+        };
+        let config_json = serde_json::to_vec_pretty(&config)?;
+        std::fs::write(resources.join(CONFIG_NAME), config_json).map_err(io_error)?;
+        let icon = app_icon(icon, &resources)?;
+        write_info_plist(
+            &contents.join("Info.plist"),
+            name,
+            &bundle_id,
+            icon.is_some(),
+        )?;
+
+        Ok(WebApp {
+            id: id.clone(),
+            name: name.to_owned(),
+            url: url.to_owned(),
+            path: app_path.to_string_lossy().into_owned(),
+            bundle_id,
+            created_at,
+            icon,
+        })
+    })();
+
+    let app = match built {
+        Ok(app) => app,
+        Err(error) => {
+            let _ = std::fs::remove_dir_all(&staging_path);
+            return Err(error);
+        }
+    };
+    if let Err(error) = std::fs::rename(&staging_path, &app_path) {
+        let _ = std::fs::remove_dir_all(&staging_path);
+        if app_path.exists() {
+            return Err(AppError::new("E_WEBAPP_EXISTS", "webapp_exists"));
+        }
+        return Err(io_error(error));
+    }
+    Ok(app)
 }
 
 static LINK_TAG: LazyLock<Regex> =
@@ -1138,6 +1158,37 @@ mod tests {
         );
         let listed = list_at(&apps).expect("list");
         assert_eq!(listed, vec![app]);
+    }
+
+    #[test]
+    fn failed_build_leaves_no_bundle_or_staging_directory() {
+        let root = tempfile::tempdir().expect("temp");
+        let apps = root.path().join("Applications");
+        let missing_helper = root.path().join("missing-helper");
+        let result = build_bundle(
+            &apps,
+            &missing_helper,
+            "Docs",
+            "https://example.com/docs",
+            None,
+            Utc::now(),
+        );
+        assert!(result.is_err());
+        assert!(!apps.join("Docs.app").exists());
+        assert_eq!(std::fs::read_dir(&apps).expect("apps").count(), 0);
+
+        let helper = root.path().join("helper");
+        std::fs::write(&helper, b"fake helper").expect("helper");
+        let app = build_bundle(
+            &apps,
+            &helper,
+            "Docs",
+            "https://example.com/docs",
+            None,
+            Utc::now(),
+        )
+        .expect("retry");
+        assert!(Path::new(&app.path).is_dir());
     }
 
     #[test]
