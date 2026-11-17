@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { OnIcon } from '@opennavo/ui';
+import { OnIcon, runOnEnter } from '@opennavo/ui';
 import {
   fetchDeveloperMetadata,
   submitDeveloperSubmission,
@@ -217,7 +217,7 @@ function reset() {
             type="url"
             :placeholder="t('developerForm.linkPlaceholder')"
             class="dev-input dev-input-with-icon"
-            @keydown.enter.prevent="fetchInfo"
+            @keydown.enter="runOnEnter($event, fetchInfo)"
           />
         </label>
         <button

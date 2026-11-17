@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { OnAppIcon, OnIcon } from '@opennavo/ui';
+import { OnAppIcon, OnIcon, runOnEnter } from '@opennavo/ui';
 import {
   fetchDeveloperMetadata,
   submitDeveloperSubmission,
@@ -264,7 +264,7 @@ function reset() {
             type="url"
             :placeholder="placeholder"
             class="h-36px w-full rounded-default border border-solid border-line-default bg-surface-inset pl-31px pr-10px text-12.5px text-ink-primary outline-none placeholder:text-ink-tertiary focus:border-line-strong focus:shadow-focus-ring"
-            @keydown.enter.prevent="fetchInfo"
+            @keydown.enter="runOnEnter($event, fetchInfo)"
           />
         </label>
         <button

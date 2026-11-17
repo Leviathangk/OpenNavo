@@ -7,6 +7,7 @@ import type { OnChipTone } from './OnChip.vue';
 import OnDialogShell from './OnDialogShell.vue';
 import OnIcon from './OnIcon.vue';
 import { useUiMessages } from '../composables/locale';
+import { isImeComposing } from '../utils/ime';
 
 export interface OnCommandItem {
   key: string;
@@ -119,7 +120,7 @@ function choose(item: OnCommandItem | undefined, meta: boolean) {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.isComposing) return;
+  if (isImeComposing()) return;
   const meta = event.metaKey || event.ctrlKey;
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault();

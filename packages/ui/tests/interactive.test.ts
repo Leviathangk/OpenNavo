@@ -7,6 +7,7 @@ import OnTabs from '../src/components/OnTabs.vue';
 import OnToggle from '../src/components/OnToggle.vue';
 import OnTooltip from '../src/components/OnTooltip.vue';
 import { nextRovingIndex } from '../src/composables/roving';
+import { resetImeComposition } from '../src/utils/ime';
 import { withLocale } from './helpers';
 
 const views = [
@@ -120,6 +121,15 @@ describe('OnSearchField', () => {
     expect(wrapper.emitted('clear')).toHaveLength(2);
     await wrapper.get('input').trigger('keydown', { key: 'Enter', isComposing: true });
     expect(wrapper.emitted('submit')).toBeUndefined();
+
+    // WebKit can send the confirming Enter after compositionend; it still belongs to the candidate.
+    document.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+    document.dispatchEvent(new Event('compositionend', { bubbles: true }));
+    await wrapper.get('input').trigger('keydown', { key: 'Enter' });
+    expect(wrapper.emitted('submit')).toBeUndefined();
+    resetImeComposition();
+    await wrapper.get('input').trigger('keydown', { key: 'Enter' });
+    expect(wrapper.emitted('submit')).toHaveLength(1);
   });
 
   it('Passes Escape outward when empty, supports external focus, and hides clear when disabled', async () => {

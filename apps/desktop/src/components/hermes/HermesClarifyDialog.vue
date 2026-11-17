@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { OnButton, OnModal } from '@opennavo/ui';
+import { OnButton, OnModal, runOnEnter } from '@opennavo/ui';
 import type { HermesClarifyAnswer, HermesClarifyQuestion, HermesClarifyRequest } from '@/stores/hermes';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useAskCountdown } from '@/composables/useAskCountdown';
@@ -96,7 +96,7 @@ function submit() {
           :placeholder="content.ask.clarifyPlaceholder"
           class="w-full rounded-small border border-solid border-line-default bg-surface-inset px-10px py-7px text-12px text-ink-primary outline-none focus-visible:shadow-focus-ring"
           @input="onInput(question.qid, $event)"
-          @keydown.enter.prevent="submit"
+          @keydown.enter="runOnEnter($event, submit)"
         />
       </div>
       <span v-if="remaining" class="text-11px tabular-nums text-ink-tertiary">
