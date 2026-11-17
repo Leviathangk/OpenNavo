@@ -2299,8 +2299,8 @@
     "menuBar": {
       "title": "選單列",
       "show": "在選單列顯示",
-      "showHint": "顯示在選單列；點它查看詳情",
-      "showHintCombined": "包含在合併的選單列項目裡；點那一項查看詳情",
+      "showHint": "顯示在選單列；點它檢視詳情",
+      "showHintCombined": "包含在合併的選單列項裡；點那一項檢視詳情",
       "style": "樣式",
       "styleHint": "選單列裡的樣子",
       "styles": {
@@ -2325,7 +2325,7 @@
     "rail": {
       "menuBar": "選單列",
       "menuBarSub": "每項單獨顯示，點它看詳情 · 數量不限",
-      "menuBarCombinedSub": "已開啟的指標合併為一項並輪流顯示，點它查看全部",
+      "menuBarCombinedSub": "已開啟的指標合併為一項並輪流顯示，點它檢視全部",
       "empty": "選單列裡還沒有監控項",
       "crowded": "項目多時，放不下的會被劉海擋住；可以把樣式改成「只顯示數值」。",
       "refresh": "每 {count} 秒重新整理 · 按住 ⌘ 拖動調整順序",
@@ -2343,7 +2343,7 @@
       "notVisible": "開啟後沒看到？",
       "notVisibleHint": "macOS 26 起要在「系統設定 → 選單列」裡允許 OpenNavo；項目太多時，放不下的會被劉海擋住",
       "openSettings": "開啟系統設定",
-      "menuBarNote": "CPU 和記憶體預設開啟，數量不限。點選單列裡的一項，就在它下面彈出詳情；開啟「合併並輪流顯示」後，所有已開啟的指標會輪流顯示，點這一項可以查看全部。",
+      "menuBarNote": "CPU 和記憶體預設開啟，數量不限。點選單列裡的一項，就在它下面彈出詳情；開啟「合併並輪流顯示」後，所有已開啟的指標會輪流顯示，點這一項可以檢視全部。",
       "helper": "輔助程式",
       "helperHint": "{status}。只用來控制風扇；沒安裝時照常顯示溫度和轉速",
       "helperStatus": {
