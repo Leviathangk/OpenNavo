@@ -13,7 +13,6 @@ export const PALETTE_PAGES: readonly { key: string; path: string; icon: string; 
   { key: 'recent', path: '/recent', icon: 'clock' },
   { key: 'collections', path: '/collections', icon: 'boxes' },
   { key: 'download', path: '/download', icon: 'download' },
-  { key: 'brewfile', path: '/brewfile', icon: 'file-text' },
   { key: 'installed', path: '/installed', icon: 'package', labelKey: 'landing.window.installed' },
   { key: 'updates', path: '/updates', icon: 'circle-arrow-down', labelKey: 'landing.window.updates' },
   { key: 'cleanup', path: '/cleanup', icon: 'eraser', labelKey: 'landing.window.cleanup' },

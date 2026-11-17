@@ -17,6 +17,7 @@ import { useToasts } from '@/composables/useToasts';
 import { pickSavePath } from '@/utils/files';
 
 const { t } = useI18n();
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 const { pick, appLocale } = useAppLocale();
 const router = useRouter();
 const brewfile = useBrewfileStore();
@@ -127,8 +128,8 @@ async function installAll() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-20px pt-6px">
-    <OnPageHeader :title="t('brewfile.title')" :subtitle="t('brewfile.description')">
+  <div class="flex flex-col gap-20px" :class="props.embedded ? '' : 'pt-6px'">
+    <OnPageHeader v-if="!props.embedded" :title="t('brewfile.title')" :subtitle="t('brewfile.description')">
       <p class="m-0 mt-8px text-13px text-ink-tertiary">
         {{ t('brewfile.count', { count: brewfile.items.length }, { plural: brewfile.items.length }) }}
       </p>

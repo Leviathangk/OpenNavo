@@ -8,6 +8,7 @@ import { withVariantNames } from '~/utils/seoTitles';
 
 // Brewfile generator (05 §7.2, 08 §10.14): browser-only via routeRules ssr:false; list from localStorage.
 const { t } = useI18n();
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 const api = useApi();
 const localePath = useLocalePath();
 const messages = useUiMessages();
@@ -73,12 +74,14 @@ function onDrop(index: number) {
   dragging.value = null;
 }
 
-usePageSeo({ title: () => t('brewfile.metaTitle'), description: () => t('brewfile.description'), noindex: true });
+if (!props.embedded)
+  usePageSeo({ title: () => t('brewfile.metaTitle'), description: () => t('brewfile.description'), noindex: true });
 </script>
 
 <template>
-  <div class="mx-auto box-border flex max-w-960px flex-col gap-20px pt-14px">
+  <div class="mx-auto box-border flex max-w-960px flex-col gap-20px" :class="props.embedded ? '' : 'pt-14px'">
     <PageHeader
+      v-if="!props.embedded"
       :title="t('brewfile.title')"
       :description="t('brewfile.description')"
       :meta="

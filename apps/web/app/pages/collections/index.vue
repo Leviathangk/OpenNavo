@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
-import { collectionIcons, OnCollectionsView, OnEmpty, OnErrorState, OnPagination } from '@opennavo/ui';
+import { collectionIcons, OnCollectionsView, OnEmpty, OnErrorState, OnPagination, OnSegmented } from '@opennavo/ui';
 import type { OnCollectionsItem } from '@opennavo/ui';
+import BrewfilePage from '~/pages/brewfile.vue';
 import { pageCount as countPages } from '~/utils/catalogQuery';
 import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
 
@@ -18,6 +19,21 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const { hrefWith } = useCatalogQuery({ page: 1 });
 const { page, assertExists } = useListPage();
+const route = useRoute();
+const router = useRouter();
+const brewfile = useBrewfileList();
+type Tab = 'collections' | 'list';
+const tab = ref<Tab>(route.hash === '#list' ? 'list' : 'collections');
+watch(
+  () => route.hash,
+  hash => {
+    tab.value = hash === '#list' ? 'list' : 'collections';
+  }
+);
+function setTab(value: Tab) {
+  tab.value = value;
+  void router.replace({ hash: value === 'list' ? '#list' : '' });
+}
 
 const { data, error, refresh, status } = await useAsyncData(
   () => `collections:${page.value}:${locale.value}`,
@@ -40,11 +56,18 @@ const items = computed<OnCollectionsItem[] | null>(() => {
       }))
     : null;
 });
+const visibleItems = computed(() => (tab.value === 'list' ? [] : items.value));
 const subtitle = computed(() =>
-  data.value
-    ? `${t('collections.description')} · ${t('catalog.total', { total: formatCount(data.value.total, { locale: formattingLocale.value }) }, { plural: data.value.total })}`
-    : t('collections.description')
+  tab.value === 'list'
+    ? t('brewfile.description')
+    : data.value
+      ? `${t('collections.description')} · ${t('catalog.total', { total: formatCount(data.value.total, { locale: formattingLocale.value }) }, { plural: data.value.total })}`
+      : t('collections.description')
 );
+const tabs = computed<{ value: Tab; label: string; count?: number }[]>(() => [
+  { value: 'collections', label: t('collections.title'), count: data.value?.total },
+  { value: 'list', label: t('nav.lists'), count: brewfile.count.value }
+]);
 // Search snippet only. The visible subtitle stays on the short collections.description line.
 const metaDescription = computed(() =>
   te('collections.metaDescription') ? t('collections.metaDescription') : t('collections.description')
@@ -62,14 +85,23 @@ defineOgImage('OgListSatori', {
 </script>
 
 <template>
-  <OnCollectionsView :title="t('collections.title')" :subtitle="subtitle" :items="items" :link-as="NuxtLink">
-    <OnErrorState v-if="error" @retry="refresh()" />
+  <OnCollectionsView :title="t('collections.title')" :subtitle="subtitle" :items="visibleItems" :link-as="NuxtLink">
+    <OnSegmented
+      class="mb-16px self-start"
+      size="sm"
+      :model-value="tab"
+      :options="tabs"
+      :aria-label="t('collections.title')"
+      @update:model-value="setTab"
+    />
+    <OnErrorState v-if="tab === 'collections' && error" @retry="refresh()" />
     <template #empty>
-      <OnEmpty v-if="!error" icon="lucide:boxes" :title="t('collections.emptyTitle')" />
+      <BrewfilePage v-if="tab === 'list'" embedded />
+      <OnEmpty v-else-if="!error" icon="lucide:boxes" :title="t('collections.emptyTitle')" />
     </template>
     <template #footer>
       <OnPagination
-        v-if="pageCount > 1"
+        v-if="tab === 'collections' && pageCount > 1"
         class="mt-24px self-center"
         :page="page"
         :page-count="pageCount"

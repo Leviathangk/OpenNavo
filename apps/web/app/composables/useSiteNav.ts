@@ -1,16 +1,15 @@
 import type { OnSidebarGroup, OnSidebarItem } from '@opennavo/ui';
 
 /**
- * Web sidebar (05 §11.2): Browse and Lists match desktop. The Mac app group repeats every desktop
- * destination the browser cannot run itself (Installed / Updates / Clean Up / Monitor / Security /
- * Firewall). The first four open explanation pages with a download and handoff; Security and Firewall
- * reuse their landing pages. Shared by the desktop-width sidebar and the mobile menu.
+ * Web sidebar (05 §11.2): Browse matches desktop, with Collections above Recently Updated. The Mac app
+ * group repeats every desktop destination the browser cannot run itself (Installed / Updates / Clean Up /
+ * Monitor / Security / Firewall). The first four open explanation pages with a download and handoff;
+ * Security and Firewall reuse their landing pages. Shared by the desktop-width sidebar and the mobile menu.
  */
 export function useSiteNav() {
   const { t } = useI18n();
   const route = useRoute();
   const localePath = useLocalePath();
-  const brewfile = useBrewfileList();
 
   // App details/search belong under Discover, matching desktop detail navigation. The full app list and
   // the A–Z directory (T1) are All Apps; an app's own pages stay under Discover.
@@ -27,17 +26,9 @@ export function useSiteNav() {
     if (under('/updates')) return 'updates';
     if (under('/cleanup')) return 'cleanup';
     if (under('/monitor')) return 'monitor';
+    if (under('/brewfile')) return 'collections';
     if (under('/security')) return 'security';
-    for (const key of [
-      'categories',
-      'rankings',
-      'recent',
-      'articles',
-      'collections',
-      'brewfile',
-      'about',
-      'feedback'
-    ] as const)
+    for (const key of ['categories', 'rankings', 'recent', 'articles', 'collections', 'about', 'feedback'] as const)
       if (under(`/${key}`)) return key;
     // Author pages belong to the articles they list. There is no /authors page to resolve, so the
     // prefix comes from the article list.
@@ -76,16 +67,9 @@ export function useSiteNav() {
         item('apps', '/apps', 'lucide:layers'),
         item('categories', '/categories', 'lucide:layout-grid'),
         item('rankings', '/rankings', 'lucide:chart-no-axes-column'),
+        item('collections', '/collections', 'lucide:library'),
         item('recent', '/recent', 'lucide:clock'),
         item('articles', '/articles', 'lucide:newspaper')
-      ]
-    },
-    {
-      key: 'lists',
-      label: t('nav.lists'),
-      items: [
-        item('collections', '/collections', 'lucide:library'),
-        item('brewfile', '/brewfile', 'lucide:file-text', { count: brewfile.count.value || undefined })
       ]
     },
     {
