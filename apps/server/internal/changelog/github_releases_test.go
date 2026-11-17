@@ -478,6 +478,48 @@ func TestGitHubReleasesFallbackHashAndETagStayPageLayoutIndependent(t *testing.T
 	require.Equal(t, fullResult.ContentHash, fallbackResult.ContentHash)
 }
 
+func TestGitHubReleasesFallsBackOnGatewayTimeout(t *testing.T) {
+	requests := []string{}
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		perPage, pageNumber := r.URL.Query().Get("per_page"), r.URL.Query().Get("page")
+		requests = append(requests, perPage+":"+pageNumber)
+		switch perPage + ":" + pageNumber {
+		case "100:1":
+			return reply(http.StatusGatewayTimeout, `upstream timeout`), nil
+		case "50:1":
+			return reply(http.StatusOK, `[{"tag_name":"v1.0.0","body":"notes"}]`), nil
+		default:
+			t.Fatalf("unexpected release request %s:%s", perPage, pageNumber)
+			return nil, nil
+		}
+	})
+
+	result, err := f.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "owner/app"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"100:1", "50:1"}, requests)
+	require.Len(t, result.Releases, 1)
+}
+
+func TestGitHubReleasesDoesNotShrinkPagesForNonGatewayErrors(t *testing.T) {
+	requests := []string{}
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		requests = append(requests, r.URL.Query().Get("per_page")+":"+r.URL.Query().Get("page"))
+		return reply(http.StatusInternalServerError, `upstream error`), nil
+	})
+
+	_, err := f.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "owner/app"},
+	})
+	var status *StatusError
+	require.True(t, errors.As(err, &status))
+	require.Equal(t, http.StatusInternalServerError, status.Status)
+	require.Equal(t, []string{"100:1"}, requests)
+}
+
 func TestGitHubReleasesCapsFallbackBackfillAtTwentyPages(t *testing.T) {
 	listCalls := 0
 	f := NewFetcher("test")
