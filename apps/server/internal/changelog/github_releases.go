@@ -204,6 +204,14 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 			return out, err
 		}
 		if err := checkStatus(status, responseHeaders); err != nil {
+			// GitHub sometimes answers a huge release page with a gateway error instead of an oversized
+			// body. Retrying with a smaller page distinguishes that from a repository-level failure.
+			if shouldRetryReleasePage(err) {
+				if smaller, ok := nextReleasePageSize(perPage); ok {
+					perPage = smaller
+					continue
+				}
+			}
 			return out, err
 		}
 		if page == 1 && perPage == releasesPerPage {
@@ -312,6 +320,19 @@ func (f *Fetcher) releases(ctx context.Context, s FetchSource) (FetchResult, err
 		out.Releases = append(out.Releases, release)
 	}
 	return out, nil
+}
+
+func shouldRetryReleasePage(err error) bool {
+	var status *StatusError
+	if !errors.As(err, &status) {
+		return false
+	}
+	switch status.Status {
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
 }
 
 // Version parsing is a whitelist. A tag is an optional word prefix (release-, desktop-v, the repository name)
