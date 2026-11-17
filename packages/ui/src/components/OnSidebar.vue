@@ -71,7 +71,8 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
           <span class="shrink-0">{{ group.label }}</span>
           <span
             v-if="group.hint"
-            class="min-w-0 truncate text-[10px] font-400 normal-case tracking-normal text-ink-disabled"
+            class="min-w-0 truncate text-[10px] font-400 normal-case tracking-normal text-ink-tertiary"
+            :title="group.hint"
             >{{ group.hint }}</span
           >
         </div>

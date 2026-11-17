@@ -3,8 +3,8 @@ import type { OnSidebarGroup, OnSidebarItem } from '@opennavo/ui';
 /**
  * Web sidebar (05 §11.2): Browse and Lists match desktop. The Mac app group repeats every desktop
  * destination the browser cannot run itself (Installed / Updates / Clean Up / Monitor / Security /
- * Firewall); each one opens an explanation page with a download and handoff. Shared by the
- * desktop-width sidebar and the mobile menu.
+ * Firewall). The first four open explanation pages with a download and handoff; Security and Firewall
+ * reuse their landing pages. Shared by the desktop-width sidebar and the mobile menu.
  */
 export function useSiteNav() {
   const { t } = useI18n();

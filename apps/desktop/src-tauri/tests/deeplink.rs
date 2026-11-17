@@ -93,6 +93,11 @@ fn routes_actions_encoding_and_bounded_query() {
             true,
         ),
         ("opennavo://updates", "/updates", false),
+        ("opennavo://installed", "/installed", false),
+        ("opennavo://cleanup", "/cleanup", false),
+        ("opennavo://monitor", "/monitor", false),
+        ("opennavo://security", "/security", false),
+        ("opennavo://firewall", "/firewall", false),
         (
             "opennavo://search?q=hello%20world",
             "/search?q=hello+world",
@@ -128,6 +133,7 @@ fn routes_actions_encoding_and_bounded_query() {
         "opennavo://updates?action=install",
         "opennavo://search?q=x&q=y",
         "opennavo://collection/new-mac/",
+        "opennavo://firewall/now",
         "opennavo://updates\n",
     ] {
         assert!(deeplink::parse(invalid).is_none(), "{invalid}");

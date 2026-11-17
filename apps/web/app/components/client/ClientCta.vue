@@ -62,8 +62,8 @@ async function copyLink() {
         <OnButton variant="primary" size="lg" block icon="copy" @click="copyLink">
           {{ t('client.copyLink') }}
         </OnButton>
-        <OnButton variant="secondary" block :href="localePath('/download')" :link-as="NuxtLink">
-          {{ t('nav.download') }}
+        <OnButton variant="secondary" block :href="localePath('/apps')" :link-as="NuxtLink">
+          {{ t('nav.apps') }}
         </OnButton>
       </template>
       <template v-else>

@@ -47,6 +47,10 @@ describe('HTML edge cache switch', () => {
       '/articles',
       '/collections/new-mac',
       '/download',
+      '/installed',
+      '/zh/updates',
+      '/cleanup',
+      '/ja/monitor',
       '/de/security',
       '/security/clamav',
       '/about'

@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { gotoReady } from './helpers';
 
+// Platform detection decides which actions the CTA offers. Pin a Mac so these desktop cases do not
+// depend on the CI host OS; the phone case below overrides it.
+const MAC_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+test.use({ userAgent: MAC_USER_AGENT });
+
 async function stubDeepLink(page: Page) {
   await page.addInitScript(() => {
     window.opennavoLaunchDeepLink = () => {};
@@ -45,5 +52,16 @@ test.describe('on a phone', () => {
   test('Shows how to continue on a Mac instead of a DMG download', async ({ page }) => {
     await gotoReady(page, '/monitor');
     await expect(page.getByText('This page describes the macOS app. Open it on your Mac to continue.')).toBeVisible();
+  });
+
+  test('Download page on a phone points back to the Mac', async ({ page }) => {
+    await gotoReady(page, '/download');
+    const handoff = page.getByTestId('download-non-mac');
+    await expect(
+      handoff.getByText('This page describes the macOS app. Open it on your Mac to continue.')
+    ).toBeVisible();
+    await expect(handoff.getByRole('button', { name: 'Copy page link' })).toBeVisible();
+    await expect(handoff.getByRole('link', { name: 'All Apps' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Download for macOS' })).toHaveCount(0);
   });
 });

@@ -31,7 +31,7 @@ const webPoints = computed(() => [t('client.web.browse'), t('client.web.command'
 
     <div class="grid gap-12px lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
       <section
-        class="relative flex min-h-320px flex-col overflow-hidden rounded-huge border border-solid border-line-subtle bg-surface-card px-18px pb-16px pt-14px"
+        class="relative order-2 flex min-h-320px flex-col overflow-hidden rounded-huge border border-solid border-line-subtle bg-surface-card px-18px pb-16px pt-14px lg:order-1"
         :aria-label="t('client.preview')"
       >
         <div class="flex items-center justify-between gap-10px">
@@ -50,7 +50,8 @@ const webPoints = computed(() => [t('client.web.browse'), t('client.web.command'
         </div>
       </section>
 
-      <ClientCta :feature="feature" :route="route" />
+      <!-- Put the download/handoff card before the sample preview on phones. -->
+      <ClientCta class="order-1 lg:order-2" :feature="feature" :route="route" />
     </div>
 
     <div class="grid gap-12px md:grid-cols-2">

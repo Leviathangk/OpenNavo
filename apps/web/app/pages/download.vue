@@ -215,10 +215,13 @@ useSchemaOrg(
       <p class="download-balance m-0 mt-16px max-w-600px text-15px leading-[1.7] text-ink-secondary md:text-16px">
         {{ t('download.description') }}
       </p>
-      <div v-if="nonMac" class="mt-32px flex max-w-480px flex-col items-center gap-12px">
+      <div v-if="nonMac" data-testid="download-non-mac" class="mt-32px flex max-w-480px flex-col items-center gap-12px">
         <p class="download-balance m-0 text-13px leading-[1.6] text-ink-secondary">{{ t('client.notMac') }}</p>
         <OnButton variant="primary" size="lg" shape="round" icon="copy" @click="copyPageLink">
           {{ t('client.copyLink') }}
+        </OnButton>
+        <OnButton variant="secondary" shape="round" :href="localePath('/apps')" :link-as="NuxtLink">
+          {{ t('nav.apps') }}
         </OnButton>
       </div>
       <div v-else-if="release && dmg" class="mt-32px flex flex-col items-center gap-14px">

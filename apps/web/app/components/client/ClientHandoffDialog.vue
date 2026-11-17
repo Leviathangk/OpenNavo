@@ -5,8 +5,12 @@ import { OnButton, OnIcon, OnModal } from '@opennavo/ui';
 // Download is always the primary action; the brew command stays available for installs.
 const { t } = useI18n();
 const localePath = useLocalePath();
+const route = useRoute();
 const NuxtLink = resolveComponent('NuxtLink');
 const { prompt, opening, retry, close, copyInstead, dontAsk } = useClientHandoff();
+
+// A prompt belongs to the page that started the handoff; do not carry it across a route change.
+watch(() => route.fullPath, close);
 
 const dialogOpen = computed({
   get: () => prompt.value !== null,

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { OnButton } from '@opennavo/ui';
 import type { OnButtonVariant } from '@opennavo/ui';
-import { trackEvent } from '~/utils/analytics';
 
 // "Open in OpenNavo" for a preview deep link (F1): the client only finds and shows the item or app on this
 // Mac, and nothing changes until the user confirms there. The link is a plain anchor, so it works without
@@ -17,7 +16,6 @@ const { openUrl } = useClientHandoff();
 
 function open(event: MouseEvent) {
   event.preventDefault();
-  trackEvent('open_in_app');
   openUrl(props.href, props.href.includes('/uninstall/') ? 'uninstall' : 'scan');
 }
 </script>

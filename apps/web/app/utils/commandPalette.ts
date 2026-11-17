@@ -5,7 +5,7 @@ export type SuggestItem = PublicComponents['schemas']['SuggestItem'];
 
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 
-/** The pages Command-K can jump to, by their i18n key under `palette.pages`. */
+/** The pages Command-K can jump to, by their i18n key under `palette.pages` or an existing page label. */
 export const PALETTE_PAGES: readonly { key: string; path: string; icon: string; labelKey?: string }[] = [
   { key: 'discover', path: '/discover', icon: 'compass' },
   { key: 'categories', path: '/categories', icon: 'layout-grid' },
@@ -17,7 +17,9 @@ export const PALETTE_PAGES: readonly { key: string; path: string; icon: string; 
   { key: 'installed', path: '/installed', icon: 'package', labelKey: 'landing.window.installed' },
   { key: 'updates', path: '/updates', icon: 'circle-arrow-down', labelKey: 'landing.window.updates' },
   { key: 'cleanup', path: '/cleanup', icon: 'eraser', labelKey: 'landing.window.cleanup' },
-  { key: 'monitor', path: '/monitor', icon: 'activity', labelKey: 'landing.window.monitor' }
+  { key: 'monitor', path: '/monitor', icon: 'activity', labelKey: 'landing.window.monitor' },
+  { key: 'security', path: '/security', icon: 'shield-check', labelKey: 'nav.security' },
+  { key: 'firewall', path: '/security/firewall', icon: 'brick-wall-fire', labelKey: 'nav.firewall' }
 ];
 
 /**
