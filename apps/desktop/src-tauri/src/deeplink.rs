@@ -140,6 +140,14 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
                 .append_pair("preview", "1");
             format!("{}?{}", route.path(), route.query()?)
         }
+        "installed" | "cleanup" | "monitor" | "security" | "firewall"
+            if segments.is_empty() && action.is_none() =>
+        {
+            if !query.is_empty() {
+                return None;
+            }
+            format!("/{}", url.host_str()?)
+        }
         "updates" if segments.is_empty() && query.is_empty() => "/updates".into(),
         _ => return None,
     };
@@ -793,6 +801,22 @@ mod safety_preview_tests {
             "opennavo://scan/example?preview=1&action=install",
             "opennavo://scan/../example?preview=1",
             "opennavo://scan/example%2Fother?preview=1",
+        ] {
+            assert!(super::parse(url).is_none(), "{url}");
+        }
+    }
+
+    #[test]
+    fn client_pages_open_without_an_action() {
+        for page in ["installed", "cleanup", "monitor", "security", "firewall"] {
+            let event = super::parse(&format!("opennavo://{page}")).unwrap();
+            assert_eq!(event.route, format!("/{page}"));
+            assert!(event.action.is_none());
+        }
+        for url in [
+            "opennavo://installed/now",
+            "opennavo://monitor?tab=cpu",
+            "opennavo://cleanup?action=install",
         ] {
             assert!(super::parse(url).is_none(), "{url}");
         }

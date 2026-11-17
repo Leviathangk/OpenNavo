@@ -1,8 +1,10 @@
 import type { OnSidebarGroup, OnSidebarItem } from '@opennavo/ui';
 
 /**
- * Web sidebar (05 §11.2): Browse matches desktop; desktop My items (Installed / Updates / History)
- * become Collections / My list (Brewfile) on web. Shared by desktop-width sidebar and mobile menu.
+ * Web sidebar (05 §11.2): Browse and Lists match desktop. The Mac app group repeats every desktop
+ * destination the browser cannot run itself (Installed / Updates / Clean Up / Monitor / Security /
+ * Firewall). The first four open explanation pages with a download and handoff; Security and Firewall
+ * reuse their landing pages. Shared by the desktop-width sidebar and the mobile menu.
  */
 export function useSiteNav() {
   const { t } = useI18n();
@@ -20,6 +22,12 @@ export function useSiteNav() {
     };
     if (path === localePath('/apps') || under('/browse')) return 'apps';
     if (under('/developer-map')) return 'developerMap';
+    if (path.startsWith(localePath('/security/firewall'))) return 'firewall';
+    if (under('/installed')) return 'installed';
+    if (under('/updates')) return 'updates';
+    if (under('/cleanup')) return 'cleanup';
+    if (under('/monitor')) return 'monitor';
+    if (under('/security')) return 'security';
     for (const key of [
       'categories',
       'rankings',
@@ -37,14 +45,26 @@ export function useSiteNav() {
     return under('/download') ? 'download' : 'discover';
   });
 
-  const item = (key: string, path: string, icon: string, extra: Partial<OnSidebarItem> = {}): OnSidebarItem => ({
-    key,
-    label: t(`nav.${key}`),
-    icon,
-    href: localePath(path),
-    active: section.value === key,
-    ...extra
-  });
+  const item = (key: string, path: string, icon: string, extra: Partial<OnSidebarItem> = {}): OnSidebarItem => {
+    const { label, ...rest } = extra;
+    return {
+      key,
+      label: label ?? t(`nav.${key}`),
+      icon,
+      href: localePath(path),
+      active: section.value === key,
+      ...rest
+    };
+  };
+
+  // Desktop-only destinations keep their desktop names and get one shared Mac tag, so the group
+  // reads as "these pages describe what the app does" before anyone clicks.
+  const clientItem = (key: string, path: string, icon: string, label: string): OnSidebarItem =>
+    item(key, path, icon, {
+      label,
+      tag: t('client.tag'),
+      tagLabel: t('client.requires')
+    });
 
   const groups = computed<OnSidebarGroup[]>(() => [
     {
@@ -66,6 +86,19 @@ export function useSiteNav() {
       items: [
         item('collections', '/collections', 'lucide:library'),
         item('brewfile', '/brewfile', 'lucide:file-text', { count: brewfile.count.value || undefined })
+      ]
+    },
+    {
+      key: 'mac',
+      label: t('nav.clientGroup'),
+      hint: t('nav.clientHint'),
+      items: [
+        clientItem('installed', '/installed', 'lucide:package', t('landing.window.installed')),
+        clientItem('updates', '/updates', 'lucide:circle-arrow-down', t('landing.window.updates')),
+        clientItem('cleanup', '/cleanup', 'lucide:eraser', t('landing.window.cleanup')),
+        clientItem('monitor', '/monitor', 'lucide:activity', t('landing.window.monitor')),
+        clientItem('security', '/security', 'lucide:shield-check', t('nav.security')),
+        clientItem('firewall', '/security/firewall', 'lucide:brick-wall-fire', t('nav.firewall'))
       ]
     }
   ]);

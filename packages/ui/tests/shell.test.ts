@@ -108,6 +108,16 @@ describe('OnNavItem', () => {
     );
   });
 
+  it('Marks a client-only destination with a visible tag and an accessible description', () => {
+    const item = mount(OnNavItem, {
+      props: { href: '#/monitor', tag: 'Mac', tagLabel: 'Mac app required' },
+      slots: { default: 'Monitor' }
+    });
+    expect(item.text()).toBe('MonitorMac');
+    expect(item.attributes('aria-description')).toBe('Mac app required');
+    expect(item.get('[aria-hidden="true"]').attributes('title')).toBe('Mac app required');
+  });
+
   it('Accepts a router link component', () => {
     // Like RouterLink, the root creates href itself; undefined fallthrough attributes would overwrite it.
     const RouterLinkStub = defineComponent({

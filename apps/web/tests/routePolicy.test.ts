@@ -21,6 +21,10 @@ const ttls: Record<string, number> = {
   '/categories/**': 900,
   '/rankings': 900,
   '/download': 600,
+  '/installed': 900,
+  '/updates': 900,
+  '/cleanup': 900,
+  '/monitor': 900,
   '/security': 900,
   // F8 security topics, T1 A–Z directory and F1 background-items encyclopedia.
   '/security/**': 900,

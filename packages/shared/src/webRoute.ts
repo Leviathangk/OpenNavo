@@ -10,7 +10,18 @@ const APP_TABS = new Set(['versions', 'dependencies', 'details', 'troubleshootin
 /** Intent pages beside an app (X2): their own page types, so their traffic is not counted as tabs. */
 const APP_INTENTS = new Set(['alternatives', 'uninstall']);
 const LISTS = new Set(['apps', 'categories', 'collections', 'rankings', 'discover', 'browse', 'background-items']);
-const STATIC_PAGES = new Set(['download', 'security', 'about', 'feedback', 'brewfile', 'search']);
+const STATIC_PAGES = new Set([
+  'download',
+  'security',
+  'about',
+  'feedback',
+  'brewfile',
+  'search',
+  'installed',
+  'updates',
+  'cleanup',
+  'monitor'
+]);
 
 export function webRouteType(path: string): string {
   let clean = path.split('?', 1)[0] || '/';

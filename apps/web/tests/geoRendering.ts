@@ -105,6 +105,7 @@ export async function renderGeo(detail: PackageDetail, locale: SiteLocale) {
   vi.stubGlobal('toAppLocale', (value: string) => value);
   vi.stubGlobal('useLocalePath', () => (path: string) => `${LOCALE_METADATA[locale].prefix}${path}`);
   vi.stubGlobal('useToasts', () => ({ push: () => {} }));
+  vi.stubGlobal('useClientHandoff', () => ({ openUrl: () => {} }));
   try {
     const blocks: Record<string, Component | null> = {
       lead: Lead,

@@ -271,6 +271,11 @@ export default defineNuxtConfig({
       // Changed apps purge every localized listing, including pagination and payloads.
       '/recent': { cache: { maxAge: 60, swr: true, staleMaxAge: 300 } },
       '/download': { swr: 600 },
+      // Desktop-only destinations: static explanations with sample previews.
+      '/installed': { swr: 900 },
+      '/updates': { swr: 900 },
+      '/cleanup': { swr: 900 },
+      '/monitor': { swr: 900 },
       '/security': { swr: 900 },
       '/security/**': { swr: 900 },
       // T1 directory and F1 encyclopedia: lists of catalog data, refreshed like the categories.

@@ -16,8 +16,8 @@ export function edgeRouteType(path: string): string {
 }
 
 /**
- * Page types cached at the edge; the rest stays at the origin. The download, security, about and collection pages
- * change with a release or an edit at most, so the short lifetime covers them without a purge.
+ * Page types cached at the edge; the rest stays at the origin. The download, client, security, about and collection
+ * pages change with a release or an edit at most, so the short lifetime covers them without a purge.
  */
 export const EDGE_CACHE_ROUTES = new Set([
   'home',
@@ -32,6 +32,10 @@ export const EDGE_CACHE_ROUTES = new Set([
   'article',
   'author',
   'download',
+  'installed',
+  'updates',
+  'cleanup',
+  'monitor',
   'security',
   'security_topic',
   'about'

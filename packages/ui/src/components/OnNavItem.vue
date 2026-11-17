@@ -18,6 +18,10 @@ export interface OnNavItemProps {
   dot?: boolean;
   /** Accessible badge or dot text. */
   badgeLabel?: string;
+  /** Small right-side tag, e.g. Mac for a destination that needs the desktop app. */
+  tag?: string;
+  /** Accessible text for the tag, e.g. "Mac app required". */
+  tagLabel?: string;
   /** Render native a/button or supplied RouterLink; component never reads routes. */
   as?: string | Component;
   href?: string;
@@ -28,7 +32,7 @@ const props = withDefaults(defineProps<OnNavItemProps>(), { as: 'a' });
 
 defineSlots<{ default?: () => unknown }>();
 
-const tag = computed(() => (props.as === 'a' && props.href === undefined ? 'button' : props.as));
+const element = computed(() => (props.as === 'a' && props.href === undefined ? 'button' : props.as));
 
 // Only pass defined link attributes; undefined href falls through and overrides RouterLink's own href.
 const linkAttrs = computed(() => ({
@@ -39,10 +43,11 @@ const linkAttrs = computed(() => ({
 
 <template>
   <component
-    :is="tag"
+    :is="element"
     v-bind="linkAttrs"
-    :type="tag === 'button' ? 'button' : undefined"
+    :type="element === 'button' ? 'button' : undefined"
     :aria-current="active ? 'page' : undefined"
+    :aria-description="tagLabel || undefined"
     class="m-0 box-border flex h-34px w-full items-center gap-10px rounded-small border-none px-10px font-sans text-13.5px font-500 no-underline outline-none transition-colors duration-fast ease-standard focus-visible:shadow-focus-ring"
     :class="
       active ? 'bg-component-nav-active text-ink-primary' : 'bg-transparent text-ink-tertiary hover:text-ink-secondary'
@@ -60,5 +65,12 @@ const linkAttrs = computed(() => ({
     ></span>
     <span v-else-if="count !== undefined" class="text-11.5px text-ink-tertiary tabular-nums">{{ count }}</span>
     <span v-else-if="meta" class="shrink-0 text-11.5px text-ink-tertiary tabular-nums">{{ meta }}</span>
+    <span
+      v-if="tag"
+      class="ml-2px shrink-0 rounded-full border border-solid border-line-subtle px-5px py-1px text-[10px] font-600 leading-[1.4] text-ink-tertiary"
+      aria-hidden="true"
+      :title="tagLabel"
+      >{{ tag }}</span
+    >
   </component>
 </template>

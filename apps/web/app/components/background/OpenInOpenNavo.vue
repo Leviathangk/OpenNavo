@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { OnButton } from '@opennavo/ui';
 import type { OnButtonVariant } from '@opennavo/ui';
-import { trackEvent } from '~/utils/analytics';
-import { launchDeepLink } from '~/utils/deepLink';
 
 // "Open in OpenNavo" for a preview deep link (F1): the client only finds and shows the item or app on this
 // Mac, and nothing changes until the user confirms there. The link is a plain anchor, so it works without
@@ -14,11 +12,12 @@ const props = withDefaults(defineProps<{ href: string; label: string; hint: stri
 const { t } = useI18n();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
+const { openUrl } = useClientHandoff();
 
 function open(event: MouseEvent) {
   event.preventDefault();
-  trackEvent('open_in_app');
-  launchDeepLink(props.href);
+  const kind = props.href.includes('/uninstall/') ? 'uninstall' : props.href.includes('/startup?') ? 'startup' : 'scan';
+  openUrl(props.href, kind);
 }
 </script>
 

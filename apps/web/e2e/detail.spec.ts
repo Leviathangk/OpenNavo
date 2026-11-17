@@ -15,7 +15,7 @@ async function stubDeepLink(page: Page, { appInstalled }: { appInstalled: boolea
 
 async function openInApp(page: Page) {
   await page.getByRole('button', { name: '获取 VS Code 编辑器', exact: true }).click();
-  await page.getByRole('menuitem', { name: '在 OpenNavo 中打开' }).click();
+  await page.getByRole('menuitem', { name: '用 OpenNavo 安装' }).click();
 }
 
 const lastDeepLink = (page: Page) =>
@@ -28,10 +28,10 @@ test('Missing client: no blur after link prompts and offers copying commands', a
   await openInApp(page);
   expect(await lastDeepLink(page)).toBe('opennavo://package/cask/visual-studio-code?action=install');
 
-  const dialog = page.getByRole('dialog', { name: '还没有安装 OpenNavo？' });
+  const dialog = page.getByRole('dialog', { name: '需要 OpenNavo Mac 客户端' });
   await expect(dialog).toBeVisible({ timeout: 4000 });
-  await expect(dialog.getByRole('link', { name: '下载客户端' })).toHaveAttribute('href', '/zh/download');
-  await dialog.getByRole('button', { name: '改为复制安装命令' }).click();
+  await expect(dialog.getByRole('link', { name: '下载 macOS 版' })).toHaveAttribute('href', '/zh/download');
+  await dialog.getByRole('button', { name: '复制安装命令' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('region', { name: '通知' })).toContainText('已复制安装命令');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('brew install --cask visual-studio-code');
@@ -41,7 +41,7 @@ test('Installed client: blur after link suppresses prompt', async ({ page }) => 
   await stubDeepLink(page, { appInstalled: true });
   await gotoReady(page, '/zh/apps/visual-studio-code');
   await openInApp(page);
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2600);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
@@ -55,7 +55,7 @@ test('Do not ask again makes future opens copy commands directly', async ({ page
 
   await page.evaluate(() => navigator.clipboard.writeText(''));
   await openInApp(page);
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2600);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('brew install --cask visual-studio-code');
 });

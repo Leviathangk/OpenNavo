@@ -17,6 +17,8 @@ describe('buildDeepLink', () => {
       'opennavo://search?q=%E5%BE%AE%E4%BF%A1%20%26%20vscode'
     );
     expect(buildDeepLink({ type: 'updates' })).toBe('opennavo://updates');
+    expect(buildDeepLink({ type: 'route', route: 'installed' })).toBe('opennavo://installed');
+    expect(buildDeepLink({ type: 'route', route: 'monitor' })).toBe('opennavo://monitor');
   });
 
   it('Limits query values to 64 characters', () => {
@@ -28,6 +30,7 @@ describe('buildDeepLink', () => {
     expect(() => buildDeepLink({ type: 'package', kind: 'cask', token: '../etc' })).toThrow();
     expect(() => buildDeepLink({ type: 'package', kind: 'tap' as 'cask', token: 'x' })).toThrow();
     expect(() => buildDeepLink({ type: 'collection', slug: 'Bad Slug' })).toThrow();
+    expect(() => buildDeepLink({ type: 'route', route: 'settings' as never })).toThrow();
   });
 });
 
@@ -56,6 +59,11 @@ describe('parseDeepLink', () => {
     });
     expect(parseDeepLink('opennavo://search?q=%20rg%20')).toEqual({ type: 'search', q: 'rg' });
     expect(parseDeepLink('opennavo://updates')).toEqual({ type: 'updates' });
+    expect(parseDeepLink('opennavo://installed')).toEqual({ type: 'route', route: 'installed' });
+    expect(parseDeepLink('opennavo://cleanup')).toEqual({ type: 'route', route: 'cleanup' });
+    expect(parseDeepLink('opennavo://monitor')).toEqual({ type: 'route', route: 'monitor' });
+    expect(parseDeepLink('opennavo://security')).toEqual({ type: 'route', route: 'security' });
+    expect(parseDeepLink('opennavo://firewall')).toEqual({ type: 'route', route: 'firewall' });
   });
 
   it.each([
@@ -72,6 +80,15 @@ describe('parseDeepLink', () => {
     'opennavo://search',
     'opennavo://search/extra?q=x',
     'opennavo://updates/now',
+    'opennavo://installed/now',
+    'opennavo://installed/',
+    'opennavo://installed#x',
+    'opennavo://installed#',
+    'opennavo://package/cask/visual-studio-code/',
+    'opennavo://user@installed',
+    'opennavo://installed:99',
+    'opennavo://monitor?tab=cpu',
+    'opennavo://cleanup?action=install',
     'opennavo://settings'
   ])('%s → null', url => {
     expect(parseDeepLink(url)).toBeNull();

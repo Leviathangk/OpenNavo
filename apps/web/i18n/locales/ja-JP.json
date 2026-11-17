@@ -30,10 +30,13 @@
     "themeDark": "ダーク",
     "skipToContent": "本文へ移動",
     "developers": "開発者",
-    "developerMap": "開発者マップ"
+    "developerMap": "開発者マップ",
+    "clientGroup": "Mac アプリ",
+    "clientHint": "Mac で実行します",
+    "firewall": "ファイアウォール"
   },
   "sidebar": {
-    "appLabel": "Macクライアント",
+    "appLabel": "アプリを入手",
     "appTitle": "OpenNavo for Mac",
     "appHint": "macOS 13以降 · 無料"
   },
@@ -2286,5 +2289,51 @@
     "claimHint": "アプリを選び、更新する内容を指定してください。変更はすべて編集者の審査後に反映されます。",
     "proofPlaceholder": "ドメイン、リポジトリ、メモ（任意）",
     "contactPlaceholder": "you{'@'}example.com"
+  },
+  "client": {
+    "tag": "Mac",
+    "requires": "Mac アプリが必要",
+    "installWith": "OpenNavo でインストール",
+    "open": "OpenNavo で開く",
+    "opening": "OpenNavo を開いています…",
+    "notMac": "このページは macOS アプリの説明です。続けるには Mac で開いてください。",
+    "copyLink": "ページのリンクをコピー",
+    "copied": "リンクをコピーしました",
+    "preview": "アプリのプレビュー",
+    "sample": "サンプルデータ",
+    "webTitle": "Web でできること",
+    "appTitle": "Mac アプリでできること",
+    "whyTitle": "なぜアプリが必要？",
+    "why": "ブラウザは「アプリケーション」フォルダを読んだり、Homebrew を実行したりできません。OpenNavo はあなたの Mac 上でこれを行い、データは Mac に残ります。",
+    "local": "ローカルで実行。アップロードはありません。",
+    "related": "関連",
+    "web": {
+      "browse": "アプリ、リリースノート、システム要件を見る",
+      "command": "正確な brew コマンドをコピー",
+      "brewfile": "新しい Mac 用の Brewfile を作る"
+    },
+    "handoff": {
+      "title": "OpenNavo for Mac が必要です",
+      "body": "この操作は Mac 上で実行されます。アプリをダウンロードして続けるか、インストール済みなら開いてください。",
+      "copy": "インストールコマンドをコピー",
+      "notNow": "後で"
+    },
+    "pages": {
+      "installed": {
+        "lede": "OpenNavo は Mac 上のアプリ、バージョン、サイズ、最後に開いた日時を一覧表示し、残すものを判断できます。",
+        "metaTitle": "Mac にインストールされたアプリを見る · OpenNavo"
+      },
+      "updates": {
+        "commandTitle": "ターミナルで更新を確認",
+        "commandNote": "更新可能な Cask を一覧表示します。インストールは行いません。",
+        "commandLabel": "コマンド"
+      },
+      "cleanup": {
+        "app": {
+          "review": "クリーンアップで解放される容量を事前に確認",
+          "undo": "残りファイルはゴミ箱へ入り、元に戻せます"
+        }
+      }
+    }
   }
 }

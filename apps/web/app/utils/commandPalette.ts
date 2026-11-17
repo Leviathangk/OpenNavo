@@ -5,16 +5,22 @@ export type SuggestItem = PublicComponents['schemas']['SuggestItem'];
 
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 
-/** The pages Command-K can jump to, by their i18n key under `palette.pages`. */
-export const PALETTE_PAGES = [
+/** The pages Command-K can jump to, by their i18n key under `palette.pages` or an existing page label. */
+export const PALETTE_PAGES: readonly { key: string; path: string; icon: string; labelKey?: string }[] = [
   { key: 'discover', path: '/discover', icon: 'compass' },
   { key: 'categories', path: '/categories', icon: 'layout-grid' },
   { key: 'rankings', path: '/rankings', icon: 'chart-no-axes-column' },
   { key: 'recent', path: '/recent', icon: 'clock' },
   { key: 'collections', path: '/collections', icon: 'boxes' },
   { key: 'download', path: '/download', icon: 'download' },
-  { key: 'brewfile', path: '/brewfile', icon: 'file-text' }
-] as const;
+  { key: 'brewfile', path: '/brewfile', icon: 'file-text' },
+  { key: 'installed', path: '/installed', icon: 'package', labelKey: 'landing.window.installed' },
+  { key: 'updates', path: '/updates', icon: 'circle-arrow-down', labelKey: 'landing.window.updates' },
+  { key: 'cleanup', path: '/cleanup', icon: 'eraser', labelKey: 'landing.window.cleanup' },
+  { key: 'monitor', path: '/monitor', icon: 'activity', labelKey: 'landing.window.monitor' },
+  { key: 'security', path: '/security', icon: 'shield-check', labelKey: 'nav.security' },
+  { key: 'firewall', path: '/security/firewall', icon: 'brick-wall-fire', labelKey: 'nav.firewall' }
+];
 
 /**
  * The rows of the web Command-K for what was typed (05 §7). The "Go to" group comes first and starts with all the results
@@ -46,9 +52,15 @@ export function paletteGroups(query: string, suggestions: readonly SuggestItem[]
         icon: 'layout-grid'
       })),
     // Match page names or English keys; rank can find Rankings even in the Chinese UI.
-    ...PALETTE_PAGES.filter(
-      page => !lower || page.key.includes(lower) || t(`palette.pages.${page.key}`).toLowerCase().includes(lower)
-    ).map(page => ({ key: `page:${page.path}`, label: t(`palette.pages.${page.key}`), icon: page.icon }))
+    ...PALETTE_PAGES.filter(page => {
+      if (!lower) return true;
+      const label = t(page.labelKey ?? `palette.pages.${page.key}`);
+      return page.key.includes(lower) || label.toLowerCase().includes(lower);
+    }).map(page => ({
+      key: `page:${page.path}`,
+      label: t(page.labelKey ?? `palette.pages.${page.key}`),
+      icon: page.icon
+    }))
   ];
   return [
     { key: 'jump', label: t('palette.jump'), items: jumps },

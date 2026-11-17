@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatDate } from '~/utils/packageDate';
+import { BRAND } from '@opennavo/shared';
 import { displayUrl, OnIcon } from '@opennavo/ui';
 import { aroundDate, isoDate, isVerified, verifiedIdentities, verifiedPrices } from '~/utils/packageFacts';
 import type { FactEvidence, PackagePage } from '~/utils/packageFacts';
@@ -15,6 +16,7 @@ const props = defineProps<{ pkg: PackagePage; showChecked?: boolean }>();
 const { t, locale } = useI18n();
 const localePath = useLocalePath();
 const appLocale = computed(() => toAppLocale(locale.value));
+const { openUrl } = useClientHandoff();
 
 const security = computed(() => props.pkg.facts.security);
 const identities = computed(() => verifiedIdentities(props.pkg));
@@ -60,6 +62,15 @@ const vulnerabilities = computed(() =>
   (security.value?.vulnerabilities ?? []).filter(item => isVerified(item.evidence))
 );
 const visible = computed(() => Boolean(security.value) || channels.value.length > 0);
+
+function scan(event: MouseEvent) {
+  const url = security.value?.scanUrl;
+  if (!url) return;
+  // The API may return a plain web address; only the app's own preview link needs the handoff.
+  if (!url.startsWith(`${BRAND.scheme}://`)) return;
+  event.preventDefault();
+  openUrl(url, 'scan', props.pkg.displayName);
+}
 </script>
 
 <template>
@@ -142,6 +153,7 @@ const visible = computed(() => Boolean(security.value) || channels.value.length 
         :href="security.scanUrl"
         rel="nofollow"
         class="inline-flex items-center gap-6px rounded-default border border-solid border-line-default px-12px py-6px text-12.5px font-600 text-ink-primary no-underline outline-none hover:border-line-strong focus-visible:shadow-focus-ring"
+        @click="scan"
       >
         <OnIcon name="shield-check" :size="14" />
         {{ t('package.safety.scan') }}

@@ -30,10 +30,13 @@
     "themeDark": "Dark",
     "skipToContent": "Skip to content",
     "developers": "Developers",
-    "developerMap": "Developer map"
+    "developerMap": "Developer map",
+    "clientGroup": "Mac app",
+    "clientHint": "Runs on your Mac",
+    "firewall": "Firewall"
   },
   "sidebar": {
-    "appLabel": "Mac app",
+    "appLabel": "Get the app",
     "appTitle": "OpenNavo for Mac",
     "appHint": "macOS 13+ · Free"
   },
@@ -2286,5 +2289,51 @@
     "claimHint": "Select your app, then tell us what to update. Every change is reviewed by an editor before it goes live.",
     "proofPlaceholder": "Domain, repository or note (optional)",
     "contactPlaceholder": "you{'@'}example.com"
+  },
+  "client": {
+    "tag": "Mac",
+    "requires": "Mac app required",
+    "installWith": "Install with OpenNavo",
+    "open": "Open in OpenNavo",
+    "opening": "Opening OpenNavo…",
+    "notMac": "This page describes the macOS app. Open it on your Mac to continue.",
+    "copyLink": "Copy page link",
+    "copied": "Link copied",
+    "preview": "App preview",
+    "sample": "Sample data",
+    "webTitle": "On the web",
+    "appTitle": "In the Mac app",
+    "whyTitle": "Why the app?",
+    "why": "Browsers can’t read your Applications folder or run Homebrew. OpenNavo does this on your Mac, and your data stays there.",
+    "local": "Runs locally. Nothing is uploaded.",
+    "related": "Related",
+    "web": {
+      "browse": "Browse apps, release notes and system requirements",
+      "command": "Copy the exact brew command",
+      "brewfile": "Build a Brewfile for a new Mac"
+    },
+    "handoff": {
+      "title": "OpenNavo for Mac is needed",
+      "body": "This step runs on your Mac. Download the app to continue, or open it if it’s already installed.",
+      "copy": "Copy install command",
+      "notNow": "Not now"
+    },
+    "pages": {
+      "installed": {
+        "lede": "OpenNavo lists the apps on your Mac, with their version, size and when you last opened them, so you can decide what to keep.",
+        "metaTitle": "See Installed Mac Apps · OpenNavo"
+      },
+      "updates": {
+        "commandTitle": "Check updates from Terminal",
+        "commandNote": "Lists available cask updates. It doesn’t install them.",
+        "commandLabel": "Command"
+      },
+      "cleanup": {
+        "app": {
+          "review": "See what a cleanup will free before it runs",
+          "undo": "Leftovers go to the Trash, so you can undo"
+        }
+      }
+    }
   }
 }

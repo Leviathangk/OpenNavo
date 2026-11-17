@@ -71,7 +71,15 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
       <DownloadCard />
       <nav class="flex flex-col gap-12px" :aria-label="t('nav.label')">
         <div v-for="group in groups" :key="group.key" class="flex flex-col gap-2px">
-          <div class="px-8px pb-6px pt-2px text-label text-ink-tertiary">{{ group.label }}</div>
+          <div class="flex items-baseline gap-6px px-8px pb-6px pt-2px text-label text-ink-tertiary">
+            <span class="shrink-0">{{ group.label }}</span>
+            <span
+              v-if="group.hint"
+              class="min-w-0 truncate text-[10px] font-400 normal-case tracking-normal text-ink-tertiary"
+              :title="group.hint"
+              >{{ group.hint }}</span
+            >
+          </div>
           <OnNavItem
             v-for="item in group.items"
             :key="item.key"
@@ -80,6 +88,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
             :icon="item.icon"
             :active="item.active"
             :count="item.count"
+            :tag="item.tag"
+            :tag-label="item.tagLabel"
           >
             {{ item.label }}
           </OnNavItem>

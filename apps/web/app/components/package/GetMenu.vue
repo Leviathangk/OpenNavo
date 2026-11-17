@@ -30,14 +30,16 @@ const { t } = useI18n();
 const messages = useUiMessages();
 const localePath = useLocalePath();
 const toasts = useToasts();
-const { open } = useOpenInApp();
+const { openPackage, opening } = useClientHandoff();
 const { copy } = useCopyCommand();
 const brewfile = useBrewfileList();
 
 const inList = computed(() => brewfile.has(props.kind, props.token));
+// The client only opens a formula's read-only page; it cannot install one from this menu.
+const openLabel = computed(() => (props.kind === 'formula' ? t('client.open') : t('client.installWith')));
 
 const items = computed<OnMenuItem[]>(() => [
-  { key: 'open', label: messages.value.action.openInApp, icon: 'arrow-up-right' },
+  { key: 'open', label: openLabel.value, icon: 'arrow-up-right', disabled: opening.value },
   { key: 'copy', label: messages.value.action.copyInstallCommand, icon: 'copy' },
   {
     key: 'brewfile',
@@ -55,7 +57,7 @@ function download() {
 }
 
 function onSelect(key: string) {
-  if (key === 'open') open({ kind: props.kind, token: props.token, name: props.name });
+  if (key === 'open') openPackage({ kind: props.kind, token: props.token, name: props.name, command: props.command });
   else if (key === 'copy') void copy(props.kind, props.token, props.command);
   else if (key === 'brewfile') {
     const result = brewfile.add(props.kind, props.token);

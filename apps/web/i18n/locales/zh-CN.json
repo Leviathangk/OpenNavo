@@ -30,10 +30,13 @@
     "themeDark": "深色",
     "skipToContent": "跳到正文",
     "developers": "开发者",
-    "developerMap": "开发者地图"
+    "developerMap": "开发者地图",
+    "clientGroup": "Mac 客户端",
+    "clientHint": "需在 Mac 上运行",
+    "firewall": "防火墙"
   },
   "sidebar": {
-    "appLabel": "Mac 客户端",
+    "appLabel": "获取客户端",
     "appTitle": "OpenNavo for Mac",
     "appHint": "macOS 13+ · 免费"
   },
@@ -2286,5 +2289,51 @@
     "claimHint": "先选择你的 App，再勾选要更新的内容。所有修改都会经过编辑审核后才会生效。",
     "proofPlaceholder": "域名、仓库或说明（可选）",
     "contactPlaceholder": "you{'@'}example.com"
+  },
+  "client": {
+    "tag": "Mac",
+    "requires": "需 Mac 客户端",
+    "installWith": "用 OpenNavo 安装",
+    "open": "在 OpenNavo 中打开",
+    "opening": "正在打开 OpenNavo…",
+    "notMac": "此页面介绍的是 macOS 客户端。请在 Mac 上打开以继续。",
+    "copyLink": "复制页面链接",
+    "copied": "链接已复制",
+    "preview": "客户端预览",
+    "sample": "示例数据",
+    "webTitle": "网页上可以做什么",
+    "appTitle": "Mac 客户端里可以做什么",
+    "whyTitle": "为什么需要客户端？",
+    "why": "浏览器无法读取“应用程序”文件夹，也无法运行 Homebrew。OpenNavo 在你的 Mac 上完成这些操作，数据只留在本机。",
+    "local": "本机运行，不上传数据。",
+    "related": "相关",
+    "web": {
+      "browse": "浏览应用、版本说明和系统要求",
+      "command": "复制准确的 brew 命令",
+      "brewfile": "为新 Mac 生成 Brewfile"
+    },
+    "handoff": {
+      "title": "需要 OpenNavo Mac 客户端",
+      "body": "这一步会在你的 Mac 上运行。下载客户端继续，或已安装时直接打开。",
+      "copy": "复制安装命令",
+      "notNow": "暂不"
+    },
+    "pages": {
+      "installed": {
+        "lede": "OpenNavo 会列出 Mac 上的应用、版本、大小和最近打开时间，方便你决定保留哪些。",
+        "metaTitle": "查看 Mac 上已安装的应用 · OpenNavo"
+      },
+      "updates": {
+        "commandTitle": "在终端检查更新",
+        "commandNote": "列出可更新的 Cask，不会执行安装。",
+        "commandLabel": "命令"
+      },
+      "cleanup": {
+        "app": {
+          "review": "清理前先查看能释放多少空间",
+          "undo": "残留文件进入废纸篓，可以撤销"
+        }
+      }
+    }
   }
 }

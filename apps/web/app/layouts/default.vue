@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { OnAppShell, OnToastRegion } from '@opennavo/ui';
+import ClientHandoffDialog from '~/components/client/ClientHandoffDialog.vue';
 
 // Web shell (05 §11.2, ADR-017): shared OnAppShell with document scrolling; supply web sidebar, toolbar,
 // mobile menu, rail, footer. definePageMeta({ rail }) selects the rail, currently Discover only.
@@ -37,7 +38,7 @@ useCommandPaletteShortcut();
     </template>
     <template #overlay>
       <ClientOnly><LanguageSuggestion /></ClientOnly>
-      <OpenInAppDialog />
+      <ClientHandoffDialog />
       <LazyCommandPalette v-if="palette.open.value" />
       <OnToastRegion :items="toasts.items.value" @dismiss="toasts.dismiss" />
     </template>

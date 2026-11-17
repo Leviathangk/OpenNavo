@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { computed, createApp, createSSRApp, h, nextTick, ref, resolveComponent } from 'vue';
 import type { App } from 'vue';
+import { mount } from '@vue/test-utils';
 import { renderToString } from 'vue/server-renderer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SITE_LOCALES } from '@opennavo/shared';
@@ -41,7 +42,7 @@ beforeEach(() => {
   vi.stubGlobal('toAppLocale', () => locale);
   vi.stubGlobal('useLocalePath', () => (path: string) => path);
   vi.stubGlobal('useToasts', () => ({ push: vi.fn() }));
-  vi.stubGlobal('useOpenInApp', () => ({ open: vi.fn() }));
+  vi.stubGlobal('useClientHandoff', () => ({ openPackage: vi.fn(), opening: ref(false) }));
   vi.stubGlobal('useCopyCommand', () => ({ copy: vi.fn() }));
   vi.stubGlobal('useBrewfileList', () => ({ has: () => false, add: () => 'added' }));
 });
@@ -92,6 +93,22 @@ it('keeps Get and Homepage in one right-aligned row inside the header actions', 
   expect(actions.classList.contains('md:justify-end')).toBe(true);
   expect(page.querySelector('section')?.textContent).not.toContain('From homebrew/cask');
   expect(actions.textContent).not.toMatch(/Official download|SHA-256|Checked/);
+});
+
+it('uses the read-only open label for formula packages', () => {
+  const wrapper = mount(GetMenu, {
+    props: { kind: 'formula', token: 'ripgrep', name: 'ripgrep' },
+    global: {
+      stubs: {
+        OnMenu: {
+          props: ['items'],
+          template: '<div><span v-for="item in items" :key="item.key">{{ item.label }}</span></div>'
+        }
+      }
+    }
+  });
+  expect(wrapper.text()).toContain('Open in OpenNavo');
+  expect(wrapper.text()).not.toContain('Install with OpenNavo');
 });
 
 it('renders the primary category first and does not repeat it in the tag row', async () => {

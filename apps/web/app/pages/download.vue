@@ -19,6 +19,8 @@ const localePath = useLocalePath();
 const messages = useUiMessages();
 const NuxtLink = resolveComponent('NuxtLink');
 const appLocale = computed(() => toAppLocale(locale.value));
+const platform = useVisitorPlatform();
+const nonMac = computed(() => platform.value !== null && platform.value.system !== 'mac');
 
 // Orbit icons come from the homepage data. They are decorative (S7): a failed homepage request only
 // leaves the client icon, and the page keeps its 200.
@@ -147,6 +149,15 @@ function onCopied(command: string) {
   trackEvent('download_client');
 }
 
+async function copyPageLink() {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    toasts.push({ tone: 'success', title: t('client.copied') });
+  } catch {
+    toasts.push({ tone: 'warning', title: t('toast.copyFailed'), description: window.location.href, duration: 0 });
+  }
+}
+
 usePageSeo({ title: () => t('download.metaTitle'), description: () => t('download.description') });
 
 // Share image (WP13): OpenNavo itself, with the brand icon.
@@ -204,7 +215,16 @@ useSchemaOrg(
       <p class="download-balance m-0 mt-16px max-w-600px text-15px leading-[1.7] text-ink-secondary md:text-16px">
         {{ t('download.description') }}
       </p>
-      <div v-if="release && dmg" class="mt-32px flex flex-col items-center gap-14px">
+      <div v-if="nonMac" data-testid="download-non-mac" class="mt-32px flex max-w-480px flex-col items-center gap-12px">
+        <p class="download-balance m-0 text-13px leading-[1.6] text-ink-secondary">{{ t('client.notMac') }}</p>
+        <OnButton variant="primary" size="lg" shape="round" icon="copy" @click="copyPageLink">
+          {{ t('client.copyLink') }}
+        </OnButton>
+        <OnButton variant="secondary" shape="round" :href="localePath('/apps')" :link-as="NuxtLink">
+          {{ t('nav.apps') }}
+        </OnButton>
+      </div>
+      <div v-else-if="release && dmg" class="mt-32px flex flex-col items-center gap-14px">
         <OnButton
           variant="primary"
           size="lg"
@@ -267,7 +287,7 @@ useSchemaOrg(
       <LandingPackageLinks />
 
       <div
-        v-if="release && dmg"
+        v-if="release && dmg && !nonMac"
         class="grid grid-cols-1 items-start gap-12px lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]"
       >
         <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-20px py-20px md:px-24px">
