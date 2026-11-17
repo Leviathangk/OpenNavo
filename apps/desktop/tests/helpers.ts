@@ -107,6 +107,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'cleanup' }
   },
   {
+    path: '/webapps',
+    name: 'webapps',
+    component: stub('网页应用页'),
+    meta: { nav: 'webapps' }
+  },
+  {
     path: '/monitor',
     name: 'monitor',
     components: { default: stub('电脑监控页'), rail: stub('菜单栏') },

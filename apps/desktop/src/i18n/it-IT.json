@@ -74,6 +74,7 @@
     "monitor": "Monitoraggio",
     "security": "Scansione virus",
     "securityBadge": "{count} elemento da controllare | {count} elementi da controllare",
+    "webapps": "App web",
     "firewall": "Firewall app",
     "firewallBadge": "{count} connessione in attesa di conferma | {count} connessioni in attesa di conferma",
     "developerMap": "Mappa degli sviluppatori"
@@ -1551,6 +1552,52 @@
     "reopen": "Riapri dopo l’aggiornamento riuscito",
     "quitHint": "Se un’app resta aperta o annulli l’uscita, il suo aggiornamento verrà rimandato. La chiusura non verrà forzata.",
     "deferred": "Rimandato"
+  },
+  "webapps": {
+    "title": "App web",
+    "subtitle": "Trasforma un sito web in un’app Mac autonoma, con finestra e dati propri.",
+    "new": "Nuova app web",
+    "emptyTitle": "Nessuna app web",
+    "emptyBody": "Inserisci l’indirizzo di un sito e OpenNavo crea un’app Mac su questo Mac. Usa la vista web di sistema, non una scheda del browser.",
+    "name": "Nome",
+    "namePlaceholder": "Ad esempio, Documenti",
+    "url": "Indirizzo del sito",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Sono supportati solo indirizzi http e https.",
+    "create": "Crea",
+    "invalidName": "Inserisci un nome senza / o :",
+    "invalidUrl": "Inserisci un indirizzo http o https valido.",
+    "exists": "Esiste già un’app con questo nome. Scegline un altro.",
+    "failed": "Operazione non riuscita. Riprova.",
+    "open": "Apri",
+    "reveal": "Mostra nel Finder",
+    "delete": "Elimina",
+    "deleteTitle": "Eliminare {name}?",
+    "deleteBody": "L’app verrà spostata nel Cestino e potrà essere ripristinata.",
+    "storageNote": "Le app sono salvate nella cartella Applicazioni. Ognuna mantiene i propri dati web e cookie.",
+    "createdAt": "Creata il {date}",
+    "tabs": {
+      "installed": "Le mie app",
+      "catalog": "Integrate"
+    },
+    "browseCatalog": "Vedi app integrate",
+    "catalog": {
+      "hint": "Questi siti comuni sono inclusi in OpenNavo. Premi « Aggiungi » per creare un'app autonoma; le app aggiunte possono essere eliminate da « Le mie app ».",
+      "add": "Aggiungi",
+      "added": "Aggiunta",
+      "all": "Tutti",
+      "filter": "Categorie di app",
+      "drm": "Limitato da DRM",
+      "categories": {
+        "ai": "IA",
+        "social": "Social",
+        "work": "Lavoro",
+        "dev": "Sviluppo",
+        "media": "Media",
+        "mail": "Posta",
+        "tools": "Strumenti"
+      }
+    }
   },
   "page": {
     "comingSoon": "Il contenuto di questa pagina verrà aggiunto in un’attività successiva."

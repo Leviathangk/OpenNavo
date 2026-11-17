@@ -33,7 +33,8 @@
     "developerMap": "开发者地图",
     "clientGroup": "Mac 客户端",
     "clientHint": "需在 Mac 上运行",
-    "firewall": "防火墙"
+    "firewall": "防火墙",
+    "webapps": "网页应用"
   },
   "sidebar": {
     "appLabel": "获取客户端",
@@ -1842,7 +1843,8 @@
       "security": "安全防护",
       "settings": "设置",
       "installing": "安装 {name}",
-      "scanning": "扫描安装包：{name}"
+      "scanning": "扫描安装包：{name}",
+      "webapps": "网页应用"
     },
     "security": {
       "kicker": "安全防护",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "清理前先查看能释放多少空间",
           "undo": "残留文件进入废纸篓，可以撤销"
+        }
+      },
+      "webapps": {
+        "lede": "把常用网站变成独立的 Mac App：有自己的窗口、图标和数据空间，启动后就像一个原生应用。",
+        "metaTitle": "把网站变成独立的 Mac App · OpenNavo",
+        "app": {
+          "window": "每个网站有自己的窗口，不再挤在浏览器标签页里",
+          "catalog": "内置 40 多个常用网站，也可以添加任意网址",
+          "data": "每个应用的登录状态和本地数据相互隔离"
+        },
+        "demo": {
+          "badge": "独立窗口与图标",
+          "new": "新建网页应用"
         }
       }
     }

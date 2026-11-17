@@ -75,6 +75,7 @@ const groups = computed<OnSidebarGroup[]>(() => [
     label: t('nav.browse'),
     items: [
       item('discover', 'lucide:compass', t('nav.discover')),
+      item('webapps', 'lucide:app-window', t('nav.webapps')),
       item('developer-map', 'lucide:globe', t('nav.developerMap')),
       item('categories', 'lucide:layout-grid', t('nav.categories')),
       item('rankings', 'lucide:chart-no-axes-column', t('nav.rankings')),

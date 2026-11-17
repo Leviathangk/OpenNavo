@@ -16,6 +16,7 @@ declare module 'vue-router' {
       | 'installed'
       | 'updates'
       | 'cleanup'
+      | 'webapps'
       | 'monitor'
       | 'security'
       | 'firewall'
@@ -205,6 +206,12 @@ export const routes: RouteRecordRaw[] = [
       rail: CleanupRail
     },
     meta: { nav: 'cleanup' }
+  },
+  {
+    path: '/webapps',
+    name: 'webapps',
+    component: () => import('@/pages/WebAppsPage.vue'),
+    meta: { nav: 'webapps' }
   },
   {
     path: '/monitor',

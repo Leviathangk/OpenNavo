@@ -44,6 +44,8 @@ describe('Web route types', () => {
       ['/zh/updates', 'updates'],
       ['/cleanup', 'cleanup'],
       ['/ja/monitor', 'monitor'],
+      ['/webapps', 'webapps'],
+      ['/zh/webapps', 'webapps'],
       ['/ja/security', 'security'],
       ['/search?q=editor', 'search'],
       ['/robots.txt', 'robots'],

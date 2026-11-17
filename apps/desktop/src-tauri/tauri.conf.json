@@ -59,6 +59,7 @@
         "Resources/zh-Hant.lproj": "resources/lproj/zh-Hant.lproj",
         "Library/SystemExtensions": "../native/staged/firewall/SystemExtensions",
         "Helpers/opennavo-store": "../native/staged/opennavo-store",
+        "Helpers/opennavo-webapp-helper": "../native/staged/opennavo-webapp-helper",
         "Library/LaunchDaemons/org.opennavo.desktop.FanHelper.plist": "fan-helper/org.opennavo.desktop.FanHelper.plist",
         "Library/Helpers/opennavo-fan-helper": "fan-helper/staged/opennavo-fan-helper",
         "Library/Helpers/clamav/clamd": "../native/staged/clamav/clamd",

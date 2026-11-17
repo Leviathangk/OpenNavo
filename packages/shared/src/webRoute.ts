@@ -20,7 +20,8 @@ const STATIC_PAGES = new Set([
   'installed',
   'updates',
   'cleanup',
-  'monitor'
+  'monitor',
+  'webapps'
 ]);
 
 export function webRouteType(path: string): string {

@@ -276,6 +276,7 @@ export default defineNuxtConfig({
       '/updates': { swr: 900 },
       '/cleanup': { swr: 900 },
       '/monitor': { swr: 900 },
+      '/webapps': { swr: 900 },
       '/security': { swr: 900 },
       '/security/**': { swr: 900 },
       // T1 directory and F1 encyclopedia: lists of catalog data, refreshed like the categories.

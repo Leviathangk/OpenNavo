@@ -66,3 +66,29 @@ python3 -m venv /tmp/opennavo-dmgbuild
 Local `tauri build` still produces Tauri's own DMG, which has no background.
 
 The architecture requires Rust ≥1.96. Release build dependencies use `strip=false` to avoid macOS LINKEDIT alignment failures in stripped procedural macros. These dependencies are not bundled; the final executable remains stripped according to the release profile. See the [Rust compiler issue](https://github.com/rust-lang/rust/issues/157750) and [Cargo build overrides](https://doc.rust-lang.org/cargo/reference/profiles.html#build-dependencies).
+
+## Web app helper
+
+`prepare-webapp-helper.py` compiles `native/webapp-helper/main.swift` into
+`Contents/Helpers/opennavo-webapp-helper`. OpenNavo copies that signed helper
+into each app created from the Web Apps module; the generated bundle only adds
+`Info.plist` and `Resources/config.json`. Nothing is compiled on the user's
+Mac. Generated apps are ad-hoc signed for local use; sharing one with another
+Mac needs a Developer ID signature and a notarization ticket. Each app also gets
+an `AppIcon.icns`: OpenNavo reads the page's `<link rel="icon">`,
+`apple-touch-icon` and Web App Manifest entries, falls back to the usual
+`/apple-touch-icon.png` and `/favicon.ico` paths, and asks the helper to
+composite the best square icon onto the 824 px macOS grid with
+`--render-icon <source> <png> <tile|full> <RRGGBB>`. Icons below 64 px use
+`--make-icon <letter> <RRGGBB> <png>` for a rounded initial instead.
+
+The helper keeps the immersive hidden-title-bar window but adds a transparent
+28 px strip over the web view. The strip starts a native window drag, so the
+top of the window can still be grabbed without bringing back a title bar;
+double-clicking the strip zooms the window like a native title bar.
+
+Rebuild the helper directly with:
+
+```sh
+python3 apps/desktop/scripts/prepare-webapp-helper.py --target universal-apple-darwin --allow-unsigned
+```

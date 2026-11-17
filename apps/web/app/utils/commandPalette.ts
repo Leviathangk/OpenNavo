@@ -18,6 +18,7 @@ export const PALETTE_PAGES: readonly { key: string; path: string; icon: string; 
   { key: 'updates', path: '/updates', icon: 'circle-arrow-down', labelKey: 'landing.window.updates' },
   { key: 'cleanup', path: '/cleanup', icon: 'eraser', labelKey: 'landing.window.cleanup' },
   { key: 'monitor', path: '/monitor', icon: 'activity', labelKey: 'landing.window.monitor' },
+  { key: 'webapps', path: '/webapps', icon: 'app-window', labelKey: 'landing.window.webapps' },
   { key: 'security', path: '/security', icon: 'shield-check', labelKey: 'nav.security' },
   { key: 'firewall', path: '/security/firewall', icon: 'brick-wall-fire', labelKey: 'nav.firewall' }
 ];

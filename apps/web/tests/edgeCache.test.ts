@@ -51,6 +51,8 @@ describe('HTML edge cache switch', () => {
       '/zh/updates',
       '/cleanup',
       '/ja/monitor',
+      '/webapps',
+      '/zh/webapps',
       '/de/security',
       '/security/clamav',
       '/about'
