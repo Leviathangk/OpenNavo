@@ -8,11 +8,11 @@ OpenNavo's own source is GNU GPL version 3 only (`GPL-3.0-only`); versions publi
 
 Scopes are deliberately conservative:
 
-- `runtime`: Go modules imported by built commands, statically linked Go/Rust standard-library notices, and the retained admin template.
+- `runtime`: Go modules imported by built commands, statically linked Go/Rust standard-library notices, the retained admin template, and shipped native assets or data such as Noto Sans CJK subsets, Natural Earth, asynqmon, gosu and the OpenCC dictionaries.
 - `runtime-candidate`: npm production dependency graphs, Rust normal dependency graphs across platforms, and Python's locked production export. This includes conditional dependencies and packages used only while bundling. It is not a claim that every listed package executes in every artifact.
 - `runtime-asset`: font/icon source packages whose generated assets are shipped even when their generator dependencies are development-only.
 - `development`: dependencies outside those graphs, including linters, tests, and generators. Their licenses do not become the application's license merely because the tools are used to build it.
-- `external`: separately installed Homebrew, PostgreSQL, Redis, MinIO, and Caddy. Operators and distributors must review those distributions' own notices and obligations. Container base-image packages are also governed by their image distributions and are not exhaustively represented by application lock files.
+- `external`: separately installed Homebrew, PostgreSQL, Redis, MinIO, Caddy, Node.js, Python, Prometheus and Grafana. Operators and distributors must review those distributions' own notices and obligations. Container base-image packages are also governed by their image distributions and are not exhaustively represented by application lock files.
 
 Metadata sources are exact-version npm/PyPI registries, integrity-checked archives, Go modules verified by checksums, Cargo manifests, and upstream license files at recorded revisions. Where an older archive omits a license and a current upstream license is used as supplementary evidence, provenance records that distinction. Where upstream publishes only a license declaration, the bundle retains its original package metadata/README attribution plus explicitly labeled SPDX reference text; those reference texts are not represented as recovered upstream files. Do not mistake a declared SPDX expression for a complete legal compatibility opinion.
 
@@ -68,9 +68,11 @@ ClamAV source archive.
 
 Each bundle contains project `LICENSE`, project `NOTICE`, an inventory, and referenced upstream texts. Server/MCP bundles select their runtime graphs. Desktop notices conservatively include npm/Rust runtime candidates and the admin template; the web image retains the full inventory as a safe superset of bundled dependencies. Include the canonical notice directory alongside separately redistributed static admin files. A generated notice bundle is part of the build input, not an optional post-release attachment.
 
-The separately rebuilt `postgres` and `asynqmon` targets collect upstream Go dependency notices and modified module manifests into `/usr/share/licenses/gosu/` and `/usr/share/licenses/asynqmon/`. The development MinIO image retains its upstream source, modified dependency lock, and collected notices under `/usr/share/doc/minio/`; its locked module graph is separate from the application inventory. Review that source and its AGPL obligations before redistributing the development image.
+The separately rebuilt `postgres` and `asynqmon` targets collect upstream Go dependency notices and modified module manifests into `/usr/share/licenses/gosu/` and `/usr/share/licenses/asynqmon/`; their top-level components are also recorded in the canonical inventory. The development MinIO image retains its upstream source, modified dependency lock, and collected notices under `/usr/share/doc/minio/`; its locked module graph is separate from the application inventory. Review that source and its AGPL obligations before redistributing the development image.
 
 The upstream soybean-admin MIT license remains in `apps/admin/LICENSE`. Font licenses remain beside their assets. GPL-licensed Go lint tools are development dependencies rather than linked server modules. MinIO and Redis are external services with distinct copyleft/commercial licensing choices; this inventory does not grant an exception to their terms.
+
+Noto Sans SC and Noto Sans JP subsets used for Open Graph images are recorded as `Noto Sans CJK` with their retained OFL texts. Natural Earth map geometry and label coordinates are recorded as public-domain runtime data; crediting the authors is not required, but the provenance and upstream terms are retained. Pake is recorded as a development reference for the Web Apps module. No Pake source is copied or distributed, and OpenNavo generates local web apps with its own Swift WKWebView helper. Third-party product names and icons shown in the catalog are trademarks or copyrighted assets of their owners, not open-source dependencies; their inclusion does not imply affiliation or endorsement.
 
 ## Security review boundaries
 

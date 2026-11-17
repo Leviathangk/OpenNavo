@@ -4459,6 +4459,13 @@
     },
     {
       "ecosystem": "Native",
+      "name": "asynqmon",
+      "version": "0.7.1",
+      "license": "MIT",
+      "url": "https://github.com/hibiken/asynqmon/tree/v0.7.1"
+    },
+    {
+      "ecosystem": "Native",
       "name": "bzip2",
       "version": "1.0.8",
       "license": "bzip2-1.0.6",
@@ -4484,6 +4491,13 @@
       "version": "e5bef206e8f93fd8037924c8d6bda3f529e4c8a4",
       "license": "MIT",
       "url": "https://github.com/jizhi0v0/duo-updater/tree/e5bef206e8f93fd8037924c8d6bda3f529e4c8a4"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "gosu",
+      "version": "6456aaa0f3c8",
+      "license": "Apache-2.0",
+      "url": "https://github.com/tianon/gosu/tree/6456aaa0f3c8"
     },
     {
       "ecosystem": "Native",
@@ -4529,6 +4543,20 @@
     },
     {
       "ecosystem": "Native",
+      "name": "Natural Earth",
+      "version": "1:50m Admin 0 labels and 110m country outlines",
+      "license": "Public-Domain",
+      "url": "https://www.naturalearthdata.com/"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "Noto Sans CJK",
+      "version": "2.004",
+      "license": "OFL-1.1",
+      "url": "https://github.com/notofonts/noto-cjk/tree/main/Sans"
+    },
+    {
+      "ecosystem": "Native",
       "name": "OpenCC dictionaries",
       "version": "1.1.9",
       "license": "Apache-2.0",
@@ -4540,6 +4568,13 @@
       "version": "3.5.4",
       "license": "Apache-2.0",
       "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "Pake",
+      "version": "3.19.0",
+      "license": "GPL-3.0-or-later WITH Pake-Output-Exception",
+      "url": "https://github.com/tw93/Pake/tree/V3.19.0"
     },
     {
       "ecosystem": "Native",
@@ -4585,6 +4620,13 @@
     },
     {
       "ecosystem": "Platform",
+      "name": "Grafana",
+      "version": "13.2.3",
+      "license": "AGPL-3.0-only",
+      "url": "https://github.com/grafana/grafana"
+    },
+    {
+      "ecosystem": "Platform",
       "name": "Homebrew",
       "version": "external",
       "license": "BSD-2-Clause",
@@ -4606,10 +4648,31 @@
     },
     {
       "ecosystem": "Platform",
+      "name": "Node.js",
+      "version": "24.19.0",
+      "license": "MIT",
+      "url": "https://github.com/nodejs/node"
+    },
+    {
+      "ecosystem": "Platform",
       "name": "PostgreSQL",
       "version": "18",
       "license": "PostgreSQL",
       "url": "https://www.postgresql.org/about/licence/"
+    },
+    {
+      "ecosystem": "Platform",
+      "name": "Prometheus",
+      "version": "3.15.0",
+      "license": "Apache-2.0",
+      "url": "https://github.com/prometheus/prometheus"
+    },
+    {
+      "ecosystem": "Platform",
+      "name": "Python",
+      "version": "3.13",
+      "license": "PSF-2.0",
+      "url": "https://www.python.org/"
     },
     {
       "ecosystem": "Platform",

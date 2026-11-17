@@ -1,0 +1,10 @@
+{
+  "project": "gosu",
+  "repository": "https://github.com/tianon/gosu",
+  "version": "6456aaa0f3c8",
+  "revision": "6456aaa0f3c8",
+  "license": "Apache-2.0",
+  "integration": "Rebuilt as a standalone helper in the PostgreSQL image by apps/server/Dockerfile. It is not linked into the OpenNavo server binary.",
+  "buildTarget": "gosu",
+  "licensePath": "docs/legal/native/LICENSE.gosu"
+}

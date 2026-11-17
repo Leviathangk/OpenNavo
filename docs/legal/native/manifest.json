@@ -405,6 +405,82 @@
       "licensePaths": [
         "apps/server/internal/traditional/data/LICENSE"
       ]
+    },
+    {
+      "name": "Noto Sans CJK",
+      "version": "2.004",
+      "license": "OFL-1.1",
+      "url": "https://github.com/notofonts/noto-cjk/tree/main/Sans",
+      "scope": "runtime",
+      "kind": "bundled-asset",
+      "products": [
+        "web"
+      ],
+      "source": "docs/legal/native/noto-cjk-upstream.json",
+      "licensePaths": [
+        "apps/web/public/fonts/OFL.txt",
+        "apps/web/public/fonts/OFL-NotoSansJP.txt"
+      ]
+    },
+    {
+      "name": "Natural Earth",
+      "version": "1:50m Admin 0 labels and 110m country outlines",
+      "license": "Public-Domain",
+      "url": "https://www.naturalearthdata.com/",
+      "scope": "runtime",
+      "kind": "data",
+      "products": [
+        "web",
+        "desktop",
+        "server"
+      ],
+      "source": "docs/legal/native/natural-earth-upstream.json",
+      "licensePaths": [
+        "docs/legal/native/LICENSE.NaturalEarth"
+      ]
+    },
+    {
+      "name": "asynqmon",
+      "version": "0.7.1",
+      "license": "MIT",
+      "url": "https://github.com/hibiken/asynqmon/tree/v0.7.1",
+      "scope": "runtime",
+      "kind": "standalone-process",
+      "products": [
+        "server"
+      ],
+      "source": "docs/legal/native/asynqmon-upstream.json",
+      "licensePaths": [
+        "docs/legal/native/LICENSE.asynqmon"
+      ]
+    },
+    {
+      "name": "gosu",
+      "version": "6456aaa0f3c8",
+      "license": "Apache-2.0",
+      "url": "https://github.com/tianon/gosu/tree/6456aaa0f3c8",
+      "scope": "runtime",
+      "kind": "standalone-process",
+      "products": [
+        "server"
+      ],
+      "source": "docs/legal/native/gosu-upstream.json",
+      "licensePaths": [
+        "docs/legal/native/LICENSE.gosu"
+      ]
+    },
+    {
+      "name": "Pake",
+      "version": "3.19.0",
+      "license": "GPL-3.0-or-later WITH Pake-Output-Exception",
+      "url": "https://github.com/tw93/Pake/tree/V3.19.0",
+      "scope": "development",
+      "kind": "reference",
+      "source": "docs/legal/native/pake-upstream.json",
+      "licensePaths": [
+        "docs/legal/native/LICENSE.Pake",
+        "docs/legal/native/LICENSE-Pake-Exception"
+      ]
     }
   ]
 }

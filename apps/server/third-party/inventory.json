@@ -7,7 +7,7 @@
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "ee8a9c3ee1372f46eaaa4efe561dca51cf72aadd811b4374cabc2e0aacb4541b",
     "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
-    "docs/legal/native/manifest.json": "d9619fd270ab33851ceabd487e00888046bfd386e9ce5568943772bf2d4a923a",
+    "docs/legal/native/manifest.json": "b8cf0b19e5afcd79b31fbaa03eb3fe0ded2844c9851979df8cb7a88991a27573",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
     "apps/desktop/native/clamav/sources.lock.json": "f6257ce0e0aa9bfc7dfb7f891bb11bf77655ef1aa54040653d55a673e26385c3",
     "apps/desktop/native/store/LICENSE.mas": "926b52ce77b2a26ac5cb7be146678a965d3a0d420187677368e6169cf3587f4d",
@@ -233,7 +233,19 @@
     "apps/desktop/native/firewall/upstream.json": "d565f1495012591a519e849403454d67d67887caeecc77eb5d0aea4c92ed1cb6",
     "apps/desktop/native/firewall/LICENSE.LuLu": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
     "apps/server/internal/traditional/data/upstream.json": "4b301923dc283d429adacb5584923be42a85589060d188ad0a0af0f97d81ec7d",
-    "apps/server/internal/traditional/data/LICENSE": "b534e465949558eec2597b04f5092b5e161236a68dfbfd04d547592ac3964308"
+    "apps/server/internal/traditional/data/LICENSE": "b534e465949558eec2597b04f5092b5e161236a68dfbfd04d547592ac3964308",
+    "docs/legal/native/noto-cjk-upstream.json": "2f57543f1673b0afe11e338bda8f1af49b3f52c697cf67d8bbffaa5f5d1cbb7d",
+    "apps/web/public/fonts/OFL.txt": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+    "apps/web/public/fonts/OFL-NotoSansJP.txt": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+    "docs/legal/native/natural-earth-upstream.json": "2791d90c39efa53e2c74a37776ef4a63016b360e938fa0e41d4b8ece31993de3",
+    "docs/legal/native/LICENSE.NaturalEarth": "c97c326e13e3f18138764fa993ca3da072953e34250f592673099565d31220b3",
+    "docs/legal/native/asynqmon-upstream.json": "b9bba4fec09ea8b7840921caa18c823008a58fd191315bc4e288468f25c133ee",
+    "docs/legal/native/LICENSE.asynqmon": "53bbe70c2cc461018a342f481639f7c4411d513d5f1ae9ee02a248f9f03dcd94",
+    "docs/legal/native/gosu-upstream.json": "a4001295b627fe9a968f3c4240c19e20bbc760cc78b38f82d55a683d65512795",
+    "docs/legal/native/LICENSE.gosu": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "docs/legal/native/pake-upstream.json": "b14b6f4ecdf5bf2482014a965715bbb916c120f25cabcd32ccf84e332d0ec60f",
+    "docs/legal/native/LICENSE.Pake": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "docs/legal/native/LICENSE-Pake-Exception": "74ba34b5a447fa0592d3135eb3743175d132db4f6652482ffa4b7f1822083e30"
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [
@@ -1803,6 +1815,29 @@
     },
     {
       "ecosystem": "Native",
+      "name": "asynqmon",
+      "version": "0.7.1",
+      "license": "MIT",
+      "url": "https://github.com/hibiken/asynqmon/tree/v0.7.1",
+      "scope": "runtime",
+      "evidence": {
+        "source": "docs/legal/native/asynqmon-upstream.json",
+        "integration": "standalone-process",
+        "sourceLockSha256": "b9bba4fec09ea8b7840921caa18c823008a58fd191315bc4e288468f25c133ee",
+        "products": [
+          "server"
+        ]
+      },
+      "licenseFiles": [
+        {
+          "source": "docs/legal/native/LICENSE.asynqmon",
+          "path": "licenses/53bbe70c2cc461018a342f481639f7c4411d513d5f1ae9ee02a248f9f03dcd94.txt",
+          "sha256": "53bbe70c2cc461018a342f481639f7c4411d513d5f1ae9ee02a248f9f03dcd94"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Native",
       "name": "DuoUpdater vendor recipes",
       "version": "e5bef206e8f93fd8037924c8d6bda3f529e4c8a4",
       "license": "MIT",
@@ -1826,6 +1861,29 @@
     },
     {
       "ecosystem": "Native",
+      "name": "gosu",
+      "version": "6456aaa0f3c8",
+      "license": "Apache-2.0",
+      "url": "https://github.com/tianon/gosu/tree/6456aaa0f3c8",
+      "scope": "runtime",
+      "evidence": {
+        "source": "docs/legal/native/gosu-upstream.json",
+        "integration": "standalone-process",
+        "sourceLockSha256": "a4001295b627fe9a968f3c4240c19e20bbc760cc78b38f82d55a683d65512795",
+        "products": [
+          "server"
+        ]
+      },
+      "licenseFiles": [
+        {
+          "source": "docs/legal/native/LICENSE.gosu",
+          "path": "licenses/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Native",
       "name": "Installomator vendor metadata",
       "version": "805cd1b96d73c6efa581bbf9802b0496ecf3807f",
       "license": "Apache-2.0",
@@ -1844,6 +1902,31 @@
           "source": "docs/legal/native/LICENSE.Installomator",
           "path": "licenses/ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e.txt",
           "sha256": "ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Native",
+      "name": "Natural Earth",
+      "version": "1:50m Admin 0 labels and 110m country outlines",
+      "license": "Public-Domain",
+      "url": "https://www.naturalearthdata.com/",
+      "scope": "runtime",
+      "evidence": {
+        "source": "docs/legal/native/natural-earth-upstream.json",
+        "integration": "data",
+        "sourceLockSha256": "2791d90c39efa53e2c74a37776ef4a63016b360e938fa0e41d4b8ece31993de3",
+        "products": [
+          "web",
+          "desktop",
+          "server"
+        ]
+      },
+      "licenseFiles": [
+        {
+          "source": "docs/legal/native/LICENSE.NaturalEarth",
+          "path": "licenses/c97c326e13e3f18138764fa993ca3da072953e34250f592673099565d31220b3.txt",
+          "sha256": "c97c326e13e3f18138764fa993ca3da072953e34250f592673099565d31220b3"
         }
       ]
     },

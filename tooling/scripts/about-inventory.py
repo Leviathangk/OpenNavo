@@ -274,6 +274,10 @@ def main():
         ('Redis', '8', 'AGPL-3.0-only OR RSALv2 OR SSPL-1.0', 'https://github.com/redis/redis'),
         ('MinIO', 'RELEASE.2025-10-15T17-29-55Z', 'AGPL-3.0-only', 'https://github.com/minio/minio'),
         ('Caddy', '2.11.6', 'Apache-2.0', 'https://github.com/caddyserver/caddy'),
+        ('Node.js', '24.19.0', 'MIT', 'https://github.com/nodejs/node'),
+        ('Python', '3.13', 'PSF-2.0', 'https://www.python.org/'),
+        ('Prometheus', '3.15.0', 'Apache-2.0', 'https://github.com/prometheus/prometheus'),
+        ('Grafana', '13.2.3', 'AGPL-3.0-only', 'https://github.com/grafana/grafana'),
     ]:
         modules.append(record('Platform', name, version, license, url, 'external', {'source': 'Separately installed upstream; see its distribution notices'}, []))
     modules.append(record('Platform', 'soybean-admin', '2.2.0', 'MIT', 'https://github.com/soybeanjs/soybean-admin/tree/v2.2.0',

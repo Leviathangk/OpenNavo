@@ -30,6 +30,12 @@ It includes the following third-party materials, which keep their own licenses:
   SIL Open Font License 1.1 (apps/web/public/fonts/OFL.txt and
   apps/web/public/fonts/OFL-NotoSansJP.txt).
 
+- apps/server/internal/domain/countries.go and packages/ui/src/utils/worldMap.ts
+  contain Natural Earth 1:50m Admin 0 label coordinates and 110m country
+  outlines. Natural Earth map data is in the public domain
+  (https://www.naturalearthdata.com/about/terms-of-use/). The upstream terms
+  are retained in docs/legal/native/LICENSE.NaturalEarth.
+
 - apps/server/testdata/homebrew contains responses downloaded from the public
   Homebrew API (https://formulae.brew.sh). The data comes from Homebrew/homebrew-cask
   and Homebrew/homebrew-core, BSD 2-Clause License.
@@ -55,8 +61,21 @@ It includes the following third-party materials, which keep their own licenses:
   versions/hashes and all bundled upstream notices are recorded in
   apps/desktop/native/clamav/sources.lock.json and docs/legal/native/manifest.json.
 
+- The server and PostgreSQL images also contain separately built helpers:
+  asynqmon v0.7.1 (https://github.com/hibiken/asynqmon), Copyright (c) 2021
+  Kentaro Hibino, MIT License; and gosu revision 6456aaa0f3c8
+  (https://github.com/tianon/gosu), Apache-2.0. They are standalone
+  executables, not linked into OpenNavo. The license texts are retained in
+  docs/legal/native/LICENSE.asynqmon and LICENSE.gosu, and those images also
+  carry the upstream Go dependency notices.
+
 The full list of third-party dependencies and their licenses is generated into
 apps/server/seeds/about.json (tooling/scripts/about-inventory.py) and shown on the About page.
+
+The web image includes the Node.js 24.19.0 runtime (MIT), and the MCP image
+includes the Python 3.13 runtime (PSF-2.0); both retain their upstream
+licenses. Prometheus 3.15.0 (Apache-2.0) and Grafana 13.2.3 (AGPL-3.0-only)
+are optional external monitoring services, not bundled application code.
 
 Startup detection includes Rust adaptations of KnockKnock by Objective-See, LLC,
 licensed under GPL-3.0-only, pinned to commit
@@ -81,3 +100,14 @@ OpenNavo modifications dated 2026-10-18 replace policy, IPC, persistence and
 UI integration; upstream names and icons are not used in product UI.
 The unmodified license text, source hashes, and adaptation notes are retained
 in LICENSE.LuLu, upstream.json and README.md in that directory.
+
+The Web Apps module was developed with reference to Pake 3.19.0
+(https://github.com/tw93/Pake), Copyright (c) 2024 Tw93 and the Pake
+contributors, GPL-3.0-or-later with the Pake Output Exception. No Pake source
+code is copied, linked or distributed; OpenNavo's own Swift WKWebView helper
+creates local web apps. The license and exception text are retained in
+docs/legal/native/LICENSE.Pake and LICENSE-Pake-Exception.
+
+The website, desktop app and Web Apps catalog display names and icons of
+third-party products. Those names and icons remain the property of their
+respective owners; inclusion does not imply affiliation or endorsement.
