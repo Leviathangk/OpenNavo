@@ -155,9 +155,19 @@ async function create() {
   }
 }
 
-// Enter belongs to the IME while its candidate window is open.
+const IME_ENTER_GRACE_MS = 50;
+let compositionEndedAt = Number.NEGATIVE_INFINITY;
+
+function onUrlCompositionEnd() {
+  compositionEndedAt = Date.now();
+}
+
+// Enter belongs to the IME while its candidate window is open. WebKit can also
+// dispatch the confirming Enter just after compositionend with isComposing false.
 function submitOnEnter(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) return;
+  if (event.isComposing || event.keyCode === 229 || Date.now() - compositionEndedAt < IME_ENTER_GRACE_MS) {
+    return;
+  }
   event.preventDefault();
   void create();
 }
@@ -341,6 +351,7 @@ onMounted(load);
             autocomplete="url"
             :placeholder="t('webapps.urlPlaceholder')"
             @keydown.enter="submitOnEnter"
+            @compositionend="onUrlCompositionEnd"
           />
           <span class="text-10.5px leading-[1.5] text-ink-tertiary">{{ t('webapps.urlHint') }}</span>
         </label>

@@ -1,5 +1,5 @@
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { i18n } from '@/i18n';
 import { WEBAPP_CATALOG } from '@/components/webapps/catalog';
 import WebAppsPage from '@/pages/WebAppsPage.vue';
@@ -128,5 +128,31 @@ describe('Web Apps', () => {
     await url.trigger('keydown', { key: 'Enter' });
     await flushPromises();
     expect(document.querySelector('#webapp-name')).toBeNull();
+  });
+
+  it('Does not create an app when Enter arrives just after compositionend', async () => {
+    await mountPage();
+
+    await bodyButton('新建网页应用').trigger('click');
+    await flushPromises();
+    await new DOMWrapper(document.querySelector('#webapp-name')!).setValue('Docs');
+    const url = new DOMWrapper(document.querySelector('input[type="url"]')!);
+    await url.setValue('docs.example.com');
+
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    try {
+      url.element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+      now.mockReturnValue(1_025);
+      url.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await flushPromises();
+      expect(document.querySelector('#webapp-name')).not.toBeNull();
+
+      now.mockReturnValue(1_051);
+      url.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await flushPromises();
+      expect(document.querySelector('#webapp-name')).toBeNull();
+    } finally {
+      now.mockRestore();
+    }
   });
 });
