@@ -83,6 +83,7 @@ describe('parseDeepLink', () => {
     'opennavo://installed/now',
     'opennavo://installed/',
     'opennavo://installed#x',
+    'opennavo://installed#',
     'opennavo://package/cask/visual-studio-code/',
     'opennavo://user@installed',
     'opennavo://installed:99',

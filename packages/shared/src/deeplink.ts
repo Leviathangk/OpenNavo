@@ -64,7 +64,7 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
   if (url.protocol.toLowerCase() !== `${BRAND.scheme}:`) return null;
   // Keep the same authority and path shape Rust accepts: no credentials, port or fragment, and no
   // trailing slash that would be a different link there.
-  if (url.username || url.password || url.port || url.hash || url.pathname.endsWith('/')) return null;
+  if (url.username || url.password || url.port || url.href.includes('#') || url.pathname.endsWith('/')) return null;
 
   const route = url.hostname.toLowerCase();
   const segments = url.pathname.split('/').filter(Boolean).map(decode);
