@@ -74,6 +74,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'discover' }
   },
   {
+    path: '/collections',
+    name: 'collections',
+    component: stub('合集列表'),
+    meta: { nav: 'collections' }
+  },
+  {
     path: '/collections/:slug',
     name: 'collection',
     component: stub('合集页'),

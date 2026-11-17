@@ -39,9 +39,8 @@ describe('AppShell', () => {
       '/developer-map',
       '/categories',
       '/rankings',
-      '/recent',
       '/collections',
-      '/brewfile',
+      '/recent',
       // Tools: Scan for Viruses, then the app firewall right below it, then Monitor.
       '/security',
       '/firewall',

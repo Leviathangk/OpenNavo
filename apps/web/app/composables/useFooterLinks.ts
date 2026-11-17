@@ -23,7 +23,7 @@ export function useFooterLinks() {
       title: t('site.name'),
       // GitHub is a brand name in every locale, so it has no message key.
       links: [
-        ...links(['download', 'security', 'brewfile', 'about', 'feedback', 'developers']),
+        ...links(['download', 'security', 'about', 'feedback', 'developers']),
         { key: 'github', label: 'GitHub', href: BRAND.repository, external: true }
       ]
     }

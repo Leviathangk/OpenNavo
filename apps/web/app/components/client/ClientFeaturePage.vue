@@ -113,7 +113,7 @@ const webPoints = computed(() => [t('client.web.browse'), t('client.web.command'
         {{ t('nav.apps') }}
       </NuxtLink>
       <NuxtLink
-        :to="localePath('/brewfile')"
+        :to="{ path: localePath('/collections'), hash: '#list' }"
         class="text-ink-secondary no-underline hover:text-ink-primary hover:underline"
       >
         {{ t('nav.brewfile') }}

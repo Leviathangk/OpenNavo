@@ -41,7 +41,8 @@ describe('Web command palette groups', () => {
   it('Without text lists only the pages, with no search row', () => {
     const [jump, packages] = paletteGroups('   ', [], t);
     expect(jump!.items.every(item => item.key.startsWith('page:'))).toBe(true);
-    expect(jump!.items).toHaveLength(14);
+    expect(jump!.items).toHaveLength(13);
+    expect(jump!.items.map(item => item.key)).not.toContain('page:/brewfile');
     expect(jump!.items.map(item => item.key)).toContain('page:/webapps');
     expect(packages!.items).toEqual([]);
   });

@@ -6,7 +6,6 @@ import { formatBytes } from '@opennavo/shared';
 import { OnSidebar } from '@opennavo/ui';
 import HermesLauncher from '@/components/hermes/HermesLauncher.vue';
 import type { OnSidebarGroup, OnSidebarItem } from '@opennavo/ui';
-import { useBrewfileStore } from '@/stores/brewfile';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { refreshPage } from '@/composables/usePageRefresh';
 import { useCleanupStore } from '@/stores/cleanup';
@@ -17,7 +16,6 @@ import { useLibraryStore, useLocalAppsStore, useUpdatesStore } from '@/stores';
 // Use shared @opennavo/ui OnSidebar (ADR-017); provide desktop groups and local counts here.
 const { t } = useI18n();
 const route = useRoute();
-const brewfile = useBrewfileStore();
 const library = useLibraryStore();
 const localApps = useLocalAppsStore();
 // Installed counts every app on this Mac (uninstall decision 3); Homebrew's count covers the first read.
@@ -79,17 +77,8 @@ const groups = computed<OnSidebarGroup[]>(() => [
       item('developer-map', 'lucide:globe', t('nav.developerMap')),
       item('categories', 'lucide:layout-grid', t('nav.categories')),
       item('rankings', 'lucide:chart-no-axes-column', t('nav.rankings')),
-      item('recent', 'lucide:clock', t('nav.recent'))
-    ]
-  },
-  {
-    key: 'lists',
-    label: t('nav.lists'),
-    items: [
       item('collections', 'lucide:library', t('collections.title')),
-      item('brewfile', 'lucide:file-text', t('brewfile.title'), {
-        count: brewfile.items.length || undefined
-      })
+      item('recent', 'lucide:clock', t('nav.recent'))
     ]
   },
   {
