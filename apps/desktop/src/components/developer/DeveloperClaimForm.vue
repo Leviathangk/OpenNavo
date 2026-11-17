@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { unwrap, type PackageSummary } from '@opennavo/api';
-import { OnAppIcon, OnIcon } from '@opennavo/ui';
+import { OnAppIcon, OnIcon, runOnEnter } from '@opennavo/ui';
 import { api } from '@/api';
 import { submitDeveloperSubmission, type DeveloperSubmitResult } from '@/composables/useDeveloperMap';
 
@@ -177,7 +177,7 @@ function reset() {
             type="search"
             :placeholder="t('developerForm.searchPlaceholder')"
             class="dev-input dev-input-with-icon"
-            @keydown.enter.prevent="search"
+            @keydown.enter="runOnEnter($event, search)"
           />
         </label>
         <button

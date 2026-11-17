@@ -116,7 +116,9 @@ describe('Hermes composer Enter handling', () => {
     const confirmingEnter = press(element);
     await flushPromises();
 
-    expect(confirmingEnter.defaultPrevented).toBe(false);
+    // The shared IME guard cancels the browser's default action, so the confirming Enter cannot
+    // submit a surrounding form or insert a newline; the composer itself still does not send.
+    expect(confirmingEnter.defaultPrevented).toBe(true);
     expect(send).not.toHaveBeenCalled();
 
     now.mockReturnValue(1_100);

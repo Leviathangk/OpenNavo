@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { OnButton, OnIcon, OnModal } from '@opennavo/ui';
+import { OnButton, OnIcon, OnModal, runOnEnter } from '@opennavo/ui';
 import type { HermesSecretRequest } from '@/stores/hermes';
 import { useHermesContent } from '@/composables/useHermesContent';
 import { useAskCountdown } from '@/composables/useAskCountdown';
@@ -18,6 +18,10 @@ const emit = defineEmits<{
 const content = useHermesContent();
 const { label: remaining } = useAskCountdown(() => props.request?.deadline);
 const value = ref('');
+
+function submit() {
+  emit('submit', value.value);
+}
 
 // Never carry a value across cards: a password typed for one prompt must not prefill the next.
 watch(
@@ -54,7 +58,7 @@ watch(
         :aria-label="content.ask.secretTitle"
         :placeholder="content.ask.secretPlaceholder"
         class="w-full rounded-small border border-solid border-line-default bg-surface-inset px-10px py-8px font-mono text-12px text-ink-primary outline-none focus-visible:shadow-focus-ring"
-        @keydown.enter.prevent="emit('submit', value)"
+        @keydown.enter="runOnEnter($event, submit)"
       />
       <span v-if="remaining" class="text-11px tabular-nums text-ink-tertiary">
         {{ content.ask.expires.replace('{time}', remaining) }}

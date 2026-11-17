@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import OnIcon from './OnIcon.vue';
 import { useUiMessages } from '../composables/locale';
+import { runOnEnter } from '../utils/ime';
 
 export interface OnSearchFieldProps {
   modelValue: string;
@@ -37,8 +38,8 @@ function clear() {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && !event.isComposing) {
-    emit('submit', props.modelValue);
+  if (event.key === 'Enter') {
+    runOnEnter(event, () => emit('submit', props.modelValue));
   } else if (event.key === 'Escape' && props.modelValue) {
     // Escape clears nonempty input first; otherwise bubble outward, e.g. to close palette.
     event.stopPropagation();

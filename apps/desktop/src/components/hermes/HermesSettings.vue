@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { OnButton, OnIcon, OnModal, OnToggle } from '@opennavo/ui';
+import { OnButton, OnIcon, OnModal, OnToggle, runOnEnter } from '@opennavo/ui';
 import { commands, unwrap, IpcError } from '@/ipc/client';
 import { openExternal } from '@/utils/external';
 import { useHermesStore } from '@/stores/hermes';
@@ -1453,7 +1453,7 @@ onBeforeUnmount(() => {
                     v-model="cronJobId"
                     class="h-30px w-220px rounded-small border border-solid border-line-default bg-surface-inset px-9px font-mono text-11px text-ink-primary outline-none focus-visible:shadow-focus-ring"
                     :placeholder="content.settings.diagnostics.cronJobId"
-                    @keydown.enter="runCronAction('pause')"
+                    @keydown.enter="runOnEnter($event, () => runCronAction('pause'))"
                   />
                   <OnButton
                     variant="ghost"
