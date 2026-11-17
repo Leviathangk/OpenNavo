@@ -10,7 +10,7 @@ import { useSecurityStore } from '@/stores/security';
 
 // In-app notices for Security (plan §6.4): Rust also posts a system notification for new startup items; inside the app
 // a toast links straight to the item. Scans keep running off the page, so a finished scan with threats says so too.
-const { t } = useI18n();
+const { t, te } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const toasts = useToasts();
@@ -80,14 +80,35 @@ watch(
   () => store.scan?.state,
   (state, previous) => {
     const scan = store.scan;
-    // The scan tab already shows the result; on any other Security tab (or anywhere else) the notice is the only sign.
-    if (
-      !scan ||
-      state !== 'done' ||
-      previous !== 'running' ||
-      (route.name === 'security' && route.params.tab === 'scan')
-    )
+    // The scan tab already shows the result; elsewhere the notice is the only sign, including when a scan stops.
+    if (!scan || previous !== 'running' || (route.name === 'security' && route.params.tab === 'scan')) return;
+    const count = scan.filesScanned.toLocaleString(appLocale.value);
+    const openScan = () => void router.push('/security/scan');
+    if (state === 'failed') {
+      const key = scan.errorCode ? `errors.${scan.errorCode}` : null;
+      toasts.pushAction(
+        {
+          tone: 'danger',
+          title: t('security.scan.state.failed', { count }),
+          description: key && te(key) ? t(key) : (scan.errorCode ?? undefined),
+          actionLabel: t('security.toasts.view')
+        },
+        openScan
+      );
       return;
+    }
+    if (state === 'canceled') {
+      toasts.pushAction(
+        {
+          tone: 'info',
+          title: t('security.scan.state.canceled', { count }),
+          actionLabel: t('security.toasts.view')
+        },
+        openScan
+      );
+      return;
+    }
+    if (state !== 'done') return;
     const threats = scan.findings.length;
     toasts.pushAction(
       {
@@ -97,7 +118,7 @@ watch(
           : t('security.toasts.clean'),
         actionLabel: t('security.toasts.view')
       },
-      () => void router.push('/security/scan')
+      openScan
     );
   }
 );

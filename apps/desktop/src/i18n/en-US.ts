@@ -2588,6 +2588,8 @@ const messages: MessageSchema = {
       downloading: 'Downloading the virus database…',
       noDb: 'The virus database isn’t downloaded yet',
       lastScan: 'Last {kind}: {date}, {count} threat found | Last {kind}: {date}, {count} threats found',
+      lastScanFailed: 'Last {kind}: {date} · Scan stopped',
+      lastScanCanceled: 'Last {kind}: {date} · Scan canceled',
       neverScanned: 'No scans yet',
       consentTitle: 'Download the official virus database first',
       consentBody:
@@ -2642,6 +2644,7 @@ const messages: MessageSchema = {
         failed: 'Scan stopped · {count} files checked'
       },
       progressLabel: 'Scan progress',
+      runningLabel: 'Running {kind}',
       skipped: {
         dataless:
           'Skipped {count} iCloud file that isn’t downloaded | Skipped {count} iCloud files that aren’t downloaded',

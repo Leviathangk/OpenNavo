@@ -2499,6 +2499,8 @@
       "downloading": "Descargando la base de datos de virus…",
       "noDb": "La base de datos de virus aún no se ha descargado",
       "lastScan": "Último {kind}: {date}, {count} amenaza encontrada | Último {kind}: {date}, {count} amenazas encontradas",
+      "lastScanFailed": "Último {kind}: {date} · análisis interrumpido",
+      "lastScanCanceled": "Último {kind}: {date} · análisis cancelado",
       "neverScanned": "Todavía no se ha analizado nada",
       "consentTitle": "Primero descarga la base de datos oficial de virus",
       "consentBody": "El análisis de virus usa el motor ClamAV y su base de datos oficial. La base de datos se descarga directamente de los servidores oficiales de ClamAV, sin pasar por OpenNavo.",
@@ -2547,6 +2549,7 @@
         "failed": "El análisis se ha detenido · {count} archivos revisados"
       },
       "progressLabel": "Progreso del análisis",
+      "runningLabel": "{kind} en curso",
       "skipped": {
         "dataless": "Se ha omitido {count} archivo de iCloud no descargado | Se han omitido {count} archivos de iCloud no descargados",
         "tooLarge": "{count} archivo supera el límite de análisis y no se analizó por completo | {count} archivos superan el límite de análisis y no se analizaron por completo",

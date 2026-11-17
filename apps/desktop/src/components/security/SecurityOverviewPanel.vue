@@ -41,6 +41,15 @@ const issues = computed(() => {
   return list;
 });
 const ready = computed(() => Boolean(overview.value?.engine.db));
+const lastScanText = computed(() => {
+  const scan = overview.value?.lastScan;
+  if (!scan?.finishedAt) return t('security.engine.neverScanned');
+  const kind = t(`security.scan.${scan.kind}.title`);
+  const date = formatDate(scan.finishedAt, { locale: appLocale.value });
+  if (scan.state === 'failed') return t('security.engine.lastScanFailed', { kind, date });
+  if (scan.state === 'canceled') return t('security.engine.lastScanCanceled', { kind, date });
+  return t('security.engine.lastScan', { kind, date, count: scan.threats }, { plural: scan.threats });
+});
 // Scheduled quick scans (S2): when they run, as set in Settings → Security.
 const scheduleText = computed(() => {
   const { avSchedule, avScheduleTime, avScheduleWeekday } = store.securitySettings;
@@ -200,19 +209,7 @@ async function quickScan() {
             }}
           </p>
           <p class="m-0 text-12px text-ink-tertiary">
-            {{
-              overview.lastScan?.finishedAt
-                ? t(
-                    'security.engine.lastScan',
-                    {
-                      kind: t(`security.scan.${overview.lastScan.kind}.title`),
-                      date: formatDate(overview.lastScan.finishedAt, { locale: appLocale }),
-                      count: overview.lastScan.threats
-                    },
-                    { plural: overview.lastScan.threats }
-                  )
-                : t('security.engine.neverScanned')
-            }}
+            {{ lastScanText }}
           </p>
           <p class="m-0 text-12px text-ink-tertiary">{{ scheduleText }}</p>
         </OnCard>

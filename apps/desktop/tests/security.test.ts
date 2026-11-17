@@ -323,6 +323,8 @@ describe('Scan status across tabs', () => {
     const status = wrapper.get('[data-testid="security-scan-status"]');
     expect(status.text()).toContain('正在快速扫描');
     expect(status.find('[role="progressbar"]').exists()).toBe(true);
+    expect(status.attributes('aria-live')).toBeUndefined();
+    expect(status.find('[role="status"]').text()).toContain('正在快速扫描');
 
     await button(wrapper, '查看')!.trigger('click');
     await flushPromises();
@@ -361,6 +363,54 @@ describe('Scan completion notices', () => {
     await vi.advanceTimersByTimeAsync(TICK * 6);
     await flushPromises();
     expect(scanNotice()).toBeUndefined();
+  });
+});
+
+describe('Scan stop notices', () => {
+  it('Announces a failed scan off the scan tab and marks the last scan as stopped', async () => {
+    const page = await mountPage('/security', 'av-ready,av-engine-fail');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(page.router.currentRoute.value.path).toBe('/security/scan');
+    await page.router.push('/security');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(TICK);
+    await flushPromises();
+    await flushPromises();
+
+    expect(useSecurityStore().scan?.state).toBe('failed');
+    const notice = useToasts().items.value.find(item => item.title.includes('扫描中断'));
+    expect(notice?.tone).toBe('danger');
+    expect(notice?.description).toContain('病毒扫描引擎没有正常启动');
+    expect(page.wrapper.text()).toContain('扫描中断');
+    expect(page.wrapper.text()).not.toContain('发现 0 个威胁');
+  });
+
+  it('Announces a canceled scan off the scan tab', async () => {
+    const page = await mountPage('/security', 'av-ready');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    await page.router.push('/security');
+    await flushPromises();
+    await useSecurityStore().cancelScan();
+    await flushPromises();
+
+    expect(useSecurityStore().scan?.state).toBe('canceled');
+    const notice = useToasts().items.value.find(item => item.title.includes('扫描已取消'));
+    expect(notice?.tone).toBe('info');
+    expect(page.wrapper.text()).toContain('扫描已取消');
   });
 });
 

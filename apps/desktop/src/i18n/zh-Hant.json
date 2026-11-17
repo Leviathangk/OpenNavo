@@ -2499,6 +2499,8 @@
       "downloading": "正在下載病毒庫…",
       "noDb": "還沒有下載病毒庫",
       "lastScan": "上次{kind}：{date}，發現 {count} 個威脅",
+      "lastScanFailed": "上次{kind}：{date} · 掃描中斷",
+      "lastScanCanceled": "上次{kind}：{date} · 掃描已取消",
       "neverScanned": "還沒有掃描過",
       "consentTitle": "先下載官方病毒庫",
       "consentBody": "病毒掃描使用 ClamAV 引擎和它的官方病毒庫。病毒庫直接從 ClamAV 官方伺服器下載，不經過 OpenNavo。",
@@ -2547,6 +2549,7 @@
         "failed": "掃描中斷 · 檢查了 {count} 個檔案"
       },
       "progressLabel": "掃描進度",
+      "runningLabel": "正在{kind}",
       "skipped": {
         "dataless": "跳過 {count} 個 iCloud 未下載的檔案",
         "tooLarge": "{count} 個檔案超出掃描上限，沒有完整掃描",

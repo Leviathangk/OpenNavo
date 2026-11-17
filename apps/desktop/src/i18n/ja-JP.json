@@ -2499,6 +2499,8 @@
       "downloading": "ウイルス定義をダウンロードしています…",
       "noDb": "ウイルス定義はまだダウンロードされていません",
       "lastScan": "前回の{kind}：{date}、脅威 {count} 件",
+      "lastScanFailed": "前回の{kind}：{date} · スキャン中断",
+      "lastScanCanceled": "前回の{kind}：{date} · スキャン中止",
       "neverScanned": "まだスキャンしていません",
       "consentTitle": "まず公式のウイルス定義をダウンロードします",
       "consentBody": "ウイルススキャンには ClamAV エンジンと公式のウイルス定義を使います。定義は ClamAV の公式サーバーから直接ダウンロードされ、OpenNavo を経由しません。",
@@ -2547,6 +2549,7 @@
         "failed": "スキャンが中断されました · {count}個のファイルを確認"
       },
       "progressLabel": "スキャンの進行状況",
+      "runningLabel": "{kind}を実行中",
       "skipped": {
         "dataless": "未ダウンロードの iCloud ファイル {count} 個をスキップ",
         "tooLarge": "{count}個のファイルがスキャンの上限を超えたため、完全にはスキャンしていません",

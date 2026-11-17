@@ -2499,6 +2499,8 @@
       "downloading": "Baixando o banco de dados de vírus…",
       "noDb": "O banco de dados de vírus ainda não foi baixado",
       "lastScan": "Última {kind}: {date}, {count} ameaça encontrada | Última {kind}: {date}, {count} ameaças encontradas",
+      "lastScanFailed": "Última {kind}: {date} · verificação interrompida",
+      "lastScanCanceled": "Última {kind}: {date} · verificação cancelada",
       "neverScanned": "Nenhuma verificação ainda",
       "consentTitle": "Primeiro, baixe o banco de dados oficial de vírus",
       "consentBody": "A verificação de vírus usa o mecanismo ClamAV e o banco de dados oficial dele. O banco de dados vem direto dos servidores oficiais do ClamAV, sem passar pelo OpenNavo.",
@@ -2547,6 +2549,7 @@
         "failed": "A verificação parou · {count} arquivos verificados"
       },
       "progressLabel": "Progresso da verificação",
+      "runningLabel": "{kind} em andamento",
       "skipped": {
         "dataless": "{count} arquivo do iCloud não baixado foi ignorado | {count} arquivos do iCloud não baixados foram ignorados",
         "tooLarge": "{count} arquivo passa do limite de verificação e não foi verificado por completo | {count} arquivos passam do limite de verificação e não foram verificados por completo",

@@ -26,7 +26,6 @@ const store = useSecurityStore();
 const tab = computed<SecurityTab>(() => SECURITY_TABS.find(value => value === route.params.tab) ?? 'overview');
 const startupLink = computed(() => (tab.value === 'startup' ? startupPreview(route.query) : NO_PREVIEW));
 const scanLink = computed(() => (tab.value === 'scan' ? scanPreview(route.query) : NO_PREVIEW));
-const scanning = computed(() => store.scan?.state === 'running');
 const tabs = computed(() =>
   SECURITY_TABS.map(value => ({
     value,
@@ -57,7 +56,11 @@ onMounted(() => void store.loadOverview().catch(() => undefined));
         :aria-label="t('security.tabs.label')"
         :link-as="RouterLink"
       />
-      <SecurityScanStatus v-if="scanning && tab !== 'scan'" class="mb-16px" @open="router.push('/security/scan')" />
+      <SecurityScanStatus
+        v-if="store.scanning && tab !== 'scan'"
+        class="mb-16px"
+        @open="router.push('/security/scan')"
+      />
       <SecurityOverviewPanel v-if="tab === 'overview'" />
       <SecurityScanPanel v-else-if="tab === 'scan'" :preview="scanLink" />
       <SecurityStartupPanel v-else-if="tab === 'startup'" :preview="startupLink" />

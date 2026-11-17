@@ -2508,6 +2508,8 @@ export default {
       downloading: '正在下载病毒库…',
       noDb: '还没有下载病毒库',
       lastScan: '上次{kind}：{date}，发现 {count} 个威胁',
+      lastScanFailed: '上次{kind}：{date} · 扫描中断',
+      lastScanCanceled: '上次{kind}：{date} · 扫描已取消',
       neverScanned: '还没有扫描过',
       consentTitle: '先下载官方病毒库',
       consentBody: '病毒扫描使用 ClamAV 引擎和它的官方病毒库。病毒库直接从 ClamAV 官方服务器下载，不经过 OpenNavo。',
@@ -2559,6 +2561,7 @@ export default {
         failed: '扫描中断 · 检查了 {count} 个文件'
       },
       progressLabel: '扫描进度',
+      runningLabel: '正在{kind}',
       skipped: {
         dataless: '跳过 {count} 个 iCloud 未下载的文件',
         tooLarge: '{count} 个文件超出扫描上限，没有完整扫描',

@@ -2499,6 +2499,8 @@
       "downloading": "Téléchargement de la base de virus…",
       "noDb": "Base de virus non téléchargée",
       "lastScan": "Dernière {kind} : {date}, {count} menace détectée | Dernière {kind} : {date}, {count} menaces détectées",
+      "lastScanFailed": "Dernière {kind} : {date} · analyse interrompue",
+      "lastScanCanceled": "Dernière {kind} : {date} · analyse annulée",
       "neverScanned": "Aucune analyse effectuée",
       "consentTitle": "Téléchargez d’abord la base officielle",
       "consentBody": "Les analyses antivirus utilisent le moteur ClamAV et sa base officielle, téléchargée directement depuis les serveurs ClamAV sans passer par OpenNavo.",
@@ -2547,6 +2549,7 @@
         "failed": "Analyse interrompue · {count} fichiers vérifiés"
       },
       "progressLabel": "Progression de l’analyse",
+      "runningLabel": "{kind} en cours",
       "skipped": {
         "dataless": "{count} fichier iCloud non téléchargé ignoré | {count} fichiers iCloud non téléchargés ignorés",
         "tooLarge": "{count} fichier dépasse la limite et n’a pas été entièrement analysé | {count} fichiers dépassent la limite et n’ont pas été entièrement analysés",
