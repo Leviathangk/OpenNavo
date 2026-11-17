@@ -31,6 +31,10 @@ function readPending(): DeepLinkEvent | null {
         /^\/collection\/[a-z0-9][a-z0-9-]{0,63}$/.test(value.route) ||
         ((value.route.startsWith('/search?q=') ||
           value.route === '/updates' ||
+          value.route === '/installed' ||
+          value.route === '/cleanup' ||
+          value.route === '/security' ||
+          value.route === '/firewall' ||
           // Preview links (F1, F5) in the exact shape Rust writes them (form-encoded values, preview=1 last).
           /^\/security\/startup\?label=[A-Za-z0-9*._+%-]{1,765}&preview=1$/.test(value.route) ||
           /^\/security\/scan\?token=[A-Za-z0-9*._+%-]{1,384}&preview=1$/.test(value.route) ||

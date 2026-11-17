@@ -81,6 +81,11 @@ describe('parseDeepLink', () => {
     'opennavo://search/extra?q=x',
     'opennavo://updates/now',
     'opennavo://installed/now',
+    'opennavo://installed/',
+    'opennavo://installed#x',
+    'opennavo://package/cask/visual-studio-code/',
+    'opennavo://user@installed',
+    'opennavo://installed:99',
     'opennavo://monitor?tab=cpu',
     'opennavo://cleanup?action=install',
     'opennavo://settings'

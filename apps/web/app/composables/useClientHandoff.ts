@@ -4,7 +4,7 @@ import type { ClientRoute, PackageKind } from '@opennavo/shared';
 import { trackEvent } from '~/utils/analytics';
 import { launchDeepLink } from '~/utils/deepLink';
 
-export type ClientHandoffKind = 'install' | 'collection' | 'scan' | 'uninstall' | 'route';
+export type ClientHandoffKind = 'install' | 'collection' | 'scan' | 'startup' | 'uninstall' | 'route';
 
 export interface ClientHandoffCopy {
   kind: PackageKind;
@@ -44,13 +44,17 @@ export function useClientHandoff() {
   // fallback dialog cannot appear on the next page, and release the shared opening flag with it.
   let cancelPending: (() => void) | null = null;
 
+  function cancel() {
+    if (!cancelPending) return;
+    cancelPending();
+    cancelPending = null;
+    opening.value = false;
+  }
+
   if (getCurrentScope()) {
-    onScopeDispose(() => {
-      if (!cancelPending) return;
-      cancelPending();
-      cancelPending = null;
-      opening.value = false;
-    });
+    const route = useRoute();
+    watch(() => route.fullPath, cancel);
+    onScopeDispose(cancel);
   }
 
   function open(target: ClientHandoffTarget) {
@@ -70,12 +74,16 @@ export function useClientHandoff() {
       window.removeEventListener('blur', mark);
       document.removeEventListener('visibilitychange', markHidden);
     };
-    launchDeepLink(target.url);
-    const timer = setTimeout(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const finish = (missing: boolean) => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
       detach();
       cancelPending = null;
       opening.value = false;
-      if (left) return;
+      if (!missing) return;
       let skip = false;
       try {
         skip = localStorage.getItem(SKIP_PROMPT_KEY) === '1';
@@ -87,16 +95,29 @@ export function useClientHandoff() {
         return;
       }
       prompt.value = target;
-    }, DETECT_MS);
+    };
+    timer = setTimeout(() => finish(!left), DETECT_MS);
     cancelPending = () => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
+      timer = null;
       detach();
     };
+    try {
+      launchDeepLink(target.url);
+    } catch {
+      // A browser can reject an unregistered protocol synchronously. Treat that like a missing client
+      // instead of leaving the shared opening flag stuck and suppressing every later handoff.
+      finish(true);
+    }
   }
 
   function openPackage(target: { kind: PackageKind; token: string; name: string; command?: string }) {
     open({
-      url: buildDeepLink({ type: 'package', kind: target.kind, token: target.token, action: 'install' }),
+      url: buildDeepLink(
+        target.kind === 'cask'
+          ? { type: 'package', kind: 'cask', token: target.token, action: 'install' }
+          : { type: 'package', kind: target.kind, token: target.token }
+      ),
       kind: 'install',
       name: target.name,
       feature: 'install',

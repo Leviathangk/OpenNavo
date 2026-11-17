@@ -35,9 +35,11 @@ const { copy } = useCopyCommand();
 const brewfile = useBrewfileList();
 
 const inList = computed(() => brewfile.has(props.kind, props.token));
+// The client only opens a formula's read-only page; it cannot install one from this menu.
+const openLabel = computed(() => (props.kind === 'formula' ? t('client.open') : t('client.installWith')));
 
 const items = computed<OnMenuItem[]>(() => [
-  { key: 'open', label: t('client.installWith'), icon: 'arrow-up-right', disabled: opening.value },
+  { key: 'open', label: openLabel.value, icon: 'arrow-up-right', disabled: opening.value },
   { key: 'copy', label: messages.value.action.copyInstallCommand, icon: 'copy' },
   {
     key: 'brewfile',

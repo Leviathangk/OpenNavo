@@ -228,5 +228,14 @@ describe('Deep link routing', () => {
     useDeepLinkStore().$dispose();
     await setup('/welcome');
     expect(useDeepLinkStore().pending).toBeNull();
+
+    // Client-only destinations are deferred by onboarding and restored after a restart too.
+    for (const route of ['/installed', '/cleanup', '/security', '/firewall']) {
+      const deferred = { url: `opennavo://${route.slice(1)}`, route, action: null };
+      localStorage.setItem('opennavo.pendingDeepLink', JSON.stringify(deferred));
+      useDeepLinkStore().$dispose();
+      await setup('/welcome');
+      expect(useDeepLinkStore().pending).toEqual(deferred);
+    }
   });
 });
