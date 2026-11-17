@@ -578,10 +578,13 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
     };
     scans.set(scanId, scan);
     lastScanId = scanId;
-    // ?mock=av-engine-fail: clamd does not start (as when its socket path was too long); the scan ends at once.
+    // ?mock=av-engine-fail: clamd does not start (as when its socket path was too long); fail after one tick so the
+    // running-to-failed transition is exercised like the real backend.
     if (flags.has('av-engine-fail')) {
-      Object.assign(scan, { state: 'failed', finishedAt: Date.now(), errorCode: 'E_AV_ENGINE' });
-      scheduler.later(() => void ipcEvents.avFinished.emit(JSON.parse(JSON.stringify(scan)) as AvScanResult), tickMs);
+      scheduler.later(() => {
+        Object.assign(scan, { state: 'failed', finishedAt: Date.now(), errorCode: 'E_AV_ENGINE' });
+        void ipcEvents.avFinished.emit(JSON.parse(JSON.stringify(scan)) as AvScanResult);
+      }, tickMs);
       return { scanId };
     }
     engine.running = true;

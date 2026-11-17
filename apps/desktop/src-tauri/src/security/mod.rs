@@ -380,6 +380,7 @@ impl Service {
                 .collect::<Result<_, _>>()?;
             if result.state == AvScanState::Running && !is_active {
                 result.state = AvScanState::Failed;
+                result.finished_at = Some(now());
                 result.error_code = Some("E_AV_SCAN_FAILED".into());
                 log::warn!(
                     "Security scan {} interrupted before completion",

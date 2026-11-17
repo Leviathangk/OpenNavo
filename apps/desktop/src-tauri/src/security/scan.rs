@@ -561,6 +561,16 @@ impl Service {
         self.save_scan(&result)?;
         *active = Some((id.clone(), cancel.clone()));
         drop(active);
+        // Announce the new scan before any engine work. A scheduled scan can fail before the first heartbeat, and the
+        // frontend otherwise only sees the terminal event: it could not tell a new failure from a restored old one.
+        (self.sink)(CoreEvent::AvProgress(AvProgress {
+            scan_id: id.clone(),
+            files_scanned: 0,
+            bytes_scanned: 0,
+            current_path: String::new(),
+            findings: 0,
+            cached_files: 0,
+        }));
         let service = self.clone();
         std::thread::spawn(move || service.run_scan_options(result, roots, cancel, force));
         Ok(AvScanStarted { scan_id: id })
@@ -1094,6 +1104,35 @@ mod tests {
                 .flatten()
                 .any(|entry| entry.file_name().to_string_lossy().starts_with("worker-"))
         );
+    }
+
+    #[test]
+    fn scan_start_reports_running_before_any_heartbeat() {
+        let (_temp, mut service, _) = super::super::tests::fixture();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        Arc::get_mut(&mut service).unwrap().sink = Arc::new(move |event| {
+            if let CoreEvent::AvProgress(progress) = event {
+                let _ = sender.send(progress);
+            }
+        });
+        super::super::tests::fake_engine(&service);
+        service.settings.write().unwrap().av_consent = true;
+        let path = service.home.join("announce-running");
+        std::fs::write(&path, b"clean").unwrap();
+        let scan = service
+            .scan_start(
+                AvScanKind::Custom,
+                Some(vec![path.to_string_lossy().into_owned()]),
+            )
+            .unwrap();
+        let first = receiver
+            .recv_timeout(Duration::from_secs(5))
+            .expect("initial progress");
+        assert_eq!(first.scan_id, scan.scan_id);
+        assert_eq!(first.files_scanned, 0);
+        assert_eq!(first.bytes_scanned, 0);
+        assert!(first.current_path.is_empty());
+        let _ = service.scan_cancel(&scan.scan_id);
     }
 
     #[test]

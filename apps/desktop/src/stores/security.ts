@@ -93,6 +93,10 @@ export const useSecurityStore = defineStore('security', () => {
 
   let scanRevision = 0;
   let scanTarget: string | null = null;
+  /** The scan a progress event has announced, even before its first result lands. */
+  const runningScanId = ref<string | null>(null);
+  /** The last result followed a scan this window saw running, so a stop is a new event, not restored history. */
+  const lastScanWasRunning = ref(false);
   let overviewLoad: Promise<void> | null = null;
   function loadOverview(): Promise<void> {
     if (overviewLoad) return overviewLoad;
@@ -103,7 +107,10 @@ export const useSecurityStore = defineStore('security', () => {
       const id = overview.value.lastScan?.scanId;
       if (!restoreHistory || !id || scan.value || scanTarget !== null || revision !== scanRevision) return;
       const result = await unwrap(commands.avScanGet(id));
-      if (!scan.value && scanTarget === null && revision === scanRevision) scan.value = result;
+      if (!scan.value && scanTarget === null && revision === scanRevision) {
+        scan.value = result;
+        lastScanWasRunning.value = false;
+      }
     })().finally(() => {
       overviewLoad = null;
     });
@@ -183,6 +190,8 @@ export const useSecurityStore = defineStore('security', () => {
     scanTarget = 'starting';
     try {
       const { scanId } = await unwrap(commands.avScanStart(kind, paths, force));
+      runningScanId.value = scanId;
+      lastScanWasRunning.value = true;
       if (revision === scanRevision) scanTarget = scanId;
       const result = await unwrap(commands.avScanGet(scanId));
       if (revision === scanRevision) {
@@ -205,6 +214,8 @@ export const useSecurityStore = defineStore('security', () => {
   const takesOver = (scanId: string) => scan.value?.scanId !== scanId && scan.value?.state !== 'running';
 
   function applyProgress(payload: AvProgress) {
+    runningScanId.value = payload.scanId;
+    lastScanWasRunning.value = true;
     if (takesOver(payload.scanId)) {
       if (scanTarget === payload.scanId) return;
       scanTarget = payload.scanId;
@@ -234,10 +245,13 @@ export const useSecurityStore = defineStore('security', () => {
 
   function applyFinished(result: AvScanResult) {
     if (scan.value && scan.value.scanId !== result.scanId && !takesOver(result.scanId)) return;
+    const wasRunning = runningScanId.value === result.scanId;
     ++scanRevision;
     scanTarget = result.scanId;
     scan.value = result;
     progress.value = null;
+    runningScanId.value = null;
+    lastScanWasRunning.value = wasRunning;
     void loadOverview().catch(() => undefined);
   }
 
@@ -412,6 +426,7 @@ export const useSecurityStore = defineStore('security', () => {
     events,
     scan,
     progress,
+    lastScanWasRunning,
     busy,
     added,
     attention,

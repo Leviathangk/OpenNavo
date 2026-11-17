@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import PermissionGate from '@/components/permissions/PermissionGate.vue';
 import { computed, onMounted } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { OnPageHeader, OnTabs } from '@opennavo/ui';
 import SecurityOverviewPanel from '@/components/security/SecurityOverviewPanel.vue';
 import SecurityProtectionPanel from '@/components/security/SecurityProtectionPanel.vue';
 import SecurityQuarantinePanel from '@/components/security/SecurityQuarantinePanel.vue';
 import SecurityScanPanel from '@/components/security/SecurityScanPanel.vue';
+import SecurityScanStatus from '@/components/security/SecurityScanStatus.vue';
 import SecurityStartupPanel from '@/components/security/SecurityStartupPanel.vue';
 import { SECURITY_TABS } from '@/components/security/meta';
 import type { SecurityTab } from '@/components/security/meta';
@@ -19,6 +20,7 @@ import { NO_PREVIEW, scanPreview, startupPreview } from '@/utils/deepLinkPreview
 // ?token=…&preview=1: the panels find and preselect the item or app, and nothing runs until the user acts.
 const { t } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const store = useSecurityStore();
 
 const tab = computed<SecurityTab>(() => SECURITY_TABS.find(value => value === route.params.tab) ?? 'overview');
@@ -53,6 +55,11 @@ onMounted(() => void store.loadOverview().catch(() => undefined));
         :items="tabs"
         :aria-label="t('security.tabs.label')"
         :link-as="RouterLink"
+      />
+      <SecurityScanStatus
+        v-if="store.scanning && tab !== 'scan'"
+        class="mb-16px"
+        @open="router.push('/security/scan')"
       />
       <SecurityOverviewPanel v-if="tab === 'overview'" />
       <SecurityScanPanel v-else-if="tab === 'scan'" :preview="scanLink" />

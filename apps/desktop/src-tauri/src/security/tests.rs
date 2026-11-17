@@ -1604,3 +1604,28 @@ fn threat_legacy_single_finding_metadata_can_be_deleted() {
     assert_finding(&s, &scan, FindingStatus::Deleted);
     assert!(s.quarantine_list().unwrap().is_empty());
 }
+
+#[test]
+fn recovering_an_interrupted_scan_records_when_it_stopped() {
+    let (_temp, s, _) = fixture();
+    let id = "interrupted-scan";
+    s.save_scan(&AvScanResult {
+        scan_id: id.into(),
+        kind: AvScanKind::Quick,
+        state: AvScanState::Running,
+        error_code: None,
+        started_at: 1,
+        finished_at: None,
+        files_scanned: 0,
+        bytes_scanned: 0,
+        skipped: AvSkipped::default(),
+        metrics: AvScanMetrics::default(),
+        denied_roots: vec![],
+        findings: vec![],
+    })
+    .unwrap();
+    let recovered = s.scan_get(id).unwrap();
+    assert_eq!(recovered.state, AvScanState::Failed);
+    assert_eq!(recovered.error_code.as_deref(), Some("E_AV_SCAN_FAILED"));
+    assert!(recovered.finished_at.is_some());
+}

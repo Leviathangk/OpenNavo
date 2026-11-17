@@ -2499,6 +2499,8 @@
       "downloading": "Download del database antivirus…",
       "noDb": "Database antivirus non ancora scaricato",
       "lastScan": "Ultima {kind}: {date}, {count} minaccia rilevata | Ultima {kind}: {date}, {count} minacce rilevate",
+      "lastScanFailed": "Ultima {kind}: {date} · scansione interrotta",
+      "lastScanCanceled": "Ultima {kind}: {date} · scansione annullata",
       "neverScanned": "Ancora nessuna scansione",
       "consentTitle": "Scarica prima il database antivirus ufficiale",
       "consentBody": "Le scansioni antivirus usano il motore ClamAV e il suo database ufficiale. Il database viene scaricato direttamente dai server ufficiali ClamAV, senza passare da OpenNavo.",
@@ -2547,6 +2549,7 @@
         "failed": "Scansione interrotta · {count} file verificati"
       },
       "progressLabel": "Avanzamento della scansione",
+      "runningLabel": "{kind} in corso",
       "skipped": {
         "dataless": "Saltato {count} file iCloud non scaricato | Saltati {count} file iCloud non scaricati",
         "tooLarge": "{count} file supera il limite di scansione e non è stato analizzato completamente | {count} file superano il limite di scansione e non sono stati analizzati completamente",

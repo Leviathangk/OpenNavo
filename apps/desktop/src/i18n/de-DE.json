@@ -2499,6 +2499,8 @@
       "downloading": "Virendatenbank wird geladen…",
       "noDb": "Virendatenbank noch nicht geladen",
       "lastScan": "Letzter {kind}: {date}, {count} Bedrohung gefunden | Letzter {kind}: {date}, {count} Bedrohungen gefunden",
+      "lastScanFailed": "Letzter {kind}: {date} · Scan unterbrochen",
+      "lastScanCanceled": "Letzter {kind}: {date} · Scan abgebrochen",
       "neverScanned": "Noch keine Scans",
       "consentTitle": "Zuerst offizielle Virendatenbank laden",
       "consentBody": "Virenscans verwenden die ClamAV-Engine und ihre offizielle Virendatenbank. Diese wird direkt von den offiziellen ClamAV-Servern geladen, ohne OpenNavo zu durchlaufen.",
@@ -2547,6 +2549,7 @@
         "failed": "Scan unterbrochen · {count} Dateien geprüft"
       },
       "progressLabel": "Scan-Fortschritt",
+      "runningLabel": "{kind} läuft",
       "skipped": {
         "dataless": "{count} nicht geladene iCloud-Datei übersprungen | {count} nicht geladene iCloud-Dateien übersprungen",
         "tooLarge": "{count} Datei überschreitet das Scan-Limit und wurde nicht vollständig gescannt | {count} Dateien überschreiten das Scan-Limit und wurden nicht vollständig gescannt",

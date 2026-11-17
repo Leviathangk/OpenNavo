@@ -21,7 +21,7 @@ import { useSecurityStore } from '@/stores/security';
 import { useDownloadsStore } from '@/stores/downloads';
 import DownloadNotifier from '@/components/package/DownloadNotifier.vue';
 import { describeVerdict } from '@/components/package/downloadVerdict';
-import type { DownloadVerdict, InstallScanResult } from '@/ipc/bindings';
+import type { DownloadVerdict, InstallScanResult, SecurityOverview } from '@/ipc/bindings';
 import { setup } from './helpers';
 import type { TestContext } from './helpers';
 
@@ -112,6 +112,53 @@ describe('Security overview refresh', () => {
     await flushPromises();
     expect(overview).not.toHaveBeenCalled();
     expect(wrapper.exists()).toBe(true);
+  });
+});
+
+describe('Last scan summary', () => {
+  type LastScan = NonNullable<SecurityOverview['lastScan']>;
+  async function mountWithLastScan(lastScan: LastScan) {
+    const context = await setup('/security');
+    const real = commands.securityOverview;
+    vi.spyOn(commands, 'securityOverview').mockImplementation(async () => {
+      const result = await real();
+      return result.status === 'ok' ? { ...result, data: { ...result.data, lastScan } } : result;
+    });
+    await startLocalState();
+    const wrapper = mount(SecurityPage, {
+      global: { plugins: [context.pinia, context.router, i18n] },
+      attachTo: document.body
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+    await flushPromises();
+    return wrapper;
+  }
+
+  it('Shows a restored failed scan even when it stopped without a finish time', async () => {
+    const wrapper = await mountWithLastScan({
+      scanId: 'interrupted',
+      kind: 'quick',
+      state: 'failed',
+      finishedAt: null,
+      filesScanned: 0,
+      threats: 0
+    });
+    expect(wrapper.text()).toContain('扫描中断');
+    expect(wrapper.text()).not.toContain('还没有扫描过');
+  });
+
+  it('Shows a running last scan as running instead of never scanned', async () => {
+    const wrapper = await mountWithLastScan({
+      scanId: 'running',
+      kind: 'quick',
+      state: 'running',
+      finishedAt: null,
+      filesScanned: 42,
+      threats: 0
+    });
+    expect(wrapper.text()).toContain('正在快速扫描');
+    expect(wrapper.text()).not.toContain('还没有扫描过');
   });
 });
 
@@ -291,6 +338,154 @@ describe('Background scans', () => {
     await flushPromises();
     expect(useSecurityStore().scan?.scanId).toBe(scanId);
     expect(wrapper.text()).toContain('扫描完成');
+  });
+});
+
+describe('Scan status across tabs', () => {
+  it('Keeps a running scan in view when the user leaves the scan tab and comes back', async () => {
+    // Found in the app: the quick scan kept running, but coming back to Security opened the overview, which showed no
+    // progress at all. The engine was still busy, so this was a display gap, not a stopped scan.
+    const { wrapper: first, router, pinia } = await mountPage('/security', 'av-ready');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    await button(first, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/security/scan');
+    expect(first.text()).toContain('正在快速扫描');
+
+    await router.push('/installed');
+    await flushPromises();
+    // Leaving the page unmounts it, as the app shell does; the scan belongs to the window, not the panel.
+    wrappers.splice(wrappers.indexOf(first), 1);
+    first.unmount();
+    await router.push('/security');
+    const wrapper = mount(SecurityPage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+    const status = wrapper.get('[data-testid="security-scan-status"]');
+    expect(status.text()).toContain('正在快速扫描');
+    expect(status.find('[role="progressbar"]').exists()).toBe(true);
+    expect(status.attributes('aria-live')).toBeUndefined();
+    expect(status.find('[role="status"]').text()).toContain('正在快速扫描');
+
+    await button(wrapper, '查看')!.trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/security/scan');
+    expect(wrapper.find('[data-testid="security-scan-status"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('正在快速扫描');
+  });
+});
+
+describe('Scan completion notices', () => {
+  it('Announces a finished scan on another Security tab, but not on the scan tab itself', async () => {
+    const page = await mountPage('/security', 'av-ready');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(page.router.currentRoute.value.path).toBe('/security/scan');
+    // Back on the overview, the result is no longer on screen when the scan ends.
+    await page.router.push('/security');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(TICK * 6);
+    await flushPromises();
+    const scanNotice = () =>
+      useToasts().items.value.find(item => item.title.includes('扫描完成') || item.title.includes('扫描发现'));
+    expect(scanNotice()).toBeTruthy();
+
+    // The scan tab shows the result itself, so it does not need the toast.
+    useToasts().clear();
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(page.router.currentRoute.value.path).toBe('/security/scan');
+    await vi.advanceTimersByTimeAsync(TICK * 6);
+    await flushPromises();
+    expect(scanNotice()).toBeUndefined();
+  });
+});
+
+describe('Scan stop notices', () => {
+  it('Announces a failed scan off the scan tab and marks the last scan as stopped', async () => {
+    const page = await mountPage('/security', 'av-ready,av-engine-fail');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(page.router.currentRoute.value.path).toBe('/security/scan');
+    await page.router.push('/security');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(TICK);
+    await flushPromises();
+    await flushPromises();
+
+    expect(useSecurityStore().scan?.state).toBe('failed');
+    const notice = useToasts().items.value.find(item => item.title.includes('扫描中断'));
+    expect(notice?.tone).toBe('danger');
+    expect(notice?.description).toContain('病毒扫描引擎没有正常启动');
+    expect(page.wrapper.text()).toContain('扫描中断');
+    expect(page.wrapper.text()).not.toContain('发现 0 个威胁');
+  });
+
+  it('Announces a canceled scan off the scan tab', async () => {
+    const page = await mountPage('/security', 'av-ready');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    await page.router.push('/security');
+    await flushPromises();
+    await useSecurityStore().cancelScan();
+    await flushPromises();
+
+    expect(useSecurityStore().scan?.state).toBe('canceled');
+    const notice = useToasts().items.value.find(item => item.title.includes('扫描已取消'));
+    expect(notice?.tone).toBe('info');
+    expect(page.wrapper.text()).toContain('扫描已取消');
+  });
+
+  it('Announces a scheduled scan that fails before the page ever shows it running', async () => {
+    const page = await mountPage('/security', 'av-ready');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    // Like a scheduled scan: Rust starts it, so only the initial progress tells this window it is new. Hold the
+    // result read open so the store cannot first settle into a running scan before the terminal event.
+    const { scanId } = await unwrap(commands.avScanStart('quick', null, false));
+    const running = await unwrap(commands.avScanGet(scanId));
+    vi.spyOn(commands, 'avScanGet').mockImplementation(() => new Promise(() => {}));
+    await events.avProgress.emit({
+      scanId,
+      filesScanned: 0,
+      bytesScanned: 0,
+      currentPath: '',
+      findings: 0,
+      cachedFiles: 0
+    });
+    await events.avFinished.emit({ ...running, state: 'failed', finishedAt: Date.now(), errorCode: 'E_AV_ENGINE' });
+    await flushPromises();
+
+    expect(useSecurityStore().scan?.state).toBe('failed');
+    expect(useToasts().items.value.some(item => item.title.includes('扫描中断'))).toBe(true);
   });
 });
 
