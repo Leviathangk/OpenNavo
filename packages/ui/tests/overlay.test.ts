@@ -446,6 +446,30 @@ describe('OnMenu', () => {
     expect(menu()).toBeNull();
     expect(wrapper.emitted('select')).toBeUndefined();
   });
+
+  it('Follows a trigger that scrolls inside a panel and closes when that trigger leaves the viewport', async () => {
+    const wrapper = track(mount(OnMenu, { props: { items, label: 'More' }, attachTo: document.body }));
+    const trigger = wrapper.get('button');
+    await trigger.trigger('click');
+    await settle();
+    expect(menu()).not.toBeNull();
+
+    const button = trigger.element as HTMLButtonElement;
+    const box = (top: number) => new DOMRect(12, top, 80, 32);
+    const previousHeight = window.innerHeight;
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(box(700));
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 812 });
+    window.dispatchEvent(new Event('scroll'));
+    await nextTick();
+    expect(menu()).not.toBeNull();
+    expect(menu()?.style.top || menu()?.style.bottom).not.toBe('');
+
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(box(900));
+    window.dispatchEvent(new Event('scroll'));
+    await nextTick();
+    expect(menu()).toBeNull();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: previousHeight });
+  });
 });
 
 describe('OnCommandPalette', () => {

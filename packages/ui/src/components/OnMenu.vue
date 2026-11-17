@@ -87,18 +87,38 @@ function onOutside(event: Event) {
   close(false);
 }
 
-function onViewportChange() {
+function onResize() {
   close(false);
+}
+
+// A fixed menu stays on the trigger while that trigger scrolls inside a panel (the mobile
+// nav). The scroll that reveals an obscured trigger is delivered after the click, so
+// closing on every scroll dismisses the menu before it can be seen. Leave the viewport
+// and the menu would detach, so that still closes.
+function onScroll() {
+  const anchor = trigger()?.getBoundingClientRect();
+  if (!anchor || anchor.width === 0 || anchor.height === 0) {
+    close(false);
+    return;
+  }
+  if (anchor.bottom <= 0 || anchor.top >= window.innerHeight) {
+    close(false);
+    return;
+  }
+  place();
 }
 
 function listen(active: boolean) {
   const method = active ? 'addEventListener' : 'removeEventListener';
   document[method]('pointerdown', onOutside, true);
-  window[method]('resize', onViewportChange);
-  window[method]('scroll', onViewportChange, true);
+  window[method]('resize', onResize);
+  window[method]('scroll', onScroll, true);
 }
 
 async function show(focus: 'first' | 'last') {
+  // The opening click scrolls an obscured trigger into view after this handler. Put it
+  // on screen first so the menu is born next to the button.
+  trigger()?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   // Hide until positioned to avoid flashing at top-left.
   position.value = { visibility: 'hidden' };
   open.value = true;
