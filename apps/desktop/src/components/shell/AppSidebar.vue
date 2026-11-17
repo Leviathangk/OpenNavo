@@ -79,8 +79,7 @@ const groups = computed<OnSidebarGroup[]>(() => [
       item('developer-map', 'lucide:globe', t('nav.developerMap')),
       item('categories', 'lucide:layout-grid', t('nav.categories')),
       item('rankings', 'lucide:chart-no-axes-column', t('nav.rankings')),
-      item('recent', 'lucide:clock', t('nav.recent')),
-      item('articles', 'lucide:newspaper', t('articles.title'))
+      item('recent', 'lucide:clock', t('nav.recent'))
     ]
   },
   {

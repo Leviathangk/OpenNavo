@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "Articoli",
-    "subtitle": "Consigli, recensioni, tutorial e rassegne di app per Mac",
-    "all": "Tutti",
-    "typesLabel": "Tipo di articolo",
-    "types": {
-      "recommendation": "Consigli",
-      "review": "Recensione",
-      "tutorial": "Tutorial",
-      "roundup": "Raccolte",
-      "news": "Notizie"
-    },
-    "emptyTitle": "Ancora nessun articolo",
-    "emptyDescription": "Gli articoli pubblicati appariranno qui.",
-    "readingTime": "{minutes} min di lettura",
-    "published": "Pubblicato il {date}",
-    "updated": "Aggiornato il {date}",
-    "editorial": "Redazione di OpenNavo",
-    "sourceText": "Questo articolo non è ancora disponibile nella tua lingua, quindi qui sotto trovi l’originale.",
-    "testNote": "Ambiente di test:",
-    "toc": "Indice",
-    "sources": "Fonti",
-    "appCardNote": "Dati attuali del catalogo: versione e installazioni seguono il catalogo e possono differire rispetto a quando è stato scritto l’articolo.",
-    "mentionedApps": "App citate in questo articolo",
-    "related": "Articoli correlati",
-    "withdrawnTitle": "Questo articolo è stato ritirato",
-    "withdrawnBody": "Potrebbe essere obsoleto o non più accurato, quindi non è più disponibile. Dai un’occhiata ai nostri altri articoli.",
-    "backToList": "Sfoglia tutti gli articoli"
-  },
   "brewfile": {
     "installTitle": "Installa le app dell’elenco",
     "title": "Il mio elenco",

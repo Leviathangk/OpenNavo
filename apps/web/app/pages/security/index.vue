@@ -282,16 +282,15 @@ defineOgImage('OgDefaultSatori', {
 
 <style>
 .security-hero-glow {
-  top: 80px;
-  width: 1100px;
-  height: 1100px;
-  margin-left: -550px;
+  inset: 0;
   background: radial-gradient(
-    closest-side,
+    ellipse 52% 58% at 50% 0%,
     color-mix(in srgb, var(--on-status-success) 16%, transparent),
     color-mix(in srgb, var(--on-brand-violet) 12%, transparent) 55%,
-    transparent
+    transparent 100%
   );
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
 }
 
 .security-title span {

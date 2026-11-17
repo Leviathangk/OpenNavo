@@ -40,7 +40,6 @@ describe('AppShell', () => {
       '/categories',
       '/rankings',
       '/recent',
-      '/articles',
       '/collections',
       '/brewfile',
       // Tools: Scan for Viruses, then the app firewall right below it, then Monitor.
