@@ -10,12 +10,12 @@ inputs and the published archive together:
 
 | Component             | Value                                                            |
 | --------------------- | ---------------------------------------------------------------- |
-| Hermes Agent          | `0.23.1` (`v0.23.1`, `3b421578588243f920886e6fe79a6faa87ea026e`) |
+| Hermes Agent          | `0.23.2` (`v0.23.2`, `ae2a81ccc00e9b7c06301523e5bb09608397149c`) |
 | Python                | `3.14`                                                           |
 | CuaDriver             | `0.26.1`                                                         |
-| github-copilot plugin | `4987918a068fcf4b3efbb584db5dd05e5f57c669`                       |
-| Runtime release       | `hermes-runtime-v0.23.1`                                         |
-| Package               | `runtime-0.23.1-macos-arm64.tar.gz`                              |
+| github-copilot plugin | `df8f1321941125d45dde71ab20196fbeea093191`                       |
+| Runtime release       | `hermes-runtime-v0.23.2`                                         |
+| Package               | `runtime-0.23.2-macos-arm64.tar.gz`                              |
 
 Both build scripts read this file. The Rust app compiles the same file into the
 binary, so the expected version and default release URL cannot drift from the
@@ -58,16 +58,16 @@ download the archive from `release.repository`, `release.tag`, and
 
 ## Upgrading an existing user
 
-Users on `Hermes 0.23.0` keep their runtime until they explicitly update it:
+Users on an older Hermes runtime keep it until they explicitly update it:
 
 1. Ship a new OpenNavo desktop version containing this runtime manifest.
 2. The app reads the installed runtime with an empty `HERMES_HOME`. An
-   unstamped `0.23.0` package therefore reports no identity and is marked
+   unstamped older package therefore reports no identity and is marked
    `outdated`; it no longer borrows the version from `~/.hermes`.
 3. The Hermes settings pane and the assistant rail show the pinned target and
    an **Update runtime** button. Nothing is replaced in the background.
 4. The installer downloads to `runtime.tmp`, verifies SHA-256, verifies that
-   the staged runtime reports `0.23.1`, then swaps `runtime/hermes`.
+   the staged runtime reports `0.23.2`, then swaps `runtime/hermes`.
 5. Pinned plugin copies already owned by OpenNavo are staged from the new
    runtime and swapped in the same operation. A copy is considered managed
    only when its `.hermes-catalog.json` names the same `catalog_name` and
@@ -85,11 +85,16 @@ OpenNavo-managed plugin copies. The following stay in place:
 - CuaDriver's macOS TCC grants, because the app is outside the signed bundle
   and keeps its identity.
 
-Hermes 0.23.1 raises the config schema from 52 to 53. The only explicit
-migration changes the default `agent.clarify_timeout` from `3600` to `90`;
-an explicitly configured value is preserved. Hermes performs that migration on
-first launch with the new runtime. OpenNavo's config writes are merge-based and
-do not reset `_config_version` or keys the desktop does not own.
+Hermes 0.23.1 raised the config schema from 52 to 53. Hermes 0.23.2 keeps
+schema 53, so updating from 0.23.1 runs no config migration. The 52-to-53 step
+changes the default `agent.clarify_timeout` from `3600` to `90`; an explicitly
+configured value is preserved. Hermes performs migrations on first launch with
+the new runtime. OpenNavo's config writes are merge-based and do not reset
+`_config_version` or keys the desktop does not own.
+
+The `hermes-gateway-v1` methods and events OpenNavo uses are unchanged in
+0.23.2; the release only adds fields and methods. The pinned github-copilot
+plugin moves to the revision shipped in the 0.23.2 plugin catalog.
 
 Publishing a new runtime release alone does not upgrade users still running an
 older desktop build. Their installed app has the old hard-coded default. The
