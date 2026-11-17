@@ -2299,7 +2299,8 @@
     "menuBar": {
       "title": "Barra dei menu",
       "show": "Mostra nella barra dei menu",
-      "showHint": "Voce indipendente; fai clic per vedere i dettagli della metrica sotto di essa",
+      "showHint": "Visibile nella barra dei menu; fai clic per i dettagli",
+      "showHintCombined": "Incluso nella voce combinata della barra dei menu; fai clic su quella voce per i dettagli",
       "style": "Stile",
       "styleHint": "Aspetto nella barra dei menu",
       "styles": {
@@ -2324,6 +2325,7 @@
     "rail": {
       "menuBar": "Barra dei menu",
       "menuBarSub": "Una voce per metrica, fai clic per i dettagli · nessun limite",
+      "menuBarCombinedSub": "Le metriche attive si alternano in una voce; fai clic per vederle tutte",
       "empty": "Ancora nessuna metrica nella barra dei menu",
       "crowded": "Con molte voci, alcune possono finire dietro la tacca dello schermo. Prova lo stile “Solo valore”.",
       "refresh": "Aggiornamento ogni {count} secondo · trascina tenendo premuto ⌘ per riordinare | Aggiornamento ogni {count} secondi · trascina tenendo premuto ⌘ per riordinare",
@@ -2333,13 +2335,15 @@
     },
     "settings": {
       "menuBar": "Barra dei menu",
+      "combined": "Combina e alterna",
+      "combinedHint": "Mostra tutte le metriche attive in un'unica voce della barra dei menu, alternandole una alla volta. Disattiva per dare a ogni metrica la propria voce.",
       "interval": "Frequenza di aggiornamento",
       "intervalHint": "Una frequenza maggiore consuma più energia; pausa automatica a schermo spento o con Mac in stop",
       "seconds": "{count} secondo | {count} secondi",
       "notVisible": "Non compare dopo l’attivazione?",
       "notVisibleHint": "Da macOS 26, autorizza OpenNavo in Impostazioni di Sistema → Barra dei menu. Con molte voci, alcune possono finire dietro la tacca dello schermo",
       "openSettings": "Apri Impostazioni di Sistema",
-      "menuBarNote": "Ogni metrica è una voce indipendente nella barra dei menu, senza limiti; CPU e memoria sono attive per impostazione predefinita. Fai clic su una voce per mostrarne i dettagli sotto di essa.",
+      "menuBarNote": "CPU e memoria sono attive per impostazione predefinita, senza limiti. Fai clic su una voce della barra dei menu per vederne i dettagli sotto; attiva «Combina e alterna» per mostrare a turno tutte le metriche attive e fai clic sulla voce per vederle tutte.",
       "helper": "Assistente",
       "helperHint": "{status}. Serve solo a controllare le ventole; temperature e velocità sono visibili anche senza installarlo",
       "helperStatus": {

@@ -44,7 +44,7 @@ pub fn position(anchor: Anchor, width: f64, height: f64) -> (f64, f64) {
 }
 #[derive(Default)]
 struct State {
-    module: Option<MonitorModule>,
+    view: Option<MonitorPopoverView>,
     anchor: Option<Anchor>,
     ready: bool,
     wanted: bool,
@@ -53,12 +53,17 @@ struct State {
 }
 impl State {
     /// Toggle requested visibility, including before the first webview mount.
-    fn click(&mut self, module: MonitorModule, anchor: Anchor) -> bool {
-        if self.wanted && self.module == Some(module) {
+    fn click(&mut self, view: MonitorPopoverView, anchor: Anchor) -> bool {
+        // The combined item's visible metric changes while the panel is open; clicking the same item
+        // must still close it rather than being treated as a different source.
+        let same_view = self.view.as_ref().is_some_and(|current| {
+            current.combined == view.combined && current.modules == view.modules
+        });
+        if self.wanted && same_view {
             self.hide();
             return false;
         }
-        self.module = Some(module);
+        self.view = Some(view);
         self.anchor = Some(anchor);
         self.wanted = true;
         self.generation = self.generation.wrapping_add(1);
@@ -103,14 +108,14 @@ pub fn hide<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 }
 pub fn click(
     app: &tauri::AppHandle,
-    module: MonitorModule,
+    view: MonitorPopoverView,
     anchor: Anchor,
 ) -> Result<(), AppError> {
     crate::tray::hide(app);
     let popover = app.state::<Popover>();
     {
         let mut state = popover.0.lock().map_err(|_| error())?;
-        if !state.click(module, anchor) {
+        if !state.click(view, anchor) {
             drop(state);
             hide(app);
             return Ok(());
@@ -198,13 +203,13 @@ pub fn click(
 }
 fn present(app: &tauri::AppHandle) -> Result<(), AppError> {
     use tauri_specta::Event;
-    let (module, generation) = {
+    let (view, generation) = {
         let state = app.state::<Popover>();
         let state = state.0.lock().map_err(|_| error())?;
         if !state.ready || !state.wanted {
             return Ok(());
         }
-        (state.module.ok_or_else(error)?, state.generation)
+        (state.view.clone().ok_or_else(error)?, state.generation)
     };
     let window = app.get_webview_window(POPOVER_LABEL).ok_or_else(error)?;
     // The minimal popover capability cannot call localeGet. Replay the existing locale event
@@ -218,7 +223,7 @@ fn present(app: &tauri::AppHandle) -> Result<(), AppError> {
         .emit_to(app, POPOVER_LABEL);
     }
     // The content event is strictly emitted before show; a delayed show lets queued JS apply it.
-    crate::events::MonitorPopover(module)
+    crate::events::MonitorPopover(view)
         .emit_to(app, POPOVER_LABEL)
         .map_err(|_| error())?;
     reposition(app)?;
@@ -306,6 +311,13 @@ pub fn cancel_if_hidden(app: &tauri::AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn view(module: MonitorModule) -> MonitorPopoverView {
+        MonitorPopoverView {
+            modules: vec![module],
+            selected: module,
+            combined: false,
+        }
+    }
 
     fn anchor(x: f64) -> Anchor {
         Anchor {
@@ -327,18 +339,18 @@ mod tests {
     #[test]
     fn repeated_click_cancels_even_before_mount_or_delayed_show() {
         let mut state = State::default();
-        assert!(state.click(MonitorModule::Cpu, anchor(-80.0)));
+        assert!(state.click(view(MonitorModule::Cpu), anchor(-80.0)));
         let first = state.generation;
         assert!(!state.can_present(first));
-        assert!(!state.click(MonitorModule::Cpu, anchor(-80.0)));
+        assert!(!state.click(view(MonitorModule::Cpu), anchor(-80.0)));
         state.ready = true;
         assert!(!state.can_present(first));
         assert!(!state.wanted);
         assert!(!state.shown);
-        assert!(state.click(MonitorModule::Cpu, anchor(-80.0)));
+        assert!(state.click(view(MonitorModule::Cpu), anchor(-80.0)));
         assert!(state.can_present(state.generation));
         state.shown = true;
-        assert!(!state.click(MonitorModule::Cpu, anchor(-80.0)));
+        assert!(!state.click(view(MonitorModule::Cpu), anchor(-80.0)));
         assert!(!state.shown);
     }
 
@@ -348,15 +360,33 @@ mod tests {
             ready: true,
             ..State::default()
         };
-        state.click(MonitorModule::Cpu, anchor(-80.0));
+        state.click(view(MonitorModule::Cpu), anchor(-80.0));
         state.shown = true;
         let cpu = state.generation;
-        assert!(state.click(MonitorModule::Memory, anchor(-150.0)));
+        assert!(state.click(view(MonitorModule::Memory), anchor(-150.0)));
         assert!(state.shown);
-        assert_eq!(state.module, Some(MonitorModule::Memory));
+        assert_eq!(state.view, Some(view(MonitorModule::Memory)));
         assert_eq!(state.anchor, Some(anchor(-150.0)));
         assert!(!state.can_present(cpu));
         assert!(state.can_present(state.generation));
+    }
+
+    #[test]
+    fn combined_item_toggles_after_its_rotating_metric_changes() {
+        let mut state = State {
+            ready: true,
+            ..State::default()
+        };
+        let combined = |selected| MonitorPopoverView {
+            modules: vec![MonitorModule::Cpu, MonitorModule::Memory],
+            selected,
+            combined: true,
+        };
+        assert!(state.click(combined(MonitorModule::Cpu), anchor(-80.0)));
+        state.shown = true;
+        assert!(!state.click(combined(MonitorModule::Memory), anchor(-80.0)));
+        assert!(!state.wanted);
+        assert!(!state.shown);
     }
 
     #[test]
@@ -365,12 +395,12 @@ mod tests {
             ready: true,
             ..State::default()
         };
-        state.click(MonitorModule::Cpu, anchor(-80.0));
+        state.click(view(MonitorModule::Cpu), anchor(-80.0));
         let pending = state.generation;
         state.hide();
         assert!(!state.can_present(pending));
         assert!(!state.wanted);
-        state.click(MonitorModule::Cpu, anchor(-80.0));
+        state.click(view(MonitorModule::Cpu), anchor(-80.0));
         assert!(!state.can_present(pending));
         assert!(state.can_present(state.generation));
     }

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { OnButton, OnIcon } from '@opennavo/ui';
 import { commands, events, unwrap } from '@/ipc/client';
+import type { MonitorModule } from '@/ipc/bindings';
 import MonitorModuleBody from '@/components/monitor/MonitorModuleBody.vue';
 import MonitorProcesses from '@/components/monitor/MonitorProcesses.vue';
 import { MODULE_ICONS } from '@/components/monitor/meta';
@@ -24,8 +25,13 @@ const fromQuery = () =>
     ? (route.query.module as DisplayModule)
     : null;
 const module = ref<DisplayModule>(fromQuery() ?? 'cpu');
+const tabs = ref<DisplayModule[]>([]);
+const combined = ref(false);
 let stop: (() => void) | undefined;
 let disposed = false;
+
+const normalize = (value: MonitorModule): DisplayModule => (value === 'fans' ? 'sensors' : value);
+const canShow = (value: DisplayModule) => (MODULES as readonly string[]).includes(value);
 
 function subscribe() {
   if (disposed || document.visibilityState === 'hidden') return;
@@ -39,7 +45,11 @@ function onVisibility() {
 onMounted(async () => {
   stop = await events.monitorPopover.listen(event => {
     // Fans have no menu bar item of their own; they are shown with the sensors.
-    module.value = event.payload === 'fans' ? 'sensors' : event.payload;
+    const modules = [...new Set(event.payload.modules.map(normalize).filter(canShow))];
+    const selected = normalize(event.payload.selected);
+    combined.value = event.payload.combined;
+    tabs.value = modules;
+    module.value = modules.includes(selected) ? selected : (modules[0] ?? 'cpu');
   });
   if (disposed) {
     stop();
@@ -61,6 +71,10 @@ onBeforeUnmount(() => {
 
 const openInMain = (target: 'detail' | 'settings') =>
   void unwrap(commands.monitorOpenInMain(target, target === 'detail' ? module.value : null)).catch(() => undefined);
+
+function selectModule(next: DisplayModule) {
+  module.value = next;
+}
 </script>
 
 <template>
@@ -80,6 +94,33 @@ const openInMain = (target: 'detail' | 'settings') =>
           store.system.modelName
         }}</span>
       </header>
+      <div
+        v-if="combined && tabs.length > 1"
+        class="flex flex-wrap gap-2px"
+        role="group"
+        :aria-label="t('monitor.title')"
+        data-testid="monitor-popover-tabs"
+      >
+        <button
+          v-for="tab in tabs"
+          :key="tab"
+          type="button"
+          class="grid h-24px w-24px place-items-center rounded-[6px] border border-solid outline-none transition-colors duration-fast ease-standard focus-visible:shadow-focus-ring"
+          :class="
+            tab === module
+              ? 'border-line-strong bg-component-segment-active text-ink-primary'
+              : 'border-transparent bg-transparent text-ink-tertiary hover:text-ink-primary'
+          "
+          :aria-label="t(`monitor.modules.${tab}`)"
+          :aria-pressed="tab === module"
+          :title="t(`monitor.modules.${tab}`)"
+          :data-module="tab"
+          data-testid="monitor-popover-tab"
+          @click="selectModule(tab)"
+        >
+          <OnIcon :name="MODULE_ICONS[tab]" :size="14" />
+        </button>
+      </div>
       <MonitorModuleBody :module="module" variant="popover" @open-fans="openInMain('detail')" />
       <MonitorProcesses v-if="module === 'cpu'" sort="cpu" :limit="3" compact />
       <MonitorProcesses v-else-if="module === 'memory'" sort="memory" :limit="3" compact />

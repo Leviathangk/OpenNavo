@@ -2299,7 +2299,8 @@
     "menuBar": {
       "title": "Barra de menus",
       "show": "Mostrar na barra de menus",
-      "showHint": "Um item próprio; clique nele para ver os detalhes logo abaixo",
+      "showHint": "Mostrado na barra de menus; clique para ver os detalhes",
+      "showHintCombined": "Incluído no item combinado da barra de menus; clique nesse item para ver os detalhes",
       "style": "Estilo",
       "styleHint": "Como aparece na barra de menus",
       "styles": {
@@ -2324,6 +2325,7 @@
     "rail": {
       "menuBar": "Barra de menus",
       "menuBarSub": "Cada métrica é um item próprio; clique para ver os detalhes · sem limite",
+      "menuBarCombinedSub": "As métricas ativadas se alternam em um item; clique para ver todas",
       "empty": "Ainda não há itens de monitoramento na barra de menus",
       "crowded": "Com muitos itens, alguns podem ficar escondidos atrás do entalhe; experimente o estilo “Só o valor”.",
       "refresh": "Atualiza a cada {count} segundo · arraste com ⌘ para reordenar | Atualiza a cada {count} segundos · arraste com ⌘ para reordenar",
@@ -2333,13 +2335,15 @@
     },
     "settings": {
       "menuBar": "Barra de menus",
+      "combined": "Combinar e alternar",
+      "combinedHint": "Mostra todas as métricas ativadas em um único item da barra de menus, alternando uma por vez. Desative para dar um item a cada métrica.",
       "interval": "Frequência de atualização",
       "intervalHint": "Quanto mais rápida, mais energia gasta; pausa com a tela desligada ou com o Mac em repouso",
       "seconds": "{count} segundo | {count} segundos",
       "notVisible": "Não aparece depois de ativar?",
       "notVisibleHint": "A partir do macOS 26, permita o OpenNavo em Ajustes do Sistema → Barra de Menus; com muitos itens, alguns podem ficar escondidos atrás do entalhe",
       "openSettings": "Abrir Ajustes do Sistema",
-      "menuBarNote": "Cada métrica é um item próprio da barra de menus, sem limite; CPU e memória vêm ativadas por padrão. Clique em qualquer item para ver os detalhes logo abaixo.",
+      "menuBarNote": "CPU e memória vêm ativadas por padrão, sem limite. Clique em um item da barra de menus para ver os detalhes logo abaixo; ative «Combinar e alternar» para mostrar todas as métricas ativadas por vez e clique no item para ver todas.",
       "helper": "Assistente",
       "helperHint": "{status}. Usado só para controlar as ventoinhas; temperaturas e velocidades aparecem sem ele",
       "helperStatus": {

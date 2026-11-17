@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { OnButton, OnCard, OnChip, OnIcon, OnSegmented, OnToggle } from '@opennavo/ui';
 import type { MenuBarStyle } from '@/ipc/bindings';
 import MenuBarStylePicker from '@/components/monitor/MenuBarStylePicker.vue';
+import MenuBarCombinedWidget from '@/components/monitor/MenuBarCombinedWidget.vue';
 import { MODULE_ICONS } from '@/components/monitor/meta';
 import { useHelperApproval } from '@/components/monitor/useHelperApproval';
 import { usePackageState } from '@/composables/usePackageState';
@@ -116,6 +117,23 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
       {{ t('monitor.settings.menuBar') }}
     </h2>
     <OnCard padding="none">
+      <SettingRow
+        :label="t('monitor.settings.combined')"
+        :hint="t('monitor.settings.combinedHint')"
+        label-id="monitor-setting-combined"
+      >
+        <span
+          v-if="store.menuBarCombined && store.menuBarCount"
+          class="flex rounded-[7px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-2px"
+        >
+          <MenuBarCombinedWidget />
+        </span>
+        <OnToggle
+          :model-value="store.menuBarCombined"
+          aria-labelledby="monitor-setting-combined"
+          @update:model-value="value => attempt(() => store.setMenuBarCombined(value))"
+        />
+      </SettingRow>
       <div
         v-for="module in store.modules"
         :key="module"
@@ -132,6 +150,7 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
           </div>
         </div>
         <MenuBarStylePicker
+          v-if="!store.menuBarCombined"
           :module="module"
           :model-value="store.item(module).style"
           @update:model-value="value => set(module, { style: value })"

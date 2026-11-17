@@ -2299,7 +2299,8 @@
     "menuBar": {
       "title": "Menüleiste",
       "show": "In Menüleiste anzeigen",
-      "showHint": "Eigener Eintrag; klicken Sie für Details darunter",
+      "showHint": "In der Menüleiste sichtbar; klicken Sie für Details",
+      "showHintCombined": "Im zusammengefassten Menüleisteneintrag enthalten; klicken Sie auf diesen Eintrag für Details",
       "style": "Stil",
       "styleHint": "Darstellung in der Menüleiste",
       "styles": {
@@ -2324,6 +2325,7 @@
     "rail": {
       "menuBar": "Menüleiste",
       "menuBarSub": "Jeder Messwert einzeln; klicken für Details · Unbegrenzt",
+      "menuBarCombinedSub": "Aktivierte Messwerte wechseln sich in einem Eintrag ab; klicken Sie, um alle zu sehen",
       "empty": "Noch keine Messwerte in der Menüleiste",
       "crowded": "Bei vielen Einträgen können einige hinter der Kameraaussparung verschwinden. Versuchen Sie „Nur Wert“.",
       "refresh": "Aktualisierung jede {count} Sekunde · Mit ⌘ ziehen zum Sortieren | Aktualisierung alle {count} Sekunden · Mit ⌘ ziehen zum Sortieren",
@@ -2333,13 +2335,15 @@
     },
     "settings": {
       "menuBar": "Menüleiste",
+      "combined": "Zusammenfassen und wechseln",
+      "combinedHint": "Alle aktivierten Messwerte in einem Menüleisteneintrag abwechselnd anzeigen. Ausgeschaltet erhält jeder Messwert sein eigenes Element.",
       "interval": "Aktualisierungsrate",
       "intervalHint": "Schneller verbraucht mehr Strom; pausiert bei ausgeschaltetem Bildschirm und im Ruhezustand",
       "seconds": "{count} Sekunde | {count} Sekunden",
       "notVisible": "Nach Aktivierung nicht sichtbar?",
       "notVisibleHint": "Ab macOS 26 müssen Sie OpenNavo unter Systemeinstellungen → Menüleiste erlauben. Bei vielen Einträgen können einige hinter der Kameraaussparung verschwinden",
       "openSettings": "Systemeinstellungen öffnen",
-      "menuBarNote": "Jeder Messwert hat einen eigenen Menüleisteneintrag, ohne Begrenzung. CPU und Arbeitsspeicher sind standardmäßig aktiv. Klicken Sie auf einen Eintrag, um Details darunter zu sehen.",
+      "menuBarNote": "CPU und Arbeitsspeicher sind standardmäßig aktiviert, ohne Begrenzung. Klicken Sie auf einen Menüleisteneintrag, um die Details darunter zu sehen; mit „Zusammenfassen und wechseln“ erscheinen alle aktivierten Messwerte abwechselnd. Klicken Sie auf den Eintrag, um alle zu sehen.",
       "helper": "Hilfsprogramm",
       "helperHint": "{status}. Nur zur Lüftersteuerung; Temperaturen und Drehzahlen werden auch ohne Installation angezeigt",
       "helperStatus": {

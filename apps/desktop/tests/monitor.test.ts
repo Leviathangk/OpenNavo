@@ -1,9 +1,10 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import type { Pinia } from 'pinia';
 import type { Router } from 'vue-router';
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import MenuBarWidget from '@/components/monitor/MenuBarWidget.vue';
+import MenuBarCombinedWidget from '@/components/monitor/MenuBarCombinedWidget.vue';
 import FanControl from '@/components/monitor/FanControl.vue';
 import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
 import MonitorDetailSheet from '@/components/monitor/MonitorDetailSheet.vue';
@@ -1178,7 +1179,7 @@ describe('Menu bar', () => {
     expect(wrapper.find('[data-testid="monitor-popover"]').text()).toContain('内存');
 
     // Rust reuses one window for every item and says which one was clicked.
-    await events.monitorPopover.emit('cpu');
+    await events.monitorPopover.emit({ modules: ['cpu'], selected: 'cpu', combined: false });
     await vi.waitFor(() => expect(store.views.popover).toEqual(['cpu']));
     const open = vi.spyOn(commands, 'monitorOpenInMain');
     await click(find(document.body, 'button', '在 OpenNavo 中查看'));
@@ -1196,7 +1197,7 @@ describe('Menu bar', () => {
 
     // Like Stats, the sensors item opens temperatures and fans together, so Rust samples both.
     const subscribe = vi.spyOn(commands, 'monitorSubscribe');
-    await events.monitorPopover.emit('sensors');
+    await events.monitorPopover.emit({ modules: ['sensors'], selected: 'sensors', combined: false });
     await vi.waitFor(() => expect(store.views.popover).toEqual(['sensors']));
     expect(subscribe).toHaveBeenLastCalledWith('popover', ['sensors', 'fans']);
     await flushPromises();
@@ -1223,6 +1224,16 @@ describe('Menu bar', () => {
     expect(open).toHaveBeenLastCalledWith('detail', 'sensors');
     expect(store.helper).toBeNull();
     expect(toasts()).toHaveLength(0);
+
+    // Combined mode keeps one item and lets the shared panel switch between every enabled metric.
+    await events.monitorPopover.emit({ modules: ['cpu', 'memory'], selected: 'memory', combined: true });
+    await vi.waitFor(() => expect(store.views.popover).toEqual(['memory']));
+    await flushPromises();
+    expect(wrapper.findAll('[data-testid="monitor-popover-tab"]')).toHaveLength(2);
+    expect(wrapper.find('[data-testid="monitor-popover"]').text()).toContain('内存');
+    await click(wrapper.findAll('[data-testid="monitor-popover-tab"]')[0]!.element as HTMLElement);
+    await vi.waitFor(() => expect(store.views.popover).toEqual(['cpu']));
+    expect(wrapper.find('[data-testid="monitor-popover"]').text()).toContain('CPU');
   });
 
   it('Offers to keep OpenNavo in the menu bar when closing the window would quit it', async () => {
@@ -1247,13 +1258,58 @@ describe('Menu bar', () => {
     const store = useMonitorStore();
     await vi.waitFor(() => expect(store.available.length).toBeGreaterThan(0));
     await flushPromises();
-    for (const toggle of wrapper.findAll('[role="switch"][aria-checked="false"]')) {
+    for (const toggle of wrapper.findAll('[data-module] [role="switch"][aria-checked="false"]')) {
       await toggle.trigger('click');
       await flushPromises();
     }
     await vi.waitFor(() => expect(store.menuBarCount).toBe(MODULES.length));
     await click(find(document.body, '[role="radio"]', '1 秒'));
     await vi.waitFor(() => expect(useSettingsStore().value?.monitorIntervalMs).toBe(1000));
+  });
+
+  it('Combines every enabled metric into one menu bar item on request', async () => {
+    const ctx = await context('/settings/monitor');
+    const wrapper = mountWith(MonitorSettings, ctx);
+    const store = useMonitorStore();
+    const settings = useSettingsStore();
+    await vi.waitFor(() => expect(store.available.length).toBeGreaterThan(0));
+    await flushPromises();
+    expect(store.menuBarCount).toBe(2);
+    const toggle = wrapper.find('[aria-labelledby="monitor-setting-combined"]');
+    expect(toggle.attributes('aria-checked')).toBe('false');
+    await click(toggle.element as HTMLElement);
+    await vi.waitFor(() => expect(settings.value?.monitorMenuBar.combined).toBe(true));
+    expect(store.menuBarCount).toBe(1);
+    expect(wrapper.find('[data-testid="monitor-menubar-combined"]').exists()).toBe(true);
+    expect(wrapper.find('[data-module="cpu"] [data-testid="menubar-style"]').exists()).toBe(false);
+    await click(toggle.element as HTMLElement);
+    await vi.waitFor(() => expect(settings.value?.monitorMenuBar.combined).toBe(false));
+    expect(store.menuBarCount).toBe(2);
+    expect(wrapper.find('[data-module="cpu"] [data-testid="menubar-style"]').exists()).toBe(true);
+  });
+
+  it('Rotates the combined preview through the enabled metrics', async () => {
+    const ctx = await context('/settings/monitor');
+    const store = useMonitorStore();
+    const settings = useSettingsStore();
+    await store.loadAvailable();
+    expect(store.available.length).toBeGreaterThan(0);
+    await store.subscribe('popover', ['cpu']);
+    await store.unsubscribe('popover');
+    await settings.update('monitorMenuBar', current => ({ ...current, combined: true }));
+    vi.useFakeTimers();
+    try {
+      const widget = mount(MenuBarCombinedWidget, {
+        global: { plugins: [ctx.pinia, ctx.router, i18n] }
+      });
+      const visible = () => widget.findAll('.whitespace-nowrap')[0]!.text();
+      expect(visible()).toContain('CPU');
+      vi.advanceTimersByTime(5_000);
+      await nextTick();
+      expect(visible()).toContain('RAM');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

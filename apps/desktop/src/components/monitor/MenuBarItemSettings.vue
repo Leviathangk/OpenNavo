@@ -20,6 +20,9 @@ const toasts = useToasts();
 const { errorText } = usePackageState();
 
 const item = computed(() => store.item(props.module));
+const showHint = computed(() =>
+  store.menuBarCombined ? t('monitor.menuBar.showHintCombined') : t('monitor.menuBar.showHint')
+);
 
 async function update(patch: { enabled?: boolean; style?: MenuBarStyle }) {
   try {
@@ -42,11 +45,7 @@ async function update(patch: { enabled?: boolean; style?: MenuBarStyle }) {
   <section class="flex flex-col gap-8px">
     <h3 class="m-0 text-13px font-600 text-ink-primary">{{ t('monitor.menuBar.title') }}</h3>
     <OnCard padding="none">
-      <SettingRow
-        :label="t('monitor.menuBar.show')"
-        :hint="t('monitor.menuBar.showHint')"
-        :label-id="`monitor-menubar-${module}`"
-      >
+      <SettingRow :label="t('monitor.menuBar.show')" :hint="showHint" :label-id="`monitor-menubar-${module}`">
         <!-- A flex box, so the item's baseline cannot add a line's height above it. -->
         <span class="flex rounded-[7px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-2px">
           <MenuBarWidget :module="module" />
@@ -57,7 +56,11 @@ async function update(patch: { enabled?: boolean; style?: MenuBarStyle }) {
           @update:model-value="value => update({ enabled: value })"
         />
       </SettingRow>
-      <SettingRow :label="t('monitor.menuBar.style')" :hint="t('monitor.menuBar.styleHint')">
+      <SettingRow
+        v-if="!store.menuBarCombined"
+        :label="t('monitor.menuBar.style')"
+        :hint="t('monitor.menuBar.styleHint')"
+      >
         <MenuBarStylePicker
           :module="module"
           :model-value="item.style"
