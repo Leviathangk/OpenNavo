@@ -326,6 +326,11 @@ mod mac {
         _target: Retained<Target>,
         last: TextIcon,
     }
+    struct ItemState {
+        modules: Vec<MonitorModule>,
+        selected: MonitorModule,
+        combined: bool,
+    }
     #[derive(Default)]
     struct Items {
         combined: Option<Item>,
@@ -542,9 +547,7 @@ mod mac {
         app: &tauri::AppHandle,
         mtm: MainThreadMarker,
         text: TextIcon,
-        modules: Vec<MonitorModule>,
-        selected: MonitorModule,
-        combined: bool,
+        state: ItemState,
         autosave: &str,
         tooltip: &str,
     ) -> Result<Item, AppError> {
@@ -553,9 +556,9 @@ mod mac {
         status.setAutosaveName(Some(&NSString::from_str(autosave)));
         let target = Target::alloc(mtm).set_ivars(TargetData {
             app: app.clone(),
-            modules: RefCell::new(modules),
-            selected: RefCell::new(selected),
-            combined,
+            modules: RefCell::new(state.modules),
+            selected: RefCell::new(state.selected),
+            combined: state.combined,
         });
         let target: Retained<Target> = unsafe { objc2::msg_send![super(target), init] };
         if let Some(button) = status.button(mtm) {
@@ -619,9 +622,11 @@ mod mac {
                                 app,
                                 mtm,
                                 text,
-                                shown,
-                                selected,
-                                true,
+                                ItemState {
+                                    modules: shown,
+                                    selected,
+                                    combined: true,
+                                },
                                 "monitor.combined",
                                 "OpenNavo · System Monitor",
                             )?);
@@ -651,9 +656,11 @@ mod mac {
                             app,
                             mtm,
                             text,
-                            vec![module],
-                            module,
-                            false,
+                            ItemState {
+                                modules: vec![module],
+                                selected: module,
+                                combined: false,
+                            },
                             &format!("monitor.{}", module.key()),
                             &format!("OpenNavo · {}", module.key()),
                         )?;
