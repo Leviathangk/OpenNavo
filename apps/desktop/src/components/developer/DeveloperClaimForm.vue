@@ -4,7 +4,11 @@ import { useI18n } from 'vue-i18n';
 import { unwrap, type PackageSummary } from '@opennavo/api';
 import { OnAppIcon, OnIcon, runOnEnter } from '@opennavo/ui';
 import { api } from '@/api';
-import { submitDeveloperSubmission, type DeveloperSubmitResult } from '@/composables/useDeveloperMap';
+import {
+  developerCountryName,
+  submitDeveloperSubmission,
+  type DeveloperSubmitResult
+} from '@/composables/useDeveloperMap';
 
 const emit = defineEmits<{ submitted: [token: string] }>();
 const { t, locale } = useI18n();
@@ -49,13 +53,8 @@ const countries = [
   'AU',
   'IL'
 ];
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
 function countryName(code: string) {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
+  return developerCountryName(code, locale.value);
 }
 
 const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail));

@@ -2,7 +2,11 @@
 import { computed, reactive, ref } from 'vue';
 import { unwrap, type PackageSummary } from '@opennavo/api';
 import { OnAppIcon, OnIcon, runOnEnter } from '@opennavo/ui';
-import { submitDeveloperSubmission, type DeveloperSubmitResult } from '~/composables/useDeveloperMap';
+import {
+  developerCountryName,
+  submitDeveloperSubmission,
+  type DeveloperSubmitResult
+} from '~/composables/useDeveloperMap';
 
 const { t, locale } = useI18n();
 const localePath = useLocalePath();
@@ -49,14 +53,7 @@ const countries = [
   'AU',
   'IL'
 ];
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
-const countryName = (code: string) => {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
-};
+const countryName = (code: string) => developerCountryName(code, locale.value);
 const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail));
 const canSubmit = computed(() =>
   Boolean(selected.value && emailValid.value && (!form.updateLocation || form.countryCode))

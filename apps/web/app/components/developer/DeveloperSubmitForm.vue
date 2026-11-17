@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import { OnAppIcon, OnIcon, runOnEnter } from '@opennavo/ui';
 import {
+  developerCountryName,
   fetchDeveloperMetadata,
   submitDeveloperSubmission,
   type DeveloperSubmitResult
@@ -72,14 +73,7 @@ const countries = [
   'AU',
   'IL'
 ];
-const regionNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
-const countryName = (code: string) => {
-  try {
-    return regionNames.value.of(code) ?? code;
-  } catch {
-    return code;
-  }
-};
+const countryName = (code: string) => developerCountryName(code, locale.value);
 
 const previewLocation = computed(() => countryName(form.countryCode));
 const iconToken = computed(

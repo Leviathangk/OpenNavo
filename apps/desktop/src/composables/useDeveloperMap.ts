@@ -1,4 +1,5 @@
 import type { PackageSummary } from '@opennavo/api';
+import { countryNameOverride } from '@opennavo/shared';
 import { api } from '@/api';
 
 export interface DeveloperTop {
@@ -170,18 +171,21 @@ export async function fetchDeveloperSubmissionStatus(token: string): Promise<Dev
 // Intl.DisplayNames instances are expensive to build, so keep one per locale for the lifetime of the module.
 const regionNames = new Map<string, Intl.DisplayNames>();
 
-/** Country names always come from the reader's locale; they are never stored as interface copy. */
+/** Country names come from the reader's locale, with the shared HK/TW product-copy exceptions. */
 export function developerCountryName(countryCode: string, locale: string): string {
+  const code = countryCode.trim().toUpperCase();
+  const override = countryNameOverride(code, locale);
+  if (override) return override;
   try {
     let names = regionNames.get(locale);
     if (!names) regionNames.set(locale, (names = new Intl.DisplayNames([locale], { type: 'region' })));
-    return names.of(countryCode) ?? countryCode;
+    return names.of(code) ?? countryCode;
   } catch {
     return countryCode;
   }
 }
 
-/** Developer-map places are countries, so the label always comes from the reader's locale. */
+/** Developer-map places are countries, so their labels follow the same localized rules. */
 export function developerPlaceName(place: DeveloperMapPlace, locale: string): string {
   return developerCountryName(place.countryCode, locale);
 }

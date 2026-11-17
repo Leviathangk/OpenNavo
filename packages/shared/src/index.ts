@@ -2,6 +2,7 @@ export * from './brand';
 export * from './brewfile';
 export * from './codes';
 export * from './commands';
+export * from './countryNames';
 export * from './deeplink';
 export * from './format';
 export * from './icons';
