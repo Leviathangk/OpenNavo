@@ -42,6 +42,7 @@ async function copyLink() {
     <div class="flex items-center gap-10px">
       <span
         class="flex h-38px w-38px shrink-0 items-center justify-center rounded-default bg-accent-salmon-subtle text-brand-salmon"
+        aria-hidden="true"
       >
         <OnLogo :size="22" />
       </span>
