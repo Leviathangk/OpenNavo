@@ -23,7 +23,11 @@ const route = useRoute();
 const router = useRouter();
 const brewfile = useBrewfileList();
 type Tab = 'collections' | 'list';
-const tab = ref<Tab>(route.hash === '#list' ? 'list' : 'collections');
+// The server never receives the URL fragment, so apply #list after hydration.
+const tab = ref<Tab>('collections');
+onMounted(() => {
+  tab.value = route.hash === '#list' ? 'list' : 'collections';
+});
 watch(
   () => route.hash,
   hash => {
