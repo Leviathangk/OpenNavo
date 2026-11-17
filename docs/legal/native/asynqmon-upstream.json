@@ -1,0 +1,9 @@
+{
+  "project": "asynqmon",
+  "repository": "https://github.com/hibiken/asynqmon",
+  "version": "v0.7.1",
+  "license": "MIT",
+  "integration": "Standalone admin image built from the upstream module by apps/server/Dockerfile. It is not linked into the OpenNavo server binary.",
+  "buildTarget": "asynqmon",
+  "licensePath": "docs/legal/native/LICENSE.asynqmon"
+}

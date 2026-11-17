@@ -1,0 +1,30 @@
+{
+  "project": "Noto Sans CJK (Noto Sans SC / Noto Sans JP)",
+  "repository": "https://github.com/notofonts/noto-cjk",
+  "version": "2.004",
+  "fontVersion": "131334 (2.004)",
+  "license": "SIL Open Font License 1.1",
+  "integration": "Subsets of the 400 and 600 weights ship as WOFF files for Open Graph images. The complete font families are not distributed.",
+  "files": [
+    {
+      "path": "apps/web/public/fonts/og-noto-sans-sc-400.woff",
+      "sha256": "63c5a06619b1f37321f8841008ae46dd812040c69d5a1430708707c4ea492a02"
+    },
+    {
+      "path": "apps/web/public/fonts/og-noto-sans-sc-600.woff",
+      "sha256": "758fa90852a1006d9754b85abf312f4f30770763cb55985eab79d7ebb84b33dd"
+    },
+    {
+      "path": "apps/web/public/fonts/og-noto-sans-jp-400.woff",
+      "sha256": "781e54f85fb2596d3818135917cb42370077baffc86d3e13073ebdce4e9076f3"
+    },
+    {
+      "path": "apps/web/public/fonts/og-noto-sans-jp-600.woff",
+      "sha256": "8e1010a8faf7c0e05c9eea7f979a73677410e30dbab23965d5a2fe818d8fc484"
+    }
+  ],
+  "licensePaths": [
+    "apps/web/public/fonts/OFL.txt",
+    "apps/web/public/fonts/OFL-NotoSansJP.txt"
+  ]
+}

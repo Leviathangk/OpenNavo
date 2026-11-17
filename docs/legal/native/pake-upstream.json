@@ -1,0 +1,12 @@
+{
+  "project": "Pake",
+  "repository": "https://github.com/tw93/Pake",
+  "version": "3.19.0",
+  "revision": "V3.19.0",
+  "license": "GPL-3.0-or-later WITH Pake-Output-Exception",
+  "integration": "Used during development as a reference and packaging check for the Web Apps module. No Pake source code is copied, linked, or distributed; OpenNavo generates local web apps with its own Swift WKWebView helper.",
+  "licensePaths": [
+    "docs/legal/native/LICENSE.Pake",
+    "docs/legal/native/LICENSE-Pake-Exception"
+  ]
+}

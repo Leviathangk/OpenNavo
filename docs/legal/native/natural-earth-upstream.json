@@ -1,0 +1,18 @@
+{
+  "project": "Natural Earth",
+  "repository": "https://www.naturalearthdata.com/",
+  "version": "1:50m Admin 0 labels and 110m country outlines",
+  "license": "Public domain",
+  "integration": "Country label coordinates in apps/server/internal/domain/countries.go and the pre-projected country outlines in packages/ui/src/utils/worldMap.ts. No Natural Earth code is executed.",
+  "files": [
+    {
+      "path": "apps/server/internal/domain/countries.go",
+      "sha256": "b45f4a75c1f1fdc6179a92b899ccae598af46866ea47c3b2fa7103b8020a989e"
+    },
+    {
+      "path": "packages/ui/src/utils/worldMap.ts",
+      "sha256": "5c962a500df51b1b7b4872ba7af9bab5f105f245a63181f5e1c03c88d057869e"
+    }
+  ],
+  "licensePath": "docs/legal/native/LICENSE.NaturalEarth"
+}
