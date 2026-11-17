@@ -43,8 +43,13 @@ const issues = computed(() => {
 const ready = computed(() => Boolean(overview.value?.engine.db));
 const lastScanText = computed(() => {
   const scan = overview.value?.lastScan;
-  if (!scan?.finishedAt) return t('security.engine.neverScanned');
+  if (!scan) return t('security.engine.neverScanned');
   const kind = t(`security.scan.${scan.kind}.title`);
+  if (scan.state === 'running') return t('security.scan.runningLabel', { kind });
+  const count = scan.filesScanned.toLocaleString(appLocale.value);
+  if (scan.state === 'failed' && !scan.finishedAt) return t('security.scan.state.failed', { count });
+  if (scan.state === 'canceled' && !scan.finishedAt) return t('security.scan.state.canceled', { count });
+  if (!scan.finishedAt) return t('security.engine.neverScanned');
   const date = formatDate(scan.finishedAt, { locale: appLocale.value });
   if (scan.state === 'failed') return t('security.engine.lastScanFailed', { kind, date });
   if (scan.state === 'canceled') return t('security.engine.lastScanCanceled', { kind, date });

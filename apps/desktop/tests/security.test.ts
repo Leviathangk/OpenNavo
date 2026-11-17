@@ -21,7 +21,7 @@ import { useSecurityStore } from '@/stores/security';
 import { useDownloadsStore } from '@/stores/downloads';
 import DownloadNotifier from '@/components/package/DownloadNotifier.vue';
 import { describeVerdict } from '@/components/package/downloadVerdict';
-import type { DownloadVerdict, InstallScanResult } from '@/ipc/bindings';
+import type { DownloadVerdict, InstallScanResult, SecurityOverview } from '@/ipc/bindings';
 import { setup } from './helpers';
 import type { TestContext } from './helpers';
 
@@ -112,6 +112,53 @@ describe('Security overview refresh', () => {
     await flushPromises();
     expect(overview).not.toHaveBeenCalled();
     expect(wrapper.exists()).toBe(true);
+  });
+});
+
+describe('Last scan summary', () => {
+  type LastScan = NonNullable<SecurityOverview['lastScan']>;
+  async function mountWithLastScan(lastScan: LastScan) {
+    const context = await setup('/security');
+    const real = commands.securityOverview;
+    vi.spyOn(commands, 'securityOverview').mockImplementation(async () => {
+      const result = await real();
+      return result.status === 'ok' ? { ...result, data: { ...result.data, lastScan } } : result;
+    });
+    await startLocalState();
+    const wrapper = mount(SecurityPage, {
+      global: { plugins: [context.pinia, context.router, i18n] },
+      attachTo: document.body
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+    await flushPromises();
+    return wrapper;
+  }
+
+  it('Shows a restored failed scan even when it stopped without a finish time', async () => {
+    const wrapper = await mountWithLastScan({
+      scanId: 'interrupted',
+      kind: 'quick',
+      state: 'failed',
+      finishedAt: null,
+      filesScanned: 0,
+      threats: 0
+    });
+    expect(wrapper.text()).toContain('扫描中断');
+    expect(wrapper.text()).not.toContain('还没有扫描过');
+  });
+
+  it('Shows a running last scan as running instead of never scanned', async () => {
+    const wrapper = await mountWithLastScan({
+      scanId: 'running',
+      kind: 'quick',
+      state: 'running',
+      finishedAt: null,
+      filesScanned: 42,
+      threats: 0
+    });
+    expect(wrapper.text()).toContain('正在快速扫描');
+    expect(wrapper.text()).not.toContain('还没有扫描过');
   });
 });
 
@@ -411,6 +458,34 @@ describe('Scan stop notices', () => {
     const notice = useToasts().items.value.find(item => item.title.includes('扫描已取消'));
     expect(notice?.tone).toBe('info');
     expect(page.wrapper.text()).toContain('扫描已取消');
+  });
+
+  it('Announces a scheduled scan that fails before the page ever shows it running', async () => {
+    const page = await mountPage('/security', 'av-ready');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    // Like a scheduled scan: Rust starts it, so only the initial progress tells this window it is new. Hold the
+    // result read open so the store cannot first settle into a running scan before the terminal event.
+    const { scanId } = await unwrap(commands.avScanStart('quick', null, false));
+    const running = await unwrap(commands.avScanGet(scanId));
+    vi.spyOn(commands, 'avScanGet').mockImplementation(() => new Promise(() => {}));
+    await events.avProgress.emit({
+      scanId,
+      filesScanned: 0,
+      bytesScanned: 0,
+      currentPath: '',
+      findings: 0,
+      cachedFiles: 0
+    });
+    await events.avFinished.emit({ ...running, state: 'failed', finishedAt: Date.now(), errorCode: 'E_AV_ENGINE' });
+    await flushPromises();
+
+    expect(useSecurityStore().scan?.state).toBe('failed');
+    expect(useToasts().items.value.some(item => item.title.includes('扫描中断'))).toBe(true);
   });
 });
 

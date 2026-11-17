@@ -81,7 +81,13 @@ watch(
   (state, previous) => {
     const scan = store.scan;
     // The scan tab already shows the result; elsewhere the notice is the only sign, including when a scan stops.
-    if (!scan || previous !== 'running' || (route.name === 'security' && route.params.tab === 'scan')) return;
+    // The store keeps a start/progress marker because a scheduled scan can fail before this watcher sees `running`.
+    if (
+      !scan ||
+      (previous !== 'running' && !store.lastScanWasRunning) ||
+      (route.name === 'security' && route.params.tab === 'scan')
+    )
+      return;
     const count = scan.filesScanned.toLocaleString(appLocale.value);
     const openScan = () => void router.push('/security/scan');
     if (state === 'failed') {
