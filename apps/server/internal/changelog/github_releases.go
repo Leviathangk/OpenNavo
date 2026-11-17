@@ -21,8 +21,8 @@ import (
 // + DOMPurify pipeline, exactly like the other upstream release sources.
 const (
 	releasesPerPage          = 100
-	releasesBackfillPages    = 5       // A first fetch reads up to 500 releases so history is not page one only.
-	releasesBackfillMaxPages = 50      // Bounds smaller fallback pages so a backfill cannot spend the whole source timeout.
+	releasesBackfillPages    = 5       // Full pages target 500 releases; fallback sizes stop at the cap below.
+	releasesBackfillMaxPages = 20      // Small fallback backfills intentionally stop at 200 (10/page) or 100 (5/page) releases.
 	releasesMaxBody          = 8 << 20 // Maximum response size for one release page; oversized pages retry smaller.
 	releaseTitleMaxRune      = 300
 	// GitHubQuotaReserve pauses github_releases fetches once the remaining primary quota falls to this

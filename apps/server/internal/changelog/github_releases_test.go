@@ -478,6 +478,40 @@ func TestGitHubReleasesFallbackHashAndETagStayPageLayoutIndependent(t *testing.T
 	require.Equal(t, fullResult.ContentHash, fallbackResult.ContentHash)
 }
 
+func TestGitHubReleasesCapsFallbackBackfillAtTwentyPages(t *testing.T) {
+	listCalls := 0
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = publicRepo(func(r *http.Request) (*http.Response, error) {
+		perPage, pageNumber := r.URL.Query().Get("per_page"), r.URL.Query().Get("page")
+		listCalls++
+		switch perPage {
+		case "100", "50", "20":
+			return reply(http.StatusOK, strings.Repeat("x", releasesMaxBody+1)), nil
+		case "10":
+			page, err := strconv.Atoi(pageNumber)
+			require.NoError(t, err)
+			if page < 1 || page > 20 {
+				t.Fatalf("requested page %d beyond the 20-page backfill cap", page)
+			}
+			items := make([]string, 10)
+			for i := range items {
+				items[i] = fmt.Sprintf(`{"tag_name":"v1.0.%d","body":"notes"}`, (page-1)*10+i)
+			}
+			return reply(http.StatusOK, "["+strings.Join(items, ",")+"]"), nil
+		default:
+			t.Fatalf("unexpected release request %s:%s", perPage, pageNumber)
+			return nil, nil
+		}
+	})
+
+	result, err := f.Fetch(context.Background(), Candidate{}, FetchSource{
+		Type: "github_releases", Config: map[string]any{"repo": "owner/app"}, Backfill: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, result.Releases, 20*10)
+	require.Equal(t, 23, listCalls)
+}
+
 func TestNormalizeGitHubRepo(t *testing.T) {
 	for raw, want := range map[string]string{
 		"overtake/TelegramSwift":                             "overtake/TelegramSwift",
