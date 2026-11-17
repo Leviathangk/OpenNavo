@@ -294,6 +294,76 @@ describe('Background scans', () => {
   });
 });
 
+describe('Scan status across tabs', () => {
+  it('Keeps a running scan in view when the user leaves the scan tab and comes back', async () => {
+    // Found in the app: the quick scan kept running, but coming back to Security opened the overview, which showed no
+    // progress at all. The engine was still busy, so this was a display gap, not a stopped scan.
+    const { wrapper: first, router, pinia } = await mountPage('/security', 'av-ready');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    await button(first, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/security/scan');
+    expect(first.text()).toContain('正在快速扫描');
+
+    await router.push('/installed');
+    await flushPromises();
+    // Leaving the page unmounts it, as the app shell does; the scan belongs to the window, not the panel.
+    wrappers.splice(wrappers.indexOf(first), 1);
+    first.unmount();
+    await router.push('/security');
+    const wrapper = mount(SecurityPage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+    const status = wrapper.get('[data-testid="security-scan-status"]');
+    expect(status.text()).toContain('正在快速扫描');
+    expect(status.find('[role="progressbar"]').exists()).toBe(true);
+
+    await button(wrapper, '查看')!.trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/security/scan');
+    expect(wrapper.find('[data-testid="security-scan-status"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('正在快速扫描');
+  });
+});
+
+describe('Scan completion notices', () => {
+  it('Announces a finished scan on another Security tab, but not on the scan tab itself', async () => {
+    const page = await mountPage('/security', 'av-ready');
+    mountIn(page, SecurityNotifier);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(page.router.currentRoute.value.path).toBe('/security/scan');
+    // Back on the overview, the result is no longer on screen when the scan ends.
+    await page.router.push('/security');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(TICK * 6);
+    await flushPromises();
+    const scanNotice = () =>
+      useToasts().items.value.find(item => item.title.includes('扫描完成') || item.title.includes('扫描发现'));
+    expect(scanNotice()).toBeTruthy();
+
+    // The scan tab shows the result itself, so it does not need the toast.
+    useToasts().clear();
+    await button(page.wrapper, '快速扫描')!.trigger('click');
+    await flushPromises();
+    expect(page.router.currentRoute.value.path).toBe('/security/scan');
+    await vi.advanceTimersByTimeAsync(TICK * 6);
+    await flushPromises();
+    expect(scanNotice()).toBeUndefined();
+  });
+});
+
 describe('Scan performance options', () => {
   it('Shows reused clean results and clears that count for forced rescans', async () => {
     const { wrapper } = await mountPage('/security/scan', 'av-ready,av-cache-hit');

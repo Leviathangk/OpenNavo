@@ -80,7 +80,14 @@ watch(
   () => store.scan?.state,
   (state, previous) => {
     const scan = store.scan;
-    if (!scan || state !== 'done' || previous !== 'running' || route.name === 'security') return;
+    // The scan tab already shows the result; on any other Security tab (or anywhere else) the notice is the only sign.
+    if (
+      !scan ||
+      state !== 'done' ||
+      previous !== 'running' ||
+      (route.name === 'security' && route.params.tab === 'scan')
+    )
+      return;
     const threats = scan.findings.length;
     toasts.pushAction(
       {
