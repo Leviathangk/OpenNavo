@@ -33,7 +33,8 @@
     "developerMap": "Mappa degli sviluppatori",
     "clientGroup": "App per Mac",
     "clientHint": "Funziona sul tuo Mac",
-    "firewall": "Firewall"
+    "firewall": "Firewall",
+    "webapps": "App web"
   },
   "sidebar": {
     "appLabel": "Scarica l’app",
@@ -1842,7 +1843,8 @@
       "security": "Sicurezza",
       "settings": "Impostazioni",
       "installing": "Installazione di {name}",
-      "scanning": "Scansione del download: {name}"
+      "scanning": "Scansione del download: {name}",
+      "webapps": "App web"
     },
     "security": {
       "kicker": "Sicurezza",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "Vedi quanto spazio libererai prima di pulire",
           "undo": "I residui vanno nel Cestino, quindi puoi annullare"
+        }
+      },
+      "webapps": {
+        "lede": "Trasforma i siti che usi in app Mac separate, ognuna con la propria finestra, icona e spazio dati.",
+        "metaTitle": "Trasforma siti web in app Mac separate · OpenNavo",
+        "app": {
+          "window": "Ogni sito si apre in una finestra propria, non in un’altra scheda del browser.",
+          "catalog": "Oltre 40 siti integrati, più qualsiasi indirizzo tu aggiunga.",
+          "data": "Ogni app mantiene l’accesso e i dati locali separati."
+        },
+        "demo": {
+          "badge": "Finestra e icona proprie",
+          "new": "Nuova app web"
         }
       }
     }

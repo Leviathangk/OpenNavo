@@ -74,6 +74,7 @@
     "monitor": "Surveillance",
     "security": "Analyse antivirus",
     "securityBadge": "{count} élément à traiter | {count} éléments à traiter",
+    "webapps": "Apps web",
     "firewall": "Pare-feu des apps",
     "firewallBadge": "{count} connexion attend votre réponse | {count} connexions attendent votre réponse",
     "developerMap": "Carte des développeurs"
@@ -1551,6 +1552,52 @@
     "reopen": "Rouvrir après une mise à jour réussie",
     "quitHint": "Si une app reste ouverte ou si vous annulez sa fermeture, sa mise à jour sera différée. Aucune fermeture ne sera forcée.",
     "deferred": "Différé"
+  },
+  "webapps": {
+    "title": "Apps web",
+    "subtitle": "Transformez un site web en app Mac autonome, avec sa propre fenêtre et des données séparées.",
+    "new": "Nouvelle app web",
+    "emptyTitle": "Aucune app web pour l’instant",
+    "emptyBody": "Saisissez l’adresse d’un site et OpenNavo crée une app Mac sur ce Mac. Elle utilise la vue web du système, pas un onglet de navigateur.",
+    "name": "Nom",
+    "namePlaceholder": "Par exemple, Documents",
+    "url": "Adresse du site",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Seules les adresses http et https sont prises en charge.",
+    "create": "Créer",
+    "invalidName": "Saisissez un nom sans / ni :",
+    "invalidUrl": "Saisissez une adresse http ou https valide.",
+    "exists": "Une app portant ce nom existe déjà. Choisissez un autre nom.",
+    "failed": "L’opération a échoué. Réessayez.",
+    "open": "Ouvrir",
+    "reveal": "Afficher dans le Finder",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer {name} ?",
+    "deleteBody": "L’app sera placée dans la corbeille et pourra être restaurée.",
+    "storageNote": "Les apps sont enregistrées dans le dossier Applications. Chacune conserve ses propres données web et cookies.",
+    "createdAt": "Créée le {date}",
+    "tabs": {
+      "installed": "Mes apps",
+      "catalog": "Intégrées"
+    },
+    "browseCatalog": "Voir les apps intégrées",
+    "catalog": {
+      "hint": "Ces sites courants sont fournis avec OpenNavo. Cliquez sur « Ajouter » pour créer une app autonome ; les apps ajoutées peuvent être supprimées dans « Mes apps ».",
+      "add": "Ajouter",
+      "added": "Ajoutée",
+      "all": "Tout",
+      "filter": "Catégories d'apps",
+      "drm": "Limité par DRM",
+      "categories": {
+        "ai": "IA",
+        "social": "Social",
+        "work": "Travail",
+        "dev": "Développement",
+        "media": "Médias",
+        "mail": "Courriel",
+        "tools": "Outils"
+      }
+    }
   },
   "page": {
     "comingSoon": "Le contenu de cette page sera ajouté ultérieurement."

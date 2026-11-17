@@ -45,6 +45,7 @@ import { createSecurityMock } from './mock-data/security';
 import { createFirewallMock } from './mock-data/firewall';
 import { createCleanupMock } from './mock-data/cleanup';
 import { createMonitorMock } from './mock-data/monitor';
+import { createWebappsMock } from './mock-data/webapps';
 import { createUninstallMock } from './mock-data/uninstall';
 import { createMockScheduler } from './mock-data/scheduler';
 import type { MockFailure, MockState } from './mock-data/runner';
@@ -1082,6 +1083,7 @@ export function installMockIpc(
   };
 
   const handlers: Record<string, (args: Args) => unknown> = {
+    ...createWebappsMock(),
     ...uninstall.handlers,
     ...cleanupMock.handlers,
     ...monitor.handlers,

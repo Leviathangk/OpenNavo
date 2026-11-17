@@ -33,7 +33,8 @@
     "developerMap": "Mapa de desenvolvedores",
     "clientGroup": "App para Mac",
     "clientHint": "Roda no seu Mac",
-    "firewall": "Firewall"
+    "firewall": "Firewall",
+    "webapps": "Apps web"
   },
   "sidebar": {
     "appLabel": "Baixe o app",
@@ -1842,7 +1843,8 @@
       "security": "Segurança",
       "settings": "Ajustes",
       "installing": "Instalando {name}",
-      "scanning": "Verificando o instalador: {name}"
+      "scanning": "Verificando o instalador: {name}",
+      "webapps": "Apps web"
     },
     "security": {
       "kicker": "Segurança",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "Veja quanto espaço será liberado antes de limpar",
           "undo": "Os restos vão para o Lixo, então você pode desfazer"
+        }
+      },
+      "webapps": {
+        "lede": "Transforme os sites que você usa em apps independentes para Mac, cada um com janela, ícone e espaço de dados próprios.",
+        "metaTitle": "Transforme sites em apps independentes para Mac · OpenNavo",
+        "app": {
+          "window": "Cada site roda em sua própria janela, em vez de outra aba do navegador.",
+          "catalog": "Mais de 40 sites integrados, além de qualquer endereço que você adicionar.",
+          "data": "Cada app mantém o próprio login e os dados locais."
+        },
+        "demo": {
+          "badge": "Janela e ícone próprios",
+          "new": "Novo app web"
         }
       }
     }

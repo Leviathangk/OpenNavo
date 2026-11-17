@@ -43,6 +43,7 @@ pub mod uninstall;
 pub mod updater;
 pub mod updates;
 pub mod usage;
+pub mod webapps;
 
 pub use error::AppError;
 
@@ -166,6 +167,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::security::virus_total_status,
             commands::security::virus_total_key_set,
             commands::security::virus_total_lookup,
+            commands::webapps::webapps_list,
+            commands::webapps::webapps_create,
+            commands::webapps::webapps_delete,
+            commands::webapps::webapps_open,
+            commands::webapps::webapps_reveal,
             commands::monitor::monitor_subscribe,
             commands::monitor::monitor_unsubscribe,
             commands::monitor::monitor_trend,

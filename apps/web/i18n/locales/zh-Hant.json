@@ -33,7 +33,8 @@
     "developerMap": "開發者地圖",
     "clientGroup": "Mac 客戶端",
     "clientHint": "需在 Mac 上執行",
-    "firewall": "防火牆"
+    "firewall": "防火牆",
+    "webapps": "網頁應用"
   },
   "sidebar": {
     "appLabel": "獲取客戶端",
@@ -1842,7 +1843,8 @@
       "security": "安全防護",
       "settings": "設定",
       "installing": "安裝 {name}",
-      "scanning": "掃描安裝包：{name}"
+      "scanning": "掃描安裝包：{name}",
+      "webapps": "網頁應用"
     },
     "security": {
       "kicker": "安全防護",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "清理前先檢視能釋放多少空間",
           "undo": "殘留檔案進入垃圾桶，可以撤銷"
+        }
+      },
+      "webapps": {
+        "lede": "把常用網站變成獨立的 Mac App：有自己的視窗、圖示和資料空間，啟動後就像原生應用。",
+        "metaTitle": "把網站變成獨立的 Mac App · OpenNavo",
+        "app": {
+          "window": "每個網站有自己的視窗，不再擠在瀏覽器分頁裡",
+          "catalog": "內建 40 多個常用網站，也可以加入任意網址",
+          "data": "每個應用的登入狀態和本機資料互相隔離"
+        },
+        "demo": {
+          "badge": "獨立視窗與圖示",
+          "new": "新增網頁應用"
         }
       }
     }

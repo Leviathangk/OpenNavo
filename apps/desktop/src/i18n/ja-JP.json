@@ -74,6 +74,7 @@
     "monitor": "システムモニタ",
     "security": "ウイルススキャン",
     "securityBadge": "確認が必要な項目が{count}件あります",
+    "webapps": "ウェブアプリ",
     "firewall": "ファイアウォール",
     "firewallBadge": "{count} 件の接続が確認を待っています",
     "developerMap": "開発者マップ"
@@ -1551,6 +1552,52 @@
     "reopen": "更新が成功した後に再度開く",
     "quitHint": "アプリが開いたままの場合、または終了をキャンセルした場合、そのアプリの更新は延期されます。アプリを強制終了することはありません。",
     "deferred": "延期しました"
+  },
+  "webapps": {
+    "title": "ウェブアプリ",
+    "subtitle": "ウェブサイトを、独自のウィンドウとデータを持つ Mac アプリにします。",
+    "new": "ウェブアプリを作成",
+    "emptyTitle": "ウェブアプリはまだありません",
+    "emptyBody": "URL を入力すると、この Mac に専用の Mac アプリを作成します。システムの WebView を使い、ブラウザのタブは使いません。",
+    "name": "名前",
+    "namePlaceholder": "例：ドキュメント",
+    "url": "ウェブサイトの URL",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "http と https の URL に対応しています。",
+    "create": "作成",
+    "invalidName": "名前を入力してください。/ や : は使えません。",
+    "invalidUrl": "有効な http または https の URL を入力してください。",
+    "exists": "同じ名前のアプリがすでにあります。別の名前を選んでください。",
+    "failed": "操作に失敗しました。もう一度お試しください。",
+    "open": "開く",
+    "reveal": "Finder に表示",
+    "delete": "削除",
+    "deleteTitle": "「{name}」を削除しますか？",
+    "deleteBody": "アプリはゴミ箱に移動します。あとで復元できます。",
+    "storageNote": "アプリは「アプリケーション」フォルダに保存され、それぞれ独立したウェブデータと Cookie を使います。",
+    "createdAt": "{date} に作成",
+    "tabs": {
+      "installed": "マイアプリ",
+      "catalog": "内蔵アプリ"
+    },
+    "browseCatalog": "内蔵アプリを見る",
+    "catalog": {
+      "hint": "OpenNavo に同梱されている定番サイトです。「追加」を押すと独立したアプリを作成します。追加したアプリは「マイアプリ」から削除できます。",
+      "add": "追加",
+      "added": "追加済み",
+      "all": "すべて",
+      "filter": "アプリの分類",
+      "drm": "DRM 制限",
+      "categories": {
+        "ai": "AI",
+        "social": "ソーシャル",
+        "work": "仕事",
+        "dev": "開発",
+        "media": "メディア",
+        "mail": "メール",
+        "tools": "ツール"
+      }
+    }
   },
   "page": {
     "comingSoon": "ページの内容は後続のタスクで追加されます。"

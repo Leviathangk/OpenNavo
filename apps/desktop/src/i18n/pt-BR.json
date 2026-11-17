@@ -74,6 +74,7 @@
     "monitor": "Monitor",
     "security": "Verificar vírus",
     "securityBadge": "{count} item precisa de atenção | {count} itens precisam de atenção",
+    "webapps": "Apps web",
     "firewall": "Firewall de apps",
     "firewallBadge": "{count} conexão aguarda resposta | {count} conexões aguardam resposta",
     "developerMap": "Mapa de desenvolvedores"
@@ -1551,6 +1552,52 @@
     "reopen": "Abrir novamente após uma atualização bem-sucedida",
     "quitHint": "Se um app continuar aberto ou você cancelar o encerramento, a atualização dele será adiada. Os apps não serão encerrados à força.",
     "deferred": "Adiada"
+  },
+  "webapps": {
+    "title": "Apps web",
+    "subtitle": "Transforme um site em um app independente para Mac, com janela e dados próprios.",
+    "new": "Novo app web",
+    "emptyTitle": "Nenhum app web ainda",
+    "emptyBody": "Digite um endereço de site e o OpenNavo cria um app para Mac neste Mac. Ele usa a visualização web do sistema, não uma aba do navegador.",
+    "name": "Nome",
+    "namePlaceholder": "Por exemplo, Documentos",
+    "url": "Endereço do site",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Apenas endereços http e https são aceitos.",
+    "create": "Criar",
+    "invalidName": "Informe um nome sem / ou :",
+    "invalidUrl": "Informe um endereço http ou https válido.",
+    "exists": "Já existe um app com esse nome. Escolha outro.",
+    "failed": "Não foi possível concluir a operação. Tente novamente.",
+    "open": "Abrir",
+    "reveal": "Mostrar no Finder",
+    "delete": "Excluir",
+    "deleteTitle": "Excluir {name}?",
+    "deleteBody": "O app vai para o Lixo e pode ser restaurado depois.",
+    "storageNote": "Os apps ficam na pasta Aplicativos. Cada um mantém seus próprios dados web e cookies.",
+    "createdAt": "Criado em {date}",
+    "tabs": {
+      "installed": "Meus apps",
+      "catalog": "Integrados"
+    },
+    "browseCatalog": "Ver apps integrados",
+    "catalog": {
+      "hint": "Estes são sites comuns incluídos no OpenNavo. Clique em «Adicionar» para criar um app independente; os apps adicionados podem ser excluídos em «Meus apps».",
+      "add": "Adicionar",
+      "added": "Adicionado",
+      "all": "Todos",
+      "filter": "Categorias de apps",
+      "drm": "Limitado por DRM",
+      "categories": {
+        "ai": "IA",
+        "social": "Social",
+        "work": "Trabalho",
+        "dev": "Desenvolvimento",
+        "media": "Mídia",
+        "mail": "E-mail",
+        "tools": "Ferramentas"
+      }
+    }
   },
   "page": {
     "comingSoon": "O conteúdo desta página será disponibilizado em uma tarefa futura."

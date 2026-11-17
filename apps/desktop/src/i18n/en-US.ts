@@ -80,6 +80,7 @@ const messages: MessageSchema = {
     monitor: 'Monitor',
     security: 'Scan for Viruses',
     securityBadge: '{count} item needs attention | {count} items need attention',
+    webapps: 'Web Apps',
     firewall: 'App Firewall',
     firewallBadge: '{count} connection waiting for an answer | {count} connections waiting for an answer'
   },
@@ -1593,6 +1594,53 @@ const messages: MessageSchema = {
     reopen: 'Reopen after a successful update',
     quitHint: 'If an app stays open or you cancel quitting, its update will be deferred. Apps will not be force quit.',
     deferred: 'Deferred'
+  },
+  webapps: {
+    title: 'Web Apps',
+    subtitle: 'Turn a website into a standalone Mac app with its own window and separate data.',
+    new: 'New Web App',
+    emptyTitle: 'No web apps yet',
+    emptyBody:
+      'Enter a website address and OpenNavo creates a Mac app for it on this Mac. It uses the system web view, not a browser tab.',
+    name: 'Name',
+    namePlaceholder: 'For example, Docs',
+    url: 'Website address',
+    urlPlaceholder: 'https://example.com',
+    urlHint: 'Only http and https addresses are supported.',
+    create: 'Create',
+    invalidName: 'Enter a name without / or :',
+    invalidUrl: 'Enter a valid http or https address.',
+    exists: 'An app with this name already exists. Choose another name.',
+    failed: 'Something went wrong. Try again.',
+    open: 'Open',
+    reveal: 'Show in Finder',
+    delete: 'Delete',
+    deleteTitle: 'Delete {name}?',
+    deleteBody: 'The app moves to the Trash and can be restored later.',
+    storageNote: 'Apps are saved in your Applications folder. Each one keeps its own website data and cookies.',
+    createdAt: 'Created {date}',
+    tabs: {
+      installed: 'My Apps',
+      catalog: 'Built-in'
+    },
+    browseCatalog: 'Browse built-in apps',
+    catalog: {
+      hint: 'These common sites are included with OpenNavo. Choose Add to create a standalone app; added apps can be deleted from My Apps.',
+      add: 'Add',
+      added: 'Added',
+      all: 'All',
+      filter: 'App categories',
+      drm: 'DRM limited',
+      categories: {
+        ai: 'AI',
+        social: 'Social',
+        work: 'Work',
+        dev: 'Developer',
+        media: 'Media',
+        mail: 'Mail',
+        tools: 'Tools'
+      }
+    }
   },
   page: {
     comingSoon: 'This page will be filled in by a later task.'

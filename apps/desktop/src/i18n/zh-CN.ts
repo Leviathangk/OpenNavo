@@ -75,6 +75,7 @@ export default {
     monitor: '电脑监控',
     security: '扫描病毒',
     securityBadge: '{count} 项需要处理',
+    webapps: '网页应用',
     firewall: '应用防火墙',
     firewallBadge: '{count} 个连接等待确认'
   },
@@ -1549,6 +1550,52 @@ export default {
     reopen: '更新成功后重新打开',
     quitHint: '如果应用未退出或你取消退出，将暂缓该项更新，不会强制关闭。',
     deferred: '已暂缓'
+  },
+  webapps: {
+    title: '网页应用',
+    subtitle: '把网站变成独立的 Mac 应用，有自己的窗口和独立的数据空间。',
+    new: '新建网页应用',
+    emptyTitle: '还没有网页应用',
+    emptyBody: '输入网址，OpenNavo 会在这台 Mac 上生成一个独立的 App。它使用系统 WebView，不占用浏览器标签页。',
+    name: '名称',
+    namePlaceholder: '例如：文档',
+    url: '网址',
+    urlPlaceholder: 'https://example.com',
+    urlHint: '只支持 http 和 https 地址。',
+    create: '创建',
+    invalidName: '名称不能为空，也不能包含 / 或 :',
+    invalidUrl: '请输入有效的 http 或 https 地址。',
+    exists: '已经有同名应用，请换一个名称。',
+    failed: '操作失败，请重试。',
+    open: '打开',
+    reveal: '在访达中显示',
+    delete: '删除',
+    deleteTitle: '删除「{name}」？',
+    deleteBody: '应用会移到废纸篓，之后可以恢复。',
+    storageNote: '应用保存在「应用程序」文件夹，每个应用使用独立的网站数据和 Cookie。',
+    createdAt: '创建于 {date}',
+    tabs: {
+      installed: '我的应用',
+      catalog: '内置应用'
+    },
+    browseCatalog: '浏览内置应用',
+    catalog: {
+      hint: '这些是 OpenNavo 内置的常用网站。点「添加」才会生成独立 App，已添加的可以在「我的应用」里删除。',
+      add: '添加',
+      added: '已添加',
+      all: '全部',
+      filter: '应用分类',
+      drm: 'DRM 限制',
+      categories: {
+        ai: 'AI',
+        social: '社交',
+        work: '工作',
+        dev: '开发',
+        media: '影音',
+        mail: '邮箱',
+        tools: '工具'
+      }
+    }
   },
   page: {
     comingSoon: '页面内容在后续任务中接入。'

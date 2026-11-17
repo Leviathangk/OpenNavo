@@ -15,6 +15,8 @@ pub mod system;
 pub mod tasks;
 pub mod updates;
 
+pub mod webapps;
+
 pub mod uninstall;
 
 pub mod cleanup;

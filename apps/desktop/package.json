@@ -5,7 +5,7 @@
   "description": "OpenNavo macOS desktop app (Tauri 2 + Vue 3)",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 1420 --strictPort",
+    "dev": "python3 scripts/prepare-webapp-helper.py --allow-unsigned && vite --port 1420 --strictPort",
     "dev:web": "vite --mode web --port 1420 --strictPort",
     "build": "vue-tsc --noEmit && vite build",
     "tauri": "tauri",

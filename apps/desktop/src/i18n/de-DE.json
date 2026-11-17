@@ -74,6 +74,7 @@
     "monitor": "Systemmonitor",
     "security": "Virenscan",
     "securityBadge": "{count} Eintrag erfordert Aufmerksamkeit | {count} Einträge erfordern Aufmerksamkeit",
+    "webapps": "Web-Apps",
     "firewall": "App-Firewall",
     "firewallBadge": "{count} Verbindung wartet auf Bestätigung | {count} Verbindungen warten auf Bestätigung",
     "developerMap": "Entwicklerkarte"
@@ -1551,6 +1552,52 @@
     "reopen": "Nach erfolgreichem Update erneut öffnen",
     "quitHint": "Bleibt eine App geöffnet oder brechen Sie das Beenden ab, wird ihr Update verschoben. Apps werden nicht zwangsweise beendet.",
     "deferred": "Verschoben"
+  },
+  "webapps": {
+    "title": "Web-Apps",
+    "subtitle": "Machen Sie eine Website zu einer eigenständigen Mac-App mit eigenem Fenster und eigenen Daten.",
+    "new": "Neue Web-App",
+    "emptyTitle": "Noch keine Web-Apps",
+    "emptyBody": "Geben Sie eine Website-Adresse ein, und OpenNavo erstellt dafür eine Mac-App auf diesem Mac. Sie nutzt die System-Webansicht, keinen Browser-Tab.",
+    "name": "Name",
+    "namePlaceholder": "Zum Beispiel Dokumente",
+    "url": "Website-Adresse",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Nur http- und https-Adressen werden unterstützt.",
+    "create": "Erstellen",
+    "invalidName": "Geben Sie einen Namen ohne / oder : ein",
+    "invalidUrl": "Geben Sie eine gültige http- oder https-Adresse ein.",
+    "exists": "Eine App mit diesem Namen existiert bereits. Wählen Sie einen anderen Namen.",
+    "failed": "Der Vorgang ist fehlgeschlagen. Versuchen Sie es erneut.",
+    "open": "Öffnen",
+    "reveal": "Im Finder zeigen",
+    "delete": "Löschen",
+    "deleteTitle": "{name} löschen?",
+    "deleteBody": "Die App wird in den Papierkorb gelegt und kann später wiederhergestellt werden.",
+    "storageNote": "Apps werden im Ordner „Programme“ gespeichert. Jede behält eigene Website-Daten und Cookies.",
+    "createdAt": "Erstellt am {date}",
+    "tabs": {
+      "installed": "Meine Apps",
+      "catalog": "Integriert"
+    },
+    "browseCatalog": "Integrierte Apps ansehen",
+    "catalog": {
+      "hint": "Dies sind gängige Websites, die OpenNavo mitbringt. Mit „Hinzufügen“ wird eine eigenständige App erstellt; hinzugefügte Apps lassen sich unter „Meine Apps“ löschen.",
+      "add": "Hinzufügen",
+      "added": "Hinzugefügt",
+      "all": "Alle",
+      "filter": "App-Kategorien",
+      "drm": "DRM-beschränkt",
+      "categories": {
+        "ai": "KI",
+        "social": "Soziales",
+        "work": "Arbeit",
+        "dev": "Entwicklung",
+        "media": "Medien",
+        "mail": "E-Mail",
+        "tools": "Werkzeuge"
+      }
+    }
   },
   "page": {
     "comingSoon": "Diese Seite wird in einer späteren Aufgabe ergänzt."

@@ -75,6 +75,7 @@
     "monitor": "電腦監控",
     "security": "掃描病毒",
     "securityBadge": "{count} 項需要處理",
+    "webapps": "網頁應用",
     "firewall": "應用防火牆",
     "firewallBadge": "{count} 個連線等待確認"
   },
@@ -1551,6 +1552,52 @@
     "reopen": "更新成功後重新開啟",
     "quitHint": "如果應用未退出或你取消退出，將暫緩該項更新，不會強制關閉。",
     "deferred": "已暫緩"
+  },
+  "webapps": {
+    "title": "網頁應用",
+    "subtitle": "把網站變成獨立的 Mac 應用，有自己的視窗和獨立的資料空間。",
+    "new": "新增網頁應用",
+    "emptyTitle": "還沒有網頁應用",
+    "emptyBody": "輸入網址，OpenNavo 會在這台 Mac 上建立一個獨立的 App。它使用系統 WebView，不佔用瀏覽器分頁。",
+    "name": "名稱",
+    "namePlaceholder": "例如：文件",
+    "url": "網址",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "只支援 http 和 https 網址。",
+    "create": "建立",
+    "invalidName": "名稱不能為空，也不能包含 / 或 :",
+    "invalidUrl": "請輸入有效的 http 或 https 網址。",
+    "exists": "已經有同名應用，請換一個名稱。",
+    "failed": "操作失敗，請再試一次。",
+    "open": "開啟",
+    "reveal": "在 Finder 中顯示",
+    "delete": "刪除",
+    "deleteTitle": "刪除「{name}」？",
+    "deleteBody": "應用會移到垃圾桶，之後可以還原。",
+    "storageNote": "應用儲存在「應用程式」資料夾，每個應用使用獨立的網站資料和 Cookie。",
+    "createdAt": "建立於 {date}",
+    "tabs": {
+      "installed": "我的應用",
+      "catalog": "內建應用"
+    },
+    "browseCatalog": "瀏覽內建應用",
+    "catalog": {
+      "hint": "這些是 OpenNavo 內建的常用網站。點「加入」才會建立獨立 App，已加入的可以在「我的應用」裡刪除。",
+      "add": "加入",
+      "added": "已加入",
+      "all": "全部",
+      "filter": "應用分類",
+      "drm": "DRM 限制",
+      "categories": {
+        "ai": "AI",
+        "social": "社群",
+        "work": "工作",
+        "dev": "開發",
+        "media": "影音",
+        "mail": "信箱",
+        "tools": "工具"
+      }
+    }
   },
   "page": {
     "comingSoon": "頁面內容在後續任務中接入。"

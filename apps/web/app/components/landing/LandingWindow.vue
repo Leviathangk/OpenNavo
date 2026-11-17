@@ -64,6 +64,7 @@ const nav = computed(() => [
         badge: 3
       },
       { key: 'cleanup', label: t('landing.window.cleanup'), icon: 'lucide:eraser' },
+      { key: 'webapps', label: t('landing.window.webapps'), icon: 'lucide:app-window' },
       { key: 'monitor', label: t('landing.window.monitor'), icon: 'lucide:activity' },
       { key: 'security', label: t('landing.window.security'), icon: 'lucide:shield-check' }
     ]

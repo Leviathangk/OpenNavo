@@ -33,7 +33,8 @@
     "developerMap": "Developer map",
     "clientGroup": "Mac app",
     "clientHint": "Runs on your Mac",
-    "firewall": "Firewall"
+    "firewall": "Firewall",
+    "webapps": "Web Apps"
   },
   "sidebar": {
     "appLabel": "Get the app",
@@ -1842,7 +1843,8 @@
       "security": "Security",
       "settings": "Settings",
       "installing": "Installing {name}",
-      "scanning": "Scanning the download: {name}"
+      "scanning": "Scanning the download: {name}",
+      "webapps": "Web Apps"
     },
     "security": {
       "kicker": "Security",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "See what a cleanup will free before it runs",
           "undo": "Leftovers go to the Trash, so you can undo"
+        }
+      },
+      "webapps": {
+        "lede": "Turn the sites you use into separate Mac apps, each with its own window, icon and data space.",
+        "metaTitle": "Turn websites into separate Mac apps · OpenNavo",
+        "app": {
+          "window": "Each site runs in its own window instead of another browser tab.",
+          "catalog": "40+ built-in sites, plus any address you add.",
+          "data": "Each app keeps its own sign-in and local data."
+        },
+        "demo": {
+          "badge": "Own window and icon",
+          "new": "New web app"
         }
       }
     }
