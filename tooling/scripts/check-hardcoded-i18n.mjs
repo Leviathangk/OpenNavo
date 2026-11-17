@@ -45,6 +45,28 @@ const hermesCopyAllowlist = new Set([
   'apps/desktop/src/stores/hermes.ts',
   'apps/desktop/src/ipc/mock.ts'
 ]);
+// Official Chinese product names in the web app catalog are rendered verbatim in every locale.
+// Keep the exception scoped to this file and these exact strings.
+const brandCopyAllowlist = new Map([
+  [
+    'apps/desktop/src/components/webapps/catalog.ts',
+    new Set([
+      '豆包',
+      '微博',
+      '知乎',
+      '小红书',
+      '豆瓣',
+      '飞书',
+      '腾讯文档',
+      '语雀',
+      '钉钉',
+      '企业微信',
+      '抖音',
+      '网易云音乐',
+      '微信读书'
+    ])
+  ]
+]);
 
 const attributes = new Set(['title', 'placeholder', 'aria-label', 'alt', 'label', 'description', 'subtitle', 'hint']);
 const findings = [];
@@ -54,6 +76,9 @@ function report(file, offset, text) {
 }
 function isCopy(text) {
   return /\p{L}/u.test(text) && !technical.has(text.trim()) && !/^https?:\/\/[^\s]*$/.test(text.trim());
+}
+function isAllowlisted(file, text) {
+  return brandCopyAllowlist.get(relative(process.cwd(), file))?.has(text.trim()) ?? false;
 }
 function script(file, content, offset = 0) {
   const ast = ts.createSourceFile(
@@ -82,7 +107,7 @@ function script(file, content, offset = 0) {
           developer = true;
         parent = parent.parent;
       }
-      if (!developer) report(file, offset + node.getStart(ast), node.text);
+      if (!developer && !isAllowlisted(file, node.text)) report(file, offset + node.getStart(ast), node.text);
     }
     ts.forEachChild(node, visit);
   }
