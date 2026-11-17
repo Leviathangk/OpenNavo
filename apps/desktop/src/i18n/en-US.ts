@@ -2380,7 +2380,8 @@ const messages: MessageSchema = {
     menuBar: {
       title: 'Menu Bar',
       show: 'Show in Menu Bar',
-      showHint: 'Its own item; click it to see this metric’s details below it',
+      showHint: 'Shown in the menu bar; click it to see details',
+      showHintCombined: 'Included in the combined menu bar item; click that item to see details',
       style: 'Style',
       styleHint: 'How it looks in the menu bar',
       styles: {
@@ -2406,6 +2407,7 @@ const messages: MessageSchema = {
     rail: {
       menuBar: 'Menu Bar',
       menuBarSub: 'Each metric is its own item; click it for details · no limit',
+      menuBarCombinedSub: 'Enabled metrics rotate in one item; click it to see all',
       empty: 'No monitoring items in the menu bar yet',
       crowded: 'With many items, some may hide behind the notch; try the Value Only style.',
       refresh:
@@ -2416,6 +2418,9 @@ const messages: MessageSchema = {
     },
     settings: {
       menuBar: 'Menu Bar',
+      combined: 'Combine and rotate',
+      combinedHint:
+        'Show every enabled metric in one menu bar item, rotating through them one at a time. Turn it off to give each metric its own item.',
       interval: 'Refresh rate',
       intervalHint: 'Faster uses more power; pauses while the display is off or the Mac sleeps',
       seconds: '{count} second | {count} seconds',
@@ -2424,7 +2429,7 @@ const messages: MessageSchema = {
         'Since macOS 26, allow OpenNavo in System Settings → Menu Bar; with many items, some may hide behind the notch',
       openSettings: 'Open System Settings',
       menuBarNote:
-        'Each metric is its own menu bar item, with no limit; CPU and memory are on by default. Click any item to see its details below it.',
+        'CPU and memory are on by default, with no limit. Click a menu bar item to see its details below it; turn on “Combine and rotate” to show every enabled metric in turn and click the item to see them all.',
       helper: 'Helper',
       helperHint: '{status}. Used only for fan control; temperatures and fan speeds show without it',
       helperStatus: {

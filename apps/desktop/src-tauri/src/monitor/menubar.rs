@@ -8,6 +8,8 @@ pub struct TextIcon {
     /// reading, so it keeps one width and its neighbors never shift.
     pub widest: String,
     pub graph: Option<Graph>,
+    /// One status item for several modules: a single compact line, no per-module graph.
+    pub combined: bool,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Graph {
@@ -105,6 +107,69 @@ pub fn icon_text(module: MonitorModule, style: MenuBarStyle, s: &MonitorSample) 
         lines,
         widest,
         graph: None,
+        combined: false,
+    }
+}
+
+/// One compact reading from the enabled modules, rotating through them in menu bar order. Labels match
+/// the two-line items; a temperature stays bare. The selected module's widest variant keeps the item
+/// from moving as its reading changes; the width follows the visible module.
+pub fn combined_text(
+    menu: &MonitorMenuBar,
+    modules: &[MonitorModule],
+    s: &MonitorSample,
+    index: usize,
+) -> TextIcon {
+    let label = |module: MonitorModule| match module {
+        MonitorModule::Cpu => "CPU",
+        MonitorModule::Gpu => "GPU",
+        MonitorModule::Memory => "RAM",
+        MonitorModule::Disk => "DISK",
+        MonitorModule::Network => "NET",
+        MonitorModule::Battery => "BAT",
+        MonitorModule::Sensors | MonitorModule::Fans => "",
+    };
+    let part = |module: MonitorModule| {
+        let value = icon_text(module, MenuBarStyle::Value, s);
+        let label = label(module);
+        let current = value.lines.first().cloned().unwrap_or_default();
+        let widest = value.widest;
+        (
+            if label.is_empty() {
+                current
+            } else {
+                format!("{label} {current}")
+            },
+            if label.is_empty() {
+                widest
+            } else {
+                format!("{label} {widest}")
+            },
+        )
+    };
+    let shown: Vec<_> = modules
+        .iter()
+        .copied()
+        .filter(|module| menu.item(*module).enabled)
+        .collect();
+    let parts: Vec<_> = shown.iter().map(|module| part(*module)).collect();
+    let selected = if parts.is_empty() {
+        0
+    } else {
+        index % parts.len()
+    };
+    let current = parts
+        .get(selected)
+        .map_or_else(String::new, |(value, _)| value.clone());
+    let widest = parts
+        .get(selected)
+        .map_or_else(String::new, |(_, maximum)| maximum.clone());
+    TextIcon {
+        module: shown.get(selected).copied().unwrap_or(MonitorModule::Cpu),
+        lines: vec![current],
+        widest,
+        graph: None,
+        combined: true,
     }
 }
 pub fn icon(
@@ -229,7 +294,9 @@ mod mac {
     use std::{cell::RefCell, collections::BTreeMap};
     struct TargetData {
         app: tauri::AppHandle,
-        module: MonitorModule,
+        modules: RefCell<Vec<MonitorModule>>,
+        selected: RefCell<MonitorModule>,
+        combined: bool,
     }
     define_class!(
         #[unsafe(super(NSObject))]
@@ -245,7 +312,12 @@ mod mac {
                 let Some(window)=sender.window() else {return;};let Some(screen)=window.screen() else {return;};
                 let rect=window.convertRectToScreen(sender.convertRect_toView(sender.bounds(),None));
                 let anchor=super::super::popover::Anchor::new(rect,screen.visibleFrame());
-                if let Err(error)=super::super::popover::click(&self.ivars().app,self.ivars().module,anchor) {log::warn!("Monitor popover failed: {}",error.code);}
+                let data=self.ivars();
+                let modules=data.modules.borrow().clone();
+                if modules.is_empty() {return;}
+                let selected=*data.selected.borrow();
+                let view=MonitorPopoverView {modules,selected,combined:data.combined};
+                if let Err(error)=super::super::popover::click(&data.app,view,anchor) {log::warn!("Monitor popover failed: {}",error.code);}
             }
         }
     );
@@ -254,7 +326,15 @@ mod mac {
         _target: Retained<Target>,
         last: TextIcon,
     }
-    thread_local! {static ITEMS:RefCell<BTreeMap<MonitorModule,Item>>=const {RefCell::new(BTreeMap::new())};}
+    #[derive(Default)]
+    struct Items {
+        combined: Option<Item>,
+        modules: BTreeMap<MonitorModule, Item>,
+        rotation: usize,
+        rotated_at: i64,
+        rotation_modules: Vec<MonitorModule>,
+    }
+    thread_local! {static ITEMS:RefCell<Items>=RefCell::new(Items::default());}
     fn error() -> AppError {
         AppError::new("E_MONITOR_UNAVAILABLE", "menubar_render")
     }
@@ -262,6 +342,8 @@ mod mac {
     const PAD: f64 = 2.0;
     /// Graphs take x 2–42 and the current value starts here.
     const GRAPH: f64 = 45.0;
+    /// One metric at a time in the combined item; five seconds is long enough to read without lingering.
+    const ROTATE_EVERY_MS: i64 = 5_000;
     type Attrs = NSDictionary<NSString, objc2::runtime::AnyObject>;
     struct Layout {
         /// Font and baseline of each line, top first. The last font also measures `widest`.
@@ -279,7 +361,15 @@ mod mac {
             unsafe { (NSFontWeightLight, NSFontWeightRegular, NSFontWeightMedium) };
         let system = NSFont::systemFontOfSize_weight;
         let tabular = NSFont::monospacedDigitSystemFontOfSize_weight;
-        if text.graph.is_some() {
+        if text.combined {
+            Layout {
+                fonts: vec![(system(12.0, regular), 6.5)],
+                left: 2.0,
+                min_width: 0.0,
+                pad: 2.0,
+                centered: false,
+            }
+        } else if text.graph.is_some() {
             Layout {
                 fonts: vec![(tabular(12.0, medium), 6.5)],
                 left: GRAPH,
@@ -436,63 +526,138 @@ mod mac {
         let _ = mtm;
         Ok(image)
     }
+    fn update(item: &mut Item, text: TextIcon, mtm: MainThreadMarker) -> Result<(), AppError> {
+        if item.last == text {
+            return Ok(());
+        }
+        let image = render(&text, mtm)?;
+        if let Some(button) = item.status.button(mtm) {
+            button.setImage(Some(&image));
+        }
+        item.status.setLength(image.size().width);
+        item.last = text;
+        Ok(())
+    }
+    fn create(
+        app: &tauri::AppHandle,
+        mtm: MainThreadMarker,
+        text: TextIcon,
+        modules: Vec<MonitorModule>,
+        selected: MonitorModule,
+        combined: bool,
+        autosave: &str,
+        tooltip: &str,
+    ) -> Result<Item, AppError> {
+        let image = render(&text, mtm)?;
+        let status = NSStatusBar::systemStatusBar().statusItemWithLength(image.size().width);
+        status.setAutosaveName(Some(&NSString::from_str(autosave)));
+        let target = Target::alloc(mtm).set_ivars(TargetData {
+            app: app.clone(),
+            modules: RefCell::new(modules),
+            selected: RefCell::new(selected),
+            combined,
+        });
+        let target: Retained<Target> = unsafe { objc2::msg_send![super(target), init] };
+        if let Some(button) = status.button(mtm) {
+            button.setImage(Some(&image));
+            button.setToolTip(Some(&NSString::from_str(tooltip)));
+            unsafe {
+                button.setTarget(Some(&target));
+                button.setAction(Some(sel!(clicked:)));
+            }
+        }
+        Ok(Item {
+            status,
+            _target: target,
+            last: text,
+        })
+    }
+    fn remove(item: &Item) {
+        NSStatusBar::systemStatusBar().removeStatusItem(&item.status);
+    }
     pub fn refresh(app: &tauri::AppHandle, p: &Publication) -> Result<(), AppError> {
         let mtm = MainThreadMarker::new().ok_or_else(error)?;
         objc2::rc::autoreleasepool(|_| {
             ITEMS.with(|items| {
                 let mut items = items.borrow_mut();
-                let enabled = p.menu.enabled();
-                items.retain(|module, item| {
-                    let keep = enabled.contains(module) && p.available.contains(module);
+                let shown: Vec<_> = p
+                    .menu
+                    .enabled()
+                    .intersection(&p.available)
+                    .copied()
+                    .collect();
+                if p.menu.combined {
+                    for (_, item) in std::mem::take(&mut items.modules) {
+                        remove(&item);
+                    }
+                    if shown.is_empty() {
+                        items.rotation = 0;
+                        items.rotated_at = p.sample.at;
+                        items.rotation_modules.clear();
+                        if let Some(item) = items.combined.take() {
+                            remove(&item);
+                        }
+                    } else {
+                        if items.rotation_modules != shown {
+                            items.rotation_modules = shown.clone();
+                            items.rotation = 0;
+                            items.rotated_at = p.sample.at;
+                        } else if p.sample.at < items.rotated_at {
+                            items.rotated_at = p.sample.at;
+                        } else if p.sample.at.saturating_sub(items.rotated_at) >= ROTATE_EVERY_MS {
+                            items.rotation = (items.rotation + 1) % shown.len();
+                            items.rotated_at = p.sample.at;
+                        }
+                        let text = combined_text(&p.menu, &shown, &p.sample, items.rotation);
+                        let selected = shown[items.rotation];
+                        if let Some(item) = &mut items.combined {
+                            *item._target.ivars().modules.borrow_mut() = shown.clone();
+                            *item._target.ivars().selected.borrow_mut() = selected;
+                            update(item, text, mtm)?;
+                        } else {
+                            items.combined = Some(create(
+                                app,
+                                mtm,
+                                text,
+                                shown,
+                                selected,
+                                true,
+                                "monitor.combined",
+                                "OpenNavo · System Monitor",
+                            )?);
+                        }
+                    }
+                    return Ok(());
+                }
+                if let Some(item) = items.combined.take() {
+                    remove(&item);
+                }
+                items.rotation = 0;
+                items.rotated_at = 0;
+                items.rotation_modules.clear();
+                items.modules.retain(|module, item| {
+                    let keep = shown.contains(module);
                     if !keep {
-                        NSStatusBar::systemStatusBar().removeStatusItem(&item.status);
+                        remove(item);
                     }
                     keep
                 });
-                for module in enabled.intersection(&p.available) {
-                    let text = icon(*module, p.menu.item(*module).style, &p.sample, &p.history);
-                    if let Some(item) = items.get_mut(module) {
-                        if item.last != text {
-                            let image = render(&text, mtm)?;
-                            if let Some(button) = item.status.button(mtm) {
-                                button.setImage(Some(&image));
-                            }
-                            item.status.setLength(image.size().width);
-                            item.last = text;
-                        }
+                for module in shown {
+                    let text = icon(module, p.menu.item(module).style, &p.sample, &p.history);
+                    if let Some(item) = items.modules.get_mut(&module) {
+                        update(item, text, mtm)?;
                     } else {
-                        let image = render(&text, mtm)?;
-                        let status =
-                            NSStatusBar::systemStatusBar().statusItemWithLength(image.size().width);
-                        status.setAutosaveName(Some(&NSString::from_str(&format!(
-                            "monitor.{}",
-                            module.key()
-                        ))));
-                        let target = Target::alloc(mtm).set_ivars(TargetData {
-                            app: app.clone(),
-                            module: *module,
-                        });
-                        let target: Retained<Target> =
-                            unsafe { objc2::msg_send![super(target), init] };
-                        if let Some(button) = status.button(mtm) {
-                            button.setImage(Some(&image));
-                            button.setToolTip(Some(&NSString::from_str(&format!(
-                                "OpenNavo · {}",
-                                module.key()
-                            ))));
-                            unsafe {
-                                button.setTarget(Some(&target));
-                                button.setAction(Some(sel!(clicked:)));
-                            }
-                        }
-                        items.insert(
-                            *module,
-                            Item {
-                                status,
-                                _target: target,
-                                last: text,
-                            },
-                        );
+                        let item = create(
+                            app,
+                            mtm,
+                            text,
+                            vec![module],
+                            module,
+                            false,
+                            &format!("monitor.{}", module.key()),
+                            &format!("OpenNavo · {}", module.key()),
+                        )?;
+                        items.modules.insert(module, item);
                     }
                 }
                 Ok(())
@@ -504,10 +669,17 @@ mod mac {
             let items = items.borrow();
             menu.enabled()
                 .into_iter()
-                .map(|module| MenuBarItemStatus {
-                    module,
-                    installed: items.contains_key(&module),
-                    visible: None,
+                .map(|module| {
+                    let installed = if menu.combined {
+                        items.combined.is_some()
+                    } else {
+                        items.modules.contains_key(&module)
+                    };
+                    MenuBarItemStatus {
+                        module,
+                        installed,
+                        visible: None,
+                    }
                 })
                 .collect()
         })
@@ -515,11 +687,16 @@ mod mac {
     /// Also works for global events, where AppKit supplies no local status window.
     pub fn contains_point(point: NSPoint, mtm: MainThreadMarker) -> bool {
         ITEMS.with(|items| {
-            items.borrow().values().any(|item| {
-                item.status
-                    .button(mtm)
-                    .is_some_and(|button| crate::tray::panel::contains_button(&button, point))
-            })
+            let items = items.borrow();
+            items
+                .combined
+                .iter()
+                .chain(items.modules.values())
+                .any(|item| {
+                    item.status
+                        .button(mtm)
+                        .is_some_and(|button| crate::tray::panel::contains_button(&button, point))
+                })
         })
     }
 }

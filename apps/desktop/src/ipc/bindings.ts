@@ -2031,6 +2031,8 @@ export type MonitorMainTarget = "detail" | "settings";
  *  as in Stats, the sensors item shows the temperature and its popover the fans.
  */
 export type MonitorMenuBar = {
+	/**  One status item for every enabled module, instead of one item per module. */
+	combined: boolean,
 	cpu: MenuBarItemSetting,
 	gpu: MenuBarItemSetting,
 	memory: MenuBarItemSetting,
@@ -2042,7 +2044,18 @@ export type MonitorMenuBar = {
 
 export type MonitorModule = "cpu" | "gpu" | "memory" | "disk" | "network" | "battery" | "sensors" | "fans";
 
-export type MonitorPopover = MonitorModule;
+export type MonitorPopover = MonitorPopoverView;
+
+/**
+ *  What the shared menu bar popover should show. `modules` is in menu bar order, `selected` is the
+ *  combined item's visible metric, and `combined` keeps the one-item layout with only one module enabled.
+ */
+export type MonitorPopoverView = {
+	modules: MonitorModule[],
+	/**  The module the combined item was showing when it was clicked. */
+	selected: MonitorModule,
+	combined: boolean,
+};
 
 export type MonitorResidentStatus = {
 	/**  The user's switch. False means a Quit ends the monitor too. */

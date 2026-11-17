@@ -151,6 +151,17 @@ mod mac {
             lines: lines.iter().map(|line| line.to_string()).collect(),
             widest: widest.into(),
             graph,
+            combined: false,
+        }
+    }
+
+    fn combined(lines: &[&str], widest: &str) -> TextIcon {
+        TextIcon {
+            module: MonitorModule::Cpu,
+            lines: lines.iter().map(|line| line.to_string()).collect(),
+            widest: widest.into(),
+            graph: None,
+            combined: true,
         }
     }
 
@@ -186,6 +197,7 @@ mod mac {
                     icon(Network, &["↑123K", "↓456K"], "↓99.9M", None),
                     false,
                 ),
+                ("combined", combined(&["CPU 66%"], "NET ↓99.9M"), false),
             ];
             let mut failures = 0;
             for (name, icon, flush_left) in fixtures {
@@ -211,6 +223,11 @@ mod mac {
                     "network text",
                     icon(Network, &["↑99.9M", "↓99.9M"], "↓99.9M", None),
                     icon(Network, &["↑0B", "↓1K"], "↓99.9M", None),
+                ),
+                (
+                    "combined",
+                    combined(&["NET ↓99.9M"], "NET ↓99.9M"),
+                    combined(&["CPU 0%"], "NET ↓99.9M"),
                 ),
             ];
             for (name, widest, narrow) in snug {
@@ -238,6 +255,20 @@ mod mac {
                 );
                 failures += usize::from(!passed);
             }
+            let compact = render_template(&combined(&["GPU 63%"], "GPU 100%"), mtm)
+                .unwrap()
+                .size()
+                .width;
+            let network = render_template(&combined(&["NET ↓99.9M"], "NET ↓99.9M"), mtm)
+                .unwrap()
+                .size()
+                .width;
+            let passed = compact < network;
+            println!(
+                "test combined follows the current metric width ... {}",
+                if passed { "ok" } else { "FAILED" }
+            );
+            failures += usize::from(!passed);
             // Like Stats' stack widget, a temperature hugs two digits and grows only past 99°.
             let temperature = |reading: &str| {
                 render_template(&icon(Sensors, &[reading], "44°", None), mtm)

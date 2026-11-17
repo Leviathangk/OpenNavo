@@ -217,7 +217,7 @@ pub struct MonitorSampleEvent {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(transparent)]
 #[tauri_specta(event_name = "monitor:popover")]
-pub struct MonitorPopover(pub MonitorModule);
+pub struct MonitorPopover(pub MonitorPopoverView);
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(transparent)]

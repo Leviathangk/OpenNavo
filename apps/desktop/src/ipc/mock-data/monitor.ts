@@ -32,7 +32,7 @@ const KB = 1e3;
 const DAY = 86_400_000;
 const MODULES: MonitorModule[] = ['cpu', 'gpu', 'memory', 'disk', 'network', 'battery', 'sensors', 'fans'];
 /** Fans have no menu bar item: the sensors item shows the temperature and its popover the fans. */
-const MENU_BAR = MODULES.filter((module): module is keyof MonitorMenuBar => module !== 'fans');
+const MENU_BAR = MODULES.filter((module): module is Exclude<keyof MonitorMenuBar, 'combined'> => module !== 'fans');
 const HISTORY = 60;
 
 const appError = (code: string, message: string): AppError => ({ code, message, detail: null });

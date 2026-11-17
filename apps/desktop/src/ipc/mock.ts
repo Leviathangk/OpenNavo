@@ -237,6 +237,7 @@ function defaultSettings(): AppSettings {
     cleanupReminderBytes: 10_000_000_000,
     cleanupProjectRoots: ['~/Projects', '~/Developer', '~/code', '~/GitHub', '~/dev'],
     monitorMenuBar: {
+      combined: false,
       cpu: { enabled: true, style: 'text' },
       gpu: { enabled: false, style: 'text' },
       memory: { enabled: true, style: 'text' },

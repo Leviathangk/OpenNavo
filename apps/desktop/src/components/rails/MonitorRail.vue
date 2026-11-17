@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { OnButton, OnCard, OnIcon, OnRailPanel, OnRailSection, OnToggle } from '@opennavo/ui';
+import MenuBarCombinedWidget from '@/components/monitor/MenuBarCombinedWidget.vue';
 import MenuBarWidget from '@/components/monitor/MenuBarWidget.vue';
 import { MODULE_ICONS, useMonitorFormat } from '@/components/monitor/meta';
 import { usePackageState } from '@/composables/usePackageState';
@@ -22,9 +23,12 @@ const f = useMonitorFormat();
 const { errorText } = usePackageState();
 
 const shown = computed(() => store.modules.filter(module => store.item(module).enabled));
+const subtitle = computed(() =>
+  store.menuBarCombined ? t('monitor.rail.menuBarCombinedSub') : t('monitor.rail.menuBarSub')
+);
 const seconds = computed(() => (settings.value?.monitorIntervalMs ?? 2000) / 1000);
 /** Past six items the notch starts hiding some; macOS does not tell us which. */
-const crowded = computed(() => shown.value.length >= 6);
+const crowded = computed(() => !store.menuBarCombined && shown.value.length >= 6);
 const fanText = computed(() => {
   const fans = store.fans ?? [];
   const manual = fans.find(fan => fan.mode === 'manual');
@@ -43,13 +47,16 @@ async function toggle(module: DisplayModule, enabled: boolean) {
 <template>
   <PermissionGate feature="monitor" variant="rail">
     <OnRailPanel>
-      <OnRailSection :title="t('monitor.rail.menuBar')" :subtitle="t('monitor.rail.menuBarSub')">
+      <OnRailSection :title="t('monitor.rail.menuBar')" :subtitle="subtitle">
         <OnCard padding="md" class="flex flex-col gap-4px">
           <div
             class="mb-8px flex min-h-30px flex-wrap items-center justify-end gap-x-2px gap-y-4px rounded-[8px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-4px"
             data-testid="monitor-menubar-preview"
           >
-            <MenuBarWidget v-for="module in shown" :key="module" :module="module" class="mx-6px" />
+            <MenuBarCombinedWidget v-if="store.menuBarCombined && shown.length" />
+            <template v-else>
+              <MenuBarWidget v-for="module in shown" :key="module" :module="module" class="mx-6px" />
+            </template>
             <span v-if="!shown.length" class="px-4px text-12px text-ink-tertiary">{{ t('monitor.rail.empty') }}</span>
           </div>
           <div

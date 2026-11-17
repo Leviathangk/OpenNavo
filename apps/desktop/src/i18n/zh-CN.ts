@@ -2304,7 +2304,8 @@ export default {
     menuBar: {
       title: '菜单栏',
       show: '在菜单栏显示',
-      showHint: '单独一项，点它在下方弹出这一项的详情',
+      showHint: '显示在菜单栏；点它查看详情',
+      showHintCombined: '包含在合并的菜单栏项里；点那一项查看详情',
       style: '样式',
       styleHint: '菜单栏里的样子',
       styles: {
@@ -2329,6 +2330,7 @@ export default {
     rail: {
       menuBar: '菜单栏',
       menuBarSub: '每项单独显示，点它看详情 · 数量不限',
+      menuBarCombinedSub: '已开启的指标合并为一项并轮流显示，点它查看全部',
       empty: '菜单栏里还没有监控项',
       crowded: '项目多时，放不下的会被刘海挡住；可以把样式改成「只显示数值」。',
       refresh: '每 {count} 秒刷新 · 按住 ⌘ 拖动调整顺序',
@@ -2338,6 +2340,8 @@ export default {
     },
     settings: {
       menuBar: '菜单栏',
+      combined: '合并并轮流显示',
+      combinedHint: '把已开启的指标合并成一项，轮流显示；关闭后每个指标单独显示。',
       interval: '刷新频率',
       intervalHint: '越快越耗电；屏幕关闭和睡眠时自动暂停',
       seconds: '{count} 秒',
@@ -2345,7 +2349,7 @@ export default {
       notVisibleHint: 'macOS 26 起要在「系统设置 → 菜单栏」里允许 OpenNavo；项目太多时，放不下的会被刘海挡住',
       openSettings: '打开系统设置',
       menuBarNote:
-        '每个指标都是独立的菜单栏项，数量不限；默认开启 CPU 和内存。点任意一项，就在它下面弹出这一项的详情。',
+        'CPU 和内存默认开启，数量不限。点菜单栏里的一项，就在它下面弹出详情；打开「合并并轮流显示」后，所有已开启的指标会轮流显示，点这一项可以查看全部。',
       helper: '辅助程序',
       helperHint: '{status}。只用来控制风扇；没安装时照常显示温度和转速',
       helperStatus: {

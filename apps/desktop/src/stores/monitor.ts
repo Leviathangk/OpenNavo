@@ -27,7 +27,7 @@ import { usePermissionGateStore } from './permissionGate';
  * a module's detail sheet and the menu bar popover. Each outlet subscribes while it is visible.
  */
 /** A module shown on its own: a card, a menu bar item, a settings row. */
-export type DisplayModule = keyof MonitorMenuBar;
+export type DisplayModule = Exclude<keyof MonitorMenuBar, 'combined'>;
 /** Display order of cards, menu bar items and settings rows (§12). Fans are part of sensors, as in Stats. */
 export const MODULES: readonly DisplayModule[] = ['cpu', 'gpu', 'memory', 'disk', 'network', 'battery', 'sensors'];
 /** What Rust samples for a module: sensors show the temperatures and the fans. */
@@ -93,7 +93,12 @@ export const useMonitorStore = defineStore('monitor', () => {
   const fans = computed(() => fanOverride.value ?? sample.value?.fans ?? null);
   const menuBar = computed(() => settings.value?.monitorMenuBar ?? null);
   const item = (module: DisplayModule) => menuBar.value?.[module] ?? HIDDEN_ITEM;
-  const menuBarCount = computed(() => MODULES.filter(module => item(module).enabled).length);
+  const menuBarCombined = computed(() => menuBar.value?.combined ?? false);
+  const menuBarEnabledCount = computed(() => MODULES.filter(module => item(module).enabled).length);
+  /** What macOS will show: one combined item, or one item per enabled module. */
+  const menuBarCount = computed(() =>
+    menuBarCombined.value ? Number(menuBarEnabledCount.value > 0) : menuBarEnabledCount.value
+  );
   /** One slot per second in the last minute; slower sampling and sleep leave gaps. */
   function series(pick: (sample: MonitorSample) => number | null | undefined) {
     const end = sample.value?.at ?? 0;
@@ -194,6 +199,13 @@ export const useMonitorStore = defineStore('monitor', () => {
     }));
     // With this off, closing the window quits OpenNavo and every item goes with it (§12): offer to keep it running.
     if (patch.enabled && settings.value?.keepInMenuBarOnClose === false) offerKeepInMenuBar();
+    return true;
+  }
+
+  async function setMenuBarCombined(enabled: boolean) {
+    if (!menuBar.value) return false;
+    if (enabled && !(await usePermissionGateStore().require({ feature: 'monitor' }))) return false;
+    await settings.update('monitorMenuBar', current => ({ ...current, combined: enabled }));
     return true;
   }
 
@@ -327,6 +339,7 @@ export const useMonitorStore = defineStore('monitor', () => {
     modules,
     fans,
     menuBar,
+    menuBarCombined,
     menuBarCount,
     item,
     series,
@@ -338,6 +351,7 @@ export const useMonitorStore = defineStore('monitor', () => {
     loadTrend,
     trendSeries,
     setMenuBar,
+    setMenuBarCombined,
     setMonitorSetting,
     loadResidentStatus,
     registerResident,
