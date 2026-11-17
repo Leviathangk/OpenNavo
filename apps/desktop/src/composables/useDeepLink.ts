@@ -33,6 +33,7 @@ function readPending(): DeepLinkEvent | null {
           value.route === '/updates' ||
           value.route === '/installed' ||
           value.route === '/cleanup' ||
+          value.route === '/webapps' ||
           value.route === '/security' ||
           value.route === '/firewall' ||
           // Preview links (F1, F5) in the exact shape Rust writes them (form-encoded values, preview=1 last).

@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "記事",
-    "subtitle": "Mac アプリのおすすめ、レビュー、使い方、まとめ",
-    "all": "すべて",
-    "typesLabel": "記事の種類",
-    "types": {
-      "recommendation": "おすすめ",
-      "review": "レビュー",
-      "tutorial": "使い方",
-      "roundup": "まとめ",
-      "news": "ニュース"
-    },
-    "emptyTitle": "記事はまだありません",
-    "emptyDescription": "記事が公開されるとここに表示されます。",
-    "readingTime": "約 {minutes} 分で読めます",
-    "published": "{date} 公開",
-    "updated": "{date} 更新",
-    "editorial": "OpenNavo 編集部",
-    "sourceText": "この記事はまだお使いの言語で読めないため、原文を表示しています。",
-    "testNote": "テスト環境：",
-    "toc": "目次",
-    "sources": "参考情報",
-    "appCardNote": "現在のカタログ情報：バージョンとインストール数はカタログに合わせて更新されるため、執筆時と異なる場合があります。",
-    "mentionedApps": "記事で紹介したアプリ",
-    "related": "関連記事",
-    "withdrawnTitle": "この記事は取り下げられました",
-    "withdrawnBody": "内容が古くなったか正確でなくなった可能性があるため、公開を終了しました。ほかの記事もご覧ください。",
-    "backToList": "すべての記事を見る"
-  },
   "brewfile": {
     "installTitle": "リストのアプリをインストール",
     "title": "マイリスト",
@@ -74,6 +45,7 @@
     "monitor": "システムモニタ",
     "security": "ウイルススキャン",
     "securityBadge": "確認が必要な項目が{count}件あります",
+    "webapps": "ウェブアプリ",
     "firewall": "ファイアウォール",
     "firewallBadge": "{count} 件の接続が確認を待っています",
     "developerMap": "開発者マップ"
@@ -1552,6 +1524,52 @@
     "quitHint": "アプリが開いたままの場合、または終了をキャンセルした場合、そのアプリの更新は延期されます。アプリを強制終了することはありません。",
     "deferred": "延期しました"
   },
+  "webapps": {
+    "title": "ウェブアプリ",
+    "subtitle": "ウェブサイトを、独自のウィンドウとデータを持つ Mac アプリにします。",
+    "new": "ウェブアプリを作成",
+    "emptyTitle": "ウェブアプリはまだありません",
+    "emptyBody": "URL を入力すると、この Mac に専用の Mac アプリを作成します。システムの WebView を使い、ブラウザのタブは使いません。",
+    "name": "名前",
+    "namePlaceholder": "例：ドキュメント",
+    "url": "ウェブサイトの URL",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "http と https の URL に対応しています。",
+    "create": "作成",
+    "invalidName": "名前を入力してください。/ や : は使えません。",
+    "invalidUrl": "有効な http または https の URL を入力してください。",
+    "exists": "同じ名前のアプリがすでにあります。別の名前を選んでください。",
+    "failed": "操作に失敗しました。もう一度お試しください。",
+    "open": "開く",
+    "reveal": "Finder に表示",
+    "delete": "削除",
+    "deleteTitle": "「{name}」を削除しますか？",
+    "deleteBody": "アプリはゴミ箱に移動します。あとで復元できます。",
+    "storageNote": "アプリは「アプリケーション」フォルダに保存され、それぞれ独立したウェブデータと Cookie を使います。",
+    "createdAt": "{date} に作成",
+    "tabs": {
+      "installed": "マイアプリ",
+      "catalog": "内蔵アプリ"
+    },
+    "browseCatalog": "内蔵アプリを見る",
+    "catalog": {
+      "hint": "OpenNavo に同梱されている定番サイトです。「追加」を押すと独立したアプリを作成します。追加したアプリは「マイアプリ」から削除できます。",
+      "add": "追加",
+      "added": "追加済み",
+      "all": "すべて",
+      "filter": "アプリの分類",
+      "drm": "DRM 制限",
+      "categories": {
+        "ai": "AI",
+        "social": "ソーシャル",
+        "work": "仕事",
+        "dev": "開発",
+        "media": "メディア",
+        "mail": "メール",
+        "tools": "ツール"
+      }
+    }
+  },
   "page": {
     "comingSoon": "ページの内容は後続のタスクで追加されます。"
   },
@@ -2299,7 +2317,8 @@
     "menuBar": {
       "title": "メニューバー",
       "show": "メニューバーに表示",
-      "showHint": "独立した項目として表示し、クリックするとその下に詳細を表示します",
+      "showHint": "メニューバーに表示し、クリックすると詳細を表示します",
+      "showHintCombined": "まとめたメニューバー項目に含まれます。その項目をクリックすると詳細を表示します",
       "style": "スタイル",
       "styleHint": "メニューバーでの表示",
       "styles": {
@@ -2324,6 +2343,7 @@
     "rail": {
       "menuBar": "メニューバー",
       "menuBarSub": "項目ごとに個別表示 · クリックで詳細 · 数の制限なし",
+      "menuBarCombinedSub": "有効な指標を1項目で切り替えて表示します。クリックですべて表示",
       "empty": "メニューバーにはまだ監視項目がありません",
       "crowded": "項目が多いと、入りきらない項目がノッチに隠れることがあります。スタイルを「数値のみ」にしてみてください。",
       "refresh": "{count}秒ごとに更新 · ⌘を押しながらドラッグで並べ替え",
@@ -2333,13 +2353,15 @@
     },
     "settings": {
       "menuBar": "メニューバー",
+      "combined": "1項目にまとめて切り替え",
+      "combinedHint": "有効な指標をメニューバーの1項目にまとめ、1つずつ切り替えて表示します。オフにすると指標ごとに表示されます。",
       "interval": "更新間隔",
       "intervalHint": "短いほど電力を使います。画面オフやスリープ中は一時停止します",
       "seconds": "{count}秒",
       "notVisible": "オンにしても表示されない場合",
       "notVisibleHint": "macOS 26以降は「システム設定 → メニューバー」でOpenNavoを許可する必要があります。項目が多いと、入りきらない項目がノッチに隠れます",
       "openSettings": "システム設定を開く",
-      "menuBarNote": "各指標はそれぞれ独立したメニューバー項目で、数に制限はありません。初期状態ではCPUとメモリがオンです。どの項目もクリックするとその下に詳細を表示します。",
+      "menuBarNote": "CPUとメモリは初期状態でオンで、数に制限はありません。メニューバーの項目をクリックすると、その下に詳細を表示します。「1項目にまとめて切り替え」をオンにすると、有効な指標を順番に表示します。項目をクリックするとすべて確認できます。",
       "helper": "ヘルパー",
       "helperHint": "{status}。ファン制御専用です。なくても温度と回転数は表示されます",
       "helperStatus": {

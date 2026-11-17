@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import { unwrap, type PackageSummary } from '@opennavo/api';
-import { OnAppIcon, OnIcon } from '@opennavo/ui';
+import { OnAppIcon, OnIcon, runOnEnter } from '@opennavo/ui';
 import { submitDeveloperSubmission, type DeveloperSubmitResult } from '~/composables/useDeveloperMap';
 
 const { t, locale } = useI18n();
@@ -191,7 +191,7 @@ function reset() {
             type="search"
             :placeholder="t('developerForm.searchPlaceholder')"
             class="h-36px w-full rounded-default border border-solid border-line-default bg-surface-inset pl-31px pr-10px text-12.5px text-ink-primary outline-none placeholder:text-ink-tertiary focus:border-line-strong focus:shadow-focus-ring"
-            @keydown.enter.prevent="search"
+            @keydown.enter="runOnEnter($event, search)"
           />
         </label>
         <button

@@ -136,6 +136,11 @@ export const commands = {
 	virusTotalStatus: () => typedError<VirusTotalStatus, AppError>(__TAURI_INVOKE("virus_total_status")),
 	virusTotalKeySet: (key: string | null) => typedError<VirusTotalStatus, AppError>(__TAURI_INVOKE("virus_total_key_set", { key })),
 	virusTotalLookup: (sha256: string) => typedError<VirusTotalVerdict, AppError>(__TAURI_INVOKE("virus_total_lookup", { sha256 })),
+	webappsList: () => typedError<WebApp[], AppError>(__TAURI_INVOKE("webapps_list")),
+	webappsCreate: (input: CreateWebApp) => typedError<WebApp, AppError>(__TAURI_INVOKE("webapps_create", { input })),
+	webappsDelete: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("webapps_delete", { id })),
+	webappsOpen: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("webapps_open", { id })),
+	webappsReveal: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("webapps_reveal", { id })),
 	monitorSubscribe: (view: MonitorView, modules: MonitorModule[]) => typedError<MonitorSnapshot, AppError>(__TAURI_INVOKE("monitor_subscribe", { view, modules })),
 	monitorUnsubscribe: (view: MonitorView) => typedError<null, AppError>(__TAURI_INVOKE("monitor_unsubscribe", { view })),
 	/**  Shared in-memory one-hour trend, oldest first. */
@@ -1021,6 +1026,11 @@ export type CpuSample = {
 	load: [number, number, number],
 	/**  Watts; M3.1 visible CPU/GPU subscriptions only, at most once per two seconds; otherwise null. */
 	powerWatts: number | null,
+};
+
+export type CreateWebApp = {
+	name: string,
+	url: string,
 };
 
 export type DeepLinkAction = "install";
@@ -2031,6 +2041,8 @@ export type MonitorMainTarget = "detail" | "settings";
  *  as in Stats, the sensors item shows the temperature and its popover the fans.
  */
 export type MonitorMenuBar = {
+	/**  One status item for every enabled module, instead of one item per module. */
+	combined: boolean,
 	cpu: MenuBarItemSetting,
 	gpu: MenuBarItemSetting,
 	memory: MenuBarItemSetting,
@@ -2042,7 +2054,18 @@ export type MonitorMenuBar = {
 
 export type MonitorModule = "cpu" | "gpu" | "memory" | "disk" | "network" | "battery" | "sensors" | "fans";
 
-export type MonitorPopover = MonitorModule;
+export type MonitorPopover = MonitorPopoverView;
+
+/**
+ *  What the shared menu bar popover should show. `modules` is in menu bar order, `selected` is the
+ *  combined item's visible metric, and `combined` keeps the one-item layout with only one module enabled.
+ */
+export type MonitorPopoverView = {
+	modules: MonitorModule[],
+	/**  The module the combined item was showing when it was clicked. */
+	selected: MonitorModule,
+	combined: boolean,
+};
 
 export type MonitorResidentStatus = {
 	/**  The user's switch. False means a Quit ends the monitor too. */
@@ -2902,6 +2925,16 @@ export type VolumeInfo = {
 	totalBytes: number,
 	freeBytes: number,
 	internal: boolean,
+};
+
+export type WebApp = {
+	id: string,
+	name: string,
+	url: string,
+	path: string,
+	bundleId: string,
+	createdAt: string,
+	icon: string | null,
 };
 
 /* Tauri Specta runtime */

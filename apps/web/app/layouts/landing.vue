@@ -50,7 +50,7 @@ const items = computed(() =>
         </div>
       </template>
     </OnTopNav>
-    <main id="main-content" tabindex="-1">
+    <main id="main-content" tabindex="-1" class="scroll-mt-64px">
       <slot />
     </main>
     <LandingFooter />

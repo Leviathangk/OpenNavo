@@ -19,6 +19,7 @@ describe('buildDeepLink', () => {
     expect(buildDeepLink({ type: 'updates' })).toBe('opennavo://updates');
     expect(buildDeepLink({ type: 'route', route: 'installed' })).toBe('opennavo://installed');
     expect(buildDeepLink({ type: 'route', route: 'monitor' })).toBe('opennavo://monitor');
+    expect(buildDeepLink({ type: 'route', route: 'webapps' })).toBe('opennavo://webapps');
   });
 
   it('Limits query values to 64 characters', () => {
@@ -62,6 +63,7 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink('opennavo://installed')).toEqual({ type: 'route', route: 'installed' });
     expect(parseDeepLink('opennavo://cleanup')).toEqual({ type: 'route', route: 'cleanup' });
     expect(parseDeepLink('opennavo://monitor')).toEqual({ type: 'route', route: 'monitor' });
+    expect(parseDeepLink('opennavo://webapps')).toEqual({ type: 'route', route: 'webapps' });
     expect(parseDeepLink('opennavo://security')).toEqual({ type: 'route', route: 'security' });
     expect(parseDeepLink('opennavo://firewall')).toEqual({ type: 'route', route: 'firewall' });
   });
@@ -88,6 +90,7 @@ describe('parseDeepLink', () => {
     'opennavo://user@installed',
     'opennavo://installed:99',
     'opennavo://monitor?tab=cpu',
+    'opennavo://webapps/now',
     'opennavo://cleanup?action=install',
     'opennavo://settings'
   ])('%s → null', url => {

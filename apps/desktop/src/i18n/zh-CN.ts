@@ -1,33 +1,4 @@
 export default {
-  articles: {
-    title: '文章',
-    subtitle: 'Mac 软件推荐、评测、教程和合集',
-    all: '全部',
-    typesLabel: '文章类型',
-    types: {
-      recommendation: '推荐',
-      review: '评测',
-      tutorial: '教程',
-      roundup: '合集',
-      news: '新闻'
-    },
-    emptyTitle: '还没有文章',
-    emptyDescription: '文章发布后会显示在这里。',
-    readingTime: '阅读约 {minutes} 分钟',
-    published: '{date} 发布',
-    updated: '{date} 更新',
-    editorial: 'OpenNavo 编辑部',
-    sourceText: '这篇文章还没有当前语言的版本，下面显示的是原文。',
-    testNote: '测试环境：',
-    toc: '目录',
-    sources: '参考来源',
-    appCardNote: '当前目录数据：版本和安装量随目录更新，可能与撰写时不同。',
-    mentionedApps: '文中提到的 App',
-    related: '相关文章',
-    withdrawnTitle: '这篇文章已撤下',
-    withdrawnBody: '文章内容可能已过时或不再准确，因此不再提供。可以看看其他文章。',
-    backToList: '浏览全部文章'
-  },
   brewfile: {
     installTitle: '安装清单中的软件',
     title: '我的清单',
@@ -75,6 +46,7 @@ export default {
     monitor: '电脑监控',
     security: '扫描病毒',
     securityBadge: '{count} 项需要处理',
+    webapps: '网页应用',
     firewall: '应用防火墙',
     firewallBadge: '{count} 个连接等待确认'
   },
@@ -1550,6 +1522,52 @@ export default {
     quitHint: '如果应用未退出或你取消退出，将暂缓该项更新，不会强制关闭。',
     deferred: '已暂缓'
   },
+  webapps: {
+    title: '网页应用',
+    subtitle: '把网站变成独立的 Mac 应用，有自己的窗口和独立的数据空间。',
+    new: '新建网页应用',
+    emptyTitle: '还没有网页应用',
+    emptyBody: '输入网址，OpenNavo 会在这台 Mac 上生成一个独立的 App。它使用系统 WebView，不占用浏览器标签页。',
+    name: '名称',
+    namePlaceholder: '例如：文档',
+    url: '网址',
+    urlPlaceholder: 'https://example.com',
+    urlHint: '只支持 http 和 https 地址。',
+    create: '创建',
+    invalidName: '名称不能为空，也不能包含 / 或 :',
+    invalidUrl: '请输入有效的 http 或 https 地址。',
+    exists: '已经有同名应用，请换一个名称。',
+    failed: '操作失败，请重试。',
+    open: '打开',
+    reveal: '在访达中显示',
+    delete: '删除',
+    deleteTitle: '删除「{name}」？',
+    deleteBody: '应用会移到废纸篓，之后可以恢复。',
+    storageNote: '应用保存在「应用程序」文件夹，每个应用使用独立的网站数据和 Cookie。',
+    createdAt: '创建于 {date}',
+    tabs: {
+      installed: '我的应用',
+      catalog: '内置应用'
+    },
+    browseCatalog: '浏览内置应用',
+    catalog: {
+      hint: '这些是 OpenNavo 内置的常用网站。点「添加」才会生成独立 App，已添加的可以在「我的应用」里删除。',
+      add: '添加',
+      added: '已添加',
+      all: '全部',
+      filter: '应用分类',
+      drm: 'DRM 限制',
+      categories: {
+        ai: 'AI',
+        social: '社交',
+        work: '工作',
+        dev: '开发',
+        media: '影音',
+        mail: '邮箱',
+        tools: '工具'
+      }
+    }
+  },
   page: {
     comingSoon: '页面内容在后续任务中接入。'
   },
@@ -2304,7 +2322,8 @@ export default {
     menuBar: {
       title: '菜单栏',
       show: '在菜单栏显示',
-      showHint: '单独一项，点它在下方弹出这一项的详情',
+      showHint: '显示在菜单栏；点它查看详情',
+      showHintCombined: '包含在合并的菜单栏项里；点那一项查看详情',
       style: '样式',
       styleHint: '菜单栏里的样子',
       styles: {
@@ -2329,6 +2348,7 @@ export default {
     rail: {
       menuBar: '菜单栏',
       menuBarSub: '每项单独显示，点它看详情 · 数量不限',
+      menuBarCombinedSub: '已开启的指标合并为一项并轮流显示，点它查看全部',
       empty: '菜单栏里还没有监控项',
       crowded: '项目多时，放不下的会被刘海挡住；可以把样式改成「只显示数值」。',
       refresh: '每 {count} 秒刷新 · 按住 ⌘ 拖动调整顺序',
@@ -2338,6 +2358,8 @@ export default {
     },
     settings: {
       menuBar: '菜单栏',
+      combined: '合并并轮流显示',
+      combinedHint: '把已开启的指标合并成一项，轮流显示；关闭后每个指标单独显示。',
       interval: '刷新频率',
       intervalHint: '越快越耗电；屏幕关闭和睡眠时自动暂停',
       seconds: '{count} 秒',
@@ -2345,7 +2367,7 @@ export default {
       notVisibleHint: 'macOS 26 起要在「系统设置 → 菜单栏」里允许 OpenNavo；项目太多时，放不下的会被刘海挡住',
       openSettings: '打开系统设置',
       menuBarNote:
-        '每个指标都是独立的菜单栏项，数量不限；默认开启 CPU 和内存。点任意一项，就在它下面弹出这一项的详情。',
+        'CPU 和内存默认开启，数量不限。点菜单栏里的一项，就在它下面弹出详情；打开「合并并轮流显示」后，所有已开启的指标会轮流显示，点这一项可以查看全部。',
       helper: '辅助程序',
       helperHint: '{status}。只用来控制风扇；没安装时照常显示温度和转速',
       helperStatus: {

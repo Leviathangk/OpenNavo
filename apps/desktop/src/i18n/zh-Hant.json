@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "文章",
-    "subtitle": "Mac 軟體推薦、評測、教程和合集",
-    "all": "全部",
-    "typesLabel": "文章型別",
-    "types": {
-      "recommendation": "推薦",
-      "review": "評測",
-      "tutorial": "教程",
-      "roundup": "合集",
-      "news": "新聞"
-    },
-    "emptyTitle": "還沒有文章",
-    "emptyDescription": "文章釋出後會顯示在這裡。",
-    "readingTime": "閱讀約 {minutes} 分鐘",
-    "published": "{date} 釋出",
-    "updated": "{date} 更新",
-    "editorial": "OpenNavo 編輯部",
-    "sourceText": "這篇文章還沒有當前語言的版本，下面顯示的是原文。",
-    "testNote": "測試環境：",
-    "toc": "目錄",
-    "sources": "參考來源",
-    "appCardNote": "當前目錄資料：版本和安裝量隨目錄更新，可能與撰寫時不同。",
-    "mentionedApps": "文中提到的 App",
-    "related": "相關文章",
-    "withdrawnTitle": "這篇文章已撤下",
-    "withdrawnBody": "文章內容可能已過時或不再準確，因此不再提供。可以看看其他文章。",
-    "backToList": "瀏覽全部文章"
-  },
   "brewfile": {
     "installTitle": "安裝清單中的軟體",
     "title": "我的清單",
@@ -75,6 +46,7 @@
     "monitor": "電腦監控",
     "security": "掃描病毒",
     "securityBadge": "{count} 項需要處理",
+    "webapps": "網頁應用",
     "firewall": "應用防火牆",
     "firewallBadge": "{count} 個連線等待確認"
   },
@@ -1552,6 +1524,52 @@
     "quitHint": "如果應用未退出或你取消退出，將暫緩該項更新，不會強制關閉。",
     "deferred": "已暫緩"
   },
+  "webapps": {
+    "title": "網頁應用",
+    "subtitle": "把網站變成獨立的 Mac 應用，有自己的視窗和獨立的資料空間。",
+    "new": "新建網頁應用",
+    "emptyTitle": "還沒有網頁應用",
+    "emptyBody": "輸入網址，OpenNavo 會在這台 Mac 上生成一個獨立的 App。它使用系統 WebView，不佔用瀏覽器標籤頁。",
+    "name": "名稱",
+    "namePlaceholder": "例如：文件",
+    "url": "網址",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "只支援 http 和 https 網址。",
+    "create": "建立",
+    "invalidName": "名稱不能為空，也不能包含 / 或 :",
+    "invalidUrl": "請輸入有效的 http 或 https 網址。",
+    "exists": "已經有同名應用，請換一個名稱。",
+    "failed": "操作失敗，請重試。",
+    "open": "開啟",
+    "reveal": "在訪達中顯示",
+    "delete": "刪除",
+    "deleteTitle": "刪除「{name}」？",
+    "deleteBody": "應用會移到垃圾桶，之後可以恢復。",
+    "storageNote": "應用儲存在「應用程式」資料夾，每個應用使用獨立的網站資料和 Cookie。",
+    "createdAt": "建立於 {date}",
+    "tabs": {
+      "installed": "我的應用",
+      "catalog": "內建應用"
+    },
+    "browseCatalog": "瀏覽內建應用",
+    "catalog": {
+      "hint": "這些是 OpenNavo 內建的常用網站。點「新增」才會生成獨立 App，已新增的可以在「我的應用」裡刪除。",
+      "add": "新增",
+      "added": "已新增",
+      "all": "全部",
+      "filter": "應用分類",
+      "drm": "DRM 限制",
+      "categories": {
+        "ai": "AI",
+        "social": "社交",
+        "work": "工作",
+        "dev": "開發",
+        "media": "影音",
+        "mail": "郵箱",
+        "tools": "工具"
+      }
+    }
+  },
   "page": {
     "comingSoon": "頁面內容在後續任務中接入。"
   },
@@ -2299,7 +2317,8 @@
     "menuBar": {
       "title": "選單列",
       "show": "在選單列顯示",
-      "showHint": "單獨一項，點它在下方彈出這一項的詳情",
+      "showHint": "顯示在選單列；點它檢視詳情",
+      "showHintCombined": "包含在合併的選單列項裡；點那一項檢視詳情",
       "style": "樣式",
       "styleHint": "選單列裡的樣子",
       "styles": {
@@ -2324,6 +2343,7 @@
     "rail": {
       "menuBar": "選單列",
       "menuBarSub": "每項單獨顯示，點它看詳情 · 數量不限",
+      "menuBarCombinedSub": "已開啟的指標合併為一項並輪流顯示，點它檢視全部",
       "empty": "選單列裡還沒有監控項",
       "crowded": "項目多時，放不下的會被劉海擋住；可以把樣式改成「只顯示數值」。",
       "refresh": "每 {count} 秒重新整理 · 按住 ⌘ 拖動調整順序",
@@ -2333,13 +2353,15 @@
     },
     "settings": {
       "menuBar": "選單列",
+      "combined": "合併並輪流顯示",
+      "combinedHint": "把已開啟的指標合併成一項，輪流顯示；關閉後每個指標單獨顯示。",
       "interval": "重新整理頻率",
       "intervalHint": "越快越耗電；螢幕關閉和睡眠時自動暫停",
       "seconds": "{count} 秒",
       "notVisible": "開啟後沒看到？",
       "notVisibleHint": "macOS 26 起要在「系統設定 → 選單列」裡允許 OpenNavo；項目太多時，放不下的會被劉海擋住",
       "openSettings": "開啟系統設定",
-      "menuBarNote": "每個指標都是獨立的選單列項，數量不限；預設開啟 CPU 和記憶體。點任意一項，就在它下面彈出這一項的詳情。",
+      "menuBarNote": "CPU 和記憶體預設開啟，數量不限。點選單列裡的一項，就在它下面彈出詳情；開啟「合併並輪流顯示」後，所有已開啟的指標會輪流顯示，點這一項可以檢視全部。",
       "helper": "輔助程式",
       "helperHint": "{status}。只用來控制風扇；沒安裝時照常顯示溫度和轉速",
       "helperStatus": {

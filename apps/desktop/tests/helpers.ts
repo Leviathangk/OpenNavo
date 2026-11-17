@@ -85,8 +85,6 @@ export const stubRoutes: RouteRecordRaw[] = [
     component: stub('合集页'),
     meta: { nav: 'discover' }
   },
-  { path: '/articles', name: 'articles', component: stub('文章页'), meta: { nav: 'articles' } },
-  { path: '/articles/:slug', name: 'article', component: stub('文章详情'), meta: { nav: 'articles' } },
   { path: '/brewfile', name: 'brewfile', component: stub('我的清单'), meta: { nav: 'brewfile' } },
   {
     path: '/installed',
@@ -111,6 +109,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     name: 'cleanup',
     components: { default: stub('清理电脑页'), rail: stub('磁盘') },
     meta: { nav: 'cleanup' }
+  },
+  {
+    path: '/webapps',
+    name: 'webapps',
+    component: stub('网页应用页'),
+    meta: { nav: 'webapps' }
   },
   {
     path: '/monitor',

@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "Articles",
-    "subtitle": "Recommandations, tests, tutoriels et sélections d’apps Mac",
-    "all": "Toutes",
-    "typesLabel": "Type d’article",
-    "types": {
-      "recommendation": "Recommandation",
-      "review": "Test",
-      "tutorial": "Tutoriel",
-      "roundup": "Collections",
-      "news": "Actualité"
-    },
-    "emptyTitle": "Aucun article pour l’instant",
-    "emptyDescription": "Les articles publiés apparaîtront ici.",
-    "readingTime": "{minutes} min de lecture",
-    "published": "Publié le {date}",
-    "updated": "Mise à jour le {date}",
-    "editorial": "Rédaction OpenNavo",
-    "sourceText": "Cet article n’est pas encore disponible dans votre langue : la version originale s’affiche ci-dessous.",
-    "testNote": "Conditions de test :",
-    "toc": "Sommaire",
-    "sources": "Sources",
-    "appCardNote": "Données actuelles du catalogue : la version et le nombre d’installations suivent le catalogue et peuvent avoir changé depuis la rédaction.",
-    "mentionedApps": "Apps citées dans cet article",
-    "related": "Articles associés",
-    "withdrawnTitle": "Cet article a été retiré",
-    "withdrawnBody": "Il est peut-être obsolète ou n’est plus exact : il n’est donc plus disponible. Découvrez nos autres articles.",
-    "backToList": "Parcourir tous les articles"
-  },
   "brewfile": {
     "installTitle": "Installer les apps de la liste",
     "title": "Ma liste",
@@ -74,6 +45,7 @@
     "monitor": "Surveillance",
     "security": "Analyse antivirus",
     "securityBadge": "{count} élément à traiter | {count} éléments à traiter",
+    "webapps": "Apps web",
     "firewall": "Pare-feu des apps",
     "firewallBadge": "{count} connexion attend votre réponse | {count} connexions attendent votre réponse",
     "developerMap": "Carte des développeurs"
@@ -1552,6 +1524,52 @@
     "quitHint": "Si une app reste ouverte ou si vous annulez sa fermeture, sa mise à jour sera différée. Aucune fermeture ne sera forcée.",
     "deferred": "Différé"
   },
+  "webapps": {
+    "title": "Apps web",
+    "subtitle": "Transformez un site web en app Mac autonome, avec sa propre fenêtre et des données séparées.",
+    "new": "Nouvelle app web",
+    "emptyTitle": "Aucune app web pour l’instant",
+    "emptyBody": "Saisissez l’adresse d’un site et OpenNavo crée une app Mac sur ce Mac. Elle utilise la vue web du système, pas un onglet de navigateur.",
+    "name": "Nom",
+    "namePlaceholder": "Par exemple, Documents",
+    "url": "Adresse du site",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Seules les adresses http et https sont prises en charge.",
+    "create": "Créer",
+    "invalidName": "Saisissez un nom sans / ni :",
+    "invalidUrl": "Saisissez une adresse http ou https valide.",
+    "exists": "Une app portant ce nom existe déjà. Choisissez un autre nom.",
+    "failed": "L’opération a échoué. Réessayez.",
+    "open": "Ouvrir",
+    "reveal": "Afficher dans le Finder",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer {name} ?",
+    "deleteBody": "L’app sera placée dans la corbeille et pourra être restaurée.",
+    "storageNote": "Les apps sont enregistrées dans le dossier Applications. Chacune conserve ses propres données web et cookies.",
+    "createdAt": "Créée le {date}",
+    "tabs": {
+      "installed": "Mes apps",
+      "catalog": "Intégrées"
+    },
+    "browseCatalog": "Voir les apps intégrées",
+    "catalog": {
+      "hint": "Ces sites courants sont fournis avec OpenNavo. Cliquez sur « Ajouter » pour créer une app autonome ; les apps ajoutées peuvent être supprimées dans « Mes apps ».",
+      "add": "Ajouter",
+      "added": "Ajoutée",
+      "all": "Tout",
+      "filter": "Catégories d'apps",
+      "drm": "Limité par DRM",
+      "categories": {
+        "ai": "IA",
+        "social": "Social",
+        "work": "Travail",
+        "dev": "Développement",
+        "media": "Médias",
+        "mail": "Courriel",
+        "tools": "Outils"
+      }
+    }
+  },
   "page": {
     "comingSoon": "Le contenu de cette page sera ajouté ultérieurement."
   },
@@ -2299,7 +2317,8 @@
     "menuBar": {
       "title": "Barre des menus",
       "show": "Afficher dans la barre des menus",
-      "showHint": "Élément indépendant ; cliquez pour afficher ses détails juste en dessous",
+      "showHint": "Affiché dans la barre des menus ; cliquez pour voir les détails",
+      "showHintCombined": "Inclus dans l’élément combiné de la barre des menus ; cliquez sur cet élément pour voir les détails",
       "style": "Style",
       "styleHint": "Apparence dans la barre des menus",
       "styles": {
@@ -2324,6 +2343,7 @@
     "rail": {
       "menuBar": "Barre des menus",
       "menuBarSub": "Chaque indicateur est indépendant ; cliquez pour les détails · sans limite",
+      "menuBarCombinedSub": "Les indicateurs activés alternent dans un élément ; cliquez pour tout voir",
       "empty": "Aucun indicateur dans la barre des menus",
       "crowded": "Avec trop d’éléments, certains peuvent être masqués par l’encoche ; essayez le style Valeur seule.",
       "refresh": "Actualisation toutes les {count} seconde · glissez avec ⌘ pour réorganiser | Actualisation toutes les {count} secondes · glissez avec ⌘ pour réorganiser",
@@ -2333,13 +2353,15 @@
     },
     "settings": {
       "menuBar": "Barre des menus",
+      "combined": "Combiner et alterner",
+      "combinedHint": "Affiche tous les indicateurs activés dans un seul élément de la barre des menus, en les faisant défiler un par un. Désactivez cette option pour donner un élément à chaque indicateur.",
       "interval": "Fréquence d’actualisation",
       "intervalHint": "Une fréquence élevée consomme plus ; pause automatique quand l’écran est éteint ou le Mac en veille",
       "seconds": "{count} seconde | {count} secondes",
       "notVisible": "Invisible après activation ?",
       "notVisibleHint": "Depuis macOS 26, autorisez OpenNavo dans Réglages Système → Barre des menus. Si les éléments sont trop nombreux, certains peuvent être masqués par l’encoche",
       "openSettings": "Ouvrir les Réglages Système",
-      "menuBarNote": "Chaque indicateur est indépendant et leur nombre est illimité ; CPU et mémoire sont activés par défaut. Cliquez sur un indicateur pour afficher ses détails juste en dessous.",
+      "menuBarNote": "CPU et mémoire sont activés par défaut, sans limite. Cliquez sur un élément de la barre des menus pour afficher ses détails juste en dessous ; activez « Combiner et alterner » pour afficher tous les indicateurs activés à tour de rôle et cliquez sur l’élément pour les voir tous.",
       "helper": "Assistant",
       "helperHint": "{status}. Sert uniquement au contrôle des ventilateurs ; températures et vitesses restent visibles sans lui",
       "helperStatus": {

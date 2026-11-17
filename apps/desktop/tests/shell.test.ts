@@ -35,12 +35,12 @@ describe('AppShell', () => {
     const links = wrapper.findAll('aside nav a, aside > div > a');
     expect(links.map(link => link.attributes('href'))).toEqual([
       '/discover',
+      '/webapps',
       '/developer-map',
       '/categories',
       '/rankings',
       '/collections',
       '/recent',
-      '/articles',
       // Tools: Scan for Viruses, then the app firewall right below it, then Monitor.
       '/security',
       '/firewall',

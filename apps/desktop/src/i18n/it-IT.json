@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "Articoli",
-    "subtitle": "Consigli, recensioni, tutorial e rassegne di app per Mac",
-    "all": "Tutti",
-    "typesLabel": "Tipo di articolo",
-    "types": {
-      "recommendation": "Consigli",
-      "review": "Recensione",
-      "tutorial": "Tutorial",
-      "roundup": "Raccolte",
-      "news": "Notizie"
-    },
-    "emptyTitle": "Ancora nessun articolo",
-    "emptyDescription": "Gli articoli pubblicati appariranno qui.",
-    "readingTime": "{minutes} min di lettura",
-    "published": "Pubblicato il {date}",
-    "updated": "Aggiornato il {date}",
-    "editorial": "Redazione di OpenNavo",
-    "sourceText": "Questo articolo non è ancora disponibile nella tua lingua, quindi qui sotto trovi l’originale.",
-    "testNote": "Ambiente di test:",
-    "toc": "Indice",
-    "sources": "Fonti",
-    "appCardNote": "Dati attuali del catalogo: versione e installazioni seguono il catalogo e possono differire rispetto a quando è stato scritto l’articolo.",
-    "mentionedApps": "App citate in questo articolo",
-    "related": "Articoli correlati",
-    "withdrawnTitle": "Questo articolo è stato ritirato",
-    "withdrawnBody": "Potrebbe essere obsoleto o non più accurato, quindi non è più disponibile. Dai un’occhiata ai nostri altri articoli.",
-    "backToList": "Sfoglia tutti gli articoli"
-  },
   "brewfile": {
     "installTitle": "Installa le app dell’elenco",
     "title": "Il mio elenco",
@@ -74,6 +45,7 @@
     "monitor": "Monitoraggio",
     "security": "Scansione virus",
     "securityBadge": "{count} elemento da controllare | {count} elementi da controllare",
+    "webapps": "App web",
     "firewall": "Firewall app",
     "firewallBadge": "{count} connessione in attesa di conferma | {count} connessioni in attesa di conferma",
     "developerMap": "Mappa degli sviluppatori"
@@ -1552,6 +1524,52 @@
     "quitHint": "Se un’app resta aperta o annulli l’uscita, il suo aggiornamento verrà rimandato. La chiusura non verrà forzata.",
     "deferred": "Rimandato"
   },
+  "webapps": {
+    "title": "App web",
+    "subtitle": "Trasforma un sito web in un’app Mac autonoma, con finestra e dati propri.",
+    "new": "Nuova app web",
+    "emptyTitle": "Nessuna app web",
+    "emptyBody": "Inserisci l’indirizzo di un sito e OpenNavo crea un’app Mac su questo Mac. Usa la vista web di sistema, non una scheda del browser.",
+    "name": "Nome",
+    "namePlaceholder": "Ad esempio, Documenti",
+    "url": "Indirizzo del sito",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Sono supportati solo indirizzi http e https.",
+    "create": "Crea",
+    "invalidName": "Inserisci un nome senza / o :",
+    "invalidUrl": "Inserisci un indirizzo http o https valido.",
+    "exists": "Esiste già un’app con questo nome. Scegline un altro.",
+    "failed": "Operazione non riuscita. Riprova.",
+    "open": "Apri",
+    "reveal": "Mostra nel Finder",
+    "delete": "Elimina",
+    "deleteTitle": "Eliminare {name}?",
+    "deleteBody": "L’app verrà spostata nel Cestino e potrà essere ripristinata.",
+    "storageNote": "Le app sono salvate nella cartella Applicazioni. Ognuna mantiene i propri dati web e cookie.",
+    "createdAt": "Creata il {date}",
+    "tabs": {
+      "installed": "Le mie app",
+      "catalog": "Integrate"
+    },
+    "browseCatalog": "Vedi app integrate",
+    "catalog": {
+      "hint": "Questi siti comuni sono inclusi in OpenNavo. Premi « Aggiungi » per creare un'app autonoma; le app aggiunte possono essere eliminate da « Le mie app ».",
+      "add": "Aggiungi",
+      "added": "Aggiunta",
+      "all": "Tutti",
+      "filter": "Categorie di app",
+      "drm": "Limitato da DRM",
+      "categories": {
+        "ai": "IA",
+        "social": "Social",
+        "work": "Lavoro",
+        "dev": "Sviluppo",
+        "media": "Media",
+        "mail": "Posta",
+        "tools": "Strumenti"
+      }
+    }
+  },
   "page": {
     "comingSoon": "Il contenuto di questa pagina verrà aggiunto in un’attività successiva."
   },
@@ -2299,7 +2317,8 @@
     "menuBar": {
       "title": "Barra dei menu",
       "show": "Mostra nella barra dei menu",
-      "showHint": "Voce indipendente; fai clic per vedere i dettagli della metrica sotto di essa",
+      "showHint": "Visibile nella barra dei menu; fai clic per i dettagli",
+      "showHintCombined": "Incluso nella voce combinata della barra dei menu; fai clic su quella voce per i dettagli",
       "style": "Stile",
       "styleHint": "Aspetto nella barra dei menu",
       "styles": {
@@ -2324,6 +2343,7 @@
     "rail": {
       "menuBar": "Barra dei menu",
       "menuBarSub": "Una voce per metrica, fai clic per i dettagli · nessun limite",
+      "menuBarCombinedSub": "Le metriche attive si alternano in una voce; fai clic per vederle tutte",
       "empty": "Ancora nessuna metrica nella barra dei menu",
       "crowded": "Con molte voci, alcune possono finire dietro la tacca dello schermo. Prova lo stile “Solo valore”.",
       "refresh": "Aggiornamento ogni {count} secondo · trascina tenendo premuto ⌘ per riordinare | Aggiornamento ogni {count} secondi · trascina tenendo premuto ⌘ per riordinare",
@@ -2333,13 +2353,15 @@
     },
     "settings": {
       "menuBar": "Barra dei menu",
+      "combined": "Combina e alterna",
+      "combinedHint": "Mostra tutte le metriche attive in un'unica voce della barra dei menu, alternandole una alla volta. Disattiva per dare a ogni metrica la propria voce.",
       "interval": "Frequenza di aggiornamento",
       "intervalHint": "Una frequenza maggiore consuma più energia; pausa automatica a schermo spento o con Mac in stop",
       "seconds": "{count} secondo | {count} secondi",
       "notVisible": "Non compare dopo l’attivazione?",
       "notVisibleHint": "Da macOS 26, autorizza OpenNavo in Impostazioni di Sistema → Barra dei menu. Con molte voci, alcune possono finire dietro la tacca dello schermo",
       "openSettings": "Apri Impostazioni di Sistema",
-      "menuBarNote": "Ogni metrica è una voce indipendente nella barra dei menu, senza limiti; CPU e memoria sono attive per impostazione predefinita. Fai clic su una voce per mostrarne i dettagli sotto di essa.",
+      "menuBarNote": "CPU e memoria sono attive per impostazione predefinita, senza limiti. Fai clic su una voce della barra dei menu per vederne i dettagli sotto; attiva «Combina e alterna» per mostrare a turno tutte le metriche attive e fai clic sulla voce per vederle tutte.",
       "helper": "Assistente",
       "helperHint": "{status}. Serve solo a controllare le ventole; temperature e velocità sono visibili anche senza installarlo",
       "helperStatus": {

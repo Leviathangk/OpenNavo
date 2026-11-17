@@ -140,7 +140,7 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
                 .append_pair("preview", "1");
             format!("{}?{}", route.path(), route.query()?)
         }
-        "installed" | "cleanup" | "monitor" | "security" | "firewall"
+        "installed" | "cleanup" | "monitor" | "webapps" | "security" | "firewall"
             if segments.is_empty() && action.is_none() =>
         {
             if !query.is_empty() {
@@ -808,7 +808,14 @@ mod safety_preview_tests {
 
     #[test]
     fn client_pages_open_without_an_action() {
-        for page in ["installed", "cleanup", "monitor", "security", "firewall"] {
+        for page in [
+            "installed",
+            "cleanup",
+            "monitor",
+            "webapps",
+            "security",
+            "firewall",
+        ] {
             let event = super::parse(&format!("opennavo://{page}")).unwrap();
             assert_eq!(event.route, format!("/{page}"));
             assert!(event.action.is_none());

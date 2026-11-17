@@ -1,33 +1,4 @@
 {
-  "articles": {
-    "title": "Artikel",
-    "subtitle": "Empfehlungen, Tests, Anleitungen und Übersichten zu Mac-Apps",
-    "all": "Alle",
-    "typesLabel": "Artikeltyp",
-    "types": {
-      "recommendation": "empfohlen",
-      "review": "Test",
-      "tutorial": "Anleitung",
-      "roundup": "Sammlungen",
-      "news": "Neuigkeiten"
-    },
-    "emptyTitle": "Noch keine Artikel",
-    "emptyDescription": "Veröffentlichte Artikel erscheinen hier.",
-    "readingTime": "{minutes} Min. Lesezeit",
-    "published": "Veröffentlicht am {date}",
-    "updated": "Aktualisiert am {date}",
-    "editorial": "OpenNavo-Redaktion",
-    "sourceText": "Diesen Artikel gibt es noch nicht in Ihrer Sprache, daher wird unten das Original angezeigt.",
-    "testNote": "So haben wir getestet:",
-    "toc": "Verzeichnis",
-    "sources": "Quellen",
-    "appCardNote": "Aktuelle Katalogdaten: Version und Installationen folgen dem Katalog und können vom Stand beim Verfassen abweichen.",
-    "mentionedApps": "Apps in diesem Artikel",
-    "related": "Verwandte Artikel",
-    "withdrawnTitle": "Dieser Artikel wurde zurückgezogen",
-    "withdrawnBody": "Er ist möglicherweise veraltet oder nicht mehr zutreffend und daher nicht mehr verfügbar. Sehen Sie sich gern unsere anderen Artikel an.",
-    "backToList": "Alle Artikel ansehen"
-  },
   "brewfile": {
     "installTitle": "Apps aus der Liste installieren",
     "title": "Meine Liste",
@@ -74,6 +45,7 @@
     "monitor": "Systemmonitor",
     "security": "Virenscan",
     "securityBadge": "{count} Eintrag erfordert Aufmerksamkeit | {count} Einträge erfordern Aufmerksamkeit",
+    "webapps": "Web-Apps",
     "firewall": "App-Firewall",
     "firewallBadge": "{count} Verbindung wartet auf Bestätigung | {count} Verbindungen warten auf Bestätigung",
     "developerMap": "Entwicklerkarte"
@@ -1552,6 +1524,52 @@
     "quitHint": "Bleibt eine App geöffnet oder brechen Sie das Beenden ab, wird ihr Update verschoben. Apps werden nicht zwangsweise beendet.",
     "deferred": "Verschoben"
   },
+  "webapps": {
+    "title": "Web-Apps",
+    "subtitle": "Machen Sie eine Website zu einer eigenständigen Mac-App mit eigenem Fenster und eigenen Daten.",
+    "new": "Neue Web-App",
+    "emptyTitle": "Noch keine Web-Apps",
+    "emptyBody": "Geben Sie eine Website-Adresse ein, und OpenNavo erstellt dafür eine Mac-App auf diesem Mac. Sie nutzt die System-Webansicht, keinen Browser-Tab.",
+    "name": "Name",
+    "namePlaceholder": "Zum Beispiel Dokumente",
+    "url": "Website-Adresse",
+    "urlPlaceholder": "https://example.com",
+    "urlHint": "Nur http- und https-Adressen werden unterstützt.",
+    "create": "Erstellen",
+    "invalidName": "Geben Sie einen Namen ohne / oder : ein",
+    "invalidUrl": "Geben Sie eine gültige http- oder https-Adresse ein.",
+    "exists": "Eine App mit diesem Namen existiert bereits. Wählen Sie einen anderen Namen.",
+    "failed": "Der Vorgang ist fehlgeschlagen. Versuchen Sie es erneut.",
+    "open": "Öffnen",
+    "reveal": "Im Finder zeigen",
+    "delete": "Löschen",
+    "deleteTitle": "{name} löschen?",
+    "deleteBody": "Die App wird in den Papierkorb gelegt und kann später wiederhergestellt werden.",
+    "storageNote": "Apps werden im Ordner „Programme“ gespeichert. Jede behält eigene Website-Daten und Cookies.",
+    "createdAt": "Erstellt am {date}",
+    "tabs": {
+      "installed": "Meine Apps",
+      "catalog": "Integriert"
+    },
+    "browseCatalog": "Integrierte Apps ansehen",
+    "catalog": {
+      "hint": "Dies sind gängige Websites, die OpenNavo mitbringt. Mit „Hinzufügen“ wird eine eigenständige App erstellt; hinzugefügte Apps lassen sich unter „Meine Apps“ löschen.",
+      "add": "Hinzufügen",
+      "added": "Hinzugefügt",
+      "all": "Alle",
+      "filter": "App-Kategorien",
+      "drm": "DRM-beschränkt",
+      "categories": {
+        "ai": "KI",
+        "social": "Soziales",
+        "work": "Arbeit",
+        "dev": "Entwicklung",
+        "media": "Medien",
+        "mail": "E-Mail",
+        "tools": "Werkzeuge"
+      }
+    }
+  },
   "page": {
     "comingSoon": "Diese Seite wird in einer späteren Aufgabe ergänzt."
   },
@@ -2299,7 +2317,8 @@
     "menuBar": {
       "title": "Menüleiste",
       "show": "In Menüleiste anzeigen",
-      "showHint": "Eigener Eintrag; klicken Sie für Details darunter",
+      "showHint": "In der Menüleiste sichtbar; klicken Sie für Details",
+      "showHintCombined": "Im zusammengefassten Menüleisteneintrag enthalten; klicken Sie auf diesen Eintrag für Details",
       "style": "Stil",
       "styleHint": "Darstellung in der Menüleiste",
       "styles": {
@@ -2324,6 +2343,7 @@
     "rail": {
       "menuBar": "Menüleiste",
       "menuBarSub": "Jeder Messwert einzeln; klicken für Details · Unbegrenzt",
+      "menuBarCombinedSub": "Aktivierte Messwerte wechseln sich in einem Eintrag ab; klicken Sie, um alle zu sehen",
       "empty": "Noch keine Messwerte in der Menüleiste",
       "crowded": "Bei vielen Einträgen können einige hinter der Kameraaussparung verschwinden. Versuchen Sie „Nur Wert“.",
       "refresh": "Aktualisierung jede {count} Sekunde · Mit ⌘ ziehen zum Sortieren | Aktualisierung alle {count} Sekunden · Mit ⌘ ziehen zum Sortieren",
@@ -2333,13 +2353,15 @@
     },
     "settings": {
       "menuBar": "Menüleiste",
+      "combined": "Zusammenfassen und wechseln",
+      "combinedHint": "Alle aktivierten Messwerte in einem Menüleisteneintrag abwechselnd anzeigen. Ausgeschaltet erhält jeder Messwert sein eigenes Element.",
       "interval": "Aktualisierungsrate",
       "intervalHint": "Schneller verbraucht mehr Strom; pausiert bei ausgeschaltetem Bildschirm und im Ruhezustand",
       "seconds": "{count} Sekunde | {count} Sekunden",
       "notVisible": "Nach Aktivierung nicht sichtbar?",
       "notVisibleHint": "Ab macOS 26 müssen Sie OpenNavo unter Systemeinstellungen → Menüleiste erlauben. Bei vielen Einträgen können einige hinter der Kameraaussparung verschwinden",
       "openSettings": "Systemeinstellungen öffnen",
-      "menuBarNote": "Jeder Messwert hat einen eigenen Menüleisteneintrag, ohne Begrenzung. CPU und Arbeitsspeicher sind standardmäßig aktiv. Klicken Sie auf einen Eintrag, um Details darunter zu sehen.",
+      "menuBarNote": "CPU und Arbeitsspeicher sind standardmäßig aktiviert, ohne Begrenzung. Klicken Sie auf einen Menüleisteneintrag, um die Details darunter zu sehen; mit „Zusammenfassen und wechseln“ erscheinen alle aktivierten Messwerte abwechselnd. Klicken Sie auf den Eintrag, um alle zu sehen.",
       "helper": "Hilfsprogramm",
       "helperHint": "{status}. Nur zur Lüftersteuerung; Temperaturen und Drehzahlen werden auch ohne Installation angezeigt",
       "helperStatus": {

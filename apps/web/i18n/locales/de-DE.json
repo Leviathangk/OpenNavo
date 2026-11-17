@@ -33,7 +33,8 @@
     "developerMap": "Entwicklerkarte",
     "clientGroup": "Mac-App",
     "clientHint": "Läuft auf deinem Mac",
-    "firewall": "Firewall"
+    "firewall": "Firewall",
+    "webapps": "Web-Apps"
   },
   "sidebar": {
     "appLabel": "App herunterladen",
@@ -1842,7 +1843,8 @@
       "security": "Sicherheit",
       "settings": "Einstellungen",
       "installing": "{name} wird installiert",
-      "scanning": "Download wird gescannt: {name}"
+      "scanning": "Download wird gescannt: {name}",
+      "webapps": "Web-Apps"
     },
     "security": {
       "kicker": "Sicherheit",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "Sieh vor dem Aufräumen, wie viel Platz frei wird",
           "undo": "Reste landen im Papierkorb, du kannst es rückgängig machen"
+        }
+      },
+      "webapps": {
+        "lede": "Verwandle häufig genutzte Websites in eigenständige Mac-Apps – mit eigenem Fenster, Symbol und Datenbereich.",
+        "metaTitle": "Websites als eigenständige Mac-Apps · OpenNavo",
+        "app": {
+          "window": "Jede Website läuft in einem eigenen Fenster statt in einem Browser-Tab.",
+          "catalog": "Über 40 integrierte Websites, plus jede Adresse, die du hinzufügst.",
+          "data": "Jede App behält ihre eigene Anmeldung und lokalen Daten."
+        },
+        "demo": {
+          "badge": "Eigenes Fenster und Symbol",
+          "new": "Neue Web-App"
         }
       }
     }

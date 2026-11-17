@@ -180,6 +180,7 @@ export {
 } from './utils/theme';
 export type { ThemePreference } from './utils/theme';
 export { parseHighlight } from './utils/highlight';
+export { isImeComposing, isImeEnter, resetImeComposition, runOnEnter } from './utils/ime';
 export { classifyLogLine } from './utils/log';
 export type { LogLineKind } from './utils/log';
 export type { HighlightPart } from './utils/highlight';

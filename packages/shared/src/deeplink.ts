@@ -16,7 +16,7 @@ export type DeepLinkTarget =
   | { type: 'route'; route: ClientRoute };
 
 /** Desktop pages a web link may open. Navigation only: no query and no action. */
-export const CLIENT_ROUTES = ['installed', 'updates', 'cleanup', 'monitor', 'security', 'firewall'] as const;
+export const CLIENT_ROUTES = ['installed', 'updates', 'cleanup', 'monitor', 'webapps', 'security', 'firewall'] as const;
 export type ClientRoute = (typeof CLIENT_ROUTES)[number];
 
 function truncate(text: string, length: number): string {
@@ -89,6 +89,7 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
     case 'installed':
     case 'cleanup':
     case 'monitor':
+    case 'webapps':
     case 'security':
     case 'firewall':
       return segments.length === 0 && !url.searchParams.toString() ? { type: 'route', route } : null;

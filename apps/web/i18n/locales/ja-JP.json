@@ -33,7 +33,8 @@
     "developerMap": "開発者マップ",
     "clientGroup": "Mac アプリ",
     "clientHint": "Mac で実行します",
-    "firewall": "ファイアウォール"
+    "firewall": "ファイアウォール",
+    "webapps": "Webアプリ"
   },
   "sidebar": {
     "appLabel": "アプリを入手",
@@ -1842,7 +1843,8 @@
       "security": "セキュリティ",
       "settings": "設定",
       "installing": "{name}をインストール中",
-      "scanning": "{name}のインストーラをスキャン中"
+      "scanning": "{name}のインストーラをスキャン中",
+      "webapps": "Webアプリ"
     },
     "security": {
       "kicker": "セキュリティ",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "クリーンアップで解放される容量を事前に確認",
           "undo": "残りファイルはゴミ箱へ入り、元に戻せます"
+        }
+      },
+      "webapps": {
+        "lede": "よく使うサイトを独立した Mac アプリに。専用ウィンドウ、アイコン、データ領域を持ち、ネイティブアプリのように起動できます。",
+        "metaTitle": "Web サイトを独立した Mac アプリに · OpenNavo",
+        "app": {
+          "window": "各サイトはブラウザのタブではなく専用ウィンドウで動きます",
+          "catalog": "40 以上の定番サイトを内蔵し、任意の URL も追加できます",
+          "data": "アプリごとにサインイン状態とローカルデータを分離します"
+        },
+        "demo": {
+          "badge": "専用ウィンドウとアイコン",
+          "new": "Web アプリを作成"
         }
       }
     }

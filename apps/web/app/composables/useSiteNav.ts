@@ -26,6 +26,7 @@ export function useSiteNav() {
     if (under('/updates')) return 'updates';
     if (under('/cleanup')) return 'cleanup';
     if (under('/monitor')) return 'monitor';
+    if (under('/webapps')) return 'webapps';
     if (under('/brewfile')) return 'collections';
     if (under('/security')) return 'security';
     for (const key of ['categories', 'rankings', 'recent', 'articles', 'collections', 'about', 'feedback'] as const)
@@ -80,6 +81,7 @@ export function useSiteNav() {
         clientItem('installed', '/installed', 'lucide:package', t('landing.window.installed')),
         clientItem('updates', '/updates', 'lucide:circle-arrow-down', t('landing.window.updates')),
         clientItem('cleanup', '/cleanup', 'lucide:eraser', t('landing.window.cleanup')),
+        clientItem('webapps', '/webapps', 'lucide:app-window', t('landing.window.webapps')),
         clientItem('monitor', '/monitor', 'lucide:activity', t('landing.window.monitor')),
         clientItem('security', '/security', 'lucide:shield-check', t('nav.security')),
         clientItem('firewall', '/security/firewall', 'lucide:brick-wall-fire', t('nav.firewall'))

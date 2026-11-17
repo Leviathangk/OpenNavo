@@ -1,37 +1,6 @@
 import type { MessageSchema } from './index';
 
 const messages: MessageSchema = {
-  articles: {
-    title: 'Articles',
-    subtitle: 'Mac app picks, reviews, tutorials and roundups',
-    all: 'All',
-    typesLabel: 'Article type',
-    types: {
-      recommendation: 'Pick',
-      review: 'Review',
-      tutorial: 'Tutorial',
-      roundup: 'Roundup',
-      news: 'News'
-    },
-    emptyTitle: 'No articles yet',
-    emptyDescription: 'Published articles will appear here.',
-    readingTime: '{minutes} min read',
-    published: 'Published {date}',
-    updated: 'Updated {date}',
-    editorial: 'OpenNavo Editors',
-    sourceText: 'This article isn’t available in your language yet, so the original is shown below.',
-    testNote: 'How we tested:',
-    toc: 'Contents',
-    sources: 'Sources',
-    appCardNote:
-      'Current catalog data: the version and installs follow the catalog and may differ from when this was written.',
-    mentionedApps: 'Apps in this article',
-    related: 'Related articles',
-    withdrawnTitle: 'This article has been withdrawn',
-    withdrawnBody:
-      'It may be out of date or no longer accurate, so it is no longer available. Have a look at our other articles.',
-    backToList: 'Browse all articles'
-  },
   brewfile: {
     installTitle: 'Install apps from My List',
     title: 'My list',
@@ -80,6 +49,7 @@ const messages: MessageSchema = {
     monitor: 'Monitor',
     security: 'Scan for Viruses',
     securityBadge: '{count} item needs attention | {count} items need attention',
+    webapps: 'Web Apps',
     firewall: 'App Firewall',
     firewallBadge: '{count} connection waiting for an answer | {count} connections waiting for an answer'
   },
@@ -1594,6 +1564,53 @@ const messages: MessageSchema = {
     quitHint: 'If an app stays open or you cancel quitting, its update will be deferred. Apps will not be force quit.',
     deferred: 'Deferred'
   },
+  webapps: {
+    title: 'Web Apps',
+    subtitle: 'Turn a website into a standalone Mac app with its own window and separate data.',
+    new: 'New Web App',
+    emptyTitle: 'No web apps yet',
+    emptyBody:
+      'Enter a website address and OpenNavo creates a Mac app for it on this Mac. It uses the system web view, not a browser tab.',
+    name: 'Name',
+    namePlaceholder: 'For example, Docs',
+    url: 'Website address',
+    urlPlaceholder: 'https://example.com',
+    urlHint: 'Only http and https addresses are supported.',
+    create: 'Create',
+    invalidName: 'Enter a name without / or :',
+    invalidUrl: 'Enter a valid http or https address.',
+    exists: 'An app with this name already exists. Choose another name.',
+    failed: 'Something went wrong. Try again.',
+    open: 'Open',
+    reveal: 'Show in Finder',
+    delete: 'Delete',
+    deleteTitle: 'Delete {name}?',
+    deleteBody: 'The app moves to the Trash and can be restored later.',
+    storageNote: 'Apps are saved in your Applications folder. Each one keeps its own website data and cookies.',
+    createdAt: 'Created {date}',
+    tabs: {
+      installed: 'My Apps',
+      catalog: 'Built-in'
+    },
+    browseCatalog: 'Browse built-in apps',
+    catalog: {
+      hint: 'These common sites are included with OpenNavo. Choose Add to create a standalone app; added apps can be deleted from My Apps.',
+      add: 'Add',
+      added: 'Added',
+      all: 'All',
+      filter: 'App categories',
+      drm: 'DRM limited',
+      categories: {
+        ai: 'AI',
+        social: 'Social',
+        work: 'Work',
+        dev: 'Developer',
+        media: 'Media',
+        mail: 'Mail',
+        tools: 'Tools'
+      }
+    }
+  },
   page: {
     comingSoon: 'This page will be filled in by a later task.'
   },
@@ -2380,7 +2397,8 @@ const messages: MessageSchema = {
     menuBar: {
       title: 'Menu Bar',
       show: 'Show in Menu Bar',
-      showHint: 'Its own item; click it to see this metric’s details below it',
+      showHint: 'Shown in the menu bar; click it to see details',
+      showHintCombined: 'Included in the combined menu bar item; click that item to see details',
       style: 'Style',
       styleHint: 'How it looks in the menu bar',
       styles: {
@@ -2406,6 +2424,7 @@ const messages: MessageSchema = {
     rail: {
       menuBar: 'Menu Bar',
       menuBarSub: 'Each metric is its own item; click it for details · no limit',
+      menuBarCombinedSub: 'Enabled metrics rotate in one item; click it to see all',
       empty: 'No monitoring items in the menu bar yet',
       crowded: 'With many items, some may hide behind the notch; try the Value Only style.',
       refresh:
@@ -2416,6 +2435,9 @@ const messages: MessageSchema = {
     },
     settings: {
       menuBar: 'Menu Bar',
+      combined: 'Combine and rotate',
+      combinedHint:
+        'Show every enabled metric in one menu bar item, rotating through them one at a time. Turn it off to give each metric its own item.',
       interval: 'Refresh rate',
       intervalHint: 'Faster uses more power; pauses while the display is off or the Mac sleeps',
       seconds: '{count} second | {count} seconds',
@@ -2424,7 +2446,7 @@ const messages: MessageSchema = {
         'Since macOS 26, allow OpenNavo in System Settings → Menu Bar; with many items, some may hide behind the notch',
       openSettings: 'Open System Settings',
       menuBarNote:
-        'Each metric is its own menu bar item, with no limit; CPU and memory are on by default. Click any item to see its details below it.',
+        'CPU and memory are on by default, with no limit. Click a menu bar item to see its details below it; turn on “Combine and rotate” to show every enabled metric in turn and click the item to see them all.',
       helper: 'Helper',
       helperHint: '{status}. Used only for fan control; temperatures and fan speeds show without it',
       helperStatus: {

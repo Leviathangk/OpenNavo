@@ -149,6 +149,7 @@ fn legacy_settings_migrate_and_roundtrip_without_losing_existing_values() {
     assert_eq!(settings.cleanup_reminder, CleanupReminder::Weekly);
     assert_eq!(settings.cleanup_project_roots, ["~/FixtureProjects"]);
     assert_eq!(settings.monitor_menu_bar, MonitorMenuBar::default());
+    assert!(!settings.monitor_menu_bar.combined);
     assert_eq!(u32::from(settings.monitor_interval_ms), 2000);
     assert!(!settings.monitor_alerts);
     assert!(settings.monitor_resident);
@@ -160,8 +161,12 @@ fn legacy_settings_migrate_and_roundtrip_without_losing_existing_values() {
     let json = serde_json::to_value(&settings).unwrap();
     let items = json["monitorMenuBar"].as_object().unwrap();
     // Fans have no item of their own: the sensors item shows the temperature, without a label.
-    assert_eq!(items.len(), 7);
+    assert_eq!(items.len(), 8);
+    assert_eq!(items["combined"], false);
     for (module, item) in items {
+        if module == "combined" {
+            continue;
+        }
         assert_eq!(item["enabled"], module == "cpu" || module == "memory");
         assert_eq!(
             item["style"],
@@ -174,6 +179,7 @@ fn legacy_settings_migrate_and_roundtrip_without_losing_existing_values() {
 fn partial_monitor_settings_preserve_explicit_choices_and_strict_intervals() {
     let input = serde_json::json!({
         "monitorMenuBar": {
+            "combined": true,
             "cpu": {"enabled": false, "style": "value"},
             "sensors": {"enabled": true, "style": "chart"},
             "fans": {"enabled": true, "style": "bars"}
@@ -183,6 +189,7 @@ fn partial_monitor_settings_preserve_explicit_choices_and_strict_intervals() {
     });
     let settings: Settings = serde_json::from_value(input).unwrap();
     assert!(!settings.monitor_menu_bar.cpu.enabled);
+    assert!(settings.monitor_menu_bar.combined);
     assert_eq!(settings.monitor_menu_bar.cpu.style, MenuBarStyle::Value);
     assert!(settings.monitor_menu_bar.memory.enabled);
     assert!(settings.monitor_menu_bar.sensors.enabled);
@@ -199,6 +206,7 @@ fn partial_monitor_settings_preserve_explicit_choices_and_strict_intervals() {
     assert_eq!(settings.fan_last_manual.as_ref().unwrap()[&1], 2500);
     let json = serde_json::to_value(&settings).unwrap();
     assert!(json["monitorMenuBar"].get("fans").is_none());
+    assert_eq!(json["monitorMenuBar"]["combined"], true);
     assert_eq!(serde_json::from_value::<Settings>(json).unwrap(), settings);
     for value in [0, 999, 3000, 5001, -1] {
         assert!(

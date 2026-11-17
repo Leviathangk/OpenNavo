@@ -92,6 +92,17 @@ pub enum MonitorMainTarget {
     Settings,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+/// What the shared menu bar popover should show. `modules` is in menu bar order, `selected` is the
+/// combined item's visible metric, and `combined` keeps the one-item layout with only one module enabled.
+pub struct MonitorPopoverView {
+    pub modules: Vec<MonitorModule>,
+    /// The module the combined item was showing when it was clicked.
+    pub selected: MonitorModule,
+    pub combined: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MonitorSnapshot {
@@ -488,6 +499,8 @@ pub struct MenuBarItemSetting {
 /// as in Stats, the sensors item shows the temperature and its popover the fans.
 #[derive(Debug, Clone, Serialize, specta::Type, PartialEq, Eq)]
 pub struct MonitorMenuBar {
+    /// One status item for every enabled module, instead of one item per module.
+    pub combined: bool,
     pub cpu: MenuBarItemSetting,
     pub gpu: MenuBarItemSetting,
     pub memory: MenuBarItemSetting,
@@ -507,6 +520,7 @@ impl Default for MonitorMenuBar {
             ..off
         };
         Self {
+            combined: false,
             cpu: on,
             memory: on,
             gpu: off,
@@ -523,9 +537,17 @@ impl Default for MonitorMenuBar {
 }
 impl<'de> Deserialize<'de> for MonitorMenuBar {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let input = BTreeMap::<MonitorModule, MenuBarItemSetting>::deserialize(deserializer)?;
+        let input = BTreeMap::<String, serde_json::Value>::deserialize(deserializer)?;
         let mut value = Self::default();
-        for (module, setting) in input {
+        for (key, setting) in input {
+            if key == "combined" {
+                value.combined = bool::deserialize(setting).map_err(serde::de::Error::custom)?;
+                continue;
+            }
+            let module = MonitorModule::deserialize(serde_json::Value::String(key))
+                .map_err(serde::de::Error::custom)?;
+            let setting =
+                MenuBarItemSetting::deserialize(setting).map_err(serde::de::Error::custom)?;
             *match module {
                 MonitorModule::Cpu => &mut value.cpu,
                 MonitorModule::Gpu => &mut value.gpu,

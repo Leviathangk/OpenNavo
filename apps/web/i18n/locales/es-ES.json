@@ -33,7 +33,8 @@
     "developerMap": "Mapa de desarrolladores",
     "clientGroup": "App para Mac",
     "clientHint": "Se ejecuta en tu Mac",
-    "firewall": "Cortafuegos"
+    "firewall": "Cortafuegos",
+    "webapps": "Apps web"
   },
   "sidebar": {
     "appLabel": "Obtén la app",
@@ -1842,7 +1843,8 @@
       "security": "Seguridad",
       "settings": "Ajustes",
       "installing": "Instalando {name}",
-      "scanning": "Analizando el instalador: {name}"
+      "scanning": "Analizando el instalador: {name}",
+      "webapps": "Apps web"
     },
     "security": {
       "kicker": "Seguridad",
@@ -2332,6 +2334,19 @@
         "app": {
           "review": "Mira cuánto espacio liberará antes de limpiar",
           "undo": "Los restos van a la Papelera, así que puedes deshacer"
+        }
+      },
+      "webapps": {
+        "lede": "Convierte los sitios que usas en apps independientes para Mac, cada una con su propia ventana, icono y espacio de datos.",
+        "metaTitle": "Convierte sitios web en apps independientes para Mac · OpenNavo",
+        "app": {
+          "window": "Cada sitio se abre en su propia ventana, no en otra pestaña del navegador.",
+          "catalog": "Más de 40 sitios integrados, además de cualquier dirección que añadas.",
+          "data": "Cada app conserva su propia sesión y sus datos locales."
+        },
+        "demo": {
+          "badge": "Ventana e icono propios",
+          "new": "Nueva app web"
         }
       }
     }

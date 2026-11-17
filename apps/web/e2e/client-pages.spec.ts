@@ -26,10 +26,17 @@ test('Mac app pages explain the client and offer the download', async ({ page })
   await expect(page.getByTestId('client-cta').getByText('Runs locally. Nothing is uploaded.')).toBeVisible();
 });
 
+test('Web Apps explains the client feature with a real-icon preview', async ({ page }) => {
+  await gotoReady(page, '/webapps');
+  await expect(page.getByRole('heading', { name: 'Web Apps', exact: true })).toBeVisible();
+  await expect(page.getByTestId('webapps-demo')).toBeVisible();
+  await expect(page.getByTestId('client-cta')).toBeVisible();
+});
+
 test('The sidebar lists every Mac app destination', async ({ page }) => {
   await gotoReady(page, '/discover');
   const nav = page.getByRole('navigation', { name: 'Main navigation' });
-  for (const name of ['Installed', 'Updates', 'Clean Up', 'Monitor', 'Security', 'Firewall']) {
+  for (const name of ['Installed', 'Updates', 'Clean Up', 'Web Apps', 'Monitor', 'Security', 'Firewall']) {
     await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
   }
 });

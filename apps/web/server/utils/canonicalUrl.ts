@@ -29,7 +29,8 @@ export const PAGE_SECTIONS: ReadonlySet<string> = new Set([
   'recent',
   'search',
   'security',
-  'updates'
+  'updates',
+  'webapps'
 ]);
 
 /** Sections whose entity segment may contain dots: app tokens and background-item labels. */

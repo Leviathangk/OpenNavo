@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { OnIcon } from '@opennavo/ui';
+import { OnIcon, runOnEnter } from '@opennavo/ui';
 import { useHermesStore } from '@/stores/hermes';
 import { useHermesContent } from '@/composables/useHermesContent';
 import type { HermesConversation, HermesMessage, PanelHistorySlice } from '@/stores/hermes';
@@ -501,7 +501,7 @@ onBeforeUnmount(() => {
               class="w-full rounded-tiny border border-solid border-line-default bg-surface-inset px-4px text-11.5px text-ink-primary outline-none"
               autofocus
               @click.stop
-              @keydown.enter.stop="commitRename"
+              @keydown.enter.stop="runOnEnter($event, commitRename)"
               @keydown.esc.stop="editingId = ''"
               @blur="commitRename"
             />

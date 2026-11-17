@@ -36,6 +36,7 @@ export const EDGE_CACHE_ROUTES = new Set([
   'updates',
   'cleanup',
   'monitor',
+  'webapps',
   'security',
   'security_topic',
   'about'

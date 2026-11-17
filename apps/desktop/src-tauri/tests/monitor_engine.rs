@@ -925,6 +925,46 @@ fn text_icon_width_is_fixed_and_unavailable_modules_are_never_enabled_by_capabil
 }
 
 #[test]
+fn combined_menu_item_rotates_enabled_metrics_at_each_metrics_own_width() {
+    use opennavo_desktop_lib::monitor::menubar::combined_text;
+    let mut menu = MonitorMenuBar::default();
+    menu.network.enabled = true;
+    let mut sample = opennavo_desktop_lib::monitor::engine::empty_sample(&system());
+    sample.cpu.usage = ratio(0.42);
+    sample.memory.used_bytes = sample.memory.total_bytes / 2;
+    sample.network.down_bytes_per_sec = number(12_345_678.0);
+    let modules = [
+        MonitorModule::Cpu,
+        MonitorModule::Memory,
+        MonitorModule::Network,
+    ];
+    let icon = combined_text(&menu, &modules, &sample, 0);
+    assert!(icon.combined);
+    assert_eq!(icon.lines, ["CPU 42%"]);
+    assert_eq!(icon.widest, "CPU 100%");
+    assert_eq!(
+        combined_text(&menu, &modules, &sample, 1).lines,
+        ["RAM 50%"]
+    );
+    assert_eq!(
+        combined_text(&menu, &modules, &sample, 1).widest,
+        "RAM 100%"
+    );
+    assert_eq!(
+        combined_text(&menu, &modules, &sample, 2).lines,
+        ["NET ↓12.3M"]
+    );
+    assert_eq!(
+        combined_text(&menu, &modules, &sample, 2).widest,
+        "NET ↓99.9M"
+    );
+    menu.network.enabled = false;
+    let fallback = combined_text(&menu, &modules, &sample, 2);
+    assert_eq!(fallback.lines, ["CPU 42%"]);
+    assert_eq!(fallback.widest, "CPU 100%");
+}
+
+#[test]
 fn darwin_cpu_clocks_convert_mach_units_without_overflow() {
     use opennavo_desktop_lib::monitor::procs::cpu_ticks_to_ns;
     assert_eq!(cpu_ticks_to_ns(3_000_000, 125, 3), 125_000_000);

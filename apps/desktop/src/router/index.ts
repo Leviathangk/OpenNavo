@@ -9,13 +9,13 @@ declare module 'vue-router' {
       | 'developer-map'
       | 'categories'
       | 'collections'
-      | 'articles'
       | 'rankings'
       | 'recent'
       | 'brewfile'
       | 'installed'
       | 'updates'
       | 'cleanup'
+      | 'webapps'
       | 'monitor'
       | 'security'
       | 'firewall'
@@ -150,19 +150,6 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'collections' }
   },
   {
-    path: '/articles',
-    name: 'articles',
-    component: () => import('@/pages/ArticlesPage.vue'),
-    meta: { nav: 'articles' }
-  },
-  {
-    path: '/articles/:slug',
-    name: 'article',
-    component: () => import('@/pages/ArticlePage.vue'),
-    props: true,
-    meta: { nav: 'articles' }
-  },
-  {
     path: '/brewfile',
     name: 'brewfile',
     component: () => import('@/pages/BrewfilePage.vue'),
@@ -205,6 +192,12 @@ export const routes: RouteRecordRaw[] = [
       rail: CleanupRail
     },
     meta: { nav: 'cleanup' }
+  },
+  {
+    path: '/webapps',
+    name: 'webapps',
+    component: () => import('@/pages/WebAppsPage.vue'),
+    meta: { nav: 'webapps' }
   },
   {
     path: '/monitor',

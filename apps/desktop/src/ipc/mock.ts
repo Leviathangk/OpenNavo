@@ -45,6 +45,7 @@ import { createSecurityMock } from './mock-data/security';
 import { createFirewallMock } from './mock-data/firewall';
 import { createCleanupMock } from './mock-data/cleanup';
 import { createMonitorMock } from './mock-data/monitor';
+import { createWebappsMock } from './mock-data/webapps';
 import { createUninstallMock } from './mock-data/uninstall';
 import { createMockScheduler } from './mock-data/scheduler';
 import type { MockFailure, MockState } from './mock-data/runner';
@@ -237,6 +238,7 @@ function defaultSettings(): AppSettings {
     cleanupReminderBytes: 10_000_000_000,
     cleanupProjectRoots: ['~/Projects', '~/Developer', '~/code', '~/GitHub', '~/dev'],
     monitorMenuBar: {
+      combined: false,
       cpu: { enabled: true, style: 'text' },
       gpu: { enabled: false, style: 'text' },
       memory: { enabled: true, style: 'text' },
@@ -1082,6 +1084,7 @@ export function installMockIpc(
   };
 
   const handlers: Record<string, (args: Args) => unknown> = {
+    ...createWebappsMock(),
     ...uninstall.handlers,
     ...cleanupMock.handlers,
     ...monitor.handlers,
